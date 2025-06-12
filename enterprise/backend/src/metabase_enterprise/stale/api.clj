@@ -5,13 +5,13 @@
    [java-time.api :as t]
    [metabase-enterprise.stale.impl :as stale]
    [metabase.analytics.core :as analytics]
-   [metabase.api.collection :as api.collection]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.card :as card]
-   [metabase.models.collection :as collection]
+   [metabase.collections.api :as api.collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
+   [metabase.queries.core :as queries]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -86,7 +86,7 @@
        present-collections
        (map (fn [card]
               (-> card
-                  (assoc :model (if (card/model? card) "dataset" "card"))
+                  (assoc :model (if (queries/model? card) "dataset" "card"))
                   (assoc :fully_parameterized (api.collection/fully-parameterized-query? card))
                   (dissoc :dataset_query))))))
 

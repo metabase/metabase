@@ -1,7 +1,7 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2]
    [metabase.driver.sql.util :as sql.u]

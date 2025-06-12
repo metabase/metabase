@@ -14,10 +14,10 @@
     clojure -M:run load-from-h2 '\"/path/to/metabase.db\"'"
   (:require
    [clojure.java.jdbc :as jdbc]
+   [metabase.app-db.core :as mdb]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.rotate-encryption-key :as rotate-encryption]
-   [metabase.db :as mdb]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +26,7 @@
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
   tool for migrating from one instance to another using H2 as serialization target.
 
-  Defaults to using [[metabase.db.env/db-file]] as the connection string.
+  Defaults to using [[metabase.app-db.env/db-file]] as the connection string.
 
   Target H2 DB will be deleted if it exists, unless `keep-existing?` is truthy."
   ([h2-filename]

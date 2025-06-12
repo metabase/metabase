@@ -3,10 +3,6 @@ name: E2E Cross-version Component Tests for Embedding SDK
 on:
   workflow_call:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
-  cancel-in-progress: true
-
 jobs:
   files-changed:
     name: Check which files changed
@@ -86,7 +82,7 @@ jobs:
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-cross-version
 
   resolve-sdk-version:
     if: |
@@ -168,7 +164,7 @@ jobs:
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
-          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          name: metabase-ee-${{ github.event.pull_request.head.sha || github.sha }}-uberjar-cross-version
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend

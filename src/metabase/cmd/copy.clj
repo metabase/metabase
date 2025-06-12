@@ -6,11 +6,11 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.db.setup :as mdb.setup]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.setup :as mdb.setup]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.models.init]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.jvm :as u.jvm]
@@ -112,7 +112,10 @@
     :model/NotificationCard]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
-      :model/ConnectionImpersonation])))
+      :model/ConnectionImpersonation
+      :model/Metabot
+      :model/MetabotEntity
+      :model/MetabotPrompt])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
@@ -175,13 +178,20 @@
              (or (:is_attached_dwh database)
                  (and (not *copy-h2-database-details*)
                       (= (:engine database) "h2"))) (assoc :details "{}"))))
+
     :model/Setting
     ;; Never create dumps with read-only-mode turned on.
     ;; It will be confusing to restore from and prevent key rotation.
     (remove (fn [{k :key}] (= k "read-only-mode")))
+
+    :model/Table
+    ;; unique_table_helper is a computed/generated column
+    (map #(dissoc % :unique_table_helper))
+
     :model/Field
     ;; unique_field_helper is a computed/generated column
     (map #(dissoc % :unique_field_helper))
+
     ;; else
     identity))
 

@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.query-analysis.core :as query-analysis]
    [metabase.query-analysis.init]

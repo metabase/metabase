@@ -1,9 +1,8 @@
 (ns metabase.search.impl
   (:require
    [clojure.string :as str]
-   [metabase.models.collection :as collection]
-   [metabase.models.collection.root :as collection.root]
-   [metabase.models.database :as database]
+   [metabase.collections.models.collection :as collection]
+   [metabase.collections.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
@@ -20,6 +19,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -407,14 +407,14 @@
 (defn- add-metadata [search-results]
   (let [card-ids (into #{}
                        (comp
-                        (filter #(= (:model %) "card"))
+                        (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
         card-metadata (if (empty? card-ids)
                         {}
                         (t2/select-pk->fn :result_metadata [:model/Card :id :card_schema :result_metadata] :id [:in card-ids]))]
     (map (fn [{:keys [model id] :as item}]
-           (if (= model "card")
+           (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))
              item))
          search-results)))

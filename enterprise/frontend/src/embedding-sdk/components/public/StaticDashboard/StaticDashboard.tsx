@@ -13,12 +13,13 @@ import {
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import { setErrorPage } from "metabase/redux/app";
+import { resetErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 
@@ -36,7 +37,6 @@ export const StaticDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
-  withFooter = true,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
@@ -56,7 +56,6 @@ export const StaticDashboardInner = ({
     initialParameters,
     withTitle,
     withDownloads,
-    withFooter,
     hiddenParameters,
   });
 
@@ -89,7 +88,7 @@ export const StaticDashboardInner = ({
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
-        withFooter={displayOptions.withFooter}
+        withFooter={false}
       />
     </Box>
   );
@@ -103,6 +102,7 @@ export const StaticDashboardInner = ({
  */
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId: initialDashboardId, ...rest }) => {
+    const { isLocaleLoading } = useLocale();
     const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
       type: "dashboard",
       id: initialDashboardId,
@@ -112,11 +112,11 @@ const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
     const dispatch = useSdkDispatch();
     useEffect(() => {
       if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
+        dispatch(resetErrorPage());
       }
     }, [dispatch, resolvedDashboardId]);
 
-    if (isLoading) {
+    if (isLocaleLoading || isLoading) {
       return <SdkLoader />;
     }
 

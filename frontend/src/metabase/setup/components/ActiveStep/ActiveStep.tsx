@@ -26,7 +26,7 @@ export const ActiveStep = ({
       data-testid="setup-step"
     >
       <StepTitle>{title}</StepTitle>
-      <StepLabel>
+      <StepLabel data-testid="step-number">
         <StepLabelText>{label}</StepLabelText>
       </StepLabel>
       {children}

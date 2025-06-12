@@ -1,8 +1,6 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { parseTimestamp } from "metabase/lib/time";
 import { numberToWord } from "metabase/lib/utils";
 import type {
   PasswordComplexity,
@@ -216,17 +214,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "deprecation-notice-version")
-   */
-  deprecationNoticeVersion() {
-    return this.get("deprecation-notice-version");
-  }
-
-  deprecationNoticeEnabled() {
-    return this.currentVersion() !== this.deprecationNoticeVersion();
-  }
-
-  /**
    * @deprecated use getSetting(state, "premium-embedding-token")
    */
   token() {
@@ -239,35 +226,6 @@ class MetabaseSettings {
   formattingOptions() {
     const opts = this.get("custom-formatting");
     return opts && opts["type/Temporal"] ? opts["type/Temporal"] : {};
-  }
-
-  versionInfoLastChecked() {
-    const ts = this.get("version-info-last-checked");
-
-    if (ts) {
-      // app DB stores this timestamp in UTC, so convert it to the local zone to render
-      return moment
-        .utc(parseTimestamp(ts))
-        .local()
-        .format("MMMM Do YYYY, h:mm:ss a");
-    } else {
-      return t`never`;
-    }
-  }
-
-  /**
-   * @deprecated use getSetting(state, "version-info")
-   */
-  versionInfo() {
-    return this.get("version-info") || {};
-  }
-
-  /**
-   * @deprecated use getSetting(state, "version")
-   */
-  currentVersion() {
-    const version = this.get("version") || {};
-    return version.tag;
   }
 
   /**

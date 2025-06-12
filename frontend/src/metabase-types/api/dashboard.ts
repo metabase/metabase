@@ -8,6 +8,7 @@ import type {
   CollectionId,
   Database,
   Field,
+  FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -76,6 +77,7 @@ export interface Dashboard {
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;
+  param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
 
@@ -335,4 +337,9 @@ export type GetRemappedDashboardParameterValueRequest = {
   dashboard_id: DashboardId;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
+};
+
+export type GetValidDashboardFilterFieldsRequest = {
+  filtered: FieldId[];
+  filtering: FieldId[];
 };

@@ -1,6 +1,6 @@
 (ns metabase.sync.task.sync-databases-test
   "Tests for the logic behind scheduling the various sync operations of Databases. Most of the actual logic we're
-  testing is part of [[metabase.models.database]], so there's an argument to be made that these sorts of tests could
+  testing is part of [[metabase.warehouses.models.database]], so there's an argument to be made that these sorts of tests could
   just as easily belong to a `database-test` namespace."
   (:require
    [clojure.string :as str]

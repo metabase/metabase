@@ -7,4 +7,5 @@
 
 (p/import-vars
  [metabase.version.settings
-  check-for-updates])
+  check-for-updates
+  version])

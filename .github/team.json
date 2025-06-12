@@ -11,7 +11,8 @@
         "appleby",
         "uladzimirdev",
         "wzimrin",
-        "ericnormand"
+        "ericnormand",
+        "galdre"
       ]
     },
     {
@@ -77,7 +78,8 @@
         "kulyk",
         "tsplude",
         "lorem--ipsum",
-        "noahmoss"
+        "noahmoss",
+        "bpander"
       ]
     },
     {
@@ -98,7 +100,12 @@
     {
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac"]
+      "members": ["nemanjaglumac", "chodorowicz"]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": []
     }
   ]
 }

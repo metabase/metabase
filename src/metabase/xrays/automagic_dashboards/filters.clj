@@ -2,9 +2,9 @@
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
@@ -68,7 +68,8 @@
 
 (defn- filter-for-card
   [card field]
-  [:dimension ((:fk-map field) (:table_id card)) {:stage-number 0}])
+  (when-let [field-ref ((:fk-map field) (:table_id card))]
+    [:dimension field-ref {:stage-number 0}]))
 
 (defn- add-filter
   [dashcard filter-id field]
@@ -126,7 +127,7 @@
          (take max-filters)
          (reduce
           (fn [dashboard candidate]
-            (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
+            (let [filter-id     (magic.util/filter-id-for-field candidate)
                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                   dashcards     (:dashcards dashboard)
                   dashcards-new (keep #(add-filter % filter-id candidate) dashcards)

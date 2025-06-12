@@ -1,4 +1,5 @@
 import cx from "classnames";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -198,6 +199,7 @@ export function Funnel(props: VisualizationProps) {
     getHref,
     isDashboard,
     isEditing,
+    titleMenuItems,
   } = props;
   const hasTitle = showTitle && settings["card.title"];
 
@@ -221,7 +223,9 @@ export function Funnel(props: VisualizationProps) {
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
-  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+  const canSelectTitle =
+    !!onChangeCardAndRun &&
+    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
 
   return (
     <div className={cx(className, CS.flex, CS.flexColumn, CS.p1)}>
@@ -234,6 +238,7 @@ export function Funnel(props: VisualizationProps) {
           actionButtons={actionButtons}
           hasInfoTooltip={!isDashboard || !isEditing}
           onChangeCardAndRun={canSelectTitle ? onChangeCardAndRun : undefined}
+          titleMenuItems={titleMenuItems}
         />
       )}
       <FunnelNormal

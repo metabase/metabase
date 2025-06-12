@@ -9,10 +9,9 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
-   [metabase.server.middleware.json]
    [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -31,10 +30,6 @@
    (java.time.temporal Temporal)
    (java.util.concurrent TimeUnit)
    (java.util.concurrent.locks ReentrantLock)))
-
-;;; this namespace is required for side effects since it has the JSON encoder definitions for `java.time` classes and
-;;; other things we need for `:json` settings
-(comment metabase.server.middleware.json/keep-me)
 
 (def ^:dynamic *database-local-values*
   "Database-local Settings values (as a map of Setting name -> already-deserialized value). This comes from the value of
@@ -450,7 +445,7 @@
 (defn- db-is-set-up? []
   ;; this should never be hit. it is just overly cautious against a NPE here. But no way this cannot resolve
   (let [f (or @db-is-set-up-var
-              (reset! db-is-set-up-var (requiring-resolve 'metabase.db/db-is-set-up?)))]
+              (reset! db-is-set-up-var (requiring-resolve 'metabase.app-db.core/db-is-set-up?)))]
     (if f (f) false)))
 
 (defn- db-or-cache-value

@@ -16,6 +16,7 @@ import type {
 } from "embedding-sdk/types/question";
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
+import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
   SdkQuestionState & { originalQuestion?: Question }
@@ -30,7 +31,7 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  queryQuestion(): Promise<void>;
+  queryQuestion(): Promise<Question | undefined>;
 
   loadAndQueryQuestion(): LoadQuestionResult;
 
@@ -111,6 +112,12 @@ export function useLoadQuestion({
       setIsQuestionLoading(false);
       return { ...results, originalQuestion };
     } catch (err) {
+      // Ignore cancelled requests (e.g. when the component unmounts).
+      // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
+      if (isCancelledRequestError(err)) {
+        return {};
+      }
+
       mergeQuestionState({
         question: undefined,
         originalQuestion: undefined,
@@ -134,6 +141,8 @@ export function useLoadQuestion({
     });
 
     mergeQuestionState(state);
+
+    return state.question;
   }, [dispatch, question, originalQuestion]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
@@ -219,3 +228,6 @@ export const getParameterDependencyKey = (
     .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
     .map(([key, value]) => `${key}=${value}`)
     .join(":");
+
+const isCancelledRequestError = (error: unknown) =>
+  isObject(error) && "isCancelled" in error && error.isCancelled === true;

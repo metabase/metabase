@@ -1,7 +1,7 @@
 (ns metabase.revisions.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
   (:require
    [clojure.test :refer :all]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]

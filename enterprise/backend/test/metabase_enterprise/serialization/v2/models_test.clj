@@ -6,7 +6,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -54,7 +54,7 @@
                 (is (not random-entity-id?))))))))))
 
 (deftest serialization-complete-spec-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     ;; When serialization spec is defined, it describes every column
     (doseq [m    (-> (methods serdes/make-spec)
                      (dissoc :default)

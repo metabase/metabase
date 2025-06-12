@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import React from "react";
 import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/lib/browser";
@@ -58,6 +59,7 @@ function _CartesianChart(props: VisualizationProps) {
     onChangeCardAndRun,
     onHoverChange,
     canToggleSeriesVisibility,
+    titleMenuItems,
   } = props;
 
   const settings = useMemo(
@@ -133,7 +135,9 @@ function _CartesianChart(props: VisualizationProps) {
 
   // We can't navigate a user to a particular card from a visualizer viz,
   // so title selection is disabled in this case
-  const canSelectTitle = !!onChangeCardAndRun && !isVisualizerViz;
+  const canSelectTitle =
+    !!onChangeCardAndRun &&
+    (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
 
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(
     chartModel,
@@ -156,6 +160,7 @@ function _CartesianChart(props: VisualizationProps) {
             canSelectTitle ? () => onOpenQuestion(card.id) : undefined
           }
           width={outerWidth}
+          titleMenuItems={titleMenuItems}
         />
       )}
       <CartesianChartLegendLayout

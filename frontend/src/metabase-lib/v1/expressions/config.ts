@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import { t } from "ttag";
 
 import type * as Lib from "metabase-lib";
@@ -316,6 +316,20 @@ const CONVERSION = defineClauses(
           type: "expression",
           description: t`The string or datetime to convert to a date.`,
           example: "2025-03-20",
+        },
+      ],
+    },
+    datetime: {
+      displayName: "datetime",
+      type: "datetime",
+      requiresFeature: "expressions/datetime",
+      description: () => t`Converts a datetime string to a datetime.`,
+      args: () => [
+        {
+          name: t`value`,
+          type: "expression",
+          description: t`The string to convert to a datetime.`,
+          example: "2025-03-20 12:45:04",
         },
       ],
     },
@@ -1179,8 +1193,8 @@ const DATE = defineClauses(
         const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
         const nowAtTimezone =
           timezone && reportTimezone
-            ? moment().tz(reportTimezone).format("LT")
-            : moment().format("LT");
+            ? dayjs().tz(reportTimezone).format("LT")
+            : dayjs().format("LT");
 
         // H2 is the only DBMS we support where:
         // · set-timezone isn't a feature, and

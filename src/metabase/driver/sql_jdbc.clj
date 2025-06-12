@@ -4,16 +4,17 @@
    [clojure.java.jdbc :as jdbc]
    [honey.sql :as sql]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
-   [metabase.driver.sql-jdbc.quoting :refer [with-quoting quote-columns quote-identifier quote-table]]
+   [metabase.driver.sql-jdbc.quoting :refer [quote-columns quote-identifier
+                                             quote-table with-quoting]]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
@@ -148,14 +149,14 @@
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (qp.writeback/execute-write-sql! database-id sql)))
+    (driver-api/execute-write-sql! database-id sql)))
 
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
-    (qp.writeback/execute-write-sql! db-id sql)))
+    (driver-api/execute-write-sql! db-id sql)))
 
 (defmethod driver/truncate! :sql-jdbc
   [driver db-id table-name]
@@ -204,13 +205,13 @@
                                                                    column-definitions)}
                                                 :quoted true
                                                 :dialect (sql.qp/quote-style driver)))]
-      (qp.writeback/execute-write-sql! db-id sql))))
+      (driver-api/execute-write-sql! db-id sql))))
 
 ;; kept for get-method driver compatibility
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-columns! :sql-jdbc
   [driver db-id table-name column-definitions]
-  (qp.writeback/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
+  (driver-api/execute-write-sql! db-id (sql-jdbc.sync/alter-columns-sql driver table-name column-definitions)))
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (defmethod driver/alter-table-columns! :sql-jdbc
@@ -222,7 +223,7 @@
     (if deprecated-method-specialised?
       (deprecated-driver-method driver db-id table-name column-definitions)
       (->> (apply sql-jdbc.sync/alter-table-columns-sql driver table-name column-definitions opts)
-           (qp.writeback/execute-write-sql! db-id)))))
+           (driver-api/execute-write-sql! db-id)))))
 
 (defmethod driver/syncable-schemas :sql-jdbc
   [driver database]
@@ -271,7 +272,7 @@
         (recur cause)))))
 
 (defmulti impl-query-canceled?
-  "Implmenting multimethod for is query canceled. Notes when a query is canceled due to user action,
+  "Implementing multimethod for is query canceled. Notes when a query is canceled due to user action,
   which can include using the `.setQueryTimeout` on a `PreparedStatement.` Use this instead of implementing
   driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
   based drivers."
@@ -286,4 +287,19 @@
 (defmethod driver/query-canceled? :sql-jdbc [driver e]
   (if-let [sql-exception (extract-sql-exception e)]
     (impl-query-canceled? driver sql-exception)
+    false))
+
+(defmulti impl-table-known-to-not-exist?
+  "Implementing multimethod for is table known to not exist. Use this instead of implementing
+  driver/query-canceled so extracting the SQLException from an exception chain can happen once for jdbc-
+  based drivers."
+  {:added "0.54.10" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-table-known-to-not-exist? ::driver/driver [_ _] false)
+
+(defmethod driver/table-known-to-not-exist? :sql-jdbc [driver e]
+  (if-let [sql-exception (extract-sql-exception e)]
+    (impl-table-known-to-not-exist? driver sql-exception)
     false))

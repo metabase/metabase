@@ -333,7 +333,9 @@ describe("scenarios > question > new", () => {
     // test recent items do not exist
     H.startNewNativeQuestion();
     H.NativeEditor.type("select 'hi'");
-    cy.findByTestId("native-query-editor-sidebar").button("Get Answer").click();
+    cy.findByTestId("native-query-editor-container")
+      .button("Get Answer")
+      .click();
     cy.findByRole("button", { name: "Save" }).click();
 
     cy.findByTestId("save-question-modal").within(() => {
@@ -367,7 +369,8 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("qb-header").findByText("Save").click();
 
       cy.log("should be able to tab through fields (metabase#41683)");
-      cy.realPress("Tab").realPress("Tab");
+      // Since the submit button has initial focus on this modal, we need an extra tab to get past the modal close button
+      cy.realPress("Tab").realPress("Tab").realPress("Tab");
       cy.findByLabelText("Description").should("be.focused");
 
       cy.findByTestId("save-question-modal")
@@ -417,7 +420,8 @@ describe("scenarios > question > new", () => {
       cy.findByTestId("qb-header").findByText("Save").click();
 
       cy.log("should be able to tab through fields (metabase#41683)");
-      cy.realPress("Tab").realPress("Tab");
+      // Since the submit button has initial focus on this modal, we need an extra tab to get past the modal close button
+      cy.realPress("Tab").realPress("Tab").realPress("Tab");
       cy.findByLabelText("Description").should("be.focused");
 
       cy.findByTestId("save-question-modal")

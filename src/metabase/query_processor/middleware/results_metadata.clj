@@ -19,6 +19,11 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- comparable-metadata
+  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
+  [metadata]
+  (mapv #(dissoc % :ident) metadata))
+
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
@@ -30,7 +35,7 @@
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query))
                ;; Only update changed metadata
-               (not= metadata (qp.store/miscellaneous-value [::card-stored-metadata])))
+               (not= (comparable-metadata metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
       (t2/update! :model/Card card-id {:result_metadata metadata
                                        :updated_at      :updated_at}))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
@@ -53,7 +58,7 @@
       (select-keys final-col [:id :ident :description :display_name :semantic_type :fk_target_field_id
                               :settings :field_ref :base_type :effective_type :database_type
                               :remapped_from :remapped_to :coercion_strategy :visibility_type
-                              :was_binned])
+                              :was_binned :table_id])
       insights-col
       {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)

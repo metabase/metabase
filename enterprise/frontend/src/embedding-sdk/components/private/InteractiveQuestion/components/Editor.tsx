@@ -22,6 +22,7 @@ export type InteractiveQuestionEditorProps = {
    * Callback function executed when changes are applied
    */
   onApply?: () => void;
+  hasVisualizeButton?: boolean;
 };
 
 /**
@@ -34,17 +35,13 @@ export type InteractiveQuestionEditorProps = {
  */
 export const Editor = ({
   onApply = () => {},
+  hasVisualizeButton = true,
 }: InteractiveQuestionEditorProps) => {
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 
-  const {
-    question,
-    originalQuestion,
-    updateQuestion,
-    queryQuestion,
-    modelsFilterList,
-  } = useInteractiveQuestionContext();
+  const { question, originalQuestion, updateQuestion, queryQuestion } =
+    useInteractiveQuestionContext();
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);
@@ -77,8 +74,7 @@ export const Editor = ({
             await queryQuestion();
           }}
           setQueryBuilderMode={() => {}}
-          hasVisualizeButton={true}
-          modelsFilterList={modelsFilterList}
+          hasVisualizeButton={hasVisualizeButton}
         />
       </ScrollArea>
     )

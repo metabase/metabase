@@ -197,7 +197,6 @@
           "base_type": "type/BigInteger",
           "name": "Change Inverted",
           "display_name": "Change Inverted",
-          "expression_name": "Change Inverted",
           "field_ref": ["expression", "Change Inverted"],
           "source": "fields",
           "effective_type": "type/BigInteger"

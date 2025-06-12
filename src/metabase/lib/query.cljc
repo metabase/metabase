@@ -115,15 +115,9 @@
 (mu/defn can-preview :- :boolean
   "Returns whether the query can be previewed.
 
-  See [[metabase.lib.js/can-preview]] for how this differs from [[can-run]]."
+  Right now, this is a special case of [[can-run]]."
   [query :- ::lib.schema/query]
-  (and (can-run query "question")
-       ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
-       (every? (fn [stage]
-                 (boolean
-                  (or (seq (:order-by stage))
-                      (not (lib.util.match/match-one (:expressions stage) :offset)))))
-               (:stages query))))
+  (can-run query "question"))
 
 (defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on pmbql fields.
@@ -141,7 +135,7 @@
           x
           [:field
            (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-           (id :guard integer? pos?)]
+           (id :guard pos-int?)]
           (if (some #{:mbql/stage-metadata} &parents)
             &match
             (update &match 1 merge

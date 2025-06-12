@@ -4,7 +4,6 @@
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -27,8 +26,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [lib.card/*force-broken-card-refs* false]
-                        (thunk))))
+                      (thunk)))
 
 (defn- grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -1762,7 +1760,19 @@
                  (:venues/native (lib.tu/mock-cards)))
                 lib/append-stage
                 lib/visible-columns
-                first)))))
+                first))))
+    (is (= {:field-id nil
+            :search-field-id nil
+            :search-field nil
+            :has-field-values :none}
+           (lib.field/field-values-search-info
+            meta/metadata-provider
+            (->> (lib.tu/query-with-stage-metadata-from-card
+                  meta/metadata-provider
+                  (:venues/native (lib.tu/mock-cards)))
+                 lib/append-stage
+                 lib/visible-columns
+                 (m/find-first (comp #{"NAME"} :name)))))))
   (testing "field-id with custom metadata (#37100)"
     (is (=? {:field-id 1
              :search-field-id 1
@@ -1804,3 +1814,29 @@
                                             (lib/with-temporal-bucket unit)
                                             (lib/with-temporal-bucket nil)
                                             (:effective-type))))))))
+
+(deftest ^:parallel display-name-of-aggregation-over-joined-field-from-previous-stage-test
+  (testing "long display name of an aggregation over a joined field from the previous stage (#50308)"
+    (let [base-query        (lib.tu/query-with-join)
+          venues-id         (m/find-first #(= (:id %) (meta/id :venues :id))
+                                          (lib/visible-columns base-query))
+          _                 (is (some? venues-id))
+          categories-id     (m/find-first #(= (:id %) (meta/id :categories :id))
+                                          (lib/visible-columns base-query))
+          _                 (is (some? categories-id))
+          query             (-> (lib.tu/query-with-join)
+                                (lib/aggregate (lib/max venues-id))
+                                (lib/aggregate (lib/max categories-id))
+                                lib/append-stage)
+          max-venues-id     (first (lib/returned-columns query))
+          _                 (is (some? max-venues-id))
+          max-categories-id (second (lib/returned-columns query))
+          _                 (is (some? max-categories-id))]
+      (is (= "Max of ID"
+             (lib/display-name query -1 max-venues-id)))
+      (is (= "Max of ID"
+             (lib/display-name query -1 max-categories-id)))
+      (is (= "Max of ID"
+             (lib/display-name query -1 max-venues-id :long)))
+      (is (= "Max of Cat → ID"
+             (lib/display-name query -1 max-categories-id :long))))))

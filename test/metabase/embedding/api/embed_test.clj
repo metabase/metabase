@@ -10,18 +10,18 @@
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
-   [metabase.api.card-test :as api.card-test]
-   [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
+   [metabase.dashboards.api-test :as api.dashboard-test]
    [metabase.embedding.api.common :as api.embed.common]
-   [metabase.http-client :as client]
-   [metabase.models.params.chain-filter-test :as chain-filer-test]
+   [metabase.parameters.chain-filter-test :as chain-filer-test]
    [metabase.public-sharing.api-test :as public-test]
+   [metabase.queries.api.card-test :as api.card-test]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -151,11 +151,11 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_fields           nil})
+   :param_fields           {}})
 
 (def successful-dashboard-info
   {:auto_apply_filters true, :description nil, :parameters [], :dashcards [], :tabs [],
-   :param_fields nil :width "fixed"})
+   :param_fields {} :width "fixed"})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 
@@ -485,6 +485,7 @@
     :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
                :template-tags {:date {:name         "date"
                                       :display-name "Date"
+                                      :id           "_date_"
                                       :type         "dimension"
                                       :default      "Q1-2014"
                                       :dimension    [:field (mt/id :checkins :date) nil]
@@ -536,6 +537,7 @@
                       :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
                                  :template-tags {:date {:name         "date"
                                                         :display-name "Date"
+                                                        :id           "_date_"
                                                         :type         "dimension"
                                                         :dimension    [:field (mt/id :checkins :date) nil]
                                                         :widget-type  "date/quarter-year"}}}}
@@ -724,10 +726,9 @@
                                                                                :target       [:dimension
                                                                                               [:field (mt/id :venues :name) nil]]}]}]
         (let [embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}}))]
-          (is (some?
-               (-> embedding-dashboard
-                   :param_fields
-                   (get (mt/id :venues :name)))))
+          (is (=? {:foo [{}]
+                   :bar [{}]}
+                  (:param_fields embedding-dashboard)))
           (is (= 1
                  (-> embedding-dashboard
                      :dashcards
@@ -735,10 +736,9 @@
                      :parameter_mappings
                      count))))
         (let [eid-embedding-dashboard (client/client :get 200 (dashboard-url dashboard {:params {:foo "BCD Tofu House"}} (:entity_id dashboard)))]
-          (is (some?
-               (-> eid-embedding-dashboard
-                   :param_fields
-                   (get (mt/id :venues :name)))))
+          (is (=? {:foo [{}]
+                   :bar [{}]}
+                  (:param_fields eid-embedding-dashboard)))
           (is (= 1
                  (-> eid-embedding-dashboard
                      :dashcards

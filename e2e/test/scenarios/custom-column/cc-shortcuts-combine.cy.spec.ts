@@ -148,7 +148,7 @@ H.describeWithSnowplow(
 
       H.expressionEditorWidget().button("Done").click();
 
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "column_combine_via_shortcut",
         custom_expressions_used: ["concat"],
         database_id: SAMPLE_DB_ID,

@@ -78,7 +78,7 @@
                                                    [(u/qualified-name k) (fix-json-schema v)]))
                                             properties))))
 
-        (= (:type schema) :array)
+        (and (= (:type schema) :array) (:items schema))
         (update schema :items (fn [items]
                                 ;; apparently `:tuple` creates multiple `:items` entries... I don't think this is
                                 ;; correct. I think we're supposed to use `:prefixItems` instead. See
@@ -86,6 +86,9 @@
                                 (if (sequential? items)
                                   (mapv fix-json-schema items)
                                   (fix-json-schema items))))
+
+        (and (= (:type schema) :array) (false? (:items schema)))
+        (dissoc schema :items)
 
         :else
         schema))
@@ -198,7 +201,7 @@
 
   (metabase.api.macros.defendpoint.open-api/path-item
    "/api/card/:id/series"
-   (:form (metabase.api.macros/find-route 'metabase.api.card :get "/:id/series"))
+   (:form (metabase.api.macros/find-route 'metabase.queries.api.card :get "/:id/series"))
 
    (-> (mjs/transform :metabase.util.cron/CronScheduleString {::mjs/definitions-path "#/components/schemas/"})
        fix-json-schema)))

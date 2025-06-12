@@ -18,7 +18,7 @@ export interface SdkQuestionState {
   queryResults?: any[];
 }
 
-export interface LoadSdkQuestionParams {
+export type LoadSdkQuestionParams = {
   /**
    * For SQL questions only. A mapping of SQL parameter names to parameter values, such as `{ product_id: "42"}`
    */
@@ -38,7 +38,7 @@ export interface LoadSdkQuestionParams {
    * @internal
    */
   questionId?: SdkQuestionId | null;
-}
+};
 
 export interface NavigateToNewCardParams {
   nextCard: Card;
@@ -59,6 +59,6 @@ export type SdkQuestionTitleProps =
   // TODO: turn this into (question: Question) => ReactNode once we have the public-facing question type (metabase#50487)
   | (() => ReactNode);
 
-export type EntityTypeFilterKeys = "table" | "question" | "model" | "metric";
+export type EntityTypeFilterKeys = "table" | "model";
 
 export type SqlParameterValues = Record<string, string | number>;

@@ -11,18 +11,17 @@
    [clojure.test :refer :all]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.annotate :as qp.annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -40,15 +39,10 @@
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; Non-"normal" drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
-(def abnormal-drivers
-  "Drivers that are so weird that we can't run the normal driver tests against them."
-  #{:druid :druid-jdbc})
-
 (defn normal-drivers
   "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
   []
-  (set/difference (tx.env/test-drivers) abnormal-drivers))
+  (set/difference (tx.env/test-drivers) data/timeseries-drivers))
 
 (defn normal-drivers-with-feature
   "Set of drivers that support a given `feature`. If additional features are given, it will ensure all features are
@@ -189,11 +183,7 @@
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
-               :fk_field_id  (:id source-col)
-               :source_alias (let [table-name (if (qp.store/initialized?)
-                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
-                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col)))))))
+               :fk_field_id  (:id source-col)))))
 
 (declare cols)
 
@@ -371,7 +361,7 @@
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   [results]
-  (or (some->> (data results) :cols (mapv #(into {} (dissoc % :position))))
+  (or (some->> (data results) :cols (mapv #(dissoc % :position)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols

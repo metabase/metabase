@@ -13,12 +13,13 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -36,6 +37,18 @@
                    {:temporal-unit unit}))]
     [:expression options ((some-fn :lib/expression-name :name) metadata)]))
 
+(mu/defn maybe-resolve-expression :- ::lib.schema.expression/expression
+  "Find the expression with `expression-name` in a given stage of a `query`, or nil if it doesn't exist."
+  ([query expression-name]
+   (maybe-resolve-expression query -1 expression-name))
+
+  ([query           :- ::lib.schema/query
+    stage-number    :- :int
+    expression-name :- ::lib.schema.common/non-blank-string]
+   (let [stage (lib.util/query-stage query stage-number)]
+     (m/find-first (comp #{expression-name} lib.util/expression-name)
+                   (:expressions stage)))))
+
 (mu/defn resolve-expression :- ::lib.schema.expression/expression
   "Find the expression with `expression-name` in a given stage of a `query`, or throw an Exception if it doesn't
   exist."
@@ -45,13 +58,11 @@
   ([query           :- ::lib.schema/query
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
-   (let [stage (lib.util/query-stage query stage-number)]
-     (or (m/find-first (comp #{expression-name} lib.util/expression-name)
-                       (:expressions stage))
-         (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
-                         {:expression-name expression-name
-                          :query           query
-                          :stage-number    stage-number}))))))
+   (or (maybe-resolve-expression query stage-number expression-name)
+       (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
+                       {:expression-name expression-name
+                        :query           query
+                        :stage-number    stage-number})))))
 
 (defmethod lib.metadata.calculation/type-of-method :expression
   [query stage-number [_expression _opts expression-name, :as _expression-ref]]
@@ -170,7 +181,7 @@
   "e.g. something like \"- 2 days\""
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
-  ;; TODO -- sorta duplicated with [[metabase.models.params.shared/translated-interval]], but not exactly
+  ;; TODO -- sorta duplicated with [[metabase.parameters.shared/translated-interval]], but not exactly
   (let [unit-str (interval-unit-str amount unit)]
     (wrap-str-in-parens-if-nested
      (if (pos? amount)
@@ -181,7 +192,7 @@
   "e.g. something like `minus_2_days`"
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
-  ;; TODO -- sorta duplicated with [[metabase.models.params.shared/translated-interval]], but not exactly
+  ;; TODO -- sorta duplicated with [[metabase.parameters.shared/translated-interval]], but not exactly
   (let [unit-str (interval-unit-str amount unit)]
     (if (pos? amount)
       (lib.util/format "plus_%s_%s"  amount                    unit-str)
@@ -207,6 +218,27 @@
 (defmethod lib.metadata.calculation/column-name-method :coalesce
   [query stage-number [_coalesce _opts expr _null-expr]]
   (lib.metadata.calculation/column-name query stage-number expr))
+
+(defmethod lib.metadata.calculation/type-of-method :coalesce
+  [query stage-number [_coalesce _opts expr null-expr]]
+  (let [expr-type      (lib.metadata.calculation/type-of-method query stage-number expr)
+        null-expr-type (lib.metadata.calculation/type-of-method query stage-number null-expr)]
+    (lib.schema.expression.conditional/case-coalesce-return-type [expr-type null-expr-type])))
+
+;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
+;;; `:if` is an alias to `:case`
+(doseq [tag [:case :if]]
+  (lib.hierarchy/derive tag ::case))
+
+(defmethod lib.metadata.calculation/type-of-method ::case
+  [query stage-number [_case _opts cases fallback]]
+  (let [case-exprs (map second cases)
+        exprs      (cond-> case-exprs
+                     fallback
+                     (clojure.core/concat [fallback]))
+        types      (map #(lib.metadata.calculation/type-of-method query stage-number %)
+                        exprs)]
+    (lib.schema.expression.conditional/case-coalesce-return-type types)))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :expression
   [expr-ref unit]
@@ -276,7 +308,7 @@
 ;; Kondo gets confused
 #_{:clj-kondo/ignore [:unresolved-namespace :syntax]}
 (lib.common/defop / [x y & more])
-(lib.common/defop case [cases] [cases fallback])
+(lib.common/defop ^{:style/indent [:form]} case [cases] [cases fallback])
 (lib.common/defop coalesce [x y & more])
 (lib.common/defop abs [x])
 (lib.common/defop log [x])
@@ -303,6 +335,7 @@
 (lib.common/defop get-day-of-week [t] [t mode])
 (lib.common/defop datetime-add [t i unit])
 (lib.common/defop date [s])
+(lib.common/defop datetime [value] [value mode])
 (lib.common/defop datetime-subtract [t i unit])
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])

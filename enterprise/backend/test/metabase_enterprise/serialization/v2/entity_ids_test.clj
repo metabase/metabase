@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -59,7 +59,7 @@
                         (messages)))))))))))
 
 (deftest drop-entity-ids-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (testing "With a temp Collection with an entity ID"
       (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
         (mt/test-helpers-set-global-values!

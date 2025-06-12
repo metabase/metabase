@@ -49,7 +49,6 @@ export interface DatasetColumn {
   nfc_path?: string[] | null;
   parent_id?: number | null;
   position?: number;
-  source_alias?: string;
 
   aggregation_type?: AggregationType;
 
@@ -60,6 +59,7 @@ export interface DatasetColumn {
   remapped_to_column?: DatasetColumn;
   unit?: DatetimeUnit;
   field_ref?: DimensionReference;
+  // Deprecated. Columns from old saved questions might have expression_name, but new columns do not.
   expression_name?: any;
   base_type?: string;
   semantic_type?: string | null;
@@ -93,6 +93,10 @@ export interface DatasetData {
     query: string;
   };
   is_sandboxed?: boolean;
+  "pivot-export-options"?: {
+    "show-row-totals"?: boolean;
+    "show-column-totals"?: boolean;
+  };
 }
 
 export type JsonQuery = DatasetQuery & {

@@ -1,6 +1,6 @@
 (ns metabase.native-query-snippets.models.native-query-snippet
   (:require
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -28,12 +28,11 @@
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (t2/define-before-update :model/NativeQuerySnippet
-  [{:keys [id], :as snippet}]
-  (u/prog1 (t2/changes snippet)
+  [snippet]
+  (u/prog1 snippet
     ;; throw an Exception if someone tries to update creator_id
-    (when (contains? <> :creator_id)
-      (when (not= (:creator_id <>) (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id id))
-        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))
+    (when (contains? (t2/changes <>) :creator_id)
+      (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet."))))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
 (defmethod serdes/hash-fields :model/NativeQuerySnippet

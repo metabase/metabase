@@ -218,6 +218,7 @@ export function DashboardHeaderView({
                     isDisabled={!dashboard.can_write}
                     data-testid="dashboard-name-heading"
                     onChange={handleUpdateCaption}
+                    maxLength={100}
                   />
                   <PLUGIN_MODERATION.EntityModerationIcon
                     dashboard={dashboard}

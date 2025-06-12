@@ -5,10 +5,13 @@ import { useMetabotContext } from "metabase/metabot";
 import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
-  dismissUserMessage,
+  getIsLongMetabotConversation,
   getIsProcessing,
-  getMetabotVisisble,
-  getUserMessages,
+  getLastAgentMessagesByType,
+  getMessages,
+  getMetabotId,
+  getMetabotVisible,
+  resetConversation,
   setVisible,
   submitInput,
 } from "./state";
@@ -18,8 +21,8 @@ export const useMetabotAgent = () => {
   const { getChatContext } = useMetabotContext();
 
   // TODO: create an enterprise useSelector
-  const userMessages = useSelector(getUserMessages as any) as ReturnType<
-    typeof getUserMessages
+  const messages = useSelector(getMessages as any) as ReturnType<
+    typeof getMessages
   >;
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
@@ -30,16 +33,24 @@ export const useMetabotAgent = () => {
   });
 
   return {
-    visible: useSelector(getMetabotVisisble as any) as ReturnType<
-      typeof getMetabotVisisble
+    metabotId: useSelector(getMetabotId as any) as ReturnType<
+      typeof getMetabotId
+    >,
+    visible: useSelector(getMetabotVisible as any) as ReturnType<
+      typeof getMetabotVisible
     >,
     setVisible: useCallback(
       (isVisible: boolean) => dispatch(setVisible(isVisible)),
       [dispatch],
     ),
-    userMessages,
-    dismissUserMessage: (messageIndex: number) =>
-      dispatch(dismissUserMessage(messageIndex)),
+    messages,
+    lastAgentMessages: useSelector(
+      getLastAgentMessagesByType as any,
+    ) as ReturnType<typeof getLastAgentMessagesByType>,
+    isLongConversation: useSelector(
+      getIsLongMetabotConversation as any,
+    ) as ReturnType<typeof getIsLongMetabotConversation>,
+    resetConversation: () => dispatch(resetConversation()),
     submitInput: useCallback(
       (message: string, metabotId?: string) => {
         const context = getChatContext();

@@ -1,5 +1,4 @@
 import { createAction } from "@reduxjs/toolkit";
-import type { Query } from "history";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { match } from "ts-pattern";
@@ -26,16 +25,14 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import Dashboards from "metabase/entities/dashboards";
 import type { Deferred } from "metabase/lib/promise";
 import { defer } from "metabase/lib/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
-import {
-  getDashboardQuestions,
-  getDashboardUiParameters,
-} from "metabase/parameters/utils/dashboards";
+import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -633,7 +630,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: Query;
+      queryParams: ParameterValues;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },
@@ -753,18 +750,17 @@ export const fetchDashboard = createAsyncThunk(
       }
 
       if (result.param_fields) {
-        await dispatch(addFields(result.param_fields));
+        await dispatch(addFields(Object.values(result.param_fields).flat()));
       }
 
       const lastUsedParametersValues = result["last_used_param_values"] ?? {};
 
       const metadata = getMetadata(getState());
-      const questions = getDashboardQuestions(result.dashcards, metadata);
-      const parameters = getDashboardUiParameters(
+      const parameters = getSavedDashboardUiParameters(
         result.dashcards,
-        result.parameters ?? [],
+        result.parameters,
+        result.param_fields,
         metadata,
-        questions,
       );
       const parameterValuesById = preserveParameters
         ? getParameterValues(getState())

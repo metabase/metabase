@@ -7,7 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.metabot-v3.api :as api]
    [metabase-enterprise.metabot-v3.reactions :as metabot-v3.reactions]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 

@@ -128,8 +128,7 @@
                   :field_ref    $category-id->categories.name
                   :fk_field_id  %category-id
                   :ident        (lib/implicitly-joined-ident (meta/ident :categories :name)
-                                                             (meta/ident :venues :category-id))
-                  :source_alias "CATEGORIES__via__CATEGORY_ID"}]
+                                                             (meta/ident :venues :category-id))}]
                 (annotate/column-info
                  {:type  :query
                   :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
@@ -150,8 +149,7 @@
         (is (=? [{:display_name "Categories → Name"
                   :source       :fields
                   :field_ref    &Categories.categories.name
-                  :ident        (lib/explicitly-joined-ident (meta/ident :categories :name) "4LzfvdZnP61w1n73B7nDu")
-                  :source_alias "Categories"}]
+                  :ident        (lib/explicitly-joined-ident (meta/ident :categories :name) "4LzfvdZnP61w1n73B7nDu")}]
                 (annotate/column-info
                  {:type  :query
                   :query {:fields [&Categories.categories.name]
@@ -350,7 +348,6 @@
       (is (= {:base_type       :type/Float
               :name            "double-price"
               :display_name    "double-price"
-              :expression_name "double-price"
               :ident           "eG2KisFcSyHRqACHSmmbN"
               :field_ref       [:expression "double-price"]}
              (lib.tu.macros/$ids venues
@@ -393,7 +390,6 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
               :ident              "aP4kbV3PYLhLoK3o3F5xx"
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
@@ -405,7 +401,6 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :expression_name    "last-login-converted",
               :ident              "aP4kbV3PYLhLoK3o3F5xx"
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
@@ -624,7 +619,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :expression_name "expr",
                   :ident "LbroONhJ5OWyvFCQB4zp3"
                   :source :fields,
                   :field_ref [:expression "expr"],
@@ -639,7 +633,6 @@
           (is (= {:base_type :type/Text,
                   :name "expr",
                   :display_name "expr",
-                  :expression_name "expr",
                   :ident "LbroONhJ5OWyvFCQB4zp3"
                   :field_ref [:expression "expr"],
                   :source :fields}
@@ -650,7 +643,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :expression_name "expr",
                   :ident "LbroONhJ5OWyvFCQB4zp3"
                   :source :fields,
                   :field_ref [:expression "expr"],
@@ -764,11 +756,10 @@
                        {:name "count_2", :display_name "count_2", :base_type :type/Number}]}))))))
 
 (deftest ^:parallel expressions-keys-test
-  (testing "make sure expressions come back with the right set of keys, including `:expression_name` (#8854)"
+  (testing "make sure expressions come back with the right set of keys (#8854)"
     (is (= {:name            "discount_price"
             :display_name    "discount_price"
             :base_type       :type/Float
-            :expression_name "discount_price"
             :ident           "bdW6mQ49dxdMbC1CheUpt"
             :source          :fields
             :field_ref       [:expression "discount_price"]}
@@ -808,7 +799,6 @@
         (is (=? [{:name            "prev_month"
                   :display_name    "prev_month"
                   :base_type       :type/DateTime
-                  :expression_name "prev_month"
                   :ident           (get-in query [:query :expression-idents "prev_month"])
                   :source          :fields
                   :field_ref       [:expression "prev_month"]}]
@@ -1019,17 +1009,13 @@
                        [{:display_name "ID"
                          :ident        (:ident (lib.metadata/field (mt/metadata-provider) (mt/id :orders :id)))
                          :field_ref    $orders.id}
-                        (merge
-                         {:display_name (str join-alias " → Title")
-                          :ident        (-> (lib.metadata/field (mt/metadata-provider) (mt/id :products :title))
-                                            :ident
-                                            (lib/explicitly-joined-ident join-ident))
-                          :field_ref    [:field %products.title {:join-alias join-alias}]}
-                         ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
-                         (when (= location "data.cols")
-                           {:source_alias join-alias}))])
+                        {:display_name (str join-alias " → Title")
+                         :ident        (-> (lib.metadata/field (mt/metadata-provider) (mt/id :products :title))
+                                           :ident
+                                           (lib/explicitly-joined-ident join-ident))
+                         :field_ref    [:field %products.title {:join-alias join-alias}]}])
                      (map
-                      #(select-keys % [:display_name :field_ref :source_alias :ident])
+                      #(select-keys % [:display_name :field_ref :ident])
                       metadata))))))))))
 
 (deftest ^:parallel breakout-of-model-field-ident-test

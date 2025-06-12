@@ -9,7 +9,7 @@ export const createMockUndo = (opts?: Partial<Undo>): Undo => ({
   extraInfo: {},
   id: 12,
   _domId: 12,
-  icon: "check",
+  icon: "check_filled",
   canDismiss: true,
   timeoutId: 636,
   startedAt: 1718628033795,

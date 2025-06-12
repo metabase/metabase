@@ -11,7 +11,6 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
   isRunning: false,
-  isQueryComplete: false,
   isShowingSummarySidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,

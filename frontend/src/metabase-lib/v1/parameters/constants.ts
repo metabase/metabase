@@ -198,6 +198,13 @@ export const ID_OPTION = {
   },
 } as const;
 
+export const BOOLEAN_OPTION = {
+  type: "boolean/=",
+  get name() {
+    return t`Boolean`;
+  },
+} as const;
+
 export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "string",
   "category",
@@ -227,6 +234,7 @@ export const FIELD_FILTER_PARAMETER_TYPES = [
   "date",
   "string",
   "number",
+  "boolean",
   "id",
   "category",
   "location",

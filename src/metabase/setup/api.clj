@@ -4,16 +4,17 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.channel.email :as email]
-   [metabase.config :as config]
+   [metabase.appearance.core :as appearance]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
-   [metabase.models.user :as user]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
    [metabase.settings.core :as setting]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
    [metabase.setup.core :as setup]
+   [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -62,7 +63,7 @@
 
 (defn- setup-maybe-create-and-invite-user! [{:keys [email] :as user}, invitor]
   (when email
-    (if-not (email/email-configured?)
+    (if-not (channel.settings/email-configured?)
       (log/error "Could not invite user because email is not configured.")
       (u/prog1 (user/insert-new-user! user)
         (user/set-permissions-groups! <> [(perms/all-users-group) (perms/admin-group)])
@@ -80,10 +81,10 @@
 
 (defn- setup-set-settings! [{:keys [email site-name site-locale]}]
   ;; set a couple preferences
-  (public-settings/site-name! site-name)
-  (public-settings/admin-email! email)
+  (appearance/site-name! site-name)
+  (system/admin-email! email)
   (when site-locale
-    (public-settings/site-locale! site-locale))
+    (system/site-locale! site-locale))
   ;; default to `true` the setting will set itself correctly whether a boolean or boolean string is specified
   (analytics/anon-tracking-enabled! true))
 

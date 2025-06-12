@@ -2,9 +2,9 @@
   "Tests for /api/segment endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.http-client :as client]
-   [metabase.request.core :as request]
+   [metabase.api.response :as api.response]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -28,10 +28,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "segment")))
 
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :put 401 "segment/13"))))
 
 ;; ## POST /api/segment

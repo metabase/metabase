@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/lib/types";
 import {
   type ListItem as BreakoutListItem,
   getBreakoutListItem,
@@ -34,9 +35,9 @@ export const useBreakoutData = (): SDKBreakoutItem[] => {
   const breakouts = query ? Lib.breakouts(query, stageIndex) : [];
 
   const items: BreakoutListItem[] = query
-    ? breakouts.map((breakout) =>
-        getBreakoutListItem(query, stageIndex, breakout),
-      )
+    ? breakouts
+        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
+        .filter(isNotNull)
     : [];
 
   return items.map((item, index) => {

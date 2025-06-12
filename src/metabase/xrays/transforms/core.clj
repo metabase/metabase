@@ -7,12 +7,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.models.table :as table]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.table :as table]
    [metabase.xrays.domain-entities.core
     :as de
     :refer [Bindings DimensionBindings SourceEntity SourceName]]

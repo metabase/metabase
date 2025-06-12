@@ -5,15 +5,15 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.downloads-exports-test :as downloads-test]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -338,9 +338,11 @@
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                           :visibility-type :details-only}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}}}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                           :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 ;; Index sync is turned off across the application as it is not used ATM.
@@ -540,7 +542,7 @@
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
-    (with-redefs [metadata-queries/nested-field-sample-limit 2]
+    (with-redefs [table-rows-sample/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
           [["bird_species"
@@ -571,7 +573,7 @@
       (let [table (t2/select-one :model/Table :id (mt/id :venues))
             fields (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
-        (with-redefs [metadata-queries/nested-field-sample-limit 5]
+        (with-redefs [table-rows-sample/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
                   ["Golden Road Brewing" 10]
                   ["Lucky Baldwin's Pub" 7]
@@ -828,11 +830,11 @@
                                       :active   true
                                       :table_id (mt/id :coll)
                                       {:order-by [:database_position]}))]
-          (is (=? [{:name "_id",    :database_type "long",   :base_type :type/Integer,   :semantic_type :type/PK}
+          (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
                    {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type nil}
                    {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]
@@ -911,7 +913,11 @@
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
-                                                         :query    {:source-table (mt/id :coll)}}}]
+                                                         :query    {:source-table (mt/id :coll)
+                                                                    :fields [(mt/id :coll :id)
+                                                                             (mt/id :coll :a)
+                                                                             (mt/id :coll :b)
+                                                                             (mt/id :coll :c)]}}}]
           (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
             (is (= [["ID" "A" "B" "C"]
                     ["1"

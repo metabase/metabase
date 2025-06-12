@@ -1,4 +1,12 @@
-import type { CardId, CardType, DashboardId, DatasetQuery } from ".";
+import type {
+  CardId,
+  CardType,
+  CollectionId,
+  DashboardId,
+  DatasetQuery,
+  PaginationResponse,
+  SearchModel,
+} from ".";
 
 export type MetabotFeedbackType =
   | "great"
@@ -92,6 +100,44 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
+/* Metabot - Suggested Prompts */
+
+export type SuggestedMetabotPrompt = {
+  id: number;
+  metabot_id: MetabotId;
+  prompt: string;
+  model: "metric" | "model";
+  model_id: CardId;
+  model_name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type BaseSuggestedMetabotPromptsRequest = {
+  metabot_id: MetabotId;
+  model?: string;
+  model_id?: number;
+};
+
+export type SuggestedMetabotPromptsRequest =
+  BaseSuggestedMetabotPromptsRequest & {
+    metabot_id: MetabotId;
+    model?: string;
+    model_id?: number;
+  } & (
+      | { sample?: void; limit?: number | null; offset?: number | null }
+      | { sample: true; limit?: number | null; offset?: void }
+    );
+
+export type SuggestedMetabotPromptsResponse = {
+  prompts: SuggestedMetabotPrompt[];
+} & PaginationResponse;
+
+export type DeleteSuggestedMetabotPromptRequest = {
+  metabot_id: MetabotId;
+  prompt_id: SuggestedMetabotPrompt["id"];
+};
+
 /* Metabot v3 - Type Guards */
 
 export const isMetabotMessageReaction = (
@@ -121,4 +167,24 @@ export const isMetabotMessage = (
   message: MetabotHistoryEntry,
 ): message is MetabotHistoryMessageEntry => {
   return message.role === "assistant";
+};
+
+export type MetabotId = number;
+export type MetabotName = string;
+
+export type MetabotInfo = {
+  id: MetabotId;
+  name: MetabotName;
+};
+
+export type MetabotEntity = {
+  name: string;
+  id: CollectionId;
+  model: Extract<SearchModel, "collection">;
+  collection_id: CollectionId;
+  collection_name: string;
+};
+
+export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
+  model_id: MetabotEntity["id"];
 };

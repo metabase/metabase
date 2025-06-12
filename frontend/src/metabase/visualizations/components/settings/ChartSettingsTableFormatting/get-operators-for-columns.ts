@@ -120,7 +120,7 @@ export function getOperatorsForColumns(
   }
 
   // all strings
-  if (columns.every(isString)) {
+  if (columns.every((column) => isString(column) || isBoolean(column))) {
     return {
       ...defaultResult,
       isStringRule: true,

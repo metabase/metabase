@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import type { ParameterValueWidgetProps } from "metabase/parameters/components/ParameterValueWidget";
 import { getParameterWidgetTitle } from "metabase/parameters/utils/ui";
+import { BooleanWidget } from "metabase/querying/parameters/components/BooleanWidget";
 import { DateAllOptionsWidget } from "metabase/querying/parameters/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/querying/parameters/components/DateMonthYearWidget";
 import { DateQuarterYearWidget } from "metabase/querying/parameters/components/DateQuarterYearWidget";
@@ -16,6 +17,7 @@ import { getNumberParameterArity } from "metabase-lib/v1/parameters/utils/operat
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
+  isBooleanParameter,
   isDateParameter,
   isNumberParameter,
   isTemporalUnitParameter,
@@ -96,6 +98,19 @@ export const ParameterDropdownWidget = ({
         value={value}
         setValue={setValue}
         onClose={() => onPopoverClose?.()}
+      />
+    );
+  }
+
+  if (isBooleanParameter(parameter)) {
+    return (
+      <BooleanWidget
+        value={value}
+        submitButtonLabel={value ? t`Update filter` : t`Add filter`}
+        onChange={(value) => {
+          setValue?.(value);
+          onPopoverClose?.();
+        }}
       />
     );
   }

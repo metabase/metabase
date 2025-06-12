@@ -7,22 +7,20 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -65,36 +63,27 @@
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "make sure we can do a basic query with a SQL source-query"
-      (is (= {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
-                     [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
-                     [3 -118.428 11 2 "The Apple Pan"                34.0406]
-                     [4 -118.465 29 2 "Wurstküche"                   33.9997]
-                     [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-              ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
-              ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
-              :cols (mapv (fn [col-name]
-                            (let [col (-> (qp.test-util/native-query-col :venues col-name)
-                                          (dissoc :database_type))]
-                              (assoc col :ident (lib/native-ident (:name col) "AAAAAAAAAAAAAAAAAAAAA"))))
-                          [:id :longitude :category_id :price :name :latitude])}
-             (mt/format-rows-by
-              [int 4.0 int int str 4.0]
-              (let [native-query (compile-to-native
-                                  (mt/mbql-query venues
-                                    {:fields [$id $longitude $category_id $price $name $latitude]}))]
-                (-> (qp.test-util/rows-and-cols
-                     (mt/run-mbql-query venues
-                       {:source-query {:native native-query}
-                        :order-by     [[:asc *venues.id]]
-                        :limit        5}))
-                    (update :cols (fn [cols]
-                                    (mapv (fn [col]
-                                            (-> col
-                                                (dissoc :database_type)
-                                                ;; Overwrite the idents to make the card eid fixed.
-                                                (update :ident #(str "native[AAAAAAAAAAAAAAAAAAAAA]__"
-                                                                     (subs % 31)))))
-                                          cols)))))))))))
+      (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
+                      [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
+                      [3 -118.428 11 2 "The Apple Pan"                34.0406]
+                      [4 -118.465 29 2 "Wurstküche"                   33.9997]
+                      [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
+               ;; don't compare `database_type`, it's wrong for Redshift, see upstream bug
+               ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
+               :cols (mapv (fn [col-name]
+                             (-> (qp.test-util/native-query-col :venues col-name)
+                                 (dissoc :database_type :lib/type :lib/source :ident)))
+                           [:id :longitude :category_id :price :name :latitude])}
+              (mt/format-rows-by
+               [int 4.0 int int str 4.0]
+               (let [native-query (compile-to-native
+                                   (mt/mbql-query venues
+                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
+                 (qp.test-util/rows-and-cols
+                  (mt/run-mbql-query venues
+                    {:source-query {:native native-query}
+                     :order-by     [[:asc *venues.id]]
+                     :limit        5})))))))))
 
 (defn breakout-results [& {:keys [has-source-metadata? native-source?]
                            :or   {has-source-metadata? true
@@ -402,7 +391,7 @@
                   long-col-re (re-pattern (str "(?i)" long-col-name))]
               (is (=? {:rows [["AK" 68] ["AL" 56] ["AR" 49] ["AZ" 20] ["CA" 90]],
                        :cols
-                       [{:source       :fields
+                       [{:source       :fields ; QUE-1340
                          :name         long-col-re
                          :display_name long-col-re
                          :field_ref    [:field long-col-re {}]}
@@ -776,8 +765,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp-copy-of-db
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+            (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
             (mt/with-temp [:model/Collection collection {}
                            :model/Card       card-1 {:collection_id (u/the-id collection)
                                                      :dataset_query (mt/mbql-query venues {:order-by [[:asc $id]] :limit 2})}
@@ -799,7 +788,7 @@
                              (mi/can-read? object)))))))
 
               (testing "\nshould be able to read nested-nested Card if we have Collection permissions\n"
-                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms/all-users-group) collection)
                 (mt/with-test-user :rasta
                   (doseq [[object-name object] {"Collection" collection
                                                 "Card 1"     card-1
@@ -841,36 +830,36 @@
                     "the Source Card is in, and write permissions for the Collection you're trying to save the new Card in")
         (mt/with-temp [:model/Collection source-card-collection {}
                        :model/Collection dest-card-collection   {}]
-          (perms/grant-collection-read-permissions!      (perms-group/all-users) source-card-collection)
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+          (perms/grant-collection-read-permissions!      (perms/all-users-group) source-card-collection)
+          (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
           (is (some? (save-card-via-API-with-native-source-query! 200 (mt/db) source-card-collection dest-card-collection)))))
 
       (testing (str "however, if we do *not* have read permissions for the source Card's collection we shouldn't be "
                     "allowed to save the query. This API call should fail")
         (testing "Card in the Root Collection"
           (mt/with-temp [:model/Collection dest-card-collection]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) nil dest-card-collection)))))
 
         (testing "Card in a different Collection for which we do not have perms"
           (mt/with-temp [:model/Collection source-card-collection {}
                          :model/Collection dest-card-collection   {}]
-            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) dest-card-collection)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) dest-card-collection)
             (is (=? {:message  "You cannot save this Question because you do not have permissions to run its query."}
                     (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection)))))
 
         (testing "similarly, if we don't have *write* perms for the dest collection it should also fail"
           (testing "Try to save in the Root Collection"
             (mt/with-temp [:model/Collection source-card-collection]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection nil)))))
 
           (testing "Try to save in a different Collection for which we do not have perms"
             (mt/with-temp [:model/Collection source-card-collection {}
                            :model/Collection dest-card-collection   {}]
-              (perms/grant-collection-read-permissions! (perms-group/all-users) source-card-collection)
+              (perms/grant-collection-read-permissions! (perms/all-users-group) source-card-collection)
               (is (=? {:message "You do not have curate permissions for this Collection."}
                       (save-card-via-API-with-native-source-query! 403 (mt/db) source-card-collection dest-card-collection))))))))))
 

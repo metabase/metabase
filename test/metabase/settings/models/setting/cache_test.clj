@@ -1,10 +1,10 @@
 (ns metabase.settings.models.setting.cache-test
   (:require
    [clojure.test :refer :all]
-   [metabase.db :as mdb]
-   [metabase.settings.deprecated-grab-bag :as public-settings]
+   [metabase.app-db.core :as mdb]
    [metabase.settings.models.setting-test :as setting-test]
    [metabase.settings.models.setting.cache :as setting.cache]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -138,8 +138,8 @@
 (deftest sync-test-3
   (mt/discard-setting-changes [site-locale]
     (clear-cache!)
-    (public-settings/site-locale! "en")
+    (system/site-locale! "en")
     (simulate-another-instance-updating-setting! :site-locale "fr")
     (reset-last-update-check!)
     (is (= "fr"
-           (public-settings/site-locale)))))
+           (system/site-locale)))))

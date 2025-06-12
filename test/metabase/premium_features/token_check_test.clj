@@ -5,8 +5,8 @@
    [clojure.test :refer :all]
    [diehard.circuit-breaker :as dh.cb]
    [mb.hawk.parallel]
-   [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.token-check :as token-check]
@@ -152,16 +152,15 @@
                   (#'token-check/fetch-token-status* (random-token))))))
 
 (deftest fetch-token-does-not-call-db-when-cached
-  (testing "No DB calls are made for the user count when checking token status if the status is cached"
+  (testing "No DB calls are made when checking token status if the status is cached"
     (let [token (random-token)]
       (t2/with-call-count [call-count]
         ;; First fetch, should trigger a DB call to fetch user count and db calls for other stats
         (#'token-check/fetch-token-status token)
-        (is (= 6 (call-count)))
-
-        ;; Subsequent fetches with the same token should not trigger additional DB calls
-        (#'token-check/fetch-token-status token)
-        (is (= 6 (call-count)))))))
+        (let [prev-call-count (call-count)]
+          ;; Subsequent fetches with the same token should not trigger additional DB calls
+          (#'token-check/fetch-token-status token)
+          (is (= prev-call-count (call-count))))))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
