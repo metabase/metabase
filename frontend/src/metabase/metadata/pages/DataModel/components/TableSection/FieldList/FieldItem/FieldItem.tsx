@@ -28,6 +28,36 @@ export const FieldItem = ({ active, field, href }: Props) => {
   const [sendToast] = useToast();
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
 
+  const handleNameChange = async (name: string) => {
+    if (field.display_name === name) {
+      return;
+    }
+
+    const { error } = await updateField({ id, display_name: name });
+
+    if (!error) {
+      sendToast({
+        icon: "check",
+        message: t`Display name for ${name} updated`,
+      });
+    }
+  };
+
+  const handleDescriptionChange = async (description: string) => {
+    if ((field.description ?? "") === description) {
+      return;
+    }
+
+    const { error } = await updateField({ id, description });
+
+    if (!error) {
+      sendToast({
+        icon: "check",
+        message: t`Description for ${getFieldDisplayName(field)} updated`,
+      });
+    }
+  };
+
   return (
     <Flex
       aria-label={field.display_name}
@@ -51,12 +81,11 @@ export const FieldItem = ({ active, field, href }: Props) => {
       onClick={(event) => {
         // EditableText component breaks a11y with the programmatic
         // event.currentTarget.click() call. The click event bubbles
-        // to this Link component. This is problematic e.g. when
-        // tabbing out of the EditableText component.
+        // to this Link component. This is problematic e.g. when tabbing
+        // out of the EditableText component, as the link gets clicked.
 
         if (!event.isTrusted) {
           event.preventDefault();
-          event.stopPropagation();
         }
       }}
     >
@@ -76,16 +105,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
           p={rem(1)}
           placeholder={t`Give this field a name`}
           rows={1}
-          onChange={async (name) => {
-            if (field.display_name !== name) {
-              await updateField({ id, display_name: name });
-
-              sendToast({
-                icon: "check",
-                message: t`Display name for ${name} updated`,
-              });
-            }
-          }}
+          onChange={handleNameChange}
         />
       </Group>
 
@@ -100,16 +120,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
         p={rem(1)}
         placeholder={t`No description yet`}
         rows={1}
-        onChange={async (description) => {
-          if ((field.description ?? "") !== description) {
-            await updateField({ id, description });
-
-            sendToast({
-              icon: "check",
-              message: t`Description for ${getFieldDisplayName(field)} updated`,
-            });
-          }
-        }}
+        onChange={handleDescriptionChange}
       />
     </Flex>
   );
