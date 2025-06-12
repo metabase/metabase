@@ -11,15 +11,17 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       .should("be.visible")
       .click();
 
-    cy.findByRole("main").within(() => {
-      cy.findByRole("heading", { name: "Welcome to Metabase" }).should(
-        "be.visible",
-      );
-      cy.findByText(
-        "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!",
-      ).should("be.visible");
-      cy.button("Let's get started").should("be.visible");
-    });
+    cy.findAllByRole("main")
+      .eq(1)
+      .within(() => {
+        cy.findByRole("heading", { name: "Welcome to Metabase" }).should(
+          "be.visible",
+        );
+        cy.findByText(
+          "Looks like everything is working. Now let’s get to know you, connect to your data, and start finding you some answers!",
+        ).should("be.visible");
+        cy.button("Let's get started").should("be.visible");
+      });
 
     cy.location("pathname").should("eq", "/setup");
   });
@@ -112,8 +114,59 @@ describe("scenarios > setup embedding (EMB-477)", () => {
         "be.visible",
       );
 
-      // TODO: Add assertions
+      cy.findByRole("tab", { name: 'A look at "Feedback"' }).click();
+      H.getIframeBody().within(() => {
+        cy.findByText('A look at "Feedback"').should("be.visible");
+      });
+      cy.findByRole("code").contains(
+        new RegExp(
+          '<iframe src="http://localhost:4000/dashboard/\\d+" width="800px" height="500px" />',
+        ),
+      );
+
+      cy.findByRole("tab", { name: 'A look at "Orders"' }).click();
+      cy.wait(100);
+      H.getIframeBody().within(() => {
+        cy.findByText('A look at "Orders"').should("be.visible");
+      });
+      cy.findByRole("code").contains(
+        new RegExp(
+          '<iframe src="http://localhost:4000/dashboard/\\d+" width="800px" height="500px" />',
+        ),
+      );
+
+      cy.findByRole("tab", { name: 'A look at "Products"' }).click();
+      cy.wait(100);
+      H.getIframeBody().within(() => {
+        cy.findByText('A look at "Products"').should("be.visible");
+      });
+      cy.findByRole("code").contains(
+        new RegExp(
+          '<iframe src="http://localhost:4000/dashboard/\\d+" width="800px" height="500px" />',
+        ),
+      );
+
+      cy.findByRole("tab", { name: "Query Builder" }).click();
+      cy.wait(100);
+      H.getIframeBody().within(() => {
+        cy.findByText("Pick your starting data").should("be.visible");
+      });
+      cy.findByRole("code").contains(
+        new RegExp(
+          '<iframe src="http://localhost:4000/question/new" width="800px" height="500px" />',
+        ),
+      );
+
+      cy.button("I see Metabase").click();
+
+      cy.findByRole("heading", { name: "You're on your way!" }).should(
+        "be.visible",
+      );
+      cy.button("Take me to Metabase").click();
     });
+
+    cy.log("5: Metabase");
+    cy.button("New").should("be.visible");
   });
 });
 
