@@ -413,7 +413,7 @@ export default class AccordionList extends Component {
       console.log("FUZZY RESULTS", searchText, results);
 
       return results.some(
-        (result) => result.item === item && result.score < 0.24,
+        (result) => result.item === item && result.score < 0.45,
       );
     };
   });
