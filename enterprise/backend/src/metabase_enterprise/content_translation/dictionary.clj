@@ -107,7 +107,9 @@
           (t2/insert! :model/ContentTranslation usable-rows))))))
 
 (defn throw-informative-csv-error
-  "Throw an error that mentions the specific line number that fails"
+  "Throw an error that mentions the specific line number that fails. In the happy path, for the sake of efficiency, we
+  send the whole file to csv/read-csv. In this function, to learn the line number where the error arose, we send the
+  file to csv/read-csv again, line by line."
   [file original-exception]
   (with-open [reader (io/reader file)]
     (let [lines (line-seq reader)]
