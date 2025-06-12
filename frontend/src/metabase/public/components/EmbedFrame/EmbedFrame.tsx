@@ -8,6 +8,7 @@ import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
+import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons";
 import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
@@ -189,19 +190,32 @@ export const EmbedFrame = ({
               data-is-fixed-width={dashboard?.width === "fixed"}
               px={{
                 base: 0,
-                sm: "lg",
+                sm: "sm",
               }}
             >
-              {titled && (
+              {finalName && (
                 <TitleAndDescription
                   title={finalName}
                   description={description}
                   className={cx(EmbedFrameS.DashboardTitle, CS.my2)}
-                  px={{ base: "sm", sm: 0 }}
+                  px={{ base: "md", sm: 0 }}
                 />
               )}
               <Box className={EmbedFrameS.HeaderButtons} mt={titled ? "md" : 0}>
                 {headerButtons}
+                {dashboard && pdfDownloadsEnabled && (
+                  <ExportAsPdfButton
+                    dashboard={dashboard}
+                    hasTitle={titled}
+                    hasVisibleParameters={hasVisibleParameters}
+                  />
+                )}
+                {/*                 className={cx({ */}
+                {/*   [CS.CompactExportAsPdfButton]: */}
+                {/*     !hasTitle && (hasVisibleParameters || hasDashboardTabs), */}
+                {/*   [CS.ParametersVisibleWithNoTabs]: */}
+                {/*     hasVisibleParameters && !hasDashboardTabs, */}
+                {/* })} */}
               </Box>
               <FixedWidthContainer
                 data-testid="fixed-width-dashboard-tabs"
