@@ -95,9 +95,9 @@
          [[_tag _opts pred-expr-pairs default]]
          (let [exprs (concat
                       (map second pred-expr-pairs)
-                      (when default
+                      (when (some? default)
                         [default]))
-               types (keep expression/type-of exprs)
+               types (expression/type-of exprs)
                return-type (case-coalesce-return-type types)]
            (or
             (not= return-type :type/*)
@@ -107,7 +107,7 @@
     [[_tag _opts pred-expr-pairs default]]
     (let [exprs (concat
                  (map second pred-expr-pairs)
-                 (when default
+                 (when (some? default)
                    [default]))
           types (keep expression/type-of exprs)]
       (case-coalesce-return-type types))))
