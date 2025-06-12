@@ -8,6 +8,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
@@ -85,6 +86,8 @@
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
 
+(defmethod where-clause* ::single-value-exclude [_ k v] [:not= k v])
+
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
@@ -147,6 +150,7 @@
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
                     (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
                       (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+                        (log/info "Generated WHERE clause:" c)
                         (sql.helpers/where qry c))))
                   qry))
             qry

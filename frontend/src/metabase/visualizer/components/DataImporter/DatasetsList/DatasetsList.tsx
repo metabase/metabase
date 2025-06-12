@@ -146,36 +146,38 @@ export function DatasetsList({
         >,
         include_dashboard_questions: true,
         include_metadata: true,
-        display: [
-          "table",
-          "bar",
-          "line",
-          "scalar",
-          "row",
-          "area",
-          "combo",
-          "pivot",
-          "smartscalar",
-          "gauge",
-          "progress",
-          "funnel",
-          "object",
-          "map",
-          "scatter",
-          "waterfall",
-          "sankey",
-        ],
-        visualization_context: {
-          display: visualizationType || null,
-          dimensions: {
-            temporal: timeDimensions
-              .map((col) => col.id)
-              .filter((id): id is number => id != null),
-            non_temporal: otherDimensions
-              .map((col) => col.id)
-              .filter((id): id is number => id != null),
-          },
-        },
+        exclude_display: "pie",
+        // display: [
+        //   "bar",
+        //   "line",
+        //   "table",
+        //   "scalar",
+        //   "row",
+        //   "area",
+        //   "combo",
+        //   "pivot",
+        //   "smartscalar",
+        //   "gauge",
+        //   "progress",
+        //   "funnel",
+        //   "object",
+        //   "map",
+        //   "scatter",
+        //   "waterfall",
+        //   "sankey",
+        // ],
+        has_temporal_dimensions: timeDimensions.length > 0,
+        // visualization_context: {
+        //   display: visualizationType || null,
+        //   dimensions: {
+        //     temporal: timeDimensions
+        //       .map((col) => col.id)
+        //       .filter((id): id is number => id != null),
+        //     non_temporal: otherDimensions
+        //       .map((col) => col.id)
+        //       .filter((id): id is number => id != null),
+        //   },
+        // },
       };
 
       triggerVisualizationSearch(payload)
