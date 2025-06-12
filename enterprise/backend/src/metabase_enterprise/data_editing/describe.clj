@@ -56,8 +56,7 @@
              param-mapping
              dashcard-viz
              row-delay]}]
-  (let [table-id                    table-id
-        table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
+  (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
         field-name->mapping         (u/index-by :parameterId param-mapping)
         fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
@@ -152,6 +151,7 @@
                                 api/check-404)
         param-id->viz-field (-> action :visualization_settings (:fields {}))
         param-id->mapping   (u/index-by :parameterId param-mapping)]
+    ;; TODO: this assumes this is a query action, we need to handle implicit actions as well
     {:title      (:name action)
      :parameters (->> (for [param (:parameters action)
                             ;; query type actions store most stuff in viz settings rather than the
