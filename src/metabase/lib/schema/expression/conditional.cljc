@@ -46,6 +46,10 @@
             intersection))
         (set/union x y))))
 
+(defn datetime-compatible?
+  [x]
+  (contains? #{:type/Date :type/DateTime :type/DateTimeWithLocalTZ} x))
+
 (defn- compatible?
   "Check if `x` is compatible with `y`."
   [x y]
@@ -55,6 +59,7 @@
     :else (or
            (= x ::expression/type.unknown)
            (= y ::expression/type.unknown)
+           (and (datetime-compatible? x) (datetime-compatible? y))
            (types/assignable? x y)
            (types/assignable? y x))))
 
