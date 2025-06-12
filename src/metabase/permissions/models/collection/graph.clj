@@ -46,7 +46,7 @@
 (defn- root-collection
   "Requiring resolve to break a circular dependency"
   []
-  (requiring-resolve 'metabase.collections.models.collection/root-collection))
+  (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))
 
 (defn- group-id->permissions-set []
   (into {} (for [[group-id perms] (group-by :group_id (t2/select :model/Permissions))]
