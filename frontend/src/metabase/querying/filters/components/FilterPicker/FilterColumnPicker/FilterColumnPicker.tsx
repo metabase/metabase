@@ -116,7 +116,15 @@ export function FilterColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        searchProp={["name", "displayName"]}
+        searchProp={(item: ColumnListItem | SegmentListItem) => {
+          if ("column" in item) {
+            const info = Lib.displayInfo(query, -1, item.column);
+            return info.table?.displayName + ":" + info.displayName;
+          }
+
+          return item.displayName;
+        }}
+        searchFuzzy
         globalSearch
         withBorders
       />

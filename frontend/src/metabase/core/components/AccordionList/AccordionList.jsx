@@ -1,8 +1,9 @@
+import Fuse from "fuse.js";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 import { CellMeasurer, CellMeasurerCache, List } from "react-virtualized";
-import _ from "underscore";
+import _, { memoize } from "underscore";
 
 import { Icon } from "metabase/ui";
 
@@ -325,7 +326,7 @@ export default class AccordionList extends Component {
         this.props.sections,
         this.isSectionExpanded,
         this.canSelectSection,
-        this.searchFilter,
+        this.searchFilter(this.props.sections),
       );
 
       return this.setState({
@@ -342,7 +343,7 @@ export default class AccordionList extends Component {
         this.props.sections,
         this.isSectionExpanded,
         this.canSelectSection,
-        this.searchFilter,
+        this.searchFilter(this.props.sections),
       );
 
       return this.setState({
@@ -378,22 +379,93 @@ export default class AccordionList extends Component {
     }
   };
 
-  searchFilter = (item) => {
-    const { searchProp } = this.props;
-    const { searchText } = this.state;
-
-    if (!searchText || searchText.length === 0) {
-      return true;
+  makeFuzzySearchFilter = memoize((searchProps, isCaseSensitive, sections) => {
+    const items = [];
+    for (const section of sections) {
+      for (const item of section.items) {
+        items.push(item);
+      }
     }
 
-    if (typeof searchProp === "string") {
-      return this.searchPredicate(item, searchProp);
-    } else if (Array.isArray(searchProp)) {
-      const searchResults = searchProp.map((member) =>
-        this.searchPredicate(item, member),
+    const getFn = typeof searchProps === "function" ? searchProps : undefined;
+    const keys =
+      typeof searchProps === "function" ? ["__unused__"] : searchProps;
+
+    const idx = new Fuse(items, {
+      keys,
+      includeScore: true,
+      isCaseSensitive,
+      getFn,
+    });
+
+    return (item) => {
+      // TODO: remove O(n²) search pattern here
+
+      const { searchText } = this.state;
+
+      if (!searchText || searchText.length === 0) {
+        return true;
+      }
+
+      const results = idx.search(searchText);
+
+      // eslint-disable-next-line
+      console.log("FUZZY RESULTS", searchText, results);
+
+      return results.some(
+        (result) => result.item === item && result.score < 0.45,
       );
-      return searchResults.reduce((acc, curr) => acc || curr);
+    };
+  });
+
+  searchFilter = (sections) => {
+    const {
+      searchProp,
+      searchCaseInsensitive = true,
+      searchFuzzy,
+    } = this.props;
+    const searchProps =
+      typeof searchProp === "function"
+        ? searchProp
+        : Array.isArray(searchProp)
+          ? searchProp
+          : [searchProp];
+
+    if (searchFuzzy) {
+      return this.makeFuzzySearchFilter(
+        searchProps,
+        !searchCaseInsensitive,
+        sections,
+      );
     }
+
+    return (item) => {
+      const { searchText } = this.state;
+
+      if (!searchText || searchText.length === 0) {
+        return true;
+      }
+
+      let itemTexts = [];
+      if (typeof searchProps === "function") {
+        itemTexts = searchProps(item);
+      } else {
+        itemTexts = searchProps.map((member) => {
+          const path = member.split(".");
+          return String(getIn(item, path) || "");
+        });
+      }
+
+      // eslint-disable-next-line
+      console.log("ITEM TEXTS", itemTexts);
+
+      return itemTexts.some((itemText) => {
+        if (searchCaseInsensitive) {
+          return itemText.toLowerCase().startsWith(searchText.toLowerCase());
+        }
+        return itemText.startsWith(searchText);
+      });
+    };
   };
 
   getRowsCached = (
@@ -545,7 +617,7 @@ export default class AccordionList extends Component {
     const openSection = this.getOpenSection();
 
     return this.getRowsCached(
-      this.searchFilter,
+      this.searchFilter(sections),
       searchable,
       sections,
       alwaysTogglable,
