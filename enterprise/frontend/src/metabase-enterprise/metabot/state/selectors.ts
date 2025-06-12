@@ -1,9 +1,14 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import type { MetabotStoreState } from "./types";
+import { getIsEmbedding } from "metabase/selectors/embed";
 
-export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
+import {
+  FIXED_METABOT_IDS,
+  LONG_CONVO_MSG_LENGTH_THRESHOLD,
+} from "../constants";
+
+import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
@@ -62,4 +67,8 @@ export const getIsLongMetabotConversation = createSelector(
     }, 0);
     return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
   },
+);
+
+export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
+  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
