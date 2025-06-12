@@ -35,7 +35,7 @@ function setupActionPostEndpoint() {
 
 export function setupActionsEndpoints(actions: WritebackAction[]) {
   fetchMock.get("path:/api/action", actions);
-  fetchMock.get("path:/api/ee/data-editing/tmp-action", { actions });
+  fetchMock.get("path:/api/action/v2/tmp-action", { actions });
 
   setupActionPostEndpoint();
 
@@ -49,7 +49,7 @@ export function setupModelActionsEndpoints(
   fetchMock.get("path:/api/action", actions);
   fetchMock.get(
     {
-      url: "path:/api/ee/data-editing/tmp-action",
+      url: "path:/api/action/v2/tmp-action",
       query: { "model-id": modelId },
       overwriteRoutes: false,
     },

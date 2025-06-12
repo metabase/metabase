@@ -1,3 +1,5 @@
+import type { SkipToken } from "@reduxjs/toolkit/query";
+
 import type {
   DescribeActionFormRequest,
   DescribeActionFormResponse,
@@ -24,7 +26,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ rows, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        url: `/api/action/v2/execute-bulk`,
         body: { inputs: rows, scope, action_id: "data-grid.row/create" },
       }),
     }),
@@ -34,7 +36,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ inputs, params, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        url: `/api/action/v2/execute-bulk`,
         body: { inputs, params, scope, action_id: "data-grid.row/update" },
       }),
     }),
@@ -44,7 +46,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ rows, scope, params }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute-bulk`,
+        url: `/api/action/v2/execute-bulk`,
         body: {
           inputs: rows,
           scope,
@@ -56,7 +58,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     tableUndo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
       query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute`,
+        url: `/api/action/v2/execute`,
         body: {
           input: {
             "table-id": tableId,
@@ -69,7 +71,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     tableRedo: builder.mutation<TableUndoRedoResponse, TableUndoRedoRequest>({
       query: ({ tableId, scope }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute`,
+        url: `/api/action/v2/execute`,
         body: {
           input: {
             "table-id": tableId,
@@ -79,10 +81,14 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
         },
       }),
     }),
-    getActions: builder.query<DataGridWritebackAction[], void>({
-      query: () => ({
+    getActions: builder.query<
+      DataGridWritebackAction[],
+      null | SkipToken | void
+    >({
+      query: (params) => ({
         method: "GET",
-        url: `/api/ee/data-editing/tmp-action`,
+        url: `/api/action/v2/tmp-action`,
+        params,
       }),
       transformResponse: (response: { actions: DataGridWritebackAction[] }) =>
         response?.actions,
@@ -93,7 +99,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: ({ actionId, input, params }) => ({
         method: "POST",
-        url: `/api/ee/data-editing/action/v2/execute`,
+        url: `/api/action/v2/execute`,
         body: {
           input,
           params,
@@ -115,7 +121,7 @@ export const tableDataEditApi = EnterpriseApi.injectEndpoints({
     >({
       query: (body) => ({
         method: "POST",
-        url: `/api/ee/data-editing/tmp-modal`,
+        url: `/api/action/v2/tmp-modal`,
         body,
       }),
     }),

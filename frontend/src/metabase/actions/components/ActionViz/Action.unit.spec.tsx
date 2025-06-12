@@ -41,7 +41,7 @@ import Action from "./Action";
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
 const ACTION_MODEL_ID = 777;
-const ACTION_EXEC_MOCK_PATH = `path:/api/ee/data-editing/action/v2/execute`;
+const ACTION_EXEC_MOCK_PATH = `path:/api/action/v2/execute`;
 
 const DATABASE_ID = 1;
 

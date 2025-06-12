@@ -17,9 +17,7 @@ describe("scenarios > data editing > setting alerts", () => {
     cy.intercept("GET", "/api/notification").as("getNotification");
     cy.intercept("POST", "/api/notification").as("createNotification");
 
-    cy.intercept("POST", "/api/ee/data-editing/action/v2/execute-bulk").as(
-      "executeBulk",
-    );
+    cy.intercept("POST", "/api/action/v2/execute-bulk").as("executeBulk");
 
     cy.log("Setting up writable PostgresDB");
     H.restore("postgres-writable");

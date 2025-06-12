@@ -4,14 +4,20 @@ import { useCallback, useMemo } from "react";
 import { datasetApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetQuery, RowValue } from "metabase-types/api";
+import type { DatasetQuery } from "metabase-types/api";
+
+import type { RowCellsWithPkValue } from "../types";
 
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 import {
   createPrimaryKeyToUpdatedRowObjectMap,
   mapDataEditingRowObjectsToRowValues,
 } from "./use-table-state-update-strategy";
+import {
+  getPkColumns,
+  getRowObjectPkUniqueKeyByColumnNames,
+  getRowUniqueKeyByPkIndexes,
+} from "./utils";
 
 export function useTableEditingStateApiUpdateStrategy(
   nullableAdhocQuery: DatasetQuery | undefined,
@@ -20,7 +26,7 @@ export function useTableEditingStateApiUpdateStrategy(
   const dispatch = useDispatch() as ThunkDispatch<any, any, UnknownAction>;
 
   const onRowsCreated = useCallback(
-    (rows: Record<string, RowValue>[]) => {
+    (rows: RowCellsWithPkValue[]) => {
       const adhocQuery = checkNotNull(nullableAdhocQuery);
 
       dispatch(
@@ -39,7 +45,7 @@ export function useTableEditingStateApiUpdateStrategy(
   );
 
   const onRowsUpdated = useCallback(
-    (rows: Record<string, RowValue>[]) => {
+    (rows: RowCellsWithPkValue[]) => {
       const adhocQuery = checkNotNull(nullableAdhocQuery);
 
       const patchResult = dispatch(
@@ -47,15 +53,20 @@ export function useTableEditingStateApiUpdateStrategy(
           "getAdhocQuery",
           adhocQuery,
           ({ data }) => {
-            const pkColumnIndex = data.cols.findIndex(isPK);
-            const pkColumnName = data.cols[pkColumnIndex].name;
+            const { indexes: pkIndexes, names: pkNames } = getPkColumns(
+              data.cols,
+            );
+
             const primaryKeyToUpdatedRowObjectMap =
-              createPrimaryKeyToUpdatedRowObjectMap(pkColumnName, rows);
+              createPrimaryKeyToUpdatedRowObjectMap(pkNames, rows);
 
             for (const rowArray of data.rows) {
-              const updatedRowObject = primaryKeyToUpdatedRowObjectMap.get(
-                rowArray[pkColumnIndex],
+              const pkUniqueKey = getRowUniqueKeyByPkIndexes(
+                pkIndexes,
+                rowArray,
               );
+              const updatedRowObject =
+                primaryKeyToUpdatedRowObjectMap.get(pkUniqueKey);
 
               if (updatedRowObject) {
                 for (let i = 0; i < data.cols.length; i++) {
@@ -78,7 +89,7 @@ export function useTableEditingStateApiUpdateStrategy(
   );
 
   const onRowsDeleted = useCallback(
-    (rows: Record<string, RowValue>[]) => {
+    (rows: RowCellsWithPkValue[]) => {
       const adhocQuery = checkNotNull(nullableAdhocQuery);
 
       dispatch(
@@ -86,12 +97,19 @@ export function useTableEditingStateApiUpdateStrategy(
           "getAdhocQuery",
           adhocQuery,
           ({ data }) => {
-            const pkColumnIndex = data.cols.findIndex(isPK);
-            const pkColumnName = data.cols[pkColumnIndex].name;
-            const deletedPKs = new Set(rows.map((row) => row[pkColumnName]));
+            const { indexes: pkIndexes, names: pkNames } = getPkColumns(
+              data.cols,
+            );
+
+            const deletedPKsSet = new Set(
+              rows.map((row) =>
+                getRowObjectPkUniqueKeyByColumnNames(pkNames, row),
+              ),
+            );
 
             data.rows = data.rows.filter(
-              (row) => !deletedPKs.has(row[pkColumnIndex]),
+              (row) =>
+                !deletedPKsSet.has(getRowUniqueKeyByPkIndexes(pkIndexes, row)),
             );
           },
         ),

@@ -24,7 +24,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
-import type { UpdatedRowHandlerParams } from "../../types";
+import type { RowCellsWithPkValue, UpdatedRowHandlerParams } from "../../types";
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
@@ -40,7 +40,7 @@ interface EditingBaseRowModalProps {
   modalState: TableEditingModalState;
   onClose: () => void;
   onEdit: (data: UpdatedRowHandlerParams) => Promise<boolean>;
-  onRowCreate: (data: Record<string, RowValue>) => Promise<boolean>;
+  onRowCreate: (data: RowCellsWithPkValue) => Promise<boolean>;
   onRowDelete: (rowIndex: number) => Promise<boolean>;
   currentRowData?: RowValues;
   fieldMetadataMap: Record<FieldWithMetadata["name"], FieldWithMetadata>;
@@ -48,8 +48,6 @@ interface EditingBaseRowModalProps {
   isLoading?: boolean;
   columnsConfig?: EditableTableColumnConfig;
 }
-
-type EditingFormValues = Record<string, RowValue>;
 
 export function EditingBaseRowModal({
   datasetColumns,
@@ -72,7 +70,7 @@ export function EditingBaseRowModal({
   ] = useDisclosure();
 
   const validateForm = useCallback(
-    (values: EditingFormValues) => {
+    (values: RowCellsWithPkValue) => {
       const errors: Record<string, string> = {};
 
       datasetColumns.forEach((column) => {
@@ -89,7 +87,7 @@ export function EditingBaseRowModal({
   );
 
   const onSubmit = useCallback(
-    async (values: EditingFormValues) => {
+    async (values: RowCellsWithPkValue) => {
       const success = await onRowCreate(values);
       if (success) {
         onClose();
@@ -105,7 +103,7 @@ export function EditingBaseRowModal({
     handleSubmit,
     validateForm: revalidateForm,
   } = useFormik({
-    initialValues: {} as EditingFormValues,
+    initialValues: {} as RowCellsWithPkValue,
     onSubmit,
     validate: validateForm,
     validateOnMount: true,
@@ -158,7 +156,7 @@ export function EditingBaseRowModal({
         ...acc,
         [column.name]: currentRowData[index],
       }),
-      {} as Record<string, RowValue>,
+      {} as RowCellsWithPkValue,
     );
   }, [currentRowData, datasetColumns]);
 

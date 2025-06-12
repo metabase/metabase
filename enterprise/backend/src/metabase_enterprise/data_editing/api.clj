@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
+   [metabase-enterprise.data-editing.describe :as data-editing.describe]
    [metabase.actions.core :as actions]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
@@ -193,46 +194,38 @@
   (let [action (-> (actions/select-action :id action-id :archived false) (t2/hydrate :creator) api/read-check)]
     (execute-saved-action! action inputs)))
 
-(api.macros/defendpoint :get "/tmp-action"
-  "Returns all actions across all tables and models"
-  [_
-   _
-   _]
-  (check-permissions)
-  (let [databases          (t2/select [:model/Database :id :settings])
-        editable-database? (comp boolean :database-enable-table-editing :settings)
-        editable-databases (filter editable-database? databases)
-
-        editable-tables
-        (when (seq editable-databases)
-          (t2/select :model/Table
-                     :db_id [:in (map :id editable-databases)]
-                     :active true))
-
-        fields
-        (when (seq editable-tables)
-          (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
-
-        fields-by-table
-        (group-by :table_id fields)
-
-        table-actions
-        (for [t editable-tables
-              op [:table.row/create :table.row/update :table.row/delete]
-              :let [fields (fields-by-table (:id t))
-                    action (actions/table-primitive-action t fields op)]]
-          (assoc action :table_name (:name t)))
-
-        saved-actions
-        (for [a (actions/select-actions nil :archived false)]
-          (select-keys a [:name
-                          :model_id
-                          :type
-                          :database_id
-                          :id
-                          :visualization_settings
-                          :parameters]))]
-    {:actions (vec (concat saved-actions table-actions))}))
+(def tmp-action
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :get "/tmp-action"
+    "Returns all actions across all tables and models"
+    [_
+     _
+     _]
+    (check-permissions)
+    (let [databases          (t2/select [:model/Database :id :settings])
+          editable-database? (comp boolean :database-enable-table-editing :settings)
+          editable-databases (filter editable-database? databases)
+          editable-tables    (when (seq editable-databases)
+                               (t2/select :model/Table
+                                          :db_id [:in (map :id editable-databases)]
+                                          :active true))
+          fields             (when (seq editable-tables)
+                               (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
+          fields-by-table    (group-by :table_id fields)
+          table-actions      (for [t            editable-tables
+                                   [op op-name] actions/enabled-table-actions
+                                   :let [fields (fields-by-table (:id t))
+                                         action (actions/table-primitive-action t fields op)]]
+                               (assoc action :table_name op-name))
+          saved-actions      (for [a (actions/select-actions nil :archived false)]
+                               (select-keys a [:name
+                                               :model_id
+                                               :type
+                                               :database_id
+                                               :id
+                                               :visualization_settings
+                                               :parameters]))]
+      {:actions (vec (concat saved-actions table-actions))})))
 
 (mr/def ::unified-action.base
   [:or
@@ -264,7 +257,8 @@
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
                           (isa? op :table.row/common)
-                          {:action-kw op, :mapping {:table-id param, :row ::root}}
+                          {:action-kw op
+                           :mapping {:table-id param :row ::root}}
                           :else
                           (throw (ex-info "Execution not supported for given encoded action" {:status    400
                                                                                               :action-id raw-id
@@ -273,6 +267,7 @@
     (string? raw-id) (if-let [[_ dashcard-id _nested-id] (re-matches #"^dashcard:([^:]+):(.*)$" raw-id)]
                        (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) (parse-long dashcard-id))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
+                             ;; TODO: this should belongs to our configuration
                              actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
                              viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
                              inner-id    (:actionId viz-action)
@@ -397,288 +392,87 @@
           action-kw
           (:outputs (actions/perform-action! action-kw scope inputs))))
       :else
-      (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
+      (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified})))))
 
-(api.macros/defendpoint :post "/action/v2/execute"
-  "The One True API for invoking actions.
+(def execute-single
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/action/v2/execute"
+    "The One True API for invoking actions.
   It doesn't care whether the action is saved or primitive, and whether it has been placed.
   In particular, it supports:
   - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
   - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
   Since actions are free to return multiple outputs even for a single output, the response is always plural."
-  [{}
-   {}
-   {:keys [action_id scope params input]}
-   :- [:map
+    [{}
+     {}
+     {:keys [action_id scope params input]}
+     :- [:map
        ;; TODO docstrings for these
-       [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope     ::types/scope.raw]
-       [:params    {:optional true} :map]
-       [:input     :map]]]
-  {:outputs (execute!* action_id scope params [input])})
+         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope     ::types/scope.raw]
+         [:params    {:optional true} :map]
+         [:input     :map]]]
+    {:outputs (execute!* action_id scope params [input])}))
 
-(api.macros/defendpoint :post "/action/v2/execute-bulk"
-  "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
-  [{}
-   {}
-   {:keys [action_id scope inputs params]}
-   :- [:map
-       [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope                   ::types/scope.raw]
-       [:inputs                  [:sequential :map]]
-       [:params {:optional true} :map]]]
-  ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
-  {:outputs (binding [actions/*params* params]
-              (execute!* action_id scope (dissoc params :delete-children) inputs))})
+(def execute-bulk
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/action/v2/execute-bulk"
+    "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
+    [{}
+     {}
+     {:keys [action_id scope inputs params]}
+     :- [:map
+         [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope                   ::types/scope.raw]
+         [:inputs                  [:sequential :map]]
+         [:params {:optional true} :map]]]
+    ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
+    {:outputs (binding [actions/*params* params]
+                (execute!* action_id scope (dissoc params :delete-children) inputs))}))
 
-(api.macros/defendpoint :post "/tmp-modal"
-  "Temporary endpoint for describing an actions parameters
-  such that they can be presented correctly in a modal ahead of execution."
-  [{}
-   {}
-   ;; TODO support for bulk actions
-   {:keys [action_id scope input]}]
-  (let [scope (actions/hydrate-scope scope)
-        unified
-        ;; this mess can go once callers are on new listing API, leaving only the unified-action call.
-        ;; but then this route's lifetime should be similarly limited!
-        (cond
-          (not (#{"table.row/create"
-                  "table.row/update"
-                  "table.row/delete"} action_id))
-          (fetch-unified-action scope action_id)
+(def tmp-modal
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/tmp-modal"
+    "Temporary endpoint for describing an actions parameters
+    such that they can be presented correctly in a modal ahead of execution."
+    [{}
+     {}
+     ;; TODO support for bulk actions
+     {:keys [action_id scope input]}]
+    (let [scope   (actions/hydrate-scope scope)
+          ;; TODO consolidate this with [[fetch-unified-action]]
+          unified (cond
+                    (not (#{"table.row/create"
+                            "table.row/update"
+                            "table.row/delete"} action_id))
+                    (fetch-unified-action scope action_id)
 
-          (:table-id input)
-          {:action-kw (keyword action_id)
-           :mapping   {:table-id (:table-id input)
-                       :row      ::root}}
+                    (:dashcard-id scope)
+                    (let [{:keys [dashcard-id]} scope
+                          {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
+                      (api/read-check (t2/select-one :model/Dashboard dashboard_id))
+                      {:dashcard-viz visualization_settings
+                       :inner-action {:action-kw (keyword action_id)
+                                      :mapping   {:table-id (:table_id visualization_settings)
+                                                  :row      ::root}}
+                       ;; TODO: migrate on read this to our own configuration
+                       :param-map    (->> visualization_settings
+                                          :editableTable.enabledActions
+                                          (some (fn [{:keys [id parameterMappings]}]
+                                                  (when (= id action_id)
+                                                    parameterMappings))))})
 
-          (:dashcard-id scope)
-          (let [{:keys [dashcard-id]} scope
-                {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
-            (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-            {:dashcard-viz  visualization_settings
-             :inner-action  {:action-kw (keyword action_id)
-                             :mapping   {:table-id (:table_id visualization_settings)
-                                         :row      ::root}}
-             :param-mapping (->> visualization_settings
-                                 :editableTable.enabledActions
-                                 (some (fn [{:keys [id parameterMappings]}]
-                                         (when (= id action_id)
-                                           parameterMappings))))})
+                    (:table-id scope)
+                    {:action-kw (keyword action_id)
+                     :mapping   {:table-id (:table-id scope)
+                                 :row      ::root}}
 
-          (:table-id scope)
-          {:action-kw (keyword action_id)
-           :mapping   {:table-id (:table-id scope)
-                       :row      ::root}}
-
-          :else
-          (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
-                          {:status-code 400
-                           :scope       scope
-                           :action_id   action_id})))
-
-        param-value
-        (fn [param-mapping row-delay]
-          (case (:sourceType param-mapping)
-            "constant" (:value param-mapping)
-            "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-mapping))))
-            nil))
-
-        saved-param-base-type
-        (fn [saved-param viz-field]
-          (let [{param-type :type} saved-param]
-            (case param-type
-              :string/= :type/Text
-              :number/= :type/Number
-              :date/single (case (:inputType viz-field)
-                             ;; formatting needs thought
-                             "datetime" :type/DateTime
-                             :type/Date)
-              (if (= "type" (namespace param-type))
-                type
-                (throw
-                 (ex-info "Unsupported query action parameter type"
-                          {:status-code 500
-                           :param-type  param-type
-                           :scope       scope
-                           :unified     unified}))))))
-
-        saved-param-input-type
-        (fn [saved-param viz-field]
-          (cond
-            ;; we could distinguish between inline-select and dropdown (which are both options for model action params)
-            (seq (:valueOptions viz-field))
-            "dropdown"
-
-            (= "text" (:inputType viz-field))
-            "textarea"
-
-            :else
-            (condp #(isa? %2 %1) (saved-param-base-type saved-param viz-field)
-              :type/Date     "date"
-              :type/DateTime "datetime"
-              "text")))
-
-        describe-saved-action
-        (fn [& {:keys [action-id
-                       param-mapping
-                       row-delay]}]
-          (let [action              (-> (actions/select-action :id action-id
-                                                               :archived false
-                                                               {:where [:not [:= nil :model_id]]})
-                                        api/read-check
-                                        api/check-404)
-                param-id->viz-field (-> action :visualization_settings (:fields {}))
-                param-id->mapping   (u/index-by :parameterId param-mapping)]
-
-            {:title (:name action)
-             :parameters
-             (->> (for [param (:parameters action)
-                        ;; query type actions store most stuff in viz settings rather than the
-                        ;; parameter
-                        :let [viz-field     (param-id->viz-field (:id param))
-                              param-mapping (param-id->mapping (:id param))]
-                        :when (and (not (:hidden viz-field))
-                                   (not= "hidden" (:visibility param-mapping)))]
-                    (u/remove-nils
-                     {:id            (:id param)
-                      :display_name  (or (:display-name param) (:name param))
-                      :param-mapping param-mapping
-                      :input_type    (saved-param-input-type param viz-field)
-                      :optional      (and (not (:required param)) (not (:required viz-field)))
-                      :nullable      true             ; is there a way to know this?
-                      :readonly      (= "readonly" (:visibility param-mapping))
-                      :value         (param-value param-mapping row-delay)
-                      :value_options (:valueOptions viz-field)}))
-                  vec)}))
-
-        field-input-type
-        (fn [field field-values]
-          (case (:type field-values)
-            (:list :auto-list :search) "dropdown"
-            (condp #(isa? %2 %1) (:semantic_type field)
-              :type/Description "textarea"
-              :type/Category    "dropdown"
-              :type/FK          "dropdown"
-              (condp #(isa? %2 %1) (:base_type field)
-                :type/Date     "date"
-                :type/DateTime "datetime"
-                "text"))))
-
-        describe-table-action
-        (fn [& {:keys [action-kw
-                       table-id
-                       param-mapping
-                       dashcard-viz
-                       row-delay]}]
-          (let [table-id                    table-id
-                table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
-                field-name->mapping         (u/index-by :parameterId param-mapping)
-                fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
-                                                (t2/hydrate :dimensions
-                                                            :has_field_values
-                                                            :values))
-                dashcard-column-editable?   (or (some-> dashcard-viz :table.editableColumns set)
-                                                ;; columns are assumed editable if no dashcard-viz specialisation
-                                                (constantly true))
-                dashcard-sort               (zipmap (map :name (:table.columns dashcard-viz)) (range))
-                field-name->dashcard-column (u/index-by :name (:table.columns dashcard-viz))
-                field-sort                  (zipmap (map :name fields) (range))
-                sort-key                    (fn [{:keys [name]}]
-                                              (or (dashcard-sort name) ; prefer user defined sort in the dashcard
-                                                  (+ (inc (count dashcard-sort))
-                                                     (field-sort name))))]
-
-            {:title (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
-             :parameters
-             (->> (for [field (sort-by sort-key fields)
-                        :let [{field-values :values} field
-                              pk                     (= :type/PK (:semantic_type field))
-                              param-mapping          (field-name->mapping (:name field))
-                              dashcard-column        (field-name->dashcard-column (:name field))]
-                        :when (case action-kw
-                                ;; create does not take pk cols if auto increment, todo generated cols?
-                                :table.row/create (not (:database_is_auto_increment field))
-                                ;; delete only requires pk cols
-                                :table.row/delete pk
-                                ;; update takes both the pk and field (if not a row action)
-                                :table.row/update true)
-                        ;; row-actions can explicitly hide parameters
-                        :when (not= "hidden" (:visibility param-mapping))
-                        ;; dashcard column context can hide parameters (if defined)
-                        :when (:enabled dashcard-column true)
-                        :let [required (or pk (:database_required field))]]
-                    (u/remove-nils
-                     {:id                      (:name field)
-                      :display_name            (:display_name field)
-                      :semantic_type           (:semantic_type field)
-                      :input_type              (field-input-type field field-values)
-                      :field_id                (:id field)
-                      :human_readable_field_id (-> field :dimensions first :human_readable_field_id)
-                      :optional                (not required)
-                      :nullable                (:database_is_nullable field)
-                      :database_default        (:database_default field)
-                      :readonly                (or (= "readonly" (:visibility param-mapping))
-                                                   (not (dashcard-column-editable? (:name field))))
-                      :value                   (param-value param-mapping row-delay)}))
-                  vec)}))]
-
-    (cond
-      ;; saved action
-      (:action-id unified)
-      (describe-saved-action :action-id (:action-id unified))
-
-      ;; table action
-      (:action-kw unified)
-      (describe-table-action
-       {:action-kw     (:action-kw unified)
-        ;; todo this should come from applying the (arbitrarily nested) mappings to the input
-        ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
-        :table-id      (or (:table-id (:mapping (:inner-action unified)))
-                           (:table-id (:mapping unified))
-                           (:table-id input))
-        :param-mapping (:param-mapping unified)
-        :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
-
-      (:inner-action unified)
-      (let [inner       (:inner-action unified)
-            mapping     (:param-mapping unified)
-            dashcard-id (:dashcard-id unified)
-            saved-id    (:action-id inner)
-            action-kw   (:action-kw inner)
-            table-id    (or (:table-id mapping)
-                            (:table-id (:mapping inner))
-                            (:table-id input)
-                            (:table-id scope))
-            _           (when-not table-id
-                          (throw (ex-info "Must provide table-id" {:status-code 400})))
-            row-delay   (delay
-                         ;; TODO this is incorrect - in general the row will not come from the table we are acting
-                         ;;      upon - this is not even true for our first use case!
-                          (when table-id
-                            (let [pk-fields    (data-editing/select-table-pk-fields table-id)
-                                  pk           (select-keys input (mapv (comp keyword :name) pk-fields))
-                                  pk-satisfied (= (count pk) (count pk-fields))]
-                              (when pk-satisfied
-                                (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
-        (cond
-          saved-id
-          (describe-saved-action :action-id              saved-id
-                                 :row-action-dashcard-id dashcard-id
-                                 :param-mapping          mapping
-                                 :row-delay              row-delay)
-
-          action-kw
-          (describe-table-action :action-kw     action-kw
-                                 :table-id      table-id
-                                 :param-mapping mapping
-                                 :dashcard-viz  (:dashcard-viz unified)
-                                 :row-delay     row-delay)
-
-          :else (ex-info "Not a supported row action" {:status-code 500, :scope scope, :unified unified})))
-      :else
-      (throw (ex-info "Not able to execute given action yet" {:status-code 500, :scope scope, :unified unified})))))
+                    :else
+                    (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
+                                    {:status-code 400
+                                     :scope       scope
+                                     :action_id   action_id})))]
+      (data-editing.describe/describe-unified-action unified scope input))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

@@ -13,19 +13,18 @@ import { ROW_ID_COLUMN_ID } from "metabase/data-grid/constants";
 import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  DataGridWritebackAction,
   DatasetColumn,
   DatasetData,
   Field,
   FieldWithMetadata,
   RowValue,
   RowValues,
-  WritebackAction,
 } from "metabase-types/api";
 
 import { canEditField } from "../../helpers";
-import type { RowPkValue, UpdateCellValueHandlerParams } from "../types";
+import type { CellUniqKey, UpdateCellValueHandlerParams } from "../types";
 
 import S from "./EditTableData.module.css";
 import { EditingBodyCellWrapper } from "./EditingBodyCell";
@@ -35,7 +34,11 @@ import {
   useTableColumnRowSelect,
 } from "./use-table-column-row-select";
 import { useTableEditing } from "./use-table-editing";
-import { getCellUniqKey } from "./utils";
+import {
+  getCellUniqKey,
+  getPkColumns,
+  getRowUniqueKeyByPkIndexes,
+} from "./utils";
 
 type EditTableDataGridProps = {
   data: DatasetData;
@@ -46,9 +49,9 @@ type EditTableDataGridProps = {
   getColumnSortDirection?: (
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
-  cellsWithFailedUpdatesMap?: Record<RowPkValue, true>;
-  rowActions?: WritebackAction[];
-  onActionRun?: (action: WritebackAction, row: Row<RowValues>) => void;
+  cellsWithFailedUpdatesMap?: Record<CellUniqKey, true>;
+  rowActions?: DataGridWritebackAction[];
+  onActionRun?: (action: DataGridWritebackAction, row: Row<RowValues>) => void;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   onColumnSort?: (field: Field) => void;
@@ -89,7 +92,7 @@ export const EditTableDataGrid = ({
   const columnSizingMap = useMemo(() => ({}), []);
 
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
-    const pkColumnIndex = cols.findIndex(isPK);
+    const { indexes: pkColumnIndexes } = getPkColumns(cols);
 
     return cols.map((column, columnIndex) => {
       const isEditableColumn =
@@ -133,9 +136,12 @@ export const EditTableDataGrid = ({
           const rowIndex = cellContext.row.index;
           const columnName = cellContext.column.id;
           const rowData = rows[rowIndex];
-          const rowPkValue = rowData[pkColumnIndex] as RowPkValue;
+          const rowUniqueKey = getRowUniqueKeyByPkIndexes(
+            pkColumnIndexes,
+            rowData,
+          );
 
-          const cellUniqKey = getCellUniqKey(rowPkValue, columnName);
+          const cellUniqKey = getCellUniqKey(rowUniqueKey, columnName);
 
           return cellsWithFailedUpdatesMap?.[cellUniqKey]
             ? S.cellWithUpdateFail

@@ -4,7 +4,7 @@
    [metabase.actions.actions :as actions]
    [metabase.actions.execution :as actions.execution]
    [metabase.actions.http-action :as actions.http-action]
-   [metabase.actions.models :as action]
+   [metabase.actions.models :as actions.models]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -61,9 +61,9 @@
                           [:model-id {:optional true} [:maybe ms/PositiveInt]]]]
   (letfn [(actions-for [models]
             (if (seq models)
-              (t2/hydrate (action/select-actions models
-                                                 :model_id [:in (map :id models)]
-                                                 :archived false)
+              (t2/hydrate (actions.models/select-actions models
+                                                         :model_id [:in (map :id models)]
+                                                         :archived false)
                           :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
@@ -88,7 +88,7 @@
   "Fetch an Action."
   [{:keys [action-id]} :- [:map
                            [:action-id ms/PositiveInt]]]
-  (-> (action/select-action :id action-id :archived false)
+  (-> (actions.models/select-action :id action-id :archived false)
       (t2/hydrate :creator)
       api/read-check))
 
@@ -137,17 +137,17 @@
     (doseq [db-id (cond-> [(:database_id model)] database_id (conj database_id))]
       (actions/check-actions-enabled-for-database!
        (t2/select-one :model/Database :id db-id))))
-  (let [action-id (action/insert! (assoc action :creator_id api/*current-user-id*))]
+  (let [action-id (actions.models/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
                             {:event          :action-created
                              :type           action-type
                              :action_id      action-id
                              :num_parameters (count parameters)})
     (if action-id
-      (action/select-action :id action-id)
+      (actions.models/select-action :id action-id)
       ;; t2/insert! does not return a value when used with h2
       ;; so we return the most recently updated http action.
-      (last (action/select-actions nil :type action-type)))))
+      (last (actions.models/select-actions nil :type action-type)))))
 
 (api.macros/defendpoint :put "/:id"
   "Update an Action."
@@ -171,8 +171,8 @@
               [:visualization_settings {:optional true} [:maybe :map]]]]
   (actions/check-actions-enabled! id)
   (let [existing-action (api/write-check :model/Action id)]
-    (action/update! (assoc action :id id) existing-action))
-  (let [{:keys [parameters type] :as action} (action/select-action :id id)]
+    (actions.models/update! (assoc action :id id) existing-action))
+  (let [{:keys [parameters type] :as action} (actions.models/select-action :id id)]
     (analytics/track-event! :snowplow/action
                             {:event          :action-updated
                              :type           type
@@ -215,7 +215,7 @@
    {:keys [parameters]} :- [:map
                             [:parameters ms/JSONString]]]
   (actions/check-actions-enabled! action-id)
-  (-> (action/select-action :id action-id :archived false)
+  (-> (actions.models/select-action :id action-id :archived false)
       api/read-check
       (actions.execution/fetch-values (json/decode parameters))))
 
@@ -228,7 +228,7 @@
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map
                                                [:parameters {:optional true} [:maybe [:map-of :keyword any?]]]]]]
-  (let [{:keys [type] :as action} (api/check-404 (action/select-action :id id :archived false))]
+  (let [{:keys [type] :as action} (api/check-404 (actions.models/select-action :id id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail
@@ -293,26 +293,37 @@
     (throw (ex-info "Cannot specify both model-id and table-id parameters"
                     {:status-code 400})))
   (cond
-    model-id
-    (do (api/read-check :model/Card model-id)
-        {:actions (t2/select [:model/Action :id :name :description]
-                             :model_id model-id
-                             :archived false
-                             {:order-by :id})})
+    model-id (do (api/read-check :model/Card model-id)
+                 {:actions (t2/select [:model/Action :id :name :description]
+                                      :model_id model-id
+                                      :archived false
+                                      {:order-by :id})})
 
-    table-id
-    (let [table    (api/read-check :model/Table table-id)
-          database (t2/select-one :model/Database :id (:db_id table))
-          _        (when-not (get-in database [:settings :database-enable-table-editing])
-                     (throw (ex-info "Table editing is not enabled for this database"
-                                     {:status-code 400})))
-          ;; Fields are used to calculate the parameters.
-          ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
-          ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
-          fields   nil
-          actions  (for [op [:table.row/create :table.row/update :table.row/delete]
-                         :let [action (action/table-primitive-action table fields op)]]
-                     {:id          (:id action)
-                      :name        (:name action)
-                      :description (get-in action [:visualization_settings :description] "")})]
-      {:actions actions})))
+    table-id (let [table    (api/read-check :model/Table table-id)
+                   database (t2/select-one :model/Database :id (:db_id table))
+                   _        (when-not (get-in database [:settings :database-enable-table-editing])
+                              (throw (ex-info "Table editing is not enabled for this database"
+                                              {:status-code 400})))
+                   ;; Fields are used to calculate the parameters.
+                   ;; There is no longer any reason to hydrate these as the FE will no longer be rendering the "configure" and
+                   ;; "execute" forms directly, and will make additional calls to the backend for those anyway.
+                   fields   nil
+                   actions  (for [[op op-name] actions.models/enabled-table-actions
+                                  :let [action (actions.models/table-primitive-action table fields op)]]
+                              {:id          (:id action)
+                               :name        op-name
+                               :description (get-in action [:visualization_settings :description] "")})]
+               {:actions actions})))
+
+(defmacro ^:private evil-proxy [verb route var-sym]
+  `(api.macros/defendpoint ~verb ~route
+     "This is where the route ultimately belongs, but for now its in EE.
+      We need to rework it so that certain paid features are skipped when we move it."
+     [~'route-params ~'query-params ~'body-params ~'request]
+     #_{:clj-kondo/ignore [:metabase/modules]}
+     (api.macros/call-core-fn @(requiring-resolve ~var-sym) ~'route-params ~'query-params ~'body-params ~'request)))
+
+(evil-proxy :get  "/v2/tmp-action" 'metabase-enterprise.data-editing.api/tmp-action)
+(evil-proxy :post "/v2/execute" 'metabase-enterprise.data-editing.api/execute-single)
+(evil-proxy :post "/v2/execute-bulk" 'metabase-enterprise.data-editing.api/execute-bulk)
+(evil-proxy :post "/v2/tmp-modal" 'metabase-enterprise.data-editing.api/tmp-modal)

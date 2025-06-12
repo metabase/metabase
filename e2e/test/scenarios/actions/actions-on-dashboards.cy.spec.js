@@ -18,7 +18,7 @@ const MODEL_NAME = "Test Action Model";
     () => {
       beforeEach(() => {
         cy.intercept("GET", /\/api\/card\/\d+/).as("getModel");
-        cy.intercept("GET", "/api/ee/data-editing/tmp-action").as("getActions");
+        cy.intercept("GET", "/api/action/v2/tmp-action").as("getActions");
         cy.intercept("PUT", "/api/action/*").as("updateAction");
         cy.intercept("GET", "/api/action?model-id=*").as("getModelActions");
 
@@ -27,9 +27,7 @@ const MODEL_NAME = "Test Action Model";
           "/api/dashboard/*/dashcard/*/execute?parameters=*",
         ).as("prefetchValues");
 
-        cy.intercept("POST", "/api/ee/data-editing/action/v2/execute").as(
-          "executeAction",
-        );
+        cy.intercept("POST", "/api/action/v2/execute").as("executeAction");
       });
 
       H.describeWithSnowplow("adding and executing actions", () => {
@@ -1061,9 +1059,7 @@ describe("action error handling", { tags: ["@external", "@actions"] }, () => {
     cy.intercept("GET", "/api/dashboard/*/dashcard/*/execute?parameters=*").as(
       "prefetchValues",
     );
-    cy.intercept("POST", "/api/ee/data-editing/action/v2/execute").as(
-      "executeAction",
-    );
+    cy.intercept("POST", "/api/action/v2/execute").as("executeAction");
   });
 
   it("should show detailed form errors for constraint violations when executing model actions", () => {
