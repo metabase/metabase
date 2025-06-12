@@ -62,7 +62,10 @@ const SingleSelectListField = ({
   }, [addedOptions, options]);
 
   const optionsHaveSomeTranslations = useMemo(
-    () => augmentedOptions.some((option) => tc(option) !== option),
+    () =>
+      augmentedOptions.some(
+        ([option]) => tc(option satisfies RowValue) !== option,
+      ),
     [augmentedOptions, tc],
   );
 
@@ -85,8 +88,7 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
-  // TODO: Investigate this. Value is an array but the func passes value to String(), which is weird
-  const isFilterInValues = optionItemEqualsFilter(value, filter);
+  const isFilterInValues = optionItemEqualsFilter(value[0], filter);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
