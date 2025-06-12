@@ -1,8 +1,9 @@
+import Fuse from "fuse.js";
 import { getIn } from "icepick";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 import { CellMeasurer, CellMeasurerCache, List } from "react-virtualized";
-import _ from "underscore";
+import _, { memoize } from "underscore";
 
 import { Icon } from "metabase/ui";
 
@@ -325,7 +326,7 @@ export default class AccordionList extends Component {
         this.props.sections,
         this.isSectionExpanded,
         this.canSelectSection,
-        this.searchFilter,
+        this.searchFilter(this.props.sections),
       );
 
       return this.setState({
@@ -342,7 +343,7 @@ export default class AccordionList extends Component {
         this.props.sections,
         this.isSectionExpanded,
         this.canSelectSection,
-        this.searchFilter,
+        this.searchFilter(this.props.sections),
       );
 
       return this.setState({
@@ -378,20 +379,56 @@ export default class AccordionList extends Component {
     }
   };
 
-  searchFilter = (item) => {
-    const { searchProp } = this.props;
-    const { searchText } = this.state;
-
-    if (!searchText || searchText.length === 0) {
-      return true;
+  makeFuzzySearchFilter = memoize((searchProps, sections) => {
+    const items = [];
+    for (const section of sections) {
+      for (const item of section.items) {
+        items.push(item);
+      }
     }
 
+    const idx = new Fuse(items, {
+      keys: searchProps,
+      includeScore: true,
+      includeMatches: true,
+    });
+
+    return (item) => {
+      // TODO: remove O(n²) search pattern here
+
+      const { searchText } = this.state;
+
+      if (!searchText || searchText.length === 0) {
+        return true;
+      }
+
+      const results = idx.search(searchText);
+      return results.some(
+        (result) => result.item === item && result.score < 0.24,
+      );
+    };
+  });
+
+  searchFilter = (sections) => {
+    const { searchProp, searchFuzzy } = this.props;
     const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
 
-    const searchResults = searchProps.map((member) =>
-      this.searchPredicate(item, member),
-    );
-    return searchResults.reduce((acc, curr) => acc || curr);
+    if (searchFuzzy) {
+      return this.makeFuzzySearchFilter(searchProps, sections);
+    }
+
+    return (item) => {
+      const { searchText } = this.state;
+
+      if (!searchText || searchText.length === 0) {
+        return true;
+      }
+
+      const searchResults = searchProps.map((member) =>
+        this.searchPredicate(item, member),
+      );
+      return searchResults.reduce((acc, curr) => acc || curr);
+    };
   };
 
   getRowsCached = (
@@ -543,7 +580,7 @@ export default class AccordionList extends Component {
     const openSection = this.getOpenSection();
 
     return this.getRowsCached(
-      this.searchFilter,
+      this.searchFilter(sections),
       searchable,
       sections,
       alwaysTogglable,
