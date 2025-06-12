@@ -1,6 +1,8 @@
 (ns metabase.driver-api.core
   (:refer-clojure :exclude [replace compile require])
   (:require
+   ;; import the next namespace for keyword namespace aliases only
+   [metabase.actions.args :as-alias actions.args]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
@@ -62,7 +64,14 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
+ actions/*params*
  actions/cached-value
+ actions/cached-database
+ actions/cached-database-via-table-id
+ actions/cached-table
+ actions/children-exist
+ actions/count-descendants
+ actions/delete-recursively
  actions/incorrect-value-type
  actions/perform-action!*
  actions/violate-foreign-key-constraint
@@ -217,6 +226,10 @@
 (def schema.actions.row
   "::lib.schema.actions/row"
   ::lib.schema.actions/row)
+
+(def schema.actions.args.row
+  "::actions.args/row"
+  ::actions.args/row)
 
 (def schema.expression.temporal.timezone-id
   "::lib.schema.expression.temporal/timezone-id"
