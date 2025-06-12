@@ -5,7 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.permissions.validation :as validation]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.system-info :as u.system-info]
    [ring.util.response :as response]
@@ -40,7 +40,7 @@
 (api.macros/defendpoint :get "/details"
   "Returns version and system information relevant to filing a bug report against Metabase."
   []
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (cond-> {:metabase-info (metabase-info)}
     (not (premium-features/is-hosted?))
     (assoc :system-info (u.system-info/system-info))))
@@ -48,7 +48,7 @@
 (api.macros/defendpoint :get "/connection-pool-details"
   "Returns database connection pool info for the current Metabase instance."
   []
-  (validation/check-has-application-permission :monitoring)
+  (perms/check-has-application-permission :monitoring)
   (let [pool-info (analytics/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))

@@ -3,7 +3,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.permissions.validation :as validation]
+   [metabase.permissions.core :as perms]
    [metabase.settings.models.setting :as setting]
    [metabase.util :as u]))
 
@@ -28,7 +28,7 @@
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (setting/writable-settings))
 
 (def ^:private kebab-cased-keyword

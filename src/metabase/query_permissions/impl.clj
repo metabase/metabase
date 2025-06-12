@@ -15,9 +15,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.util :as perms.u]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -39,7 +37,7 @@
    (ex-info message
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
-                    :actual-permissions   (data-perms/permissions-for-user api/*current-user-id*)
+                    :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
                     :permissions-error?   true}
                    additional-ex-data))))
 
@@ -135,7 +133,7 @@
         (t2/select-one [:model/Card :collection_id :card_schema] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn- source-card-read-perms :- [:set perms.u/PathSchema]
+(mu/defn- source-card-read-perms :- [:set perms/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]
@@ -233,11 +231,11 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
   (or
-   (data-perms/at-least-as-permissive? perm-type
-                                       (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                       required-perm)
+   (perms/at-least-as-permissive? perm-type
+                                  (perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                  required-perm)
    (when gtap-perms
-     (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
+     (perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
@@ -247,7 +245,7 @@
   (let [table-id->has-perm?
         (into {} (for [[table-id required-perm] table-id->required-perm]
                    [table-id (boolean
-                              (or (data-perms/user-has-permission-for-table?
+                              (or (perms/user-has-permission-for-table?
                                    api/*current-user-id*
                                    perm-type
                                    required-perm
@@ -258,7 +256,7 @@
                                                          gtap-table-perms
                                                          ;; ...or a map from table IDs to table permissions
                                                          (get gtap-table-perms table-id))]
-                                    (data-perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
+                                    (perms/at-least-as-permissive? perm-type gtap-perm required-perm))))]))]
     (every? true? (vals table-id->has-perm?))))
 
 (mu/defn has-perm-for-query? :- :boolean
