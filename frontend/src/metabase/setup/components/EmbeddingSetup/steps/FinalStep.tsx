@@ -38,7 +38,7 @@ export const FinalStep = () => {
     () => [
       ...(dashboards ?? []).map((dashboard) => ({
         title: dashboard.name,
-        url: `${window.location.origin}/embed/dashboard/${dashboard.id}`,
+        url: `${window.location.origin}/dashboard/${dashboard.id}`,
       })),
       {
         title: t`Query Builder`,
