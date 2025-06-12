@@ -93,7 +93,7 @@
       (when (or (:is_active user)
                 reactivate?)
         (let [;; remove keys with `nil` values
-              user-data (into {} (filter second user-from-sso))]
+              user-data (into {} (remove nil? new-user-data))]
           (if (= (select-keys user user-keys) user-data)
             user
             (do

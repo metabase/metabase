@@ -533,7 +533,7 @@
            (thrown-with-msg?
             clojure.lang.ExceptionInfo
             #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
-            (#'mt.jwt/fetch-or-create-user! "Test" "User" "newuser@metabase.com" nil))))))))
+            (#'mt.jwt/fetch-or-create-user! "Test" "User" "newuser@metabase.com" nil nil))))))))
 
 (deftest new-users-should-be-set-to-the-correct-tenant
   (with-jwt-default-setup!
