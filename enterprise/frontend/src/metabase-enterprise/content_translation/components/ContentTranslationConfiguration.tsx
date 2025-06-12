@@ -35,6 +35,8 @@ import {
 } from "metabase/ui";
 import { useUploadContentTranslationDictionaryMutation } from "metabase-enterprise/api";
 
+import { contentTranslationEndpoints } from "../constants";
+
 /** Maximum file size for uploaded content-translation dictionaries, expressed
  * in mebibytes. */
 const maxContentDictionarySizeInMiB = 1.5;
@@ -71,7 +73,7 @@ export const ContentTranslationConfiguration = () => {
     setDownloadErrorMessage(null);
     setIsDownloadInProgress(true);
     try {
-      const response = await fetch("/api/ee/content-translation/csv", {
+      const response = await fetch(contentTranslationEndpoints.getCSV, {
         method: "GET",
       });
 
@@ -267,11 +269,8 @@ const UploadForm = ({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <Form
-      data-testid="content-localization-setting"
-      style={{ display: "flex" }}
-    >
-      <Stack gap="md" display="flex" style={{ flexGrow: 1 }}>
+    <Form data-testid="content-localization-setting">
+      <Stack gap="md" display="flex">
         <FormSubmitButton
           style={{ flexGrow: 1 }}
           disabled={status === "pending"}
@@ -314,7 +313,6 @@ const UploadForm = ({
     </Form>
   );
 };
-
 const DescriptionText = (props: PropsWithChildren<TextProps>) => (
   <Text c="inherit" lh="1.5" {...props} />
 );

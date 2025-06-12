@@ -1,5 +1,5 @@
+import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { setupTranslateContentStringSpy } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -46,7 +46,7 @@ describe("useTranslateContent", () => {
       locale: "es",
     });
     expect(
-      await screen.findByText("translated_Hello World"),
+      await screen.findByText("mock translation of Hello World"),
     ).toBeInTheDocument();
     expect(getContentTranslatorSpy()).toHaveBeenCalled();
   });
