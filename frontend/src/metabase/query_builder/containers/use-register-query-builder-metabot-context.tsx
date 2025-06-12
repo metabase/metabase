@@ -118,12 +118,14 @@ function processTimelineEvents(timelines: Timeline[]) {
 }
 
 export const registerQueryBuilderMetabotContextFn = async ({
+  isLoadingComplete,
   question,
   series,
   visualizationSettings,
   timelines,
   queryResult,
 }: {
+  isLoadingComplete: boolean;
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
@@ -134,22 +136,23 @@ export const registerQueryBuilderMetabotContextFn = async ({
     return {};
   }
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-  const getQuestionType = () => {
-    if (question.isSaved()) {
-      return question.type();
-    }
-    return isNative ? ("native" as const) : ("adhoc" as const);
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  const questionCtx = question.isSaved()
+    ? { id: question.id(), type: question.type() }
+    : { type: "adhoc" as const };
+  const queryCtx = {
+    query: question.datasetQuery(),
+    sql_engine: isNative ? Lib.engine(query) : undefined,
+    is_native: isNative,
+    error: queryResult?.error,
   };
 
-  const questionCtx = {
-    id: question.isSaved() ? question.id() : undefined,
-    type: getQuestionType(),
-  };
-
-  const svgElement = document.querySelector(
-    `${getChartSelector({ cardId: question.id() })} svg`,
-  );
+  const svgElement = isLoadingComplete
+    ? document.querySelector(
+        `${getChartSelector({ cardId: question.id() })} svg`,
+      )
+    : undefined;
   const svgString = svgElement
     ? new XMLSerializer().serializeToString(svgElement)
     : undefined;
@@ -161,18 +164,20 @@ export const registerQueryBuilderMetabotContextFn = async ({
     user_is_viewing: [
       {
         ...questionCtx,
-        query: question.datasetQuery(),
-        sql_dialect: null, // TODO
+        ...queryCtx,
         chart_configs: [
           {
             image_base_64,
             title: question.displayName(),
             description: question.description(),
-            series: processSeriesData(series, visualizationSettings),
-            timeline_events: processTimelineEvents(timelines),
+            series: isLoadingComplete
+              ? processSeriesData(series, visualizationSettings)
+              : undefined,
+            timeline_events: isLoadingComplete
+              ? processTimelineEvents(timelines)
+              : undefined,
           },
         ],
-        error: queryResult?.error,
       },
     ],
   };
@@ -181,14 +186,14 @@ export const registerQueryBuilderMetabotContextFn = async ({
 export const useRegisterQueryBuilderMetabotContext = () => {
   useRegisterMetabotContextProvider((state) => {
     const isLoadingComplete = getIsLoadingComplete(state);
-
-    const question = isLoadingComplete ? getQuestion(state) : undefined;
+    const question = getQuestion(state);
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);
     const timelines = getTransformedTimelines(state);
     const queryResult = getFirstQueryResult(state);
 
     return registerQueryBuilderMetabotContextFn({
+      isLoadingComplete,
       question,
       series,
       visualizationSettings,
