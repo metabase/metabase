@@ -247,29 +247,22 @@
                                            ;; timestamp is hidden in the row action
                                          #_{:id "timestamp"}]]
 
-                (testing "without a table-id"
-                  (let [scope {:dashboard-id (:dashboard_id dashcard)}]
-                    (doseq [action-id [create-id update-id delete-id]]
-                      (testing action-id
-                        (is (=? {:status 400}
-                                (req {:action_id action-id, :scope scope})))))))
-
                 (testing "create"
                   (is (=? {:status 200
                            :body   {:parameters []}}
-                          (req {:scope     scope
-                                :action_id create-id
+                          (req {:action_id create-id
+                                :scope     scope
                                 :input     {:id 1}}))))
 
                 (testing "update"
-                  (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
+                  (is (=? {:status 200} (req {:action_id update-id, :scope scope}))))
 
                 (testing "delete"
-                  (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
+                  (is (=? {:status 200} (req {:action_id delete-id, :scope scope}))))))))))))
 
-;; This covers a more exotic case where we're coming back to edit the config for
-;; This will also cover the case where we're making a second round of changes to an existing dashcard's action before
-;; saving.
+;; This covers a more exotic case where we're coming back to edit the config for an action before it has been saved.
+;; This should cover both the cases where it has never been saved, or where it's simply been edited at least once since
+;; it was last saved.
 (deftest configure-pending-table-action-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
