@@ -265,9 +265,9 @@
                                                                                               :op        op
                                                                                               :param     param}))))
     (string? raw-id) (if-let [[_ dashcard-id _nested-id] (re-matches #"^dashcard:([^:]+):(.*)$" raw-id)]
-                       ;; If the id was created before the dashcard was saved, it couldn't capture its parents id.
+                       ;; If the id was created before the dashcard was saved, it couldn't capture its parent's id.
                        ;; So, as a hack, we get it from the scope.
-                       (let [dashcard-id (if (= "unknown" dashcard-id) (:dashcard-id scope) (parse-long dashcard-id))
+                       (let [dashcard-id (when (not= "unknown" dashcard-id) (parse-long dashcard-id))
                              dashcard-id (if (pos-int? dashcard-id) dashcard-id (:dashcard-id scope))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
                              ;; TODO: this should belongs to our configuration
