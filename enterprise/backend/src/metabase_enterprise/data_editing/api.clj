@@ -451,16 +451,16 @@
                     (let [{:keys [dashcard-id]} scope
                           {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
                       (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-                      {:dashcard-viz  visualization_settings
-                       :inner-action  {:action-kw (keyword action_id)
-                                       :mapping   {:table-id (:table_id visualization_settings)
-                                                   :row      ::root}}
+                      {:dashcard-viz visualization_settings
+                       :inner-action {:action-kw (keyword action_id)
+                                      :mapping   {:table-id (:table_id visualization_settings)
+                                                  :row      ::root}}
                        ;; TODO: migrate on read this to our own configuration
-                       :param-mapping (->> visualization_settings
-                                           :editableTable.enabledActions
-                                           (some (fn [{:keys [id parameterMappings]}]
-                                                   (when (= id action_id)
-                                                     parameterMappings))))})
+                       :param-map    (->> visualization_settings
+                                          :editableTable.enabledActions
+                                          (some (fn [{:keys [id parameterMappings]}]
+                                                  (when (= id action_id)
+                                                    parameterMappings))))})
 
                     (:table-id scope)
                     {:action-kw (keyword action_id)
