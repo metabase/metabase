@@ -5158,7 +5158,7 @@
 
 (deftest create-or-fix-action-id-test
   (let [f       #'api.dashboard/create-or-fix-action-id
-        unsaved {}
+        unsaved {:id -1}
         saved   {:id 1337}]
     (mt/with-dynamic-fn-redefs [u/generate-nano-id (fn [] "rAnDoM")]
       (testing "leaves valid ids alone"
@@ -5172,7 +5172,8 @@
                (f saved nil))))
       (testing "does its best without a parent"
         (is (= "dashcard:unknown:rAnDoM"
-               (f unsaved nil))))
+               (f unsaved nil)
+               (f nil nil))))
       (testing "accepts its new parent"
         (is (= "dashcard:1337:SAVE_ME"
                (f saved "dashcard:unknown:SAVE_ME")))))))
