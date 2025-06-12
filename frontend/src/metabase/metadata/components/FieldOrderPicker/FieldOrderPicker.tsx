@@ -17,8 +17,8 @@ interface Props
 
 export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   const data = useMemo(() => getData(), []);
-  // State is managed internally for instant visual feedback, since the value prop
-  // will only update after API request is completed.
+  // State is managed internally for instant visual feedback
+  // in case onChange handler is asynchronous.
   const [localValue, setLocalValue] = useState(value);
 
   useEffect(() => {
