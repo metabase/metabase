@@ -415,7 +415,11 @@ export default class AccordionList extends Component {
   });
 
   searchFilter = (sections) => {
-    const { searchProp, searchCaseInsensitive, searchFuzzy } = this.props;
+    const {
+      searchProp,
+      searchCaseInsensitive = true,
+      searchFuzzy,
+    } = this.props;
     const searchProps =
       typeof searchProp === "function"
         ? searchProp
@@ -438,10 +442,22 @@ export default class AccordionList extends Component {
         return true;
       }
 
-      const searchResults = searchProps.map((member) =>
-        this.searchPredicate(item, member),
-      );
-      return searchResults.reduce((acc, curr) => acc || curr);
+      let itemTexts = [];
+      if (typeof searchProps === "function") {
+        itemTexts = searchProps(item);
+      } else {
+        itemTexts = searchProps.map((member) => {
+          const path = member.split(".");
+          return String(getIn(item, path) || "");
+        });
+      }
+
+      return itemTexts.some((itemText) => {
+        if (searchCaseInsensitive) {
+          return itemText.toLowerCase().startsWith(searchText.toLowerCase());
+        }
+        return itemText.startsWith(searchText);
+      });
     };
   };
 
