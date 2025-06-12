@@ -228,6 +228,55 @@
                 ["2016-06-01T00:00:00Z" 71.954]]
                (mt/rows (qp/process-query q))))))))
 
+(deftest ^:parallel comment-question-mark-test
+  ;; broken in 0.8.3, fixed in 0.8.4
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
+  (mt/test-driver :clickhouse
+    (testing "a query with a question mark in the comment and has a variable should work correctly"
+      (let [query "SELECT *
+                   -- ?
+                   FROM test_data.categories
+                   WHERE test_data.categories.name = {{category_name}};"]
+        (is (= [[1 "African"]]
+               (mt/rows
+                (qp/process-query
+                 {:database (mt/id)
+                  :type :native
+                  :native {:query query
+                           :template-tags {"category_name" {:type         :text
+                                                            :name         "category_name"
+                                                            :display-name "Category Name"}}}
+                  :parameters [{:type   :category
+                                :target [:variable [:template-tag "category_name"]]
+                                :value  "African"}]}))))))))
+
+(deftest ^:parallel select-question-mark-test
+  ;; broken in 0.8.3, fixed in 0.8.4
+  ;; https://github.com/metabase/metabase/issues/56690
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2290
+  (mt/test-driver :clickhouse
+    (testing "a query that selects a question mark and has a variable should work correctly"
+      (let [query "SELECT *, '?'
+                   FROM test_data.categories
+                   WHERE {{category_name}};"]
+        (is (= [[1 "African" "?"]]
+               (mt/rows
+                (qp/process-query
+                 {:database (mt/id)
+                  :type :native
+                  :native {:query query
+                           :template-tags {"category_name" {:name         "category_name"
+                                                            :display_name "Category Name"
+                                                            :type         "dimension"
+                                                            :widget-type  "string/contains"
+                                                            :options {:case-sensitive false}
+                                                            :dimension    [:field (mt/id :categories :name) nil]}}}
+                  :parameters [{:options {:case-sensitive false}
+                                :type   :string/contains
+                                :target [:dimension [:template-tag "category_name"]]
+                                :value  ["African"]}]}))))))))
+
 (deftest ^:parallel ternary-with-variable-test
   ;; broken in 0.8.4, fixed in 0.8.6
   ;; https://github.com/metabase/metabase/issues/56690
@@ -248,6 +297,33 @@
                 :parameters [{:type   :category
                               :target [:variable [:template-tag "category_name"]]
                               :value  "African"}]})))))))
+
+(deftest ^:parallel line-comment-block-comment-test
+  ;; broken in  0.8.4, fixed in 0.8.6
+  ;; https://github.com/metabase/metabase/issues/57149
+  ;; https://github.com/ClickHouse/clickhouse-java/issues/2338
+  (mt/test-driver :clickhouse
+    (testing "a query with a line comment followed by a block comment should work correctly"
+      (is (= [[1]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                 {:query "-- foo
+                          /* comment */
+                          select 1;"}))))))))
+
+#_(deftest ^:parallel subquery-with-cte-test
+    ;; TODO: enable these tests once the jdbc driver has been fix
+    ;; broken in 0.8.6, waiting for fix
+    ;; https://github.com/metabase/metabase/issues/59166
+    ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
+    (mt/test-driver :clickhouse
+      (testing "a query with a CTE in a subquery should work correctly"
+        (is (= [[9]]
+               (mt/rows
+                (qp/process-query
+                 (mt/native-query
+                   {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
 
 #_(deftest ^:parallel casted-params-test
     ;; TODO: enable these tests once the jdbc driver has been fixed
