@@ -224,6 +224,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # We have to use the latest version that does not have this issue https://github.com/docker/compose/pull/12752
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+        with:
+          version: latest
+
       - name: Retrieve uberjar artifact for ee
         uses: actions/download-artifact@v4
         with:
