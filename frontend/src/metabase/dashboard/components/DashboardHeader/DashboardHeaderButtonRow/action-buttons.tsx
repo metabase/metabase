@@ -20,33 +20,19 @@ import {
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
 
-import type { DashboardActionButton, DashboardActionKey } from "./types";
-
-export const DASHBOARD_ACTION = {
-  ADD_QUESTION: "ADD_QUESTION",
-  ADD_HEADING_OR_TEXT: "ADD_HEADING_OR_TEXT",
-  ADD_LINK_CARD: "ADD_LINK_CARD",
-  ADD_SECTION: "ADD_SECTION",
-  ADD_FILTER_PARAMETER: "ADD_FILTER_PARAMETER",
-  ADD_ACTION_ELEMENT: "ADD_ACTION_ELEMENT",
-  EXTRA_EDIT_BUTTONS_MENU: "EXTRA_EDIT_BUTTONS_MENU",
-  COPY_ANALYTICS_DASHBOARD: "COPY_ANALYTICS_DASHBOARD",
-  EDIT_DASHBOARD: "EDIT_DASHBOARD",
-  DASHBOARD_SHARING: "DASHBOARD_SHARING",
-  REFRESH_WIDGET: "REFRESH_WIDGET",
-  NIGHT_MODE_TOGGLE: "NIGHT_MODE_TOGGLE",
-  FULLSCREEN_TOGGLE: "FULLSCREEN_TOGGLE",
-  DASHBOARD_HEADER_ACTION_DIVIDER: "DASHBOARD_HEADER_ACTION_DIVIDER",
-  DASHBOARD_BOOKMARK: "DASHBOARD_BOOKMARK",
-  DASHBOARD_INFO: "DASHBOARD_INFO",
-  DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
-  FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
-} as const;
+import { ExportDashboardAsPdf } from "./ExportDashboardAsPdf";
+import { DASHBOARD_ACTION, type DashboardActionKey } from "./action-types";
+import type { DashboardActionButton } from "./types";
 
 export const dashboardActionButtons: Record<
   DashboardActionKey,
   DashboardActionButton
 > = {
+  // SDK Dashboard Button
+  [DASHBOARD_ACTION.DOWNLOAD_DASHBOARD_PDF]: {
+    component: ExportDashboardAsPdf,
+    enabled: ({ isEmbeddingSdk, dashboard }) => isEmbeddingSdk && !!dashboard,
+  },
   // ACTIONS WHEN EDITING DASHBOARD
   [DASHBOARD_ACTION.ADD_QUESTION]: {
     component: AddQuestionButton,
