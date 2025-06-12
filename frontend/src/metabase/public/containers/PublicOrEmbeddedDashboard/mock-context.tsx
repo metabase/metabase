@@ -2,45 +2,26 @@ import type { ComponentType, PropsWithChildren } from "react";
 import { noop } from "underscore";
 
 import {
+  type ContextReturned,
   DashboardContext,
-  type DashboardContextErrorState,
-  type DashboardContextOwnProps,
-  type DashboardContextOwnResult,
-  type DashboardContextProps,
-  type DashboardControls,
 } from "metabase/dashboard/context";
 import {
-  type ReduxProps,
   mapDispatchToProps,
   mapStateToProps,
 } from "metabase/dashboard/context/context.redux";
-import type { useDashboardFullscreen } from "metabase/dashboard/hooks";
-import type {
-  DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
-} from "metabase/dashboard/types";
 import { connect } from "metabase/lib/redux";
 
-export type MockDashboardContextProps = DashboardContextProps &
-  Partial<ReduxProps> &
-  Partial<DashboardContextErrorState> &
-  DashboardFullscreenControls & {
-    fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
-  } & DashboardRefreshPeriodControls;
+// The props that can be passed to override any part of ContextReturned
+// Redux props are optional since they're provided by the connector
+export type MockDashboardContextProps = Partial<
+  PropsWithChildren<ContextReturned>
+>;
 
-// Create a component that accepts all redux props and passes them into DashboardContext
+// This component receives all props (own + redux) and passes them to the provider
 const DashboardContextWithReduxProps = (
-  props: PropsWithChildren<
-    ReduxProps &
-      DashboardContextOwnProps &
-      DashboardContextOwnResult &
-      DashboardControls &
-      DashboardFullscreenControls & {
-        fullscreenRef: ReturnType<typeof useDashboardFullscreen>["ref"];
-      } & DashboardRefreshPeriodControls
-  >,
+  props: PropsWithChildren<ContextReturned>,
 ) => (
-  <DashboardContext.Provider value={{ error: null, ...props }}>
+  <DashboardContext.Provider value={props}>
     {props.children}
   </DashboardContext.Provider>
 );
@@ -49,21 +30,12 @@ const ConnectedDashboardContextWithReduxProps = connect(
   mapStateToProps,
   mapDispatchToProps,
   (stateProps, dispatchProps, ownProps) =>
-    // this is a bit of a hack to get the types to agree (since overridden functions of mapDispatch might
-    // have the correct type) and we have bigger fish to fry. so we can come back to this
     ({
       ...stateProps,
       ...dispatchProps,
       ...ownProps,
-    }) as unknown as ReduxProps &
-      DashboardContextOwnProps &
-      DashboardContextOwnResult &
-      DashboardControls,
-)(DashboardContextWithReduxProps) as ComponentType<
-  PropsWithChildren<
-    MockDashboardContextProps & DashboardContextOwnResult & Partial<ReduxProps>
-  >
->;
+    }) as unknown as ContextReturned,
+)(DashboardContextWithReduxProps) as ComponentType<MockDashboardContextProps>;
 
 /*
  * NOTE: DO NOT USE THIS IN REAL COMPONENTS. This is specifically for the storybook stories for the
@@ -76,26 +48,21 @@ const ConnectedDashboardContextWithReduxProps = connect(
  * */
 export const MockDashboardContext = ({
   children,
+  // Required fields from DashboardContextOwnResult
+  shouldRenderAsNightMode = false,
+  initialDashboardId,
   dashboardId,
-  parameterQueryParams,
-  onLoad,
-  onError,
+  // Required fields from DashboardContextOwnProps (except dashboardId)
+  parameterQueryParams = {},
+  onLoad = noop,
+  onError = noop,
+  onLoadWithoutCards = noop,
   navigateToNewCardFromDashboard = null,
-  // url params
-  isFullscreen = false,
-  onFullscreenChange = noop,
-  hasNightModeToggle = false,
-  onNightModeChange = noop,
-  isNightMode = false,
-  refreshPeriod = null,
-  setRefreshElapsedHook = noop,
-  onRefreshPeriodChange = noop,
+  // Required fields from DashboardControls
   background = true,
   bordered = true,
   titled = true,
   font = null,
-  theme = "light",
-  setTheme = noop,
   hideParameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
@@ -103,43 +70,58 @@ export const MockDashboardContext = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
+  // Required fields from DashboardContextErrorState
+  error = null,
+  // Required fields from DashboardFullscreenControls
+  isFullscreen = false,
+  onFullscreenChange = noop,
+  fullscreenRef = noop,
+  // Required fields from DashboardRefreshPeriodControls
+  refreshPeriod = null,
+  onRefreshPeriodChange = noop,
+  setRefreshElapsedHook = noop,
+  // Required fields from EmbedThemeControls
+  hasNightModeToggle = false,
+  onNightModeChange = noop,
+  isNightMode = false,
+  theme = "light",
+  setTheme = noop,
   ...reduxProps
-}: PropsWithChildren<MockDashboardContextProps>) => {
-  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
-
-  return (
-    <ConnectedDashboardContextWithReduxProps
-      initialDashboardId={dashboardId}
-      dashboardId={dashboardId}
-      parameterQueryParams={parameterQueryParams}
-      onLoad={onLoad}
-      onError={onError}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      isFullscreen={isFullscreen}
-      onFullscreenChange={onFullscreenChange}
-      hasNightModeToggle={hasNightModeToggle}
-      onNightModeChange={onNightModeChange}
-      isNightMode={isNightMode}
-      shouldRenderAsNightMode={shouldRenderAsNightMode}
-      refreshPeriod={refreshPeriod}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      background={background}
-      bordered={bordered}
-      titled={titled}
-      font={font}
-      theme={theme}
-      setTheme={setTheme}
-      hideParameters={hideParameters}
-      downloadsEnabled={downloadsEnabled}
-      autoScrollToDashcardId={autoScrollToDashcardId}
-      reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-      cardTitled={cardTitled}
-      getClickActionMode={getClickActionMode}
-      withFooter={withFooter}
-      {...reduxProps}
-    >
-      {children}
-    </ConnectedDashboardContextWithReduxProps>
-  );
-};
+}: MockDashboardContextProps) => (
+  <ConnectedDashboardContextWithReduxProps
+    shouldRenderAsNightMode={shouldRenderAsNightMode}
+    initialDashboardId={initialDashboardId}
+    dashboardId={dashboardId}
+    parameterQueryParams={parameterQueryParams}
+    onLoad={onLoad}
+    onError={onError}
+    onLoadWithoutCards={onLoadWithoutCards}
+    navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+    background={background}
+    bordered={bordered}
+    titled={titled}
+    font={font}
+    hideParameters={hideParameters}
+    downloadsEnabled={downloadsEnabled}
+    autoScrollToDashcardId={autoScrollToDashcardId}
+    reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+    cardTitled={cardTitled}
+    getClickActionMode={getClickActionMode}
+    withFooter={withFooter}
+    error={error}
+    isFullscreen={isFullscreen}
+    onFullscreenChange={onFullscreenChange}
+    fullscreenRef={fullscreenRef}
+    refreshPeriod={refreshPeriod}
+    onRefreshPeriodChange={onRefreshPeriodChange}
+    setRefreshElapsedHook={setRefreshElapsedHook}
+    hasNightModeToggle={hasNightModeToggle}
+    onNightModeChange={onNightModeChange}
+    isNightMode={isNightMode}
+    theme={theme}
+    setTheme={setTheme}
+    {...reduxProps}
+  >
+    {children}
+  </ConnectedDashboardContextWithReduxProps>
+);

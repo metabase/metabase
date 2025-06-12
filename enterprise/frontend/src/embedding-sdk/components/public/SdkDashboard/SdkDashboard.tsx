@@ -9,11 +9,9 @@ import {
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import {
-  type SdkDashboardDisplayProps,
-  useSdkDashboardParams,
-} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useSdkDashboardParams } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-types";
@@ -202,7 +200,7 @@ function SdkDashboardInnerWrapper({
   className,
   style,
   children,
-}: PropsWithChildren<Pick<SdkDashboardDisplayProps, "className" | "style">>) {
+}: PropsWithChildren<CommonStylingProps>) {
   const { fullscreenRef } = useDashboardContext();
 
   return (

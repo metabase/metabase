@@ -65,7 +65,7 @@ export type DashboardContextProps = DashboardContextOwnProps &
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type ContextReturned = DashboardContextOwnResult &
+export type ContextReturned = DashboardContextOwnResult &
   Omit<DashboardContextOwnProps, "dashboardId"> &
   ReduxProps &
   Required<DashboardControls> &
