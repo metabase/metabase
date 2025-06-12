@@ -1,11 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { Query } from "history";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { LeaveConfirmationModalContent } from "metabase/common/components/LeaveConfirmationModal";
-import Modal from "metabase/common/components/Modal";
+import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import {
   cancelEditingDashboard,
   fetchDashboard,
@@ -60,13 +58,13 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
-      setShowCancelWarning(true);
+      openModal();
     } else {
-      onCancel();
+      onConfirmCancel();
     }
   };
 
-  const onCancel = () => {
+  const onConfirmCancel = () => {
     dispatch(
       fetchDashboard({
         dashId: dashboard.id,
@@ -75,6 +73,7 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
       }),
     );
     dispatch(cancelEditingDashboard());
+    closeModal();
   };
 
   const getEditWarning = (dashboard: Dashboard) => {
@@ -139,12 +138,11 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
         }
       />
 
-      <Modal isOpen={showCancelWarning}>
-        <LeaveConfirmationModalContent
-          onAction={onCancel}
-          onClose={() => setShowCancelWarning(false)}
-        />
-      </Modal>
+      <LeaveConfirmModal
+        opened={modalOpened}
+        onConfirm={onConfirmCancel}
+        onClose={closeModal}
+      />
     </>
   );
 };
