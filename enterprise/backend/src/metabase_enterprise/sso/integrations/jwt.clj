@@ -50,6 +50,9 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-lastname
   (comp keyword sso-settings/jwt-attribute-lastname))
 
+(def ^:private ^{:arglists '([])} jwt-attribute-tenant
+  (comp keyword sso-settings/jwt-attribute-tenant))
+
 (def ^:private ^{:arglists '([])} jwt-attribute-groups
   (comp keyword sso-settings/jwt-attribute-groups))
 
@@ -63,7 +66,7 @@
          (jwt-attribute-email)
          (jwt-attribute-firstname)
          (jwt-attribute-lastname)
-         "tenant"
+         (jwt-attribute-tenant)
          registered-claims))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
