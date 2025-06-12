@@ -161,106 +161,107 @@
 ;; 2. custom actions (have their own configuration, but no inheritance (for now, Katya working on prod doc))
 ;;
 ;; Since we don't support configuration for (1) yet, this is only concerned with (2)
-#_(deftest configure-table-action-on-editable-on-dashboard-test
-    (let [req #(mt/user-http-request-full-response
-                (:user % :crowberto)
-                :post
-                "action/v2/configure"
-                (select-keys % [:action_id
-                                :scope
-                                :input]))]
-      (mt/with-premium-features #{:table-data-editing}
-        (mt/test-drivers #{:h2 :postgres}
-          (data-editing.tu/toggle-data-editing-enabled! true)
-          (with-open [test-table (data-editing.tu/open-test-table! {:id        'auto-inc-type
-                                                                    :text      [:text]
-                                                                    :int       [:int]
-                                                                    :timestamp [:timestamp]
-                                                                    :date      [:date]}
-                                                                   {:primary-key [:id]})]
+(deftest configure-table-action-on-editable-on-dashboard-test
+  (let [req #(mt/user-http-request-full-response
+              (:user % :crowberto)
+              :post
+              "action/v2/configure"
+              (select-keys % [:action_id
+                              :scope
+                              :input]))]
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (with-open [test-table (data-editing.tu/open-test-table! {:id        'auto-inc-type
+                                                                  :text      [:text]
+                                                                  :int       [:int]
+                                                                  :timestamp [:timestamp]
+                                                                  :date      [:date]}
+                                                                 {:primary-key [:id]})]
 
-            (mt/with-temp
-              [:model/Dashboard dashboard {}
-               :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
-                                              :visualization_settings
-                                              {:table_id @test-table
+          (mt/with-temp
+            [:model/Dashboard dashboard {}
+             :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
+                                            :visualization_settings
+                                            {:table_id @test-table
 
-                                               :table.columns
-                                               [{:name "int", :enabled true}
-                                                {:name "text", :enabled true}
-                                                {:name "timetamp", :enabled true}
+                                             :table.columns
+                                             [{:name "int", :enabled true}
+                                              {:name "text", :enabled true}
+                                              {:name "timetamp", :enabled true}
                                                ;; this signals date should not be shown in the grid
-                                                {:name "date", :enabled false}]
+                                              {:name "date", :enabled false}]
 
-                                               :editableTable.columns
-                                               ["int"
+                                             :editableTable.columns
+                                             ["int"
                                                ;; this signals text is not editable
-                                                #_"text"
-                                                "timestamp"
-                                                "date"]
+                                              #_"text"
+                                              "timestamp"
+                                              "date"]
 
-                                               :editableTable.enabledActions
+                                             :editableTable.enabledActions
                                               ;; We can fix this "unknown" when we move the action out of the dashcard json
                                               ;; See [[metabase.dashboards.api/create-or-fix-action-id]]
-                                               [{:id                "dashcard:unknown:1"
-                                                 :actionId          "table.row/create"
-                                                 :parameterMappings [;; because this is a CUSTOM actions
+                                             [{:id                "dashcard:unknown:1"
+                                               :actionId          "table.row/create"
+                                               :actionType        "data-grid/row-action"
+                                               :parameterMappings [;; because this is a CUSTOM actions
                                                                     ;; it might not even be editing the same table,
                                                                     ;; so we need to map the primary, unlike for
                                                                     ;; built-in actions which assume its pk->pk
-                                                                     {:parameter "id"
-                                                                      :sourceType "row-data"
-                                                                      :value      "TODO"}
+                                                                   {:parameter "id"
+                                                                    :sourceType "row-data"
+                                                                    :value      "TODO"}
 
-                                                                     {:parameterId "int"
-                                                                      :sourceType  "const"
-                                                                      :value       42}
-                                                                     {:parameterId       "text"
-                                                                      :sourceType        "row-data"
-                                                                      :sourceValueTarget "text"
-                                                                      :visibility        "readonly"}
-                                                                     {:parameterId "timestamp"
-                                                                      :visibility  "hidden"}]}]}}]
+                                                                   {:parameterId "int"
+                                                                    :sourceType  "const"
+                                                                    :value       42}
+                                                                   {:parameterId       "text"
+                                                                    :sourceType        "row-data"
+                                                                    :sourceValueTarget "text"
+                                                                    :visibility        "readonly"}
+                                                                   {:parameterId "timestamp"
+                                                                    :visibility  "hidden"}]}]}}]
 
               ;; insert a row for the row action
-              (mt/user-http-request :crowberto :post 200
-                                    (data-editing.tu/table-url @test-table)
-                                    {:rows [{:text "a very important string"}]})
+            (mt/user-http-request :crowberto :post 200
+                                  (data-editing.tu/table-url @test-table)
+                                  {:rows [{:text "a very important string"}]})
 
-              (testing "table actions on a dashcard"
-                (let [create-id "table.row/create"
-                      update-id "table.row/update"
-                      delete-id "table.row/delete"
+            (testing "table actions on a dashcard"
+              (let [create-id "table.row/create"
+                    update-id "table.row/update"
+                    delete-id "table.row/delete"
                       ;; Note, we're relying on this scope to fill in "unknown" on the action id
                       ;; But in either case, we're always meant to send this for undo/redo scope anyway.
-                      scope     {:dashcard-id (:id dashcard)}
+                    scope     {:dashcard-id (:id dashcard)}
 
                       ;; TODO build-in actions won't let you configure this
-                      expected-id-params []
+                    expected-id-params []
                       ;; params are reordered by editable (?)
-                      expected-row-params [{:id "int",  :readonly false}
-                                           {:id "text", :readonly true, :value "a very important string"}
+                    expected-row-params [{:id "int",  :readonly false}
+                                         {:id "text", :readonly true, :value "a very important string"}
                                            ;; date is hidden from the editable
-                                           #_{:id "date"}
+                                         #_{:id "date"}
                                            ;; timestamp is hidden in the row action
-                                           #_{:id "timestamp"}]]
+                                         #_{:id "timestamp"}]]
 
-                  (testing "without a table-id"
-                    (let [scope {:dashboard-id (:dashboard_id dashcard)}]
-                      (doseq [action-id [create-id update-id delete-id]]
-                        (testing action-id
-                          (is (=? {:status 400}
-                                  (req {:action_id action-id, :scope scope})))))))
+                (testing "without a table-id"
+                  (let [scope {:dashboard-id (:dashboard_id dashcard)}]
+                    (doseq [action-id [create-id update-id delete-id]]
+                      (testing action-id
+                        (is (=? {:status 400}
+                                (req {:action_id action-id, :scope scope})))))))
 
-                  (testing "create"
-                    (is (=? {:status 200
-                             :body   {:parameters []}}
-                            (req {:scope     scope
-                                  :action_id create-id
-                                  :input     {:id 1}}))))
+                (testing "create"
+                  (is (=? {:status 200
+                           :body   {:parameters []}}
+                          (req {:scope     scope
+                                :action_id create-id
+                                :input     {:id 1}}))))
 
-                  (testing "update"
-                    (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
+                (testing "update"
+                  (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
 
-                  (testing "delete"
-                    (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
+                (testing "delete"
+                  (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
