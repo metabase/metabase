@@ -26,7 +26,7 @@
                               :hosting
                               :llm-autodescription
                               :metabot-v3
-                              :ai_entity_analysis
+                              :ai-entity-analysis
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
