@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.util.json :as json]
@@ -41,13 +42,12 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
-;; some arbitrary limits (copied from ai-sql-generation/api.clj) - TODO: Make this a single method
 (def ^:private max-database-tables
   "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
-  400)
+  100)
 
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context, similar to ai-sql-generation but optimized for context size.
+  "Get database tables formatted for metabot context, similar to ai-sql-generation but optimized for the Metabot context.
   Returns tables in the format expected by metabot context."
   ([database-id]
    (database-tables-for-context database-id nil))
@@ -58,7 +58,14 @@
                                :db_id database-id
                                :active true
                                :visibility_type nil
-                               {:limit all-tables-limit})
+                               {:where    (mi/visible-filter-clause :model/Table
+                                                                    :id
+                                                                    {:user-id       api/*current-user-id*
+                                                                     :is-superuser? api/*is-superuser?*}
+                                                                    {:perms/view-data      :unrestricted
+                                                                     :perms/create-queries :query-builder-and-native})
+                                :order-by [[:view_count :desc]]
+                                :limit    all-tables-limit})
              tables (filter mi/can-read? tables)
              tables (t2/hydrate tables :fields)]
          (mapv (fn [{:keys [fields] :as table}]
@@ -78,7 +85,7 @@
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
-                  (if (and (= "native" (:type item))
+                  (if (and (:is_native item)
                            (get-in item [:query :database]))
                     (let [database-id (get-in item [:query :database])
                           tables (database-tables-for-context database-id)]
