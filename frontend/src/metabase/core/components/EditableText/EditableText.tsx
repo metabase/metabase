@@ -29,6 +29,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   isMultiline?: boolean;
   isDisabled?: boolean;
   isMarkdown?: boolean;
+  rows?: number;
   onChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
@@ -45,6 +46,7 @@ const EditableText = forwardRef(function EditableText(
     isMultiline = false,
     isDisabled = false,
     isMarkdown = false,
+    rows,
     onChange,
     onFocus,
     onBlur,
@@ -160,6 +162,7 @@ const EditableText = forwardRef(function EditableText(
           maxLength={maxLength}
           disabled={isDisabled}
           data-testid={dataTestId}
+          rows={rows}
           onFocus={onFocus}
           onBlur={handleBlur}
           onChange={handleChange}

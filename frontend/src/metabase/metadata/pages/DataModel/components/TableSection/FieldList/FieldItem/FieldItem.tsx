@@ -1,9 +1,16 @@
 import cx from "classnames";
 import { Link } from "react-router";
+import { t } from "ttag";
 
+import { useUpdateFieldMutation } from "metabase/api";
+import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { getFieldDisplayName } from "metabase/metadata/utils/field";
-import { Flex, Group, Icon, Text, rem } from "metabase/ui";
+import EditableText from "metabase/core/components/EditableText";
+import {
+  getFieldDisplayName,
+  getRawTableFieldId,
+} from "metabase/metadata/utils/field";
+import { Box, Flex, Group, Icon, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -12,43 +19,98 @@ import S from "./FieldItem.module.css";
 interface Props {
   active?: boolean;
   field: Field;
-  href?: string;
+  href: string;
 }
 
 export const FieldItem = ({ active, field, href }: Props) => {
+  const id = getRawTableFieldId(field);
+  const [updateField] = useUpdateFieldMutation();
+  const [sendToast] = useToast();
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
-  const label = getFieldDisplayName(field);
 
   return (
     <Flex
-      aria-label={label}
+      aria-label={field.display_name}
       bg={active ? "brand-lighter" : "bg-white"}
       c="text-medium"
       className={cx(S.field, {
         [S.active]: active,
       })}
-      component={href ? Link : undefined}
+      component={Link}
       direction="column"
-      gap="sm"
+      gap={rem(12)}
       justify="space-between"
       mih={rem(40)}
       pos="relative"
       px="md"
       py={rem(12)}
       role="listitem"
-      // "to" prop should be undefined when Link component is not used.
-      // Types do not account for conditional Link usage, hence cast.
-      to={href ? href : (undefined as unknown as string)}
+      to={href}
       w="100%"
       wrap="nowrap"
+      onClick={(event) => {
+        // EditableText component breaks a11y with the programmatic
+        // event.currentTarget.click() call. The click event bubbles
+        // to this Link component. This is problematic e.g. when
+        // tabbing out of the EditableText component.
+
+        if (!event.isTrusted) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
     >
       <Group flex="0 0 auto" gap="sm" wrap="nowrap">
-        <Icon className={S.icon} name={icon} />
+        <Icon className={S.icon} flex="0 0 auto" name={icon} />
 
-        <Text flex="1" fw="bold" lh="normal">
-          {label}
-        </Text>
+        <Box
+          className={S.input}
+          component={EditableText}
+          flex="1"
+          fw="bold"
+          initialValue={field.display_name}
+          lh="normal"
+          m={rem(-2)}
+          maxLength={254}
+          miw={0}
+          p={rem(1)}
+          placeholder={t`Give this field a name`}
+          rows={1}
+          onChange={async (name) => {
+            if (field.display_name !== name) {
+              await updateField({ id, display_name: name });
+
+              sendToast({
+                icon: "check",
+                message: t`Display name for ${name} updated`,
+              });
+            }
+          }}
+        />
       </Group>
+
+      <Box
+        className={S.input}
+        component={EditableText}
+        h="auto"
+        initialValue={field.description}
+        isOptional
+        lh="normal"
+        m={rem(-2)}
+        p={rem(1)}
+        placeholder={t`No description yet`}
+        rows={1}
+        onChange={async (description) => {
+          if ((field.description ?? "") !== description) {
+            await updateField({ id, description });
+
+            sendToast({
+              icon: "check",
+              message: t`Description for ${getFieldDisplayName(field)} updated`,
+            });
+          }
+        }}
+      />
     </Flex>
   );
 };

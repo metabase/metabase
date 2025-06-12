@@ -9,6 +9,7 @@ interface Props {
   descriptionPlaceholder: string;
   name: string;
   nameIcon: IconName;
+  nameMaxLength?: number;
   namePlaceholder: string;
   onDescriptionChange: (description: string) => void;
   onNameChange: (name: string) => void;
@@ -19,6 +20,7 @@ export const NameDescriptionInput = ({
   descriptionPlaceholder,
   name,
   nameIcon,
+  nameMaxLength,
   namePlaceholder,
   onDescriptionChange,
   onNameChange,
@@ -51,6 +53,7 @@ export const NameDescriptionInput = ({
           const isNewValueEmpty = newValue.trim().length === 0;
           return isNewValueEmpty ? name : newValue.trim();
         }}
+        maxLength={nameMaxLength}
         placeholder={namePlaceholder}
         required
         size="lg"

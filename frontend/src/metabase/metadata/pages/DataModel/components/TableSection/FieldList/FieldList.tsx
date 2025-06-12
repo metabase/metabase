@@ -9,7 +9,7 @@ import { FieldItem } from "./FieldItem";
 
 interface Props {
   activeFieldId?: FieldId;
-  getFieldHref?: (fieldId: FieldId) => string;
+  getFieldHref: (fieldId: FieldId) => string;
   table: Table;
 }
 
@@ -27,7 +27,7 @@ export const FieldList = ({ activeFieldId, getFieldHref, table }: Props) => {
           <FieldItem
             active={id === activeFieldId}
             field={field}
-            href={getFieldHref?.(id)}
+            href={getFieldHref(id)}
             key={id}
           />
         );

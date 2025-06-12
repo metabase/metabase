@@ -50,6 +50,7 @@ export const TableSection = ({ params, table }: Props) => {
           descriptionPlaceholder={t`Give this table a description`}
           name={table.display_name}
           nameIcon="table2"
+          nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
           onDescriptionChange={async (description) => {
             await updateTable({ id: table.id, description });

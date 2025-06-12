@@ -13,7 +13,8 @@
   color: var(--mb-color-brand);
 }
 
-.label {
-  overflow: hidden;
-  overflow-wrap: break-word;
+.input {
+  textarea {
+    cursor: text;
+  }
 }
