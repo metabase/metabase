@@ -6,7 +6,7 @@ import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Stack } from "metabase/ui";
+import { Stack, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { FieldId, Table } from "metabase-types/api";
 
@@ -24,7 +24,7 @@ export const FieldList = ({ activeFieldId, getFieldHref, table }: Props) => {
   }, [table.fields]);
 
   return (
-    <Stack gap={12}>
+    <Stack gap={rem(12)}>
       {fields.map((field) => {
         const id = getRawTableFieldId(field);
 

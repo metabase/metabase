@@ -5,7 +5,7 @@ import {
   type DragEndEvent,
   SortableList,
 } from "metabase/core/components/Sortable";
-import { Stack } from "metabase/ui";
+import { Stack, rem } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
@@ -14,14 +14,12 @@ import { getId, getItems, sortItems } from "./utils";
 
 interface Props {
   activeFieldId?: FieldId;
-  getFieldHref?: (fieldId: FieldId) => string;
   table: Table;
   onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
 }
 
 export const SortableFieldList = ({
   activeFieldId,
-  getFieldHref,
   table,
   onChange,
 }: Props) => {
@@ -37,7 +35,7 @@ export const SortableFieldList = ({
   };
 
   return (
-    <Stack gap={12}>
+    <Stack gap={rem(12)}>
       <SortableList
         getId={getId}
         items={sortedItems}
@@ -45,7 +43,6 @@ export const SortableFieldList = ({
           <SortableFieldItem
             active={item.id === activeFieldId}
             disabled={isDragDisabled}
-            href={getFieldHref?.(item.id)}
             icon={item.icon}
             id={id}
             key={id}

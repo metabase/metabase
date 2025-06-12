@@ -127,7 +127,6 @@ export const TableSection = ({ params, table }: Props) => {
           {isSorting && (
             <SortableFieldList
               activeFieldId={fieldId}
-              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
               table={table}
               onChange={async (fieldOrder) => {
                 await updateTableFieldsOrder({
