@@ -5,6 +5,12 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
+;; TODO High level stuff we should do:
+;; 0. Make sure we have tests to cover every single step taken in our core user journeys.
+;; 1. Cover :create-or-update as well.
+;; 2. DRY up or otherwise streamline how we construct these scenarios - hard to see the forest for the boilerplate.
+;; 3. Consolidate test cases between /configure, /tmp-model, and /execute
+
 ;; Important missing tests
 (comment
   configure-saved-action-on-editable-on-dashboard-test
@@ -201,19 +207,18 @@
                                               "date"]
 
                                              :editableTable.enabledActions
-                                              ;; We can fix this "unknown" when we move the action out of the dashcard json
-                                              ;; See [[metabase.dashboards.api/create-or-fix-action-id]]
-                                             [{:id                "dashcard:unknown:1"
-                                               :actionId          "table.row/create"
+                                              ;; See [[metabase.dashboards.api/create-or-fix-action-id]] for why this is unknown.
+                                             [{:id                "dashcard:unknown:update"
+                                               :actionId          "table.row/update"
                                                :actionType        "data-grid/row-action"
-                                               :parameterMappings [;; because this is a CUSTOM actions
-                                                                    ;; it might not even be editing the same table,
-                                                                    ;; so we need to map the primary, unlike for
-                                                                    ;; built-in actions which assume its pk->pk
-                                                                   {:parameter "id"
+                                               :enabled           true
+                                               :parameterMappings [;; because this is a CUSTOM action,
+                                                                   ;; it might not even be editing the same table,
+                                                                   ;; so we need to map the primary, unlike for
+                                                                   ;; built-in actions which assume its pk->pk
+                                                                   {:parameterId "id"
                                                                     :sourceType "row-data"
                                                                     :value      "TODO"}
-
                                                                    {:parameterId "int"
                                                                     :sourceType  "constant"
                                                                     :value       42}
@@ -230,35 +235,18 @@
                                   {:rows [{:text "a very important string"}]})
 
             (testing "table actions on a dashcard"
-              (let [create-id "table.row/create"
-                    update-id "table.row/update"
-                    delete-id "table.row/delete"
-                      ;; Note, we're relying on this scope to fill in "unknown" on the action id
-                      ;; But in either case, we're always meant to send this for undo/redo scope anyway.
-                    scope     {:dashcard-id (:id dashcard)}
-
-                      ;; TODO build-in actions won't let you configure this
-                    expected-id-params []
-                      ;; params are reordered by editable (?)
-                    expected-row-params [{:id "int",  :readonly false}
+              (let [expected-row-params [{:id "int", :readonly false}
                                          {:id "text", :readonly true, :value "a very important string"}
-                                           ;; date is hidden from the editable
+                                         ;; date is hidden from the editable
                                          #_{:id "date"}
-                                           ;; timestamp is hidden in the row action
+                                         ;; timestamp is hidden in the row action
                                          #_{:id "timestamp"}]]
 
-                (testing "create"
-                  (is (=? {:status 200
-                           :body   {:parameters []}}
-                          (req {:action_id create-id
-                                :scope     scope
-                                :input     {:id 1}}))))
-
-                (testing "update"
-                  (is (=? {:status 200} (req {:action_id update-id, :scope scope}))))
-
-                (testing "delete"
-                  (is (=? {:status 200} (req {:action_id delete-id, :scope scope}))))))))))))
+                (is (=? {:status 200
+                         :body   {:parameters expected-row-params}}
+                        (req {:action_id "dashcard:unknown:update"
+                              :scope     {:dashcard-id (:id dashcard)}
+                              :input     {:id 1}})))))))))))
 
 ;; This covers a more exotic case where we're coming back to edit the config for an action before it has been saved.
 ;; This should cover both the cases where it has never been saved, or where it's simply been edited at least once since
@@ -305,7 +293,6 @@
                   ;; This gives us the format that the in-memory action looks like in the FE.
                   wrap-action    (fn [packed-id]
                                    {:packed-id packed-id
-                                    ;:actionType "data-grid/row-action"
                                     :param-map (->> pending-config
                                                     :parameters
                                                     ;; TODO we won't need to do this once we change the schema for
