@@ -28,7 +28,7 @@
   "Returns an error message if a row does not have a valid locale."
   [_state index {:keys [locale]}]
   (when (not (i18n/available-locale? locale))
-    (tru "Row {0}: Invalid locale" (adjust-index index))))
+    (tru "Row {0}: Invalid locale: {1}" (adjust-index index) locale)))
 
 (defn- collect-duplication-error
   "Returns an error message if this translation key has already been seen in the file. A translation key is a string
@@ -50,7 +50,10 @@
   "Formats a row to be inserted into the content translation table. Locales are standardized, and all fields are trimmed. Extra fields are included as well."
   [row]
   (let [[locale msgid msgstr & extras] row
-        formatted-locale (i18n/normalized-locale-string (str/trim locale))
+        normalized-locale (i18n/normalized-locale-string (str/trim locale))
+        formatted-locale (if (nil? normalized-locale)
+                           (str/trim locale)
+                           normalized-locale)
         formatted-msgid (str/trim msgid)
         formatted-msgstr (str/trim msgstr)]
     (into [formatted-locale formatted-msgid formatted-msgstr]
