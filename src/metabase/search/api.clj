@@ -183,15 +183,17 @@
   Test endpoint for visualization-specific search filtering."
   [_route-params
    _query-params
-   {:keys                       [q limit models display include_dashboard_questions visualization_context include_metadata]}
+   {:keys                       [q limit models display exclude_display include_dashboard_questions visualization_context include_metadata has_temporal_dimensions]}
    :- [:map
        [:q                            {:optional true} [:maybe ms/NonBlankString]]
        [:limit                        {:default 10} ms/PositiveInt]
        [:models                       {:default ["card" "dataset" "metric"]}
         [:vector [:enum "card" "dataset" "metric"]]]
        [:display                      {:optional true} [:maybe [:vector ms/NonBlankString]]]
+       [:exclude_display              {:optional true} [:maybe ms/NonBlankString]]
        [:include_dashboard_questions  {:default true} :boolean]
        [:include_metadata             {:default true} :boolean]
+       [:has_temporal_dimensions      {:optional true} [:maybe :boolean]]
        [:visualization_context        {:optional true}
         [:map
          [:display string?]
@@ -210,6 +212,8 @@
                      :offset                       0
                      :search-string                q
                      :display                      (set display)
+                     :exclude-display              exclude_display
+                     :has-temporal-dimensions?     has_temporal_dimensions
                      :include-dashboard-questions? include_dashboard_questions
                      :include-metadata?            include_metadata})]
 
@@ -218,6 +222,7 @@
           {:keys [data]} search-results]
 
       (log/info " ~$~$~$~ Search returned" (count data) "results")
+      (log/info " ~$~$~$~ :exclude-display " exclude_display)
 
       ;; Apply visualization compatibility filtering if context provided
       (if visualization_context
@@ -241,6 +246,8 @@
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
   - `display`: search for cards/models with specific display types
+  - `exclude_display`: exclude cards/models with a specific display type
+  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
@@ -257,7 +264,9 @@
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
+    exclude-display                     :exclude_display
     filter-items-in-personal-collection :filter_items_in_personal_collection
+    has-temporal-dimensions             :has_temporal_dimensions
     include-dashboard-questions         :include_dashboard_questions
     last-edited-at                      :last_edited_at
     last-edited-by                      :last_edited_by
@@ -276,6 +285,8 @@
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+       [:exclude_display                     {:optional true} [:maybe ms/NonBlankString]]
+       [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
@@ -296,6 +307,7 @@
                 :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
                 :display                             (set display)
+                :exclude-display                     exclude-display
                 :is-impersonated-user?               (perms/impersonated-user?)
                 :is-sandboxed-user?                  (perms/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
