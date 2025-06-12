@@ -2,6 +2,7 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ContentTranslationConfiguration } from "./components";
+import { contentTranslationEndpoints } from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
   shouldTranslateFieldValuesOfColumn,
@@ -19,10 +20,8 @@ if (hasPremiumFeature("content_translation")) {
     shouldTranslateFieldValuesOfColumn,
     useTranslateFieldValuesInHoveredObject,
     useTranslateSeries,
-    // This gets overwritten in static embedding
-    contentTranslationDictionaryUrl: null,
     setEndpoints: (encodedToken: string) => {
-      PLUGIN_CONTENT_TRANSLATION.contentTranslationDictionaryUrl = `/api/ee/embedded-content-translation/dictionary/${encodedToken}`;
+      contentTranslationEndpoints.getDictionary = `/api/ee/embedded-content-translation/dictionary/${encodedToken}`;
     },
   });
 }

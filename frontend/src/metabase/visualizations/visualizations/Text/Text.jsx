@@ -48,7 +48,7 @@ export function Text({
   const [textValue, setTextValue] = useState(settings.text);
 
   const tc = useTranslateContent();
-  const translatedText = useMemo(() => tc(settings.text), [settings.text, tc]);
+  const translatedText = tc(settings.text);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
