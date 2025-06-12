@@ -64,11 +64,11 @@
                                 ;;      staging and beta users.
                                 ;;      for now it doesn't tell you the type or the possible values, BUT maybe we want the wrapping
                                 ;;      component to know that (it just doesn't get saved)
-                                :parameters [{:id "param-a", :sourceType "ask-user", :sourceTypeTarget "a"}
-                                             {:id "param-b", :sourceType "ask-user", :sourceTypeTarget "b"}
-                                             {:id "param-c", :sourceType "ask-user", :sourceTypeTarget "c"}
-                                             {:id "param-d", :sourceType "ask-user", :sourceTypeTarget "d"}
-                                             {:id "param-e", :sourceType "ask-user", :sourceTypeTarget "e"}]}}
+                                :parameters [{:id "param-a", :sourceType "ask-user", :sourceValueTarget "a"}
+                                             {:id "param-b", :sourceType "ask-user", :sourceValueTarget "b"}
+                                             {:id "param-c", :sourceType "ask-user", :sourceValueTarget "c"}
+                                             {:id "param-d", :sourceType "ask-user", :sourceValueTarget "d"}
+                                             {:id "param-e", :sourceType "ask-user", :sourceValueTarget "e"}]}}
                       (req {:scope     {:model-id (:id model)
                                         :table-id (:id table)}
                             :action_id {:action-id (:id action)}}))))))))))
@@ -79,15 +79,15 @@
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/toggle-data-editing-enabled! true)
       (testing "saved actions"
-        (let [expected-id-params  [{:id "id"         :sourceType "ask-user" :sourceTypeTarget "id"}]
-              expected-row-params [{:id "user_id"    :sourceType "ask-user" :sourceTypeTarget "user_id"}
-                                   {:id "product_id" :sourceType "ask-user" :sourceTypeTarget "product_id"}
-                                   {:id "subtotal"   :sourceType "ask-user" :sourceTypeTarget "subtotal"}
-                                   {:id "tax"        :sourceType "ask-user" :sourceTypeTarget "tax"}
-                                   {:id "total"      :sourceType "ask-user" :sourceTypeTarget "total"}
-                                   {:id "discount"   :sourceType "ask-user" :sourceTypeTarget "discount"}
-                                   {:id "created_at" :sourceType "ask-user" :sourceTypeTarget "created_at"}
-                                   {:id "quantity"   :sourceType "ask-user" :sourceTypeTarget "quantity"}]
+        (let [expected-id-params  [{:id "id"         :sourceType "ask-user" :sourceValueTarget "id"}]
+              expected-row-params [{:id "user_id"    :sourceType "ask-user" :sourceValueTarget "user_id"}
+                                   {:id "product_id" :sourceType "ask-user" :sourceValueTarget "product_id"}
+                                   {:id "subtotal"   :sourceType "ask-user" :sourceValueTarget "subtotal"}
+                                   {:id "tax"        :sourceType "ask-user" :sourceValueTarget "tax"}
+                                   {:id "total"      :sourceType "ask-user" :sourceValueTarget "total"}
+                                   {:id "discount"   :sourceType "ask-user" :sourceValueTarget "discount"}
+                                   {:id "created_at" :sourceType "ask-user" :sourceValueTarget "created_at"}
+                                   {:id "quantity"   :sourceType "ask-user" :sourceValueTarget "quantity"}]
               action-kind->expected-params {"row/create" expected-row-params
                                             "row/update" (concat expected-id-params expected-row-params)
                                             "row/delete" expected-id-params}]
@@ -119,11 +119,11 @@
 
         (let [;; TODO the form for configuring a row action will need to know that ID is meant to be "locked" to
               ;;      the pk of the table underlying the data-grid.
-              expected-id-params   [{:id "field-id"        :sourceType "ask-user" :sourceTypeTarget "id"}]
-              expected-row-params  [{:id "field-text"      :sourceType "ask-user" :sourceTypeTarget "text"}
-                                    {:id "field-int"       :sourceType "ask-user" :sourceTypeTarget "int"}
-                                    {:id "field-timestamp" :sourceType "ask-user" :sourceTypeTarget "timestamp"}
-                                    {:id "field-date"      :sourceType "ask-user" :sourceTypeTarget "date"}]]
+              expected-id-params   [{:id "field-id"        :sourceType "ask-user" :sourceValueTarget "id"}]
+              expected-row-params  [{:id "field-text"      :sourceType "ask-user" :sourceValueTarget "text"}
+                                    {:id "field-int"       :sourceType "ask-user" :sourceValueTarget "int"}
+                                    {:id "field-timestamp" :sourceType "ask-user" :sourceValueTarget "timestamp"}
+                                    {:id "field-date"      :sourceType "ask-user" :sourceValueTarget "date"}]]
 
           (testing "table actions"
             (let [{create-id "table.row/create"
@@ -266,3 +266,74 @@
 
                 (testing "delete"
                   (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
+
+;; This covers a more exotic case where we're coming back to edit the config for
+;; This will also cover the case where we're making a second round of changes to an existing dashcard's action before
+;; saving.
+(deftest configure-pending-table-action-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (with-open [test-table (data-editing.tu/open-test-table! {:id        'auto-inc-type
+                                                                :text      [:text]
+                                                                :int       [:int]
+                                                                :timestamp [:timestamp]
+                                                                :date      [:date]}
+                                                               {:primary-key [:id]})]
+
+        (let [;; TODO the form for configuring a row action will need to know that ID is meant to be "locked" to
+              ;;      the pk of the table underlying the data-grid.
+              expected-id-params   [{:id "field-id"        :sourceType "row-data" :sourceValueTarget "id"}]
+              expected-row-params  [{:id "field-text"      :sourceType "row-data" :sourceValueTarget "text"}
+                                    {:id "field-int"       :sourceType "ask-user" :sourceValueTarget "int"}
+                                    {:id "field-timestamp" :sourceType "ask-user" :sourceValueTarget "timestamp"}
+                                    {:id "field-date"      :sourceType "ask-user" :sourceValueTarget "date"}]]
+
+          (testing "table actions"
+            (let [{create-id "table.row/create"
+                   update-id "table.row/update"
+                   delete-id "table.row/delete"} (->> (mt/user-http-request-full-response
+                                                       :crowberto
+                                                       :get
+                                                       "action/v2/tmp-action")
+                                                      :body :actions
+                                                      (filter #(= @test-table (:table_id %)))
+                                                      (u/index-by :kind :id))
+                  pending-config {:parameters
+                                  [;; because this is a CUSTOM actions
+                                   ;; it might not even be editing the same table,
+                                   ;; so we need to map the primary, unlike for
+                                   ;; built-in actions which assume its pk->pk
+                                   {:parameterId  "id",       :sourceType "row-data"}
+                                   ;; TODO this might be a string, check FE
+                                   {:parameterId "int",       :sourceType "const", :value 42}
+                                   {:parameterId "text",      :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                   {:parameterId "timestamp", :visibility "hidden"}]}
+                  ;; This gives us the format that the in-memory action looks like in the FE.
+                  wrap-action    (fn [packed-id]
+                                   {:packed-id packed-id
+                                    ;:actionType "data-grid/row-action"
+                                    :param-map (->> pending-config
+                                                    :parameters
+                                                    ;; TODO we won't need to do this once we change the schema for
+                                                    ;;      unified-action
+                                                    (u/index-by :parameterId #(dissoc % :parameterId)))})]
+              (let [scope {:table-id @test-table}]
+                (testing "create"
+                  (is (=? {:title      (mt/malli=? :string)
+                           :parameters expected-row-params}
+                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                                {:scope     scope
+                                                 :action_id (wrap-action create-id)}))))
+                (testing "update"
+                  (is (=? {:title      (mt/malli=? :string)
+                           :parameters (concat expected-id-params expected-row-params)}
+                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                                {:scope     scope
+                                                 :action_id (wrap-action update-id)}))))
+                (testing "delete"
+                  (is (=? {:title      (mt/malli=? :string)
+                           :parameters expected-id-params}
+                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                                {:scope     scope
+                                                 :action_id (wrap-action delete-id)}))))))))))))

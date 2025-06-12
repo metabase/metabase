@@ -244,17 +244,21 @@
    [:map {:closed true}
     [:inner-action ::unified-action.base]
     ;; TODO type our mappings
-    [:mapping [:maybe :map]]
+    [:mapping {:optional true} [:maybe :map]]
     [:param-map :map]
     ;; TODO generalize so we can support grids outside of dashboards
-    [:dashcard-id ms/PositiveInt]]])
+    [:dashcard-id {:optional true} ms/PositiveInt]]])
 
 (mu/defn- fetch-unified-action :- ::unified-action
   "Resolve various types of action id into a semantic map which is easier to dispatch on."
   [scope :- ::types/scope.hydrated
    raw-id :- [:or :map :string ms/NegativeInt ms/PositiveInt]]
   (cond
-    (map? raw-id)     raw-id
+    (map? raw-id) (if-let [packed-id (:packed-id raw-id)]
+                    (merge
+                     {:inner-action (fetch-unified-action scope packed-id)}
+                     (dissoc raw-id :packed-id))
+                    raw-id)
     (pos-int? raw-id) {:action-id raw-id}
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
@@ -276,6 +280,7 @@
                              unified     (fetch-unified-action scope inner-id)
                              action-type (:actionType viz-action "data-grid/row-action")
                              mapping     (:mapping viz-action)
+                             ;; TODO we should do this *later* because it's lossy - we lose the configured ordering.
                              param-map   (->> (:parameterMappings viz-action {})
                                               (u/index-by :parameterId #(dissoc % :parameterId))
                                               walk/keywordize-keys)]
