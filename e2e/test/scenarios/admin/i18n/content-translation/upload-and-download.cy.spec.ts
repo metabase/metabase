@@ -202,7 +202,8 @@ describe("scenarios > admin > localization > content translation", () => {
       it("rejects invalid CSV", () => {
         cy.visit("/admin/settings/localization");
         const validCSV = getCSVWithHeaderRow(germanFieldNames);
-        const invalidCSV = validCSV + "!";
+        const invalidCSV = validCSV + '\nde,Price,"Preis"X';
+
         cy.get("#content-translation-dictionary-upload-input").selectFile(
           {
             contents: Cypress.Buffer.from(invalidCSV),
