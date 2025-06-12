@@ -5,9 +5,14 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Button, type ButtonProps, Icon, TextInput } from "metabase/ui";
-//TODO: Fix Me
-import { formatUserAttribute } from "metabase-enterprise/sandboxes/utils";
+import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  Button,
+  type ButtonProps,
+  Icon,
+  TextInput,
+  type TextInputProps,
+} from "metabase/ui";
 
 type DefaultRenderInputProps = {
   value: MappingValue;
@@ -15,7 +20,10 @@ type DefaultRenderInputProps = {
   placeholder?: string;
   error?: boolean | string;
   disabled?: boolean;
-};
+} & Omit<
+  TextInputProps,
+  "value" | "onChange" | "placeholder" | "error" | "disabled"
+>;
 
 const DefaultRenderInput = ({
   value,
@@ -23,6 +31,7 @@ const DefaultRenderInput = ({
   placeholder,
   error = false,
   disabled = false,
+  ...rest
 }: DefaultRenderInputProps) => (
   <TextInput
     value={value || ""}
@@ -30,6 +39,7 @@ const DefaultRenderInput = ({
     onChange={(e) => onChange?.(e.target.value)}
     error={error}
     disabled={disabled}
+    {...rest}
   />
 );
 
@@ -37,7 +47,7 @@ type MappingValue = string;
 type MappingType = Record<string, MappingValue>;
 
 export interface MappingEditorProps {
-  disabledValues?: MappingType;
+  disabledValues?: MappingEditorEntry[];
   value: MappingType;
   onChange: (val: MappingType) => void;
   onError?: (val: boolean) => void;
@@ -57,15 +67,16 @@ export interface MappingEditorProps {
   swapKeyAndValue?: boolean;
 }
 
-type Entry = {
+export type MappingEditorEntry = {
   key: string;
   value: string;
+  keyOpts?: Omit<DefaultRenderInputProps, "value">;
 };
 
-const buildEntries = (mapping: MappingType): Entry[] =>
+const buildEntries = (mapping: MappingType): MappingEditorEntry[] =>
   Object.entries(mapping).map(([key, value]) => ({ key, value }));
 
-const buildMapping = (entries: Entry[]): MappingType =>
+const buildMapping = (entries: MappingEditorEntry[]): MappingType =>
   entries.reduce((memo: MappingType, { key, value }) => {
     if (key) {
       memo[key] = value;
@@ -73,22 +84,22 @@ const buildMapping = (entries: Entry[]): MappingType =>
     return memo;
   }, {});
 
-const entryError = (entries: Entry[], key: string) => {
+const entryError = (entries: MappingEditorEntry[], key: string) => {
   if (entries.filter((e) => e.key === key).length > 1) {
     return t`Attribute keys can't have the same name`;
   }
-  if (formatUserAttribute(key) !== key) {
-    return t`This is restricted key`;
+  if (PLUGIN_ADMIN_USER_FORM_FIELDS.formatUserAttribute(key) !== key) {
+    return t`This is a restricted key`;
   }
   return false;
 };
 
-const hasError = (entries: Entry[]) => {
+const hasError = (entries: MappingEditorEntry[]) => {
   return entries.some(({ key }) => entryError(entries, key));
 };
 
 export const MappingEditor = ({
-  disabledValues: disabledMapping = {},
+  disabledValues: disabledEntries = [],
   value: mapping,
   onChange,
   onError,
@@ -107,10 +118,11 @@ export const MappingEditor = ({
   addButtonProps,
   swapKeyAndValue,
 }: MappingEditorProps) => {
-  const [entries, setEntries] = useState<Entry[]>(buildEntries(mapping));
-  const disabledEntries = buildEntries(disabledMapping);
+  const [entries, setEntries] = useState<MappingEditorEntry[]>(
+    buildEntries(mapping),
+  );
 
-  const handleChange = (newEntries: Entry[]) => {
+  const handleChange = (newEntries: MappingEditorEntry[]) => {
     setEntries(newEntries);
     if (onError && hasError(newEntries)) {
       onError(hasError(newEntries));
@@ -131,10 +143,11 @@ export const MappingEditor = ({
         </thead>
       ) : null}
       <tbody>
-        {disabledEntries.map(({ key, value }, index) => {
+        {disabledEntries.map(({ key, value, keyOpts }, index) => {
           const keyInput = renderKeyInput({
             value: key,
             disabled: true,
+            ...keyOpts,
           });
           const valueInput = renderValueInput({
             value: value,
@@ -220,18 +233,18 @@ export const MappingEditor = ({
   );
 };
 
-const addEntry = (entries: Entry[]) => {
+const addEntry = (entries: MappingEditorEntry[]) => {
   return [...entries, { key: "", value: "" }];
 };
 
-const removeEntry = (entries: Entry[], index: number) => {
+const removeEntry = (entries: MappingEditorEntry[], index: number) => {
   const entriesCopy = [...entries];
   entriesCopy.splice(index, 1);
   return entriesCopy;
 };
 
 const replaceEntryValue = (
-  entries: Entry[],
+  entries: MappingEditorEntry[],
   index: number,
   newValue: MappingValue,
 ) => {
@@ -240,7 +253,11 @@ const replaceEntryValue = (
   return newEntries;
 };
 
-const replaceEntryKey = (entries: Entry[], index: number, newKey: string) => {
+const replaceEntryKey = (
+  entries: MappingEditorEntry[],
+  index: number,
+  newKey: string,
+) => {
   const newEntries = [...entries];
   newEntries[index].key = newKey;
   return newEntries;

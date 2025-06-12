@@ -13,6 +13,10 @@ import Link from "metabase/core/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import { Form, FormProvider, FormSelect } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import {
+  getSelectDataForUserAttributes,
+  renderUserAttributesForSelect,
+} from "metabase-enterprise/sandboxes/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttribute } from "metabase-types/api";
 
@@ -22,7 +26,6 @@ import {
   ImpersonationDescription,
   ImpersonationModalViewRoot,
 } from "./ImpersonationModalView.styled";
-import { getSelectDataForUserAttributes } from "metabase-enterprise/sandboxes/utils";
 
 const ROLE_ATTRIBUTION_MAPPING_SCHEMA = Yup.object({
   attribute: Yup.string().required(Errors.required).default(""),
@@ -126,6 +129,7 @@ export const ImpersonationModalView = ({
                 label={t`User attribute`}
                 data={attributeOptions}
                 mb="1.25rem"
+                renderOption={renderUserAttributesForSelect}
               />
 
               <ImpersonationWarning database={database} />

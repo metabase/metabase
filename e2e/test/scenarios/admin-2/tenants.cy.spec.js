@@ -11,7 +11,7 @@ describe("Tenants - management", () => {
 
     cy.findByRole("link", { name: /gear/ }).click();
 
-    H.modal().findByRole("textbox", { name: "User Strategy" }).click();
+    H.modal().findByRole("textbox", { name: "User strategy" }).click();
     H.popover().findByText("Multi tenant").click();
     H.modal().button("Close").click();
 
@@ -23,13 +23,13 @@ describe("Tenants - management", () => {
     H.modal().within(() => {
       cy.findByRole("textbox", { name: "Display name" }).type("Parrot");
       cy.findByRole("textbox", { name: "Slug" }).should("have.value", "parrot");
-      cy.button("Create").click;
+      cy.button("Create").click();
     });
 
     cy.findByRole("button", { name: "New tenant" }).click();
     H.modal().within(() => {
       cy.findByRole("textbox", { name: "Display name" }).type("Eagle");
-      cy.button("Create").click;
+      cy.button("Create").click();
     });
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -40,7 +40,7 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: "External Users" }).click();
     cy.button("Invite someone").click();
 
-    H.modal(() => {
+    H.modal().within(() => {
       cy.findByRole("textbox", { name: "First name" }).type("Test");
       cy.findByRole("textbox", { name: "Last name" }).type("User");
       cy.findByRole("textbox", { name: "Email" }).type("test.user@email.com");
@@ -48,18 +48,20 @@ describe("Tenants - management", () => {
       cy.findByRole("textbox", { name: "Tenant" }).click();
     });
 
-    H.popover(() => {
+    H.popover().within(() => {
       cy.findByText("Parrot").should("exist");
       cy.findByText("Eagle").click();
     });
 
-    H.modal(() => {
+    H.modal().within(() => {
       cy.findByTestId("mapping-editor").within(() => {
         cy.findByDisplayValue("Tenant").should("exist");
         cy.findByDisplayValue("eagle").should("exist");
 
         cy.findByRole("button", { name: /Add an attribute/i }).click();
-        cy.findByPlaceholderText("key").type("{{ tenant_slug }}");
+        cy.findByPlaceholderText("Key").type("{{ tenant_slug }}", {
+          parseSpecialCharSequences: false,
+        });
 
         cy.findByText("This is a restricted key").should("exist");
         cy.button("close").click();

@@ -28,13 +28,16 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
+import {
+  getSelectDataForUserAttributes,
+  renderUserAttributesForSelect,
+} from "metabase-enterprise/sandboxes/utils";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
 import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
-import { getSelectDataForUserAttributes } from "metabase-enterprise/sandboxes/utils";
 
 export const DatabaseRoutingSection = ({
   database,
@@ -166,6 +169,7 @@ export const DatabaseRoutingSection = ({
                   disabled={!isAdmin || !!disabledFeatMsg}
                   value={userAttribute}
                   onChange={handleUserAttributeChange}
+                  renderOption={renderUserAttributesForSelect}
                 />
               </Tooltip>
             </Flex>

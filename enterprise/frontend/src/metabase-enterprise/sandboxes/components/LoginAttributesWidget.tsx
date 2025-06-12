@@ -2,10 +2,12 @@ import { useField, useFormikContext } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import FormField from "metabase/core/components/FormField";
 import { MappingEditor } from "metabase/core/components/MappingEditor";
 import { useGetTenantQuery } from "metabase-enterprise/api";
-import { skipToken } from "metabase/api";
+
+import { getDisabledTenantUserAttribute } from "../utils";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;
@@ -26,14 +28,14 @@ export const LoginAttributesWidget = ({
     }
   };
 
-  const { values } = useFormikContext();
+  const { values } = useFormikContext<{ tenant_id: number }>();
 
   const { data } = useGetTenantQuery(values.tenant_id ?? skipToken);
 
   return (
     <FormField className={className} style={style} title={title}>
       <MappingEditor
-        disabledValues={data ? { Tenant: data.slug } : {}}
+        disabledValues={getDisabledTenantUserAttribute(data)}
         value={value || {}}
         onChange={setValue}
         onError={handleError}

@@ -187,6 +187,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
 // user form fields, e.x. login attributes
 export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
   FormLoginAttributes: PluginPlaceholder,
+  formatUserAttribute: (val: string) => val,
 };
 
 // menu items in people management tab

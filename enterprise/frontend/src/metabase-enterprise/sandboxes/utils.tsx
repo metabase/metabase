@@ -1,21 +1,25 @@
-import type { GroupTableAccessPolicy, Table } from "metabase-types/api";
+import type { ReactNode } from "react";
+import { t } from "ttag";
+
+import type { MappingEditorEntry } from "metabase/core/components/MappingEditor";
+import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
+import type { GroupTableAccessPolicy, Table, Tenant } from "metabase-types/api";
 
 import type { GroupTableAccessPolicyParams } from "./types";
-import { type SelectProps, Group, Icon, Tooltip } from "metabase/ui";
-import { ReactNode } from "react";
 
 const TENANT_SLUG_ATTRIBUTE = "{{ tenant_slug }}";
-const USER_ATTRIBUTE_DISPLAY_MAP = {
-  [TENANT_SLUG_ATTRIBUTE]: "Tenant",
+const TENANT_SLUG_DISPLAY_NAME = "@tenant";
+const USER_ATTRIBUTE_DISPLAY_MAP: Record<string, string> = {
+  [TENANT_SLUG_ATTRIBUTE]: TENANT_SLUG_DISPLAY_NAME,
 };
 
-const USER_ATTRIBUTE_ICON_MAP: Record<string, ReactNode> = {
+const GET_USER_ATTRIBUTE_ICON_MAP: () => Record<string, ReactNode> = () => ({
   [TENANT_SLUG_ATTRIBUTE]: (
-    <Tooltip label="This user attribute is system defined">
-      <Icon name="warning" />
+    <Tooltip label={t`This attribute is system defined`}>
+      <Icon name="info" />
     </Tooltip>
   ),
-};
+});
 
 export const getPolicyKeyFromParams = ({
   groupId,
@@ -38,7 +42,7 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
 }) => (
   <Group flex="1" p="0.5rem" gap="0.25rem">
     {option.label}
-    {USER_ATTRIBUTE_ICON_MAP[option.value]}
+    {GET_USER_ATTRIBUTE_ICON_MAP()[option.value]}
   </Group>
 );
 
@@ -50,4 +54,26 @@ export const getSelectDataForUserAttributes = (attributes: string[]) =>
 
 export const formatUserAttribute = (attribute: string) => {
   return USER_ATTRIBUTE_DISPLAY_MAP[attribute] || attribute;
+};
+
+export const getDisabledTenantUserAttribute = (
+  tenant?: Tenant,
+): MappingEditorEntry[] => {
+  if (tenant) {
+    return [
+      {
+        key: TENANT_SLUG_DISPLAY_NAME,
+        value: tenant.slug,
+        keyOpts: {
+          rightSection: (
+            <Tooltip label={t`This attribute is system defined`}>
+              <Icon name="info" c="text-light" />
+            </Tooltip>
+          ),
+        },
+      },
+    ];
+  }
+
+  return [];
 };
