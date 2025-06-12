@@ -408,6 +408,10 @@ export default class AccordionList extends Component {
       }
 
       const results = idx.search(searchText);
+
+      // eslint-disable-next-line
+      console.log("FUZZY RESULTS", searchText, results);
+
       return results.some(
         (result) => result.item === item && result.score < 0.24,
       );
@@ -451,6 +455,9 @@ export default class AccordionList extends Component {
           return String(getIn(item, path) || "");
         });
       }
+
+      // eslint-disable-next-line
+      console.log("ITEM TEXTS", itemTexts);
 
       return itemTexts.some((itemText) => {
         if (searchCaseInsensitive) {
