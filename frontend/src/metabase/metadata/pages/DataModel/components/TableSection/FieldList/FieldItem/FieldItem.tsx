@@ -90,6 +90,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       })}
       component={Link}
       direction="column"
+      align="flex-start"
       gap={rem(12)}
       justify="space-between"
       mih={rem(40)}
@@ -102,25 +103,24 @@ export const FieldItem = ({ active, field, href }: Props) => {
       wrap="nowrap"
       onClick={handleClick}
     >
-      <Group flex="0 0 auto" gap="sm" wrap="nowrap">
+      <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
         <Icon className={S.icon} flex="0 0 auto" name={icon} />
 
         <Box
           className={S.input}
           component={EditableText}
-          flex="1"
           fw="bold"
           initialValue={field.display_name}
           lh="normal"
           maxLength={254}
-          mb={rem(-4)}
           miw={0}
+          mb={rem(-4)}
           mt={rem(-3)}
           mx={rem(-2)}
           px={rem(1)}
           py={0}
-          placeholder={t`Give this field a name`}
           rows={1}
+          placeholder={t`Give this field a name`}
           tabIndex={undefined} // override the default 0 which breaks a11y
           onChange={handleNameChange}
           onClick={handleInputClick}
@@ -130,17 +130,17 @@ export const FieldItem = ({ active, field, href }: Props) => {
       <Box
         className={S.input}
         component={EditableText}
-        h="auto"
         initialValue={field.description}
         isOptional
         lh="normal"
+        maw="100%"
         mb={rem(-4)}
         mt={rem(-3)}
         mx={rem(-2)}
         px={rem(1)}
         py={0}
-        placeholder={t`No description yet`}
         rows={1}
+        placeholder={t`No description yet`}
         tabIndex={undefined} // override the default 0 which breaks a11y
         onChange={handleDescriptionChange}
         onClick={handleInputClick}

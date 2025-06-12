@@ -14,8 +14,13 @@
 }
 
 .input {
+  &,
+  & textarea {
+    height: 1.5rem !important;
+  }
+
   textarea {
     cursor: text;
-    line-height: normal;
+    white-space: nowrap;
   }
 }
