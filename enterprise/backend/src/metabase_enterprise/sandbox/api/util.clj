@@ -70,7 +70,7 @@
   "Given collection of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A
   sandbox is not enforced if the user is in a different permissions group that grants full access to the table."
   [table-ids]
-  (let [enforced-sandboxes-for-user @perms/*sandboxes-for-user*]
+  (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
     (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user)))
 
 (defn sandboxed-user-for-db?
@@ -79,7 +79,7 @@
   [database-id]
   (when-not *is-superuser?*
     (if *current-user-id*
-      (let [sandboxes (t2/hydrate (seq @perms/*sandboxes-for-user*) :table)]
+      (let [sandboxes (t2/hydrate (seq (perms/sandboxes-for-user)) :table)]
         (some #(= (get-in % [:table :db_id]) database-id)
               sandboxes))
      ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
@@ -95,7 +95,7 @@
   (boolean
    (when-not *is-superuser?*
      (if *current-user-id*
-       (seq @perms/*sandboxes-for-user*)
+       (seq (perms/sandboxes-for-user))
        ;; If no *current-user-id* is bound we can't check for sandboxes, so we should throw in this case to avoid
        ;; returning `false` for users who should actually be sandboxes.
        (throw (ex-info (str (tru "No current user found"))

@@ -744,8 +744,8 @@
   {:team "Admin Webapp"
    :api  #{metabase.permissions.api
            metabase.permissions.core
-           metabase.permissions.init
-  }   :uses #{api
+           metabase.permissions.init}
+   :uses #{api
            app-db
            audit-app
            collections
@@ -1476,8 +1476,7 @@
            query-analysis
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
