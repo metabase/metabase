@@ -31,7 +31,7 @@ export const FinalStep = () => {
   }, [createdDashboardIds]);
 
   const getEmbedCode = (url: string) => {
-    return `<iframe src="${url}" />`;
+    return `<iframe src="${url}" width="800px" height="500px" />`;
   };
 
   const tabs = useMemo(
