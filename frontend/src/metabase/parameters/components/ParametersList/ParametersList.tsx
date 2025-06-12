@@ -10,7 +10,7 @@ import { SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import { Icon } from "metabase/ui";
+import { Flex, Icon } from "metabase/ui";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
 import { ParameterWidget } from "../ParameterWidget";
@@ -38,6 +38,8 @@ export const ParametersList = ({
   setParameterIndex,
   setEditingParameter,
   enableParameterRequiredBehavior,
+  widgetsVariant = "default",
+  widgetsWithinPortal,
 }: ParametersListProps) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
@@ -63,6 +65,9 @@ export const ParametersList = ({
   }: RenderItemProps<Parameter>) => (
     <ParameterWidget
       key={`sortable-${id}`}
+      variant={widgetsVariant}
+      fullWidth={vertical}
+      withinPortal={widgetsWithinPortal}
       className={cx({ [CS.mb2]: vertical })}
       isEditing={isEditing}
       isFullscreen={isFullscreen}
@@ -98,14 +103,13 @@ export const ParametersList = ({
   );
 
   return visibleValuePopulatedParameters.length > 0 ? (
-    <div
-      className={cx(
-        className,
-        CS.flex,
-        CS.alignEnd,
-        CS.flexWrap,
-        vertical ? CS.flexColumn : CS.flexRow,
-      )}
+    <Flex
+      display="flex"
+      direction={vertical ? "column" : "row"}
+      align="end"
+      wrap="wrap"
+      gap="sm"
+      className={className}
     >
       {isSortable ? (
         <SortableList
@@ -125,6 +129,6 @@ export const ParametersList = ({
           )}
         </>
       )}
-    </div>
+    </Flex>
   ) : null;
 };

@@ -10,6 +10,7 @@ interface InputContainerProps {
   isEmpty: boolean;
 }
 
+// TODO move this to CSS module
 export const InputContainer = styled.div<InputContainerProps>`
   display: flex;
   width: 100%;
@@ -18,12 +19,13 @@ export const InputContainer = styled.div<InputContainerProps>`
   align-items: center;
   overflow: hidden;
   padding-left: 0.75rem;
+  padding-right: 0.75rem;
   pointer-events: auto;
   border-radius: 8px;
+  border: 1px solid transparent;
 
-  &:hover {
-    /* adjust for border on hover */
-    padding-left: calc(0.75rem - 1px);
+  * {
+    pointer-events: auto;
   }
 
   .${DashboardS.DashCard}:hover &,
@@ -32,7 +34,7 @@ export const InputContainer = styled.div<InputContainerProps>`
   }
 
   .${DashboardS.DashCard}.resizing & {
-    border: 1px solid var(--mb-color-brand);
+    border-color: var(--mb-color-brand);
   }
 
   ${({ isPreviewing, isEmpty }) =>
@@ -67,11 +69,12 @@ export const TextInput = styled.input`
 
 interface HeadingContentProps {
   isEditing?: boolean;
+  hasFilters?: boolean;
 }
 
 export const HeadingContent = styled.h2<HeadingContentProps>`
+  flex: 1;
   max-height: 100%;
-  max-width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   font-size: 1.375rem;
@@ -84,4 +87,16 @@ export const HeadingContent = styled.h2<HeadingContentProps>`
     css`
       cursor: text;
     `}
+
+  ${({ hasFilters }) =>
+    hasFilters &&
+    css`
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    `}
+`;
+
+export const HeadingTextInput = styled(TextInput)`
+  flex: 1;
+  text-overflow: ellipsis;
 `;
