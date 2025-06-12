@@ -8,7 +8,7 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
-(mr/def ::configuration
+(mr/def ::param-configuration
   [:map {:closed true}
    [:id               :string]
    [:sourceType       [:enum "ask-user"]]
@@ -16,10 +16,10 @@
 
 (mr/def ::action-configuration
   [:map {:closed true}
-   [:title :string]
-   [:parameters [:sequential ::configuration]]])
+   [:title      :string]
+   [:parameters [:sequential ::param-configuration]]])
 
-(defn- configure-saved-action
+(defn- configuration-for-saved-action
   [action-id]
   (let [action (-> (actions/select-action :id action-id
                                           :archived false
@@ -34,7 +34,7 @@
                                         :query (:slug param)
                                         :implicit (:id param))})}))
 
-(defn- configure-table-action
+(defn- configuration-for-table-action
   [table-id action-kw]
   (let [table          (t2/select-one [:model/Table :display_name :field_order] table-id)
         ordered-fields (table/ordered-fields table-id (:field_order table))]
@@ -48,14 +48,13 @@
                     :sourceType       "ask-user"
                     :sourceTypeTarget (:name field)})}))
 
-(mu/defn configure :- ::action-configuration
+(mu/defn configuration :- ::action-configuration
   "Returns configuration needed for a given action."
   [{:keys [action-id action-kw] :as unified}
    scope]
   (cond
     (pos-int? action-id)
-    (configure-saved-action (:action-id unified))
+    (configuration-for-saved-action (:action-id unified))
 
     (and action-kw (isa? action-kw :table.row/common))
-    (configure-table-action (:table-id scope) action-kw)))
-
+    (configuration-for-table-action (:table-id scope) action-kw)))

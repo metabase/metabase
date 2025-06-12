@@ -477,13 +477,13 @@
 
 (def configure
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
-  (api.macros/defendpoint :post "/configure"
+  (api.macros/defendpoint :post "/configure-form"
     ""
     [{}
      {}
      {:keys [action_id scope]}]
     (let [scope (actions/hydrate-scope scope)]
-      (data-editing.configure/configure (fetch-unified-action scope action_id) scope))))
+      (data-editing.configure/configuration (fetch-unified-action scope action_id) scope))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
