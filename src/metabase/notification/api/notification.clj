@@ -225,7 +225,7 @@
                :email      "bot@metabase.com"}}
 
     :channel/slack
-    {:type :notificaiton-recipient/raw-value
+    {:type :notification-recipient/raw-value
      :details {:value "#metabase-example-channel"}}))
 
 (api.macros/defendpoint :post "/preview_template"
