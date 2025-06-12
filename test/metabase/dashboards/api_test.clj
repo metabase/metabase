@@ -5172,7 +5172,8 @@
                (f saved nil))))
       (testing "does its best without a parent"
         (is (= "dashcard:unknown:rAnDoM"
-               (f unsaved nil))))
+               (f unsaved nil)
+               (f nil nil))))
       (testing "accepts its new parent"
         (is (= "dashcard:1337:SAVE_ME"
                (f saved "dashcard:unknown:SAVE_ME")))))))
