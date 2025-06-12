@@ -112,7 +112,7 @@
                                      :status-code 401}))))
           login-attrs (jwt-data->login-attributes jwt-data)
           email       (get jwt-data (jwt-attribute-email))
-          tenant-slug (get jwt-data :tenant)
+          tenant-slug (get jwt-data (jwt-attribute-tenant))
           first-name  (get jwt-data (jwt-attribute-firstname))
           last-name   (get jwt-data (jwt-attribute-lastname))
           user        (fetch-or-create-user! first-name last-name email login-attrs tenant-slug)

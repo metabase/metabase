@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sso.integrations.sso-utils
   "Functions shared by the various SSO implementations"
   (:require
+   [malli.util :as mut]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
@@ -75,30 +76,41 @@
       (throw (ex-info (trs "Error creating new SSO user")
                       {:user user})))))
 
+(def ^:private user-keys
+  (->> (mut/keys UserAttributes)
+       (concat [:id :last_login :is_superuser :is_active])
+       set))
+
+(defn- fetch-user
+  [email]
+  (t2/select-one (into [:model/User] user-keys) :%lower.email (u/lower-case-en email)))
+
+(defn- require-is-active [{:keys [is_active] :as user} reactivate?]
+  (when (or is_active reactivate?)
+    user))
+
+(defn- assert-tenant-ok! [user-from-sso user]
+  (when-not (= (:tenant_id user) (:tenant_id user-from-sso))
+    (throw (ex-info "Tenant ID mismatch with existing user" {:status-code 403})))
+  (when (and (:is_superuser user)
+             (:tenant_id user-from-sso))
+    (throw (ex-info "A superuser cannot belong to a tenant." {:status-code 403}))))
+
 (mu/defn fetch-and-update-login-attributes!
   "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
   This call is a no-op if the mentioned key values are equal."
-  [{:keys [email tenant_id] :as user-from-sso} :- UserAttributes
+  [{:keys [email] :as user-from-sso} :- UserAttributes
    reactivate? :- ms/BooleanValue]
-  (let [;; if the user is not active, we will want to mark them as active if they are actually reactivated.
-        new-user-data (merge user-from-sso {:is_active true})
-        user-keys (keys new-user-data)]
-    (when-let [{:keys [id] :as user} (t2/select-one (into [:model/User :id :last_login :is_superuser] user-keys)
-                                                    :%lower.email (u/lower-case-en email))]
-      (when (and (:tenant_id user)
-                 (not= (:tenant_id user) tenant_id))
-        (throw (ex-info "Tenant ID mismatch with existing user" {:status-code 403})))
-      (when (and (:is_superuser user) tenant_id)
-        (throw (ex-info "A superuser cannot belong to a tenant." {:status-code 403})))
-      (when (or (:is_active user)
-                reactivate?)
-        (let [;; remove keys with `nil` values
-              user-data (into {} (remove nil? new-user-data))]
-          (if (= (select-keys user user-keys) user-data)
-            user
-            (do
-              (t2/update! :model/User id user-data)
-              (t2/select-one :model/User :id id))))))))
+  (when-let [{:keys [id] :as user} (require-is-active (fetch-user email) reactivate?)]
+    (assert-tenant-ok! user-from-sso user)
+    (let [;; existing behavior: don't replace existing values with `nil`
+          user-data (into {} (remove nil? (merge user-from-sso {:is_active true})))]
+      (if (= (select-keys user user-keys)
+             user-data)
+        user
+        (do
+          (t2/update! :model/User id user-data)
+          (fetch-user email))))))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."

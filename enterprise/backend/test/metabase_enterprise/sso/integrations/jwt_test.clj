@@ -570,38 +570,39 @@
               (is
                (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
 
-(deftest existing-users-can-be-updated-with-a-tenant
-  (with-jwt-default-setup!
-    (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
-                                                  :name "Tenant McTenantson"}]
-      (mt/with-temporary-setting-values [use-tenants true]
-        (with-users-with-email-deleted "newuser@metabase.com"
-          (testing "log in without a tenant"
-            (let [response    (client/client-real-response :get 302 "/auth/sso"
-                                                           {:request-options {:redirect-strategy :none}}
-                                                           :return_to default-redirect-uri
-                                                           :jwt
-                                                           (jwt/sign
-                                                            {:email      "newuser@metabase.com"
-                                                             :first_name "New"
-                                                             :last_name  "User"}
-                                                            default-jwt-secret))]
-              (is (saml-test/successful-login? response))
-              (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
-          (testing "now log in WITH a tenant"
-            (let [response    (client/client-real-response :get 302 "/auth/sso"
-                                                           {:request-options {:redirect-strategy :none}}
-                                                           :return_to default-redirect-uri
-                                                           :jwt
-                                                           (jwt/sign
-                                                            {:email      "newuser@metabase.com"
-                                                             :tenant     "tenant-mctenantson"
-                                                             :first_name "New"
-                                                             :last_name  "User"}
-                                                            default-jwt-secret))]
-              (is (saml-test/successful-login? response))
-              (is
-               (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
+;; not yet - we need to figure out what to do about personal collections here first
+#_(deftest existing-users-can-be-updated-with-a-tenant
+    (with-jwt-default-setup!
+      (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+                                                    :name "Tenant McTenantson"}]
+        (mt/with-temporary-setting-values [use-tenants true]
+          (with-users-with-email-deleted "newuser@metabase.com"
+            (testing "log in without a tenant"
+              (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      "newuser@metabase.com"
+                                                               :first_name "New"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (is (nil? (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com")))))
+            (testing "now log in WITH a tenant"
+              (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                             {:request-options {:redirect-strategy :none}}
+                                                             :return_to default-redirect-uri
+                                                             :jwt
+                                                             (jwt/sign
+                                                              {:email      "newuser@metabase.com"
+                                                               :tenant     "tenant-mctenantson"
+                                                               :first_name "New"
+                                                               :last_name  "User"}
+                                                              default-jwt-secret))]
+                (is (saml-test/successful-login? response))
+                (is
+                 (= tenant-id (t2/select-one-fn :tenant_id :model/User :email "newuser@metabase.com"))))))))))
 
 (deftest a-tenant-cannot-be-changed-once-set
   (with-jwt-default-setup!
