@@ -49,3 +49,4 @@ export function isMac() {
 }
 
 export const METAKEY = isMac() ? "⌘" : "Ctrl";
+export const ALTKEY = isMac() ? "⌥" : "Alt";
