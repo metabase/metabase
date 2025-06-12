@@ -21,13 +21,27 @@
   border-radius: 4px;
 }
 
+.editorWrapper {
+  width: 100%;
+  overflow: hidden;
+}
+
 .resizableBox {
   display: none;
   border-top: 1px solid var(--mb-color-border);
+  max-height: 0;
+  overflow: hidden;
 
   &.open {
     display: flex;
+    /* A large value for animation */
+    max-height: 1000px;
     overflow: hidden;
+  }
+
+  &.collapsing {
+    transition: max-height 0.3s ease-out;
+    display: flex;
   }
 }
 
