@@ -11,7 +11,7 @@ import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
 
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -151,8 +151,7 @@ export const ManageApiKeys = () => {
   const handleClose = () => setModal(null);
 
   return (
-    <Stack>
-      <Title order={1}>{t`API keys`}</Title>
+    <SettingsPageWrapper title={t`API keys`}>
       <SettingsSection>
         <ApiKeyModals
           onClose={handleClose}
@@ -182,7 +181,7 @@ export const ManageApiKeys = () => {
           />
         </Stack>
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };
 

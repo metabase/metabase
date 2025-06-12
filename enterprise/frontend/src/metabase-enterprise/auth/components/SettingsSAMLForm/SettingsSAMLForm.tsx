@@ -4,7 +4,10 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
@@ -85,8 +88,7 @@ export function SettingsSAMLForm() {
   }
 
   return (
-    <Stack>
-      <Title order={1}>{t`SAML`}</Title>
+    <SettingsPageWrapper title={t`SAML`}>
       {isEnabled && <SamlUserProvisioning />}
       <SettingsSection>
         <FormProvider
@@ -270,7 +272,7 @@ export function SettingsSAMLForm() {
           )}
         </FormProvider>
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }
 

@@ -22,10 +22,10 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { PLUGIN_LDAP_FORM_FIELDS } from "metabase/plugins";
-import { Box, Divider, Flex, Group, Radio, Stack, Title } from "metabase/ui";
+import { Box, Divider, Flex, Group, Radio, Stack } from "metabase/ui";
 import type { EnterpriseSettings, Settings } from "metabase-types/api";
 
-import { SettingsSection } from "./SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "./SettingsSection";
 
 const testParentheses: TestConfig<string | null | undefined> = {
   name: "test-parentheses",
@@ -79,8 +79,7 @@ export const SettingsLdapForm = () => {
   }
 
   return (
-    <Stack>
-      <Title order={1}>{t`LDAP`}</Title>
+    <SettingsPageWrapper title={t`LDAP`}>
       <PLUGIN_LDAP_FORM_FIELDS.LdapUserProvisioning />
       <FormProvider
         initialValues={getFormValues(settingValues)}
@@ -233,7 +232,7 @@ export const SettingsLdapForm = () => {
           </Form>
         )}
       </FormProvider>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };
 

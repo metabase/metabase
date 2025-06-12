@@ -5,9 +5,8 @@ import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import { NotFound } from "metabase/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
-import { Stack, Title } from "metabase/ui";
 
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
 
@@ -20,8 +19,7 @@ export function UpdatesSettingsPage() {
   }
 
   return (
-    <Stack data-testid="settings-updates" gap="xl">
-      <Title order={1}>{t`Updates`}</Title>
+    <SettingsPageWrapper data-testid="settings-updates" title={t`Updates`}>
       <SettingsSection>
         <AdminSettingInput
           name="check-for-updates"
@@ -63,6 +61,6 @@ export function UpdatesSettingsPage() {
         )}
       </SettingsSection>
       <UpsellHostingBanner source="settings-updates-migrate_to_cloud" />
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { Box, Stack, Text, Title } from "metabase/ui";
+import { Text } from "metabase/ui";
 
 import { HelpLinkSettings } from "./HelpLinkSettings";
 import { IllustrationWidget } from "./IllustrationWidget";
@@ -11,14 +14,11 @@ import { MetabotToggleWidget } from "./MetabotToggleWidget";
 
 export function WhiteLabelConcealSettingsPage() {
   return (
-    <Stack gap="xl" data-testid="conceal-metabase-settings">
-      <Box>
-        <Title order={1} pb="xs">{t`Conceal Metabase`}</Title>
-        <Text>
-          {t`Hide or customize pieces of the Metabase product to tailor the experience to your brand and needs`}
-        </Text>
-      </Box>
-
+    <SettingsPageWrapper
+      data-testid="conceal-metabase-settings"
+      title={t`Conceal Metabase`}
+      description={t`Configure your instance to conceal references to Metabase and customize illustrations.`}
+    >
       <SettingsSection title={t`Names`}>
         <AdminSettingInput
           name="application-name"
@@ -65,6 +65,6 @@ export function WhiteLabelConcealSettingsPage() {
           title={t`When no objects can be found`}
         />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

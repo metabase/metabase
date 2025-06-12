@@ -2,7 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { P, isMatching } from "ts-pattern";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import {
   AdminSettingInput,
   BasicAdminSettingInput,
@@ -15,15 +18,7 @@ import {
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { NotFound } from "metabase/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import {
-  Button,
-  Divider,
-  Flex,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from "metabase/ui";
+import { Button, Divider, Flex, Stack, Text, TextInput } from "metabase/ui";
 import {
   useGetScimTokenQuery,
   useRegenerateScimTokenMutation,
@@ -125,8 +120,7 @@ export const UserProvisioning = () => {
   }
 
   return (
-    <Stack>
-      <Title order={1}>{t`User provisioning`}</Title>
+    <SettingsPageWrapper title={t`User provisioning`}>
       <SettingsSection>
         <LoadingAndErrorWrapper
           loading={maskedTokenRequest.isLoading}
@@ -220,6 +214,6 @@ export const UserProvisioning = () => {
           onClose={closeRegenerateModal}
         />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };

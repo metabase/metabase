@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { Box, Stack, Title } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 
 import { EmbeddingSecretKeyWidget } from "./EmbeddingSecretKeyWidget";
@@ -14,8 +14,7 @@ export function StaticEmbeddingSettings() {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
 
   return (
-    <Stack>
-      <Title order={1}>{t`Static embedding`}</Title>
+    <SettingsPageWrapper title={t`Static embedding`}>
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
@@ -30,6 +29,6 @@ export function StaticEmbeddingSettings() {
           </Box>
         )}
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

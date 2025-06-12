@@ -4,12 +4,13 @@ import { UpsellSSO } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { Box, Flex, Stack, Title } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 
 import { ApiKeysAuthCard } from "../../auth/components/ApiKeysAuthCard";
 import { GoogleAuthCard } from "../../auth/containers/GoogleAuthCard/GoogleAuthCard";
 import { LdapAuthCard } from "../../auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "../ApiKeys/ManageApiKeys";
+import { SettingsPageWrapper } from "../SettingsSection";
 
 export function AuthenticationSettingsPage({ tab }: { tab: string }) {
   const hasSSO = useHasSso();
@@ -23,10 +24,9 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
   }
 
   return (
-    <Box>
-      <Title order={1} mb="md">{t`Authentication`}</Title>
+    <SettingsPageWrapper title={t`Authentication`}>
       <Flex justify={"space-between"} gap="lg">
-        <Stack gap="xl">
+        <Stack gap="lg">
           <GoogleAuthCard />
           <LdapAuthCard />
           <ApiKeysAuthCard />
@@ -35,7 +35,7 @@ export function AuthenticationSettingsPage({ tab }: { tab: string }) {
           <UpsellSSO source="authentication-sidebar" />
         </Box>
       </Flex>
-    </Box>
+    </SettingsPageWrapper>
   );
 }
 

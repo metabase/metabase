@@ -1,7 +1,10 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
@@ -20,7 +23,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Flex, Stack, Title } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type JWTFormValues = Pick<
@@ -63,8 +66,7 @@ export const SettingsJWTForm = () => {
   }
 
   return (
-    <Stack>
-      <Title order={1}>{t`JWT`}</Title>
+    <SettingsPageWrapper title={t`JWT`}>
       {jwtEnabled && (
         <SettingsSection>
           <AdminSettingInput
@@ -162,7 +164,7 @@ export const SettingsJWTForm = () => {
           )}
         </FormProvider>
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };
 

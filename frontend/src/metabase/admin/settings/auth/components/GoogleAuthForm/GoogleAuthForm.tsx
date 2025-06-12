@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { jt, t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -66,8 +69,7 @@ export const GoogleAuthForm = (): JSX.Element => {
   const isGoogleAuthEnabled = useSetting("google-auth-enabled");
 
   return (
-    <Stack>
-      <Title order={1}>{t`Google auth`}</Title>
+    <SettingsPageWrapper title={t`Google auth`}>
       <SettingsSection>
         <FormProvider
           initialValues={initialValues}
@@ -127,7 +129,7 @@ export const GoogleAuthForm = (): JSX.Element => {
           )}
         </FormProvider>
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };
 

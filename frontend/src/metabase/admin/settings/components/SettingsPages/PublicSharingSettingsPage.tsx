@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import { Stack, Title } from "metabase/ui";
 
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import {
   PublicLinksActionListing,
@@ -14,8 +13,7 @@ import {
 export function PublicSharingSettingsPage() {
   const publicSharingEnabled = useSetting("enable-public-sharing");
   return (
-    <Stack gap="xl">
-      <Title order={1}>{t`Public Sharing`}</Title>
+    <SettingsPageWrapper title={t`Public sharing`}>
       <SettingsSection>
         <AdminSettingInput
           name="enable-public-sharing"
@@ -36,6 +34,6 @@ export function PublicSharingSettingsPage() {
           </SettingsSection>
         </>
       )}
-    </Stack>
+    </SettingsPageWrapper>
   );
 }
