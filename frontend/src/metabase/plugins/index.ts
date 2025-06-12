@@ -743,7 +743,6 @@ export const PLUGIN_CONTENT_TRANSLATION = {
   shouldTranslateFieldValuesOfColumn: (_col: DatasetColumn) => false,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
-  contentTranslationDictionaryUrl: null as string | null,
 };
 
 export const PLUGIN_DB_ROUTING = {

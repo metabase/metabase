@@ -89,10 +89,8 @@
     ;; remove bad msgstrs after error generator for line number reporting reasons
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
       (t2/with-transaction [_tx]
-        (log/info "delete")
         ;; Replace all existing entries
         (t2/delete! :model/ContentTranslation)
-        (log/info "insert")
         ;; Insert all usable rows at once
         (when-not (empty? usable-rows)
           (t2/insert! :model/ContentTranslation usable-rows))))))
