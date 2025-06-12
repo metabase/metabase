@@ -702,21 +702,21 @@
         (lib/case
          [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
           [(lib/= (meta/field-metadata :venues :name) "Fusion") 500]]
-         600)
+          600)
         :type/Integer
 
         ;; see explanation in test above
         (lib/case
          [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
           [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.01]]
-         600)
+          600)
         :type/Float
 
         ;; [:if ...] is allegedly an alias of [:case ...]
         (let [[_case & args] (lib/case
                               [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
                                [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.0]]
-                              "600")]
+                               "600")]
           (into [:if] args))
         :type/*
 

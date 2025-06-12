@@ -1,7 +1,6 @@
 (ns metabase.lib.schema.expression.conditional-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [malli.error :as me]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.conditional :as expression.conditional]

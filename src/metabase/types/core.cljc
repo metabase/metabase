@@ -425,14 +425,10 @@
     (= y :type/*)     nil
     (assignable? x y) y
     (assignable? y x) x
-    ;; if we haven't had a match yet, recursively try using parent types.
+    ;; if we haven't had a match yet, pick the common ancestor that itself has the most ancestors.
     :else
-    (some (fn [x']
-            (some (fn [y']
-                    (when-not (= [x' y'] [x y])
-                      (most-specific-common-ancestor* x' y')))
-                  (cons y (parents y))))
-          (cons x (parents x)))))
+    (let [common-ancestors (set/intersection (ancestors x) (ancestors y))]
+      (first (sort-by #(- (count (ancestors %))) common-ancestors)))))
 
 (defn most-specific-common-ancestor
   "Return the most-specific type that is an ancestor of both `x` and `y`.
