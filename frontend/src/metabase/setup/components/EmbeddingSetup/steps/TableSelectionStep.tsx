@@ -8,11 +8,14 @@ import { useDispatch } from "metabase/lib/redux";
 import {
   Box,
   Button,
+  Center,
   Checkbox,
   Group,
   Icon,
   Loader,
+  Space,
   Stack,
+  type StackProps,
   Text,
   TextInput,
   Title,
@@ -23,6 +26,111 @@ import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY = 1000;
+
+const FAKE_TABLES = [
+  {
+    id: 1,
+    name: "activity",
+    schema: "public",
+    display_name: "activity",
+    description: "Attività degli utenti",
+    db_id: 1,
+    field_order: [],
+    entity_type: "table",
+    fields: [],
+    visibility_type: null,
+    show_in_getting_started: false,
+    updated_at: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    points_of_interest: [],
+    caveats: [],
+  },
+  {
+    id: 2,
+    name: "profiles",
+    schema: "public",
+    display_name: "profiles",
+    description: "Profili utenti",
+    db_id: 1,
+    field_order: [],
+    entity_type: "table",
+    fields: [],
+    visibility_type: null,
+    show_in_getting_started: false,
+    updated_at: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    points_of_interest: [],
+    caveats: [],
+  },
+  {
+    id: 3,
+    name: "users",
+    schema: "auth",
+    display_name: "users",
+    description: "Utenti autenticati",
+    db_id: 1,
+    field_order: [],
+    entity_type: "table",
+    fields: [],
+    visibility_type: null,
+    show_in_getting_started: false,
+    updated_at: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    points_of_interest: [],
+    caveats: [],
+  },
+  {
+    id: 4,
+    name: "Pg Stat Monitor",
+    schema: "extensions",
+    display_name: "Pg Stat Monitor",
+    description: "Monitoraggio statistiche Postgres",
+    db_id: 1,
+    field_order: [],
+    entity_type: "table",
+    fields: [],
+    visibility_type: null,
+    show_in_getting_started: false,
+    updated_at: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    points_of_interest: [],
+    caveats: [],
+  },
+  {
+    id: 5,
+    name: "Pg Stat Monitor Settings",
+    schema: "extensions",
+    display_name: "Pg Stat Monitor Settings",
+    description: "Impostazioni monitoraggio statistiche Postgres",
+    db_id: 1,
+    field_order: [],
+    entity_type: "table",
+    fields: [],
+    visibility_type: null,
+    show_in_getting_started: false,
+    updated_at: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    points_of_interest: [],
+    caveats: [],
+  },
+  {
+    id: 6,
+    name: "Pg Stat Statements",
+    schema: "extensions",
+    display_name: "Pg Stat Statements",
+    description: "Statistiche query Postgres",
+    db_id: 1,
+    field_order: [],
+    entity_type: "table",
+    fields: [],
+    visibility_type: null,
+    show_in_getting_started: false,
+    updated_at: "2024-01-01T00:00:00Z",
+    created_at: "2024-01-01T00:00:00Z",
+    points_of_interest: [],
+    caveats: [],
+  },
+];
 
 export const TableSelectionStep = () => {
   const [tables, setTables] = useState<Table[]>([]);
@@ -65,7 +173,7 @@ export const TableSelectionStep = () => {
       },
     });
     setLoading(false);
-    setTables(tables || []);
+    setTables(FAKE_TABLES);
   }, [getDatabaseTables]);
 
   useEffect(() => {
@@ -108,7 +216,7 @@ export const TableSelectionStep = () => {
 
   if (loading) {
     return (
-      <Box ta="center" py="xl">
+      <FullHeightContainer ta="center" py="xl">
         <Loader size="lg" />
         <Stack gap="md" mt="md">
           <Text>
@@ -122,13 +230,13 @@ export const TableSelectionStep = () => {
             </Text>
           )}
         </Stack>
-      </Box>
+      </FullHeightContainer>
     );
   }
 
   if (error) {
     return (
-      <Box ta="center" py="xl">
+      <FullHeightContainer ta="center" py="xl">
         <Text color="error">{error}</Text>
         <Stack gap="md" mt="md">
           <Button variant="outline" onClick={handleManualRefresh}>
@@ -140,12 +248,14 @@ export const TableSelectionStep = () => {
             {t`Go Back`}
           </Button>
         </Stack>
-      </Box>
+      </FullHeightContainer>
     );
   }
 
+  const hasResults = filteredTables.length > 0;
+
   return (
-    <Box>
+    <FullHeightContainer>
       <Title order={2} mb="lg">{t`Select Tables to Embed`}</Title>
       <Text mb="xl">
         {t`Choose up to 3 tables that you want to turn into models and dashboards. These will be used to create your initial embedded analytics.`}
@@ -160,41 +270,62 @@ export const TableSelectionStep = () => {
         mb="md"
       />
 
-      <Stack gap="md">
-        {Object.entries(tablesBySchema).map(([schema, tables]) => (
-          <Box key={schema}>
-            <Text fw={600} mb="md">
-              {schema.charAt(0).toUpperCase() + schema.slice(1)}
-            </Text>
-            {tables.map((table) => (
-              <Checkbox
-                mb="md"
-                key={table.id}
-                label={table.name}
-                checked={selectedTables.some((t) => t.id === table.id)}
-                onChange={() => handleTableToggle(table)}
-                disabled={
-                  selectedTables.length >= 3 &&
-                  !selectedTables.some((t) => t.id === table.id)
-                }
-              />
+      {hasResults ? (
+        <>
+          <Stack gap="md">
+            {Object.entries(tablesBySchema).map(([schema, tables]) => (
+              <Box key={schema}>
+                <Text fw={600} mb="md">
+                  {schema.charAt(0).toUpperCase() + schema.slice(1)}
+                </Text>
+                {tables.map((table) => (
+                  <Checkbox
+                    mb="md"
+                    key={table.id}
+                    label={table.name}
+                    checked={selectedTables.some((t) => t.id === table.id)}
+                    onChange={() => handleTableToggle(table)}
+                    disabled={
+                      selectedTables.length >= 3 &&
+                      !selectedTables.some((t) => t.id === table.id)
+                    }
+                  />
+                ))}
+              </Box>
             ))}
-          </Box>
-        ))}
-      </Stack>
+          </Stack>
 
-      <Group justify="space-between" mt="xl">
-        <Button
-          variant="subtle"
-          onClick={() => dispatch(push("/setup/embedding/data-connection"))}
-        >
-          {t`Back`}
-        </Button>
+          <Space flex={1} />
+        </>
+      ) : (
+        <Center flex={1}>
+          <Text>{t`No tables found`}</Text>
+        </Center>
+      )}
+
+      <Group justify="end" mt="xl">
         <Button onClick={handleSubmit} disabled={selectedTables.length === 0}>
           {t`Continue`}
         </Button>
       </Group>
-    </Box>
+    </FullHeightContainer>
+  );
+};
+
+export const FullHeightContainer = ({
+  children,
+  ...props
+}: {
+  children: React.ReactNode;
+} & StackProps) => {
+  const yPadding = "8rem";
+
+  const buffer = "2px";
+
+  return (
+    <Stack mih={`calc(100vh - ${yPadding} - ${buffer})`} {...props}>
+      {children}
+    </Stack>
   );
 };
 
