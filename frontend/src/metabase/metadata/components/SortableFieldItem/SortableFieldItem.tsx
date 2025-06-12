@@ -52,7 +52,7 @@ export const SortableFieldItem = ({
         <Group flex="0 0 auto" gap="sm" wrap="nowrap">
           <Icon className={S.icon} name={icon} />
 
-          <Text flex="1" fw="bold" lh="normal" mr="xs">
+          <Text flex="1" fw="bold" lh="normal">
             {label}
           </Text>
         </Group>
