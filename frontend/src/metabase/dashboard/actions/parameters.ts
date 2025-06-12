@@ -117,6 +117,30 @@ function updateParameters(
   }
 }
 
+export function duplicateParameters(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterIds: ParameterId[],
+) {
+  const parameters = getParameters(getState());
+
+  const newParameters = parameterIds.map((parameterId) => {
+    const parameter = parameters.find((p) => p.id === parameterId);
+    if (!parameter) {
+      throw new Error(`Parameter ${parameterId} not found`);
+    }
+    const options = _.omit(parameter, "id");
+    return createParameter(options, parameters);
+  });
+
+  updateParameters(dispatch, getState, (params) => [
+    ...params,
+    ...newParameters,
+  ]);
+
+  return newParameters;
+}
+
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
     if (parameterId != null) {

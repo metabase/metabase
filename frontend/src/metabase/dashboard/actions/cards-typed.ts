@@ -62,7 +62,10 @@ import {
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
-import { removeParameterAndReferences } from "./parameters";
+import {
+  duplicateParameters,
+  removeParameterAndReferences,
+} from "./parameters";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -395,6 +398,17 @@ export const duplicateCard = createThunkAction(
         ...position,
         id: generateTemporaryDashcardId(),
       };
+
+      if (hasInlineParameters(dashcard)) {
+        const newParameters = duplicateParameters(
+          dispatch,
+          getState,
+          dashcard.inline_parameters,
+        );
+        dashcard.inline_parameters = newParameters.map(
+          (parameter) => parameter.id,
+        );
+      }
 
       dispatch(
         addDashCardToDashboard({
