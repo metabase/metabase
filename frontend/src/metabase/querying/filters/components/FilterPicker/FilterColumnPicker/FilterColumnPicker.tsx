@@ -124,6 +124,7 @@ export function FilterColumnPicker({
 
           return item.displayName;
         }}
+        searchFuzzy
         globalSearch
         withBorders
       />
