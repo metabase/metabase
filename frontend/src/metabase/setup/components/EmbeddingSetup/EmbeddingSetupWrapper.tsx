@@ -2,6 +2,7 @@ import { Box, Flex } from "metabase/ui";
 
 import { EmbeddingSetupProvider } from "./EmbeddingSetupContext";
 import { EmbeddingSetupSidebar } from "./EmbeddingSetupSidebar";
+import { useForceLocaleRefresh } from "./useForceLocaleRefresh";
 
 type EmbeddingSetupWrapperProps = {
   children: React.ReactNode;
@@ -10,6 +11,8 @@ type EmbeddingSetupWrapperProps = {
 export const EmbeddingSetupWrapper = ({
   children,
 }: EmbeddingSetupWrapperProps) => {
+  useForceLocaleRefresh();
+
   return (
     <EmbeddingSetupProvider>
       <Flex

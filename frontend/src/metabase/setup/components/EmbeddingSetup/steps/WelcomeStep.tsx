@@ -5,7 +5,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Box, Button, List, Space, Text, Title } from "metabase/ui";
 
+import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
+
 export const WelcomeStep = () => {
+  useForceLocaleRefresh();
   const user = useSelector(getUser);
 
   return (

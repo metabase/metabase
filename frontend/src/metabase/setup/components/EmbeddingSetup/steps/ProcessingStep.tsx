@@ -7,7 +7,11 @@ import { useDispatch } from "metabase/lib/redux";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
+import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
+
 export const ProcessingStep = () => {
+  useForceLocaleRefresh();
+
   const dispatch = useDispatch();
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);

@@ -4,7 +4,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import LogoIcon from "metabase/components/LogoIcon";
-import { Box, Flex, Icon, type IconName, Text } from "metabase/ui";
+import { Box, Center, Flex, Icon, type IconName, Text } from "metabase/ui";
+
+import { LanguageSelector } from "../LanguageSelector";
 
 const ICON_SIZE = 30;
 const STEP_GAP = 22;
@@ -95,6 +97,9 @@ export const EmbeddingSetupSidebar = () => {
           />
         ))}
       </Box>
+      <Center mt="auto" pt="xl" mb="xxl">
+        <LanguageSelector />
+      </Center>
     </Box>
   );
 };

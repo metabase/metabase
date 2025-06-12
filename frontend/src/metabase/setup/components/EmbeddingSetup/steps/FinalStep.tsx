@@ -18,8 +18,11 @@ import {
 } from "metabase/ui";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
+import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const FinalStep = () => {
+  useForceLocaleRefresh();
+
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
   const { createdDashboardIds } = useEmbeddingSetup();
 

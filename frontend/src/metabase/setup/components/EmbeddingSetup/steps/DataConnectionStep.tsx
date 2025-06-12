@@ -8,8 +8,11 @@ import { Stack, Text, Title } from "metabase/ui";
 import type { DatabaseData } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
+import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const DataConnectionStep = () => {
+  useForceLocaleRefresh();
+
   const dispatch = useDispatch();
   const { setDatabase } = useEmbeddingSetup();
 

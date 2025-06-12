@@ -2,6 +2,8 @@ import { createContext, useContext, useState } from "react";
 
 import type { DatabaseData, Table } from "metabase-types/api";
 
+import { useForceLocaleRefresh } from "./useForceLocaleRefresh";
+
 type EmbeddingSetupContextType = {
   database: DatabaseData | null;
   setDatabase: (database: DatabaseData | null) => void;
@@ -22,7 +24,10 @@ const EmbeddingSetupContext = createContext<EmbeddingSetupContextType | null>(
 );
 
 export const useEmbeddingSetup = () => {
+  useForceLocaleRefresh();
+
   const context = useContext(EmbeddingSetupContext);
+
   if (!context) {
     throw new Error(
       "useEmbeddingSetup must be used within EmbeddingSetupProvider",

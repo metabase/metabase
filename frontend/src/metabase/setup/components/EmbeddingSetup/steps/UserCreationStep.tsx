@@ -8,8 +8,11 @@ import type { UserInfo } from "metabase-types/store";
 import { submitUser } from "../../../actions";
 import { getIsHosted } from "../../../selectors";
 import { UserForm } from "../../UserForm";
+import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const UserCreationStep = () => {
+  useForceLocaleRefresh();
+
   // const user = {}; // TODO: pre-fill from
   const isHosted = useSelector(getIsHosted);
   const dispatch = useDispatch();
