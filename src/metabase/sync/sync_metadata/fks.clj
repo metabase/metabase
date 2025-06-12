@@ -32,8 +32,10 @@
                           :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
                           :left-join [[:metabase_field_user_settings :u] [:= :f.id :u.field_id]]
                           :where  [:and
+                                   ;; ensure we are not overriding user-set fks
                                    [:= :u.fk_target_field_id nil]
                                    [:= :u.semantic_type nil]
+
                                    [:= :t.db_id db-id]
                                    [:= [:lower :f.name] (u/lower-case-en column-name)]
                                    [:= [:lower :t.name] (u/lower-case-en table-name)]

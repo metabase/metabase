@@ -151,7 +151,7 @@
          (schema.field-user-settings/upsert-user-settings field body)
          (t2/update! :model/Field id
                      (u/select-keys-when body
-                                         ;; the rest is updated via `update-user-settings` above
+                                         ;; the rest has already been updated via `upsert-user-settings` above
                                          :present #{:caveats :points_of_interest :nfc_path :json_unfolding}
                                          :non-nil #{:settings})))))
     (when (some? json-unfolding)

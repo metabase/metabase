@@ -175,7 +175,7 @@
     (sync-user-settings field)))
 
 (defn raw-update
-  "Update field directly, don't sync with UserSettings"
+  "Update field directly, don't sync with FieldUserSettings"
   [id m]
   (binding [*raw-update* true]
     (t2/update! :model/Field id m)))

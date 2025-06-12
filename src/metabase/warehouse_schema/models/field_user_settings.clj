@@ -32,7 +32,7 @@
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn upsert-user-settings
-  "Upsert user settings"
+  "Upsert FieldUserSettings, and sync Field"
   [{:keys [id]} settings]
   (let [filtered-settings (u/select-keys-when settings :present field/field-user-settings)]
     (when-not (t2/exists? :model/FieldUserSettings id)
