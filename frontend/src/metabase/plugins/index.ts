@@ -83,9 +83,13 @@ import type {
   TimelineEvent,
   User,
 } from "metabase-types/api";
-import type { AdminPath, AdminPathKey, State } from "metabase-types/store";
+import type {
+  AdminPath,
+  AdminPathKey,
+  Dispatch as ReduxDispatch,
+  State,
+} from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
-import type { Dispatch as ReduxDispatch } from "metabase-types/store";
 
 import type { GetAuthProviders, PluginGroupManagersType } from "./types";
 
