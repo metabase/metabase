@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.api
   (:require
    [clojure.walk :as walk]
+   [metabase-enterprise.data-editing.configure :as data-editing.configure]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.describe :as data-editing.describe]
    [metabase.actions.core :as actions]
@@ -480,6 +481,16 @@
                                      :scope       scope
                                      :action_id   action_id})))]
       (data-editing.describe/describe-unified-action unified scope input))))
+
+(def configure
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/configure-form"
+    "This API returns a data representation of the form the FE will render. It does not update the configuration."
+    [{}
+     {}
+     {:keys [action_id scope]}]
+    (let [scope (actions/hydrate-scope scope)]
+      (data-editing.configure/configuration (fetch-unified-action scope action_id) scope))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
