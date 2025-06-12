@@ -15,6 +15,7 @@ import {
 } from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import { ChartSettingNativeFieldsPartition } from "metabase/visualizations/components/settings/ChartSettingNativeFieldsPartition";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -77,7 +78,7 @@ export const settings = {
     get section() {
       return t`Columns`;
     },
-    widget: "fieldsPartition",
+    widget: ChartSettingNativeFieldsPartition,
     persistDefault: true,
     getHidden: ([{ data, card }]: RawSeries) => {
       const isNative = card.dataset_query?.type === "native";

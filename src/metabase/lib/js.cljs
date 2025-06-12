@@ -2594,4 +2594,4 @@
   (adding suffixes like _2, _3, etc)."
   [names]
   (let [unique-name-generator (lib.util/unique-name-generator)]
-    (map unique-name-generator names)))
+    (to-array (map display-info->js (map unique-name-generator names)))))

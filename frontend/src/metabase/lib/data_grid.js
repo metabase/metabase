@@ -3,8 +3,8 @@ import _ from "underscore";
 import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import * as Lib from "metabase-lib";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
-
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
@@ -26,9 +26,23 @@ export function multiLevelPivot(data, settings) {
   }
 
   let columnSplit;
+  // TODO: refactor to unify with frontend/src/metabase/visualizations/components/settings/ChartSettingNativeFieldsPartition.tsx
   if (settings[NATIVE_COLUMN_SPLIT_SETTING]) {
-    columnSplit = _.mapObject(settings[NATIVE_COLUMN_SPLIT_SETTING], (value) =>
-      value.map((col) => col.name),
+    const flatEntries = [
+      ...settings[NATIVE_COLUMN_SPLIT_SETTING].values,
+      ...settings[NATIVE_COLUMN_SPLIT_SETTING].rows,
+      ...settings[NATIVE_COLUMN_SPLIT_SETTING].columns,
+    ];
+    const flatColumnNames = Lib.uniqueNames(flatEntries.map((c) => c.name));
+    columnSplit = _.mapObject(
+      settings[NATIVE_COLUMN_SPLIT_SETTING],
+      (entry) => {
+        const deduplicatedColumnNames = entry.map((col) => {
+          const entryIndex = flatEntries.indexOf(col);
+          return flatColumnNames[entryIndex];
+        });
+        return deduplicatedColumnNames;
+      },
     );
   } else {
     columnSplit = migratePivotColumnSplitSetting(
