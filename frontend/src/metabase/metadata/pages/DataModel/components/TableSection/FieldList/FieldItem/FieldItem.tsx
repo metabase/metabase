@@ -23,12 +23,12 @@ export const FieldItem = ({ active, href, icon, label }: Props) => {
         [S.active]: active,
       })}
       component={href ? Link : undefined}
-      gap="md"
+      gap="sm"
       justify="space-between"
       mih={rem(40)}
       pos="relative"
-      px="sm"
-      py="xs"
+      px="md"
+      py={12}
       role="listitem"
       // "to" prop should be undefined when Link component is not used.
       // Types do not account for conditional Link usage, hence cast.

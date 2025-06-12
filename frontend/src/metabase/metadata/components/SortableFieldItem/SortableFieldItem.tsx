@@ -48,15 +48,15 @@ export const SortableFieldItem = ({
         justify="space-between"
         mih={rem(40)}
         pos="relative"
-        px="sm"
-        py="xs"
+        px="md"
+        py={12}
         role="listitem"
         // "to" prop should be undefined when Link component is not used.
         // Types do not account for conditional Link usage, hence cast.
         to={href ? href : (undefined as unknown as string)}
         w="100%"
       >
-        <Group flex="0 0 auto" gap="sm" ml="xs" wrap="nowrap">
+        <Group flex="0 0 auto" gap="sm" wrap="nowrap">
           <Icon className={S.icon} name={icon} />
 
           <Text flex="1" fw="bold" lh="normal" mr="xs">

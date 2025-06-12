@@ -5,7 +5,7 @@ import {
   type DragEndEvent,
   SortableList,
 } from "metabase/core/components/Sortable";
-import { Flex } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
@@ -37,7 +37,7 @@ export const SortableFieldList = ({
   };
 
   return (
-    <Flex direction="column" gap="sm">
+    <Stack gap={12}>
       <SortableList
         getId={getId}
         items={sortedItems}
@@ -55,6 +55,6 @@ export const SortableFieldList = ({
         sensors={[pointerSensor]}
         onSortEnd={handleSortEnd}
       />
-    </Flex>
+    </Stack>
   );
 };
