@@ -271,7 +271,7 @@
                        (let [dashcard-id (when (not= "unknown" dashcard-id) (parse-long dashcard-id))
                              ;; So, if we only have a placeholder for the dashcard id, get it from the scope.
                              ;; This hack always works since the frontend can't invoke row actions from anywhere else.
-                             ;; From a semantic point of view however, this hack sucks. It'll be fixed by WRK-483.
+                             ;; From a semantic point of view, this hack still sucks. It'll be fixed by WRK-483.
                              dashcard-id (if (pos-int? dashcard-id) dashcard-id (:dashcard-id scope))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
                              ;; TODO: this should belongs to our configuration
