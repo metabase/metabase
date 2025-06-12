@@ -268,7 +268,9 @@
    [:calculate-available-models?         {:optional true} [:maybe :boolean]]
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
-   [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
+   [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]
+   [:exclude-display                     {:optional true} [:maybe ms/NonBlankString]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -280,6 +282,8 @@
            current-user-id
            current-user-perms
            display
+           exclude-display
+           has-temporal-dimensions?
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -323,6 +327,7 @@
                         :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq display)                               (assoc :display display)
+                 (some? exclude-display)                     (assoc :exclude-display exclude-display)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
                  (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
@@ -334,6 +339,7 @@
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
+                 (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))
