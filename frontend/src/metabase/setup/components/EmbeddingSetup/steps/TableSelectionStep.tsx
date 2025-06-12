@@ -27,111 +27,6 @@ import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 const MAX_RETRIES = 30;
 const RETRY_DELAY = 1000;
 
-const FAKE_TABLES = [
-  {
-    id: 1,
-    name: "activity",
-    schema: "public",
-    display_name: "activity",
-    description: "Attività degli utenti",
-    db_id: 1,
-    field_order: [],
-    entity_type: "table",
-    fields: [],
-    visibility_type: null,
-    show_in_getting_started: false,
-    updated_at: "2024-01-01T00:00:00Z",
-    created_at: "2024-01-01T00:00:00Z",
-    points_of_interest: [],
-    caveats: [],
-  },
-  {
-    id: 2,
-    name: "profiles",
-    schema: "public",
-    display_name: "profiles",
-    description: "Profili utenti",
-    db_id: 1,
-    field_order: [],
-    entity_type: "table",
-    fields: [],
-    visibility_type: null,
-    show_in_getting_started: false,
-    updated_at: "2024-01-01T00:00:00Z",
-    created_at: "2024-01-01T00:00:00Z",
-    points_of_interest: [],
-    caveats: [],
-  },
-  {
-    id: 3,
-    name: "users",
-    schema: "auth",
-    display_name: "users",
-    description: "Utenti autenticati",
-    db_id: 1,
-    field_order: [],
-    entity_type: "table",
-    fields: [],
-    visibility_type: null,
-    show_in_getting_started: false,
-    updated_at: "2024-01-01T00:00:00Z",
-    created_at: "2024-01-01T00:00:00Z",
-    points_of_interest: [],
-    caveats: [],
-  },
-  {
-    id: 4,
-    name: "Pg Stat Monitor",
-    schema: "extensions",
-    display_name: "Pg Stat Monitor",
-    description: "Monitoraggio statistiche Postgres",
-    db_id: 1,
-    field_order: [],
-    entity_type: "table",
-    fields: [],
-    visibility_type: null,
-    show_in_getting_started: false,
-    updated_at: "2024-01-01T00:00:00Z",
-    created_at: "2024-01-01T00:00:00Z",
-    points_of_interest: [],
-    caveats: [],
-  },
-  {
-    id: 5,
-    name: "Pg Stat Monitor Settings",
-    schema: "extensions",
-    display_name: "Pg Stat Monitor Settings",
-    description: "Impostazioni monitoraggio statistiche Postgres",
-    db_id: 1,
-    field_order: [],
-    entity_type: "table",
-    fields: [],
-    visibility_type: null,
-    show_in_getting_started: false,
-    updated_at: "2024-01-01T00:00:00Z",
-    created_at: "2024-01-01T00:00:00Z",
-    points_of_interest: [],
-    caveats: [],
-  },
-  {
-    id: 6,
-    name: "Pg Stat Statements",
-    schema: "extensions",
-    display_name: "Pg Stat Statements",
-    description: "Statistiche query Postgres",
-    db_id: 1,
-    field_order: [],
-    entity_type: "table",
-    fields: [],
-    visibility_type: null,
-    show_in_getting_started: false,
-    updated_at: "2024-01-01T00:00:00Z",
-    created_at: "2024-01-01T00:00:00Z",
-    points_of_interest: [],
-    caveats: [],
-  },
-];
-
 export const TableSelectionStep = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(false);
@@ -173,7 +68,7 @@ export const TableSelectionStep = () => {
       },
     });
     setLoading(false);
-    setTables(FAKE_TABLES);
+    setTables(tables || []);
   }, [getDatabaseTables]);
 
   useEffect(() => {
