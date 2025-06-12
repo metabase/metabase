@@ -71,8 +71,9 @@
                                              {:id "param-e", :sourceType "ask-user", :sourceTypeTarget "e"}]}}
                       (req {:scope     {:model-id (:id model)
                                         :table-id (:id table)}
-                            :action_id (:id action)}))))))))))
+                            :action_id {:action-id (:id action)}}))))))))))
 
+;; For example, when picking a model action to add as a row action, we call this for the initial config form.
 (deftest configure-saved-implicit-action-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
@@ -87,11 +88,11 @@
                                    {:id "discount"   :sourceType "ask-user" :sourceTypeTarget "discount"}
                                    {:id "created_at" :sourceType "ask-user" :sourceTypeTarget "created_at"}
                                    {:id "quantity"   :sourceType "ask-user" :sourceTypeTarget "quantity"}]
-              action-kind->expecetd-params {"row/create" expected-row-params
+              action-kind->expected-params {"row/create" expected-row-params
                                             "row/update" (concat expected-id-params expected-row-params)
-                                            "row/delete"  expected-id-params}]
+                                            "row/delete" expected-id-params}]
 
-          (doseq [[action-kind expected-params] action-kind->expecetd-params]
+          (doseq [[action-kind expected-params] action-kind->expected-params]
             (mt/with-actions [model {:type          :model
                                      :dataset_query (mt/mbql-query orders)}
                               {action-id :action-id} {:type :implicit
@@ -102,7 +103,7 @@
                      (mt/user-http-request :crowberto :post 200 "action/v2/configure"
                                            {:scope     {:model-id (:id model)
                                                         :table-id (mt/id :orders)}
-                                            :action_id action-id}))))))))))
+                                            :action_id {:action-id action-id}}))))))))))
 
 ;; For example, when picking a table action to add as a row action, we call this for the initial config form.
 (deftest configure-table-action-test
