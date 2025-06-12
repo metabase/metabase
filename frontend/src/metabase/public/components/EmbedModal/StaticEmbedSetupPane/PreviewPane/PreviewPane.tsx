@@ -43,7 +43,8 @@ export function PreviewPane({
   );
 }
 
-interface PreviewPaneContainerProps {
+interface PreviewPaneContainerProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   hidden?: boolean;
   backgroundType: PreviewBackgroundType;
@@ -55,6 +56,7 @@ function PreviewPaneContainer({
   hidden,
   backgroundType,
   className,
+  ...divProps
 }: PreviewPaneContainerProps) {
   const dataUri = match(backgroundType)
     .returnType<string | null>()
@@ -69,12 +71,12 @@ function PreviewPaneContainer({
 
   return (
     <div
-      className={cx(Style.Container, className, {
-        [Style.hidden]: hidden,
-      })}
+      className={cx(Style.Container, className)}
       style={{
         ["--background-url" as any]: `url(${dataUri})`,
+        display: hidden ? "none" : "block",
       }}
+      {...divProps}
     >
       {children}
     </div>
