@@ -946,20 +946,17 @@
   the semantically dubious dependency on :scope is minimized.
 
   Once these actions are stored in some sort of first-class action table, we won't have this issue."
-  [dashcard id]
+  [{dashcard-id :id} id]
   (cond
     ;; new action, give it an id
     ;; currently the frontend is generating its own ids... we need to replace those
     (or (not id) (not (str/starts-with? id "dashcard:")))
     (format "dashcard:%s:%s"
-            (let [dashcard-id (:id dashcard "unknown")]
-              (if (pos-int? dashcard-id)
-                dashcard-id
-                "unknown"))
+            (if (pos-int? dashcard-id) dashcard-id "unknown")
             (u/generate-nano-id))
     ;; chicken-and-egg resulted in a suboptimal id, fix it
-    (and (str/starts-with? id "dashcard:unknown:") (:id dashcard))
-    (str/replace id #"dashcard:unknown" (str "dashcard:" (:id dashcard)))
+    (and (str/starts-with? id "dashcard:unknown:") dashcard-id)
+    (str/replace id #"dashcard:unknown" (str "dashcard:" dashcard-id))
     :else
     id))
 
