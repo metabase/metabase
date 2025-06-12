@@ -516,28 +516,24 @@ export function isReducedMotionPreferred() {
   return mediaQuery && mediaQuery.matches;
 }
 
-/**
- * @returns {HTMLElement | undefined}
- */
-export function getMainElement() {
-  const [main] = document.getElementsByTagName("main");
-  return main;
-}
-
 export function isSmallScreen() {
   const mediaQuery = window.matchMedia("(max-width: 40em)");
   return mediaQuery && mediaQuery.matches;
 }
 
 /**
- * @param {MouseEvent<Element, MouseEvent>} event
+ * @param {object}   options
+ * @param {HTMLElement} options.rootElement
+ * @param {MouseEvent<Element, MouseEvent>} options.event
+ * @returns {HTMLElement}
  */
-export const getEventTarget = (event) => {
-  let target = document.getElementById("popover-event-target");
+export const getEventTarget = ({ rootElement, event }) => {
+  let target = rootElement.querySelector("#popover-event-target");
+
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
-    document.body.appendChild(target);
+    rootElement.appendChild(target);
   }
   target.style.left = event.clientX - 3 + "px";
   target.style.top = event.clientY - 3 + "px";

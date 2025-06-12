@@ -6,7 +6,21 @@ const path = require("path");
 const glob = require("glob");
 const { Extractor, ExtractorConfig } = require("@microsoft/api-extractor");
 
+const SDK_DIST_SRC_PATH = path.resolve(
+  "./enterprise/frontend/src/embedding-sdk",
+);
 const SDK_DIST_DIR_PATH = path.resolve("./resources/embedding-sdk/dist");
+
+const DTS_ROLLUP_INPUT_FILE_PATH = path.resolve(
+  path.join(
+    __dirname,
+    "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+  ),
+);
+
+const DTS_ROLLUP_OUTPUT_FILE_PATH = path.resolve(
+  path.join(__dirname, "../../resources/embedding-sdk/dist/index.d.ts"),
+);
 
 /*
  * This script replaces all custom aliases in Embedding SDK generated ".d.ts" files so that this imports could be resolved
@@ -128,15 +142,9 @@ const generateDtsRollup = () => {
 
   log("Generate dts rollup...");
 
-  const dtsRollupEntryPointPath = path.resolve(
-    path.join(
-      __dirname,
-      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
-    ),
-  );
-  const dtsRollupEntryPointPathExist = fs.existsSync(dtsRollupEntryPointPath);
+  const dtsRollupInputFileExist = fs.existsSync(DTS_ROLLUP_INPUT_FILE_PATH);
 
-  if (!dtsRollupEntryPointPathExist) {
+  if (!dtsRollupInputFileExist) {
     log("It looks like dts rollup is already generated, skipping...");
 
     return;
@@ -159,6 +167,8 @@ const generateDtsRollup = () => {
     process.exitCode = 1;
   }
 
+  appendGlobalDtsDeclarations();
+
   log("API Extractor completed successfully");
 
   log("Removing intermediate dts files...");
@@ -175,6 +185,16 @@ const generateDtsRollup = () => {
   });
 
   log("Dts rollup done!");
+};
+
+// API extractor can't handle global augmented declarations, so we add them manually
+// https://github.com/microsoft/rushstack/issues/1709
+const appendGlobalDtsDeclarations = () => {
+  const content = fs.readFileSync(`${SDK_DIST_SRC_PATH}/global.d.ts`, {
+    encoding: "utf8",
+  });
+
+  fs.appendFileSync(DTS_ROLLUP_OUTPUT_FILE_PATH, content);
 };
 
 const watchFilesAndFixThem = () => {

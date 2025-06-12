@@ -3,6 +3,7 @@ import { Menu } from "@mantine/core";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
 import { PreventEagerPortal } from "metabase/ui";
 
@@ -23,13 +24,14 @@ interface MenuDropdownContentProps {
 }
 
 function MenuDropdownContent({ children }: MenuDropdownContentProps) {
+  const rootElement = useRootElement();
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
   useEffect(() => {
-    setupCloseHandler(document.body, () => undefined);
+    setupCloseHandler(rootElement, () => undefined);
     return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler]);
+  }, [rootElement, setupCloseHandler, removeCloseHandler]);
 
   return <>{children}</>;
 }

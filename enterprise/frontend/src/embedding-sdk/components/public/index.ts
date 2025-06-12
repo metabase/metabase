@@ -77,4 +77,10 @@ export { SdkDebugInfo } from "./debug/SdkDebugInfo";
 
 export { MetabotQuestion } from "./MetabotQuestion";
 
-import "./InteractiveQuestion/web";
+// web components
+export * from "./metabase-provider.web-component";
+export * from "./InteractiveDashboard/interactive-dashboard.web-component";
+export * from "./InteractiveDashboard/editable-dashboard.web-component";
+export * from "./InteractiveQuestion/interactive-question.web-component";
+export * from "./CollectionBrowser/collection-browser.web-component";
+export * from "./CreateDashboardModal/create-dashboard-modal.web-component";

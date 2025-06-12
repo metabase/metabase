@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
@@ -38,6 +39,7 @@ export function useModelsAndOption(
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
+  const rootElement = useRootElement();
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({
@@ -138,13 +140,14 @@ export function useModelsAndOption(
   }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
   const tooltipOption = useMemo(() => {
-    return getTooltipOption(
+    return getTooltipOption({
       chartModel,
       settings,
-      card.display as CardDisplayType,
+      display: card.display as CardDisplayType,
       containerRef,
-    );
-  }, [chartModel, settings, card.display, containerRef]);
+      rootElement,
+    });
+  }, [rootElement, chartModel, settings, card.display, containerRef]);
 
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
