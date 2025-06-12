@@ -1,9 +1,9 @@
 import { useCallback, useEffect } from "react";
 
-import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
 
 import type { TableEditingScope } from "../../types";
+import { getPkColumns, getRowUniqueKeyByPkIndexes } from "../utils";
 
 import { useActionUpdateRowModalFromDataset } from "./use-action-update-row-modal";
 
@@ -43,24 +43,20 @@ export function useActionUpdateRowModalFromDatasetWithObjectId({
   });
 
   useEffect(() => {
-    switch (currentObjectId) {
-      case undefined:
-        closeUpdateRowModal();
-        break;
+    if (currentObjectId && datasetData) {
+      const { cols, rows } = datasetData;
+      const { indexes } = getPkColumns(cols);
+      const rowIndex = rows.findIndex(
+        (row) => getRowUniqueKeyByPkIndexes(indexes, row) === currentObjectId,
+      );
 
-      default:
-        if (datasetData) {
-          const pkColumnIndex = datasetData.cols.findIndex(isPK);
-          const rowIndex = datasetData.rows.findIndex(
-            (row) =>
-              row[pkColumnIndex] === currentObjectId ||
-              row[pkColumnIndex] === Number(currentObjectId),
-          );
+      if (rowIndex !== -1) {
+        openUpdateRowModal(rowIndex);
+      }
+    }
 
-          if (rowIndex !== -1) {
-            openUpdateRowModal(rowIndex);
-          }
-        }
+    if (!currentObjectId) {
+      closeUpdateRowModal();
     }
   }, [currentObjectId, datasetData, openUpdateRowModal, closeUpdateRowModal]);
 
@@ -70,9 +66,11 @@ export function useActionUpdateRowModalFromDatasetWithObjectId({
         return;
       }
 
-      const pkColumnIndex = datasetData.cols.findIndex(isPK);
-      const objectId = datasetData.rows[rowIndex][pkColumnIndex];
-      onObjectIdChange(objectId?.toString());
+      const { cols, rows } = datasetData;
+      const { indexes } = getPkColumns(cols);
+      const objectId = getRowUniqueKeyByPkIndexes(indexes, rows[rowIndex]);
+
+      onObjectIdChange(objectId);
     },
     [datasetData, onObjectIdChange],
   );
