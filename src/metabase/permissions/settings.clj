@@ -2,9 +2,8 @@
   (:require
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

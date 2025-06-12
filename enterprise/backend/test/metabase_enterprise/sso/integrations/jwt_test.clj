@@ -537,7 +537,7 @@
 
 (deftest new-users-should-be-set-to-the-correct-tenant
   (with-jwt-default-setup!
-    (mt/with-temp [:model/PermissionsGroup my-group {:name (str ::my-group)}
+    (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
                    :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
                                                   :name "Tenant McTenantson"}]
       (mt/with-temporary-setting-values [use-tenants true]
@@ -572,8 +572,7 @@
 
 (deftest existing-users-can-be-updated-with-a-tenant
   (with-jwt-default-setup!
-    (mt/with-temp [:model/PermissionsGroup my-group {:name (str ::my-group)}
-                   :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+    (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
                                                   :name "Tenant McTenantson"}]
       (mt/with-temporary-setting-values [use-tenants true]
         (with-users-with-email-deleted "newuser@metabase.com"
@@ -606,11 +605,10 @@
 
 (deftest a-tenant-cannot-be-changed-once-set
   (with-jwt-default-setup!
-    (mt/with-temp [:model/PermissionsGroup my-group {:name (str ::my-group)}
-                   :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
+    (mt/with-temp [:model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
                                                   :name "Tenant McTenantson"}
-                   :model/Tenant {other-tenant-id :id} {:slug "other"
-                                                        :name "Other"}]
+                   :model/Tenant _ {:slug "other"
+                                    :name "Other"}]
       (mt/with-temporary-setting-values [use-tenants true]
         (with-users-with-email-deleted "newuser@metabase.com"
           (testing "log in with a tenant"

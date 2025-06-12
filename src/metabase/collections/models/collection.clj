@@ -69,7 +69,7 @@
        (when-not <>
          (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
 
-(def ^:constant tenant-root-collection-type "tenant")
+(def ^:private ^:constant tenant-root-collection-type "tenant")
 
 (def ^{:arglists '([])} tenant-root-collection
   "Memoized copy of the tenant root collection from the DB"
@@ -90,6 +90,7 @@
   (str "/" (tenant-root-collection-id) "/"))
 
 (defn is-tenant-collection?
+  "Whether or not a collection is a tenant collection. Placeholder for now."
   [_collection]
   ;; right now nothing is a tenant collection
   false

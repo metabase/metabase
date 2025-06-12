@@ -5,7 +5,6 @@
     :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
-   [metabase.tenants.core :as tenants]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :as i18n]
    [toucan2.core :as t2]))
@@ -14,9 +13,9 @@
   (into [:model/User] user/admin-or-self-visible-columns))
 
 (defn- find-user [user-id]
-  (when user-id
-    (when-let [{:as user :keys [login_attributes]} (t2/select-one current-user-fields, :id user-id)]
-      (assoc user :attributes (merge login_attributes (tenants/login-attributes user))))))
+  (some->> user-id
+           (t2/select-one current-user-fields :id)
+           (user/add-attributes)))
 
 (def ^:private ^:dynamic *user-local-values-user-id*
   "User ID that we've previous bound [[*user-local-values*]] for. This exists so we can avoid rebinding it in recursive

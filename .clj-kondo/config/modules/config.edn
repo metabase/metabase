@@ -1222,6 +1222,11 @@
            task
            util}}
 
+  tenants
+  {:team "Admin Webapp"
+   :api #{metabase.tenants.core}
+   :uses #{premium-features}}
+
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -1315,6 +1320,7 @@
            setup
            sso
            system
+           tenants
            util
            enterprise/advanced-permissions}}
 
@@ -1704,6 +1710,7 @@
            query-permissions
            query-processor
            request
+           tenants
            users
            util
            warehouse-schema
@@ -1800,11 +1807,13 @@
            util}}
 
   enterprise/tenants
-  {:api #{}
+  {:team "Admin Webapp"
+   :api #{}
    :uses #{api
            models
-           util
-           request}}
+           premium-features
+           request
+           util}}
 
   enterprise/upload-management
   {:team "Admin Webapp"

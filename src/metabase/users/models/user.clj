@@ -396,3 +396,8 @@
         (perms/remove-user-from-groups! user-id to-remove)
         (perms/add-user-to-groups! user-id to-add)))
     true))
+
+(defn add-attributes
+  "Adds the `:attributes` key to a user."
+  [{:keys [login_attributes] :as user}]
+  (assoc user :attributes (merge login_attributes (tenants/login-attributes user))))

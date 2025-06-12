@@ -366,7 +366,7 @@
   "Adds a key to the user reflecting whether they have permission to write *any* collection in the instance so that the
   FE can appropriately hide/show elements (e.g., we shouldn't try to let them save a new question if they don't have
   anywhere to save *to*)"
-  [{:keys [id] :as user}]
+  [user]
   (assoc user :can_write_any_collection
          (or (:is_superuser user)
              (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
