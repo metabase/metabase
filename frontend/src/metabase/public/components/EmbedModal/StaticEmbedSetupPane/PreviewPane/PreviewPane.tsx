@@ -74,7 +74,7 @@ function PreviewPaneContainer({
       className={cx(Style.Container, className)}
       style={{
         ["--background-url" as any]: `url(${dataUri})`,
-        display: hidden ? "none" : "block",
+        display: hidden ? "none" : undefined,
       }}
       {...divProps}
     >
