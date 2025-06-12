@@ -123,7 +123,7 @@
                       error-message
                       {:status-code http-status-unprocessable
                        :errors [error-message]})))))))
-    (let [error-message (str (.getMessage ^Exception original-exception))]
+    (let [error-message (.getMessage ^Exception original-exception)]
       (throw (ex-info
               error-message
               {:status-code http-status-unprocessable
