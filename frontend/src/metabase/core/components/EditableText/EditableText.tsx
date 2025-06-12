@@ -131,7 +131,6 @@ const EditableText = forwardRef(function EditableText(
     <Box
       component={EditableTextRoot}
       onClick={isMarkdown ? handleRootElementClick : undefined}
-      {...props}
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
@@ -151,6 +150,7 @@ const EditableText = forwardRef(function EditableText(
         }
       }}
       lh={1.57}
+      {...props}
     >
       {shouldShowMarkdown ? (
         <Markdown>{inputValue}</Markdown>
