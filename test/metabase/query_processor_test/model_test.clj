@@ -58,13 +58,11 @@
                                                         :found       (map :display-name (lib/breakoutable-columns query))}))))]
                            (lib/join $q (-> (lib/join-clause (lib.metadata/card mp (:id consumer-model))
                                                              [(lib/=
-                                                               (lib/with-temporal-bucket (find-col $q
-                                                                                                   "Reviews → Created At: Month")
+                                                               (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
                                                                  :month)
                                                                (lib/with-temporal-bucket (find-col
                                                                                           (lib/query mp (lib.metadata/card mp (:id consumer-model)))
-                                                                                          "Created At 2: Month" ; FIXME
-                                                                                          #_"Reviews → Created At: Month")
+                                                                                          "Reviews → Created At: Month")
                                                                  :month))])
                                             (lib/with-join-fields :all))))
                          (lib/->legacy-MBQL $q))]
