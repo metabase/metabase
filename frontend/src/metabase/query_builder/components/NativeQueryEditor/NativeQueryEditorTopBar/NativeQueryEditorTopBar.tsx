@@ -29,7 +29,6 @@ interface NativeQueryEditorTopBarProps {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isNativeEditorOpen: boolean;
-  isVisibilityTogglerOpen: boolean;
   nativeEditorSelectedText?: string;
   canChangeDatabase: boolean;
   hasParametersList?: boolean;
@@ -76,7 +75,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingDataReference,
     isShowingTemplateTagsEditor,
     isShowingSnippetSidebar,
-    isVisibilityTogglerOpen,
     onOpenModal,
     toggleDataReference,
     toggleTemplateTagsEditor,
@@ -186,7 +184,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           !question.isArchived() &&
           setIsNativeEditorOpen && (
             <VisibilityToggler
-              isOpen={isVisibilityTogglerOpen}
+              isOpen={isNativeEditorOpen}
               readOnly={!!readOnly}
               toggleEditor={toggleEditor}
             />

@@ -306,7 +306,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             query={query}
             isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
             isNativeEditorOpen={this.props.isNativeEditorOpen}
-            isVisibilityTogglerOpen={this.props.isNativeEditorOpen}
             sidebarFeatures={this.props.sidebarFeatures}
             toggleEditor={this.props.toggleEditor}
             setParameterValueToDefault={this.props.setParameterValueToDefault}
