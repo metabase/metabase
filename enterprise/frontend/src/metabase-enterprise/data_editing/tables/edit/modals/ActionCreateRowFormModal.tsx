@@ -22,8 +22,8 @@ import type {
 } from "../../types";
 import { ParameterActionInput } from "../inputs_v2/ParameterActionInput";
 
+import S from "./ActionFormModal.css";
 import { ActionFormModalParameter } from "./ActionFormModalParameter";
-import S from "./EditingBaseRowModal.module.css";
 
 interface ActionCreateRowFormModalProps {
   opened: boolean;
