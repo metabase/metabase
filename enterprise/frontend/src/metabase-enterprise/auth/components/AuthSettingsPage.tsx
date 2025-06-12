@@ -3,11 +3,13 @@ import { t } from "ttag";
 import { GoogleAuthCard } from "metabase/admin/settings/auth/containers/GoogleAuthCard";
 import { LdapAuthCard } from "metabase/admin/settings/auth/containers/LdapAuthCard";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
-import { Stack, Title } from "metabase/ui";
 
 import { JwtAuthCard } from "../containers/JwtAuthCard";
 import { SamlAuthCard } from "../containers/SamlAuthCard";
@@ -33,8 +35,7 @@ function AuthenticationTab() {
   const canDisablePasswordLogin = useHasTokenFeature("disable_password_login");
   const hasAnySsoProviderEnabled = useHasSsoEnabled();
   return (
-    <Stack gap="xl" pb="xl">
-      <Title order={1}>{t`Authentication`}</Title>
+    <SettingsPageWrapper title={t`Authentication`}>
       <GoogleAuthCard />
       <LdapAuthCard />
       <SamlAuthCard />
@@ -50,6 +51,6 @@ function AuthenticationTab() {
         />
         <SessionTimeoutSetting />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

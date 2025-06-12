@@ -17,7 +17,7 @@ import {
 import type { NotificationChannel } from "metabase-types/api";
 
 import { SlackSettingsModal } from "../../slack/SlackSettingsModal";
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { CreateWebhookModal } from "../widgets/Notifications/CreateWebhookModal";
 import { EditWebhookModal } from "../widgets/Notifications/EditWebhookModal";
 
@@ -35,8 +35,7 @@ export const NotificationSettingsPage = () => {
 
   return (
     <>
-      <Stack gap="xl">
-        <Title order={1}>{t`Notifications`}</Title>
+      <SettingsPageWrapper title={t`Notifications`}>
         <SettingsSection title={t`Slack`}>
           <UnstyledButton onClick={openSlackModal} variant="unstyled" w="100%">
             <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
@@ -88,7 +87,7 @@ export const NotificationSettingsPage = () => {
             />
           )}
         </SettingsSection>
-      </Stack>
+      </SettingsPageWrapper>
       <NotificationSettingsModals
         modal={webhookModal}
         channel={currentChannel}

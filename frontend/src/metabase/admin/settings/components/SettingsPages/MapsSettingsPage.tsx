@@ -1,15 +1,12 @@
 import { t } from "ttag";
 
-import { Stack, Title } from "metabase/ui";
-
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 
 export function MapsSettingsPage() {
   return (
-    <Stack>
-      <Title order={1}>{t`Maps`}</Title>
+    <SettingsPageWrapper title={t`Maps`}>
       <SettingsSection>
         <AdminSettingInput
           name="map-tile-server-url"
@@ -26,6 +23,6 @@ export function MapsSettingsPage() {
         />
         <CustomGeoJSONWidget />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

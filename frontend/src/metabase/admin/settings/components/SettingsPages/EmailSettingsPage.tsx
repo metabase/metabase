@@ -5,11 +5,11 @@ import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { Center, Stack, Title } from "metabase/ui";
+import { Center } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { SMTPConnectionForm } from "../Email/SMTPConnectionForm";
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
@@ -31,8 +31,7 @@ export function EmailSettingsPage() {
 
   return (
     <>
-      <Stack gap="xl">
-        <Title order={1}>{t`Email`}</Title>
+      <SettingsPageWrapper title={t`Email`}>
         {!isHosted && <SMTPConnectionCard onOpenSMTPModal={openModal} />}
         {isEmailConfigured && (
           <SettingsSection>
@@ -86,7 +85,7 @@ export function EmailSettingsPage() {
         <Center>
           <UpsellHostingBanner source="settings-email-migrate_to_cloud" />
         </Center>
-      </Stack>
+      </SettingsPageWrapper>
       {showModal && <SMTPConnectionForm onClose={closeModal} />}
     </>
   );

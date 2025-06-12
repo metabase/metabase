@@ -1,6 +1,13 @@
 import type React from "react";
 
-import { Box, type BoxProps, Stack, Text, Title } from "metabase/ui";
+import {
+  Box,
+  type BoxProps,
+  Stack,
+  type StackProps,
+  Text,
+  Title,
+} from "metabase/ui";
 
 import S from "./SettingsSection.module.css";
 
@@ -29,5 +36,28 @@ export function SettingsSection({
         </Stack>
       )}
     </Box>
+  );
+}
+
+export function SettingsPageWrapper({
+  title,
+  description,
+  children,
+  ...stackProps
+}: {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  children: React.ReactNode;
+} & StackProps) {
+  return (
+    <Stack gap="lg" {...stackProps}>
+      {(title || description) && (
+        <Box>
+          {title && <Title order={1}>{title}</Title>}
+          {description && <Text c="text-medium">{description}</Text>}
+        </Box>
+      )}
+      {children}
+    </Stack>
   );
 }

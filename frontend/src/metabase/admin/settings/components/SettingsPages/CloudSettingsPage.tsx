@@ -3,10 +3,11 @@ import { t } from "ttag";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { ButtonLink } from "metabase/core/components/ExternalLink";
 import { getStoreUrl } from "metabase/selectors/settings";
-import { Box, Icon, Title } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
 import { SettingHeader } from "../SettingHeader";
+import { SettingsPageWrapper } from "../SettingsSection";
 
 export function CloudSettingsPage() {
   const isHosted = useHasTokenFeature("hosting");
@@ -22,8 +23,7 @@ export const SettingsCloudStoreLink = () => {
   const url = getStoreUrl();
 
   return (
-    <Box maw="30rem">
-      <Title order={1}>{t`Cloud`}</Title>
+    <SettingsPageWrapper title={t`Cloud`}>
       <SettingHeader
         id="cloud-settings-header"
         title={t`Cloud settings`}
@@ -33,6 +33,6 @@ export const SettingsCloudStoreLink = () => {
         {t`Go to the Metabase Store`}
         <Icon name="external" opacity={0.6} ml="sm" />
       </ButtonLink>
-    </Box>
+    </SettingsPageWrapper>
   );
 };

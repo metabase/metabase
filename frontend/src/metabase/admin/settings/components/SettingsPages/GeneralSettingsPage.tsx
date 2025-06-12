@@ -3,9 +3,8 @@ import { jt, t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { Stack, Title } from "metabase/ui";
 
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
@@ -17,8 +16,7 @@ export function GeneralSettingsPage() {
   });
 
   return (
-    <Stack gap="lg">
-      <Title order={1}>{t`General`}</Title>
+    <SettingsPageWrapper title={t`General`}>
       <SettingsSection title={t`App config`}>
         <AdminSettingInput
           name="site-name"
@@ -76,6 +74,6 @@ export function GeneralSettingsPage() {
           inputType="textarea"
         />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

@@ -1,9 +1,12 @@
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { Box, Stack, Text, Title } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { getLoadingMessageOptions } from "../lib/loading-message";
 
@@ -13,14 +16,10 @@ import { ImageUploadWidget } from "./IllustrationWidget/ImageUploadWidget";
 
 export function WhiteLabelBrandingSettingsPage() {
   return (
-    <Stack gap="xl" data-testid="branding-settings">
-      <Box>
-        <Title order={1} pb="xs">{t`Branding`}</Title>
-        <Text c="text-medium">
-          {t`Configure your instance to match your brand visuals and voice`}
-        </Text>
-      </Box>
-
+    <SettingsPageWrapper
+      title={t`Branding`}
+      description={t`Configure your instance to match your brand visuals and voice`}
+    >
       <SettingsSection title={t`Colors`}>
         <Box>
           <SettingHeader
@@ -55,6 +54,6 @@ export function WhiteLabelBrandingSettingsPage() {
           options={getLoadingMessageOptions()}
         />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

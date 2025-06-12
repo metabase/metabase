@@ -6,10 +6,10 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";
-import { Alert, Box, Button, Icon, Stack, Text, Title } from "metabase/ui";
+import { Alert, Box, Button, Icon, Text } from "metabase/ui";
 
 import { SettingHeader } from "../../SettingHeader";
-import { SettingsSection } from "../../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../../SettingsSection";
 import { AdminSettingInput } from "../../widgets/AdminSettingInput";
 import { EmbeddingToggle } from "../EmbeddingToggle";
 
@@ -101,8 +101,7 @@ export function EmbeddingSdkSettings() {
     .otherwise(() => null);
 
   return (
-    <Stack>
-      <Title order={1}>{t`Embedding SDK`}</Title>
+    <SettingsPageWrapper title={t`Embedding SDK`}>
       <SettingsSection>
         <EmbeddingToggle
           label={t`Enable Embedded analytics SDK for React`}
@@ -182,6 +181,6 @@ export function EmbeddingSdkSettings() {
           )} for more.`}
         </Text>
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

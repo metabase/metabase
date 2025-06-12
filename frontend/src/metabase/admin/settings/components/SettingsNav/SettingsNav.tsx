@@ -126,7 +126,11 @@ export function SettingsNav() {
 }
 
 function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
-  // TODO: render active if collapsed and child is active
-
-  return <AdminNavItem path={`/admin/settings/${path}`} {...navItemProps} />;
+  return (
+    <AdminNavItem
+      data-testid={`settings-sidebar-link`}
+      path={`/admin/settings/${path}`}
+      {...navItemProps}
+    />
+  );
 }

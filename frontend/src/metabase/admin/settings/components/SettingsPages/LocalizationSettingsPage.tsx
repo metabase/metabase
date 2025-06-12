@@ -5,9 +5,9 @@ import { CommunityLocalizationNotice } from "metabase/common/components/Communit
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Stack, Title } from "metabase/ui";
+import { Stack } from "metabase/ui";
 
-import { SettingsSection } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";
 
@@ -17,8 +17,7 @@ export function LocalizationSettingsPage() {
   const applicationName = useSelector(getApplicationName);
 
   return (
-    <Stack>
-      <Title order={1}>{t`Localization`}</Title>
+    <SettingsPageWrapper title={t`Localization`}>
       <SettingsSection title={t`Instance settings`}>
         <AdminSettingInput
           name="site-locale"
@@ -69,6 +68,6 @@ export function LocalizationSettingsPage() {
         />
       </SettingsSection>
       <FormattingWidget />
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

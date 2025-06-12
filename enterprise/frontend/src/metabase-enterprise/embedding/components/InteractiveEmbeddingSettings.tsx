@@ -2,11 +2,14 @@ import { t } from "ttag";
 
 import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Button, Stack, Title } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
 import { SameSiteSelectWidget } from "./EmbeddingAppSameSiteCookieDescription";
@@ -28,8 +31,7 @@ export function InteractiveEmbeddingSettings() {
   );
 
   return (
-    <Stack>
-      <Title order={1}>{t`Interactive embedding`}</Title>
+    <SettingsPageWrapper title={t`Interactive embedding`}>
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-interactive"
@@ -56,6 +58,6 @@ export function InteractiveEmbeddingSettings() {
 
         <SameSiteSelectWidget />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }
