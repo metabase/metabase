@@ -33,12 +33,12 @@ import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/mode
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+import { useCommonDashboardParams } from "../SdkDashboard/use-common-dashboard-params";
 
 import {
   type InteractiveDashboardContextType,
   InteractiveDashboardProvider,
 } from "./context";
-import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
