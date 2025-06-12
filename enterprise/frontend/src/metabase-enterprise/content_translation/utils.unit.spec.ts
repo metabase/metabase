@@ -110,13 +110,11 @@ describe("content translation utils", () => {
 
   describe("translateDisplayNames", () => {
     const tc = (str: string | null | unknown) => `translated_${str}`;
-    tc.hasTranslations = true;
     const mockTc = jest.fn();
 
     beforeEach(() => {
       mockTc.mockClear();
       mockTc.mockImplementation(tc);
-      (mockTc as any).hasTranslations = true;
     });
 
     it("should translate display_name fields in simple objects", () => {
@@ -266,13 +264,11 @@ describe("content translation utils", () => {
 
   describe("translateFieldValuesInHoveredObject", () => {
     const tc = (str: string | null | unknown) => `translated_${str}`;
-    tc.hasTranslations = true;
     const mockTc = jest.fn();
 
     beforeEach(() => {
       mockTc.mockClear();
       mockTc.mockImplementation(tc);
-      (mockTc as any).hasTranslations = true;
     });
 
     it("should return object with null data when passed null", () => {

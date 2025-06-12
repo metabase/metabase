@@ -87,6 +87,7 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
+  // TODO: Investigate this. Value is an array but the func passes value to String(), which is weird
   const isFilterInValues = optionItemEqualsFilter(value, filter);
 
   const filteredOptions = useMemo(() => {
