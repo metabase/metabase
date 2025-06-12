@@ -48,26 +48,28 @@ export const FieldSection = ({ databaseId, field }: Props) => {
           nameMaxLength={254}
           namePlaceholder={t`Give this field a name`}
           onNameChange={async (name) => {
-            if (field.display_name !== name) {
-              await updateField({ id, display_name: name });
+            await updateField({ id, display_name: name });
 
-              sendToast({
-                icon: "check",
-                message: t`Display name for ${name} updated`,
-              });
-            }
+            sendToast({
+              icon: "check",
+              message: t`Display name for ${name} updated`,
+            });
           }}
           description={field.description ?? ""}
           descriptionPlaceholder={t`Give this field a description`}
           onDescriptionChange={async (description) => {
-            if ((field.description ?? "") !== description) {
-              await updateField({ id, description });
+            const newDescription = description.trim();
 
-              sendToast({
-                icon: "check",
-                message: t`Description for ${getFieldDisplayName(field)} updated`,
-              });
-            }
+            await updateField({
+              id,
+              // API does not accept empty strings
+              description: newDescription.length === 0 ? null : newDescription,
+            });
+
+            sendToast({
+              icon: "check",
+              message: t`Description for ${getFieldDisplayName(field)} updated`,
+            });
           }}
         />
       </Box>

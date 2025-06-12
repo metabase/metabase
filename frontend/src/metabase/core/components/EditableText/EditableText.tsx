@@ -62,7 +62,7 @@ const EditableText = forwardRef(function EditableText(
   const previousInitialValue = usePrevious(initialValue);
 
   useEffect(() => {
-    if (initialValue && initialValue !== previousInitialValue) {
+    if (initialValue != null && initialValue !== previousInitialValue) {
       setInputValue(initialValue);
     }
   }, [initialValue, previousInitialValue]);

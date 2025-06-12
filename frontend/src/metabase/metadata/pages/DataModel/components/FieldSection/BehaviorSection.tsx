@@ -44,15 +44,17 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
         label={t`Visibility`}
         value={field.visibility_type}
         onChange={async (visibilityType) => {
-          await updateField({
+          const { error } = await updateField({
             id,
             visibility_type: visibilityType,
           });
 
-          sendToast({
-            icon: "check",
-            message: t`Visibility for ${field.display_name} updated`,
-          });
+          if (!error) {
+            sendToast({
+              icon: "check",
+              message: t`Visibility for ${field.display_name} updated`,
+            });
+          }
         }}
       />
 
@@ -61,15 +63,17 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
         label={t`Filtering`}
         value={field.has_field_values}
         onChange={async (hasFieldValues) => {
-          await updateField({
+          const { error } = await updateField({
             id,
             has_field_values: hasFieldValues,
           });
 
-          sendToast({
-            icon: "check",
-            message: t`Filtering for ${field.display_name} updated`,
-          });
+          if (!error) {
+            sendToast({
+              icon: "check",
+              message: t`Filtering for ${field.display_name} updated`,
+            });
+          }
         }}
       />
 
@@ -88,17 +92,19 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
           label={t`Unfold JSON`}
           value={isFieldJsonUnfolded(field, database)}
           onChange={async (jsonUnfolding) => {
-            await updateField({
+            const { error } = await updateField({
               id,
               json_unfolding: jsonUnfolding,
             });
 
-            sendToast({
-              icon: "check",
-              message: jsonUnfolding
-                ? t`JSON unfloding for ${field.display_name} enabled`
-                : t`JSON unfloding for ${field.display_name} disabled`,
-            });
+            if (!error) {
+              sendToast({
+                icon: "check",
+                message: jsonUnfolding
+                  ? t`JSON unfloding for ${field.display_name} enabled`
+                  : t`JSON unfloding for ${field.display_name} disabled`,
+              });
+            }
           }}
         />
       )}

@@ -128,7 +128,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       <Box
         className={S.input}
         component={EditableText}
-        initialValue={field.description}
+        initialValue={field.description ?? ""}
         isOptional
         maw="100%"
         mb={rem(-4)}
