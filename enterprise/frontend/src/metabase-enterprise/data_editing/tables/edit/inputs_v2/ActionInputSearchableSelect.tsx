@@ -47,7 +47,6 @@ export const ActionInputSearchableSelect = ({
 
   const combobox = useCombobox({
     defaultOpened: autoFocus,
-    onDropdownClose: onBlur,
     onDropdownOpen: focusSearchInput,
   });
 
@@ -61,9 +60,12 @@ export const ActionInputSearchableSelect = ({
     (value: string | null) => {
       setValue(value ?? "");
       onChange?.(value);
+
+      // Close the dropdown
+      onBlur?.(value);
       combobox.toggleDropdown();
     },
-    [setValue, onChange, combobox],
+    [setValue, onChange, onBlur, combobox],
   );
 
   const inputLabel = useMemo(() => {

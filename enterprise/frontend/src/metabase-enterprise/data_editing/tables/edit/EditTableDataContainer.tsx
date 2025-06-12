@@ -25,14 +25,14 @@ import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { ActionCreateRowFormModal } from "./modals/ActionCreateRowFormModal";
+import { ActionUpdateRowFormModal } from "./modals/ActionUpdateRowFormModal";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
-import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { ForeignKeyConstraintModal } from "./modals/ForeignKeyConstraintModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
+import { useActionUpdateRowModalFromDatasetWithObjectId } from "./modals/use-action-update-row-modal-with-object-id";
 import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constraint-handling";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
-import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { getTableEditPathname } from "./url";
 import { useStandaloneTableQuery } from "./use-standalone-table-query";
 import { useActionFormDescription } from "./use-table-action-form-description";
@@ -92,16 +92,6 @@ export const EditTableDataContainer = ({
     },
     [databaseId, tableId, location, dispatch],
   );
-
-  const {
-    state: modalState,
-    openEditRowModal,
-    closeModal,
-  } = useTableEditingModalControllerWithObjectId({
-    currentObjectId: objectIdParam,
-    datasetData,
-    onObjectIdChange: handleCurrentObjectIdChange,
-  });
 
   const stateUpdateStrategy =
     useTableEditingStateApiUpdateStrategy(fakeTableQuery);
@@ -163,6 +153,20 @@ export const EditTableDataContainer = ({
   const { data: createRowFormDescription } = useActionFormDescription({
     actionId: BuiltInTableAction.Create,
     scope: editingScope,
+  });
+
+  const {
+    opened: isUpdateRowModalOpen,
+    rowIndex: updateModalRowIndex,
+    rowData: updateModalRowData,
+    actionFormDescription: updateActionFormDescription,
+    openUpdateRowModal,
+    closeUpdateRowModal,
+  } = useActionUpdateRowModalFromDatasetWithObjectId({
+    datasetData,
+    scope: editingScope,
+    currentObjectId: objectIdParam,
+    onObjectIdChange: handleCurrentObjectIdChange,
   });
 
   const {
@@ -250,7 +254,7 @@ export const EditTableDataContainer = ({
                 cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
                 getColumnSortDirection={getColumnSortDirection}
                 onCellValueUpdate={handleCellValueUpdate}
-                onRowExpandClick={openEditRowModal}
+                onRowExpandClick={openUpdateRowModal}
                 onRowSelectionChange={setRowSelection}
                 rowSelection={rowSelection}
                 onColumnSort={handleChangeColumnSort}
@@ -277,21 +281,15 @@ export const EditTableDataContainer = ({
           />
         )}
       </Stack>
-      <EditingBaseRowModal
-        modalState={modalState}
-        onClose={closeModal}
-        onEdit={handleRowUpdate}
-        onRowCreate={handleRowCreate}
+      <ActionUpdateRowFormModal
+        rowIndex={updateModalRowIndex}
+        rowData={updateModalRowData}
+        description={updateActionFormDescription}
+        opened={isUpdateRowModalOpen}
+        onClose={closeUpdateRowModal}
+        onRowUpdate={handleRowUpdate}
         onRowDelete={handleRowDelete}
-        datasetColumns={datasetData.cols}
-        currentRowData={
-          modalState.rowIndex !== undefined
-            ? datasetData.rows[modalState.rowIndex]
-            : undefined
-        }
-        fieldMetadataMap={tableFieldMetadataMap}
-        isLoading={isInserting}
-        hasDeleteAction
+        withDelete
       />
       <ActionCreateRowFormModal
         description={createRowFormDescription}
