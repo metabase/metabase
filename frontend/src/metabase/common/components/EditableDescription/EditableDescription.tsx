@@ -34,7 +34,7 @@ export const EditableDescription = ({
       isMultiline
       isMarkdown
       key={key}
-      lh="normal"
+      lh={1.57}
       {...props}
     />
   );

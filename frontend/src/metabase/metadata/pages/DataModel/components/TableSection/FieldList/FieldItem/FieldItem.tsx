@@ -118,7 +118,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
           mx={rem(-2)}
           px={rem(1)}
           py={0}
-          rows={1}
           placeholder={t`Give this field a name`}
           tabIndex={undefined} // override the default 0 which breaks a11y
           onChange={handleNameChange}
@@ -137,7 +136,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
         mx={rem(-2)}
         px={rem(1)}
         py={0}
-        rows={1}
         placeholder={t`No description yet`}
         tabIndex={undefined} // override the default 0 which breaks a11y
         onChange={handleDescriptionChange}
