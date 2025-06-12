@@ -147,7 +147,7 @@ function ProfileLink({
             <ActionIcon
               size="lg"
               variant="subtle"
-              color="text-medium"
+              c="text-dark"
               aria-label={t`Settings`}
             >
               <Icon name="gear" size={16} />

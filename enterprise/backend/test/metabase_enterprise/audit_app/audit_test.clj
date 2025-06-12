@@ -187,6 +187,31 @@
                    :model/Table {single-table-id :id} {:db_id audit-db-id
                                                        :schema "public"
                                                        :name "ORDERS"}
+
+                   ;; Create another table that has a two lower case versions
+                   ;; one without a nil schema
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "accounts"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema nil
+                                   :name "accounts"}
+
+                   ;; Create another table that has both upper and lower case schemas
+                   ;; and table names
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "friends"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "PUBLIC"
+                                   :name "FRIENDS"}
+
+                   :model/Table {no-schema-table :id} {:db_id audit-db-id
+                                                       :schema nil
+                                                       :name "products"}
+
                    ;; Create fields with both uppercase and lowercase names
                    :model/Field {upper-field-id :id} {:table_id upper-table-id
                                                       :name "EMAIL"}
@@ -212,6 +237,14 @@
       (testing "Tables without lowercase versions should be converted to lowercase"
         (is (= "orders"
                (t2/select-one-fn :name :model/Table :id single-table-id))))
+
+      (testing "Tables with nil schemas should not be changed if a table with a schema exists"
+        (is (= 2
+               (t2/count :model/Table {:where [:= :name "accounts"]}))))
+
+      (testing "Tables with nil schemas have their schema set to \"public\""
+        (is (= "public"
+               (t2/select-one-fn :schema :model/Table :id no-schema-table))))
 
       (testing "Fields with existing lowercase versions should not be modified"
         (is (= "EMAIL"

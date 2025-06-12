@@ -1010,7 +1010,7 @@ Related: [Sum](#sum) and [SumIf](#sumif).
 
 ### Offset
 
-> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, MongoDB, and Druid.
+> ⚠️ The `Offset` function is currently unavailable for MySQL/MariaDB, ClickHouse, MongoDB, and Druid.
 
 For more info, check out our page on [Offset](./expressions/offset.md).
 

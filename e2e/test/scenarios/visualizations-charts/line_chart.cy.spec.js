@@ -672,4 +672,65 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText(X_AXIS_VALUE);
     });
   });
+
+  it("should format goal tooltip value to match y-axis tick formatting", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.goal_value": 5000,
+        "graph.show_goal": true,
+        "graph.label_value_formatting": "compact",
+        column_settings: {
+          '["name","sum"]': {
+            number_style: "currency",
+            currency: "USD",
+          },
+        },
+      },
+    });
+
+    H.echartsContainer().findByText("$50.0k").should("exist");
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("$5,000.00").should("exist");
+    });
+  });
+
+  it("should support formatting goal tooltip value as a percent", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+      visualization_settings: {
+        "graph.goal_value": 123.4567,
+        "graph.show_goal": true,
+        "graph.label_value_formatting": "compact",
+        column_settings: {
+          '["name","count"]': {
+            number_style: "percent",
+          },
+        },
+      },
+    });
+
+    H.echartsContainer().findByText("50.0k%").should("exist");
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("12,345.67%").should("exist");
+    });
+  });
 });
