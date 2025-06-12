@@ -386,14 +386,12 @@ export default class AccordionList extends Component {
       return true;
     }
 
-    if (typeof searchProp === "string") {
-      return this.searchPredicate(item, searchProp);
-    } else if (Array.isArray(searchProp)) {
-      const searchResults = searchProp.map((member) =>
-        this.searchPredicate(item, member),
-      );
-      return searchResults.reduce((acc, curr) => acc || curr);
-    }
+    const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
+
+    const searchResults = searchProps.map((member) =>
+      this.searchPredicate(item, member),
+    );
+    return searchResults.reduce((acc, curr) => acc || curr);
   };
 
   getRowsCached = (
