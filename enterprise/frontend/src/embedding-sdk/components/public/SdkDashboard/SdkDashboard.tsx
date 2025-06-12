@@ -23,7 +23,7 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
-import { setErrorPage } from "metabase/redux/app";
+import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Flex } from "metabase/ui";
 
@@ -67,7 +67,7 @@ export const SdkDashboardInner = ({
   const dispatch = useSdkDispatch();
   useEffect(() => {
     if (dashboardId) {
-      dispatch(setErrorPage(null));
+      dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
 
