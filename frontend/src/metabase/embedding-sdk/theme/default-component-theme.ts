@@ -1,10 +1,8 @@
 import { merge } from "icepick";
 
 import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
-import {
-  EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "metabase/embedding-sdk/config";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
+import { EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -141,13 +139,15 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
 // To be sure to not slow down typescript I left the check commented.
 // If you change any of the default props please verify that the types are correct
 
-export function getEmbeddingComponentOverrides(): MantineThemeOverride["components"] {
+export function getEmbeddingComponentOverrides(
+  rootElement: HTMLElement,
+): MantineThemeOverride["components"] {
   return {
     HoverCard: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+          target: getPortalRootElement(rootElement),
         },
       },
     },
@@ -155,7 +155,9 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       }, // satisfies Partial<ModalRootProps>,
     },
@@ -163,7 +165,9 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       }, // satisfies Partial<ModalProps>,
     },
@@ -171,15 +175,16 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+          target: getPortalRootElement(rootElement),
         },
       }, // satisfies Partial<PopoverProps>,
     },
+
     Tooltip: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+          target: getPortalRootElement(rootElement),
         },
       }, // satisfies Partial<TooltipProps>,
     },
