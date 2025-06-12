@@ -144,7 +144,7 @@ describe("scenarios > admin > localization > content translation", () => {
           .contains(/couldn.*t upload the file/)
           .should("be.visible");
         cy.findAllByRole("alert")
-          .contains(/Row 2: Invalid locale/)
+          .contains(/Row 2: Invalid locale: xx/)
           .should("be.visible");
       });
 
