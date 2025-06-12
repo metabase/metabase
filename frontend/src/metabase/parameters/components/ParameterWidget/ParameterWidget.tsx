@@ -38,6 +38,7 @@ type ParameterWidgetProps = PropsWithChildren<
       dragHandle: ReactNode;
       variant?: "default" | "subtle";
       withinPortal?: boolean;
+      fullWidth?: boolean;
     } & Pick<DashboardFullscreenControls, "isFullscreen">
   >
 >;
@@ -61,6 +62,7 @@ export const ParameterWidget = ({
   dragHandle,
   variant = "default",
   withinPortal,
+  fullWidth,
 }: ParameterWidgetProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const isEditingParameter = editingParameter?.id === parameter.id;
@@ -95,6 +97,43 @@ export const ParameterWidget = ({
           <Icon ml="auto" pl="md" name="gear" />
         </Flex>
       </Sortable>
+    );
+  }
+
+  if (variant === "subtle") {
+    return (
+      <Flex
+        fz={isFullscreen ? "md" : undefined}
+        align="center"
+        className={cx(className, S.SubtleParameterWidget, {
+          [S.fullWidth]: fullWidth,
+        })}
+      >
+        <ParameterValueWidget
+          offset={{
+            mainAxis: 8,
+            crossAxis: -16,
+          }}
+          parameter={parameter}
+          parameters={parameters}
+          question={question}
+          dashboard={dashboard}
+          value={parameter.value}
+          setValue={(value) => setValue?.(value)}
+          isEditing={isEditingParameter}
+          placeholder={parameter.name}
+          focusChanged={setIsFocused}
+          isFullscreen={isFullscreen}
+          commitImmediately={commitImmediately}
+          setParameterValueToDefault={setParameterValueToDefault}
+          enableRequiredBehavior={enableParameterRequiredBehavior}
+          isSortable={isSortable && isEditing}
+          variant={variant}
+          withinPortal={withinPortal}
+          prefix={legend ? legend + ":\u00a0" : undefined}
+        />
+        {children}
+      </Flex>
     );
   }
 
