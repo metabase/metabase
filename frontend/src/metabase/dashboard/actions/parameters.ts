@@ -189,6 +189,15 @@ export const addParameter = createThunkAction(
           }),
         );
       }
+
+      dispatch(
+        setSidebar({
+          name: SIDEBAR_NAME.editParameter,
+          props: {
+            parameterId: parameter.id,
+          },
+        }),
+      );
     },
 );
 
