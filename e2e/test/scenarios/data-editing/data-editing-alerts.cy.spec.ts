@@ -106,8 +106,8 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.modal().within(() => {
-          // Focus on second input, omitting "ID" field which is auto-populated.
-          cy.get("input").eq(1).type("black");
+          cy.findByRole("combobox").eq(0).type("black");
+          cy.document().findByRole("listbox").eq(0).click();
 
           cy.findByRole("button", { name: "Create new record" }).click();
           cy.wait("@executeBulk");
@@ -156,8 +156,8 @@ describe("scenarios > data editing > setting alerts", () => {
         });
 
         H.modal().within(() => {
-          // Focus on second input, omitting "ID" field which is auto-populated.
-          cy.get("input").eq(1).type("black");
+          cy.findByRole("combobox").eq(0).type("black");
+          cy.document().findByRole("listbox").eq(0).click();
 
           cy.findByRole("button", { name: "Create new record" }).click();
         });
