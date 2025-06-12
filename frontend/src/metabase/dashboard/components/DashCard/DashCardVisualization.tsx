@@ -6,12 +6,15 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
-import { getDashcardData } from "metabase/dashboard/selectors";
+import {
+  getDashCardInlineValuePopulatedParameters,
+  getDashcardData,
+} from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
-  isHeadingDashCard,
   isQuestionCard,
   isVirtualDashCard,
+  supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
@@ -49,6 +52,8 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+
+import { DashboardParameterList } from "../DashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -155,6 +160,10 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const inlineParameters = useSelector((state) =>
+    getDashCardInlineValuePopulatedParameters(state, dashcard.id),
+  );
 
   const series = useMemo(() => {
     if (
@@ -375,7 +384,6 @@ export function DashCardVisualization({
       result: mainSeries,
       isXray,
       isPublicOrEmbedded,
-      isEditing,
       downloadsEnabled,
     });
 
@@ -392,16 +400,27 @@ export function DashCardVisualization({
       : undefined;
 
     // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded && downloadsEnabled) {
+    if (!isEditing && isPublicOrEmbedded && downloadsEnabled) {
       return (
-        <DashCardQuestionDownloadButton
-          question={question}
-          result={mainSeries}
-          dashboardId={dashboard.id}
-          dashcardId={dashcard.id}
-          uuid={uuid}
-          token={token}
-        />
+        <Flex align="center" justify="flex-end">
+          {inlineParameters.length > 0 && (
+            <div style={{ transform: "scale(0.7)" }}>
+              <DashboardParameterList
+                parameters={inlineParameters}
+                isSortable={false}
+                isFullscreen={isFullscreen}
+              />
+            </div>
+          )}
+          <DashCardQuestionDownloadButton
+            question={question}
+            result={mainSeries}
+            dashboardId={dashboard.id}
+            dashcardId={dashcard.id}
+            uuid={uuid}
+            token={token}
+          />
+        </Flex>
       );
     }
 
@@ -412,17 +431,33 @@ export function DashCardVisualization({
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
-      <DashCardMenu
-        downloadsEnabled={downloadsEnabled}
-        question={question}
-        result={mainSeries}
-        dashcardId={dashcard.id}
-        dashboardId={dashboard.id}
-        token={token}
-        uuid={uuid}
-        onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
-      />
+      <Flex align="center" justify="flex-end">
+        {inlineParameters.length > 0 && (
+          <div style={{ transform: "scale(0.7)" }}>
+            <DashboardParameterList
+              parameters={inlineParameters}
+              isSortable={false}
+              isFullscreen={isFullscreen}
+            />
+          </div>
+        )}
+        {!isEditing && (
+          <DashCardMenu
+            downloadsEnabled={downloadsEnabled}
+            question={question}
+            result={mainSeries}
+            dashcardId={dashcard.id}
+            dashboardId={dashboard.id}
+            token={token}
+            uuid={uuid}
+            position={
+              inlineParameters.length > 0 ? "bottom-start" : "bottom-end"
+            }
+            onEditVisualization={onEditVisualization}
+            openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
+          />
+        )}
+      </Flex>
     );
   }, [
     question,
@@ -430,10 +465,11 @@ export function DashCardVisualization({
     isXray,
     isPublicOrEmbedded,
     isEditing,
-    dashcard.id,
-    dashcard.dashboard_id,
-    dashboard.id,
     downloadsEnabled,
+    dashcard,
+    inlineParameters,
+    isFullscreen,
+    dashboard.id,
     onEditVisualization,
     titleMenuItems,
   ]);
@@ -451,7 +487,7 @@ export function DashCardVisualization({
         // Heading dashcards configure pointer events on their own
         // to make the inner input and inline filters interactive.
         [CS.pointerEventsNone]:
-          isEditingDashboardLayout && !isHeadingDashCard(dashcard),
+          isEditingDashboardLayout && !supportsInlineParameters(dashcard),
       })}
       dashboard={dashboard}
       dashcard={dashcard}
