@@ -41,7 +41,7 @@ import Action from "./Action";
 const DASHBOARD_ID = 123;
 const DASHCARD_ID = 456;
 const ACTION_MODEL_ID = 777;
-const ACTION_EXEC_MOCK_PATH = `path:/api/dashboard/${DASHBOARD_ID}/dashcard/${DASHCARD_ID}/execute`;
+const ACTION_EXEC_MOCK_PATH = `path:/api/action/v2/execute`;
 
 const DATABASE_ID = 1;
 
@@ -133,7 +133,9 @@ async function setup({
 
   if (getActionIsEnabledInDatabase(dashcard)) {
     fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
-    fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
+    fetchMock.post(ACTION_EXEC_MOCK_PATH, {
+      outputs: [{ "rows-updated": [1] }],
+    });
 
     // for ActionCreator modal (action edit modal)
     setupDatabasesEndpoints([database]);
@@ -308,8 +310,9 @@ describe("Actions > ActionViz > Action", () => {
 
       const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
       expect(await call?.request?.json()).toEqual({
-        modelId: ACTION_MODEL_ID,
-        parameters: {
+        action_id: `dashcard:${DASHCARD_ID}`,
+        scope: { "dashboard-id": DASHBOARD_ID },
+        input: {
           parameter_1: 44,
         },
       });
@@ -456,8 +459,9 @@ describe("Actions > ActionViz > Action", () => {
 
     it("should submit provided form input values to the action execution endpoint", async () => {
       const expectedBody = {
-        modelId: ACTION_MODEL_ID,
-        parameters: {
+        action_id: `dashcard:${DASHCARD_ID}`,
+        scope: { "dashboard-id": DASHBOARD_ID },
+        input: {
           parameter_1: "foo",
           parameter_2: 5,
         },
@@ -485,8 +489,9 @@ describe("Actions > ActionViz > Action", () => {
 
     it("should combine data from dashboard parameters and form input when submitting for execution", async () => {
       const expectedBody = {
-        modelId: ACTION_MODEL_ID,
-        parameters: {
+        action_id: `dashcard:${DASHCARD_ID}`,
+        scope: { "dashboard-id": DASHBOARD_ID },
+        input: {
           parameter_1: "foo",
           parameter_2: 5,
         },

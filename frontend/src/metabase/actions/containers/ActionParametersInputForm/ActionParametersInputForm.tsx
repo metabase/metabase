@@ -1,4 +1,4 @@
-import type { FormikHelpers } from "formik";
+import type { FormikContextType, FormikHelpers } from "formik";
 import { useCallback, useMemo } from "react";
 
 import ActionForm from "metabase/actions/components/ActionForm";
@@ -18,6 +18,9 @@ export interface ActionParametersInputFormProps {
     actions: FormikHelpers<ParametersForActionExecution>,
   ) => void;
   onCancel?: () => void;
+  onContextUpdate?: (
+    context: FormikContextType<ParametersForActionExecution>,
+  ) => void;
 }
 
 function ActionParametersInputForm({
@@ -27,6 +30,7 @@ function ActionParametersInputForm({
   onCancel,
   onSubmit,
   onSubmitSuccess,
+  onContextUpdate,
 }: ActionParametersInputFormProps) {
   const hiddenFields = useMemo(() => {
     const hiddenFieldIds = Object.values(
@@ -64,6 +68,7 @@ function ActionParametersInputForm({
       hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
       onClose={onCancel}
+      onContextUpdate={onContextUpdate}
     />
   );
 }

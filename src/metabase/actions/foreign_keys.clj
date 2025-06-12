@@ -1,21 +1,6 @@
 (ns metabase.actions.foreign-keys
-  (:require
-   [clojure.set :as set]
-   [metabase.util :as u])
   (:import
    (clojure.lang PersistentQueue)))
-
-#_(defn lookup-children-in-db [{:keys [table fk pk]} parents]
-    (jdbc/query
-     'db
-     {:select pk
-      :from   [table]
-      :where  (if (= 1 (count fk))
-                [:in (key (first fk)) (map (val (first fk)) parents)]
-                (into [:or] (for [p parents]
-                              (into [:and] (for [[fk-col pk-col] fk]
-                                             [:= fk-col (get p pk-col)])))))
-      :limit  501}))
 
 (defn- pop-queue
   [{:keys [queue] :as state}]
@@ -27,10 +12,16 @@
   [state item-type items]
   (if-not (seq items)
     state
-    (let [new-items (remove (set (get-in state [:results item-type])) items)]
-      (-> state
-          (update :queue conj [item-type new-items])
-          (update-in [:results item-type] (fnil into #{}) new-items)))))
+    (let [existing-items (set (for [[t its] (:results state)
+                                    :when (= t item-type)
+                                    item its]
+                                item))
+          new-items      (remove existing-items items)]
+      (if (seq new-items)
+        (-> state
+            (update :queue conj [item-type new-items])
+            (update :results #(cons [item-type new-items] %)))
+        state))))
 
 (defn- step
   [metadata-fn children-fn state]
@@ -45,6 +36,14 @@
                 state'
                 child-keys)))))
 
+(defn- items->count-by-type
+  [items]
+  (reduce
+   (fn [acc [item-type items]]
+     (update acc item-type (fnil + 0) (count items)))
+   {}
+   items))
+
 (defn- state->results
   [{:keys [results queue]}]
   ;; This is not precise; we should check whether there is at least one child for what's in the queue.
@@ -57,25 +56,24 @@
   (reduce
    (fn [state _]
      (step metadata-fn children-fn state))
-   {:queue  (conj PersistentQueue/EMPTY [item-type items])
-    :results {item-type (set items)}}
+   {:queue   (conj PersistentQueue/EMPTY [item-type items])
+    :results (conj PersistentQueue/EMPTY [item-type items])}
    (range max-queries)))
 
-(defn walk
+(defn- walk
   "Given some starting items, return their descendants."
   [item-type items metadata-fn children-fn & {:as opts}]
   (-> (walk* item-type items metadata-fn children-fn opts)
-      (update :results (fn [results]
-                         (u/remove-nils
-                          (update results item-type (comp not-empty set/difference) items))))
-      (state->results)))
+      ;; last is the root rows
+      (update :results drop-last)
+      state->results))
 
 (defn count-descendants
   "Given some starting items, count the number of descendants they have, according to their types."
   [item-type items metadata-fn children-fn & {:as opts}]
   (let [{:keys [complete? items]} (walk item-type items metadata-fn children-fn opts)]
     {:complete? complete?
-     :counts    (update-vals items count)}))
+     :counts    (items->count-by-type items)}))
 
 (defn delete-recursively
   "Delete the given items, along with all their descendants."
@@ -84,4 +82,4 @@
     (if (seq queue)
       (throw (ex-info "Cannot delete all descendants, as we could not enumerate them" {:queue queue}))
       (do (delete-fn results)
-          (update-vals results count)))))
+          (items->count-by-type (drop-last results))))))

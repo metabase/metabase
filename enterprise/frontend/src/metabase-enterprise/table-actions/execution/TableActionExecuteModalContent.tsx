@@ -1,20 +1,26 @@
+import type { FormikContextType } from "formik";
 import { merge } from "icepick";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import _ from "underscore";
 
 import ActionParametersInputForm from "metabase/actions/containers/ActionParametersInputForm";
 import {
   getActionErrorMessage,
   getActionExecutionMessage,
 } from "metabase/actions/utils";
-import { skipToken, useGetActionQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import type { TableActionsExecuteFormVizOverride } from "metabase/visualizations/types/table-actions";
-import { useExecuteActionMutation } from "metabase-enterprise/api";
+import {
+  useExecuteActionMutation,
+  useGetActionsQuery,
+} from "metabase-enterprise/api";
 import type {
+  DataGridWritebackAction,
   ParametersForActionExecution,
   WritebackAction,
   WritebackActionId,
@@ -38,12 +44,14 @@ export const TableActionExecuteModalContent = ({
   const dispatch = useDispatch();
 
   const {
-    error: errorAction,
-    isLoading: isLoadingAction,
-    data: action,
-  } = useGetActionQuery(actionId != null ? { id: actionId } : skipToken);
+    data: actions,
+    isLoading: isLoadingActions,
+    error: errorActions,
+    // TODO: Replace with `describe` API.
+  } = useGetActionsQuery(actionId != null ? null : skipToken);
 
   const actionWithOverrides = useMemo(() => {
+    const action = actions?.find((action) => action.id === actionId);
     if (action && actionOverrides) {
       return {
         ...action,
@@ -51,18 +59,44 @@ export const TableActionExecuteModalContent = ({
           action?.visualization_settings,
           actionOverrides,
         ),
-      };
+      } as DataGridWritebackAction;
     }
-  }, [action, actionOverrides]);
+    return action;
+  }, [actions, actionOverrides, actionId]);
 
   const [executeAction] = useExecuteActionMutation();
 
+  /*
+    Hacky way to get the internal context of ActionParametersInputForm
+    without introducing unpredictable changes to ActionForm component.
+  */
+  const actionParametersFormContextRef =
+    useRef<FormikContextType<ParametersForActionExecution>>();
+  const setActionParametersFormContext = useCallback(
+    (context: FormikContextType<ParametersForActionExecution>) => {
+      actionParametersFormContextRef.current = context;
+    },
+    [],
+  );
   const handleSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
+      const formInitialValues =
+        actionParametersFormContextRef.current?.initialValues;
+      const changedFields: ParametersForActionExecution = {};
+      Object.keys(parameters).forEach((key) => {
+        if (formInitialValues) {
+          if (!_.isEqual(parameters[key], formInitialValues[key])) {
+            changedFields[key] = parameters[key];
+          }
+        } else {
+          changedFields[key] = parameters[key];
+        }
+      });
+
       const result = await executeAction({
         actionId: actionId as number,
         input: initialValues,
-        params: parameters,
+        params: changedFields,
       });
       if (!result.error) {
         const message = getActionExecutionMessage(
@@ -85,9 +119,9 @@ export const TableActionExecuteModalContent = ({
     onSuccess?.();
   }, [onClose, onSuccess]);
 
-  if (errorAction || isLoadingAction) {
+  if (errorActions || isLoadingActions) {
     return (
-      <LoadingAndErrorWrapper error={errorAction} loading={isLoadingAction} />
+      <LoadingAndErrorWrapper error={errorActions} loading={isLoadingActions} />
     );
   }
 
@@ -100,11 +134,12 @@ export const TableActionExecuteModalContent = ({
       onClose={onClose}
     >
       <ActionParametersInputForm
-        action={ensuredAction}
+        action={ensuredAction as WritebackAction}
         initialValues={initialValues}
         onCancel={onClose}
         onSubmit={handleSubmit}
         onSubmitSuccess={handleSubmitSuccess}
+        onContextUpdate={setActionParametersFormContext}
       />
     </ModalContent>
   );

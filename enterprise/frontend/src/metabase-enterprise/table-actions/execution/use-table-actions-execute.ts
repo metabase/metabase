@@ -1,15 +1,16 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
-import { skipToken, useListActionsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
+import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   ActionFormInitialValues,
+  DataGridWritebackAction,
   DatasetData,
   RowValues,
   TableActionDisplaySettings,
   TableRowActionDisplaySettings,
-  WritebackAction,
 } from "metabase-types/api";
 
 import {
@@ -29,8 +30,8 @@ export const useTableActionsExecute = ({
 
   const hasAddedActions = actionsVizSettings && actionsVizSettings.length > 0;
 
-  const { data: actions } = useListActionsQuery(
-    hasAddedActions ? {} : skipToken,
+  const { data: actions } = useGetActionsQuery(
+    hasAddedActions ? null : skipToken,
   );
 
   const { tableActions, tableActionsVizSettingsSet } = useMemo(() => {
@@ -65,7 +66,7 @@ export const useTableActionsExecute = ({
   }, [actions, actionsVizSettings]);
 
   const handleTableActionRun = useCallback(
-    (action: WritebackAction, row: Row<RowValues>) => {
+    (action: DataGridWritebackAction, row: Row<RowValues>) => {
       if (!datasetData) {
         console.warn("Failed to trigger action, datasetData is null");
         return;

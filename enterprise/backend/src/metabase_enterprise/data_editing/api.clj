@@ -4,6 +4,7 @@
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.params :as data-editing.params]
    [metabase.actions.core :as actions]
+   [metabase.actions.models :as actions.models]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -194,46 +195,38 @@
   (let [action (-> (actions/select-action :id action-id :archived false) (t2/hydrate :creator) api/read-check)]
     (execute-saved-action! action inputs)))
 
-(api.macros/defendpoint :get "/tmp-action"
-  "Returns all actions across all tables and models"
-  [_
-   _
-   _]
-  (api/check-superuser)
-  (let [databases          (t2/select [:model/Database :id :settings])
-        editable-database? (comp boolean :database-enable-table-editing :settings)
-        editable-databases (filter editable-database? databases)
-
-        editable-tables
-        (when (seq editable-databases)
-          (t2/select :model/Table
-                     :db_id [:in (map :id editable-databases)]
-                     :active true))
-
-        fields
-        (when (seq editable-tables)
-          (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
-
-        fields-by-table
-        (group-by :table_id fields)
-
-        table-actions
-        (for [t editable-tables
-              op [:table.row/create :table.row/update :table.row/delete]
-              :let [fields (fields-by-table (:id t))
-                    action (actions/table-primitive-action t fields op)]]
-          (assoc action :table_name (:name t)))
-
-        saved-actions
-        (for [a (actions/select-actions nil :archived false)]
-          (select-keys a [:name
-                          :model_id
-                          :type
-                          :database_id
-                          :id
-                          :visualization_settings
-                          :parameters]))]
-    {:actions (vec (concat saved-actions table-actions))}))
+(def tmp-action
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :get "/tmp-action"
+    "Returns all actions across all tables and models"
+    [_
+     _
+     _]
+    (check-permissions)
+    (let [databases          (t2/select [:model/Database :id :settings])
+          editable-database? (comp boolean :database-enable-table-editing :settings)
+          editable-databases (filter editable-database? databases)
+          editable-tables    (when (seq editable-databases)
+                               (t2/select :model/Table
+                                          :db_id [:in (map :id editable-databases)]
+                                          :active true))
+          fields             (when (seq editable-tables)
+                               (t2/select :model/Field :table_id [:in (map :id editable-tables)]))
+          fields-by-table    (group-by :table_id fields)
+          table-actions      (for [t            editable-tables
+                                   [op op-name] actions/enabled-table-actions
+                                   :let [fields (fields-by-table (:id t))
+                                         action (actions/table-primitive-action t fields op)]]
+                               (assoc action :table_name op-name))
+          saved-actions      (for [a (actions/select-actions nil :archived false)]
+                               (select-keys a [:name
+                                               :model_id
+                                               :type
+                                               :database_id
+                                               :id
+                                               :visualization_settings
+                                               :parameters]))]
+      {:actions (vec (concat saved-actions table-actions))})))
 
 (mr/def ::unified-action.base
   [:or
@@ -402,80 +395,86 @@
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified})))))
 
-(api.macros/defendpoint :post "/action/v2/execute"
-  "The One True API for invoking actions.
+(def execute-single
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/action/v2/execute"
+    "The One True API for invoking actions.
   It doesn't care whether the action is saved or primitive, and whether it has been placed.
   In particular, it supports:
   - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
   - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
   Since actions are free to return multiple outputs even for a single output, the response is always plural."
-  [{}
-   {}
-   {:keys [action_id scope params input]}
-   :- [:map
+    [{}
+     {}
+     {:keys [action_id scope params input]}
+     :- [:map
        ;; TODO docstrings for these
-       [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope     ::types/scope.raw]
-       [:params    {:optional true} :map]
-       [:input     :map]]]
-  {:outputs (execute!* action_id scope params [input])})
+         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope     ::types/scope.raw]
+         [:params    {:optional true} :map]
+         [:input     :map]]]
+    {:outputs (execute!* action_id scope params [input])}))
 
-(api.macros/defendpoint :post "/action/v2/execute-bulk"
-  "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
-  [{}
-   {}
-   {:keys [action_id scope inputs params]}
-   :- [:map
-       [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
-       [:scope                   ::types/scope.raw]
-       [:inputs                  [:sequential :map]]
-       [:params {:optional true} :map]]]
+(def execute-bulk
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/action/v2/execute-bulk"
+    "The *other* One True API for invoking actions. The only difference is that it accepts multiple inputs."
+    [{}
+     {}
+     {:keys [action_id scope inputs params]}
+     :- [:map
+         [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:scope                   ::types/scope.raw]
+         [:inputs                  [:sequential :map]]
+         [:params {:optional true} :map]]]
   ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
-  {:outputs (binding [actions/*params* params]
-              (execute!* action_id scope (dissoc params :delete-children) inputs))})
+    {:outputs (binding [actions/*params* params]
+                (execute!* action_id scope (dissoc params :delete-children) inputs))}))
 
-(api.macros/defendpoint :post "/tmp-modal"
-  "Temporary endpoint for describing an actions parameters
+(def tmp-modal
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/tmp-modal"
+    "Temporary endpoint for describing an actions parameters
   such that they can be presented correctly in a modal ahead of execution."
-  [{}
-   {}
+    [{}
+     {}
    ;; TODO support for bulk actions
-   {:keys [action_id scope input]}]
-  (let [scope   (actions/hydrate-scope scope)
-        ;; TODO consolidate this with [[fetch-unified-action]]
-        unified (cond
-                  (not (#{"table.row/create"
-                          "table.row/update"
-                          "table.row/delete"} action_id))
-                  (fetch-unified-action scope action_id)
+     {:keys [action_id scope input]}]
+    (let [scope   (actions/hydrate-scope scope)
+         ;; TODO consolidate this with [[fetch-unified-action]]
+          unified (cond
+                    (not (#{"table.row/create"
+                            "table.row/update"
+                            "table.row/delete"} action_id))
+                    (fetch-unified-action scope action_id)
 
-                  (:dashcard-id scope)
-                  (let [{:keys [dashcard-id]} scope
-                        {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
-                    (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-                    {:dashcard-viz  visualization_settings
-                     :inner-action  {:action-kw (keyword action_id)
-                                     :mapping   {:table-id (:table_id visualization_settings)
-                                                 :row      ::root}}
-                     ;; TODO: this should belongs to our configuration
-                     ;; TODO: migrate on read
-                     :param-mapping (->> visualization_settings
-                                         :editableTable.enabledActions
-                                         (some (fn [{:keys [id parameterMappings]}]
-                                                 (when (= id action_id)
-                                                   parameterMappings))))})
+                    (:dashcard-id scope)
+                    (let [{:keys [dashcard-id]} scope
+                          {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
+                      (api/read-check (t2/select-one :model/Dashboard dashboard_id))
+                      {:dashcard-viz  visualization_settings
+                       :inner-action  {:action-kw (keyword action_id)
+                                       :mapping   {:table-id (:table_id visualization_settings)
+                                                   :row      ::root}}
+                      ;; TODO: this should belongs to our configuration
+                      ;; TODO: migrate on read
+                       :param-mapping (->> visualization_settings
+                                           :editableTable.enabledActions
+                                           (some (fn [{:keys [id parameterMappings]}]
+                                                   (when (= id action_id)
+                                                     parameterMappings))))})
 
-                  (:table-id scope)
-                  {:action-kw (keyword action_id)
-                   :mapping   {:table-id (:table-id scope)
-                               :row      ::root}}
+                    (:table-id scope)
+                    {:action-kw (keyword action_id)
+                     :mapping   {:table-id (:table-id scope)
+                                 :row      ::root}}
 
-                  :else
-                  (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
-                                  {:status-code 400
-                                   :scope       scope
-                                   :action_id   action_id})))]
-    (data-editing.params/describe-unified-action unified scope input)))
+                    :else
+                    (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
+                                    {:status-code 400
+                                     :scope       scope
+                                     :action_id   action_id})))]
+      (data-editing.params/describe-unified-action unified scope input))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

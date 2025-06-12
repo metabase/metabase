@@ -80,7 +80,7 @@ describe(
       cy.intercept("GET", "/api/action/*").as("getAction");
       cy.intercept("GET", "/api/action?model-id=*").as("getModelAction");
       cy.intercept("PUT", "/api/action/*").as("updateAction");
-      cy.intercept("POST", "/api/action/*/execute").as("executeAction");
+      cy.intercept("POST", "/api/action/v2/execute").as("executeAction");
       cy.intercept("POST", "/api/action").as("createAction");
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
       cy.intercept("GET", "/api/search?archived=true").as("getArchived");

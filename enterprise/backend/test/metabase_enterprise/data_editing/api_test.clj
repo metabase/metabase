@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.data-editing.api-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.data-editing.api :as data-editing.api]
@@ -8,8 +9,11 @@
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc :as sql-jdbc]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -27,7 +31,7 @@
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
-(def ^:private execute-v2-url "ee/data-editing/action/v2/execute-bulk")
+(def ^:private execute-v2-url "action/v2/execute-bulk")
 
 (use-fixtures :each
   (fn [f]
@@ -111,7 +115,7 @@
     (mt/test-drivers #{:h2 :postgres}
       (with-open [table-ref (data-editing.tu/open-test-table!)]
         (let [table-id @table-ref
-              url      "ee/data-editing/action/v2/execute-bulk"]
+              url      "action/v2/execute-bulk"]
           (data-editing.tu/toggle-data-editing-enabled! true)
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
@@ -190,7 +194,7 @@
                               :song  [:text]}
                              {:primary-key [:id_1 :id_2]})]
         (let [table-id @table-ref
-              url      "ee/data-editing/action/v2/execute-bulk"]
+              url      "action/v2/execute-bulk"]
           (data-editing.tu/toggle-data-editing-enabled! true)
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
@@ -297,6 +301,109 @@
                                            {:action_id "data-editing/undo"
                                             :scope     {:table-id (mt/id :products)}
                                             :inputs    []}))))))))))
+
+(mt/defdataset self-referential-categories
+  [["category"
+    [{:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "parent_id" :base-type :type/Integer :fk :category}]
+    [["Electronics" nil]
+     ["Phones" 1]
+     ["Laptops" 1]
+     ["Smartphones" 2]
+     ["Gaming Laptops" 3]]]])
+
+(deftest simple-delete-with-self-referential-children-test
+  (mt/with-premium-features #{:table-data-editing}
+    (actions.tu/with-actions-temp-db self-referential-categories
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (let [body {:action_id "data-grid.row/delete"
+                  :scope     {:table-id (mt/id :category)}
+                  :inputs    [{(mt/format-name :id) 1}]}
+            children-count (fn [parent-id]
+                             (let [result (mt/rows (qp/process-query {:database (mt/id)
+                                                                      :type     :query
+                                                                      :query    {:source-table (mt/id :category)
+                                                                                 :aggregation  [[:count]]
+                                                                                 :filter       [:= (mt/$ids $category.parent_id) parent-id]}}))]
+                               (-> result first first)))]
+
+        (testing "sanity check that we have self-referential children"
+          (is (= 2 (children-count 1)))
+          (is (= 1 (children-count 2)))
+          (is (= 1 (children-count 3))))
+
+        (testing "delete parent with self-referential children should return error without delete-children param"
+          (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :category) 4}}}
+                  (mt/user-http-request :crowberto :post 400 execute-v2-url body))))
+
+        (testing "success with delete-children option should cascade delete all descendants"
+          (is (=? {:outputs [{:table-id (mt/id :category)
+                              :op       "deleted"
+                              :row      {(keyword (mt/format-name :id)) 1}}]}
+                  (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                        (assoc body :params {:delete-children true}))))
+          (is (= 0 (count (table-rows (mt/id :category)))))
+
+          (testing "the change is not undoable for self-referential cascades"
+            (is (= "Your previous change cannot be undone"
+                   (mt/user-http-request :crowberto :post 405 execute-v2-url
+                                         {:action_id "data-editing/undo"
+                                          :scope     {:table-id (mt/id :category)}
+                                          :inputs    []})))))))))
+
+(mt/defdataset mutual-recursion-users-teams
+  [["user"
+    [{:field-name "id" :base-type :type/Integer :pk? true}
+     {:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "team_id" :base-type :type/Integer #_:fk #_:team}]
+    [[1 "Alice" 1]
+     [2 "Bob" 2]]]
+   ["team"
+    [{:field-name "id" :base-type :type/Integer :pk? true}
+     {:field-name "name" :base-type :type/Text :not-null? true}
+     {:field-name "manager_id" :base-type :type/Integer :fk :user}]
+    [[1 "Alpha" nil]
+     [2 "Beta" 1]]]])
+
+(deftest mutual-recursion-delete-test
+  (mt/test-drivers #{:h2 :postgres}
+    (mt/with-premium-features #{:table-data-editing}
+      (actions.tu/with-actions-temp-db mutual-recursion-users-teams
+        (data-editing.tu/toggle-data-editing-enabled! true)
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/add-fk-sql driver/*driver*
+                                          mutual-recursion-users-teams
+                                          {:table-name "user"}
+                                          {:fk :team :field-name "team_id"})
+                       {:transaction? false})
+        (sync/sync-database! (mt/db))
+        (let [users-table-id (mt/id :user)
+              teams-table-id (mt/id :team)
+              delete-user-body {:action_id "data-grid.row/delete"
+                                :scope     {:table-id users-table-id}
+                                :inputs    [{(mt/format-name :id) 1}]}]
+
+          (testing "delete user involved in mutual recursion should return error without delete-children param"
+            (is (=? {:errors {:type "metabase.actions.error/children-exist"
+                              :children-count {(mt/id :team) 1
+                                               (mt/id :user) 1}}}
+                    (mt/user-http-request :crowberto :post 400 execute-v2-url delete-user-body))))
+          (testing "delete with delete-children should handle mutual recursion gracefully"
+            ; When deleting Alice with delete-children, it should:
+            ; 1. Delete Alice (user 1)
+            ; 2. This should cascade to Team Beta (which Alice manages)
+            ; 3. Deleting Team Beta should cascade to Bob (who belong to Team Beta)
+            (is (=? {:outputs [{:table-id users-table-id
+                                :op       "deleted"
+                                :row      {(keyword (mt/format-name :id)) 1}}]}
+                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                                          (assoc delete-user-body :params {:delete-children true}))))
+
+            (let [remaining-users (table-rows users-table-id)
+                  remaining-teams (table-rows teams-table-id)]
+              (testing "mutual recursion cascade should delete interconnected records"
+                (is (empty? remaining-users))
+                (is (= 1 (count remaining-teams)))))))))))
 
 (deftest editing-allowed-test
   (mt/with-premium-features #{:table-data-editing}
@@ -761,7 +868,7 @@
           (is (= ["a" "c" "d" "e"] (expect-field-values ["a" "c" "d" "e"]))))))))
 
 (deftest unified-execute-not-found-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
@@ -783,13 +890,12 @@
                 (is (= 404 (:status (req {:action_id 999999, :input {}}))))))))))))
 
 (deftest unified-execute-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
     (mt/with-premium-features #{:table-data-editing}
       (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-actions-enabled
           (mt/with-non-admin-groups-no-root-collection-perms
             (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
@@ -850,39 +956,45 @@
                                             :scope     {:dashcard-id (:id dashcard)}
                                             :input     {:id 1}
                                             :params    {:status "approved"}})))))
-                (testing "non-row action modifying a row"
-                  (testing "underlying row does not exist, action not executed"
-                    (is (= 400 (:status (req {:action_id (:id action)
-                                              :scope     {:dashcard-id (:id dashcard)}
-                                              :input     {:id 1}
-                                              :params    {:status "approved"}})))))
-                  (testing "underlying row exists, action executed"
-                    (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
-                                          {:rows [{:name "Widgets", :status "waiting"}]})
-                    (is (= {:status 200
-                            :body   {:outputs [{:rows-updated 1}]}}
-                           (-> (req {:action_id (:id action)
-                                     :scope     {:dashcard-id (:id dashcard)}
-                                     :input     {:id 1}
-                                     :params    {:status "approved"}})
-                               (select-keys [:status :body]))))))
-                (testing "dashcard row action modifying a row - implicit action"
-                  (let [action-id "dashcard:unknown:abcdef"]
+                ;; should not need this permission for model actions
+                (data-editing.tu/with-data-editing-enabled! false
+                  (testing "non-row action modifying a row"
                     (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action_id action-id
+                      (is (= 400 (:status (req {:action_id (:id action)
                                                 :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id 2}
+                                                :input     {:id 1}
                                                 :params    {:status "approved"}})))))
                     (testing "underlying row exists, action executed"
-                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
-                                            {:rows [{:name "Sprockets", :status "waiting"}]})
+                      (data-editing.tu/with-data-editing-enabled! true
+                        (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                              {:rows [{:name "Widgets", :status "waiting"}]}))
                       (is (= {:status 200
                               :body   {:outputs [{:rows-updated 1}]}}
-                             (-> (req {:action_id action-id
+                             (-> (req {:action_id (:id action)
                                        :scope     {:dashcard-id (:id dashcard)}
-                                       :input     {:id 2}
+                                       :input     {:id 1}
                                        :params    {:status "approved"}})
-                                 (select-keys [:status :body])))))))
+                                 (select-keys [:status :body]))))))
+                  (testing "dashcard row action modifying a row - implicit action"
+                    (let [action-id "dashcard:unknown:abcdef"]
+                      (testing "underlying row does not exist, action not executed"
+                        (is (= 404 (:status (req {:action_id action-id
+                                                  :scope     {:dashcard-id (:id dashcard)}
+                                                  :input     {:id 2}
+                                                  :params    {:status "approved"}})))))
+                      (testing "underlying row exists, action executed"
+                        (data-editing.tu/with-data-editing-enabled! true
+                          (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @test-table)
+                                                {:rows [{:name "Sprockets", :status "waiting"}]}))
+                        (is (= {:status 200
+                                :body   {:outputs [{:rows-updated 1}]}}
+                               (-> (req {:action_id action-id
+                                         :scope     {:dashcard-id (:id dashcard)}
+                                         :input     {:id 2}
+                                         :params    {:status "approved"}})
+                                   (select-keys [:status :body]))))))))
+                ;; but it is necessary for the primitives
+                (data-editing.tu/toggle-data-editing-enabled! true)
                 (testing "dashcard row action modifying a row - primitive action"
                   (let [action-id "dashcard:unknown:fedcba"]
                     (testing "underlying row does not exist, action not executed"
@@ -924,7 +1036,7 @@
                                  (select-keys [:status :body])))))))))))))))
 
 (deftest unified-execute-server-side-mapping-test
-  (let [url "ee/data-editing/action/v2/execute"
+  (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
                                                  (merge {:scope {:unknown :legacy-action} :input {}}
                                                         (dissoc % :user-id)))]
@@ -1042,7 +1154,7 @@
   (let [list-req #(mt/user-http-request-full-response
                    (:user % :crowberto)
                    :get
-                   "ee/data-editing/tmp-action")]
+                   "action/v2/tmp-action")]
     (mt/with-premium-features #{:table-data-editing}
       (mt/test-drivers #{:h2 :postgres}
         (data-editing.tu/toggle-data-editing-enabled! true)
@@ -1060,9 +1172,10 @@
             (testing "table actions have neg ids"
               (is (every? neg? (map :id table-actions))))
             (testing "one action for each crud op"
-              (is (= {"table.row/create" 1
-                      "table.row/update" 1
-                      "table.row/delete" 1}
+              (is (= {"table.row/create"           1
+                      "table.row/create-or-update" 1
+                      "table.row/update"           1
+                      "table.row/delete"           1}
                      (frequencies (map :kind table-actions)))))
             (mt/with-temp [:model/Dashboard dash {}]
               (let [{create-action "table.row/create"
@@ -1148,7 +1261,7 @@
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :post
-          "ee/data-editing/tmp-modal"
+          "action/v2/tmp-modal"
           (select-keys % [:action_id
                           :scope
                           :input]))]
@@ -1210,12 +1323,12 @@
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :get
-          "ee/data-editing/tmp-action")
+          "action/v2/tmp-action")
         req
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :post
-          "ee/data-editing/tmp-modal"
+          "action/v2/tmp-modal"
           (select-keys % [:action_id
                           :scope
                           :input]))]
@@ -1323,7 +1436,7 @@
         #(mt/user-http-request-full-response
           (:user % :crowberto)
           :post
-          "ee/data-editing/tmp-modal"
+          "action/v2/tmp-modal"
           (select-keys % [:action_id
                           :scope
                           :input]))]
@@ -1420,7 +1533,7 @@
                            :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
                                                                     :card_id      model-id
                                                                     :action_id    action-id}]
-              (let [execute-path "/ee/data-editing/action/v2/execute"
+              (let [execute-path "/action/v2/execute"
                     body         {:action_id (str "dashcard:" dashcard-id)
                                   :scope     {:dashboard-id dashboard-id}
                                   :input     {"name" "Birds"}}
