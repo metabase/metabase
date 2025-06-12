@@ -1,26 +1,24 @@
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
-import { registerQueryBuilderMetabotContextFn } from "./use-register-query-builder-metabot-context";
-import {
-  createMockCard,
-  createMockColumn,
-  createMockDataset,
-  createMockSingleSeries,
-  createMockTimeline,
-  createMockTimelineEvent,
-  createMockVisualizationSettings,
-} from "metabase-types/api/mocks";
-import { createMockEntitiesState } from "__support__/store";
+import _ from "underscore";
+
 import registerVisualizations from "metabase/visualizations/register";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,
   Timeline,
   TransformedSeries,
 } from "metabase-types/api";
-import { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockSingleSeries,
+  createMockTimeline,
+  createMockTimelineEvent,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
+import { createAdHocCard } from "metabase-types/api/mocks/presets";
+
+import { registerQueryBuilderMetabotContextFn } from "./use-register-query-builder-metabot-context";
 
 registerVisualizations();
 
@@ -105,14 +103,12 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should handle adhoc questions", async () => {
-    // TODO: figure out correct way to mock adhoc questions
-    const { id: _id, ...card } = createMockCard();
-    const data = createMockData({ question: new Question(card) });
+    const data = createMockData({ question: new Question(createAdHocCard()) });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
-    const viewing = getUserIsViewing(result);
-    expect((viewing as any)?.id).toEqual(undefined);
-    expect(viewing?.type).toEqual("adhoc");
+    const viewing = getUserIsViewing(result)!;
+    expect(_.get(viewing, "id")).toEqual(undefined);
+    expect(viewing.type).toEqual("adhoc");
   });
 
   it("should generate an image for the current question", async () => {
@@ -124,7 +120,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     expect(chartConfig.image_base_64).toEqual("test-base64");
   });
 
-  it.only("should produce valid series results", async () => {
+  it("should produce valid series results", async () => {
     const card = createMockCard({
       name: "Count by name",
       display: "line",
@@ -150,74 +146,40 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     });
   });
 
-  it.skip("old should produce valid series and timeline event results", async () => {
+  it("should produce valid timeline event results", async () => {
     const card = createMockCard({
+      name: "Count by name",
       display: "line",
       visualization_settings: createMockVisualizationSettings({
         "graph.dimensions": ["name"],
         "graph.metrics": ["count"],
       }),
     });
-    const queryResult = createMockDataset({
-      data: {
-        cols: [
-          createMockColumn({
-            name: "name",
-            display_name: "Name",
-            base_type: "type/Text",
-          }),
-          createMockColumn({
-            name: "count",
-            display_name: "Count",
-            base_type: "type/Integer",
-            source: "aggregation",
-          }),
-        ],
-        rows: [
-          ["a", 1],
-          ["b", 2],
-          ["c", 3],
-        ],
-      },
-    });
     const timelineEvents = [
-      createMockTimelineEvent({ name: "RC1" }),
-      createMockTimelineEvent({ name: "RC2" }),
-      createMockTimelineEvent({ name: "Release" }),
-    ];
-    const timeline = createMockTimeline({ events: timelineEvents });
-
-    const state = createMockState({
-      entities: {
-        ...createMockEntitiesState({
-          questions: [card],
-          timelines: [timeline],
-        }),
-        timelines_list: {
-          '{"include":"events"}': { list: [timeline], metadata: {} },
-        },
-      },
-      qb: createMockQueryBuilderState({
-        card,
-        queryResults: [queryResult],
+      createMockTimelineEvent({
+        name: "Third Event",
+        timestamp: "2025-07-13T00:00:00Z",
       }),
-    });
+      createMockTimelineEvent({
+        name: "First Event",
+        timestamp: "2025-07-11T00:00:00Z",
+      }),
+      createMockTimelineEvent({
+        name: "Second Event",
+        description: "This happens second",
+        timestamp: "2025-07-12T00:00:00Z",
+      }),
+    ];
+    const timelines = [createMockTimeline({ events: timelineEvents })];
+    const data = createMockData({ question: new Question(card), timelines });
+    const result = await registerQueryBuilderMetabotContextFn(data);
 
-    const result = await registerQueryBuilderMetabotContextFn(state);
     const chartConfig = getChartConfig(result)!;
-
-    expect(chartConfig.series).toEqual({
-      Count: {
-        chart_type: "line",
-        display_name: "Count",
-        stacked: false,
-        x: { name: "name", type: "string" },
-        x_values: ["a", "b", "c"],
-        y: { name: "count", type: "number" },
-        y_values: [1, 2, 3],
-      },
-    });
-    // TODO: how to get partial equals? only care about values on the left.
-    expect(chartConfig.timeline_events).toEqual(timelineEvents);
+    expect(chartConfig.timeline_events).toHaveLength(3);
+    expect(chartConfig.timeline_events.map((e) => e.name)).toEqual([
+      "First Event",
+      "Second Event",
+      "Third Event",
+    ]);
   });
 });

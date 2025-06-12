@@ -6,6 +6,7 @@ import {
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type Question from "metabase-lib/v1/Question";
 import type {
   MetabotColumnType,
   MetabotSeriesConfig,
@@ -20,8 +21,8 @@ import {
   getTransformedTimelines,
   getVisualizationSettings,
 } from "../selectors";
-import Question from "metabase-lib/v1/Question";
 
+// TODO: not sure this is properly exhaustive?
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
   "type/*": "string",
   "type/Array": "string",
