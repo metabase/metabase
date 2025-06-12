@@ -8,7 +8,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { addParameter } from "metabase/dashboard/actions";
+import { addParameter, duplicateCard } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
@@ -328,6 +328,10 @@ function DashCardInner({
     [dashcard.id, dispatch],
   );
 
+  const handleDuplicateDashcard = useCallback(() => {
+    dispatch(duplicateCard({ id: dashcard.id }));
+  }, [dashcard.id, dispatch]);
+
   const onEditVisualizationClick = useCallback(() => {
     let initialState: VisualizerVizDefinitionWithColumns;
 
@@ -394,6 +398,7 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
+            onDuplicate={handleDuplicateDashcard}
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
