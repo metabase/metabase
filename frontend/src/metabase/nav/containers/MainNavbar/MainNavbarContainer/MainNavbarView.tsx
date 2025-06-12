@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import type { MouseEvent } from "react";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
@@ -11,7 +12,10 @@ import {
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
-import { getIsNewInstance } from "metabase/home/selectors";
+import {
+  getCanAccessOnboardingPage,
+  getIsNewInstance,
+} from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -39,12 +43,18 @@ import {
 import { SidebarCollectionLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
 import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
-import { trackNewCollectionFromNavInitiated } from "../analytics";
+import {
+  trackAddDataModalOpened,
+  trackNewCollectionFromNavInitiated,
+} from "../analytics";
 import type { SelectedItem } from "../types";
 
+import { AddDataModal } from "./AddDataModal";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
+import { GettingStartedSectionV2 } from "./GettingStartedSectionV2";
+import { useReleaseFlag } from "./use-release-flag";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
@@ -85,6 +95,9 @@ export function MainNavbarView({
   const [expandBookmarks = true, setExpandBookmarks] = useUserSetting(
     "expand-bookmarks-in-nav",
   );
+
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
@@ -153,6 +166,14 @@ export function MainNavbarView({
   const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
   const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
 
+  const newAddDataExperience = useReleaseFlag("new-add-data-experience");
+
+  const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
+  // We need to only temporarily include the`hasAttachedDWHFeature` in this condition because of the PR sequencing!
+  // As soon as we move the CSV and GSheets uploads to the new "Add data" modal, this condition will move elsewhere.
+  const shouldDisplayGettingStarted =
+    isNewInstance && canAccessOnboarding && !hasAttachedDWHFeature;
+
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -170,7 +191,7 @@ export function MainNavbarView({
             {showUploadMenu && <DwhUploadMenu />}
           </SidebarSection>
 
-          {isNewInstance && (
+          {isNewInstance && !newAddDataExperience && (
             <SidebarSection>
               <ErrorBoundary>
                 <GettingStartedSection nonEntityItem={nonEntityItem}>
@@ -185,6 +206,31 @@ export function MainNavbarView({
                     />
                   )}
                 </GettingStartedSection>
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
+
+          {shouldDisplayGettingStarted && newAddDataExperience && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <GettingStartedSectionV2
+                  nonEntityItem={nonEntityItem}
+                  onModalOpen={() => {
+                    trackAddDataModalOpened("getting-started");
+                    openModal();
+                  }}
+                >
+                  {examplesCollection && (
+                    <Tree
+                      data={[examplesCollection]}
+                      selectedId={collectionItem?.id}
+                      onSelect={onItemSelect}
+                      TreeNode={SidebarCollectionLink}
+                      role="tree"
+                      aria-label="examples-collection-tree"
+                    />
+                  )}
+                </GettingStartedSectionV2>
               </ErrorBoundary>
             </SidebarSection>
           )}
@@ -235,6 +281,7 @@ export function MainNavbarView({
                 nonEntityItem={nonEntityItem}
                 onItemSelect={onItemSelect}
                 hasDataAccess={hasDataAccess}
+                onModalOpen={openModal}
               />
             </ErrorBoundary>
           </SidebarSection>
@@ -252,7 +299,7 @@ export function MainNavbarView({
               </ErrorBoundary>
             </TrashSidebarSection>
           )}
-          {showAddDatabaseButton && (
+          {showAddDatabaseButton && !newAddDataExperience && (
             <SidebarSection>
               <ErrorBoundary>
                 <AddDatabase />
@@ -262,6 +309,10 @@ export function MainNavbarView({
         </div>
         <WhatsNewNotification />
       </SidebarContentRoot>
+
+      {newAddDataExperience && (
+        <AddDataModal opened={modalOpened} onClose={closeModal} />
+      )}
     </ErrorBoundary>
   );
 }
