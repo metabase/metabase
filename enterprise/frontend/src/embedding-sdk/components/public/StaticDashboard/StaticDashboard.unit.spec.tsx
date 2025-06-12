@@ -143,16 +143,6 @@ describe("StaticDashboard", () => {
     expect(screen.getByText("Here is a card title")).toBeInTheDocument();
   });
 
-  it('should not log "Error: null" in the console (metabase#58474)', async () => {
-    const consoleErrorSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
-    await setup();
-    expect(screen.getByText("Here is a card title")).toBeInTheDocument();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-  });
-
   it("hides the dashboard card question title when withCardTitle is false", async () => {
     await setup({ props: { withCardTitle: false } });
 

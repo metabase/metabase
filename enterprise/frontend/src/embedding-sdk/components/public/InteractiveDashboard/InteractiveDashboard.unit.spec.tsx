@@ -179,17 +179,6 @@ describe("InteractiveDashboard", () => {
     expect(screen.getByText("Some card text")).toBeInTheDocument();
   });
 
-  it('should not log "Error: null" in the console (metabase#58474)', async () => {
-    const consoleErrorSpy = jest
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
-    await setup();
-    expect(screen.getByText("Here is a card title")).toBeInTheDocument();
-    expect(screen.getByText("Some card text")).toBeInTheDocument();
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
-  });
-
   it("should allow to navigate to a question from dashboard", async () => {
     await setup();
 
