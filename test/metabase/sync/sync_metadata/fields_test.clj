@@ -282,6 +282,32 @@
                   :fk-target-exists? true}
                  (state))))))))
 
+(deftest sync-table-fks-test2
+  (testing "Check that sync-table! causes FKs to be left alone if they'd override user-set values"
+    (mt/with-temp-copy-of-db
+      (letfn [(state []
+                (let [{:keys                  [step-info]
+                       {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
+                                                                                :id (mt/id :checkins :user_id))]
+                  {:step-info         (sync.util-test/only-step-keys step-info)
+                   :task-details      task_details
+                   :semantic-type     semantic_type
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
+        (testing "before"
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :semantic-type     :type/FK
+                  :fk-target-exists? true}
+                 (state))))
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :checkins :user_id)) {:semantic_type :type/Name})
+        (testing "after"
+          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+                  :semantic-type     :type/Name
+                  :fk-target-exists? false}
+                 (state))))))))
+
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
     (one-off-dbs/with-blank-db

@@ -346,6 +346,7 @@
     :model/Session
     :model/ImplicitAction
     :model/HTTPAction
+    :model/FieldUserSettings
     :model/QueryAction
     :model/ModelIndexValue})
 
