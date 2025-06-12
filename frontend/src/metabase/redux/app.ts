@@ -31,13 +31,19 @@ interface LocationChangeAction {
   };
 }
 
-export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
-
+const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
 export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
     type: SET_ERROR_PAGE,
     payload: error,
+  };
+}
+
+const RESET_ERROR_PAGE = "metabase/app/RESET_ERROR_PAGE";
+export function resetErrorPage() {
+  return {
+    type: RESET_ERROR_PAGE,
   };
 }
 
@@ -61,6 +67,7 @@ export const openUrl =
 const errorPage = handleActions(
   {
     [SET_ERROR_PAGE]: (_, { payload }) => payload,
+    [RESET_ERROR_PAGE]: () => null,
     [LOCATION_CHANGE]: () => null,
   },
   null,
