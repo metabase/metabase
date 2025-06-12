@@ -329,7 +329,7 @@
                              param-map   (->> (:parameterMappings viz-action {})
                                               (u/index-by :parameterId #(dissoc % :parameterId))
                                               walk/keywordize-keys)]
-                         (assert (:enabled viz-action) "Cannot call disabled actions")
+                         (assert (:enabled viz-action true) "Cannot call disabled actions")
                          (case action-type
                            ("data-grid/built-in"
                             "data-grid/row-action")
