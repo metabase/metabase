@@ -343,7 +343,13 @@
 
 (api.macros/defendpoint :post "/send"
   "Send an unsaved notification."
-  [_route _query body :- ::models.notification/FullyHydratedNotification]
+  [_route _query body :- [:merge
+                          ::models.notification/FullyHydratedNotification
+                          [:map
+                           ;; added so we can send the payload provided by POST /payload
+                           ;; rather than raw system provided event_info for event
+                           ;; notifications
+                           [:custom_payload {:optional true} [:map]]]]]
   (api/create-check :model/Notification body)
   (models.notification/validate-email-handlers! (:handlers body))
   (-> body

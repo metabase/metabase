@@ -40,7 +40,7 @@
         [:event_name [:fn #(= "event" (-> % keyword namespace))]]
         [:action     {:optional true} [:maybe :keyword]]
         [:table_id   {:optional true} [:maybe pos-int?]]]]
-      [:event_info  [:maybe :map]]]]
+      [:event_info {:optional true} [:maybe :map]]]]
     [:notification/card
      [:map
       [:payload    {:optional true} ::models.notification/NotificationCard]
