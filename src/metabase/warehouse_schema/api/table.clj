@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -117,7 +117,7 @@
        (let [database (table/database (first newly-unhidden))]
          ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
          ;; purposes of creating a new H2 database.
-         (if (binding [h2/*allow-testing-h2-connections* true]
+         (if (binding [driver.settings/*allow-testing-h2-connections* true]
                (driver.u/can-connect-with-details? (:engine database) (:details database)))
            (doseq [table newly-unhidden]
              (log/info (u/format-color :green "Table '%s' is now visible. Resyncing." (:name table)))

@@ -1,5 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]

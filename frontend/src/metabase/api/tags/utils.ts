@@ -339,6 +339,15 @@ export function provideDashboardTags(
   ];
 }
 
+export function provideValidDashboardFilterFieldTags(
+  filteredIds: FieldId[],
+  filteringIds: FieldId[],
+): TagDescription<TagType>[] {
+  return [...filteredIds, ...filteringIds].map((fieldId) =>
+    idTag("field", fieldId),
+  );
+}
+
 export function provideDashboardQueryMetadataTags(
   metadata: DashboardQueryMetadata,
 ): TagDescription<TagType>[] {

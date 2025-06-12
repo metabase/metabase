@@ -4,7 +4,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.tools.api :as metabot-v3.tools.api]
    [metabase-enterprise.metabot-v3.tools.create-dashboard-subscription :as metabot-v3.tools.create-dashboard-subscription]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
@@ -398,112 +397,114 @@
           model-data {:name "Model model"
                       :description "Model desc"
                       :dataset_query (lib/->legacy-MBQL model-source-query)
-                      :type :model}
-          collection-name (str (random-uuid))
-          metabot-id (str (random-uuid))]
-      (with-redefs [metabot-v3.config/metabot-config {metabot-id {:collection-name collection-name}}]
-        (mt/with-temp [:model/Collection {collection-id :id} {:name collection-name}
-                       :model/Card {metric-id :id} (assoc metric-data :collection_id collection-id)
-                       :model/Card _ignored        (assoc metric-data :collection_id collection-id :archived true)
-                       :model/Card _ignored        (assoc model-data :collection_id collection-id :archived true)
-                       :model/Card _ignored        metric-data
-                       :model/Card _ignored        model-data
-                       :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)]
-          (let [model-metric-base-query (lib/query mp (lib.metadata/card mp model-id))
-                rating-column (m/find-first (comp #{"RATING"} :name) (lib/visible-columns model-metric-base-query))
-                created-at-column (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns model-metric-base-query))
-                model-metric-source-query (-> model-metric-base-query
-                                              (lib/aggregate (lib/avg rating-column))
-                                              (lib/breakout (lib/with-temporal-bucket created-at-column :week)))
-                model-metric-data {:name "Model metric"
-                                   :description "Model metric desc"
-                                   :dataset_query (lib/->legacy-MBQL model-metric-source-query)
-                                   :type :metric}]
-            (mt/with-temp [:model/Card {model-metric-id :id} (assoc model-metric-data :collection_id collection-id)]
-              (testing "Calling with wrong metabot-id"
-                (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token (str metabot-id "-"))]
-                  (mt/user-http-request :rasta :post 400 "ee/metabot-tools/answer-sources"
-                                        {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                        {:conversation_id conversation-id})))
-              (testing "Normal call"
-                (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token metabot-id)
-                      response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
-                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                                     {:metabot_id metabot-id
-                                                      :conversation_id conversation-id})
-                      expected-fields
-                      [{:name "ID", :type "number", :semantic_type "pk"}
-                       {:name "Ean", :type "string"}
-                       {:name "Title", :type "string", :semantic_type "title"}
-                       {:name "Category", :type "string", :semantic_type "category"}
-                       {:name "Vendor", :type "string", :semantic_type "company"}
-                       {:name "Price", :type "number"}
-                       {:name "Rating", :type "number", :semantic_type "score"}
-                       {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]
-                  (is (=? {:structured_output
-                           {:metrics [(-> metric-data
-                                          (select-keys [:name :description])
-                                          (assoc :id metric-id
-                                                 :type "metric"
-                                                 :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
-                                                 :queryable_dimensions
-                                                 (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
-                                                              expected-fields)))
-                                      (-> model-metric-data
-                                          (select-keys [:name :description])
-                                          (assoc :id model-metric-id
-                                                 :type "metric"
-                                                 :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)
-                                                 :queryable_dimensions
-                                                 (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-metric-id %1))
-                                                              expected-fields)))]
-                            :models [(-> model-data
-                                         (select-keys [:name :description])
-                                         (assoc :id model-id
-                                                :type "model"
-                                                :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
-                                                                     expected-fields)
-                                                :metrics
-                                                [{:id model-metric-id
-                                                  :name "Model metric"
-                                                  :description "Model metric desc"
-                                                  :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)}]))]}
-                           :conversation_id conversation-id}
-                          response))))
-              (testing "Minimal call"
-                (let [conversation-id (str (random-uuid))
-                      ai-token (ai-session-token metabot-id)
-                      response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
-                                                     {:request-options {:headers {"x-metabase-session" ai-token}}}
-                                                     {:metabot_id metabot-id
-                                                      :arguments {:with_model_fields                     false
-                                                                  :with_model_metrics                    false
-                                                                  :with_metric_default_temporal_breakout false
-                                                                  :with_metric_queryable_dimensions      false}
-                                                      :conversation_id conversation-id})]
-                  (is (=? {:structured_output
-                           {:metrics [(-> metric-data
-                                          (select-keys [:name :description])
-                                          (assoc :id metric-id
-                                                 :type "metric"
-                                                 :default_time_dimension_field_id nil
-                                                 :queryable_dimensions missing-value))
-                                      (-> model-metric-data
-                                          (select-keys [:name :description])
-                                          (assoc :id model-metric-id
-                                                 :type "metric"
-                                                 :default_time_dimension_field_id nil
-                                                 :queryable_dimensions missing-value))]
-                            :models [(-> model-data
-                                         (select-keys [:name :description])
-                                         (assoc :id model-id
-                                                :type "model"
-                                                :fields []
-                                                :metrics (symbol "nil #_\"key is not present.\"")))]}
-                           :conversation_id conversation-id}
-                          response)))))))))))
+                      :type :model}]
+      (mt/with-temp [:model/Collection {collection-id :id} {:name "Test Metabot Collection"}
+                     :model/Card {metric-id :id} (assoc metric-data :collection_id collection-id)
+                     :model/Card _ignored        (assoc metric-data :collection_id collection-id :archived true)
+                     :model/Card _ignored        (assoc model-data :collection_id collection-id :archived true)
+                     :model/Card _ignored        metric-data
+                     :model/Card _ignored        model-data
+                     :model/Card {model-id :id}  (assoc model-data  :collection_id collection-id)
+                     :model/Metabot {metabot-id  :id
+                                     metabot-eid :entity_id} {:name "Test Metabot"}
+                     :model/MetabotEntity _ {:metabot_id metabot-id
+                                             :model "collection"
+                                             :model_id collection-id}]
+        (let [model-metric-base-query (lib/query mp (lib.metadata/card mp model-id))
+              rating-column (m/find-first (comp #{"RATING"} :name) (lib/visible-columns model-metric-base-query))
+              created-at-column (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns model-metric-base-query))
+              model-metric-source-query (-> model-metric-base-query
+                                            (lib/aggregate (lib/avg rating-column))
+                                            (lib/breakout (lib/with-temporal-bucket created-at-column :week)))
+              model-metric-data {:name "Model metric"
+                                 :description "Model metric desc"
+                                 :dataset_query (lib/->legacy-MBQL model-metric-source-query)
+                                 :type :metric}]
+          (mt/with-temp [:model/Card {model-metric-id :id} (assoc model-metric-data :collection_id collection-id)]
+            (testing "Calling with wrong metabot-id"
+              (let [conversation-id (str (random-uuid))
+                    ai-token (ai-session-token (str metabot-eid "-"))]
+                (mt/user-http-request :rasta :post 400 "ee/metabot-tools/answer-sources"
+                                      {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                      {:conversation_id conversation-id})))
+            (testing "Normal call"
+              (let [conversation-id (str (random-uuid))
+                    ai-token (ai-session-token metabot-eid)
+                    response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
+                                                   {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                   {:metabot_id metabot-eid
+                                                    :conversation_id conversation-id})
+                    expected-fields
+                    [{:name "ID", :type "number", :semantic_type "pk"}
+                     {:name "Ean", :type "string"}
+                     {:name "Title", :type "string", :semantic_type "title"}
+                     {:name "Category", :type "string", :semantic_type "category"}
+                     {:name "Vendor", :type "string", :semantic_type "company"}
+                     {:name "Price", :type "number"}
+                     {:name "Rating", :type "number", :semantic_type "score"}
+                     {:name "Created At", :type "datetime", :semantic_type "creation_timestamp"}]]
+                (is (=? {:structured_output
+                         {:metrics [(-> metric-data
+                                        (select-keys [:name :description])
+                                        (assoc :id metric-id
+                                               :type "metric"
+                                               :default_time_dimension_field_id (format "c%d/%d" metric-id 7)
+                                               :queryable_dimensions
+                                               (map-indexed #(assoc %2 :field_id (format "c%d/%d" metric-id %1))
+                                                            expected-fields)))
+                                    (-> model-metric-data
+                                        (select-keys [:name :description])
+                                        (assoc :id model-metric-id
+                                               :type "metric"
+                                               :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)
+                                               :queryable_dimensions
+                                               (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-metric-id %1))
+                                                            expected-fields)))]
+                          :models [(-> model-data
+                                       (select-keys [:name :description])
+                                       (assoc :id model-id
+                                              :type "model"
+                                              :fields (map-indexed #(assoc %2 :field_id (format "c%d/%d" model-id %1))
+                                                                   expected-fields)
+                                              :metrics
+                                              [{:id model-metric-id
+                                                :name "Model metric"
+                                                :description "Model metric desc"
+                                                :default_time_dimension_field_id (format "c%d/%d" model-metric-id 7)}]))]}
+                         :conversation_id conversation-id}
+                        response))))
+            (testing "Minimal call"
+              (let [conversation-id (str (random-uuid))
+                    ai-token (ai-session-token metabot-eid)
+                    response (mt/user-http-request :rasta :post 200 "ee/metabot-tools/answer-sources"
+                                                   {:request-options {:headers {"x-metabase-session" ai-token}}}
+                                                   {:metabot_id metabot-eid
+                                                    :arguments {:with_model_fields                     false
+                                                                :with_model_metrics                    false
+                                                                :with_metric_default_temporal_breakout false
+                                                                :with_metric_queryable_dimensions      false}
+                                                    :conversation_id conversation-id})]
+                (is (=? {:structured_output
+                         {:metrics [(-> metric-data
+                                        (select-keys [:name :description])
+                                        (assoc :id metric-id
+                                               :type "metric"
+                                               :default_time_dimension_field_id nil
+                                               :queryable_dimensions missing-value))
+                                    (-> model-metric-data
+                                        (select-keys [:name :description])
+                                        (assoc :id model-metric-id
+                                               :type "metric"
+                                               :default_time_dimension_field_id nil
+                                               :queryable_dimensions missing-value))]
+                          :models [(-> model-data
+                                       (select-keys [:name :description])
+                                       (assoc :id model-id
+                                              :type "model"
+                                              :fields []
+                                              :metrics (symbol "nil #_\"key is not present.\"")))]}
+                         :conversation_id conversation-id}
+                        response))))))))))
 
 (deftest ^:parallel get-current-user-test
   (mt/with-premium-features #{:metabot-v3}

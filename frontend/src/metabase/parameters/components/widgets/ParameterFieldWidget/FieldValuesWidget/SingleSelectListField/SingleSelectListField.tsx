@@ -20,7 +20,7 @@ import {
   OptionsList,
 } from "./SingleSelectListField.styled";
 import type { Option, SingleSelectListFieldProps } from "./types";
-import { isValidOptionItem } from "./utils";
+import { optionItemContainsFilter, optionItemEqualsFilter } from "./utils";
 
 const DEBOUNCE_FILTER_TIME = delay(100);
 
@@ -28,9 +28,9 @@ function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
   options: Option[],
 ): Option {
-  const optionsMap = _.indexBy(options, "0");
+  const optionsMap = new Map(options.map((option) => [option[0], option]));
   return values
-    .filter((value) => typeof value !== "string" || !optionsMap[value])
+    .filter((value) => !optionsMap.has(value))
     .map((value) => [value]);
 }
 
@@ -71,7 +71,7 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
-  const isFilterInValues = value[0] === filter;
+  const isFilterInValues = optionItemEqualsFilter(value, filter);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -93,13 +93,13 @@ const SingleSelectListField = ({
       if (
         option.length > 1 &&
         option[1] &&
-        isValidOptionItem(option[1], formattedFilter)
+        optionItemContainsFilter(option[1], formattedFilter)
       ) {
         return true;
       }
 
       // option as: [id]
-      return isValidOptionItem(option[0], formattedFilter);
+      return optionItemContainsFilter(option[0], formattedFilter);
     });
   }, [augmentedOptions, debouncedFilter, sortedOptions, isFilterInValues]);
 
@@ -118,7 +118,9 @@ const SingleSelectListField = ({
     if (
       event.key === "Enter" &&
       filter.trim().length > 0 &&
-      !_.find(augmentedOptions, (option) => option[0] === filter)
+      !_.find(augmentedOptions, (option) =>
+        optionItemEqualsFilter(option, filter),
+      )
     ) {
       event.preventDefault();
       setAddedOptions([...addedOptions, [filter]]);

@@ -13,12 +13,13 @@ import {
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
-import { setErrorPage } from "metabase/redux/app";
+import { resetErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
@@ -73,6 +74,7 @@ export const EditableDashboard = ({
     plugins: plugins,
   },
 }: EditableDashboardProps) => {
+  const { isLocaleLoading } = useLocale();
   const {
     ref,
     isFullscreen,
@@ -108,11 +110,11 @@ export const EditableDashboard = ({
   const dispatch = useSdkDispatch();
   useEffect(() => {
     if (dashboardId) {
-      dispatch(setErrorPage(null));
+      dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
 
-  if (isLoading) {
+  if (isLocaleLoading || isLoading) {
     return <SdkLoader />;
   }
 
