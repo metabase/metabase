@@ -1272,6 +1272,75 @@ describe("scenarios > dashboard > parameters", () => {
         expect(search).to.eq("?category=&category_1=Gizmo");
       });
     });
+
+    it("should duplicate filters when duplicating a dashboard", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.openDashboardMenu("Duplicate");
+      H.modal().button("Duplicate").click();
+      H.dashboardHeader()
+        .findByText("Test Dashboard - Duplicate")
+        .should("exist");
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("be.visible");
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Widget").should("be.visible");
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+    });
   });
 });
 
