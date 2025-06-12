@@ -2,7 +2,10 @@
 set -e
 
 rm -rf .next
+
 npm ci --install-links
+
+npm i ../../../resources/embedding-sdk --install-links --no-save --no-package-lock
 
 export PORT=$CLIENT_PORT
 

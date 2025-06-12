@@ -123,7 +123,6 @@ const FieldHeaderSection = ({
         name="description"
         value={field.description ?? ""}
         placeholder={t`No description for this field yet`}
-        fullWidth
         onBlurChange={handleChangeDescription}
       />
     </MetadataSection>

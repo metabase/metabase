@@ -663,7 +663,9 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
   describe("column formatting options", () => {
     beforeEach(() => {
-      cy.intercept("PUT", "/api/field/*").as("updateField");
+      cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
+        "updateField",
+      );
       cy.intercept("GET", "/api/field/*").as("getField");
     });
 
@@ -728,6 +730,21 @@ describe("scenarios > admin > datamodel > metadata", () => {
       });
 
       cy.findByTestId("visualization-root").findByText("about 69,540");
+    });
+
+    it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+      cy.wait("@getField");
+
+      cy.findByTestId("column-settings").findByTestId("prefix").focus().blur();
+      cy.get("@updateFieldSpy").should("not.have.been.called");
+      H.undoToast().should("not.exist");
+
+      cy.findByTestId("column-settings").findByTestId("suffix").focus().blur();
+      cy.get("@updateFieldSpy").should("not.have.been.called");
+      H.undoToast().should("not.exist");
     });
   });
 });

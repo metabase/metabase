@@ -1,13 +1,21 @@
-/* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
-import type { SettingElement } from "metabase/admin/settings/types";
+import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import { UpsellHosting } from "metabase/admin/upsells";
+import {
+  useGetAdminSettingsDetailsQuery,
+  useGetSettingsQuery,
+} from "metabase/api";
+import {
+  useDeleteEmailSMTPSettingsMutation,
+  useSendTestEmailMutation,
+  useUpdateEmailSMTPSettingsMutation,
+} from "metabase/api/email";
+import { useSetting, useToast } from "metabase/common/hooks";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CS from "metabase/css/core/index.css";
 import {
@@ -19,31 +27,25 @@ import {
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Flex, Group, Radio, Stack, Text } from "metabase/ui";
-import type { Settings } from "metabase-types/api";
+import type {
+  EmailSMTPSettings,
+  SettingDefinitionMap,
+  Settings,
+} from "metabase-types/api";
 
-import {
-  clearEmailSettings,
-  sendTestEmail,
-  updateEmailSettings,
-} from "../../settings";
-import { SetByEnvVarWrapper } from "../SettingsSetting";
+import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
-const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
+const getBreadcrumbs = () => [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
-const SEND_TEST_BUTTON_STATES = {
-  default: t`Send test email`,
-  working: t`Sending...`,
-  success: t`Sent!`,
-};
-type ButtonStateType = keyof typeof SEND_TEST_BUTTON_STATES;
-
-export interface SMTPConnectionFormProps {
-  elements: SettingElement[];
-  settingValues: Settings;
-}
+const emailSettingKeys = [
+  "email-smtp-host",
+  "email-smtp-port",
+  "email-smtp-security",
+  "email-smtp-username",
+  "email-smtp-password",
+] as const;
 
 type FormValueProps = Pick<
   Settings,
@@ -58,84 +60,92 @@ const anySchema = Yup.mixed().nullable().default(null);
 
 // we need to allow this form to be submitted even when we have removed certain inputs
 // when they are set by env vars
-const getFormValueSchema = (elementMap: _.Dictionary<SettingElement>) => {
+const getFormValueSchema = (
+  settingsDetails: SettingDefinitionMap | undefined,
+) => {
   return Yup.object({
-    "email-smtp-host": elementMap["email-smtp-host"].is_env_setting
+    "email-smtp-host": settingsDetails?.["email-smtp-host"]?.is_env_setting
       ? anySchema
       : Yup.string().required(Errors.required).default(""),
-    "email-smtp-port": elementMap["email-smtp-port"].is_env_setting
+    "email-smtp-port": settingsDetails?.["email-smtp-port"]?.is_env_setting
       ? anySchema
       : Yup.number()
           .positive()
           .nullable()
           .required(Errors.required)
           .default(null),
-    "email-smtp-security": elementMap["email-smtp-security"].is_env_setting
+    "email-smtp-security": settingsDetails?.["email-smtp-security"]
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default("none"),
-    "email-smtp-username": elementMap["email-smtp-username"].is_env_setting
+    "email-smtp-username": settingsDetails?.["email-smtp-username"]
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
-    "email-smtp-password": elementMap["email-smtp-password"].is_env_setting
+    "email-smtp-password": settingsDetails?.["email-smtp-password"]
+      ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
   });
 };
 
-export const SMTPConnectionForm = ({
-  elements,
-  settingValues,
-}: SMTPConnectionFormProps) => {
-  const [sendingEmail, setSendingEmail] = useState<ButtonStateType>("default");
-  const [testEmailError, setTestEmailError] = useState<string | null>(null);
-
-  const isHosted = useSelector(getIsHosted);
-  const isEmailConfigured = useSelector(getIsEmailConfigured);
+export const SMTPConnectionForm = () => {
+  const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
+  const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
+  const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
+  const [sendToast] = useToast();
+  const { data: settingValues } = useGetSettingsQuery();
+  const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
+  const isHosted = useSetting("is-hosted?");
+  const isEmailConfigured = settingValues?.["email-configured?"];
   const dispatch = useDispatch();
-
-  const elementMap = useMemo(() => _.indexBy(elements, "key"), [elements]);
-
   const initialValues = useMemo<FormValueProps>(
     () => ({
-      "email-smtp-host": settingValues["email-smtp-host"],
-      "email-smtp-port": settingValues["email-smtp-port"],
-      "email-smtp-security": settingValues["email-smtp-security"] ?? "none",
-      "email-smtp-username": settingValues["email-smtp-username"] ?? "",
-      "email-smtp-password": settingValues["email-smtp-password"] ?? "",
+      "email-smtp-host": settingValues?.["email-smtp-host"] ?? null,
+      "email-smtp-port": settingValues?.["email-smtp-port"] ?? null,
+      "email-smtp-security": settingValues?.["email-smtp-security"] ?? "none",
+      "email-smtp-username": settingValues?.["email-smtp-username"] ?? "",
+      "email-smtp-password": settingValues?.["email-smtp-password"] ?? "",
     }),
     [settingValues],
   );
-
   const handleClearEmailSettings = useCallback(async () => {
-    await dispatch(clearEmailSettings());
-  }, [dispatch]);
+    await deleteEmailSMTPSettings();
+  }, [deleteEmailSMTPSettings]);
 
   const handleUpdateEmailSettings = useCallback(
-    async (formData: object) => {
-      await dispatch(updateEmailSettings(formData));
-
-      if (!isEmailConfigured) {
+    async (formData: EmailSMTPSettings) => {
+      try {
+        await updateEmailSMTPSettings(formData).unwrap();
         dispatch(push("/admin/settings/email"));
+      } catch (error) {
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: isErrorWithMessage(error)
+            ? error.data.message
+            : t`Error updating email settings`,
+        });
       }
     },
-    [dispatch, isEmailConfigured],
+    [updateEmailSMTPSettings, sendToast, dispatch],
   );
 
   const handleSendTestEmail = useCallback(async () => {
-    setSendingEmail("working");
-    setTestEmailError(null);
-
     try {
-      await dispatch(sendTestEmail());
-      setSendingEmail("success");
-
-      // show a confirmation for 3 seconds, then return to normal
-      setTimeout(() => setSendingEmail("default"), 3000);
-    } catch (error: any) {
-      setSendingEmail("default");
-      setTestEmailError(error?.data?.message);
+      await sendTestEmail().unwrap();
+      sendToast({
+        message: t`Email sent!`,
+        toastColor: "success",
+      });
+    } catch (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: getTestEmailErrorMessage(error),
+      });
     }
-  }, [dispatch]);
+  }, [sendTestEmail, sendToast]);
 
   useEffect(() => {
     if (isHosted) {
@@ -144,29 +154,39 @@ export const SMTPConnectionForm = ({
   }, [dispatch, isHosted]);
 
   const allSetByEnvVars = useMemo(() => {
-    return elements.every((element) => element.is_env_setting);
-  }, [elements]);
+    return (
+      settingsDetails &&
+      emailSettingKeys.every(
+        (settingKey) => settingsDetails[settingKey]?.is_env_setting,
+      )
+    );
+  }, [settingsDetails]);
 
   return (
-    <Flex justify="space-between">
-      <Stack gap="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
+    <Flex justify="space-between" pl="lg">
+      <Stack gap="sm" w="25rem">
         {isEmailConfigured && (
-          <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.mb3)} />
+          <Breadcrumbs crumbs={getBreadcrumbs()} className={cx(CS.mb3)} />
         )}
         <FormProvider
           initialValues={initialValues}
-          validationSchema={getFormValueSchema(elementMap)}
+          validationSchema={getFormValueSchema(settingsDetails)}
           onSubmit={handleUpdateEmailSettings}
           enableReinitialize
         >
           {({ dirty, isValid, isSubmitting, values }) => (
             <Form>
-              <SetByEnvVarWrapper setting={elementMap["email-smtp-host"]}>
+              <SetByEnvVarWrapper
+                settingKey="email-smtp-host"
+                settingDetails={settingsDetails?.["email-smtp-host"]}
+              >
                 <FormTextInput
                   name="email-smtp-host"
-                  label={elementMap["email-smtp-host"]["display_name"]}
-                  description={elementMap["email-smtp-host"]["description"]}
-                  placeholder={elementMap["email-smtp-host"]["placeholder"]}
+                  label={t`SMTP Host`}
+                  description={
+                    settingsDetails?.["email-smtp-host"]?.description
+                  }
+                  placeholder={"smtp.yourservice.com"}
                   mb="1.5rem"
                   labelProps={{
                     tt: "uppercase",
@@ -178,12 +198,14 @@ export const SMTPConnectionForm = ({
                   }}
                 />
               </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper setting={elementMap["email-smtp-port"]}>
+              <SetByEnvVarWrapper
+                settingKey="email-smtp-port"
+                settingDetails={settingsDetails?.["email-smtp-port"]}
+              >
                 <FormTextInput
                   name="email-smtp-port"
-                  label={elementMap["email-smtp-port"]["display_name"]}
-                  description={elementMap["email-smtp-port"]["description"]}
-                  placeholder={elementMap["email-smtp-port"]["placeholder"]}
+                  label={t`SMTP Port`}
+                  placeholder={"587"}
                   mb="1.5rem"
                   labelProps={{
                     tt: "uppercase",
@@ -195,11 +217,13 @@ export const SMTPConnectionForm = ({
                   }}
                 />
               </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper setting={elementMap["email-smtp-security"]}>
+              <SetByEnvVarWrapper
+                settingKey="email-smtp-security"
+                settingDetails={settingsDetails?.["email-smtp-security"]}
+              >
                 <FormRadioGroup
                   name="email-smtp-security"
-                  label={elementMap["email-smtp-security"]["display_name"]}
-                  description={elementMap["email-smtp-security"]["description"]}
+                  label={t`SMTP Security`}
                   mb="1.5rem"
                   labelProps={{
                     tt: "uppercase",
@@ -209,35 +233,40 @@ export const SMTPConnectionForm = ({
                   }}
                 >
                   <Group>
-                    {elementMap["email-smtp-security"].options?.map(
-                      ({ value, name }) => (
-                        <Radio
-                          value={value as string}
-                          name="email-smtp-security"
-                          label={name}
-                          key={name}
-                          styles={{
-                            inner: { display: "none" },
-                            label: {
-                              paddingLeft: 0,
-                              color:
-                                values["email-smtp-security"] === value
-                                  ? color("brand")
-                                  : color("text-dark"),
-                            },
-                          }}
-                        />
-                      ),
-                    )}
+                    {[
+                      { value: "none", name: "None" },
+                      { value: "ssl", name: "SSL" },
+                      { value: "tls", name: "TLS" },
+                      { value: "starttls", name: "STARTTLS" },
+                    ].map(({ value, name }) => (
+                      <Radio
+                        value={value as string}
+                        name="email-smtp-security"
+                        label={name}
+                        key={name}
+                        styles={{
+                          inner: { display: "none" },
+                          label: {
+                            paddingLeft: 0,
+                            color:
+                              values["email-smtp-security"] === value
+                                ? color("brand")
+                                : color("text-dark"),
+                          },
+                        }}
+                      />
+                    ))}
                   </Group>
                 </FormRadioGroup>
               </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper setting={elementMap["email-smtp-username"]}>
+              <SetByEnvVarWrapper
+                settingKey="email-smtp-username"
+                settingDetails={settingsDetails?.["email-smtp-username"]}
+              >
                 <FormTextInput
                   name="email-smtp-username"
-                  label={elementMap["email-smtp-username"]["display_name"]}
-                  description={elementMap["email-smtp-username"]["description"]}
-                  placeholder={elementMap["email-smtp-username"]["placeholder"]}
+                  label={t`SMTP Username`}
+                  placeholder={"nicetoseeyou"}
                   mb="1.5rem"
                   labelProps={{
                     tt: "uppercase",
@@ -245,28 +274,35 @@ export const SMTPConnectionForm = ({
                   }}
                 />
               </SetByEnvVarWrapper>
-              <SetByEnvVarWrapper setting={elementMap["email-smtp-password"]}>
-                <FormTextInput
-                  name="email-smtp-password"
-                  type="password"
-                  label={elementMap["email-smtp-password"]["display_name"]}
-                  description={elementMap["email-smtp-password"]["description"]}
-                  placeholder={elementMap["email-smtp-password"]["placeholder"]}
-                  mb="1.5rem"
-                  labelProps={{
-                    tt: "uppercase",
-                    mb: "0.5rem",
-                  }}
-                />
-              </SetByEnvVarWrapper>
-              {testEmailError && (
+              {!isHosted && (
+                <SetByEnvVarWrapper
+                  settingKey="email-smtp-password"
+                  settingDetails={settingsDetails?.["email-smtp-password"]}
+                >
+                  <FormTextInput
+                    name="email-smtp-password"
+                    type="password"
+                    label={t`SMTP Password`}
+                    placeholder={"Shhh..."}
+                    mb="1.5rem"
+                    labelProps={{
+                      tt: "uppercase",
+                      mb: "0.5rem",
+                    }}
+                  />
+                </SetByEnvVarWrapper>
+              )}
+
+              {Boolean(sendTestEmailResult.error) && (
                 <Text
                   role="alert"
-                  aria-label={testEmailError}
+                  aria-label={getTestEmailErrorMessage(
+                    sendTestEmailResult.error,
+                  )}
                   color="error"
                   mb="1rem"
                 >
-                  {testEmailError}
+                  {getTestEmailErrorMessage(sendTestEmailResult.error)}
                 </Text>
               )}
               <Flex mt="1rem" gap="1.5rem">
@@ -277,7 +313,9 @@ export const SMTPConnectionForm = ({
                 />
                 {!dirty && isValid && !isSubmitting && (
                   <Button onClick={handleSendTestEmail}>
-                    {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                    {sendTestEmailResult.isLoading
+                      ? t`Sending...`
+                      : t`Send test email`}
                   </Button>
                 )}
                 <Button
@@ -297,3 +335,9 @@ export const SMTPConnectionForm = ({
     </Flex>
   );
 };
+
+function getTestEmailErrorMessage(error: unknown): string {
+  return isErrorWithMessage(error)
+    ? error.data.message
+    : t`Error sending test email`;
+}

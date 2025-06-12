@@ -7,7 +7,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
@@ -506,27 +505,17 @@
                     (lib/join (-> (lib/join-clause (meta/table-metadata :orders)
                                                    [(lib/= (meta/field-metadata :venues :id)
                                                            (meta/field-metadata :orders :id))])
-                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))
-          join-ident (:ident (first (lib/joins query)))]
-      (is (=? [{:name  "ID"
-                :ident (meta/ident :venues :id)}
-               {:name  "CATEGORY_ID"
-                :ident (meta/ident :venues :category-id)}
-               {:name  "price10"
-                :ident (lib.options/ident (first (lib/expressions query)))}
-               {:name  "SUBTOTAL"
-                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+                                  (lib/with-join-fields [(meta/field-metadata :orders :subtotal)]))))]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}
+               {:name  "price10"}
+               {:name  "SUBTOTAL"}]
               (lib/returned-columns query)))
-      (is (=? [{:name  "ID"
-                :ident (meta/ident :venues :id)}
-               {:name  "CATEGORY_ID"
-                :ident (meta/ident :venues :category-id)}
-               {:name  "price10"
-                :ident (lib.options/ident (first (lib/expressions query)))}
-               {:name  "NAME"
-                :ident (lib.metadata.ident/remap-ident (meta/ident :categories :name) (meta/ident :venues :category-id))}
-               {:name  "SUBTOTAL"
-                :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :orders :subtotal) join-ident)}]
+      (is (=? [{:name  "ID"}
+               {:name  "CATEGORY_ID"}
+               {:name  "price10"}
+               {:name  "NAME"}
+               {:name  "SUBTOTAL"}]
               (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))))))
 
 (deftest ^:parallel remapped-columns-test-2-remapping-in-joins
@@ -578,3 +567,42 @@
                   (lib/join join2)
                   (lib/join join1)
                   cols))))))
+
+(deftest ^:parallel implicit-join-columns
+  (let [inner (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (meta/table-metadata :people)))
+        mp    (lib.tu/metadata-provider-with-card-from-query 1 inner)
+        query (lib/query mp (lib.metadata/card mp 1))]
+    (is (=? [["ID" :source/card]
+             ["SUBTOTAL" :source/card]
+             ["TOTAL" :source/card]
+             ["TAX" :source/card]
+             ["DISCOUNT" :source/card]
+             ["QUANTITY" :source/card]
+             ["CREATED_AT" :source/card]
+             ["PRODUCT_ID" :source/card]
+             ["USER_ID" :source/card]
+             ["ID" :source/card]
+             ["STATE" :source/card]
+             ["CITY" :source/card]
+             ["ADDRESS" :source/card]
+             ["NAME" :source/card]
+             ["SOURCE" :source/card]
+             ["ZIP" :source/card]
+             ["LATITUDE" :source/card]
+             ["PASSWORD" :source/card]
+             ["BIRTH_DATE" :source/card]
+             ["LONGITUDE" :source/card]
+             ["EMAIL" :source/card]
+             ["CREATED_AT" :source/card]
+             ["ID" :source/implicitly-joinable]
+             ["EAN" :source/implicitly-joinable]
+             ["TITLE" :source/implicitly-joinable]
+             ["CATEGORY" :source/implicitly-joinable]
+             ["VENDOR" :source/implicitly-joinable]
+             ["PRICE" :source/implicitly-joinable]
+             ["RATING" :source/implicitly-joinable]
+             ["CREATED_AT" :source/implicitly-joinable]]
+            (-> query
+                (lib/visible-columns)
+                (->> (map (juxt :name :lib/source))))))))
