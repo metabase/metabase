@@ -215,7 +215,7 @@
                                                                     :value      "TODO"}
 
                                                                    {:parameterId "int"
-                                                                    :sourceType  "const"
+                                                                    :sourceType  "constant"
                                                                     :value       42}
                                                                    {:parameterId       "text"
                                                                     :sourceType        "row-data"
@@ -306,7 +306,7 @@
                                    ;; built-in actions which assume its pk->pk
                                    {:parameterId  "id",       :sourceType "row-data"}
                                    ;; TODO this might be a string, check FE
-                                   {:parameterId "int",       :sourceType "const", :value 42}
+                                   {:parameterId "int",       :sourceType "constant", :value 42}
                                    {:parameterId "text",      :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
                                    {:parameterId "timestamp", :visibility "hidden"}]}
                   ;; This gives us the format that the in-memory action looks like in the FE.

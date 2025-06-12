@@ -228,6 +228,36 @@
                                                :parameters]))]
       {:actions (vec (concat saved-actions table-actions))})))
 
+(mr/def ::api-action-id-saved
+  "Refers to a row in the actions table."
+  ms/PositiveInt)
+
+(mr/def ::api-action-id-primitive-or-dashboard-or-dashcard-action
+  "We refer to primitive actions through their names.
+  For now we also encode dashboard button and dashcard action ids as strings, but make we can stop that after WRK-483."
+  :string)
+
+(mr/def ::api-action-id-packed-mapping
+  "The picker currently returns negative integers which encodes certain primitive actions with some config.
+  This is just a poor man's ::api-action-expression, so maybe we can deprecate that."
+  ms/NegativeInt)
+
+(mr/def ::api-action-id
+  "Primitive actions, saved actions, and packed encodings from the picker."
+  [:or
+   ::api-action-id-saved
+   ::api-action-id-primitive-or-dashboard-or-dashcard-action
+   ::api-action-id-packed-mapping])
+
+;; TODO this should become sequential so we can save the order.
+(mr/def ::action.config.param-map
+  "Editable configuration used to transform the inputs passed to an action."
+  [:map-of :keyword :any])
+
+(mr/def ::action.config.mappings
+  "Non -editable configuration used to transform the inputs passed to an action."
+  [:map-of :keyword :any])
+
 (mr/def ::unified-action.base
   [:or
    [:map {:closed true}
@@ -236,23 +266,38 @@
     [:action-kw :keyword]
     [:mapping {:optional true} [:maybe :map]]]])
 
+;; TODO Regret this name, let's rename it to something like ::action-expression once it's pure data.
 (mr/def ::unified-action
+  "The internal representation used by our APIs, after we've parsed the relevant ids and fetched their configuration."
   [:or
    ::unified-action.base
    [:map {:closed true}
+    ;; TODO Having an opaque id like this inside is not great.
+    ;;      We eventually want to have fetched all relevant data already, so we can just dispatch.
+    ;; But, for now we're wanting to reuse legacy code which dispatches on the underlying toucan instances, and the
+    ;; time has not yet come to refactor those functions.
+    ;; TODO make this variant more self-describing, it's not clear that this integer is a dashcard id.
     [:dashboard-action ms/PositiveInt]]
    [:map {:closed true}
     [:inner-action ::unified-action.base]
-    ;; TODO type our mappings
-    [:mapping {:optional true} [:maybe :map]]
-    [:param-map :map]
-    ;; TODO generalize so we can support grids outside of dashboards
+    [:mapping {:optional true} [:maybe ::action.config.mappings]]
+    [:param-map ::action.config.param-map]
+    ;; We will eventually want to generalize to support grids outside of dashboards.
     [:dashcard-id {:optional true} ms/PositiveInt]]])
 
+(mr/def ::api-action-expression
+  "A more relaxed version of ::unified-action that can still have opaque ::api-action-id expressions inside."
+  ;; TODO let's wait until we've written all our API tests and integrated the FE before typing this.
+  :map)
+
+(mr/def ::api-action-id-or-expression
+  "All the various ways of referring to an action with the v2 APIs."
+  [:or ::api-action-expression ::api-action-id])
+
 (mu/defn- fetch-unified-action :- ::unified-action
-  "Resolve various types of action id into a semantic map which is easier to dispatch on."
+  "Resolve various flavors of action-id into plain data, making it easier to dispatch on. Fetch config etc."
   [scope :- ::types/scope.hydrated
-   raw-id :- [:or :map :string ms/NegativeInt ms/PositiveInt]]
+   raw-id :- ::api-action-id-or-expression]
   (cond
     (map? raw-id) (if-let [packed-id (:packed-id raw-id)]
                     (merge
@@ -405,17 +450,17 @@
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/action/v2/execute"
     "The One True API for invoking actions.
-  It doesn't care whether the action is saved or primitive, and whether it has been placed.
-  In particular, it supports:
-  - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
-  - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
-  Since actions are free to return multiple outputs even for a single output, the response is always plural."
+     It doesn't care whether the action is saved or primitive, and whether it has been placed.
+     In particular, it supports:
+     - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
+     - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
+     Since actions are free to return multiple outputs even for a single output, the response is always plural."
     [{}
      {}
      {:keys [action_id scope params input]}
      :- [:map
        ;; TODO docstrings for these
-         [:action_id [:or :map :string ms/NegativeInt ms/PositiveInt]]
+         [:action_id ::api-action-id-or-expression]
          [:scope     ::types/scope.raw]
          [:params    {:optional true} :map]
          [:input     :map]]]
@@ -429,10 +474,10 @@
      {}
      {:keys [action_id scope inputs params]}
      :- [:map
-         [:action_id               [:or :map :string ms/NegativeInt ms/PositiveInt]]
+         [:action_id               ::api-action-id-or-expression]
          [:scope                   ::types/scope.raw]
          [:inputs                  [:sequential :map]]
-         [:params {:optional true} :map]]]
+         [:params {:optional true} [:map-of :keyword :any]]]]
     ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
     {:outputs (binding [actions/*params* params]
                 (execute!* action_id scope (dissoc params :delete-children) inputs))}))

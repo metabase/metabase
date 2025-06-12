@@ -9,15 +9,19 @@
    [toucan2.core :as t2]))
 
 (mr/def ::param-configuration
+  ;; TODO Yeah, gross. This is currently just mirroring the config in the FE.
+  ;; They at least have defined it using a nicer dependently typed way! See ConstantRowActionFieldSettings.
+  ;; We could do something like that with malli... but once this stuff is opaque to the frontend, we can go wild and
+  ;; make the shape more idiomatically Clojure, and maybe we should just wait until we've finalized the shape.
   [:map {:closed true}
    [:id                                :string]
    ;; omitted if we have visibility != null
-   [:sourceType       {:optional true} [:enum "ask-user" "row-data" "const"]]
+   [:sourceType       {:optional true} [:enum "ask-user" "row-data" "constant"]]
    ;; omitted if we have visibility != null
    [:sourceValueTarget {:optional true} :string]
    ;; would be much nicer if we have a "visible" option rather than this being optional, but just tracking FE
    [:visibility       {:optional true} [:enum "readonly" "hidden"]]
-   ;; should be present if and only if "sourceType" is "const"
+   ;; should be present if and only if "sourceType" is "constant"
    [:value            {:optional true} [:or :string :int :boolean]]])
 
 (mr/def ::action-configuration
@@ -65,7 +69,7 @@
   [{:keys [action-id action-kw] :as action}
    scope]
   (cond
-    ;; eventually will be put inside a nicely typed :configuration key
+    ;; Eventually will be put inside a nicely typed :configuration key
     (:param-map action)
     (configuration-for-saved-or-pending-action action)
 
