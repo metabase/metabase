@@ -24,7 +24,7 @@ import {
 } from "metabase/dashboard/context";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
-import { setErrorPage } from "metabase/redux/app";
+import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Flex } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
@@ -72,7 +72,7 @@ export const SdkDashboardInner = ({
   const dispatch = useSdkDispatch();
   useEffect(() => {
     if (dashboardId) {
-      dispatch(setErrorPage(null));
+      dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
 
