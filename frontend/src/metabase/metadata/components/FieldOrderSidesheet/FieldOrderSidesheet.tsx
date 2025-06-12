@@ -115,10 +115,8 @@ const FieldOrderSidesheetBase = ({
             renderItem={({ item, id }) => (
               <SortableFieldItem
                 disabled={isDragDisabled}
-                icon={item.icon}
-                id={id}
+                field={item.field.getPlainObject()}
                 key={id}
-                label={item.label}
               />
             )}
             sensors={[pointerSensor]}
