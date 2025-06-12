@@ -207,7 +207,8 @@
 
 (mr/def ::stage
   [:and
-   {:decode/normalize common/normalize-map
+   {:default          {}
+    :decode/normalize common/normalize-map
     :encode/serialize #(dissoc %
                                ;; this stuff is all added at runtime by QP middleware.
                                :params

@@ -88,7 +88,6 @@
                                        :type    :metabase/modules))))))))
 
 (defn- lint-namespace-name [ns-form-node]
- ; NOCOMMIT
   (when-let [ns-symb-node (ns-form-node->ns-symb-node ns-form-node)]
     (when-not (contains? (hooks.common/ignored-linters ns-symb-node) :metabase/namespace-name)
       (let [parts (str/split (str (hooks/sexpr ns-symb-node)) #"\.")]

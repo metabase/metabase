@@ -11,6 +11,7 @@ import type { MetabaseProviderProps } from "embedding-sdk/components/public/Meta
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
 import {
   createMockCard,
@@ -29,15 +30,30 @@ import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { StaticDashboard, type StaticDashboardProps } from "./StaticDashboard";
 
+jest.mock("metabase/common/hooks/use-locale", () => ({
+  useLocale: jest.fn(),
+}));
+
+const useLocaleMock = useLocale as jest.Mock;
+
 const TEST_DASHBOARD_ID = 1;
 
 interface SetupOptions {
+  isLocaleLoading?: boolean;
   props?: Partial<StaticDashboardProps>;
   providerProps?: Partial<MetabaseProviderProps>;
 }
 
-const setup = async (options: SetupOptions = {}) => {
-  const { props, providerProps } = options;
+const setup = async (
+  options: SetupOptions = {
+    isLocaleLoading: false,
+    props: {},
+    providerProps: {},
+  },
+) => {
+  const { isLocaleLoading, props, providerProps } = options;
+
+  useLocaleMock.mockReturnValue({ isLocaleLoading });
 
   const database = createSampleDatabase();
 
@@ -105,7 +121,9 @@ const setup = async (options: SetupOptions = {}) => {
     },
   );
 
-  expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  if (!isLocaleLoading) {
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  }
 
   return {
     dashboard,
@@ -113,6 +131,12 @@ const setup = async (options: SetupOptions = {}) => {
 };
 
 describe("StaticDashboard", () => {
+  it("should render a loader when a locale is loading", async () => {
+    await setup({ isLocaleLoading: true });
+
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+  });
+
   it("shows a dashboard card question title by default", async () => {
     await setup();
 
