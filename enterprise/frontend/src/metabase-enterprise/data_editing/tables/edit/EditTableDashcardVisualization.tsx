@@ -244,7 +244,9 @@ export const EditTableDashcardVisualization = memo(
     const { data: createRowFormDescription } = useActionFormDescription({
       actionId: BuiltInTableAction.Create,
       scope: editingScope,
-      skip: !hasCreateAction,
+      // Refetch when visualizationSettings change, but only if card is not currently being edited
+      skip: !hasCreateAction || isEditing,
+      refetchDependencies: [visualizationSettings],
     });
 
     const shouldDisableActions = isUndoLoading || isRedoLoading;

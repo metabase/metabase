@@ -1,6 +1,5 @@
 import { Component } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { Flex, Loader, Title } from "metabase/ui";
@@ -8,8 +7,6 @@ import LoadingView from "metabase/visualizations/components/Visualization/Loadin
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DatasetData } from "metabase-types/api";
-
-import { mergeSettings } from "../../lib/settings/typed-utils";
 
 import { TableEditableConfigureActionButton } from "./TableEditableConfigureActionButton";
 
@@ -104,10 +101,7 @@ export class TableEditable extends Component<
       return <LoadingView isSlow={false} />;
     }
 
-    const visualizationSettings = getMergedVisualizationSettings(
-      card.visualization_settings,
-      dashcard.visualization_settings,
-    );
+    const visualizationSettings = dashcard.visualization_settings;
 
     const hasVisibleColumns =
       !visualizationSettings?.["table.columns"] ||
@@ -140,13 +134,3 @@ export class TableEditable extends Component<
     );
   }
 }
-
-const getMergedVisualizationSettings = _.memoize(
-  (cardSettings: any, dashcardSettings: any) => {
-    return mergeSettings(cardSettings, dashcardSettings);
-  },
-  (cardSettings: any, dashcardSettings: any) => {
-    // Create a cache key from both settings objects
-    return JSON.stringify([cardSettings, dashcardSettings]);
-  },
-);
