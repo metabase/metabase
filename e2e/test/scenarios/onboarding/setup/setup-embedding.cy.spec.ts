@@ -1,3 +1,5 @@
+const { H } = cy;
+
 describe("scenarios > setup embedding (EMB-477)", () => {
   beforeEach(() => H.restore("blank"));
 
