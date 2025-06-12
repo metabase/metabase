@@ -252,8 +252,9 @@
 (mu/defn- fetch-unified-action :- ::unified-action
   "Resolve various types of action id into a semantic map which is easier to dispatch on."
   [scope :- ::types/scope.hydrated
-   raw-id :- [:or :string ms/NegativeInt ms/PositiveInt]]
+   raw-id :- [:or :map :string ms/NegativeInt ms/PositiveInt]]
   (cond
+    (map? raw-id)     raw-id
     (pos-int? raw-id) {:action-id raw-id}
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
@@ -409,7 +410,7 @@
      {:keys [action_id scope params input]}
      :- [:map
        ;; TODO docstrings for these
-         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:action_id [:or :map :string ms/NegativeInt ms/PositiveInt]]
          [:scope     ::types/scope.raw]
          [:params    {:optional true} :map]
          [:input     :map]]]
@@ -423,7 +424,7 @@
      {}
      {:keys [action_id scope inputs params]}
      :- [:map
-         [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:action_id               [:or :map :string ms/NegativeInt ms/PositiveInt]]
          [:scope                   ::types/scope.raw]
          [:inputs                  [:sequential :map]]
          [:params {:optional true} :map]]]
