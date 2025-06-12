@@ -7,11 +7,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -662,3 +664,85 @@
     [:value {:base-type :type/Integer} 123]      123
     [:value {:base-type :type/Boolean} false]    false
     [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))
+
+(deftest ^:parallel coalese-type-test
+  (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          price (-> (lib/ref (meta/field-metadata :venues :price))
+                    (lib.options/update-options dissoc :base-type :effective-type))]
+      (are [expr expected-type] (= expected-type
+                                   (lib.metadata.calculation/type-of query expr))
+        (lib/coalesce price 1)
+        :type/Integer
+
+        ;; so apparently `:type/Float` is the common ancestor of `:type/Integer` and `:type/Float` as of #36558... I'm
+        ;; certain this is wrong but I can't fix every single querying bug all at once. See Slack thread for more
+        ;; discussion https://metaboat.slack.com/archives/C0645JP1W81/p1749169799757029
+        (lib/coalesce price 1.01)
+        :type/Float
+
+        ;; this is still Integer on JS because Integers are stored as floats and thus 1.0 === 1
+        (lib/coalesce price 1.0)
+        #?(:clj  :type/Float
+           :cljs :type/Integer)
+
+        ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+        ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+        (lib/coalesce (meta/field-metadata :people :created-at)  ; :type/DateTimeWithLocalTZ
+                      (meta/field-metadata :people :birth-date)) ; :type/Date
+        :type/DateTime))))
+
+(deftest ^:parallel case-type-test
+  (testing "Should be able to calculate type info for :case with field refs without type info (#30397, QUE-147)"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
+          price (-> (lib/ref (meta/field-metadata :venues :price))
+                    (lib.options/update-options dissoc :base-type :effective-type))]
+      (are [expr expected-type] (= expected-type
+                                   (lib.metadata.calculation/type-of query expr))
+        (lib/case
+         [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500]]
+          600)
+        :type/Integer
+
+        ;; see explanation in test above
+        (lib/case
+         [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+          [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.01]]
+          600)
+        :type/Float
+
+        ;; [:if ...] is allegedly an alias of [:case ...]
+        (let [[_case & args] (lib/case
+                              [[(lib/= (meta/field-metadata :venues :name) "BBQ") price]
+                               [(lib/= (meta/field-metadata :venues :name) "Fusion") 500.0]]
+                               "600")]
+          (into [:if] args))
+        :type/*
+
+        ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+        ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+        (lib/case
+         [[(lib/= (meta/field-metadata :people :name) "A")
+           (meta/field-metadata :people :created-at)]  ; :type/DateTimeWithLocalTZ
+          [(lib/= (meta/field-metadata :people :name) "B")
+           (meta/field-metadata :people :birth-date)]]) ; :type/Date
+        :type/DateTime))))
+
+(deftest ^:parallel case-type-of-test-47887
+  (testing "Case expression with type/Date default value and type/DateTime case value has Date filter popover enabled (#47887)"
+    (let [clause (lib/case
+                  [[(lib/= (meta/field-metadata :people :name) "A")
+                    (meta/field-metadata :people :created-at)]
+                   [(lib/= (meta/field-metadata :people :name) "B")
+                    (meta/field-metadata :people :birth-date)]])
+          query (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
+                    (lib/expression "expr" clause))]
+      ;; 'pretend' that this returns `:type/DateTime` when it actually returns `:type/HasDate` --
+      ;; see [[metabase.lib.schema.expression.conditional/case-coalesce-return-type]]
+      (is (= :type/DateTime
+             (lib/type-of query clause)))
+      (let [col (m/find-first #(= (:name %) "expr")
+                              (lib/filterable-columns query))]
+        (assert (some? col))
+        (is (lib.types.isa/date-or-datetime? col))))))
