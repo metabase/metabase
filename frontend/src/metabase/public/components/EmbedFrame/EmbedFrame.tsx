@@ -188,17 +188,13 @@ export const EmbedFrame = ({
               )}
               isFixedWidth={dashboard?.width === "fixed"}
               data-is-fixed-width={dashboard?.width === "fixed"}
-              px={{
-                base: 0,
-                sm: "sm",
-              }}
+              px={{ base: "md", lg: 0 }}
             >
               {finalName && (
                 <TitleAndDescription
                   title={finalName}
                   description={description}
                   className={cx(EmbedFrameS.DashboardTitle, CS.my2)}
-                  px={{ base: "md", sm: 0 }}
                 />
               )}
               <Box className={EmbedFrameS.HeaderButtons} mt={titled ? "md" : 0}>
