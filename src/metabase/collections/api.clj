@@ -517,12 +517,12 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (update :archived_directly api/bit->boolean))
+      (update :archived_directly api/bit->boolean)))
 
-  (defn- post-process-card-row-after-hydrate [row]
-    (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
-        (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
-        (assoc :fully_parameterized (fully-parameterized-query? row)))))
+(defn- post-process-card-row-after-hydrate [row]
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+      (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
+      (assoc :fully_parameterized (fully-parameterized-query? row))))
 
 (defmethod post-process-collection-children :card
   [_ _options _ rows]

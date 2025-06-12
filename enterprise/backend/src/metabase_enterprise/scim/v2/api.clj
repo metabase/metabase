@@ -9,7 +9,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.core :as perms]
    [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
