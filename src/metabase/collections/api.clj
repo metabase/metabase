@@ -526,8 +526,7 @@
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
-(defmethod post-process-collection-children :card
-  [_ _options _ rows]
+(defn- post-process-card-like [rows]
   (map post-process-card-row-after-hydrate
        (t2/hydrate (map post-process-card-row rows)
                    :can_write
@@ -536,9 +535,13 @@
                    :dashboard_count
                    [:dashboard :moderation_status])))
 
+(defmethod post-process-collection-children :card
+  [_ _options _ rows]
+  (post-process-card-like rows))
+
 (defmethod post-process-collection-children :metric
   [_ _options _ rows]
-  (map post-process-card-row rows))
+  (post-process-card-like rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
