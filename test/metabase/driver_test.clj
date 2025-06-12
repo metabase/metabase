@@ -14,7 +14,6 @@
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
