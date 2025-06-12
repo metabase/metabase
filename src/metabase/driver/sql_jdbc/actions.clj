@@ -564,7 +564,7 @@
              (driver-api/metadata-provider)
              table-id)))))
 
-(mu/defn- field-names->field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/field-reference-mlv2]
+(mu/defn- field-names->field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [table-id    :- driver-api/schema.id.table
    field-names :- [:sequential :string]]
