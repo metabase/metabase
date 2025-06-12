@@ -4,7 +4,32 @@
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(mr/def ::describe-param
+  [:map #_{:closed true}
+   [:id                                :string]
+   [:display_name                      :string]
+   [:input_type                        [:enum "dropdown" "textarea" "date" "datetime" "text"]]
+   [:semantic_type    {:optional true} :keyword]
+   [:optional                          :boolean]
+   [:nullable                          :boolean]
+   [:readonly                          :boolean]
+   [:database_default {:optional true} :any]
+   ;; value can be nil, so this is optional to avoid confusion
+   [:value            {:optional true} :any]
+   [:value_options    {:optional true} [:sequential :any]]
+   ;; what do we use this for? we have this for model action only
+   [:param-mapping    {:optional true} :map]
+   ;; is it more useful if we have field_id instead of this?
+   [:human_readable_field_id {:optional true} pos-int?]])
+
+(mr/def ::action-description
+  [:map {:closed true}
+   [:title :string]
+   [:parameters [:sequential ::describe-param]]])
 
 (defn- param-value
   [param-mapping row-delay]
@@ -70,7 +95,7 @@
                             :when (:enabled dashcard-column true)
                             :let [required (or pk (:database_required field))]]
                         (u/remove-nils
-                         {:id                      (:name field)
+                         {:id                      (:name field) ;; TODO we shouldn't use field name as id I think, what if we have 1 field that maps to 2 params?
                           :display_name            (:display_name field)
                           :semantic_type           (:semantic_type field)
                           :input_type              (field-input-type field field-values)
@@ -147,61 +172,60 @@
                           :value_options (:valueOptions viz-field)}))
                       vec)}))
 
-(defn describe-unified-action
+(mu/defn describe-unified-action :- ::action-description
   "Describe parameters of an unified action."
   [unified scope input]
-  (let [scope (actions/hydrate-scope scope)]
-    ;; TODO: we didn't handle dashboard-action
-    (cond
-      ;; saved action
-      ;; hmm, having checked like this makes me insecure, what makes having an action-id enforces that this
-      ;; is an saved question? what if put an aciton-id on a row action for some reasons?
-      (:action-id unified)
-      (describe-saved-action :action-id (:action-id unified))
+  ;; TODO: we didn't handle dashboard-action
+  (cond
+    ;; saved action
+    ;; hmm, having checked like this makes me insecure, what makes having an action-id enforces that this
+    ;; is an saved question? what if put an aciton-id on a row action for some reasons?
+    (:action-id unified)
+    (describe-saved-action :action-id (:action-id unified))
 
-      ;; table action
-      (:action-kw unified)
-      (describe-table-action
-       {:action-kw     (:action-kw unified)
-        ;; todo this should come from applying the (arbitrarily nested) mappings to the input
-        ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
-        :table-id      (or (:table-id (:mapping (:inner-action unified)))
-                           (:table-id (:mapping unified)))
-        :param-mapping (:param-mapping unified)
-        ;; TODO is it really 2 layers deep?
-        :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
-      (:inner-action unified)
-      (let [inner       (:inner-action unified)
-            mapping     (:param-map unified)
-            dashcard-id (:dashcard-id unified)
-            saved-id    (:action-id inner)
-            action-kw   (:action-kw inner)
-            table-id    (or (:table-id mapping)
-                            (:table-id (:mapping inner))
-                            (:table-id scope))
-            _           (when-not table-id
-                          (throw (ex-info "Must provide table-id" {:status-code 400})))
-            row-delay   (delay
-                         ;; TODO this is incorrect - in general the row will not come from the table we are acting
-                         ;;      upon - this is not even true for our first use case!
-                          (when table-id
-                            (let [pk-fields    (data-editing/select-table-pk-fields table-id)
-                                  pk           (select-keys input (mapv (comp keyword :name) pk-fields))
-                                  pk-satisfied (= (count pk) (count pk-fields))]
-                              (when pk-satisfied
-                                (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
-        (cond
-          saved-id
-          (describe-saved-action :action-id              saved-id
-                                 :row-action-dashcard-id dashcard-id
-                                 :param-mapping          mapping
-                                 :row-delay              row-delay)
-          action-kw
-          (describe-table-action :action-kw     action-kw
-                                 :table-id      table-id
-                                 :param-mapping mapping
-                                 :dashcard-viz  (:dashcard-viz unified)
-                                 :row-delay     row-delay)
-          :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified unified})))
-      :else
-      (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified})))))
+    ;; table action
+    (:action-kw unified)
+    (describe-table-action
+     {:action-kw     (:action-kw unified)
+      ;; todo this should come from applying the (arbitrarily nested) mappings to the input
+      ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
+      :table-id      (or (:table-id (:mapping (:inner-action unified)))
+                         (:table-id (:mapping unified)))
+      :param-mapping (:param-mapping unified)
+      ;; TODO is it really 2 layers deep?
+      :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
+    (:inner-action unified)
+    (let [inner       (:inner-action unified)
+          mapping     (:param-map unified)
+          dashcard-id (:dashcard-id unified)
+          saved-id    (:action-id inner)
+          action-kw   (:action-kw inner)
+          table-id    (or (:table-id mapping)
+                          (:table-id (:mapping inner))
+                          (:table-id scope))
+          _           (when-not table-id
+                        (throw (ex-info "Must provide table-id" {:status-code 400})))
+          row-delay   (delay
+                       ;; TODO this is incorrect - in general the row will not come from the table we are acting
+                       ;;      upon - this is not even true for our first use case!
+                        (when table-id
+                          (let [pk-fields    (data-editing/select-table-pk-fields table-id)
+                                pk           (select-keys input (mapv (comp keyword :name) pk-fields))
+                                pk-satisfied (= (count pk) (count pk-fields))]
+                            (when pk-satisfied
+                              (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
+      (cond
+        saved-id
+        (describe-saved-action :action-id              saved-id
+                               :row-action-dashcard-id dashcard-id
+                               :param-mapping          mapping
+                               :row-delay              row-delay)
+        action-kw
+        (describe-table-action :action-kw     action-kw
+                               :table-id      table-id
+                               :param-mapping mapping
+                               :dashcard-viz  (:dashcard-viz unified)
+                               :row-delay     row-delay)
+        :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified unified})))
+    :else
+    (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified}))))
