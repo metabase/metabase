@@ -6,7 +6,7 @@ const TitleAndDescriptionInner = ({
   title,
   description,
   ...boxProps
-}: { title: string; description?: string } & BoxProps) => (
+}: { title: string; description?: string | null } & BoxProps) => (
   <Box {...boxProps}>
     <Title component="span" order={3} textWrap="wrap">
       {title}
