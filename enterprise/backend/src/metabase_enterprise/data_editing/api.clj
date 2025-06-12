@@ -458,6 +458,7 @@
                                      :mapping   {:table-id (:table_id visualization_settings)
                                                  :row      ::root}}
                      ;; TODO: this should belongs to our configuration
+                     ;; TODO: migrate on read
                      :param-mapping (->> visualization_settings
                                          :editableTable.enabledActions
                                          (some (fn [{:keys [id parameterMappings]}]

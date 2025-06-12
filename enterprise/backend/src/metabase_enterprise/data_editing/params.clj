@@ -39,6 +39,7 @@
                                         (t2/hydrate :dimensions
                                                     :has_field_values
                                                     :values))
+        ;; it's a huge assumption that there's always dashcard-viz
         ;; TODO: this should lives in our configuration
         dashcard-column-editable?   (or (some-> dashcard-viz :table.editableColumns set)
                                         ;; columns are assumed editable if no dashcard-viz specialisation
@@ -166,7 +167,6 @@
         ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
         :table-id      (or (:table-id (:mapping (:inner-action unified)))
                            (:table-id (:mapping unified)))
-        ;; ASK: can basic table action has these params and dash-viz?
         :param-mapping (:param-mapping unified)
         ;; TODO is it really 2 layers deep?
         :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
