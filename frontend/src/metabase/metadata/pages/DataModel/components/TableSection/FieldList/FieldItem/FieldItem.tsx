@@ -111,7 +111,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
           component={EditableText}
           fw="bold"
           initialValue={field.display_name}
-          lh="normal"
           maxLength={254}
           miw={0}
           mb={rem(-4)}
@@ -132,7 +131,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
         component={EditableText}
         initialValue={field.description}
         isOptional
-        lh="normal"
         maw="100%"
         mb={rem(-4)}
         mt={rem(-3)}

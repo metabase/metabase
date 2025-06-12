@@ -19,8 +19,17 @@
     height: 1.5rem !important;
   }
 
+  &:focus-within {
+    border-color: #789cbc !important;
+  }
+
   textarea {
     cursor: text;
     white-space: nowrap;
+
+    &:focus {
+      color: var(--mb-color-text-secondary);
+      background-color: #a0c9ed;
+    }
   }
 }
