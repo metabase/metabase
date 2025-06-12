@@ -379,7 +379,7 @@ export default class AccordionList extends Component {
     }
   };
 
-  makeFuzzySearchFilter = memoize((searchProps, sections) => {
+  makeFuzzySearchFilter = memoize((searchProps, isCaseSensitive, sections) => {
     const items = [];
     for (const section of sections) {
       for (const item of section.items) {
@@ -394,6 +394,7 @@ export default class AccordionList extends Component {
     const idx = new Fuse(items, {
       keys,
       includeScore: true,
+      isCaseSensitive,
       getFn,
     });
 
@@ -414,7 +415,7 @@ export default class AccordionList extends Component {
   });
 
   searchFilter = (sections) => {
-    const { searchProp, searchFuzzy } = this.props;
+    const { searchProp, searchCaseInsensitive, searchFuzzy } = this.props;
     const searchProps =
       typeof searchProp === "function"
         ? searchProp
@@ -423,7 +424,11 @@ export default class AccordionList extends Component {
           : [searchProp];
 
     if (searchFuzzy) {
-      return this.makeFuzzySearchFilter(searchProps, sections);
+      return this.makeFuzzySearchFilter(
+        searchProps,
+        !searchCaseInsensitive,
+        sections,
+      );
     }
 
     return (item) => {
