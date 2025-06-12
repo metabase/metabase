@@ -1413,7 +1413,14 @@
                     (testing "delete"
                       (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))))
 
-(deftest tmp-modal-table-action-on-dashboard-test
+;; Important missing tests
+(comment
+  tmp-modal-saved-action-on-editable-on-dashboard-test
+  ;; either copy past tests or use a doseq to vary how we construct it
+  tmp-modal-saved-action-on-question-on-dashboard-test
+  tmp-modal-table-action-on-question-on-dashboard-test)
+
+(deftest tmp-modal-table-action-on-editable-on-dashboard-test
   (let [req
         #(mt/user-http-request-full-response
           (:user % :crowberto)
@@ -1452,7 +1459,9 @@
                                                "date"]
 
                                               :editableTable.enabledActions
-                                              [{:id                "table.row/create"
+                                              ;; WTF this is not the right shape
+                                              [{#_:id #_"dashcard:unknown:uuid"
+                                                :id                "table.row/create" ;; should be actionId
                                                 :parameterMappings [{:parameterId "int"
                                                                      :sourceType  "const"
                                                                      :value       42}
