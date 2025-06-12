@@ -22,7 +22,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
   return (
     <Flex
       aria-label={label}
-      bg="bg-white"
+      bg={active ? "brand-lighter" : "bg-white"}
       c="text-medium"
       className={cx(S.field, {
         [S.active]: active,

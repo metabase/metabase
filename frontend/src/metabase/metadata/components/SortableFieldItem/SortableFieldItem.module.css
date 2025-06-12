@@ -9,17 +9,16 @@
 
   &.draggable {
     cursor: grab;
-
-    &:hover {
-      .grabber {
-        color: var(--mb-color-brand);
-      }
-    }
   }
 
-  &.active,
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    &:not(.active) {
+      background-color: var(--mb-color-background-light) !important;
+    }
+
+    .grabber {
+      color: var(--mb-color-brand);
+    }
   }
 }
 

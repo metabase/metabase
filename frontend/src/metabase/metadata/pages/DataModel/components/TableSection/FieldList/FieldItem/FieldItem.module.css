@@ -2,9 +2,10 @@
   border-radius: var(--default-border-radius);
   border: 1px solid var(--mb-color-border);
 
-  &.active,
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    &:not(.active) {
+      background-color: var(--mb-color-background-light) !important;
+    }
   }
 }
 

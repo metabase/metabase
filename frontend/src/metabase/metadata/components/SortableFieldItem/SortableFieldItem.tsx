@@ -34,7 +34,7 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
       <Flex
         align="center"
         aria-label={label}
-        bg="bg-white"
+        bg={active ? "brand-lighter" : "bg-white"}
         c="text-medium"
         className={cx(S.content, {
           [S.active]: active,
@@ -49,6 +49,7 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
         py={rem(12)}
         role="listitem"
         w="100%"
+        wrap="nowrap"
       >
         <Group flex="0 0 auto" gap="sm" wrap="nowrap">
           <Icon className={S.icon} name={icon} />
