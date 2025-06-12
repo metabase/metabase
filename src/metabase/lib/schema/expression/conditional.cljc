@@ -55,23 +55,6 @@
             intersection))
         (set/union x y))))
 
-(defn datetime-compatible?
-  [x]
-  (contains? #{:type/Date :type/DateTime :type/DateTimeWithLocalTZ} x))
-
-(defn- compatible?
-  "Check if `x` is compatible with `y`."
-  [x y]
-  (cond
-    (set? x) (some #(compatible? % y) x)
-    (set? y) (some #(compatible? x %) y)
-    :else (or
-           (= x ::expression/type.unknown)
-           (= y ::expression/type.unknown)
-           (and (datetime-compatible? x) (datetime-compatible? y))
-           (types/assignable? x y)
-           (types/assignable? y x))))
-
 (defn case-coalesce-return-type
   "Special logic to return the best return type for `:case`, `:if`, and `:coalesce`. Instead of
   using [[types/most-specific-common-ancestor]] directly we fudge a little bit and return something more concrete when
@@ -108,11 +91,17 @@
       [:fn
        ;; further constrain this so all of the exprs are of the same type
        {:error/message "All clauses should have the same type"}
-       (fn [[_tag _opts pred-expr-pairs default]]
-         (let [expressions (filter some? (concat (map second pred-expr-pairs) [default]))
-               expression-types (map expression/type-of expressions)
-               [first-type & other-types] expression-types]
-           (every? #(compatible? first-type %) other-types)))]]])
+       (fn
+         [[_tag _opts pred-expr-pairs default]]
+         (let [exprs (concat
+                      (map second pred-expr-pairs)
+                      (when default
+                        [default]))
+               types (keep expression/type-of exprs)
+               return-type (case-coalesce-return-type types)]
+           (or
+            (not= return-type :type/*)
+            (some #{:expression/type.unknown} types))))]]])
 
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]
