@@ -114,15 +114,15 @@
                                                                             ::add/position      0}]
                                                        [:expression "favorite" {::add/desired-alias "favorite"
                                                                                 ::add/position      1}]]}
-                         :filter       [:= [:field %name {::add/source-table ::add/source,
-                                                          ::add/source-alias "NAME",
-                                                          ::add/desired-alias "NAME",
-                                                          ::add/position 0,
+                         :filter       [:= [:field %name {::add/source-table ::add/source
+                                                          ::add/source-alias "NAME"
+                                                          ::add/desired-alias "NAME"
+                                                          ::add/position 0
                                                           :qp/ignore-coercion true}]
-                                        [:field "favorite" {:base-type :type/Text,
-                                                            ::add/source-table ::add/source,
-                                                            ::add/source-alias "favorite",
-                                                            ::add/desired-alias "favorite",
+                                        [:field "favorite" {:base-type :type/Text
+                                                            ::add/source-table ::add/source
+                                                            ::add/source-alias "favorite"
+                                                            ::add/desired-alias "favorite"
                                                             ::add/position 1}]]
                          :order-by     [[:asc *favorite/Text]]})
                       (-> (lib.tu.macros/mbql-query venues
@@ -298,7 +298,7 @@
                                          reviews
                                          {:breakout [$product_id]
                                           :aggregation [[:count]]
-                                                    ;; filter on an implicit join
+                                          ;; filter on an implicit join
                                           :filter [:= $product_id->products.category "Doohickey"]})}]
         ;; the result returned is not important, just important that the query is valid and completes
         (is (vector?
@@ -801,7 +801,7 @@
                                                      [:field %vendor nil]
                                                      [:field %price nil]
                                                      [:field %rating nil]
-                                                     [:field %created-at {:temporal-unit :default}]]},
+                                                     [:field %created-at {:temporal-unit :default}]]}
                        :expressions {"pivot-grouping" [:abs 0]}
                        :breakout    [[:field "CATEGORY" {:base-type :type/Text}]
                                      [:field "CREATED_AT" {:base-type :type/DateTime, :temporal-unit :month}]
