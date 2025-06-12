@@ -189,25 +189,25 @@
                                                [{:name "int", :enabled true}
                                                 {:name "text", :enabled true}
                                                 {:name "timetamp", :enabled true}
-                                               ;; this signals date should not be shown in the grid
+                                                ;; this signals date should not be shown in the grid
                                                 {:name "date", :enabled false}]
 
                                                :editableTable.columns
                                                ["int"
-                                               ;; this signals text is not editable
+                                                ;; this signals text is not editable
                                                 #_"text"
                                                 "timestamp"
                                                 "date"]
 
                                                :editableTable.enabledActions
-                                              ;; We can fix this "unknown" when we move the action out of the dashcard json
-                                              ;; See [[metabase.dashboards.api/create-or-fix-action-id]]
+                                               ;; We can fix this "unknown" when we move the action out of the dashcard json
+                                               ;; See [[metabase.dashboards.api/create-or-fix-action-id]]
                                                [{:id                "dashcard:unknown:1"
                                                  :actionId          "table.row/create"
                                                  :parameterMappings [;; because this is a CUSTOM actions
-                                                                    ;; it might not even be editing the same table,
-                                                                    ;; so we need to map the primary, unlike for
-                                                                    ;; built-in actions which assume its pk->pk
+                                                                     ;; it might not even be editing the same table,
+                                                                     ;; so we need to map the primary, unlike for
+                                                                     ;; built-in actions which assume its pk->pk
                                                                      {:parameter "id"
                                                                       :sourceType "row-data"
                                                                       :value      "TODO"}
@@ -250,7 +250,7 @@
                       (doseq [action-id [create-id update-id delete-id]]
                         (testing action-id
                           (is (=? {:status 400}
-                                  (req {:action_id action-id, :scope scope})))))))
+                                  (req {:action_id action-id :scope scope})))))))
 
                   (testing "create"
                     (is (=? {:status 200
