@@ -66,7 +66,7 @@
 ;; Until then, I think this is ideal.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest undo-redo-single-user-single-table-single-record-integration-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Single-user chain, non-generated pk"
         ;; TODO test with a real PK
