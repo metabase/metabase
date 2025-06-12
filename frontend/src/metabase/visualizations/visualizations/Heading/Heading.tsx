@@ -39,6 +39,10 @@ interface HeadingProps {
   dashcard: VirtualDashboardCard;
   settings: VisualizationSettings;
   dashboard: Dashboard;
+  gridSize: {
+    width: number;
+    height: number;
+  };
 }
 
 export function Heading({
@@ -47,6 +51,7 @@ export function Heading({
   settings,
   isEditing,
   isFullscreen,
+  gridSize,
   onUpdateVisualizationSettings,
   isMobile,
 }: HeadingProps) {
@@ -58,6 +63,7 @@ export function Heading({
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const tc = useTranslateContent();
+  const isShort = gridSize.height < 2;
 
   const [isFocused, { open: toggleFocusOn, close: toggleFocusOff }] =
     useDisclosure(justAdded);
@@ -167,6 +173,9 @@ export function Heading({
         isPreviewing={isPreviewing}
         onClick={toggleFocusOn}
         ref={container}
+        style={{
+          paddingRight: isNarrow && isShort ? "2.5rem" : undefined,
+        }}
       >
         {leftContent}
         {inlineParameters.length > 0 && (
@@ -236,11 +245,15 @@ function ParametersList(props: ParametersListProps) {
 
     return (
       <Menu>
-        <Menu.Target>
+        <Menu.Target data-testid="show-filter-parameter-button">
           <ToolbarButton
             icon="filter"
             aria-label={t`Show filters`}
             tooltipLabel={t`Show filters`}
+            onClick={(e) => {
+              // To avoid focusing the input when clicking the button
+              e.stopPropagation();
+            }}
           />
         </Menu.Target>
         <Menu.Dropdown

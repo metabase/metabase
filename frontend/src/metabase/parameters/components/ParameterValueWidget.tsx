@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
@@ -50,6 +50,7 @@ export type ParameterValueWidgetProps = {
   mimicMantine?: boolean;
   isSortable?: boolean;
   variant?: "default" | "subtle";
+  prefix?: ReactNode;
 } & Partial<PopoverProps>;
 
 export const ParameterValueWidget = ({
@@ -70,6 +71,7 @@ export const ParameterValueWidget = ({
   setValue,
   value,
   variant = "default",
+  prefix,
   ...popoverProps
 }: ParameterValueWidgetProps) => {
   const tc = useTranslateContent();
@@ -214,6 +216,7 @@ export const ParameterValueWidget = ({
               size={16}
             />
           )}
+          {prefix}
           <ParameterDropdownWidget
             parameter={parameter}
             parameters={parameters}
@@ -279,6 +282,7 @@ export const ParameterValueWidget = ({
                   size={16}
                 />
               )}
+              {prefix && <div className={S.Prefix}>{prefix}</div>}
               <div
                 className={cx(CS.mr1, {
                   [S[variant]]: variant,
