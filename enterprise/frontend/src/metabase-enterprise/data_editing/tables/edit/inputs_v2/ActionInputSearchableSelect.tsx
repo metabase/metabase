@@ -110,6 +110,7 @@ export const ActionInputSearchableSelect = ({
         <Input
           component="button"
           type="button"
+          role="combobox"
           pointer
           onClick={() => combobox.openDropdown()}
           classNames={{
