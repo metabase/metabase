@@ -4,6 +4,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
+import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
 import type { LoginStatus } from "embedding-sdk/types/user";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -13,11 +14,15 @@ import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
 const setup = (
   status: LoginStatus = { status: "uninitialized" },
-  insideProvider = true,
+  {
+    insideProvider = true,
+    usageProblem,
+  }: { insideProvider?: boolean; usageProblem?: SdkUsageProblem } = {},
 ) => {
   const state = createMockState({
     sdk: createMockSdkState({
       loginStatus: createMockLoginStatusState(status),
+      usageProblem,
     }),
   });
 
@@ -68,8 +73,29 @@ describe("PublicComponentWrapper", () => {
   });
 
   it("should not render children when rendered outside of the provider (metabase#50736)", () => {
-    setup({ status: "success" }, false);
+    setup({ status: "success" }, { insideProvider: false });
     const component = screen.queryByText("My component");
     expect(component).not.toBeInTheDocument();
+  });
+
+  it("should render error message when usageProblem is error", () => {
+    setup(
+      { status: "success" },
+      {
+        usageProblem: {
+          type: "API_KEYS_WITHOUT_LICENSE",
+          title: "API Keys without License",
+          documentationUrl:
+            "https://www.metabase.com/docs/latest/embedding/sdk/introduction",
+          severity: "error",
+          message: "This error should be shown on the page.",
+        },
+      },
+    );
+
+    const errorMessage = screen.getByText(
+      "This error should be shown on the page.",
+    );
+    expect(errorMessage).toBeVisible();
   });
 });
