@@ -673,8 +673,12 @@
                       ["Doohickey" "Facebook" 816 "Doohickey" 3]]
                      (mt/formatted-rows
                       [str str int str int]
-                      (qp/process-query query)))))))
+                      (qp/process-query query)))))))))))
 
+(deftest ^:parallel join-source-queries-with-joins-test-2
+  (testing "Should be able to join against source queries that themselves contain joins (#12928)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
         (testing "and custom expressions (#13649) (#18086)"
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders

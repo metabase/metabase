@@ -124,6 +124,12 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+(mr/def ::source-column-alias
+  [:maybe ::lib.schema.common/non-blank-string])
+
+(mr/def ::desired-column-alias
+  [:maybe [:string {:min 1}]])
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -185,10 +191,10 @@
    ;;
    ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
    ;; name of this clause as exported by the previous stage, source table, or join.
-   [:lib/source-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:lib/source-column-alias {:optional true} ::source-column-alias]
    ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
    ;; guaranteed to be unique in each stage of the query.
-   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]
+   [:lib/desired-column-alias {:optional true} ::desired-column-alias]
    ;; when column metadata is returned by certain things
    ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
    ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.

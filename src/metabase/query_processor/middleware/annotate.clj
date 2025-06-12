@@ -7,7 +7,6 @@
    [metabase.analyze.core :as analyze]
    [metabase.config.core :as config]
    [metabase.driver.common :as driver.common]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.binning :as lib.binning]
@@ -20,6 +19,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.store :as qp.store]
@@ -375,18 +375,6 @@
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
                     {:field &match}))))
 
-(defn- mlv2-query [inner-query]
-  (qp.store/cached [:mlv2-query (hash inner-query)]
-    (try
-      (lib/query-from-legacy-inner-query
-       (qp.store/metadata-provider)
-       (:id (lib.metadata/database (qp.store/metadata-provider)))
-       (mbql.normalize/normalize-fragment [:query] inner-query))
-      (catch Throwable e
-        (throw (ex-info (tru "Error converting query to pMBQL: {0}" (ex-message e))
-                        {:inner-query inner-query, :type qp.error-type/qp}
-                        e))))))
-
 (mu/defn- col-info-for-aggregation-clauses
   "Return appropriate (legacy) column metadata for the `:aggregation` clauses of this legacy inner query, in order."
   [inner-query]
@@ -402,7 +390,7 @@
   ;; why is this the case? Who knows! But that's the old pre-MLv2 behavior. I think we should try to fix it, but it's
   ;; probably going to involve updating a ton of tests that encode the old behavior.
   (when (seq (:aggregation inner-query))
-    (let [query (mlv2-query inner-query)]
+    (let [query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (for [agg-metadata (lib/aggregations-metadata query -1)]
           (-> (m/remove-keys #(= "lib" (namespace %)) agg-metadata)
@@ -426,7 +414,7 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [inner-query :- LegacyInnerQuery
    ag-clause]
-  (lib/column-name (mlv2-query inner-query) (lib/->pMBQL ag-clause)))
+  (lib/column-name (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query) (lib/->pMBQL ag-clause)))
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 

@@ -49,16 +49,21 @@
                                                          :columns
                                                          (m/find-first (comp #{"Rating"} :display-name)))))
                          (lib/append-stage $q)
-                         (lib/join $q (-> (lib/join-clause (lib.metadata/card mp (:id consumer-model))
-                                                           [(lib/=
-                                                             (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
-                                                                               (lib/breakoutable-columns $q))
-                                                                 (lib/with-temporal-bucket :month))
-                                                             (-> (m/find-first (comp #{"Reviews → Created At: Month"} :display-name)
-                                                                               (lib/breakoutable-columns
-                                                                                (lib/query mp (lib.metadata/card mp (:id consumer-model)))))
-                                                                 (lib/with-temporal-bucket :month)))])
-                                          (lib/with-join-fields :all)))
+                         (letfn [(find-col [query display-name]
+                                   (or (m/find-first #(= (:display-name %) display-name)
+                                                     (lib/breakoutable-columns query))
+                                       (throw (ex-info "Failed to find column with display name"
+                                                       {:display-name display-name
+                                                        :found       (map :display-name (lib/breakoutable-columns query))}))))]
+                           (lib/join $q (-> (lib/join-clause (lib.metadata/card mp (:id consumer-model))
+                                                             [(lib/=
+                                                               (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
+                                                                 :month)
+                                                               (lib/with-temporal-bucket (find-col
+                                                                                          (lib/query mp (lib.metadata/card mp (:id consumer-model)))
+                                                                                          "Reviews → Created At: Month")
+                                                                 :month))])
+                                            (lib/with-join-fields :all))))
                          (lib/->legacy-MBQL $q))]
           (is (= ["Reviews → Created At: Month"
                   "Average of Rating"

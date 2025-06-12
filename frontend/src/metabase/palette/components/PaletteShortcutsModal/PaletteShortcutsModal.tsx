@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import Styles from "metabase/css/core/index.css";
-import { METAKEY } from "metabase/lib/browser";
+import { ALTKEY, METAKEY } from "metabase/lib/browser";
 import { shortcuts as ALL_SHORTCUTS } from "metabase/palette/shortcuts";
 import type { ShortcutDef, ShortcutGroup } from "metabase/palette/types";
 import {
@@ -131,8 +131,9 @@ const Shortcut = (props: { shortcut: string }) => {
 
   const string = props.shortcut
     .replace("$mod", METAKEY)
+    .replace("Alt", ALTKEY)
     .replace(" ", " > ")
-    .replace("+", " + ");
+    .replace(/\+/g, " + ");
   const result = string.split(" ").map((x) => {
     if (x === "+" || x === ">") {
       return x;

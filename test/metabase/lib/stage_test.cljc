@@ -410,7 +410,9 @@
                        (lib/breakout (meta/field-metadata :venues :category-id))
                        (lib/aggregate (lib/count))
                        (lib/append-stage))]]
-      (is (= query (lib/ensure-filter-stage query)))))
+      (is (= query (lib/ensure-filter-stage query))))))
+
+(deftest ^:parallel ensure-filter-stage-test-2
   (testing "a stage is added if the filter stage doesn't exists yet"
     (doseq [query [(-> (lib.tu/venues-query)
                        (lib/breakout (meta/field-metadata :venues :category-id))
