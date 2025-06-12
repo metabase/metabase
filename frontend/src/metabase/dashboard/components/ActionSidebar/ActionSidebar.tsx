@@ -1,12 +1,10 @@
-import { useDebouncedCallback } from "@mantine/hooks";
-import { useMemo, useRef } from "react";
+import { useDebouncedCallback, useDisclosure } from "@mantine/hooks";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import ActionViz from "metabase/actions/components/ActionViz";
-import { ConnectedActionDashcardSettings } from "metabase/actions/components/ActionViz/ActionDashcardSettings";
+import { ActionDashcardSettingsNew } from "metabase/actions/components/ActionViz/ActionDashcardSettingsNew";
 import { isActionDashCard } from "metabase/actions/utils";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import FormField from "metabase/core/components/FormField/FormField";
 import FormInput from "metabase/core/components/FormInput";
@@ -15,7 +13,7 @@ import { closeSidebar } from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { Form, FormProvider } from "metabase/forms";
 import { connect } from "metabase/lib/redux";
-import { Box, Flex, Title } from "metabase/ui";
+import { Box, Button, Flex, Modal, Title } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -43,15 +41,13 @@ export function ActionSidebar({
   onUpdateVisualizationSettings,
   onClose,
 }: ActionSidebarProps) {
-  const actionSettingsModalRef = useRef<any>(null);
+  const [isOpen, { close, open }] = useDisclosure(false);
 
-  const dashcard = useMemo(
-    () =>
-      dashboard.dashcards.find(
-        (dc) => dc?.id === dashcardId && isActionDashCard(dc),
-      ) as ActionDashboardCard | undefined,
-    [dashboard.dashcards, dashcardId],
-  );
+  const dashcard = useMemo(() => {
+    return dashboard.dashcards.find(
+      (dc) => dc?.id === dashcardId && isActionDashCard(dc),
+    ) as ActionDashboardCard | undefined;
+  }, [dashboard.dashcards, dashcardId]);
 
   const onChangeLabelDebounced = useDebouncedCallback(
     (settings: Partial<VisualizationSettings>) => {
@@ -108,40 +104,37 @@ export function ActionSidebar({
           <FormField.Label hasError={false}>{t`Action`}</FormField.Label>
         </FormField.LabelContainer>
 
-        <ModalWithTrigger
-          ref={actionSettingsModalRef}
-          fit
-          enableMouseEvents
-          closeOnClickOutside
-          triggerElement={
-            !dashcard.action ? (
-              <Button primary={!dashcard.action} fullWidth>
-                {t`Pick an action`}
-              </Button>
-            ) : (
-              <Flex justify="space-between">
-                <Ellipsified>
-                  <strong>{dashcard.action.name}</strong>
-                </Ellipsified>
-                <Button onlyText>{t`Change action`}</Button>
-              </Flex>
-            )
-          }
-        >
-          <ConnectedActionDashcardSettings
-            dashboard={dashboard}
-            dashcard={dashcard as ActionDashboardCard}
-            onClose={() => {
-              actionSettingsModalRef.current?.close();
-            }}
-          />
-        </ModalWithTrigger>
+        {!dashcard.action ? (
+          <Button
+            variant={!dashcard.action ? "primary" : "default"}
+            fullWidth
+            onClick={open}
+          >
+            {t`Pick an action`}
+          </Button>
+        ) : (
+          <Flex justify="space-between">
+            <Ellipsified>
+              <strong>{dashcard.action.name}</strong>
+            </Ellipsified>
+            <Button variant="subtle" onClick={open}>{t`Change action`}</Button>
+          </Flex>
+        )}
       </Box>
       <Flex px="xl" py="md" justify="flex-end" className={S.SidebarFooter}>
-        <Button onClick={onClose} primary small>
+        <Button variant="primary" onClick={onClose}>
           {t`Close`}
         </Button>
       </Flex>
+
+      <Modal.Root opened={isOpen} onClose={close}>
+        <Modal.Overlay />
+        <ActionDashcardSettingsNew
+          dashboard={dashboard}
+          dashcard={dashcard as ActionDashboardCard}
+          onClose={close}
+        />
+      </Modal.Root>
     </Sidebar>
   );
 }
