@@ -12,6 +12,7 @@
   [:map #_{:closed true}
    [:id                                :string]
    [:display_name                      :string]
+   [:field_id         {:optional true} pos-int?]
    [:input_type                        [:enum "dropdown" "textarea" "date" "datetime" "text"]]
    [:semantic_type    {:optional true} :keyword]
    [:optional                          :boolean]
@@ -21,8 +22,6 @@
    ;; value can be nil, so this is optional to avoid confusion
    [:value            {:optional true} :any]
    [:value_options    {:optional true} [:sequential :any]]
-   ;; what do we use this for? we have this for model action only
-   [:param-mapping    {:optional true} :map]
    ;; is it more useful if we have field_id instead of this?
    [:human_readable_field_id {:optional true} pos-int?]])
 
@@ -143,6 +142,7 @@
 
 (defn- describe-saved-action
   [& {:keys [action-id
+             ;; TODO: refactor to not relying on param-mapping
              param-mapping
              row-delay]}]
   (let [action              (-> (actions/select-action :id action-id
@@ -163,7 +163,6 @@
                         (u/remove-nils
                          {:id            (:id param)
                           :display_name  (or (:display-name param) (:name param))
-                          :param-mapping param-mapping
                           :input_type    (saved-param-input-type (:type param) viz-field)
                           :optional      (and (not (:required param)) (not (:required viz-field)))
                           :nullable      true ; is there a way to know this?
