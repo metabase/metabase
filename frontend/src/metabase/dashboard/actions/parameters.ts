@@ -12,6 +12,7 @@ import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
+  type NewParameterOpts,
   createParameter,
   setParameterName as setParamName,
   setParameterType as setParamType,
@@ -29,7 +30,6 @@ import type {
   DashCardId,
   Parameter,
   ParameterId,
-  ParameterMappingOptions,
   ParameterTarget,
   TemporalUnit,
   ValuesQueryType,
@@ -117,6 +117,30 @@ function updateParameters(
   }
 }
 
+export function duplicateParameters(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterIds: ParameterId[],
+) {
+  const parameters = getParameters(getState());
+
+  const newParameters = parameterIds.map((parameterId) => {
+    const parameter = parameters.find((p) => p.id === parameterId);
+    if (!parameter) {
+      throw new Error(`Parameter ${parameterId} not found`);
+    }
+    const options = _.omit(parameter, "id");
+    return createParameter(options, parameters);
+  });
+
+  updateParameters(dispatch, getState, (params) => [
+    ...params,
+    ...newParameters,
+  ]);
+
+  return newParameters;
+}
+
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
     if (parameterId != null) {
@@ -134,49 +158,46 @@ export const setEditingParameter =
   };
 
 interface AddParameterPayload {
-  option: ParameterMappingOptions;
+  options: NewParameterOpts;
   dashcardId?: DashCardId;
 }
 
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  ({ option, dashcardId }: AddParameterPayload) =>
+  ({ options, dashcardId }: AddParameterPayload) =>
     (dispatch, getState) => {
-      let newId: undefined | ParameterId = undefined;
+      const parameter = createParameter(options, getParameters(getState()));
 
-      updateParameters(dispatch, getState, (parameters) => {
-        const parameter = createParameter(option, parameters);
-        newId = parameter.id;
-        return [...parameters, parameter];
-      });
+      updateParameters(dispatch, getState, (parameters) => [
+        ...parameters,
+        parameter,
+      ]);
 
-      if (newId) {
-        const dashcard = dashcardId
-          ? getDashCardById(getState(), dashcardId)
-          : null;
+      const dashcard = dashcardId
+        ? getDashCardById(getState(), dashcardId)
+        : null;
 
-        if (dashcard && supportsInlineParameters(dashcard)) {
-          const currentParameters = dashcard.inline_parameters ?? [];
-          dispatch(
-            setDashCardAttributes({
-              id: dashcard.id,
-              attributes: {
-                inline_parameters: [...currentParameters, newId],
-              },
-            }),
-          );
-        }
-
+      if (dashcard && supportsInlineParameters(dashcard)) {
+        const currentParameters = dashcard.inline_parameters ?? [];
         dispatch(
-          setSidebar({
-            name: SIDEBAR_NAME.editParameter,
-            props: {
-              parameterId: newId,
+          setDashCardAttributes({
+            id: dashcard.id,
+            attributes: {
+              inline_parameters: [...currentParameters, parameter.id],
             },
           }),
         );
       }
+
+      dispatch(
+        setSidebar({
+          name: SIDEBAR_NAME.editParameter,
+          props: {
+            parameterId: parameter.id,
+          },
+        }),
+      );
     },
 );
 

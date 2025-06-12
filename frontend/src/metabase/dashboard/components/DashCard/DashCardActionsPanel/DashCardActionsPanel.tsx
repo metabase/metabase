@@ -11,6 +11,7 @@ import {
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
@@ -21,7 +22,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardCard,
-  ParameterMappingOptions,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,7 +32,6 @@ import { DashCardActionButton } from "./DashCardActionButton/DashCardActionButto
 import S from "./DashCardActionsPanel.module.css";
 import { DashCardTabMenu } from "./DashCardTabMenu/DashCardTabMenu";
 import { LinkCardEditButton } from "./LinkCardEditButton/LinkCardEditButton";
-import { useDuplicateDashCard } from "./use-duplicate-dashcard";
 
 interface Props {
   series: Series;
@@ -42,6 +41,7 @@ interface Props {
   isPreviewing: boolean;
   hasError: boolean;
   isTrashedOnRemove: boolean;
+  onDuplicate: () => void;
   onRemove: (dashcard: DashboardCard) => void;
   onReplaceCard: (dashcard: DashboardCard) => void;
   onReplaceAllDashCardVisualizationSettings: (
@@ -57,7 +57,7 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
-  onAddParameter: (option: ParameterMappingOptions) => void;
+  onAddParameter: (options: NewParameterOpts) => void;
   onEditVisualization?: () => void;
 }
 
@@ -69,6 +69,7 @@ function DashCardActionsPanelInner({
   isPreviewing,
   hasError,
   isTrashedOnRemove,
+  onDuplicate,
   onRemove,
   onReplaceCard,
   onReplaceAllDashCardVisualizationSettings,
@@ -139,7 +140,7 @@ function DashCardActionsPanelInner({
 
   if (dashcard && supportsInlineParameters(dashcard)) {
     buttons.push(
-      <AddFilterParameterMenu key="add-filter" onSelectOption={onAddParameter}>
+      <AddFilterParameterMenu key="add-filter" onAdd={onAddParameter}>
         <DashCardActionButton
           tooltip={t`Add a filter`}
           aria-label={t`Add a filter`}
@@ -250,14 +251,13 @@ function DashCardActionsPanelInner({
     );
   }
 
-  const duplicateDashcard = useDuplicateDashCard({ dashboard, dashcard });
   if (!isLoading && dashcard) {
     buttons.push(
       <DashCardActionButton
         key="duplicate-question"
         aria-label={t`Duplicate`}
         tooltip={t`Duplicate`}
-        onClick={duplicateDashcard}
+        onClick={onDuplicate}
       >
         <Icon name="copy" />
       </DashCardActionButton>,

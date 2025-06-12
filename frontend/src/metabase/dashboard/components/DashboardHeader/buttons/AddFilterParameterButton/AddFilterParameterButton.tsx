@@ -10,14 +10,14 @@ import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterP
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import type { ParameterMappingOptions } from "metabase-types/api";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 
 export const AddFilterParameterButton = () => {
   const isOpened = useSelector(getIsAddParameterPopoverOpen);
   const dispatch = useDispatch();
 
-  const handleSelectOption = (option: ParameterMappingOptions) => {
-    dispatch(addParameter({ option }));
+  const handleAddParameter = (options: NewParameterOpts) => {
+    dispatch(addParameter({ options }));
   };
 
   useRegisterShortcut(
@@ -37,7 +37,7 @@ export const AddFilterParameterButton = () => {
     <AddFilterParameterMenu
       opened={isOpened}
       position="bottom-end"
-      onSelectOption={handleSelectOption}
+      onAdd={handleAddParameter}
       onClose={() => dispatch(hideAddParameterPopover())}
     >
       <ToolbarButton
