@@ -32,7 +32,7 @@
        set))
 
 (deftest fundamentals-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection
                        {coll-id   :id
                         coll-eid  :entity_id
@@ -101,7 +101,7 @@
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection
                        {coll-id    :id
                         coll-eid   :entity_id}
@@ -554,7 +554,7 @@
                       (ids-by-model "Dashboard")))))))))
 
 (deftest dashboard-card-series-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
        :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
@@ -584,7 +584,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest dimensions-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [;; Simple case: a singular field, no human-readable field.
                        :model/Database   {db-id        :id}        {:name "My Database"}
                        :model/Table      {no-schema-id :id}        {:name "Schemaless Table" :db_id db-id}
@@ -671,7 +671,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest native-query-snippets-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User
                        {ann-id       :id}
                        {:first_name "Ann"
@@ -730,7 +730,7 @@
               (is (empty? (serdes/dependencies ser))))))))))
 
 (deftest timelines-and-events-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User
                        {ann-id :id}
                        {:first_name "Ann"
@@ -795,7 +795,7 @@
                      (set (serdes/dependencies ser)))))))))))
 
 (deftest segments-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
                                                               :last_name  "Wilson"
                                                               :email      "ann@heart.band"}
@@ -835,7 +835,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest implicit-action-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
@@ -873,7 +873,7 @@
                          (set (serdes/dependencies ser)))))))))))))
 
 (deftest http-action-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
@@ -911,7 +911,7 @@
                          (set (serdes/dependencies ser)))))))))))))
 
 (deftest query-action-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
@@ -955,7 +955,7 @@
                          (set (serdes/dependencies ser)))))))))))))
 
 (deftest field-values-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
                        :model/Field    {field-id     :id} {:name "Some Field"
@@ -1007,7 +1007,7 @@
                    (count (filter #{"FieldValues"} models))))))))))
 
 (deftest cards-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/User       {mark-id :id}    {:first_name "Mark"
                                            :last_name  "Knopfler"
@@ -1070,7 +1070,7 @@
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
                                                                      :last_name  "Knopfler"
                                                                      :email      "mark@direstrai.ts"}
@@ -1369,7 +1369,7 @@
                 (is (some #(str/starts-with? % "Failed to export Cards") msgs))))))))))
 
 (deftest click-behavior-references-to-deleted-cards
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User       {mark-id :id}              {:first_name "Mark"
                                                                      :last_name  "Knopfler"
                                                                      :email      "mark@direstrai.ts"}
@@ -1448,7 +1448,7 @@
                     (into #{}))))))))
 
 (deftest field-references-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database   {db-id          :id}        {:name "My Database"}
                        :model/Table      {no-schema-id   :id}        {:name "Schemaless Table" :db_id db-id}
                        :model/Field      {some-field-id  :id}        {:name "Some Field" :table_id no-schema-id}
@@ -1478,7 +1478,7 @@
                (:serdes/meta (ts/extract-one "Field" nested-id))))))))
 
 (deftest escape-report-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Collection    {coll1-id :id} {:name "Some Collection"}
                        :model/Collection    {coll2-id :id} {:name "Other Collection"}
                        :model/Collection    {coll3-id :id} {:name "Third Collection"}
@@ -1540,7 +1540,7 @@
                             (messages))))))))))
 
 (deftest recursive-colls-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-temp [:model/Collection {parent-id  :id
                                       parent-eid :entity_id} {:name "Top-Level Collection"}
                    :model/Collection {middle-id  :id
@@ -1563,7 +1563,7 @@
 
 (deftest skip-analytics-collections-test
   (testing "Collections in 'analytics' namespace should not be extracted, see #37453"
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (mbc/ensure-audit-db-installed!)
       (testing "sanity check that the audit collection exists"
         (is (some? (audit/default-audit-collection)))
@@ -1629,7 +1629,7 @@
 
 (deftest extract-nested-partitioned-test
   (testing "extract-nested will partition stuff by 100s"
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (let [d   (ts/create! :model/Dashboard {:name "Dash"})
             c1  (ts/create! :model/Card {:name "Card"})
             dcs (vec (for [_ (range 7)]
@@ -1663,7 +1663,7 @@
                      (u/seek #(= (:display_name %) "Category ID")))))))))
 
 (deftest extract-single-collection-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection    {coll-id :id}            {:name "Top-Level Collection"}
        :model/Dashboard     {dash-id :id
@@ -1698,7 +1698,7 @@
                 (by-model "Dashboard" extraction)))))))
 
 (deftest metabot-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Card {model-id :id
                     model-eid :entity_id} {:name "AI Model"
@@ -1747,7 +1747,7 @@
                    (set (serdes/dependencies ser))))))))))
 
 (deftest metabot-collection-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
       [:model/Collection {model-id :id
                           model-eid :entity_id} {:name "AI Model"}

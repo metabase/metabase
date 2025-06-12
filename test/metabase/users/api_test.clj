@@ -438,14 +438,14 @@
 (deftest get-current-user-test-3
   (testing "GET /api/user/current"
     (testing "on a fresh instance, `has_question_and_dashboard` is `false`"
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (is (=? {:has_question_and_dashboard false}
                 (mt/user-http-request :rasta :get 200 "user/current")))))))
 
 (deftest get-current-user-test-4
   (testing "GET /api/user/current"
     (testing "on a fresh instance, `has_model` is `false`"
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (is (=? {:has_model false}
                 (mt/user-http-request :rasta :get 200 "user/current")))))))
 

@@ -92,3 +92,7 @@ export function dataModelFieldFormatting(
   const tableUrl = dataModelTable(databaseId, schemaId, tableId);
   return `${tableUrl}/field/${fieldId}/formatting`;
 }
+
+export function adminLicense() {
+  return "/admin/settings/license";
+}

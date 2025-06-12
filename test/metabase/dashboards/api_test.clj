@@ -5031,6 +5031,155 @@
     (is (= (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "collection/" coll-id "/items"))))))
            (set (keys (first (:data (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id "/items"))))))))))
 
+(deftest dashboard-update-preserves-unchanged-parameter-cards-test
+  (testing "PUT /api/dashboard/:id preserves parameter cards when parameters are unchanged"
+    (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created"
+          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Dashboard update with unchanged parameters preserves parameter cards"
+          (let [original-param-cards (t2/select :model/ParameterCard
+                                                :parameterized_object_type "dashboard"
+                                                :parameterized_object_id dashboard-id)]
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:name "Updated Dashboard Name"
+                                   :description "New description"})
+
+            (let [updated-param-cards (t2/select :model/ParameterCard
+                                                 :parameterized_object_type "dashboard"
+                                                 :parameterized_object_id dashboard-id)]
+              (is (= (count original-param-cards) (count updated-param-cards)))
+              (is (= (set (map :id original-param-cards))
+                     (set (map :id updated-param-cards)))))))))))
+
+(deftest dashboard-update-with-same-parameters-preserves-parameter-cards-test
+  (testing "PUT /api/dashboard/:id preserves parameter cards when parameters list is identical"
+    (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id}}
+                                                                     {:name                 "Static List"
+                                                                      :slug                 "static_list"
+                                                                      :id                   "_STATIC_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "static-list"
+                                                                      :values_source_config {:values ["A" "B" "C"]}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created for card-sourced parameters only"
+          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Dashboard update with identical parameters preserves parameter cards"
+          (let [original-param-cards (t2/select :model/ParameterCard
+                                                :parameterized_object_type "dashboard"
+                                                :parameterized_object_id dashboard-id)
+                original-parameters (:parameters (t2/select-one :model/Dashboard :id dashboard-id))]
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:parameters original-parameters
+                                   :description "Updated description"})
+
+            (let [updated-param-cards (t2/select :model/ParameterCard
+                                                 :parameterized_object_type "dashboard"
+                                                 :parameterized_object_id dashboard-id)]
+              (is (= (count original-param-cards) (count updated-param-cards)))
+              (is (= (set (map :id original-param-cards))
+                     (set (map :id updated-param-cards)))))))))))
+
+(deftest dashboard-update-mixed-parameter-changes-test
+  (testing "PUT /api/dashboard/:id correctly handles mix of unchanged and changed parameters"
+    (mt/with-temp [:model/Card {source-card-id-1 :id} {:database_id   (mt/id)
+                                                       :table_id      (mt/id :categories)
+                                                       :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Card {source-card-id-2 :id} {:database_id   (mt/id)
+                                                       :table_id      (mt/id :venues)
+                                                       :dataset_query (mt/mbql-query venues {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id-1}}
+                                                                     {:name                 "Venue"
+                                                                      :slug                 "venue"
+                                                                      :id                   "_VENUE_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id-1}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created"
+          (is (= 2 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Update with one parameter unchanged, one parameter changed"
+          (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                {:parameters [{:name                 "Category"
+                                               :slug                 "category"
+                                               :id                   "_CATEGORY_"
+                                               :type                 "category"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id source-card-id-1}}
+                                              {:name                 "Venue"
+                                               :slug                 "venue"
+                                               :id                   "_VENUE_"
+                                               :type                 "category"
+                                               :values_source_type   "card"
+                                               :values_source_config {:card_id source-card-id-2}}]})
+
+          (let [param-cards (t2/select :model/ParameterCard
+                                       :parameterized_object_type "dashboard"
+                                       :parameterized_object_id dashboard-id)]
+            (is (= 2 (count param-cards)))
+            (is (= #{source-card-id-1 source-card-id-2}
+                   (set (map :card_id param-cards))))))))))
+
+(deftest dashboard-update-no-parameters-field-preserves-parameter-cards-test
+  (testing "PUT /api/dashboard/:id preserves parameter cards when parameters field is not included in update"
+    (mt/with-temp [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                                     :table_id      (mt/id :categories)
+                                                     :dataset_query (mt/mbql-query categories {:limit 5})}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name                 "Category"
+                                                                      :slug                 "category"
+                                                                      :id                   "_CATEGORY_"
+                                                                      :type                 "category"
+                                                                      :values_source_type   "card"
+                                                                      :values_source_config {:card_id source-card-id}}]}]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
+        (testing "Initial parameter cards are created"
+          (is (= 1 (t2/count :model/ParameterCard :parameterized_object_type "dashboard"
+                             :parameterized_object_id dashboard-id))))
+
+        (testing "Dashboard update without parameters field preserves parameter cards"
+          (let [original-param-cards (t2/select :model/ParameterCard
+                                                :parameterized_object_type "dashboard"
+                                                :parameterized_object_id dashboard-id)]
+            ;; Update dashboard without including parameters field
+            (mt/user-http-request :rasta :put 200 (str "dashboard/" dashboard-id)
+                                  {:name "Updated Name"
+                                   :description "Updated description"
+                                   :cache_ttl 3600})
+
+            (let [updated-param-cards (t2/select :model/ParameterCard
+                                                 :parameterized_object_type "dashboard"
+                                                 :parameterized_object_id dashboard-id)]
+              (is (= (count original-param-cards) (count updated-param-cards)))
+              (is (= (set (map :id original-param-cards))
+                     (set (map :id updated-param-cards)))))))))))
+
 (deftest ^:parallel previous-stage-test
   (testing "binding parameters to different stages is handled correctly"
     (let [mp     (mt/metadata-provider)
