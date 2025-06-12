@@ -313,7 +313,7 @@
                           select 1;"}))))))))
 
 #_(deftest ^:parallel subquery-with-cte-test
-    ;; TODO: enable these tests once the jdbc driver has been fix
+    ;; TODO(rileythomp): enable these tests once the jdbc driver has been fix
     ;; broken in 0.8.6, waiting for fix
     ;; https://github.com/metabase/metabase/issues/59166
     ;; https://github.com/ClickHouse/clickhouse-java/issues/2442
@@ -326,7 +326,7 @@
                    {:query "select * from ( with x as ( select 9 ) select * from x ) as y;"}))))))))
 
 #_(deftest ^:parallel casted-params-test
-    ;; TODO: enable these tests once the jdbc driver has been fixed
+    ;; TODO(rileythomp): enable these tests once the jdbc driver has been fixed
     ;; broken in 0.8.6, waiting for fix
     ;; https://github.com/metabase/metabase/issues/58992
     ;; https://github.com/metabase/metabase/issues/59002
