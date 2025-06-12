@@ -2,9 +2,8 @@
   (:require
    [clojure.walk :as walk]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
-   [metabase-enterprise.data-editing.params :as data-editing.params]
+   [metabase-enterprise.data-editing.params :as data-editing.describe]
    [metabase.actions.core :as actions]
-   [metabase.actions.models :as actions.models]
    [metabase.actions.types :as types]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -427,7 +426,7 @@
          [:scope                   ::types/scope.raw]
          [:inputs                  [:sequential :map]]
          [:params {:optional true} :map]]]
-  ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
+    ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
     {:outputs (binding [actions/*params* params]
                 (execute!* action_id scope (dissoc params :delete-children) inputs))}))
 
@@ -435,13 +434,13 @@
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/tmp-modal"
     "Temporary endpoint for describing an actions parameters
-  such that they can be presented correctly in a modal ahead of execution."
+    such that they can be presented correctly in a modal ahead of execution."
     [{}
      {}
-   ;; TODO support for bulk actions
+     ;; TODO support for bulk actions
      {:keys [action_id scope input]}]
     (let [scope   (actions/hydrate-scope scope)
-         ;; TODO consolidate this with [[fetch-unified-action]]
+          ;; TODO consolidate this with [[fetch-unified-action]]
           unified (cond
                     (not (#{"table.row/create"
                             "table.row/update"
@@ -456,8 +455,7 @@
                        :inner-action  {:action-kw (keyword action_id)
                                        :mapping   {:table-id (:table_id visualization_settings)
                                                    :row      ::root}}
-                      ;; TODO: this should belongs to our configuration
-                      ;; TODO: migrate on read
+                       ;; TODO: migrate on read this to our own configuration
                        :param-mapping (->> visualization_settings
                                            :editableTable.enabledActions
                                            (some (fn [{:keys [id parameterMappings]}]
@@ -474,7 +472,7 @@
                                     {:status-code 400
                                      :scope       scope
                                      :action_id   action_id})))]
-      (data-editing.params/describe-unified-action unified scope input))))
+      (data-editing.describe/describe-unified-action unified scope input))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

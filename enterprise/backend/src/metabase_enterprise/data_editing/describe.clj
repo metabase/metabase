@@ -40,6 +40,7 @@
                                                     :has_field_values
                                                     :values))
         ;; it's a huge assumption that there's always dashcard-viz
+        ;; TODO: this should live in our configuration
         dashcard-column-editable?   (or (some-> dashcard-viz :table.editableColumns set)
                                         ;; columns are assumed editable if no dashcard-viz specialisation
                                         (constantly true))
@@ -158,7 +159,6 @@
       (:action-id unified)
       (describe-saved-action :action-id (:action-id unified))
 
-      ;; IMPORTANT: this is a huge assumption and will break on our editable's built-in actions
       ;; table action
       (:action-kw unified)
       (describe-table-action
