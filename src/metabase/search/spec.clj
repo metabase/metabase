@@ -44,7 +44,6 @@
    :dashboard-id             :int
    :dashboardcard-count      :int
    :database-id              :pk
-   :exclude-display          :text
    :display                  :text
    :has-temporal-dimensions  :boolean
    :id                       :text
@@ -66,7 +65,7 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  (->> (keys (apply dissoc search.config/filters explicit-attrs))
+  (->> (keys (apply dissoc search.config/filters (conj explicit-attrs :exclude-display)))
        ;; identifiers and rankers
        (into
         [:id                                                ;;  in addition to being a filter, this is a key property
