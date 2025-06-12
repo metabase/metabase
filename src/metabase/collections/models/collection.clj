@@ -90,13 +90,17 @@
   (str "/" (tenant-root-collection-id) "/"))
 
 (defn is-tenant-collection?
-  [{:keys [location]}]
-  (str/starts-with? location (tenant-root-path)))
+  [_collection]
+  ;; right now nothing is a tenant collection
+  false
+  #_(str/starts-with? location (tenant-root-path)))
 
 (defn- tenant-collection-where-clause
   "Returns a clause that will be true if this is a tenant collection, false otherwise."
-  [& [location-column]]
-  [:like location-column (str tenant-root-path "%")])
+  [& [_location-column]]
+  ;; right now nothing is a tenant collection
+  #_[:like (or location-column :location) (str tenant-root-path "%")]
+  [:= [:inline 1] [:inline 0]])
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
