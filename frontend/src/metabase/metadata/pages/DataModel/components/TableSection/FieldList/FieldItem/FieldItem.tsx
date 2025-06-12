@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -58,6 +59,27 @@ export const FieldItem = ({ active, field, href }: Props) => {
     }
   };
 
+  const handleInputClick = (event: MouseEvent) => {
+    // EditableText component breaks a11y with the programmatic
+    // event.currentTarget.click() call. The click event bubbles
+    // to this Link component. This is problematic e.g. when tabbing
+    // out of the EditableText component, as the link gets clicked.
+    if (!event.isTrusted) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  };
+
+  const handleClick = (event: MouseEvent) => {
+    // prevent navigation when focusing textareas with mouse
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.tagName === "TEXTAREA"
+    ) {
+      event.preventDefault();
+    }
+  };
+
   return (
     <Flex
       aria-label={field.display_name}
@@ -78,16 +100,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       to={href}
       w="100%"
       wrap="nowrap"
-      onClick={(event) => {
-        // EditableText component breaks a11y with the programmatic
-        // event.currentTarget.click() call. The click event bubbles
-        // to this Link component. This is problematic e.g. when tabbing
-        // out of the EditableText component, as the link gets clicked.
-
-        if (!event.isTrusted) {
-          event.preventDefault();
-        }
-      }}
+      onClick={handleClick}
     >
       <Group flex="0 0 auto" gap="sm" wrap="nowrap">
         <Icon className={S.icon} flex="0 0 auto" name={icon} />
@@ -99,14 +112,18 @@ export const FieldItem = ({ active, field, href }: Props) => {
           fw="bold"
           initialValue={field.display_name}
           lh="normal"
-          m={rem(-2)}
           maxLength={254}
+          mb={rem(-4)}
           miw={0}
-          p={rem(1)}
+          mt={rem(-3)}
+          mx={rem(-2)}
+          px={rem(1)}
+          py={0}
           placeholder={t`Give this field a name`}
           rows={1}
-          tabIndex={undefined}
+          tabIndex={undefined} // override the default 0 which breaks a11y
           onChange={handleNameChange}
+          onClick={handleInputClick}
         />
       </Group>
 
@@ -117,12 +134,16 @@ export const FieldItem = ({ active, field, href }: Props) => {
         initialValue={field.description}
         isOptional
         lh="normal"
-        m={rem(-2)}
-        p={rem(1)}
+        mb={rem(-4)}
+        mt={rem(-3)}
+        mx={rem(-2)}
+        px={rem(1)}
+        py={0}
         placeholder={t`No description yet`}
         rows={1}
-        tabIndex={undefined}
+        tabIndex={undefined} // override the default 0 which breaks a11y
         onChange={handleDescriptionChange}
+        onClick={handleInputClick}
       />
     </Flex>
   );

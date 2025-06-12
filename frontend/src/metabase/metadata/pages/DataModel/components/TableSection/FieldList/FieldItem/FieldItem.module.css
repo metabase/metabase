@@ -16,5 +16,6 @@
 .input {
   textarea {
     cursor: text;
+    line-height: normal;
   }
 }
