@@ -6,19 +6,31 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
-import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
+import {
+  Button,
+  Collapse,
+  Flex,
+  Group,
+  Icon,
+  UnstyledButton,
+} from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
+import { trackAddDataModalOpened } from "../analytics";
 import type { SelectedItem } from "../types";
+
+import { useReleaseFlag } from "./use-release-flag";
 
 export const BrowseNavSection = ({
   nonEntityItem,
   onItemSelect,
+  onModalOpen,
   hasDataAccess,
 }: {
   nonEntityItem: SelectedItem;
   onItemSelect: () => void;
   hasDataAccess: boolean;
+  onModalOpen: () => void;
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
@@ -38,23 +50,48 @@ export const BrowseNavSection = ({
     setExpandBrowse(!opened);
   };
 
+  const isReleaseToggleEnabled = useReleaseFlag("new-add-data-experience");
+  const showAddDataButton = isReleaseToggleEnabled && !isEmbeddingIframe;
+
   return (
     <div aria-selected={opened} role="tab">
-      <Group
-        align="center"
-        gap="sm"
-        onClick={handleToggle}
-        component={UnstyledButton}
-        c="text-medium"
-        mb="sm"
-        className={CS.cursorPointer}
-      >
-        <SidebarHeading>{c("A verb, shown in the sidebar")
-          .t`Browse`}</SidebarHeading>
-        <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
-      </Group>
+      <Flex align="center" justify="space-between" mb="sm">
+        <Group
+          align="center"
+          gap="sm"
+          onClick={handleToggle}
+          component={UnstyledButton}
+          c="text-medium"
+          className={CS.cursorPointer}
+        >
+          <SidebarHeading>
+            {c("A noun, shown in the sidebar as a navigation link").t`Data`}
+          </SidebarHeading>
+          <Icon name={opened ? "chevrondown" : "chevronright"} size={8} />
+        </Group>
+        {showAddDataButton && (
+          <Button
+            aria-label="Add data"
+            variant="subtle"
+            leftSection={<Icon name="add_data" />}
+            h="auto"
+            p={0}
+            onClick={() => {
+              trackAddDataModalOpened("left-nav");
+              onModalOpen();
+            }}
+          >
+            {t`Add`}
+          </Button>
+        )}
+      </Flex>
 
-      <Collapse in={opened} transitionDuration={0} role="tabpanel">
+      <Collapse
+        in={opened}
+        transitionDuration={0}
+        role="tabpanel"
+        aria-expanded={opened}
+      >
         {hasDataAccess &&
           (!isEmbeddingIframe || entityTypes.includes("table")) && (
             <PaddedSidebarLink
