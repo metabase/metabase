@@ -7,23 +7,23 @@ import { Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
 import { SettingHeader } from "../SettingHeader";
-import { SettingsPageWrapper } from "../SettingsSection";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 
 export function CloudSettingsPage() {
   const isHosted = useHasTokenFeature("hosting");
 
-  if (isHosted) {
-    return <SettingsCloudStoreLink />;
-  }
-
-  return <CloudPanel />;
+  return (
+    <SettingsPageWrapper title={t`Cloud`}>
+      {isHosted ? <SettingsCloudStoreLink /> : <CloudPanel />}
+    </SettingsPageWrapper>
+  );
 }
 
 export const SettingsCloudStoreLink = () => {
   const url = getStoreUrl();
 
   return (
-    <SettingsPageWrapper title={t`Cloud`}>
+    <SettingsSection>
       <SettingHeader
         id="cloud-settings-header"
         title={t`Cloud settings`}
@@ -33,6 +33,6 @@ export const SettingsCloudStoreLink = () => {
         {t`Go to the Metabase Store`}
         <Icon name="external" opacity={0.6} ml="sm" />
       </ButtonLink>
-    </SettingsPageWrapper>
+    </SettingsSection>
   );
 };
