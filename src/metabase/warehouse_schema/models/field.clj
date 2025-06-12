@@ -155,7 +155,7 @@
 (def ^:private ^:dynamic *raw-update* false)
 
 (defn- sync-user-settings [field]
-    ;; we transparently prevent updates that would override user-set values
+  ;; we transparently prevent updates that would override user-set values
   (let [user-settings (t2/select-one :model/FieldUserSettings (:id field))
         updated-field (merge field (u/select-keys-when user-settings :non-nil field-user-settings))]
     (t2.protocols/with-current field updated-field)))
