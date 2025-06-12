@@ -1,18 +1,24 @@
 import cx from "classnames";
 import { Link } from "react-router";
 
-import { Flex, Group, Icon, type IconName, Text, rem } from "metabase/ui";
+import { getColumnIcon } from "metabase/common/utils/columns";
+import { getFieldDisplayName } from "metabase/metadata/utils/field";
+import { Flex, Group, Icon, Text, rem } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { Field } from "metabase-types/api";
 
 import S from "./FieldItem.module.css";
 
 interface Props {
   active?: boolean;
+  field: Field;
   href?: string;
-  icon: IconName;
-  label: string;
 }
 
-export const FieldItem = ({ active, href, icon, label }: Props) => {
+export const FieldItem = ({ active, field, href }: Props) => {
+  const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
+  const label = getFieldDisplayName(field);
+
   return (
     <Flex
       aria-label={label}

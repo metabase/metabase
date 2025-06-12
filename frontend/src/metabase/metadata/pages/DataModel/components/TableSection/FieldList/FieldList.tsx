@@ -1,13 +1,8 @@
 import { useMemo } from "react";
 import _ from "underscore";
 
-import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  getFieldDisplayName,
-  getRawTableFieldId,
-} from "metabase/metadata/utils/field";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Stack, rem } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type { FieldId, Table } from "metabase-types/api";
 
 import { FieldItem } from "./FieldItem";
@@ -31,10 +26,9 @@ export const FieldList = ({ activeFieldId, getFieldHref, table }: Props) => {
         return (
           <FieldItem
             active={id === activeFieldId}
+            field={field}
             href={getFieldHref?.(id)}
-            icon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
             key={id}
-            label={getFieldDisplayName(field)}
           />
         );
       })}

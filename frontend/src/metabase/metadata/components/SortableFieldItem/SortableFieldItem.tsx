@@ -1,26 +1,27 @@
-import type { UniqueIdentifier } from "@dnd-kit/core";
 import cx from "classnames";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { Sortable } from "metabase/core/components/Sortable";
-import { Flex, Group, Icon, type IconName, Text, rem } from "metabase/ui";
+import {
+  getFieldDisplayName,
+  getRawTableFieldId,
+} from "metabase/metadata/utils/field";
+import { Flex, Group, Icon, Text, rem } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { Field } from "metabase-types/api";
 
 import S from "./SortableFieldItem.module.css";
 
 interface Props {
   active?: boolean;
   disabled?: boolean;
-  icon: IconName;
-  id: UniqueIdentifier;
-  label: string;
+  field: Field;
 }
 
-export const SortableFieldItem = ({
-  active,
-  disabled,
-  icon,
-  id,
-  label,
-}: Props) => {
+export const SortableFieldItem = ({ active, disabled, field }: Props) => {
+  const id = getRawTableFieldId(field);
+  const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
+  const label = getFieldDisplayName(field);
   const draggable = !disabled;
 
   return (

@@ -1,16 +1,16 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useMemo } from "react";
+import _ from "underscore";
 
 import {
   type DragEndEvent,
   SortableList,
 } from "metabase/core/components/Sortable";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Stack, rem } from "metabase/ui";
-import type { FieldId, Table } from "metabase-types/api";
+import type { Field, FieldId, Table } from "metabase-types/api";
 
 import { SortableFieldItem } from "../SortableFieldItem";
-
-import { getId, getItems, sortItems } from "./utils";
 
 interface Props {
   activeFieldId?: FieldId;
@@ -26,9 +26,10 @@ export const SortableFieldList = ({
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const items = useMemo(() => getItems(table), [table]);
-  const sortedItems = useMemo(() => sortItems(items), [items]);
-  const isDragDisabled = sortedItems.length <= 1;
+  const fields = useMemo(() => {
+    return _.sortBy(table.fields ?? [], (item) => item.position);
+  }, [table.fields]);
+  const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
     onChange(itemIds);
@@ -36,17 +37,15 @@ export const SortableFieldList = ({
 
   return (
     <Stack gap={rem(12)}>
-      <SortableList
-        getId={getId}
-        items={sortedItems}
-        renderItem={({ item, id }) => (
+      <SortableList<Field>
+        getId={getRawTableFieldId}
+        items={fields}
+        renderItem={({ id, item: field }) => (
           <SortableFieldItem
-            active={item.id === activeFieldId}
+            active={id === activeFieldId}
             disabled={isDragDisabled}
-            icon={item.icon}
-            id={id}
+            field={field}
             key={id}
-            label={item.label}
           />
         )}
         sensors={[pointerSensor]}
