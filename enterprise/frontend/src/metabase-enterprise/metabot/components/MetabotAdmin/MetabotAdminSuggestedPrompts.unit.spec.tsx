@@ -76,6 +76,11 @@ describe("suggested prompts", () => {
   });
 
   it("should successfully render a list of prompts", async () => {
+    await setup();
+    await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 3));
+  });
+
+  it("should show loading state", async () => {
     setupMetabotPromptSuggestionsEndpoint(
       FIXED_METABOT_IDS.DEFAULT,
       defaultMetabotMockedPrompts,
@@ -87,11 +92,6 @@ describe("suggested prompts", () => {
       { delay: 50 },
     );
     await setup({ mockInitialPage: false });
-    await expectVisiblePrompts(defaultMetabotMockedPrompts.slice(0, 3));
-  });
-
-  it("should show loading state", async () => {
-    await setup();
     const [loadingRow] = await screen.findAllByTestId("prompt-loading-row");
     expect(loadingRow).toBeInTheDocument();
   });

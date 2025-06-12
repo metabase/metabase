@@ -49,7 +49,6 @@ export interface DatasetColumn {
   nfc_path?: string[] | null;
   parent_id?: number | null;
   position?: number;
-  source_alias?: string;
 
   aggregation_type?: AggregationType;
 

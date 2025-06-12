@@ -160,7 +160,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: breakout
-  source_alias: Databases - Database Qualified
   table_id:
   - Internal Metabase Database
   - public
