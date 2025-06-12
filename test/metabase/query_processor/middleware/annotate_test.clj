@@ -128,8 +128,7 @@
                   :field_ref    $category-id->categories.name
                   :fk_field_id  %category-id
                   :ident        (lib/implicitly-joined-ident (meta/ident :categories :name)
-                                                             (meta/ident :venues :category-id))
-                  :source_alias "CATEGORIES__via__CATEGORY_ID"}]
+                                                             (meta/ident :venues :category-id))}]
                 (annotate/column-info
                  {:type  :query
                   :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
@@ -150,8 +149,7 @@
         (is (=? [{:display_name "Categories → Name"
                   :source       :fields
                   :field_ref    &Categories.categories.name
-                  :ident        (lib/explicitly-joined-ident (meta/ident :categories :name) "4LzfvdZnP61w1n73B7nDu")
-                  :source_alias "Categories"}]
+                  :ident        (lib/explicitly-joined-ident (meta/ident :categories :name) "4LzfvdZnP61w1n73B7nDu")}]
                 (annotate/column-info
                  {:type  :query
                   :query {:fields [&Categories.categories.name]
@@ -1011,17 +1009,13 @@
                        [{:display_name "ID"
                          :ident        (:ident (lib.metadata/field (mt/metadata-provider) (mt/id :orders :id)))
                          :field_ref    $orders.id}
-                        (merge
-                         {:display_name (str join-alias " → Title")
-                          :ident        (-> (lib.metadata/field (mt/metadata-provider) (mt/id :products :title))
-                                            :ident
-                                            (lib/explicitly-joined-ident join-ident))
-                          :field_ref    [:field %products.title {:join-alias join-alias}]}
-                         ;; `source_alias` is only included in `data.cols`, but not in `results_metadata`
-                         (when (= location "data.cols")
-                           {:source_alias join-alias}))])
+                        {:display_name (str join-alias " → Title")
+                         :ident        (-> (lib.metadata/field (mt/metadata-provider) (mt/id :products :title))
+                                           :ident
+                                           (lib/explicitly-joined-ident join-ident))
+                         :field_ref    [:field %products.title {:join-alias join-alias}]}])
                      (map
-                      #(select-keys % [:display_name :field_ref :source_alias :ident])
+                      #(select-keys % [:display_name :field_ref :ident])
                       metadata))))))))))
 
 (deftest ^:parallel breakout-of-model-field-ident-test
