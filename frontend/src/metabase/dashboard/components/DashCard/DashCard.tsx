@@ -19,6 +19,7 @@ import {
 import { isEmbeddingSdk } from "metabase/env";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Box } from "metabase/ui";
@@ -38,7 +39,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardCard,
-  ParameterMappingOptions,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -322,8 +322,8 @@ function DashCardInner({
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
   const handleAddParameter = useCallback(
-    (option: ParameterMappingOptions) => {
-      dispatch(addParameter({ option, dashcardId: dashcard.id }));
+    (options: NewParameterOpts) => {
+      dispatch(addParameter({ options, dashcardId: dashcard.id }));
     },
     [dashcard.id, dispatch],
   );

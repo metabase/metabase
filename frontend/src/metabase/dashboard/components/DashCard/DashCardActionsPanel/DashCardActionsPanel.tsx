@@ -11,6 +11,7 @@ import {
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { Box, Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import {
@@ -21,7 +22,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardCard,
-  ParameterMappingOptions,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -57,7 +57,7 @@ interface Props {
   onLeftEdge: boolean;
   onMouseDown: (event: MouseEvent) => void;
   className?: string;
-  onAddParameter: (option: ParameterMappingOptions) => void;
+  onAddParameter: (options: NewParameterOpts) => void;
   onEditVisualization?: () => void;
 }
 
@@ -140,7 +140,7 @@ function DashCardActionsPanelInner({
 
   if (dashcard && supportsInlineParameters(dashcard)) {
     buttons.push(
-      <AddFilterParameterMenu key="add-filter" onSelectOption={onAddParameter}>
+      <AddFilterParameterMenu key="add-filter" onAdd={onAddParameter}>
         <DashCardActionButton
           tooltip={t`Add a filter`}
           aria-label={t`Add a filter`}
