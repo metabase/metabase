@@ -1545,7 +1545,7 @@
   [x]
   (and (driver-api/mbql-clause? x)
        (isa? (or (:effective-type (get x 2))
-                 (let [field-id (some-> x second)]
+                 (let [field-id (second x)]
                    (when (pos-int? field-id)
                      (let [{:keys [base-type effective-type]}
                            (driver-api/field (driver-api/metadata-provider) field-id)]

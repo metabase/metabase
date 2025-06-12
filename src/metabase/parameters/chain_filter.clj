@@ -117,9 +117,9 @@
 (defn- joined-table-alias [table-id]
   (format "table_%d" table-id))
 
-(def ^:private ^{:arglists '([field-id])} memoized-field-by-id
-  "Whether Field with `field-id` is a temporal Field such as a Date or Datetime. Cached for 10 minutes to avoid hitting
-  the DB too much since this is unlike to change often, if ever."
+(def ^:private ^{:arglists '([field-id])} memoized-field-types-by-id
+  "Return field types by id. Cached for 10 minutes to avoid hitting the DB too much since this is unlike to change
+  often, if ever."
   (memoize/ttl
    ^{::memoize/args-fn (fn [[field-id]]
                          [(mdb/unique-identifier) field-id])}
@@ -131,7 +131,7 @@
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id
    {:keys [field-id op value options]} :- Constraint]
-  (let [{:keys [base_type] :as field-metadata} (memoized-field-by-id field-id)
+  (let [{:keys [base_type] :as field-metadata} (memoized-field-types-by-id field-id)
         field-clause (let [this-field-table-id (field/field-id->table-id field-id)]
                        [:field field-id (merge (when base_type
                                                  ;; This may be prone to eg. coercion errors. However effective in
@@ -507,10 +507,10 @@
                (mdb/isa :dest.semantic_type :type/Name)]
    :limit     1})
 
-(def ^:dynamic *allow-implicit-remapping*
-  "Should implicit remapping be allowed? Not eg. for `GET /dashboard/:id/params/:param-key/search/:query`
-  to search on actual field that was picked for filtering (#59020). But only for the UUID fields, hence potentially
-  adjusted in [[chain-filter-search]]!"
+(def ^:dynamic *allow-implicit-uuid-field-remapping*
+  "Should implicit remapping be allowed _for uuid fields_? Not eg. for
+  `GET /dashboard/:id/params/:param-key/search/:query` to search on actual field that was picked
+  for filtering (#59020). Apart from the endpoint it is bound in [[chain-filter-search]]!"
   true)
 
 (defn- remapped-field-id-query [field-id]
@@ -522,7 +522,7 @@
                                        [:= :dimension.field_id field-id]
                                        [:not= :dimension.human_readable_field_id nil]]
                               :limit  1}]
-                            (when *allow-implicit-remapping*
+                            (when *allow-implicit-uuid-field-remapping*
                               [;; Implicit FK Field -> PK Field -> [Name] Field remapping
                                (implicit-pk->name-mapping-query
                                 {:select    [:fk_target_field_id]
@@ -734,11 +734,11 @@
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
-        the-remapped-field-id (delay (let [{:keys [base_type effective_type]} (memoized-field-by-id field-id)]
-                                       (binding [*allow-implicit-remapping*
+        the-remapped-field-id (delay (let [{:keys [base_type effective_type]} (memoized-field-types-by-id field-id)]
+                                       (binding [*allow-implicit-uuid-field-remapping*
                                                  ;; For the details on following condition see the dynamic var's
                                                  ;; docstring.
-                                                 (or *allow-implicit-remapping*
+                                                 (or *allow-implicit-uuid-field-remapping*
                                                      (not (isa? (or effective_type base_type) :type/UUID)))]
                                          (remapped-field-id field-id))))]
     (cond
