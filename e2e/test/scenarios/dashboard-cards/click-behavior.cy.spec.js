@@ -625,9 +625,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       // migrateUndefinedDashboardTabId causes detection of changes even though user did not change anything
       H.modal().button("Discard changes").click();
       cy.button("Cancel").should("not.exist");
-
-      // discarding the changes causes the dashboard elements to resize, we need to wait to click on the chart
-      cy.wait(250);
+      cy.findByTestId("visualization-root")
+        .findByText("May 2022")
+        .should("exist");
       clickLineChartPoint();
       cy.get("@targetDashboardId").then((targetDashboardId) => {
         cy.location().should(({ pathname, search }) => {
