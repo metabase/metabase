@@ -5,6 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
+import { getSetting } from "metabase/selectors/settings";
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Icon, Modal, Tabs } from "metabase/ui";
 
@@ -21,9 +22,7 @@ interface AddDataModalProps {
 }
 
 export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
-  const { data: databaseResponse } = useListDatabasesQuery({
-    include_only_uploadable: true,
-  });
+  const { data: databaseResponse } = useListDatabasesQuery();
 
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
@@ -32,13 +31,17 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
   const databases = databaseResponse?.data;
-  const uploadDB = databases?.find((db) => db.uploads_enabled);
+  const uploadDbId = useSelector(
+    (state) => getSetting(state, "uploads-settings")?.db_id,
+  );
+
+  const uploadDB = databases?.find((db) => db.id === uploadDbId);
 
   /**
    * Uploads are always enabled for instances with the attached DWH.
    * It is not possible to turn the uploads off, nor to delete the attached database.
    */
-  const areUploadsEnabled = hasAttachedDWHFeature || !!uploadDB;
+  const areUploadsEnabled = hasAttachedDWHFeature || !!uploadDbId;
   const canUploadToDatabase = !!uploadDB?.can_upload;
 
   const canManageUploads =
