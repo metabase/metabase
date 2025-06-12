@@ -13,6 +13,7 @@
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.expression.conditional :as lib.schema.expression.conditional]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -222,7 +223,7 @@
   [query stage-number [_coalesce _opts expr null-expr]]
   (let [expr-type      (lib.metadata.calculation/type-of-method query stage-number expr)
         null-expr-type (lib.metadata.calculation/type-of-method query stage-number null-expr)]
-    (types/most-specific-common-ancestor expr-type null-expr-type)))
+    (lib.schema.expression.conditional/case-coalesce-return-type [expr-type null-expr-type])))
 
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 ;;; `:if` is an alias to `:case`
@@ -237,9 +238,7 @@
                      (clojure.core/concat [fallback]))
         types      (map #(lib.metadata.calculation/type-of-method query stage-number %)
                         exprs)]
-    (if (> (count types) 1)
-      (reduce types/most-specific-common-ancestor (first types) (rest types))
-      (first types))))
+    (lib.schema.expression.conditional/case-coalesce-return-type types)))
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :expression
   [expr-ref unit]
