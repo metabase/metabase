@@ -387,10 +387,14 @@ export default class AccordionList extends Component {
       }
     }
 
+    const getFn = typeof searchProps === "function" ? searchProps : undefined;
+    const keys =
+      typeof searchProps === "function" ? ["__unused__"] : searchProps;
+
     const idx = new Fuse(items, {
-      keys: searchProps,
+      keys,
       includeScore: true,
-      includeMatches: true,
+      getFn,
     });
 
     return (item) => {
@@ -411,7 +415,12 @@ export default class AccordionList extends Component {
 
   searchFilter = (sections) => {
     const { searchProp, searchFuzzy } = this.props;
-    const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
+    const searchProps =
+      typeof searchProp === "function"
+        ? searchProp
+        : Array.isArray(searchProp)
+          ? searchProp
+          : [searchProp];
 
     if (searchFuzzy) {
       return this.makeFuzzySearchFilter(searchProps, sections);
