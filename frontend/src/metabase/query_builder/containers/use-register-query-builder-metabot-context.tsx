@@ -1,10 +1,7 @@
 import dayjs from "dayjs";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import {
-  getBase64ChartImage,
-  getChartSelector,
-} from "metabase/visualizations/lib/image-exports";
+import { getChartSelector } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -132,12 +129,15 @@ export const registerQueryBuilderMetabotContextFn = async ({
     return {};
   }
 
-  const image_base_64 = await getBase64ChartImage(
-    getChartSelector({ cardId: question.id() }),
-  ).catch((error) => {
-    console.warn("Failed to capture chart image:", error);
-    return undefined;
-  });
+  const svgElement = document.querySelector(
+    `${getChartSelector({ cardId: question.id() })} svg`,
+  );
+  const svgString = svgElement
+    ? new XMLSerializer().serializeToString(svgElement)
+    : undefined;
+  const image_base_64 = svgString
+    ? `data:image/svg;base64,${window.btoa(svgString)}`
+    : undefined;
 
   return {
     user_is_viewing: [
