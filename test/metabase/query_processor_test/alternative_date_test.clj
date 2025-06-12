@@ -404,16 +404,15 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-;;; by default, run the test below against drivers that implement [[sql.qp/cast-temporal-byte]] for
-;;; `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` are
+;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
   false)
 
-(defmethod driver/database-supports? [:sql-jdbc ::yyyymmddhhss-binary-timestamps]
-  [driver _feature _database]
-  (not= (get-method sql.qp/cast-temporal-byte [driver :Coercion/YYYYMMDDHHMMSSBytes->Temporal])
-        (get-method sql.qp/cast-temporal-byte :default)))
+(doseq [driver [:sql :mongo]]
+  (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
+    [_driver _feature _database]
+    true))
 
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
@@ -450,13 +449,14 @@
                 (assoc (mt/mbql-query times)
                        :middleware {:format-rows? false})))))))))
 
+;; Make a fake feature just for tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-string-timestamps]
   [_driver _feature _database]
   false)
 
 ;;; TODO -- it would be better if we just made this feature `true` by default and opted out for the drivers that DO NOT
 ;;; support this feature. That way new drivers get the test automatically without having to opt in.
-(doseq [driver #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver :databricks :sqlite :vertica}]
+(doseq [driver #{:sql :mongo}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
     [_driver _feature _database]
     true))
