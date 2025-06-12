@@ -34,7 +34,6 @@ import "./upload_management";
 import "./resource_downloads";
 import "./user_provisioning";
 import "./clean_up";
-import "./troubleshooting";
 import "./data_editing";
 import "./table-actions";
 import "./metabot";

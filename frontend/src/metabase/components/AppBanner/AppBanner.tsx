@@ -3,6 +3,10 @@ import dayjs from "dayjs";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
+import {
+  LicenseTokenMissingBanner,
+  useLicenseTokenMissingBanner,
+} from "metabase/nav/components/LicenseTokenMissingBanner";
 import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBanner";
 import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
 import { TrialBanner } from "metabase/nav/components/TrialBanner";
@@ -22,6 +26,9 @@ export const AppBanner = () => {
   const readOnly = useSetting("read-only-mode");
   const isDevMode = useSetting("development-mode?");
 
+  const { shouldShowLicenseTokenMissingBanner, dismissBanner } =
+    useLicenseTokenMissingBanner(isAdmin);
+
   const tokenExpiryTimestamp = tokenStatus?.["valid-thru"];
   const isValidTrial = tokenExpiryTimestamp && tokenStatus?.trial && isHosted;
 
@@ -38,6 +45,10 @@ export const AppBanner = () => {
 
   if (readOnly) {
     return <ReadOnlyBanner />;
+  }
+
+  if (shouldShowLicenseTokenMissingBanner) {
+    return <LicenseTokenMissingBanner onClose={dismissBanner} />;
   }
 
   if (isValidTrial) {
