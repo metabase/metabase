@@ -78,7 +78,9 @@ describe("PublicComponentWrapper", () => {
     expect(component).not.toBeInTheDocument();
   });
 
-  it("should render error message when usageProblem is error", () => {
+  it("should render error message when usageProblem contains an error", () => {
+    const errorMessage = "This error should be shown on the page.";
+
     setup(
       { status: "success" },
       {
@@ -88,14 +90,11 @@ describe("PublicComponentWrapper", () => {
           documentationUrl:
             "https://www.metabase.com/docs/latest/embedding/sdk/introduction",
           severity: "error",
-          message: "This error should be shown on the page.",
+          message: errorMessage,
         },
       },
     );
 
-    const errorMessage = screen.getByText(
-      "This error should be shown on the page.",
-    );
-    expect(errorMessage).toBeVisible();
+    expect(screen.getByText(errorMessage)).toBeVisible();
   });
 });
