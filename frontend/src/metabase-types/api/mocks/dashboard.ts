@@ -130,6 +130,7 @@ export const createMockVirtualDashCard = (
     row: 0,
     size_x: 1,
     size_y: 1,
+    inline_parameters: null,
     entity_id: createMockEntityId(),
     created_at: "2020-01-01T12:30:30.000000",
     updated_at: "2020-01-01T12:30:30.000000",

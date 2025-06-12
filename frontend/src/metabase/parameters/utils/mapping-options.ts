@@ -32,6 +32,7 @@ import type {
   ParameterTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  VirtualCard,
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
@@ -129,7 +130,7 @@ export type ParameterMappingOption =
 export function getParameterMappingOptions(
   question: Question | undefined,
   parameter: Parameter | null | undefined = null,
-  card: Card,
+  card: Card | VirtualCard,
   dashcard: BaseDashboardCard | null | undefined = null,
 ): ParameterMappingOption[] {
   if (dashcard && isVirtualDashCard(dashcard)) {

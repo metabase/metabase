@@ -34,6 +34,7 @@ import {
   createDashCard,
   createVirtualCard,
   generateTemporaryDashcardId,
+  hasInlineParameters,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "../utils";
@@ -50,6 +51,7 @@ import {
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
+import { removeParameterAndReferences } from "./parameters";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -365,10 +367,15 @@ export const removeCardFromDashboard = createThunkAction(
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
   }) =>
-    (dispatch) => {
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
       dispatch(closeAddCardAutoWireToasts());
-
       dispatch(cancelFetchCardData(cardId, dashcardId));
+      if (hasInlineParameters(dashcard)) {
+        dashcard.inline_parameters.forEach((parameterId) => {
+          removeParameterAndReferences(dispatch, getState, parameterId);
+        });
+      }
       return { dashcardId };
     },
 );

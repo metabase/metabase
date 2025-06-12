@@ -60,7 +60,12 @@ import {
   getQuestions,
   getSelectedTabId,
 } from "../selectors";
-import { isQuestionDashCard } from "../utils";
+import {
+  findDashCardForInlineParameter,
+  isDashcardInlineParameter,
+  isQuestionDashCard,
+  supportsInlineParameters,
+} from "../utils";
 
 import {
   type SetDashCardAttributesOpts,
@@ -128,30 +133,76 @@ export const setEditingParameter =
     }
   };
 
+interface AddParameterPayload {
+  option: ParameterMappingOptions;
+  dashcardId?: DashCardId;
+}
+
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  (option: ParameterMappingOptions) => (dispatch, getState) => {
-    let newId: undefined | ParameterId = undefined;
+  ({ option, dashcardId }: AddParameterPayload) =>
+    (dispatch, getState) => {
+      let newId: undefined | ParameterId = undefined;
 
-    updateParameters(dispatch, getState, (parameters) => {
-      const parameter = createParameter(option, parameters);
-      newId = parameter.id;
-      return [...parameters, parameter];
-    });
+      updateParameters(dispatch, getState, (parameters) => {
+        const parameter = createParameter(option, parameters);
+        newId = parameter.id;
+        return [...parameters, parameter];
+      });
 
-    if (newId) {
-      dispatch(
-        setSidebar({
-          name: SIDEBAR_NAME.editParameter,
-          props: {
-            parameterId: newId,
-          },
-        }),
-      );
-    }
-  },
+      if (newId) {
+        const dashcard = dashcardId
+          ? getDashCardById(getState(), dashcardId)
+          : null;
+
+        if (dashcard && supportsInlineParameters(dashcard)) {
+          const currentParameters = dashcard.inline_parameters ?? [];
+          dispatch(
+            setDashCardAttributes({
+              id: dashcard.id,
+              attributes: {
+                inline_parameters: [...currentParameters, newId],
+              },
+            }),
+          );
+        }
+
+        dispatch(
+          setSidebar({
+            name: SIDEBAR_NAME.editParameter,
+            props: {
+              parameterId: newId,
+            },
+          }),
+        );
+      }
+    },
 );
+
+export function removeParameterAndReferences(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterId: ParameterId,
+) {
+  updateParameters(dispatch, getState, (parameters) => {
+    return parameters
+      .filter((parameter) => parameter.id !== parameterId)
+      .map((parameter) => {
+        if (parameter.filteringParameters) {
+          const filteringParameters = parameter.filteringParameters.filter(
+            (filteringParameter) => {
+              return filteringParameter !== parameterId;
+            },
+          );
+
+          return { ...parameter, filteringParameters };
+        }
+
+        return parameter;
+      });
+  });
+}
 
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
@@ -159,23 +210,24 @@ export const removeParameter = createThunkAction(
   (parameterId: ParameterId) => (dispatch, getState) => {
     dispatch(closeAddCardAutoWireToasts());
 
-    updateParameters(dispatch, getState, (parameters) => {
-      return parameters
-        .filter((parameter) => parameter.id !== parameterId)
-        .map((parameter) => {
-          if (parameter.filteringParameters) {
-            const filteringParameters = parameter.filteringParameters.filter(
-              (filteringParameter) => {
-                return filteringParameter !== parameterId;
-              },
-            );
+    removeParameterAndReferences(dispatch, getState, parameterId);
 
-            return { ...parameter, filteringParameters };
-          }
-
-          return parameter;
-        });
-    });
+    const dashcards = Object.values(getDashcards(getState()));
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      dashcards,
+    );
+    if (parameterDashcard) {
+      const inline_parameters = parameterDashcard.inline_parameters.filter(
+        (id) => id !== parameterId,
+      );
+      dispatch(
+        setDashCardAttributes({
+          id: parameterDashcard.id,
+          attributes: { inline_parameters },
+        }),
+      );
+    }
 
     return { id: parameterId };
   },
@@ -194,9 +246,14 @@ export const setParameterMapping = createThunkAction(
     return (dispatch, getState) => {
       dispatch(closeAutoWireParameterToast());
 
+      const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (target !== null && isQuestionDashCard(dashcard)) {
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter(parameterId, dashcards)
+      ) {
         const selectedTabId = getSelectedTabId(getState());
 
         dispatch(
