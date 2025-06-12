@@ -96,10 +96,10 @@
   get
   get-raw-value
   get-value-of-type
-  has-advanced-setting-access?
   migrate-encrypted-settings!
   obfuscate-value
   read-setting
+  register-current-user-settings-access-fn!
   registered-settings
   registered?
   resolve-setting
