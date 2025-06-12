@@ -849,7 +849,7 @@
           search-field-id (:id search-column)]
       {:field-id (when (int? column-field-id) column-field-id)
        :search-field-id (when (int? search-field-id) search-field-id)
-       :search-field search-column
-       :has-field-values (if column
+       :search-field (when (int? search-field-id) search-column)
+       :has-field-values (if (int? column-field-id)
                            (infer-has-field-values column)
                            :none)})))

@@ -96,7 +96,7 @@
                                     :name     "   "}))))))
 
 (deftest api-count-works
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (is (zero? (mt/user-http-request :crowberto :get 200 "api-key/count")))
     (mt/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
                                     :name          "my cool name"
@@ -205,7 +205,7 @@
                           :put 404 (format "api-key/%s/regenerate" (+ 13371337 (rand-int 100))))))
 
 (deftest api-keys-can-be-listed
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Cool Friends"}]
       (is (= [] (mt/user-http-request :crowberto :get 200 "api-key")))
 
@@ -244,7 +244,7 @@
           (is (= 2 (count (mt/user-http-request :crowberto :get 200 "api-key")))))))))
 
 (deftest api-keys-can-be-deleted
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (is (= [] (mt/user-http-request :crowberto :get 200 "api-key")))
 
     (let [{id :id} (mt/user-http-request :crowberto
@@ -261,7 +261,7 @@
 
 (deftest api-key-operations-are-audit-logged
   (mt/with-premium-features #{:audit-app}
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/PermissionsGroup {group-id-1 :id} {:name "Cool Friends"}
                      :model/PermissionsGroup {group-id-2 :id} {:name "Less Cool Friends"}]
         ;; create the API key
