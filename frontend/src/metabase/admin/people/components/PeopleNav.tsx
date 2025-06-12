@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
-import { NudgeToPro } from "metabase/admin/people/components/NudgeToPro";
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { AdminNavWrapper } from "metabase/admin/settings/components/AdminNav";
+import { UpsellSSO } from "metabase/admin/upsells";
 import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
@@ -23,7 +23,7 @@ export function PeopleNav() {
         <SettingsNavItem path="people" label={t`People`} icon="person" />
         <SettingsNavItem path="people/groups" label={t`Groups`} icon="group" />
       </Stack>
-      {shouldNudge && <NudgeToPro />}
+      {shouldNudge && <UpsellSSO source="people-groups-settings" />}
     </AdminNavWrapper>
   );
 }
