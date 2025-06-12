@@ -1,19 +1,14 @@
-(ns metabase.util.formatting.numbers
+(ns metabase.formatter.numbers
   (:require
-   [metabase.util :as u]
-   [metabase.util.formatting.internal.numbers :as internal]
-   [metabase.util.formatting.internal.numbers-core :as core]))
+   [metabase.formatter.internal.numbers :as internal]
+   [metabase.formatter.internal.numbers-core :as core]
+   [metabase.util :as u]))
 
 (declare format-number)
 
-(def compact-currency-options
+(def ^:private compact-currency-options
   "Extra defaults that are mixed in when formatted a currency value in compact mode."
   {:currency-style "symbol"})
-
-#?(:cljs
-   (def ^:export compact-currency-options-js
-     "Extra defaults that are mixed in when formatted a currency value in compact mode."
-     (clj->js compact-currency-options)))
 
 ;; Compact form ===================================================================================================
 (def ^:private display-compact-decimals-cutoff 1000)
@@ -84,7 +79,7 @@
              :else (internal/number-formatter-for-options options))]
     (core/format-number-basic nf number)))
 
-(defn ^:export format-number
+(defn format-number
   "Formats a number according to a map of options.
   The options:
   - `:compact` boolean: Set true for human-readable contractions like $2.4M rather than $2,413,326.98.

@@ -1,11 +1,11 @@
-(ns metabase.util.formatting.internal.date-builder-test
+(ns metabase.formatter.internal.date-builder-test
   (:require
    [clojure.test :refer [are deftest testing]]
-   [metabase.util.formatting.internal.date-builder :as builder]
+   [metabase.formatter.internal.date-builder :as builder]
    [metabase.util.time :as u.time]))
 
 ;; This tests the underlying string formatter, not the public interface.
-(deftest string-formatting-test
+(deftest ^:parallel string-formatting-test
   (testing "string formatting"
     (testing "works for keywords and vectors"
       (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
@@ -28,8 +28,10 @@
         "7:06:19"             "2022-06-08T19:06:19Z" [:hour-12-d  ":" :minute-dd ":" :second-dd]
         "9:06:19"             "2022-06-08T09:06:19Z" [:hour-24-d  ":" :minute-dd ":" :second-dd]
         "7:06 PM"             "2022-06-08T19:06:19Z" [:hour-12-d  ":" :minute-dd " " :am-pm]
-        "6m19s"               "2022-06-08T19:06:19Z" [:minute-d "m" :second-dd "s"]))
+        "6m19s"               "2022-06-08T19:06:19Z" [:minute-d "m" :second-dd "s"]))))
 
+(deftest ^:parallel string-formatting-test-2
+  (testing "string formatting"
     (testing "works for strings in Clojure vectors"
       (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
         "2022"                "2022-06-08T09:06:19Z" [":year"]
@@ -51,9 +53,11 @@
         "7:06:19"             "2022-06-08T19:06:19Z" [":hour-12-d"  ":" ":minute-dd" ":" ":second-dd"]
         "9:06:19"             "2022-06-08T09:06:19Z" [":hour-24-d"  ":" ":minute-dd" ":" ":second-dd"]
         "7:06 PM"             "2022-06-08T19:06:19Z" [":hour-12-d"  ":" ":minute-dd" " " ":am-pm"]
-        "6m19s"               "2022-06-08T19:06:19Z" [":minute-d"   "m" ":second-dd" "s"]))
+        "6m19s"               "2022-06-08T19:06:19Z" [":minute-d"   "m" ":second-dd" "s"]))))
 
-    #?(:cljs
+#?(:cljs
+   (deftest ^:parallel string-formatting-test-3
+     (testing "string formatting"
        (testing "works for strings in JS arrays"
          (are [exp t fmt] (= exp ((builder/->formatter fmt) (u.time/coerce-to-timestamp t)))
            "2022"                "2022-06-08T09:06:19Z" #js [":year"]
