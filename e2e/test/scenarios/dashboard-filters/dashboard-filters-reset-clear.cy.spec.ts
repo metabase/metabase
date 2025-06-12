@@ -766,6 +766,30 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
       cy.findByRole("dialog").should("not.exist");
     });
   });
+
+  describe("issue 57388", () => {
+    it("should be possible to reset a required text filter to it's default value (metabase#57388)", () => {
+      const textFilter = {
+        name: "Filter",
+        slug: "filter",
+        id: "75d67d39",
+        type: "string/=",
+        required: true,
+        sectionId: "string",
+        default: ["Gizmo", "Gadget", "Widget", "Doohickey"],
+      };
+      createDashboardWithParameters(ORDERS_QUESTION, PRODUCTS_CATEGORY_FIELD, [
+        textFilter,
+      ]);
+
+      filter(textFilter.name).click();
+      H.popover().within(() => {
+        cy.findByText("Select all").click();
+        cy.findByText("Set to default").click();
+      });
+      H.filterWidget().eq(0).should("contain.text", "4 selections");
+    });
+  });
 });
 
 function createDashboardWithParameters(

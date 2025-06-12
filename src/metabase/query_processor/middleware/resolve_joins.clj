@@ -84,8 +84,7 @@
            base-type :base_type
            field-id :id
            field-ref :field_ref} source-metadata]
-      ;; if `field-ref` is a unique id-based reference, use it
-      ;; use an id-based reference only if the source query uses it
+      ;; If `field-ref` is an id-based reference, only use it if the source query uses it.
       (or (when (and field-id (not (contains? duplicate-ids field-id)))
             (lib.util.match/match-one field-ref
               [:field (id :guard pos-int?) _opts]
