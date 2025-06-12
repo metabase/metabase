@@ -426,35 +426,50 @@
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
           field-metadata (meta/field-metadata :orders :subtotal)
           strategies     (lib.binning/numeric-binning-strategies)]
-      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
-                                              {:display-name "10 bins"}
-                                              {:display-name "50 bins"}
-                                              {:display-name "100 bins"}
+      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true
+                                               :value {:strategy :default}}
+                                              {:display-name "10 bins"
+                                               :value {:strategy :num-bins :num-bins 10}}
+                                              {:display-name "50 bins"
+                                               :value {:strategy :num-bins :num-bins 50}}
+                                              {:display-name "100 bins"
+                                               :value {:strategy :num-bins :num-bins 100}}
                                               nil])]
-        (is (= exp
-               (some->> strat
-                        (lib.binning/with-binning field-metadata)
-                        lib.binning/binning
-                        (lib/display-info query)))))))
-
+        (let [result (some->> strat
+                              (lib.binning/with-binning field-metadata)
+                              lib.binning/binning
+                              (lib/display-info query))
+              cleaned-result (when result
+                               (update result :value #(dissoc % :lib/type :metadata-fn)))]
+          (is (= exp cleaned-result))))))
   (testing "coordinate binning"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :people))
           field-metadata (meta/field-metadata :people :latitude)
           strategies     (lib.binning/coordinate-binning-strategies)]
-      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true}
-                                              {:display-name "0.1°"}
-                                              {:display-name "1°"}
-                                              {:display-name "10°"}
-                                              {:display-name "20°"}
-                                              {:display-name "0.05°"}
-                                              {:display-name "0.01°"}
-                                              {:display-name "0.005°"}
+      (doseq [[strat exp] (zipmap strategies [{:display-name "Auto binned" :default true
+                                               :value {:strategy :default}}
+                                              {:display-name "0.1°"
+                                               :value {:strategy :bin-width :bin-width 0.1}}
+                                              {:display-name "1°"
+                                               :value {:strategy :bin-width :bin-width 1.0}}
+                                              {:display-name "10°"
+                                               :value {:strategy :bin-width :bin-width 10.0}}
+                                              {:display-name "20°"
+                                               :value {:strategy :bin-width :bin-width 20.0}}
+                                              {:display-name "0.05°"
+                                               :value {:strategy :bin-width :bin-width 0.05}}
+                                              {:display-name "0.01°"
+                                               :value {:strategy :bin-width :bin-width 0.01}}
+                                              {:display-name "0.005°"
+                                               :value {:strategy :bin-width :bin-width 0.005}}
                                               nil])]
-        (is (= exp
-               (some->> strat
-                        (lib.binning/with-binning field-metadata)
-                        lib.binning/binning
-                        (lib/display-info query))))))))
+        (let [result (some->> strat
+                              (lib.binning/with-binning field-metadata)
+                              lib.binning/binning
+                              (lib/display-info query))
+              cleaned-result (when result
+                               (update result :value #(dissoc % :lib/type :metadata-fn)))]
+          (is (= exp cleaned-result)))))))
 
 (deftest ^:parallel joined-field-column-name-test
   (let [legacy-query {:database (meta/id)

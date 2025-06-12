@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { BucketDisplayInfo } from "metabase-lib";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -168,11 +169,25 @@ export type ColumnFormattingSetting =
   | ColumnSingleFormattingSetting
   | ColumnRangeFormattingSetting;
 
+export type NativeSplitAggregationEntry = {
+  name: string;
+  column?: string;
+};
+
+export type NativeSplitGroupEntry = {
+  name: string;
+  column?: string;
+  bucket?: string;
+  binning?: BucketDisplayInfo;
+};
+
 export type ColumnNameColumnSplitSetting = {
   rows: string[];
   columns: string[];
   values: string[];
 };
+
+export type PartitionName = "rows" | "columns" | "values";
 
 export type FieldRefColumnSplitSetting = {
   rows: (FieldReference | null)[];

@@ -716,16 +716,13 @@
           ;; For pivoted exports, we pivot in-memory (same as CSVs) and then write the results to the
           ;; document all at once
           (let [{:keys [settings non-pivot-cols pivot-export-options timezone format-rows?]} @pivot-data
-                {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
-
-                {:keys [cell-styles typed-cell-styles]}
-                (generate-styles workbook settings non-pivot-cols format-rows?)
-
+                {:keys [row-indexes col-indexes val-indexes]} (qp.pivot.postprocess/build-indexes non-pivot-cols pivot-export-options)
+                {:keys [cell-styles typed-cell-styles]} (generate-styles workbook settings non-pivot-cols format-rows?)
                 formatters (make-formatters cell-styles
                                             non-pivot-cols
-                                            pivot-rows
-                                            pivot-cols
-                                            pivot-measures
+                                            row-indexes
+                                            col-indexes
+                                            val-indexes
                                             settings
                                             timezone
                                             format-rows?)

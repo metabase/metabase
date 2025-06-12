@@ -92,6 +92,7 @@
   aggregations-metadata
   available-aggregation-operators
   selected-aggregation-operators
+  filter-pivot-aggregation-operators
   count
   avg
   count-where
@@ -371,7 +372,8 @@
   drop-stage
   drop-empty-stages
   ensure-filter-stage
-  has-clauses?]
+  has-clauses?
+  wrap-adhoc-native-query]
  [lib.swap
   swap-clauses]
  [lib.temporal-bucket

@@ -10,10 +10,12 @@ import {
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
+  NATIVE_COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import { ChartSettingNativeFieldsPartition } from "metabase/visualizations/components/settings/ChartSettingNativeFieldsPartition";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -29,7 +31,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import { partitions } from "./partitions";
+import { nativePartitions, partitions } from "./partitions";
 import {
   addMissingCardBreakouts,
   isColumnValid,
@@ -72,15 +74,44 @@ export const settings = {
       return { rows, value };
     },
   },
+  [NATIVE_COLUMN_SPLIT_SETTING]: {
+    get section() {
+      return t`Columns`;
+    },
+    widget: ChartSettingNativeFieldsPartition,
+    persistDefault: true,
+    getHidden: ([{ data, card }]: RawSeries) => {
+      const isNative = card.dataset_query?.type === "native";
+      return !data || !isNative;
+    },
+    getProps: (
+      [{ data }]: [{ data: DatasetData }],
+      settings: VisualizationSettings,
+    ) => ({
+      value: settings[NATIVE_COLUMN_SPLIT_SETTING] ?? {
+        rows: [],
+        columns: [],
+        values: [],
+      },
+      partitions: nativePartitions,
+      columns: data == null ? [] : data.cols,
+      settings,
+      getColumnTitle: (column: DatasetColumn) => {
+        return getTitleForColumn(column, settings);
+      },
+      canEditColumns: true,
+    }),
+  },
   [COLUMN_SPLIT_SETTING]: {
     get section() {
       return t`Columns`;
     },
     widget: "fieldsPartition",
     persistDefault: true,
-    getHidden: ([{ data }]: [{ data: DatasetData }]) =>
-      // hide the setting widget if there are invalid columns
-      !data || data.cols.some((col) => !isColumnValid(col)),
+    getHidden: ([{ data, card }]: RawSeries) => {
+      const isNative = card.dataset_query?.type === "native";
+      return !data || isNative || data.cols.some((col) => !isColumnValid(col));
+    },
     getProps: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -95,6 +126,7 @@ export const settings = {
       getColumnTitle: (column: DatasetColumn) => {
         return getTitleForColumn(column, settings);
       },
+      canEditColumns: false,
     }),
     getValue: (
       [{ data }]: [{ data: DatasetData; card: Card }],
