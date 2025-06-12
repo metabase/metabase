@@ -169,13 +169,14 @@
 ;;
 ;; Since we don't support configuration for (1) yet, this is only concerned with (2)
 (deftest configure-table-action-on-editable-on-dashboard-test
-  (let [req #(mt/user-http-request-full-response
-              (:user % :crowberto)
-              :post
-              "action/v2/configure"
-              (select-keys % [:action_id
-                              :scope
-                              :input]))]
+  (let [req #(dissoc (mt/user-http-request-full-response
+                      (:user % :crowberto)
+                      :post
+                      "action/v2/configure"
+                      (select-keys % [:action_id
+                                      :scope
+                                      :input]))
+                     :headers)]
     (mt/with-premium-features #{:table-data-editing}
       (mt/test-drivers #{:h2 :postgres}
         (data-editing.tu/toggle-data-editing-enabled! true)
@@ -192,61 +193,75 @@
                                             :visualization_settings
                                             {:table_id @test-table
 
+                                             ;; The data-grid config is NOT inherited by custom actions (yet)
                                              :table.columns
                                              [{:name "int", :enabled true}
                                               {:name "text", :enabled true}
                                               {:name "timetamp", :enabled true}
-                                               ;; this signals date should not be shown in the grid
+                                               ;; this signals date should not be shown in the grid, or be available
+                                               ;; to default actions.
                                               {:name "date", :enabled false}]
 
+                                             ;; The data-grid config is NOT inherited by custom actions (yet)
                                              :editableTable.columns
                                              ["int"
-                                               ;; this signals text is not editable
+                                               ;; this signals text is not editable by default actions
                                               #_"text"
                                               "timestamp"
                                               "date"]
 
                                              :editableTable.enabledActions
                                               ;; See [[metabase.dashboards.api/create-or-fix-action-id]] for why this is unknown.
-                                             [{:id                "dashcard:unknown:update"
+                                             [{:id                "dashcard:unknown:built-in-update"
+                                               :actionId          "table.row/update"
+                                               ;; TODO Katya calls these "default" actions, maybe we should rename to match?
+                                               :actionType        "data-grid/built-in"
+                                               :enabled           true
+                                               ;; Not currently configurable.
+                                               :parameterMappings nil}
+                                              {:id                "dashcard:unknown:update"
                                                :actionId          "table.row/update"
                                                :actionType        "data-grid/row-action"
                                                :enabled           true
-                                               :parameterMappings [;; because this is a CUSTOM action,
-                                                                   ;; it might not even be editing the same table,
-                                                                   ;; so we need to map the primary, unlike for
-                                                                   ;; built-in actions which assume its pk->pk
-                                                                   {:parameterId "id"
-                                                                    :sourceType "row-data"
-                                                                    :value      "TODO"}
-                                                                   {:parameterId "int"
-                                                                    :sourceType  "constant"
-                                                                    :value       42}
+                                               ;; TODO make sure this stuff makes sense.
+                                               ;;      What does the FE really write? Have we messed anything up?
+                                               ;;      Have we missed any cases?
+                                               :parameterMappings [{:parameterId       "id"
+                                                                    :sourceType       "ask-user"}
+                                                                   {:parameterId       "int"
+                                                                    :sourceType        "constant"
+                                                                    :value             42}
                                                                    {:parameterId       "text"
                                                                     :sourceType        "row-data"
                                                                     :sourceValueTarget "text"
                                                                     :visibility        "readonly"}
-                                                                   {:parameterId "timestamp"
-                                                                    :visibility  "hidden"}]}]}}]
+                                                                   {:parameterId       "timestamp"
+                                                                    :visibility        "hidden"}]}]}}]
 
-              ;; insert a row for the row action
+            ;; insert a row for the row action
             (mt/user-http-request :crowberto :post 200
                                   (data-editing.tu/table-url @test-table)
                                   {:rows [{:text "a very important string"}]})
 
-            (testing "table actions on a dashcard"
-              (let [expected-row-params [{:id "int", :readonly false}
-                                         {:id "text", :readonly true, :value "a very important string"}
-                                         ;; date is hidden from the editable
-                                         #_{:id "date"}
-                                         ;; timestamp is hidden in the row action
-                                         #_{:id "timestamp"}]]
+            (testing "default table action on a data-grid"
+              (is (=? {:status 400}
+                      (req {:action_id "dashcard:unknown:built-in-update"
+                            :scope     {:dashcard-id (:id dashcard)}
+                            :input     {:id 1}
+                            :params    {:text "kcab em txet"}}))))
 
-                (is (=? {:status 200
-                         :body   {:parameters expected-row-params}}
-                        (req {:action_id "dashcard:unknown:update"
-                              :scope     {:dashcard-id (:id dashcard)}
-                              :input     {:id 1}})))))))))))
+            (testing "custom table action on a data-grid"
+              (is (=? {:status 200
+                       :body   {:parameters
+                                [{:id "id",   :sourceType "ask-user"}
+                                 {:id "int",  :sourceType "constant", :value 42}
+                                 {:id "text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                 ;; TODO https://linear.app/metabase/issue/WRK-476/handle-actions-whose-mapping-doesnt-cover-new-inputs
+                                 #_{:id "date", :visibility "hidden"}
+                                 {:id "timestamp", :visibility "hidden"}]}}
+                      (req {:action_id "dashcard:unknown:update"
+                            :scope     {:dashcard-id (:id dashcard)}
+                            :input     {:id 1}}))))))))))
 
 ;; This covers a more exotic case where we're coming back to edit the config for an action before it has been saved.
 ;; This should cover both the cases where it has never been saved, or where it's simply been edited at least once since
@@ -261,19 +276,14 @@
                                                                 :timestamp [:timestamp]
                                                                 :date      [:date]}
                                                                {:primary-key [:id]})]
-
-        (let [;; TODO the form for configuring a row action will need to know that ID is meant to be "locked" to
-              ;;      the pk of the table underlying the data-grid.
-              expected-id-params   [{:id "field-id"        :sourceType "row-data" :sourceValueTarget "id"}]
+        (let [expected-id-params   [{:id "field-id"        :sourceType "row-data" :sourceValueTarget "id"}]
               expected-row-params  [{:id "field-text"      :sourceType "row-data" :sourceValueTarget "text"}
                                     {:id "field-int"       :sourceType "ask-user" :sourceValueTarget "int"}
                                     {:id "field-timestamp" :sourceType "ask-user" :sourceValueTarget "timestamp"}
                                     {:id "field-date"      :sourceType "ask-user" :sourceValueTarget "date"}]]
 
-          (testing "table actions"
-            (let [{create-id "table.row/create"
-                   update-id "table.row/update"
-                   delete-id "table.row/delete"} (->> (mt/user-http-request-full-response
+          (testing "custom data-grid calling a table action, with pending configuration changes"
+            (let [{action-id "table.row/update"} (->> (mt/user-http-request-full-response
                                                        :crowberto
                                                        :get
                                                        "action/v2/tmp-action")
@@ -281,16 +291,12 @@
                                                       (filter #(= @test-table (:table_id %)))
                                                       (u/index-by :kind :id))
                   pending-config {:parameters
-                                  [;; because this is a CUSTOM actions
-                                   ;; it might not even be editing the same table,
-                                   ;; so we need to map the primary, unlike for
-                                   ;; built-in actions which assume its pk->pk
-                                   {:parameterId  "id",       :sourceType "row-data"}
-                                   ;; TODO this might be a string, check FE
+                                  [{:parameterId  "id",       :sourceType "row-data"}
                                    {:parameterId "int",       :sourceType "constant", :value 42}
                                    {:parameterId "text",      :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
                                    {:parameterId "timestamp", :visibility "hidden"}]}
-                  ;; This gives us the format that the in-memory action looks like in the FE.
+
+;; This gives us the format that the in-memory action looks like in the FE.
                   wrap-action    (fn [packed-id]
                                    {:packed-id packed-id
                                     :param-map (->> pending-config
@@ -299,21 +305,10 @@
                                                     ;;      unified-action
                                                     (u/index-by :parameterId #(dissoc % :parameterId)))})]
               (let [scope {:table-id @test-table}]
-                (testing "create"
-                  (is (=? {:title      (mt/malli=? :string)
-                           :parameters expected-row-params}
-                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                                {:scope     scope
-                                                 :action_id (wrap-action create-id)}))))
-                (testing "update"
-                  (is (=? {:title      (mt/malli=? :string)
-                           :parameters (concat expected-id-params expected-row-params)}
-                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                                {:scope     scope
-                                                 :action_id (wrap-action update-id)}))))
-                (testing "delete"
-                  (is (=? {:title      (mt/malli=? :string)
-                           :parameters expected-id-params}
-                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                                {:scope     scope
-                                                 :action_id (wrap-action delete-id)}))))))))))))
+                (is (=? {:title      (mt/malli=? :string)
+                         :parameters (for [p (:parameters pending-config)]
+                                       ;; What a silly difference, which we should squelch.
+                                       (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                              {:scope     scope
+                                               :action_id (wrap-action action-id)})))))))))))

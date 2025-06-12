@@ -45,8 +45,9 @@
                                          :implicit (:id param))})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
-(defn- configuration-for-saved-or-pending-action [{:keys [param-map] :as _action}]
-  {:title "TODO, depends on the configuration"
+(defn- configuration-for-pending-action [{:keys [param-map] :as _action}]
+  ;; TODO Delegate to get this
+  {:title "TODO - depends on existing configuration if already saved, otherwise from the inner action as the default."
    :parameters (for [[param-id param-settings] param-map]
                  (assoc param-settings :id (name param-id)))})
 
@@ -68,10 +69,12 @@
   "Returns configuration needed for a given action."
   [{:keys [action-id action-kw] :as action}
    scope]
+  (when (false? (:configurable action))
+    (throw (ex-info "Cannot configure this action" {:status-code 400, :action action})))
   (cond
     ;; Eventually will be put inside a nicely typed :configuration key
     (:param-map action)
-    (configuration-for-saved-or-pending-action action)
+    (configuration-for-pending-action action)
 
     (pos-int? action-id)
     (configuration-for-saved-action action-id)
@@ -84,4 +87,6 @@
                                     action-kw)
 
     ;; TODO support data-grid.row and model.row actions (not important yet)
-    ))
+
+    :else
+    (throw (ex-info "Don't know how to handle this action" {:action action, :scope scope}))))

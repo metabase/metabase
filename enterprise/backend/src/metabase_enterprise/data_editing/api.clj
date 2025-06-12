@@ -283,7 +283,8 @@
     [:mapping {:optional true} [:maybe ::action.config.mappings]]
     [:param-map ::action.config.param-map]
     ;; We will eventually want to generalize to support grids outside of dashboards.
-    [:dashcard-id {:optional true} ms/PositiveInt]]])
+    [:dashcard-id {:optional true} ms/PositiveInt]
+    [:configurable {:optional true} :boolean]]])
 
 (mr/def ::api-action-expression
   "A more relaxed version of ::unified-action that can still have opaque ::api-action-id expressions inside."
@@ -336,7 +337,8 @@
                            {:inner-action unified
                             :mapping      mapping
                             :param-map    param-map
-                            :dashcard-id  dashcard-id}))
+                            :dashcard-id  dashcard-id
+                            :configurable (not= action-type "data-grid/built-in")}))
                        (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
                          ;; Dashboard buttons can only be invoked from dashboards
                          ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
