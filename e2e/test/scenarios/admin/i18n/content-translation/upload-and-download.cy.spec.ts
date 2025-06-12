@@ -212,7 +212,7 @@ describe("scenarios > admin > localization > content translation", () => {
           { force: true },
         );
         cy.findAllByRole("alert")
-          .contains(/Invalid CSV/)
+          .contains(/CSV error/)
           .should("be.visible");
         cy.wait("@uploadDictionary");
       });
