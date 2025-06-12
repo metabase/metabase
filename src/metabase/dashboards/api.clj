@@ -951,7 +951,13 @@
     ;; new action, give it an id
     ;; currently the frontend is generating its own ids... we need to replace those
     (or (not id) (not (str/starts-with? id "dashcard:")))
-    (str "dashcard:" (:id dashcard "unknown") ":" (u/generate-nano-id))
+    (str "dashcard:"
+         (let [dashcard-id (:id dashcard "unknown")]
+           (if (pos-int? dashcard-id)
+             dashcard-id
+             "unknown"))
+         ":"
+         (u/generate-nano-id))
     ;; chicken-and-egg resulted in a suboptimal id, fix it
     (and (str/starts-with? id "dashcard:unknown:") (:id dashcard))
     (str/replace id #"dashcard:unknown" (str "dashcard:" (:id dashcard)))

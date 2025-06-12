@@ -5158,7 +5158,7 @@
 
 (deftest create-or-fix-action-id-test
   (let [f       #'api.dashboard/create-or-fix-action-id
-        unsaved {}
+        unsaved {:id -1}
         saved   {:id 1337}]
     (mt/with-dynamic-fn-redefs [u/generate-nano-id (fn [] "rAnDoM")]
       (testing "leaves valid ids alone"
