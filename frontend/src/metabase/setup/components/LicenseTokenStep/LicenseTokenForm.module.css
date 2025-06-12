@@ -1,0 +1,29 @@
+.breakoutHorizontalRule {
+  width: 100%;
+  position: absolute;
+  left: 0;
+  height: 1px;
+  background-color: var(--mb-color-border);
+}
+
+.breakoutHorizontalRuleContainer {
+  padding-top: var(--mantine-spacing-xl);
+  padding-bottom: var(--mantine-spacing-md);
+}
+
+.popoverContent {
+  display: flex;
+  width: 300px;
+  padding: var(--mantine-spacing-md);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-xs);
+
+  /* our --default-border-radius is 8px but the design system uses a custom value */
+  border-radius: 6px;
+  /* our --mb-color-border is eeecec but the design system uses a different value */
+  border: 1px solid #f0f0f0;
+  background: var(--mb-base-color-white);
+  /* --mb-color-shadow is rgba(0, 0, 0, 0.13); but the design uses a different value */
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+}
