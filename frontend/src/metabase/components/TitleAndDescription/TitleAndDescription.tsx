@@ -9,7 +9,7 @@ const TitleAndDescriptionInner = ({
 }: { title: string; description?: string | null } & BoxProps) => (
   <Box {...boxProps}>
     <Title
-      role="header"
+      role="heading"
       size="xl"
       component="span"
       lh="normal"
