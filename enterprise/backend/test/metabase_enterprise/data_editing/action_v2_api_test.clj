@@ -132,7 +132,8 @@
                                     {:id "field-date"      :sourceType "ask-user" :sourceValueTarget "date"}]]
 
           (testing "table actions"
-            (let [{create-id "table.row/create"
+            (let [scope {:table-id @test-table}
+                  {create-id "table.row/create"
                    update-id "table.row/update"
                    delete-id "table.row/delete"} (->> (mt/user-http-request-full-response
                                                        :crowberto
@@ -141,25 +142,24 @@
                                                       :body :actions
                                                       (filter #(= @test-table (:table_id %)))
                                                       (u/index-by :kind :id))]
-              (let [scope {:table-id @test-table}]
-                (testing "create"
-                  (is (=? {:title      (mt/malli=? :string)
-                           :parameters expected-row-params}
-                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                                {:scope     scope
-                                                 :action_id create-id}))))
-                (testing "update"
-                  (is (=? {:title      (mt/malli=? :string)
-                           :parameters (concat expected-id-params expected-row-params)}
-                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                                {:scope     scope
-                                                 :action_id update-id}))))
-                (testing "delete"
-                  (is (=? {:title      (mt/malli=? :string)
-                           :parameters expected-id-params}
-                          (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                                {:scope     scope
-                                                 :action_id delete-id}))))))))))))
+              (testing "create"
+                (is (=? {:title      (mt/malli=? :string)
+                         :parameters expected-row-params}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                              {:scope     scope
+                                               :action_id create-id}))))
+              (testing "update"
+                (is (=? {:title      (mt/malli=? :string)
+                         :parameters (concat expected-id-params expected-row-params)}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                              {:scope     scope
+                                               :action_id update-id}))))
+              (testing "delete"
+                (is (=? {:title      (mt/malli=? :string)
+                         :parameters expected-id-params}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                              {:scope     scope
+                                               :action_id delete-id})))))))))))
 
 ;; This is the case where we are EDITING some kind of header or row action, for example.
 ;;
@@ -297,12 +297,12 @@
                                                   :parameters
                                                   ;; TODO we won't need to do this once we change the schema for
                                                   ;;      unified-action to use a list.
-                                                  (u/index-by :parameterId #(dissoc % :parameterId)))})]
-            (let [scope {:table-id @test-table}]
-              (is (=? {:title      (mt/malli=? :string)
-                       :parameters (for [p (:parameters pending-config)]
-                                     ;; What a silly difference, which we should squelch.
-                                     (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                            {:scope     scope
-                                             :action_id (wrap-action action-id)}))))))))))
+                                                  (u/index-by :parameterId #(dissoc % :parameterId)))})
+                scope          {:table-id @test-table}]
+            (is (=? {:title      (mt/malli=? :string)
+                     :parameters (for [p (:parameters pending-config)]
+                                   ;; What a silly difference, which we should squelch.
+                                   (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
+                    (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                          {:scope     scope
+                                           :action_id (wrap-action action-id)})))))))))
