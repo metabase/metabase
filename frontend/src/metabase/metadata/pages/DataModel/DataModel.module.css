@@ -1,0 +1,11 @@
+.column {
+  overflow: auto;
+}
+
+.rightBorder {
+  border-right: 1px solid var(--mb-color-border);
+}
+
+.footer {
+  border-top: 1px solid var(--mb-color-border);
+}
