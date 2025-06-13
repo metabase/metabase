@@ -2,7 +2,6 @@
   "Endpoints relating to the translation of user-generated content"
   (:require
    [clojure.data.csv :as csv]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.api.routes.common :as ee.api.common]
    [metabase-enterprise.content-translation.dictionary :as dictionary]

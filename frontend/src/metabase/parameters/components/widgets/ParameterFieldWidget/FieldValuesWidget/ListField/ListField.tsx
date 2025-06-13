@@ -80,11 +80,6 @@ export const ListField = ({
       if (!aSelected && bSelected) {
         return 1;
       }
-      console.log(
-        "@mbu18vo8",
-        "optionsHaveSomeTranslations",
-        optionsHaveSomeTranslations,
-      );
 
       // If no options have translations, rely on the sorting that was already
       // done in the backend

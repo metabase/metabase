@@ -1,7 +1,6 @@
 (ns metabase-enterprise.content-translation.dictionary-test
   "Tests for content translation dictionary import logic."
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase-enterprise.content-translation.utils :as ct-utils]
