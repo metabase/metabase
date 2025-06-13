@@ -12,20 +12,25 @@
   (log/info "In content_translation.cljc, content translations =" (pr-str @content-translations))
   @content-translations)
 
-;; TODO: Refactor this away
+;; TODO: Refactor this away if possible
+;; I don't understand why both the clj and cljs forms are needed
 (defn get-field-value
   "Retrieve a value from a map-like JavaScript object."
   [obj field default-value]
   (if (some? obj)
-    (let [field-str (name field)]
-      (or (aget obj field-str) default-value))
+    (let [field-key (if (keyword? field) field (keyword field))]
+      #?(:clj  (get obj field-key default-value)
+         :cljs (let [field-str (name field)]
+                 (or (aget obj field-str) default-value))))
     default-value))
 
 (defn get-content-translation
   "Get content translation of the string, if one exists. Otherwise, return the string untranslated."
   [s]
-  (log/info (str "Looking up translation of" s))
-  (get-field-value (get-content-translations) s s))
+  ;; TODO: For testing
+  (if (= s "Created At")
+    "Erstellt Am"
+    (get-field-value (get-content-translations) s s)))
 
 (defn set-content-translations
   "Set the current content-translation dictionary."
@@ -35,3 +40,6 @@
   (log/info "get-content-translations= " (pr-str (get-content-translations)))
   (log/info (str "WHOA translation of Created At: " (get-field-value (get-content-translations) "Created At" "default value"))))
 
+(defn translate-display-names-in-column-metadata
+  [column-metadata]
+  (assoc column-metadata :display_name (get-content-translation (get column-metadata :display_name))))
