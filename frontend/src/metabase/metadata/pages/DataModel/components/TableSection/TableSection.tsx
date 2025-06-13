@@ -72,14 +72,8 @@ export const TableSection = ({ params, table }: Props) => {
       </Box>
 
       <Stack gap="lg">
-        <Stack gap="sm">
-          <Group
-            align="center"
-            gap="md"
-            h={48}
-            justify="space-between"
-            wrap="nowrap"
-          >
+        <Stack gap={12}>
+          <Group align="center" gap="md" justify="space-between" wrap="nowrap">
             <Group align="center" gap="md" h="100%" wrap="nowrap">
               {!isSorting && (
                 <Text flex="0 0 auto" fw="bold" size="sm">{t`Fields`}</Text>
