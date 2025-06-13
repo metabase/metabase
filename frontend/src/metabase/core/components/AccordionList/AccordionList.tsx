@@ -68,7 +68,7 @@ export class AccordionList<
 > extends Component<Props<TItem, TSection>, State> {
   _cache: CellMeasurerCache;
 
-  _list: RefObject<List>;
+  listRef: RefObject<List>;
   listRootRef: RefObject<HTMLDivElement>;
 
   _initialSelectedRowIndex?: number;
@@ -111,7 +111,7 @@ export class AccordionList<
     });
 
     this.listRootRef = createRef();
-    this._list = createRef();
+    this.listRef = createRef();
   }
 
   componentDidMount() {
@@ -132,13 +132,13 @@ export class AccordionList<
       const index = this._initialSelectedRowIndex;
 
       if (
-        this._list &&
+        this.listRef.current &&
         index != null &&
         this._startIndex != null &&
         this._stopIndex != null &&
         !(index >= this._startIndex && index <= this._stopIndex)
       ) {
-        this._list.current?.scrollToRow(index);
+        this.listRef.current?.scrollToRow(index);
       }
     }, 0);
   }
@@ -164,7 +164,7 @@ export class AccordionList<
   _getListContainerElement() {
     const element = this.isVirtualized()
       ? // @ts-expect-error: TODO remove reliance on internals here
-        this._list.current?.Grid?._scrollingContainer
+        this.listRef.current?.Grid?._scrollingContainer
       : this.listRootRef.current;
 
     return element ?? null;
@@ -181,13 +181,13 @@ export class AccordionList<
   }
 
   _forceUpdateList() {
-    if (this._list) {
+    if (this.listRef.current) {
       // NOTE: unclear why this particular set of functions works, but it does
-      this._list.current?.invalidateCellSizeAfterRender({
+      this.listRef.current.invalidateCellSizeAfterRender({
         columnIndex: 0,
         rowIndex: 0,
       });
-      this._list.current?.forceUpdateGrid();
+      this.listRef.current.forceUpdateGrid();
       this.forceUpdate();
     }
   }
@@ -368,7 +368,7 @@ export class AccordionList<
     const searchRow = this.getRows().findIndex((row) => row.type === "search");
 
     if (searchRow >= 0 && this.isVirtualized()) {
-      this._list.current?.scrollToRow(searchRow);
+      this.listRef.current?.scrollToRow(searchRow);
     }
   };
 
@@ -683,7 +683,7 @@ export class AccordionList<
     return (
       <List
         id={id}
-        ref={this._list}
+        ref={this.listRef}
         className={className}
         style={{
           // HACK - Ensure the component can scroll
