@@ -171,10 +171,6 @@
  system/site-uuid
  upload/current-database)
 
-(defn action-params []
-  "temporary hack, remove when the underlying dynamic var is deleted"
-  actions/*params*)
-
 (defn ^:deprecated current-user
   "Fetch the user making the request."
   []
