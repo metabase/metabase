@@ -9,7 +9,7 @@
 
 (deftest create-impersonation-policy-test
   (testing "/api/permissions/graph"
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (testing "A connection impersonation policy can be created via the permissions graph endpoint"
         (mt/with-user-in-groups
           [group {:name "New Group"}
@@ -37,7 +37,7 @@
               (is (= 1 (t2/count :model/ConnectionImpersonation :group_id (u/the-id group)))))))))))
 
 (deftest fetch-impersonation-policy-test
-  (testing "GET /api/ee/advanced-permissions/impersonation"
+  (testing "GET /api/ee/connection-impersonation"
     (mt/with-temp [:model/PermissionsGroup               {group-id-1 :id} {}
                    :model/PermissionsGroup               {group-id-2 :id} {}
                    :model/ConnectionImpersonation {impersonation-id-1 :id :as impersonation-1} {:group_id group-id-1
@@ -46,34 +46,34 @@
                    :model/ConnectionImpersonation {impersonation-id-2 :id :as impersonation-2} {:group_id group-id-2
                                                                                                 :db_id    (mt/id)
                                                                                                 :attribute "Attribute Name 2"}]
-      (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:connection-impersonation}
         (testing "Test that we can fetch a list of all Connection Impersonations"
           (is (= [impersonation-1 impersonation-2]
                  (filter
                   #(#{impersonation-id-1 impersonation-id-2} (:id %))
-                  (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/impersonation")))))
+                  (mt/user-http-request :crowberto :get 200 "connection-impersonation")))))
 
         (testing "Test that we can fetch the Connection Impersonation for a specific DB and group"
           (is (= impersonation-1
-                 (mt/user-http-request :crowberto :get 200 "ee/advanced-permissions/impersonation"
+                 (mt/user-http-request :crowberto :get 200 "connection-impersonation"
                                        :group_id group-id-1 :db_id (mt/id)))))
 
         (testing "Test that a non-admin cannot fetch Connection Impersonation details"
-          (mt/user-http-request :rasta :get 403 "ee/advanced-permissions/impersonation")))
+          (mt/user-http-request :rasta :get 403 "connection-impersonation")))
 
-      (testing "Test that the :advanced-permissions flag is required to fetch Connection Impersonation Details"
+      (testing "Test that the :connection-impersonation flag is required to fetch Connection Impersonation Details"
         (mt/with-premium-features #{}
-          (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation"))))))
+          (mt/user-http-request :crowberto :get 402 "connection-impersonation"))))))
 
 (deftest delete-impersonation-policy
-  (testing "DELETE /api/ee/advanced-permissions/impersonation"
-    (mt/with-premium-features #{:advanced-permissions}
+  (testing "DELETE /api/ee/connection-impersonation/:id"
+    (mt/with-premium-features #{:connection-impersonation}
       (testing "Test that a Connection Impersonation can be deleted by ID"
         (mt/with-temp [:model/PermissionsGroup               {group-id :id}         {}
                        :model/ConnectionImpersonation {impersonation-id :id} {:group_id group-id
                                                                               :db_id    (mt/id)
                                                                               :attribute "Attribute Name"}]
-          (mt/user-http-request :crowberto :delete 204 (format "ee/advanced-permissions/impersonation/%d" impersonation-id))
+          (mt/user-http-request :crowberto :delete 204 (format "connection-impersonation/%d" impersonation-id))
           (is (nil? (t2/select-one :model/ConnectionImpersonation :id impersonation-id)))))
 
       (testing "Test that a non-admin cannot delete a Connection Impersonation"
@@ -82,21 +82,21 @@
                        {:group_id group-id
                         :db_id    (mt/id)
                         :attribute "Attribute Name"}]
-          (mt/user-http-request :rasta :delete 403 (format "ee/advanced-permissions/impersonation/%d" impersonation-id))
+          (mt/user-http-request :rasta :delete 403 (format "connection-impersonation/%d" impersonation-id))
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))
 
-    (testing "Test that the :advanced-permissions flag is required to delete a Connection Impersonation"
+    (testing "Test that the :connection-impersonation flag is required to delete a Connection Impersonation"
       (mt/with-premium-features #{}
         (mt/with-temp [:model/PermissionsGroup               {group-id :id} {}
                        :model/ConnectionImpersonation {impersonation-id :id :as impersonation}
                        {:group_id group-id
                         :db_id    (mt/id)
                         :attribute "Attribute Name"}]
-          (mt/user-http-request :crowberto :get 402 "ee/advanced-permissions/impersonation")
+          (mt/user-http-request :crowberto :get 402 "connection-impersonation")
           (is (= impersonation (t2/select-one :model/ConnectionImpersonation :id impersonation-id))))))))
 
 (deftest delete-impersonation-policy-after-permissions-change-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:connection-impersonation}
     (testing "A connection impersonation policy is deleted automatically if the data permissions are changed"
       (mt/with-temp [:model/PermissionsGroup               {group-id :id} {}
                      :model/ConnectionImpersonation {impersonation-id :id}

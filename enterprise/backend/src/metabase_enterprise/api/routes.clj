@@ -16,6 +16,7 @@
    [metabase-enterprise.content-verification.api.routes]
    [metabase-enterprise.database-routing.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
+   [metabase-enterprise.impersonation.api]
    [metabase-enterprise.llm.api]
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.tools.api]
@@ -39,6 +40,9 @@
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
+   :collection-cleanup         (deferred-tru "Collection Cleanup")
+   :connection-impersonation   (deferred-tru "Connection Impersonation")
+   :content-translation        (deferred-tru "Content translation")
    :etl-connections            (deferred-tru "ETL Connections")
    :llm-autodescription        (deferred-tru "LLM Auto-description")
    :metabot-v3                 (deferred-tru "MetaBot")
@@ -73,6 +77,7 @@
    "/audit-app"                  (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/autodescribe"               (premium-handler 'metabase-enterprise.llm.api :llm-autodescription)
    "/billing"                    metabase-enterprise.billing.api.routes/routes
+   "/connection-impersonation"     (premium-handler metabase-enterprise.impersonation.api/routes :connection-impersonation)
    "/gsheets"                    (-> gsheets.api/routes ;; gsheets requires both features.
                                      (premium-handler :attached-dwh)
                                      (premium-handler :etl-connections))
