@@ -1,5 +1,9 @@
 import { type ReactNode, createContext, useContext, useState } from "react";
 
+import { useSetting } from "metabase/common/hooks";
+import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+
+import { SDK_IFRAME_EMBED_STEPS } from "../constants";
 import type { EmbedPreviewOptions, Step } from "../types";
 
 interface SdkIframeEmbedSetupContextType {
@@ -9,7 +13,8 @@ interface SdkIframeEmbedSetupContextType {
 
   // Actions
   setCurrentStep: (step: Step) => void;
-  updateOptions: (newOptions: Partial<EmbedPreviewOptions>) => void;
+  updateOptions: (nextOptions: Partial<EmbedPreviewOptions>) => void;
+  updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
 
   // Navigation helpers
   handleNext: () => void;
@@ -28,12 +33,18 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
-  const [currentStep, setCurrentStep] = useState<Step>("select-type");
+  const instanceUrl = useSetting("site-url");
+
+  const [currentStep, setCurrentStep] = useState<Step>("select-embed-type");
+
   const [options, setOptions] = useState<EmbedPreviewOptions>({
     selectedType: "dashboard",
     settings: {
+      apiKey: "",
+      instanceUrl,
+
       // Default to dashboard with common settings
-      dashboardId: 1, // Default dashboard for preview
+      dashboardId: 1,
       isDrillThroughEnabled: false,
       withDownloads: false,
       withTitle: true,
@@ -47,23 +58,27 @@ export const SdkIframeEmbedSetupProvider = ({
   };
 
   const handleNext = () => {
-    if (currentStep === "select-type") {
-      setCurrentStep("select-entity");
-    } else if (currentStep === "select-entity") {
-      setCurrentStep("configure");
-    } else if (currentStep === "configure") {
-      setCurrentStep("get-code");
+    const currentIndex = SDK_IFRAME_EMBED_STEPS.indexOf(currentStep);
+    if (currentIndex < SDK_IFRAME_EMBED_STEPS.length - 1) {
+      setCurrentStep(SDK_IFRAME_EMBED_STEPS[currentIndex + 1]);
     }
   };
 
   const handleBack = () => {
-    if (currentStep === "select-entity") {
-      setCurrentStep("select-type");
-    } else if (currentStep === "configure") {
-      setCurrentStep("select-entity");
-    } else if (currentStep === "get-code") {
-      setCurrentStep("configure");
+    const currentIndex = SDK_IFRAME_EMBED_STEPS.indexOf(currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(SDK_IFRAME_EMBED_STEPS[currentIndex - 1]);
     }
+  };
+
+  const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) => {
+    updateOptions({
+      ...options,
+      settings: {
+        ...options.settings,
+        ...nextSettings,
+      } as SdkIframeEmbedSettings,
+    });
   };
 
   const canGoNext = !(
@@ -72,13 +87,15 @@ export const SdkIframeEmbedSetupProvider = ({
     !options.settings.questionId &&
     options.settings.template !== "exploration"
   );
-  const canGoBack = currentStep !== "select-type";
+
+  const canGoBack = currentStep !== "select-embed-type";
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
     options,
     setCurrentStep,
     updateOptions,
+    updateSettings,
     handleNext,
     handleBack,
     canGoNext,

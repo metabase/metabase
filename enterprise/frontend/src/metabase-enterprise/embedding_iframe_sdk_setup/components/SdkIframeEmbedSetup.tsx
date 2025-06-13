@@ -15,8 +15,8 @@ import {
   SdkIframeEmbedSetupProvider,
   useSdkIframeEmbedSetupContext,
 } from "./SdkIframeEmbedSetupContext";
+import { SelectEmbedTypeStep } from "./SelectEmbedTypeStep";
 import { SelectEntityStep } from "./SelectEntityStep";
-import { SelectTypeStep } from "./SelectTypeStep";
 
 const SdkIframeEmbedSetupContent = () => {
   const [sidebarWidth, setSidebarWidth] = useState(400);
@@ -24,7 +24,7 @@ const SdkIframeEmbedSetupContent = () => {
     useSdkIframeEmbedSetupContext();
 
   const StepContent = match(currentStep)
-    .with("select-type", () => SelectTypeStep)
+    .with("select-embed-type", () => SelectEmbedTypeStep)
     .with("select-entity", () => SelectEntityStep)
     .with("configure", () => ConfigureStep)
     .with("get-code", () => GetCodeStep)

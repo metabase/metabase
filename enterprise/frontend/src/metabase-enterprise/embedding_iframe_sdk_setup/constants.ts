@@ -1,4 +1,4 @@
-import type { EmbedParameter, EmbedType } from "./types";
+import type { EmbedParameter, EmbedType, Step } from "./types";
 
 export const EMBED_TYPES = [
   {
@@ -16,6 +16,13 @@ export const EMBED_TYPES = [
     title: "Exploration",
     description: "Embed an interactive data exploration experience",
   },
+];
+
+export const SDK_IFRAME_EMBED_STEPS: Step[] = [
+  "select-embed-type",
+  "select-entity",
+  "configure",
+  "get-code",
 ];
 
 export const EXAMPLE_PARAMETERS: EmbedParameter[] = [
