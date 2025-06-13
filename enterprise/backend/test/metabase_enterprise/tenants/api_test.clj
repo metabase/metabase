@@ -81,12 +81,15 @@
   (testing "I can list deactivated tenants only"
     (mt/with-temp [:model/Tenant {id1 :id} {:name "Name 1" :slug "slug-1"}
                    :model/User {} {:tenant_id id1}
-                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2" :is_active false}]
+                   :model/Tenant {id2 :id} {:name "Name 2" :slug "slug-2" :is_active false}
+                   :model/User {} {:tenant_id id2}]
       (is (=? {:data [{:id id1 :member_count 1}
-                      {:id id2 :member_count 0}]}
+                      {:id id2 :member_count 1}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/")))
       (is (=? {:data [{:id id1 :member_count 1}
-                      {:id id2 :member_count 0}]}
+                      {:id id2 :member_count 1}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=all")))
-      (is (=? {:data [{:id id2 :member_count 0}]}
+      (is (=? {:data [{:id id1 :member_count 1}]}
+              (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=active")))
+      (is (=? {:data [{:id id2 :member_count 1}]}
               (mt/user-http-request :crowberto :get 200 "ee/tenants/?status=deactivated"))))))

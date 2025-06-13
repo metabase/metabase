@@ -35,13 +35,14 @@
   "Get all tenants"
   [_
    {:keys [status]} :- [:map
-                        [:status {:default "all"} [:enum "all" "deactivated"]]]
+                        [:status {:default "all"} [:enum "all" "deactivated" "active"]]]
    _]
   {:data (present-tenants
           (t2/select :model/Tenant (cond-> {:order-by [[:id :asc]]}
                                      (request/paged?) (assoc :limit (request/limit) :offset (request/offset))
                                      true (assoc :where (case status
                                                           "all" [:inline [:= 1 1]]
+                                                          "active" [:= :is_active true]
                                                           "deactivated" [:= :is_active false])))))})
 
 (api.macros/defendpoint :put ["/:id" :id #"[^/]+"]
