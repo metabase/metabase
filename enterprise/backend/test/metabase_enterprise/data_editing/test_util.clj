@@ -22,7 +22,8 @@
   (let [table (sync/create-table! db {:name table-name
                                       ;; todo figure out how to determine default schema from driver
                                       :schema (case (:engine db) :postgres "public" nil)
-                                      :display_name table-name})]
+                                      :display_name table-name
+                                      :field_order  :database})]
     (sync/sync-fields-for-table! db table)
     (:id table)))
 
