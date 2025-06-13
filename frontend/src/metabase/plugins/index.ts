@@ -752,7 +752,7 @@ export const PLUGIN_TENANTS = {
   EditUserStrategySettingsButton: PluginPlaceholder,
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
   TenantDisplayName: (_props: any) => null as React.ReactElement | null,
-  isExternalUsersGroup: (_group: Pick<Group, "name">) => false,
+  isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
   isTenantCollection: (_collection: Collection) => false,
 };

@@ -8,7 +8,7 @@ import type { GroupTableAccessPolicy, Table, Tenant } from "metabase-types/api";
 import type { GroupTableAccessPolicyParams } from "./types";
 
 const TENANT_SLUG_ATTRIBUTE = "{{ tenant_slug }}";
-const TENANT_SLUG_DISPLAY_NAME = "@tenant";
+const TENANT_SLUG_DISPLAY_NAME = "@tenant.name";
 const USER_ATTRIBUTE_DISPLAY_MAP: Record<string, string> = {
   [TENANT_SLUG_ATTRIBUTE]: TENANT_SLUG_DISPLAY_NAME,
 };
@@ -41,8 +41,8 @@ export const renderUserAttributesForSelect: SelectProps["renderOption"] = ({
   option,
 }) => (
   <Group flex="1" p="0.5rem" gap="0.25rem">
-    {option.label}
     {GET_USER_ATTRIBUTE_ICON_MAP()[option.value]}
+    {option.label}
   </Group>
 );
 
@@ -65,7 +65,7 @@ export const getDisabledTenantUserAttribute = (
         key: TENANT_SLUG_DISPLAY_NAME,
         value: tenant.slug,
         keyOpts: {
-          rightSection: (
+          leftSection: (
             <Tooltip label={t`This attribute is system defined`}>
               <Icon name="info" c="text-light" />
             </Tooltip>

@@ -1,3 +1,14 @@
+const {
+  WRITABLE_DB_ID,
+  SAMPLE_DB_ID,
+  SAMPLE_DB_TABLES,
+} = require("e2e/support/cypress_data");
+const {
+  COLLECTION_GROUP_ID,
+} = require("e2e/support/cypress_sample_instance_data");
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
+
 const { H } = cy;
 
 describe("Tenants - management", () => {
@@ -55,7 +66,7 @@ describe("Tenants - management", () => {
 
     H.modal().within(() => {
       cy.findByTestId("mapping-editor").within(() => {
-        cy.findByDisplayValue("Tenant").should("exist");
+        cy.findByDisplayValue("@tenant.name").should("exist");
         cy.findByDisplayValue("eagle").should("exist");
 
         cy.findByRole("button", { name: /Add an attribute/i }).click();
@@ -64,10 +75,58 @@ describe("Tenants - management", () => {
         });
 
         cy.findByText("This is a restricted key").should("exist");
-        cy.button("close").click();
+        cy.button(/close/).click();
       });
 
       cy.button("Create").click();
     });
+  });
+
+  it("should show the tenant attribute in user attribute lists when multi tenancy is enabled", () => {
+    H.restore("postgres-writable");
+
+    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+
+    cy.findByRole("switch", { name: /model actions/i }).click({ force: true });
+    cy.findByRole("switch", { name: /database routing/i }).click({
+      force: true,
+    });
+
+    cy.findByPlaceholderText("Choose an attribute").click();
+
+    H.popover().findByText("@tenant.name").should("not.be.visible");
+    cy.visit(
+      `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
+    );
+    cy.findByPlaceholderText("Pick a user attribute").click();
+
+    H.popover().findByText("@tenant.name").should("not.be.visible");
+    cy.visit(
+      `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
+    );
+
+    cy.findByPlaceholderText("Pick a user attribute").click();
+    H.popover().findByText("@tenant.name").should("not.be.visible");
+
+    cy.request("PUT", "/api/setting/use-tenants", { value: true });
+
+    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    cy.findByRole("switch", { name: /database routing/i }).click({
+      force: true,
+    });
+    cy.findByPlaceholderText("Choose an attribute").click();
+    H.popover().findByText("@tenant.name").should("be.visible");
+
+    cy.visit(
+      `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
+    );
+    cy.findByPlaceholderText("Pick a user attribute").click();
+    H.popover().findByText("@tenant.name").should("be.visible");
+
+    cy.visit(
+      `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
+    );
+    cy.findByPlaceholderText("Pick a user attribute").click();
+    H.popover().findByText("@tenant.name").should("be.visible");
   });
 });

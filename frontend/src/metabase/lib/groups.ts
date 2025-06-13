@@ -13,23 +13,23 @@ const SPECIAL_GROUP_NAMES = new Map([
   ["All External Users", t`External Users`],
 ]);
 
-export function isDefaultGroup(group: Pick<Group, "name">) {
-  return group.name === "All Internal Users";
+export function isDefaultGroup(group: Pick<Group, "magic_group_type">) {
+  return group.magic_group_type === "all-internal-users";
 }
 
-export function isAdminGroup(group: Pick<Group, "name">) {
-  return group.name === "Administrators";
+export function isAdminGroup(group: Pick<Group, "magic_group_type">) {
+  return group.magic_group_type === "admin";
 }
 
-export function canEditPermissions(group: Pick<Group, "name">) {
+export function canEditPermissions(group: Pick<Group, "magic_group_type">) {
   return !isAdminGroup(group);
 }
 
-export function canEditMembership(group: Pick<Group, "name">) {
+export function canEditMembership(group: Pick<Group, "magic_group_type">) {
   return !isDefaultGroup(group) && !PLUGIN_TENANTS.isExternalUsersGroup(group);
 }
 
-export function getGroupColor(group: Pick<Group, "name">) {
+export function getGroupColor(group: Pick<Group, "magic_group_type">) {
   if (isAdminGroup(group)) {
     return color("filter");
   } else if (isDefaultGroup(group)) {
