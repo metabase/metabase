@@ -218,7 +218,7 @@ const EngineCard = ({
 
   return (
     <EngineCardRoot
-      role="option"
+      role="listitem"
       id={getListOptionId(rootId, option)}
       isActive={isActive}
       onClick={handleClick}
