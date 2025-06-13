@@ -54,7 +54,6 @@ export interface SelectProps<
 
   // AccordionList props
   searchProp?: string;
-  searchCaseInsensitive?: boolean;
   searchPlaceholder?: string;
   globalSearch?: boolean;
   hideEmptySectionsInSearch?: boolean;
@@ -242,7 +241,6 @@ class BaseSelect<
       containerClassName,
       placeholder,
       searchProp,
-      searchCaseInsensitive,
       searchPlaceholder,
       hideEmptySectionsInSearch,
       isInitiallyOpen,
@@ -316,7 +314,6 @@ class BaseSelect<
           onChange={this.handleChange}
           searchable={!!searchProp}
           searchProp={searchProp}
-          searchCaseInsensitive={searchCaseInsensitive}
           searchPlaceholder={searchPlaceholder}
           globalSearch={this.props.globalSearch}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}

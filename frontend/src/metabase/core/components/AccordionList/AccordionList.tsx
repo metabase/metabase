@@ -42,7 +42,6 @@ type Props<
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
   openSection?: number;
   role?: string;
-  searchCaseInsensitive?: boolean;
   searchProp?: string | string[];
   searchable?: boolean | ((section: Section) => boolean | undefined);
   sections: TSection[];
@@ -251,18 +250,12 @@ export class AccordionList<
   };
 
   searchPredicate = (item: TItem, searchPropMember: string) => {
-    const { searchCaseInsensitive = true } = this.props;
     const path = searchPropMember.split(".");
 
-    let { searchText } = this.state;
-    let itemText = String(getIn(item, path) || "");
+    const { searchText } = this.state;
+    const itemText = String(getIn(item, path) || "");
 
-    if (searchCaseInsensitive) {
-      itemText = itemText.toLowerCase();
-      searchText = searchText.toLowerCase();
-    }
-
-    return itemText.indexOf(searchText) >= 0;
+    return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
   };
 
   checkSectionHasItemsMatchingSearch = (
