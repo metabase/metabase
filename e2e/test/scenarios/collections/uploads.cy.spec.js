@@ -156,6 +156,17 @@ H.describeWithSnowplow(
             H.queryWritableDB(tableQuery, dialect).then((result) => {
               expect(result.rows.length).to.equal(0);
             });
+
+            cy.log("metabase#55382");
+            cy.findByRole("dialog", { name: "Upload error details" })
+              .findByRole("button", { name: "Close" })
+              .click();
+
+            H.openCollectionMenu();
+            H.popover().findByText("Move to trash").click();
+            cy.findByRole("dialog", { name: "Upload error details" }).should(
+              "not.exist",
+            );
           });
         });
 
