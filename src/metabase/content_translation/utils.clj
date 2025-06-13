@@ -2,14 +2,16 @@
   (:require
    [clojure.string :as str]
    [metabase.content-translation.models :as ct]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]))
 
-(defn- translate-content-string
+(defn translate-content-string
   "Translate the given string using the content-translation dictionary."
   [msgid]
   (let [locale (i18n/user-locale-string)
         translations (ct/get-translations locale)
         translation (some #(when (= (:msgid %) (str/trim msgid)) %) translations)]
+    (log/info "*** translation of content string:" translation)
     (if translation
       (:msgstr translation)
       msgid)))
