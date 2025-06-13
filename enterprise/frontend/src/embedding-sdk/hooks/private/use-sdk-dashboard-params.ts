@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import { pick } from "underscore";
 
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
@@ -10,6 +9,7 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
 
@@ -32,7 +32,7 @@ export type SdkDashboardDisplayProps = {
    * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    */
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
 
   /**
    * Whether the dashboard should display a title.
@@ -60,7 +60,7 @@ export type SdkDashboardDisplayProps = {
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   withDownloads,
   withTitle,
   hiddenParameters,
@@ -68,7 +68,7 @@ export const useSdkDashboardParams = ({
 }: SdkDashboardDisplayProps) => {
   const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
-    id: initialDashboardId,
+    id: dashboardIdProp,
   });
 
   // temporary name until we change `hideDownloadButton` to `downloads`

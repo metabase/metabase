@@ -1,8 +1,15 @@
 (ns metabase.lib.walk-test
   (:require
-   [clojure.test :refer [are deftest is testing]]
+   #?(:clj [metabase.util.malli.fn :as mu.fn])
+   [clojure.test :refer [are deftest is testing use-fixtures]]
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli.registry :as mr]))
+
+(use-fixtures :each (fn [thunk]
+                      ;;; disable schema enforcement so we don't need mega queries to test stuff here.
+                      #?(:clj (binding [mu.fn/*enforce* false]
+                                (thunk))
+                         :cljs (thunk))))
 
 (deftest ^:parallel walk-test
   (let [query {:stages [{:joins [{:stages [{:source-card 1}]}]}]}

@@ -281,8 +281,8 @@ export function SetByEnvVarWrapper<SettingName extends SettingKey>({
 }: SetByEnvVarWrapperProps<SettingName>) {
   if (
     settingDetails &&
-    settingDetails.is_env_setting &&
-    settingDetails.env_name
+    settingDetails?.is_env_setting &&
+    settingDetails?.env_name
   ) {
     return (
       <Box mb="lg">
