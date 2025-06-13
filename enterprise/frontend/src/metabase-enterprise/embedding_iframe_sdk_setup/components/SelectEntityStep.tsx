@@ -1,18 +1,42 @@
+import cx from "classnames";
 import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
-import { ActionIcon, Card, Group, Icon, Text } from "metabase/ui";
+import { colors } from "metabase/lib/colors";
+import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
+import S from "./SelectEntityStep.module.css";
+
+type RecentDashboard = Pick<Dashboard, "id" | "name" | "description"> & {
+  updatedAt?: string;
+};
+
+type RecentQuestion = {
+  id: number;
+  name: string;
+  description?: string | null;
+  updatedAt?: string;
+};
 
 export const SelectEntityStep = () => {
   const { options, updateSettings } = useSdkIframeEmbedSetupContext();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [recentDashboards, setRecentDashboards] = useState<RecentDashboard[]>(
+    [],
+  );
+  const [recentQuestions, setRecentQuestions] = useState<RecentQuestion[]>([]);
 
-  const handleEntitySelect = (item: { id: number | string; model: string }) => {
+  const handleEntitySelect = (item: {
+    id: number | string;
+    model: string;
+    name?: string;
+    description?: string | null;
+  }) => {
     const entityId =
       typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
 
@@ -25,6 +49,18 @@ export const SelectEntityStep = () => {
         questionId: undefined,
         template: undefined,
       });
+
+      // Add to recent dashboards history
+      const recentDashboard: RecentDashboard = {
+        id: entityId,
+        name: item.name || `Dashboard ${entityId}`,
+        description: item.description || null,
+      };
+
+      setRecentDashboards((prev) => {
+        const filtered = prev.filter((d) => d.id !== entityId);
+        return [recentDashboard, ...filtered].slice(0, 5);
+      });
     } else if (options.selectedType === "chart") {
       updateSettings({
         ...options.settings,
@@ -33,6 +69,18 @@ export const SelectEntityStep = () => {
         // Clear other entity types
         dashboardId: undefined,
         template: undefined,
+      });
+
+      // Add to recent questions history
+      const recentQuestion: RecentQuestion = {
+        id: entityId,
+        name: item.name || `Question ${entityId}`,
+        description: item.description,
+      };
+
+      setRecentQuestions((prev) => {
+        const filtered = prev.filter((q) => q.id !== entityId);
+        return [recentQuestion, ...filtered].slice(0, 5);
       });
     }
 
@@ -113,6 +161,78 @@ export const SelectEntityStep = () => {
         <Text c="text-medium" mb="md">
           {getEmbedDescription(options.selectedType)}
         </Text>
+
+        {options.selectedType !== "exploration" && (
+          <Stack gap="md">
+            {options.selectedType === "dashboard" &&
+              recentDashboards.length > 0 &&
+              recentDashboards.map((dashboard) => (
+                <Card
+                  key={dashboard.id}
+                  p="md"
+                  className={cx(S.EntityCard, {
+                    [S.EntityCardSelected]:
+                      options.settings.dashboardId === dashboard.id,
+                  })}
+                  onClick={() =>
+                    updateSettings({
+                      ...options.settings,
+                      dashboardId: dashboard.id,
+                      questionId: undefined,
+                      template: undefined,
+                    })
+                  }
+                >
+                  <Group align="start" gap="sm">
+                    <Icon name="dashboard" size={20} color={colors.brand} />
+                    <Stack gap="xs" flex={1}>
+                      <Text fw="bold">{dashboard.name}</Text>
+
+                      {dashboard.description && (
+                        <Text size="sm" c="text-medium">
+                          {dashboard.description}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Group>
+                </Card>
+              ))}
+
+            {options.selectedType === "chart" &&
+              recentQuestions.length > 0 &&
+              recentQuestions.map((question) => (
+                <Card
+                  key={question.id}
+                  p="md"
+                  className={cx(S.EntityCard, {
+                    [S.EntityCardSelected]:
+                      options.settings.questionId === question.id,
+                  })}
+                  onClick={() =>
+                    updateSettings({
+                      ...options.settings,
+                      questionId: question.id,
+                      dashboardId: undefined,
+                      template: undefined,
+                    })
+                  }
+                >
+                  <Group align="start" gap="sm">
+                    <Icon name="bar" size={20} color={colors.brand} />
+                    <Stack gap="xs" flex={1}>
+                      <Text fw="bold">{question.name}</Text>
+
+                      {question.description && (
+                        <Text size="sm" c="text-medium">
+                          {question.description}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Group>
+                </Card>
+              ))}
+          </Stack>
+        )}
       </Card>
 
       {renderPickerModal()}
