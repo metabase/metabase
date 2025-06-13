@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]
    [metabase.actions.args :as actions.args]
-   [metabase.actions.core :as actions.core]
    [metabase.actions.error :as actions.error]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]

@@ -38,7 +38,7 @@
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
   (let [scope {:table-id table-id}]
-    {:created-rows (map :row (:outputs #p (execute!* "data-grid.row/create" scope {} rows)))}))
+    {:created-rows (map :row (:outputs (execute!* "data-grid.row/create" scope {} rows)))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
