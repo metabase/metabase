@@ -54,7 +54,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
   ) : (
     props.rightSection
   );
-  const rightSectionWidth = hasCopyButton ? 40 : props.rightSectionWidth;
+  const rightSectionWidth = hasCopyButton ? 40 : (props.rightSectionWidth ?? 0);
 
   return (
     <TextInput

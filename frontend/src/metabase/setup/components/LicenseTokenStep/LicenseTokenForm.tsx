@@ -80,11 +80,20 @@ export const LicenseTokenForm = ({
                       cursor="pointer"
                       name="info_filled"
                       aria-label={t`Token details information`}
+                      aria-expanded={opened}
                       size={16}
                       c="var(--mb-color-brand)"
                       onMouseEnter={() => debouncedMouseMove(true)}
                       onMouseLeave={() => debouncedMouseMove(false)}
-                    ></Icon>
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          debouncedMouseMove(!opened);
+                        }
+                      }}
+                    />
                   </Popover.Target>
                   <Popover.Dropdown
                     onMouseEnter={() => debouncedMouseMove(true)}
