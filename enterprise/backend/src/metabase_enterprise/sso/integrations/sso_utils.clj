@@ -103,8 +103,8 @@
    reactivate? :- ms/BooleanValue]
   (when-let [{:keys [id] :as user} (require-is-active (fetch-user email) reactivate?)]
     (assert-tenant-ok! user-from-sso user)
-    (let [;; existing behavior: don't replace existing values with `nil`
-          user-data (into {} (remove nil? (merge user-from-sso {:is_active true})))]
+    (let [;; don't replace existing values with `nil`
+          user-data (into {} (remove (comp nil? second) (merge user-from-sso {:is_active true})))]
       (if (= (select-keys user user-keys)
              user-data)
         user
