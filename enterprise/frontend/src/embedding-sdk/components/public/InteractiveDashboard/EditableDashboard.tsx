@@ -93,7 +93,7 @@ const EditableDashboardInner = ({
  * @param props
  */
 export const EditableDashboard = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withDownloads = false,
   drillThroughQuestionHeight,
@@ -125,7 +125,7 @@ export const EditableDashboard = ({
     isLoading,
     dashboardId,
   } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
+    dashboardId: dashboardIdProp,
     withDownloads,
     withTitle: true,
     hiddenParameters: undefined,
@@ -160,7 +160,7 @@ export const EditableDashboard = ({
   if (!dashboardId || errorPage?.status === 404) {
     return (
       <StyledPublicComponentWrapper className={className} style={style}>
-        <DashboardNotFoundError id={initialDashboardId} />
+        <DashboardNotFoundError id={dashboardIdProp} />
       </StyledPublicComponentWrapper>
     );
   }
