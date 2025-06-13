@@ -1,13 +1,14 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useListRecentsQuery } from "metabase/api";
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import { colors } from "metabase/lib/colors";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, RecentItem } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 import S from "./SelectEntityStep.module.css";
@@ -26,10 +27,67 @@ type RecentQuestion = {
 export const SelectEntityStep = () => {
   const { options, updateSettings } = useSdkIframeEmbedSetupContext();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  const [recentDashboards, setRecentDashboards] = useState<RecentDashboard[]>(
-    [],
+
+  const { data: recentItems } = useListRecentsQuery(
+    { context: ["views", "selections"] },
+    {
+      refetchOnMountOrArgChange: true,
+    },
   );
-  const [recentQuestions, setRecentQuestions] = useState<RecentQuestion[]>([]);
+
+  const [localRecentDashboards, setLocalRecentDashboards] = useState<
+    RecentDashboard[]
+  >([]);
+  const [localRecentQuestions, setLocalRecentQuestions] = useState<
+    RecentQuestion[]
+  >([]);
+
+  // Filter and merge API recent items with local selections
+  const recentDashboards = useMemo(() => {
+    const apiDashboards = (recentItems || [])
+      .filter((item): item is RecentItem => item.model === "dashboard")
+      .map(
+        (item): RecentDashboard => ({
+          id: item.id,
+          name: item.name,
+          description: item.description ?? null,
+          updatedAt: item.timestamp,
+        }),
+      )
+      .slice(0, 5);
+
+    // Merge local selections with API items, prioritizing local (more recent)
+    const localIds = new Set(localRecentDashboards.map((d) => d.id));
+    const mergedItems = [
+      ...localRecentDashboards,
+      ...apiDashboards.filter((d) => !localIds.has(d.id)),
+    ].slice(0, 5);
+
+    return mergedItems;
+  }, [recentItems, localRecentDashboards]);
+
+  const recentQuestions = useMemo(() => {
+    const apiQuestions = (recentItems || [])
+      .filter((item): item is RecentItem => item.model === "card")
+      .map(
+        (item): RecentQuestion => ({
+          id: item.id,
+          name: item.name,
+          description: item.description ?? null,
+          updatedAt: item.timestamp,
+        }),
+      )
+      .slice(0, 5);
+
+    // Merge local selections with API items, prioritizing local (more recent)
+    const localIds = new Set(localRecentQuestions.map((q) => q.id));
+    const mergedItems = [
+      ...localRecentQuestions,
+      ...apiQuestions.filter((q) => !localIds.has(q.id)),
+    ].slice(0, 5);
+
+    return mergedItems;
+  }, [recentItems, localRecentQuestions]);
 
   const handleEntitySelect = (item: {
     id: number | string;
@@ -57,7 +115,7 @@ export const SelectEntityStep = () => {
         description: item.description || null,
       };
 
-      setRecentDashboards((prev) => {
+      setLocalRecentDashboards((prev) => {
         const filtered = prev.filter((d) => d.id !== entityId);
         return [recentDashboard, ...filtered].slice(0, 5);
       });
@@ -78,7 +136,7 @@ export const SelectEntityStep = () => {
         description: item.description,
       };
 
-      setRecentQuestions((prev) => {
+      setLocalRecentQuestions((prev) => {
         const filtered = prev.filter((q) => q.id !== entityId);
         return [recentQuestion, ...filtered].slice(0, 5);
       });
