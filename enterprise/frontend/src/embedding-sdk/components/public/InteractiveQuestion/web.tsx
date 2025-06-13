@@ -5,6 +5,51 @@ import { MetabaseProvider } from "../MetabaseProvider";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
+interface WebComponentInstance extends HTMLElement {
+  connectedCallback?(): void;
+}
+
+function injectStyles(
+  Constructor: CustomElementConstructor,
+): CustomElementConstructor {
+  return class extends (Constructor as new () => WebComponentInstance) {
+    private stylesInjected = false;
+
+    connectedCallback() {
+      // call any existing connectedCallback
+      super.connectedCallback?.();
+
+      if (this.stylesInjected) {
+        return;
+      }
+
+      this.stylesInjected = true;
+
+      const sheets: CSSStyleSheet[] = [];
+
+      document
+        .querySelectorAll<HTMLStyleElement>(
+          `
+              style[data-mb-styles="true"]
+            `,
+        )
+        .forEach((node) => {
+          const css = node.textContent || "";
+          const sheet = new CSSStyleSheet();
+          sheet.replaceSync(css);
+          sheets.push(sheet);
+        });
+
+      if (this.shadowRoot) {
+        this.shadowRoot.adoptedStyleSheets = [
+          ...this.shadowRoot.adoptedStyleSheets,
+          ...sheets,
+        ];
+      }
+    }
+  } as CustomElementConstructor;
+}
+
 /**
  * Factory function to create a configurable MbProvider
  * @param {Object} config Configuration options
@@ -93,12 +138,7 @@ function createMetabaseProvider(config = {}) {
 // Create container with config
 const MbProvider = createMetabaseProvider({
   props: {
-    include: [
-      "metabase-instance-url",
-      "api-key",
-      "auth-provider-uri",
-      "fetch-request-token",
-    ],
+    include: ["metabase-instance-url", "api-key", "fetch-request-token"],
   },
   components: [
     "mb-question",
@@ -110,30 +150,16 @@ const MbProvider = createMetabaseProvider({
   ],
 });
 
-// Register the element
-customElements.define("mb-provider", MbProvider);
-
-const MbQuestion = (shadow) =>
-  r2wc(
-    ({
-      metabaseInstanceUrl,
-      apiKey,
-      authProviderUri,
-      fetchRequestToken,
-      questionId,
-    }) => {
-      console.log({
-        metabaseInstanceUrl,
-        authProviderUri,
-        fetchRequestToken,
-        questionId,
-      });
+const MbQuestion = (
+  shadow: "open" | "closed" | undefined,
+): CustomElementConstructor => {
+  const Constructor = r2wc(
+    ({ metabaseInstanceUrl, apiKey, fetchRequestToken, questionId }) => {
       return (
         <MetabaseProvider
           authConfig={{
             metabaseInstanceUrl,
             apiKey,
-            authProviderUri,
             fetchRequestToken,
           }}
           theme={{ fontFamily: "Lato" }}
@@ -147,26 +173,23 @@ const MbQuestion = (shadow) =>
       props: {
         questionId: "number",
         metabaseInstanceUrl: "string",
-        authProviderUri: "string",
         fetchRequestToken: "function",
       },
     },
   );
 
-const MbDashboard = (shadow) =>
-  r2wc(
-    ({
-      metabaseInstanceUrl,
-      apiKey,
-      authProviderUri,
-      fetchRequestToken,
-      dashboardId,
-    }) => (
+  return injectStyles(Constructor);
+};
+
+const MbDashboard = (
+  shadow: "open" | "closed" | undefined,
+): CustomElementConstructor => {
+  const Constructor = r2wc(
+    ({ metabaseInstanceUrl, apiKey, fetchRequestToken, dashboardId }) => (
       <MetabaseProvider
         authConfig={{
           metabaseInstanceUrl,
           apiKey,
-          authProviderUri,
           fetchRequestToken,
         }}
         theme={{ fontFamily: "Lato" }}
@@ -180,12 +203,15 @@ const MbDashboard = (shadow) =>
         dashboardId: "number",
         metabaseInstanceUrl: "string",
         apiKey: "string",
-        authProviderUri: "string",
         fetchRequestToken: "function",
       },
     },
   );
 
+  return injectStyles(Constructor);
+};
+
+customElements.define("mb-provider", MbProvider);
 customElements.define("mb-question-open", MbQuestion("open"));
 customElements.define("mb-question-closed", MbQuestion("closed"));
 customElements.define("mb-question", MbQuestion(undefined));

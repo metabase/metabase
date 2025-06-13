@@ -37,8 +37,6 @@ import {
 } from "../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../private/SdkUsageProblem";
 
-import { getSdkStyles } from "./InteractiveQuestion/get-styles-manifest";
-
 import "metabase/css/index.module.css";
 import "metabase/css/vendor.css";
 
@@ -114,17 +112,9 @@ export const MetabaseProviderInternal = ({
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily } = theme ?? {};
 
-  // Container for Emotion styles
   const emotionStyleContainerRef = useRef<HTMLDivElement>(null);
-  const cssModuleStyleContainerRef = useRef<HTMLStyleElement>(null);
 
   useInitData({ authConfig, allowConsoleLog });
-
-  useEffect(() => {
-    if (cssModuleStyleContainerRef.current) {
-      cssModuleStyleContainerRef.current.textContent = getSdkStyles();
-    }
-  }, []);
 
   useEffect(() => {
     if (fontFamily) {
@@ -165,11 +155,6 @@ export const MetabaseProviderInternal = ({
             ref={emotionStyleContainerRef}
             data-style-container="emotion"
           ></Box>
-
-          <style
-            ref={cssModuleStyleContainerRef}
-            data-style-container="css-module"
-          />
 
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
 

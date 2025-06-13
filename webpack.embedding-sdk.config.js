@@ -6,8 +6,6 @@ const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const { WebpackManifestPlugin } = require("webpack-manifest-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 const mainConfig = require("./webpack.config");
 const { resolve } = require("path");
@@ -86,14 +84,12 @@ module.exports = (env) => {
           resourceQuery: { not: [/component|source/] },
         },
         {
-          test: /sdk\-styles\.css$/,
-          type: "asset/source",
-        },
-        {
           test: /\.css$/,
-          exclude: /sdk\-styles\.css$/,
           use: [
-            { loader: MiniCssExtractPlugin.loader },
+            {
+              loader: "style-loader",
+              options: { attributes: { "data-mb-styles": true } },
+            },
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
           ],
@@ -149,14 +145,6 @@ module.exports = (env) => {
     },
 
     plugins: [
-      // Style extraction for web components
-      new MiniCssExtractPlugin({
-        filename: "sdk-styles.css",
-        chunkFilename: "[id].css",
-      }),
-      new WebpackManifestPlugin({
-        fileName: "manifest.json",
-      }),
       new webpack.BannerPlugin({
         banner:
           "/*\n* This file is subject to the terms and conditions defined in\n * file 'LICENSE.txt', which is part of this source code package.\n */\n",
@@ -212,8 +200,6 @@ module.exports = (env) => {
 
     // Allows importing side effects that applies only to the SDK.
     "sdk-specific-imports": SDK_SRC_PATH + "/lib/sdk-specific-imports.ts",
-
-    "@sdk-styles": BUILD_PATH + "/dist/sdk-styles.css",
   };
 
   if (config.cache) {

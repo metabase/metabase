@@ -139,7 +139,6 @@
     "ttag": "1.7.21",
     "typescript": "^5.4.5",
     "underscore": "~1.13.3",
-    "webpack-manifest-plugin": "^5.0.1",
     "yup": "^0.32.11"
   },
   "devDependencies": {
@@ -428,7 +427,6 @@
     "embedding-sdk:generate-package": "node ./bin/embedding-sdk/generate-sdk-package-files.js",
     "embedding-sdk:generate-changelog": "yarn conventional-changelog --config enterprise/frontend/src/embedding-sdk/conventional-changelog-config.js",
     "embedding-sdk:publish": "cd ./resources/embedding-sdk && npm publish",
-    "embedding-sdk:generate-web-components": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-web-components.ts",
     "embedding-sdk:generate-nextjs-compat": "tsx enterprise/frontend/src/embedding-sdk/bin/generate-nextjs-compat.ts",
     "embedding-sdk:test-unit": "yarn test-unit enterprise/frontend/src/embedding-sdk/",
     "embedding-sdk:tsc": "tsc --project tsconfig.sdk.json",

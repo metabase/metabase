@@ -3,6 +3,7 @@ import { useMemo } from "react";
 
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { useSelector } from "metabase/lib/redux";
+import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { getFontFiles } from "metabase/styled-components/selectors";
 
 /**
@@ -32,5 +33,9 @@ export const SdkFontsGlobalStyles = ({ baseUrl }: { baseUrl: string }) => {
     [fontFiles, baseUrl],
   );
 
-  return <Global styles={fontStyles} />;
+  return (
+    <EmotionCacheProvider cacheKey="emotion-fonts">
+      <Global styles={fontStyles} />
+    </EmotionCacheProvider>
+  );
 };
