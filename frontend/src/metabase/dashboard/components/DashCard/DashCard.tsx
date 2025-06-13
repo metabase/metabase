@@ -347,7 +347,8 @@ function DashCardInner({
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
-          CS.rounded,
+          CS.roundedSm,
+          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
@@ -367,9 +368,6 @@ function DashCardInner({
           return {
             "--slow-card-border-color": theme.fn.themeColor("accent4"),
             ...(border && { border }),
-            ...(!border && {
-              boxShadow: "0 1px 3px var(--mb-color-shadow)",
-            }),
           };
         }}
         ref={cardRootRef}

@@ -420,7 +420,9 @@
 
 (defn kondo-config-diff
   []
-  (-> (ddiff/diff (kondo-config) (generate-config))
+  (-> (ddiff/diff
+       (update-vals (kondo-config) #(dissoc % :team))
+       (generate-config))
       ddiff/minimize
       kondo-config-diff-ignore-any
       ddiff/minimize))
