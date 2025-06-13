@@ -86,7 +86,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Select Tables",
+        "Generate starter content",
       );
     });
 
@@ -115,12 +115,6 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     });
 
     cy.log("4: Processing step");
-    sidebar().within(() => {
-      cy.findByRole("listitem", { current: "step" }).should(
-        "have.text",
-        "Processing",
-      );
-    });
 
     step().within(() => {
       cy.findByRole("heading", { name: "Setting Up Your Analytics" }).should(
@@ -137,7 +131,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Final Steps",
+        "Add to your app",
       );
     });
 
