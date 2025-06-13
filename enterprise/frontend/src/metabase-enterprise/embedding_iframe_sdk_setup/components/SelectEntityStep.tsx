@@ -8,8 +8,6 @@ import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import { colors } from "metabase/lib/colors";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 
-import type { RecentDashboard, RecentQuestion } from "../hooks/useRecentItems";
-
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 import S from "./SelectEntityStep.module.css";
 
@@ -24,6 +22,38 @@ export const SelectEntityStep = () => {
   } = useSdkIframeEmbedSetupContext();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
+  const updateEntitySettings = (
+    type: "dashboard" | "chart",
+    entityId: number,
+  ) => {
+    if (type === "dashboard") {
+      updateSettings({
+        ...options.settings,
+        dashboardId: entityId,
+
+        // Clear the parameters
+        initialParameters: {},
+        hiddenParameters: [],
+
+        // Clear other entity types
+        questionId: undefined,
+        template: undefined,
+      });
+    } else if (type === "chart") {
+      updateSettings({
+        ...options.settings,
+        questionId: entityId,
+
+        // Clear the parameters
+        initialSqlParameters: {},
+
+        // Clear other entity types
+        dashboardId: undefined,
+        template: undefined,
+      });
+    }
+  };
+
   const handleEntitySelect = (item: {
     id: number | string;
     model: string;
@@ -34,41 +64,21 @@ export const SelectEntityStep = () => {
       typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
 
     if (options.selectedType === "dashboard") {
-      updateSettings({
-        ...options.settings,
-        dashboardId: entityId,
+      updateEntitySettings("dashboard", entityId);
 
-        // Clear other entity types
-        questionId: undefined,
-        template: undefined,
-      });
-
-      // Add to recent dashboards history
-      const recentDashboard: RecentDashboard = {
+      addRecentDashboard({
         id: entityId,
         name: item.name || `Dashboard ${entityId}`,
         description: item.description || null,
-      };
-
-      addRecentDashboard(recentDashboard);
-    } else if (options.selectedType === "chart") {
-      updateSettings({
-        ...options.settings,
-        questionId: entityId,
-
-        // Clear other entity types
-        dashboardId: undefined,
-        template: undefined,
       });
+    } else if (options.selectedType === "chart") {
+      updateEntitySettings("chart", entityId);
 
-      // Add to recent questions history
-      const recentQuestion: RecentQuestion = {
+      addRecentQuestion({
         id: entityId,
         name: item.name || `Question ${entityId}`,
         description: item.description,
-      };
-
-      addRecentQuestion(recentQuestion);
+      });
     }
 
     setIsPickerOpen(false);
@@ -162,12 +172,7 @@ export const SelectEntityStep = () => {
                       options.settings.dashboardId === dashboard.id,
                   })}
                   onClick={() =>
-                    updateSettings({
-                      ...options.settings,
-                      dashboardId: dashboard.id,
-                      questionId: undefined,
-                      template: undefined,
-                    })
+                    updateEntitySettings("dashboard", dashboard.id)
                   }
                 >
                   <Group align="start" gap="sm">
@@ -195,14 +200,7 @@ export const SelectEntityStep = () => {
                     [S.EntityCardSelected]:
                       options.settings.questionId === question.id,
                   })}
-                  onClick={() =>
-                    updateSettings({
-                      ...options.settings,
-                      questionId: question.id,
-                      dashboardId: undefined,
-                      template: undefined,
-                    })
-                  }
+                  onClick={() => updateEntitySettings("chart", question.id)}
                 >
                   <Group align="start" gap="sm">
                     <Icon name="bar" size={20} color={colors.brand} />
