@@ -26,6 +26,7 @@ A lightweight question component. Use this component when you want to display re
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
 #### API Reference
+
 - [Component](./api/StaticQuestion.html)
 - [Props](./api/StaticQuestionProps.html)
 
@@ -39,14 +40,15 @@ The component has a default height, which can be customized by using the `height
 
 {% include_file "{{ dirname }}/api/snippets/StaticQuestionProps.md" snippet="properties" %}
 
-### `InteractiveQuestion`
+### `Question`
 
 Use this component when you want to allow people to explore their data and customize question layout.
 
 ![Interactive question](../images/interactive-question.png)
 
 #### API Reference
-- [Component](./api/InteractiveQuestion.html)
+
+- [Component](./api/Question.html)
 - [Props](./api/InteractiveQuestionProps.html)
 
 #### Example
@@ -73,13 +75,13 @@ You can pass parameter values to questions defined with SQL via the `initialSqlP
 
 By default, the Embedded analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
 
-Here's an example of using the `InteractiveQuestion` component with its default layout:
+Here's an example of using the `Question` component with its default layout:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-default-interactive-question" %}
 ```
 
-To customize the layout, use namespaced components within the `InteractiveQuestion` component. For example:
+To customize the layout, use namespaced components within the `Question` component. For example:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/customize-interactive-question.tsx" snippet="example-customized-interactive-question" %}
@@ -87,29 +89,30 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 
 ### Interactive question components
 
-These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
+These components are available via the `Question` namespace (e.g., `<Question.Filter />`).
 
 #### API Reference:
-- [InteractiveQuestion.BackButton](./api/InteractiveQuestion.html#backbutton)
-- [InteractiveQuestion.Breakout](./api/InteractiveQuestion.html#breakout)
-- [InteractiveQuestion.BreakoutDropdown](./api/InteractiveQuestion.html#breakoutdropdown)
-- [InteractiveQuestion.ChartTypeDropdown](./api/InteractiveQuestion.html#charttypedropdown)
-- [InteractiveQuestion.ChartTypeSelector](./api/InteractiveQuestion.html#charttypeselector)
-- [InteractiveQuestion.Editor](./api/InteractiveQuestion.html#editor)
-- [InteractiveQuestion.EditorButton](./api/InteractiveQuestion.html#editorbutton)
-- [InteractiveQuestion.Filter](./api/InteractiveQuestion.html#filter)
-- [InteractiveQuestion.FilterDropdown](./api/InteractiveQuestion.html#filterdropdown)
-- [InteractiveQuestion.QuestionSettings](./api/InteractiveQuestion.html#questionsettings)
-- [InteractiveQuestion.QuestionSettingsDropdown](./api/InteractiveQuestion.html#questionsettingsdropdown)
-- [InteractiveQuestion.QuestionVisualization](./api/InteractiveQuestion.html#questionvisualization)
-- [InteractiveQuestion.ResetButton](./api/InteractiveQuestion.html#resetbutton)
-- [InteractiveQuestion.SaveButton](./api/InteractiveQuestion.html#savebutton)
-- [InteractiveQuestion.SaveQuestionForm](./api/InteractiveQuestion.html#savequestionform)
-- [InteractiveQuestion.Summarize](./api/InteractiveQuestion.html#summarize)
-- [InteractiveQuestion.SummarizeDropdown](./api/InteractiveQuestion.html#summarizedropdown)
-- [InteractiveQuestion.DownloadWidget](./api/InteractiveQuestion.html#downloadwidget)
-- [InteractiveQuestion.DownloadWidgetDropdown](./api/InteractiveQuestion.html#downloadwidgetdropdown)
-- [InteractiveQuestion.Title](./api/InteractiveQuestion.html#title)
+
+- [Question.BackButton](./api/Question.html#backbutton)
+- [Question.Breakout](./api/Question.html#breakout)
+- [Question.BreakoutDropdown](./api/Question.html#breakoutdropdown)
+- [Question.ChartTypeDropdown](./api/Question.html#charttypedropdown)
+- [Question.ChartTypeSelector](./api/Question.html#charttypeselector)
+- [Question.Editor](./api/Question.html#editor)
+- [Question.EditorButton](./api/Question.html#editorbutton)
+- [Question.Filter](./api/Question.html#filter)
+- [Question.FilterDropdown](./api/Question.html#filterdropdown)
+- [Question.QuestionSettings](./api/Question.html#questionsettings)
+- [Question.QuestionSettingsDropdown](./api/Question.html#questionsettingsdropdown)
+- [Question.QuestionVisualization](./api/Question.html#questionvisualization)
+- [Question.ResetButton](./api/Question.html#resetbutton)
+- [Question.SaveButton](./api/Question.html#savebutton)
+- [Question.SaveQuestionForm](./api/Question.html#savequestionform)
+- [Question.Summarize](./api/Question.html#summarize)
+- [Question.SummarizeDropdown](./api/Question.html#summarizedropdown)
+- [Question.DownloadWidget](./api/Question.html#downloadwidget)
+- [Question.DownloadWidgetDropdown](./api/Question.html#downloadwidgetdropdown)
+- [Question.Title](./api/Question.html#title)
 
 ## Interactive question plugins
 
@@ -124,7 +127,7 @@ customize the appearance and behavior of the custom actions.
 {% include_file "{{ dirname }}/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}
 ```
 
-## Prevent people from saving changes to an `InteractiveQuestion`
+## Prevent people from saving changes to an `Question`
 
 To prevent people from saving changes to an interactive question, or from saving changes as a new question, you can set `isSaveEnabled={false}`:
 
@@ -136,10 +139,10 @@ To prevent people from saving changes to an interactive question, or from saving
 
 ![Query builder](../images/query-builder.png)
 
-You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `InteractiveQuestion` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
+You can embed the query builder for creating new questions by passing the `questionId="new"` prop to the `Question` component. You can use the [`children` prop](#customizing-interactive-questions) to customize the layout for creating new questions.
 
 ```tsx
 {% include_file "{{ dirname }}/snippets/questions/new-question.tsx" %}
 ```
 
-To customize the question editor's layout, use the `InteractiveQuestion` component [directly with a custom `children` prop](#customizing-interactive-questions).
+To customize the question editor's layout, use the `Question` component [directly with a custom `children` prop](#customizing-interactive-questions).

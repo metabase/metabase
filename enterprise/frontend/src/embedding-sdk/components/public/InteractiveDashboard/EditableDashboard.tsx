@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { AdHocQuestion } from "embedding-sdk/components/private/AdHocQuestion";
 import {
   DashboardNotFoundError,
   SdkError,
@@ -32,7 +32,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../Question/Question";
 
 import {
   type InteractiveDashboardContextType,
@@ -210,7 +210,7 @@ export const EditableDashboard = ({
         }
       >
         {adhocQuestionUrl ? (
-          <InteractiveAdHocQuestion
+          <AdHocQuestion
             questionPath={adhocQuestionUrl}
             onNavigateBack={onNavigateBackToDashboard}
             {...drillThroughQuestionProps}

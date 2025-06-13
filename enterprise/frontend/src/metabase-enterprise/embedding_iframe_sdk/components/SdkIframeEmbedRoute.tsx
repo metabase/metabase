@@ -3,8 +3,8 @@ import { P, match } from "ts-pattern";
 
 import {
   InteractiveDashboard,
-  InteractiveQuestion,
   MetabaseProvider,
+  Question,
   StaticDashboard,
   StaticQuestion,
   defineMetabaseAuthConfig,
@@ -65,7 +65,7 @@ const SdkIframeEmbedView = ({
 }): ReactNode => {
   return match(settings)
     .with({ template: "exploration" }, (settings) => (
-      <InteractiveQuestion
+      <Question
         questionId="new"
         height="100%"
         isSaveEnabled={settings.isSaveEnabled ?? false}
@@ -126,7 +126,7 @@ const SdkIframeEmbedView = ({
         isDrillThroughEnabled: P.optional(true),
       },
       (settings) => (
-        <InteractiveQuestion
+        <Question
           questionId={settings.questionId}
           withDownloads={settings.withDownloads}
           height="100%"

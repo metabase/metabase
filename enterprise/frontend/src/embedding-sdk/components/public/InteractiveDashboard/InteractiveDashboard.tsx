@@ -7,7 +7,7 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { AdHocQuestion } from "embedding-sdk/components/private/AdHocQuestion";
 import {
   DashboardNotFoundError,
   SdkError,
@@ -33,7 +33,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
+import type { DrillThroughQuestionProps } from "../Question/Question";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -52,7 +52,7 @@ export type InteractiveDashboardProps = {
   //       once we have a public-facing question context.
   /**
    * A custom React component to render the question layout.
-   * Use namespaced InteractiveQuestion components to build the layout.
+   * Use namespaced Question components to build the layout.
    */
   renderDrillThroughQuestion?: () => ReactNode;
 
@@ -171,13 +171,13 @@ const InteractiveDashboardInner = ({
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (
-        <InteractiveAdHocQuestion
+        <AdHocQuestion
           questionPath={adhocQuestionUrl}
           onNavigateBack={onNavigateBackToDashboard}
           {...drillThroughQuestionProps}
         >
           {AdHocQuestionView && <AdHocQuestionView />}
-        </InteractiveAdHocQuestion>
+        </AdHocQuestion>
       ) : (
         <InteractiveDashboardProvider
           plugins={plugins}

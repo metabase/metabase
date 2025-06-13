@@ -1,21 +1,21 @@
 import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
-import {
-  InteractiveQuestionProvider,
-  type InteractiveQuestionProviderProps,
-} from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  QuestionProvider,
+  type QuestionProviderProps,
+} from "embedding-sdk/components/private/Question/context";
 
-import { InteractiveQuestion } from "../InteractiveQuestion";
-import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/types";
+import { Question } from "../Question";
+import type { QuestionQuestionIdProps } from "../Question/types";
 
 /**
  * @interface
  * @expand
  * @category StaticQuestion
  */
-export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {
+export type StaticQuestionProps = QuestionQuestionIdProps & {
   withChartTypeSelector?: boolean;
-} & Pick<InteractiveQuestionProviderProps, "initialSqlParameters"> &
+} & Pick<QuestionProviderProps, "initialSqlParameters"> &
   FlexibleSizeProps;
 
 const StaticQuestionInner = ({
@@ -27,19 +27,19 @@ const StaticQuestionInner = ({
   style,
   initialSqlParameters,
 }: StaticQuestionProps): JSX.Element | null => (
-  <InteractiveQuestionProvider
+  <QuestionProvider
     questionId={initialQuestionId}
     variant="static"
     initialSqlParameters={initialSqlParameters}
   >
-    {withChartTypeSelector && <InteractiveQuestion.ChartTypeDropdown />}
-    <InteractiveQuestion.QuestionVisualization
+    {withChartTypeSelector && <Question.ChartTypeDropdown />}
+    <Question.QuestionVisualization
       height={height}
       width={width}
       className={className}
       style={style}
     />
-  </InteractiveQuestionProvider>
+  </QuestionProvider>
 );
 
 /**

@@ -1,6 +1,6 @@
 import type { StoryFn } from "@storybook/react";
 
-import { InteractiveQuestion } from "embedding-sdk";
+import { Question } from "embedding-sdk";
 import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
@@ -46,8 +46,8 @@ export const WithCustomQuestionLayout = {
     dashboardId: DASHBOARD_ID,
     renderDrillThroughQuestion: () => (
       <Stack>
-        <InteractiveQuestion.Title />
-        <InteractiveQuestion.QuestionVisualization />
+        <Question.Title />
+        <Question.QuestionVisualization />
         <div>This is a custom question layout.</div>
       </Stack>
     ),

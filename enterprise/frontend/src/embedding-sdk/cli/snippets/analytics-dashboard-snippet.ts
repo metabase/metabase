@@ -20,7 +20,7 @@ export const getAnalyticsDashboardSnippet = (options: Options) => {
 
   return `
 import { useState, useContext, useReducer } from 'react'
-import { InteractiveDashboard, InteractiveQuestion } from '${sdkPackageName}'
+import { InteractiveDashboard, Question } from '${sdkPackageName}'
 import { AnalyticsContext } from "./analytics-provider"
 
 ${imports}
@@ -73,7 +73,7 @@ export const AnalyticsDashboard = () => {
           />
         )}
 
-        {isCreateQuestion && <InteractiveQuestion questionId="new" />}
+        {isCreateQuestion && <Question questionId="new" />}
       </div>
     </div>
   )

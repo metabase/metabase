@@ -1,8 +1,5 @@
 const { H } = cy;
-import {
-  InteractiveDashboard,
-  InteractiveQuestion,
-} from "@metabase/embedding-sdk-react";
+import { InteractiveDashboard, Question } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -83,8 +80,8 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
           dashboardId={dashboardId}
           renderDrillThroughQuestion={() => (
             <Stack>
-              <InteractiveQuestion.Title />
-              <InteractiveQuestion.QuestionVisualization />
+              <Question.Title />
+              <Question.QuestionVisualization />
               <div>This is a custom question layout.</div>
             </Stack>
           )}

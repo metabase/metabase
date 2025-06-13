@@ -1,8 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import {
-  InteractiveQuestion,
-  type MetabaseQuestion,
-} from "@metabase/embedding-sdk-react";
+import { Question, type MetabaseQuestion } from "@metabase/embedding-sdk-react";
 import { type ComponentProps, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
@@ -34,7 +31,7 @@ const { H } = cy;
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
-type InteractiveQuestionProps = ComponentProps<typeof InteractiveQuestion>;
+type InteractiveQuestionProps = ComponentProps<typeof Question>;
 
 describe("scenarios > embedding-sdk > interactive-question", () => {
   beforeEach(() => {
@@ -214,12 +211,12 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
     const TestSuiteComponent = ({ questionId }: { questionId: string }) => (
       <Box p="lg">
-        <InteractiveQuestion questionId={questionId}>
+        <Question questionId={questionId}>
           <Box>
-            <InteractiveQuestion.FilterDropdown />
-            <InteractiveQuestion.QuestionVisualization />
+            <Question.FilterDropdown />
+            <Question.QuestionVisualization />
           </Box>
-        </InteractiveQuestion>
+        </Question>
       </Box>
     );
 
@@ -263,7 +260,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       };
 
       return (
-        <InteractiveQuestion
+        <Question
           questionId={questionId}
           isSaveEnabled
           onBeforeSave={onBeforeSave}
@@ -275,12 +272,12 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
           {isSaveModalOpen && (
             <Modal opened={isSaveModalOpen} onClose={close}>
-              <InteractiveQuestion.SaveQuestionForm onCancel={close} />
+              <Question.SaveQuestionForm onCancel={close} />
             </Modal>
           )}
 
-          {!isSaveModalOpen && <InteractiveQuestion.QuestionVisualization />}
-        </InteractiveQuestion>
+          {!isSaveModalOpen && <Question.QuestionVisualization />}
+        </Question>
       );
     };
 
@@ -336,7 +333,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   it("does not contain known console errors (metabase#48497)", () => {
     cy.get<number>("@questionId").then((questionId) => {
       mountSdkContentAndAssertNoKnownErrors(
-        <InteractiveQuestion questionId={questionId} />,
+        <Question questionId={questionId} />,
       );
     });
   });
@@ -399,7 +396,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should select sensible display for new questions (EMB-308)", () => {
-    mountSdkContent(<InteractiveQuestion questionId="new" />);
+    mountSdkContent(<Question questionId="new" />);
     cy.log("Select data");
     H.popover().findByRole("link", { name: "Orders" }).click();
 
@@ -437,7 +434,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
         <div>
           <div>id = {targetCollection}</div>
 
-          <InteractiveQuestion
+          <Question
             questionId="new"
             targetCollection={targetCollection}
             onSave={() => {}}
@@ -478,7 +475,7 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
 
   it("should not show any sdk error when showing a question in strict mode", () => {
     cy.get<string>("@questionId").then((questionId) => {
-      mountSdkContent(<InteractiveQuestion questionId={questionId} />, {
+      mountSdkContent(<Question questionId={questionId} />, {
         strictMode: true,
       });
 

@@ -3,14 +3,14 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import {
-  type BaseInteractiveQuestionProps,
-  InteractiveQuestion,
-} from "embedding-sdk/components/public/InteractiveQuestion";
+  type BaseQuestionProps,
+  Question,
+} from "embedding-sdk/components/public/Question";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
 import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
-import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+import { useQuestionContext } from "../Question/context";
 
 import QuestionEditorS from "./QuestionEditor.module.css";
 
@@ -23,7 +23,7 @@ const QuestionEditorInner = () => {
     originalQuestion,
     onSave,
     onCreate,
-  } = useInteractiveQuestionContext();
+  } = useQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "editor" | "visualization" | (string & unknown) | null
@@ -61,23 +61,19 @@ const QuestionEditorInner = () => {
 
           {!isSaveModalOpen && (
             <Group>
-              <InteractiveQuestion.ResetButton
+              <Question.ResetButton
                 onClick={() => {
                   setActiveTab("editor");
                   closeSaveModal();
                 }}
               />
-              {isSaveEnabled && (
-                <InteractiveQuestion.SaveButton onClick={openSaveModal} />
-              )}
+              {isSaveEnabled && <Question.SaveButton onClick={openSaveModal} />}
             </Group>
           )}
         </Group>
 
         <Tabs.Panel value="editor" h="100%" style={{ overflow: "auto" }}>
-          <InteractiveQuestion.Editor
-            onApply={() => setActiveTab("visualization")}
-          />
+          <Question.Editor onApply={() => setActiveTab("visualization")} />
         </Tabs.Panel>
         <Tabs.Panel
           value="visualization"
@@ -109,12 +105,10 @@ const QuestionEditorInner = () => {
 
             <Box className={QuestionEditorS.Main} w="100%" h="100%">
               <Box className={QuestionEditorS.ChartTypeSelector}>
-                {isVisualizationSelectorOpen && (
-                  <InteractiveQuestion.ChartTypeSelector />
-                )}
+                {isVisualizationSelectorOpen && <Question.ChartTypeSelector />}
               </Box>
               <Box className={QuestionEditorS.Content}>
-                <InteractiveQuestion.QuestionVisualization />
+                <Question.QuestionVisualization />
               </Box>
             </Box>
           </Stack>
@@ -146,8 +140,8 @@ export const QuestionEditor = ({
   plugins,
   entityTypes,
   targetCollection,
-}: BaseInteractiveQuestionProps) => (
-  <InteractiveQuestion
+}: BaseQuestionProps) => (
+  <Question
     questionId={questionId}
     plugins={plugins}
     onSave={onSave}
@@ -157,5 +151,5 @@ export const QuestionEditor = ({
     targetCollection={targetCollection}
   >
     <QuestionEditorInner />
-  </InteractiveQuestion>
+  </Question>
 );

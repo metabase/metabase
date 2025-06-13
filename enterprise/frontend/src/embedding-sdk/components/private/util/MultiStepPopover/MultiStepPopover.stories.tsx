@@ -6,7 +6,7 @@ import { Button, Group, Paper, Stack } from "metabase/ui";
 import { MultiStepPopover } from "./MultiStepPopover";
 
 export default {
-  title: "EmbeddingSDK/InteractiveQuestion/MultiStepPopover",
+  title: "EmbeddingSDK/Question/MultiStepPopover",
   component: MultiStepPopover,
   parameters: {
     layout: "fullscreen",

@@ -24,7 +24,7 @@ import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
-import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
+import { StaticQuestionSdkMode } from "../Question/modes/static";
 
 /**
  * @interface

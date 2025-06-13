@@ -1,9 +1,9 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useQuestionContext } from "embedding-sdk/components/private/Question/context";
 import { getQuestionTitle } from "embedding-sdk/components/private/QuestionTitle";
 import { Text } from "metabase/ui";
 
 export function QuestionTitle() {
-  const { question } = useInteractiveQuestionContext();
+  const { question } = useQuestionContext();
   const titleText = getQuestionTitle({ question });
 
   return (

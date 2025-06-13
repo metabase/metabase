@@ -1,7 +1,4 @@
-import {
-  InteractiveQuestion,
-  useMetabaseAuthStatus,
-} from "@metabase/embedding-sdk-react";
+import { Question, useMetabaseAuthStatus } from "@metabase/embedding-sdk-react";
 
 const Example = () => {
   // [<snippet example>]
@@ -12,7 +9,7 @@ const Example = () => {
   }
 
   if (auth.status === "success") {
-    return <InteractiveQuestion questionId={110} />;
+    return <Question questionId={110} />;
   }
   // [<endsnippet example>]
 };

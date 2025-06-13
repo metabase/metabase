@@ -228,7 +228,7 @@ Your browser should automatically open the app. By default, the app runs on [htt
 
 ## At this point, you should be up and running
 
-In your app, you'll see an embedded `InteractiveQuestion` component.
+In your app, you'll see an embedded `Question` component.
 
 ```javascript
 {% include_file "{{ dirname }}/snippets/quickstart-with-sample-app/example.tsx" snippet="example" %}

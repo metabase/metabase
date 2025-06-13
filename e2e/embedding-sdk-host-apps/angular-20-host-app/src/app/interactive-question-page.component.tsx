@@ -5,10 +5,7 @@ import {
   type OnInit,
 } from "@angular/core";
 import { ActivatedRoute, RouterModule } from "@angular/router";
-import {
-  InteractiveQuestion,
-  MetabaseProvider,
-} from "@metabase/embedding-sdk-react";
+import { Question, MetabaseProvider } from "@metabase/embedding-sdk-react";
 import type { ReactElement } from "react";
 
 import { metabaseProviderAuthConfig } from "./app.config";
@@ -46,7 +43,7 @@ export class InteractiveQuestionPageComponent implements OnInit {
         authConfig={metabaseProviderAuthConfig}
         locale={this.locale}
       >
-        <InteractiveQuestion questionId={this.questionId} />
+        <Question questionId={this.questionId} />
       </MetabaseProvider>
     );
   };

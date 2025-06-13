@@ -1,5 +1,5 @@
 import {
-  InteractiveQuestion,
+  Question,
   type MetabaseProviderProps,
   StaticQuestion,
 } from "@metabase/embedding-sdk-react";
@@ -16,7 +16,7 @@ interface MountQuestionOptions extends MountSdkContentOptions {
 }
 
 export function mountInteractiveQuestion(
-  extraProps: Partial<ComponentProps<typeof InteractiveQuestion>> = {},
+  extraProps: Partial<ComponentProps<typeof Question>> = {},
   { shouldAssertCardQuery, ...mountSdkContentOptions }: MountQuestionOptions = {
     shouldAssertCardQuery: true,
   },
@@ -26,7 +26,7 @@ export function mountInteractiveQuestion(
 
   cy.get<number>("@questionId").then((questionId) => {
     mountSdkContent(
-      <InteractiveQuestion questionId={questionId} {...extraProps} />,
+      <Question questionId={questionId} {...extraProps} />,
       mountSdkContentOptions,
     );
   });

@@ -51,17 +51,17 @@ function findSubComponents(node: ExportSpecifier) {
   return sdkComponentReferences
     .map((reference) => {
       if (
-        // Find all `InteractiveQuestion.Xxx` references.
+        // Find all `Question.Xxx` references.
         reference.getParent()?.getKind() ===
           SyntaxKind.PropertyAccessExpression &&
-        // Don't include `<InteractiveQuestion.Filter />` in a reference, since they're duplicates.
+        // Don't include `<Question.Filter />` in a reference, since they're duplicates.
         !isJsxElement(reference.getParent()?.getParent())
       ) {
         /**
          * [     reference    ]            -> Identifier
          * [     reference.parent       ]  -> PropertyAccessExpression
          *                     [lastChild] -> Identifier
-         * InteractiveQuestion.BackButton = BackButton;
+         * Question.BackButton = BackButton;
          */
         const subComponent = reference.getParent()?.getLastChild()?.getText();
         return subComponent;

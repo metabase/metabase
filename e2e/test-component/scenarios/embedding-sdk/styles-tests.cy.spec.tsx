@@ -1,7 +1,7 @@
 import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
-  InteractiveQuestion,
+  Question,
   MetabaseProvider,
   StaticQuestion,
   defineMetabaseTheme,
@@ -54,7 +54,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion questionId="new" />
+          <Question questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -77,7 +77,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId="new" />
+          <Question questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -103,7 +103,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
           theme={theme}
         >
-          <InteractiveQuestion questionId="new" />
+          <Question questionId="new" />
         </MetabaseProvider>,
       );
 
@@ -328,7 +328,7 @@ describe("scenarios > embedding-sdk > styles", () => {
     it("mantine modals should render with our styles", () => {
       cy.mount(
         <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
-          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          <Question questionId={ORDERS_QUESTION_ID} />
         </MetabaseProvider>,
       );
 
@@ -402,10 +402,7 @@ describe("scenarios > embedding-sdk > styles", () => {
           >
             <Button color="brand">outside sdk wrapper</Button>
 
-            <InteractiveQuestion
-              questionId={ORDERS_QUESTION_ID}
-              isSaveEnabled
-            />
+            <Question questionId={ORDERS_QUESTION_ID} isSaveEnabled />
           </MetabaseProvider>
         </MantineProvider>,
       );

@@ -105,7 +105,7 @@ describe("scenarios > embedding-sdk > plugins", () => {
     });
   });
 
-  describe("The `mapQuestionClickActions` plugin should work for `InteractiveQuestion`", () => {
+  describe("The `mapQuestionClickActions` plugin should work for `Question`", () => {
     beforeEach(() => {
       setup(() => {
         createQuestion(BASE_QUESTION).then(({ body: question }) => {

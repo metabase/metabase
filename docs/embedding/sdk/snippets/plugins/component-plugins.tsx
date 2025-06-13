@@ -1,8 +1,8 @@
-import { InteractiveQuestion } from "@metabase/embedding-sdk-react";
+import { Question } from "@metabase/embedding-sdk-react";
 
 const Example = () => (
   // [<snippet example>]
-  <InteractiveQuestion
+  <Question
     questionId={1}
     plugins={{
       mapQuestionClickActions: () => [],

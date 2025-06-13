@@ -1,9 +1,9 @@
 import { QuestionEditor } from "embedding-sdk/components/private/QuestionEditor";
 
-import type { BaseInteractiveQuestionProps } from "../InteractiveQuestion";
+import type { BaseQuestionProps } from "../Question";
 
 /**
- * @deprecated Use `InteractiveQuestion` with `isSaveEnabled={true}` instead.
+ * @deprecated Use `Question` with `isSaveEnabled={true}` instead.
  *
  * @function
  * @category ModifyQuestion
@@ -17,7 +17,7 @@ export const ModifyQuestion = ({
   entityTypes,
   isSaveEnabled,
   targetCollection,
-}: BaseInteractiveQuestionProps) => (
+}: BaseQuestionProps) => (
   <QuestionEditor
     questionId={questionId}
     plugins={plugins}

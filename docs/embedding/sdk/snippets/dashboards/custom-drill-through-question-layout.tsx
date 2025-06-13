@@ -1,7 +1,4 @@
-import {
-  InteractiveDashboard,
-  InteractiveQuestion,
-} from "@metabase/embedding-sdk-react";
+import { InteractiveDashboard, Question } from "@metabase/embedding-sdk-react";
 
 const Example = () => (
   // [<snippet example-1>]
@@ -14,5 +11,5 @@ const Example = () => (
 
 // [<snippet example-2>]
 // You can use namespaced components to build the question's layout.
-const QuestionView = () => <InteractiveQuestion.Title />;
+const QuestionView = () => <Question.Title />;
 // [<endsnippet example-2>]

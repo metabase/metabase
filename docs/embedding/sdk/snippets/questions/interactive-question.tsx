@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  InteractiveQuestion,
+  Question,
   MetabaseProvider,
   defineMetabaseAuthConfig,
 } from "@metabase/embedding-sdk-react";
@@ -14,7 +14,7 @@ export default function App() {
 
   return (
     <MetabaseProvider authConfig={authConfig}>
-      <InteractiveQuestion questionId={questionId} />
+      <Question questionId={questionId} />
     </MetabaseProvider>
   );
 }

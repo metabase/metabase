@@ -1,5 +1,5 @@
 import {
-  InteractiveQuestion,
+  Question,
   type MetabaseAuthConfig,
   MetabaseProvider,
   type MetabaseTheme,
@@ -10,7 +10,7 @@ const theme = {} as MetabaseTheme;
 
 const ExampleDefaultInteractiveQuestion = () => (
   // [<snippet example-default-interactive-question>]
-  <InteractiveQuestion questionId={95} />
+  <Question questionId={95} />
   // [<endsnippet example-default-interactive-question>]
 );
 
@@ -26,7 +26,7 @@ const ExampleCustomizedInteractiveQuestion = () => (
     }}
   >
     <MetabaseProvider authConfig={authConfig} theme={theme}>
-      <InteractiveQuestion questionId={95}>
+      <Question questionId={95}>
         <div
           style={{
             display: "flex",
@@ -37,8 +37,8 @@ const ExampleCustomizedInteractiveQuestion = () => (
           }}
         >
           <div style={{ display: "grid", placeItems: "center", width: "100%" }}>
-            <InteractiveQuestion.Title />
-            <InteractiveQuestion.ResetButton />
+            <Question.Title />
+            <Question.ResetButton />
           </div>
           <div
             style={{
@@ -50,19 +50,19 @@ const ExampleCustomizedInteractiveQuestion = () => (
             }}
           >
             <div style={{ width: "100%" }}>
-              <InteractiveQuestion.QuestionVisualization />
+              <Question.QuestionVisualization />
             </div>
             <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
-              <InteractiveQuestion.Summarize />
+              <Question.Summarize />
             </div>
           </div>
           <div
             style={{ display: "flex", flexDirection: "column", width: "100%" }}
           >
-            <InteractiveQuestion.Filter />
+            <Question.Filter />
           </div>
         </div>
-      </InteractiveQuestion>
+      </Question>
     </MetabaseProvider>
   </div>
   // [<endsnippet example-customized-interactive-question>]
