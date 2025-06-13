@@ -243,6 +243,7 @@ export const CSVUpload = ({
         </Center>
         <Group>
           <Button
+            aria-label={t`Select a collection`}
             onClick={() => setIsCollectionPickerOpen(true)}
             rightSection={<Icon name="chevrondown" />}
             styles={{
