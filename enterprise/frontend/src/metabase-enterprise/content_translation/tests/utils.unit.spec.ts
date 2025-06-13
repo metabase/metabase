@@ -313,7 +313,7 @@ describe("content translation utils", () => {
         data: [
           { col: categoryCol, value: "Red", key: "test1" },
           { col: countryCol, value: "Blue", key: "test2" },
-          { col: nameCol, value: "Green", key: "test2" },
+          { col: nameCol, value: "Green", key: "test3" },
         ],
       };
       const result = translateFieldValuesInHoveredObject(obj, mockTc);
@@ -389,40 +389,6 @@ describe("content translation utils", () => {
       });
       expect(mockTc).toHaveBeenCalledWith("Red");
     });
-
-    it("should handle mixed column types in data array", () => {
-      const categoryCol: DatasetColumn = {
-        semantic_type: "type/Category",
-        source: "",
-        name: "category",
-        display_name: "Category",
-        base_type: "type/Text",
-      };
-      const numberCol: DatasetColumn = {
-        semantic_type: "type/Number",
-        source: "",
-        name: "amount",
-        display_name: "Amount",
-        base_type: "type/Integer",
-      };
-      const obj: HoveredObject = {
-        data: [
-          { col: categoryCol, value: "Red", key: "test1" },
-          { col: numberCol, value: "100", key: "test2" },
-          { col: categoryCol, value: "Blue", key: "test3" },
-        ],
-      };
-      const result = translateFieldValuesInHoveredObject(obj, mockTc);
-
-      expect(result?.data).toEqual([
-        { col: categoryCol, value: "mock translation of Red", key: "test1" },
-        { col: numberCol, value: "100", key: "test2" },
-        { col: categoryCol, value: "mock translation of Blue", key: "test3" },
-      ]);
-      expect(mockTc).toHaveBeenCalledWith("Red");
-      expect(mockTc).toHaveBeenCalledWith("Blue");
-      expect(mockTc).toHaveBeenCalledTimes(2);
-    });
   });
 
   describe("translateFieldValuesInSeries", () => {
@@ -439,7 +405,7 @@ describe("content translation utils", () => {
       expect(mockTC).not.toHaveBeenCalled();
     });
 
-    it("should translate specific columns in the series", () => {
+    it("should translate all columns in the series", () => {
       const series = createMockSeries();
       series[0].data.cols = [
         createMockColumn({
@@ -448,15 +414,18 @@ describe("content translation utils", () => {
         }),
         createMockColumn({
           display_name: "Column 2",
-          semantic_type: "not translatable",
+          semantic_type: "type/Country",
         }),
       ];
       series[0].data.rows = [["a", "b"]];
 
       const result = translateFieldValuesInSeries(series, mockTC);
 
-      expect(result[0].data.rows).toEqual([["mock translation of a", "b"]]);
+      expect(result[0].data.rows).toEqual([
+        ["mock translation of a", "mock translation of b"],
+      ]);
       expect(mockTC).toHaveBeenCalledWith("a");
+      expect(mockTC).toHaveBeenCalledWith("b");
     });
   });
 

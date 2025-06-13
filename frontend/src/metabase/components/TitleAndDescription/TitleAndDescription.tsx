@@ -23,7 +23,7 @@ const TitleAndDescriptionInner = ({
       </Title>
       <Space component="span" mx="xs" />
       {description && (
-        <Tooltip label={description} maw="22em">
+        <Tooltip label={tc(description)} maw="22em">
           <Icon name="info" />
         </Tooltip>
       )}
