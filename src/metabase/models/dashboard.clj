@@ -16,6 +16,7 @@
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.serialization :as serdes]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.moderation :as moderation]
    [metabase.permissions.core :as perms]
    [metabase.public-settings :as public-settings]
@@ -26,7 +27,7 @@
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -531,3 +532,10 @@
                                                         [:= :mr.moderated_item_type "dashboard"]
                                                         [:= :mr.moderated_item_id :this.id]
                                                         [:= :mr.most_recent true]]]}})
+
+(defsetting dashboards-save-last-used-parameters
+  (deferred-tru "Whether dashboards should default to a user''s last used parameters on load.")
+  :default true
+  :visibility :internal
+  :export? true
+  :type :boolean)
