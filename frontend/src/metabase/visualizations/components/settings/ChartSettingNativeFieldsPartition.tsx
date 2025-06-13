@@ -1,23 +1,24 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
-import { isNotNull } from "metabase/lib/types";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { MetabaseApi } from "metabase/services";
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  DatasetQuery,
   NativeSplitAggregationEntry,
   NativeSplitGroupEntry,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import {
   ChartSettingFieldsPartition,
   type ChartSettingFieldsPartitionProps,
-  columnAdd,
 } from "./ChartSettingFieldsPartition";
 
 type AddAggregationPopoverProps = {
@@ -122,6 +123,8 @@ interface ChartSettingsNativeFieldPartitionProps
     NativeSplitAggregationEntry
   > {
   question: Question;
+  settings: VisualizationSettings;
+  onChangeSettings: (settings: VisualizationSettings) => void;
 }
 
 export const ChartSettingNativeFieldsPartition = ({
@@ -129,10 +132,31 @@ export const ChartSettingNativeFieldsPartition = ({
   onChange,
   question,
   columns,
+  settings,
+  onChangeSettings,
   ...props
 }: ChartSettingsNativeFieldPartitionProps) => {
+  const baseQuery = question.query();
   const query = question.query();
   const datasetQuery = question.datasetQuery();
+
+  const pivotedQuery = useMemo(() => {
+    const pivotedQuery = Lib.toLegacyQuery(Lib.appendStage(baseQuery));
+    const aggregationStage = settings["pivot_table.aggregation_stage"];
+    const metadataProvider = Lib.metadataProvider(
+      datasetQuery.database,
+      question.metadata(),
+    );
+    return Lib.fromLegacyQuery(pivotedQuery.database, metadataProvider, {
+      ...pivotedQuery,
+      query: {
+        ...pivotedQuery.query,
+        ...aggregationStage,
+      },
+    });
+  }, [baseQuery, datasetQuery.database, question, settings]);
+
+  console.log(">>pivotedQuery", Lib.toLegacyQuery(pivotedQuery));
 
   // TODO: use RTK query instead
   const [baseMetadataResults, setMetadataResults] = useState(null);
@@ -169,58 +193,55 @@ export const ChartSettingNativeFieldsPartition = ({
 
   const wrappedQuery = Lib.wrapAdhocNativeQuery(query, baseMetadataResults);
 
+  const updateAggregationStage = (query: DatasetQuery) => {
+    const aggregationStage = _.pick(query.query, [
+      "aggregation",
+      "aggregation-idents",
+      "breakout",
+      "breakout-idents",
+    ]);
+
+    onChangeSettings({ "pivot_table.aggregation_stage": aggregationStage });
+  };
+
   const handleAddAggregation = (query: Lib.Query) => {
-    const aggs = Lib.aggregations(query, -1);
-    const aggDetails = aggs
-      .map((agg) => {
-        const aggDisplay = Lib.displayInfo(query, -1, agg);
-        const column = Lib.aggregationColumn(query, -1, agg);
+    // We are adding the aggregation to pre-pivoted query therefore it will be the only aggregation
+    const addedAggregation = Lib.aggregations(query, -1)[0];
 
-        if (!column) {
-          return null;
-        }
-        const columnName = Lib.columnKey(column);
+    const newPivotedQuery = Lib.toLegacyQuery(
+      // We need to reliably get the post-aggregation column name back to use it in the split setting.
+      // Using just an aggregation function or the column name from `query` results would be wrong as the name in the post-aggregated pivoted dataset can change due to name collisions
+      Lib.aggregate(pivotedQuery, -1, addedAggregation),
+    );
+    updateAggregationStage(newPivotedQuery);
 
-        return {
-          name: aggDisplay.name,
-          column: columnName,
-        };
-      })
-      .filter(isNotNull);
-
-    onChange({
-      ...value,
-      values: [...value.values, ...aggDetails],
-    });
+    // onChange({
+    //   ...value,
+    //   values: [...value.values, ...aggDetails],
+    // });
   };
 
   const handleAddBreakout = (
     partition: "rows" | "columns",
     column: Lib.ColumnMetadata,
   ) => {
-    const columnName = Lib.columnKey(column);
-    const bucket = Lib.temporalBucket(column);
-    const bucketName = bucket
-      ? Lib.displayInfo(query, 0, bucket)?.shortName
-      : undefined;
+    const newPivotedQuery = Lib.toLegacyQuery(
+      Lib.breakout(pivotedQuery, -1, column),
+    );
+    updateAggregationStage(newPivotedQuery);
 
-    const binning = Lib.binning(column);
-    const binningInfo = binning
-      ? Lib.displayInfo(query, 0, binning)
-      : undefined;
-
-    onChange({
-      ...value,
-      [partition]: columnAdd(
-        value[partition] || [],
-        value[partition]?.length ?? 0,
-        {
-          name: columnName,
-          bucket: bucketName,
-          binning: binningInfo,
-        },
-      ),
-    });
+    // onChange({
+    //   ...value,
+    //   [partition]: columnAdd(
+    //     value[partition] || [],
+    //     value[partition]?.length ?? 0,
+    //     {
+    //       name: columnName,
+    //       bucket: bucketName,
+    //       binning: binningInfo,
+    //     },
+    //   ),
+    // });
   };
 
   return (
@@ -240,7 +261,7 @@ export const ChartSettingNativeFieldsPartition = ({
           />
         ) : (
           <AddBreakoutPopover
-            query={wrappedQuery}
+            query={pivotedQuery}
             onAddBreakout={(col) => handleAddBreakout(partitionName, col)}
           />
         )

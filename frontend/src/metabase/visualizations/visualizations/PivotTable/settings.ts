@@ -74,7 +74,10 @@ export const settings = {
       return { rows, value };
     },
   },
+  "pivot_table.aggregation_stage": {},
   [NATIVE_COLUMN_SPLIT_SETTING]: {
+    readDependencies: ["pivot_table.aggregation_stage"],
+    writeDependencies: ["pivot_table.aggregation_stage"],
     get section() {
       return t`Columns`;
     },
