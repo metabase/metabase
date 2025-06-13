@@ -32,7 +32,7 @@ To create an alert:
 4. Select what you want to be alerted about. The alert options will depend on the question's visualization. See [types of alerts](#types-of-alerts).
 5. Select when you want Metabase to check the results. Metabase can check for results by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
 6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md).
-7. Configure any other options (like [sending an alert once then deleting it](#send-an-alert-once-then-delete-it)).
+7. Configure any other options (like [only sending the alert once](#send-an-alert-once-then-delete-it)).
 8. Click **Done**.
 
 ## Send a one-time alert 
