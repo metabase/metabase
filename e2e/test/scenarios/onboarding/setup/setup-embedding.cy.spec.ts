@@ -42,7 +42,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Set up your account",
+        "Create User",
       );
     });
     step().within(() => {
@@ -59,7 +59,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Connect to your data",
+        "Connect Data",
       );
     });
     step().within(() => {
@@ -77,14 +77,18 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Generate starter content",
+        "Select Tables",
       );
     });
-    step().within(() => {
-      cy.findByRole("heading", { name: "Select Tables to Embed" }).should(
-        "be.visible",
-      );
 
+    step()
+      .findByRole("heading", { name: "Select Tables to Embed" })
+      .should("be.visible");
+
+    cy.log("Ensure the database sync status is not shown");
+    cy.findByRole("status").should("not.exist");
+
+    step().within(() => {
       cy.findByRole("checkbox", { name: "feedback" })
         .should("be.enabled")
         .check();
@@ -105,7 +109,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Add to your app",
+        "Final Steps",
       );
     });
     step().within(() => {
@@ -124,6 +128,10 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       );
 
       cy.findByRole("tab", { name: 'A look at "Orders"' }).click();
+      /**
+       * There's a problem when changing tabs, sometimes Cypress seems to still get the old iframe body.
+       * So, it's be much more stable to wait for a brief moment before trying to get the new iframe body.
+       */
       cy.wait(100);
       H.getIframeBody().within(() => {
         cy.findByText('A look at "Orders"').should("be.visible");
