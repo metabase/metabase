@@ -7,7 +7,9 @@ import {
   PopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/components/MetadataInfo/Popover";
-import AccordionList from "metabase/core/components/AccordionList";
+import AccordionList, {
+  type Section,
+} from "metabase/core/components/AccordionList";
 import Markdown from "metabase/core/components/Markdown";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
@@ -51,14 +53,6 @@ type MetricListItem = Lib.MetricDisplayInfo & {
 };
 
 type ListItem = OperatorListItem | MetricListItem;
-
-type Section = {
-  name?: string;
-  key: string;
-  items: ListItem[];
-  icon?: string;
-  type?: string;
-};
 
 export function AggregationPicker({
   className,
@@ -116,7 +110,7 @@ export function AggregationPicker({
   );
 
   const sections = useMemo(() => {
-    const sections: Section[] = [];
+    const sections: Section<ListItem>[] = [];
 
     const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
@@ -286,7 +280,7 @@ export function AggregationPicker({
 
   return (
     <Box className={className} c="summarize" data-testid="aggregation-picker">
-      <AccordionList
+      <AccordionList<ListItem>
         sections={sections}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
