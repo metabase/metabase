@@ -670,11 +670,14 @@
       [:max      _]    [[(or output-name-kwd :max)]
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
+(def ^:private ^:dynamic *query-unique-name-fn*
+  nil)
+
 (mu/defn- handle-aggregation
   [query-type
    ag-clause :- driver-api/mbql.schema.Aggregation
    druid-query]
-  (let [output-name               (driver-api/aggregation-name *query* ag-clause)
+  (let [output-name               (*query-unique-name-fn* (driver-api/aggregation-name *query* ag-clause))
         [ag-type ag-field & args] (driver-api/match-one ag-clause
                                                         [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)
                                                         _                             &match)]
@@ -705,7 +708,7 @@
   nil)
 
 (defn- aggregation-unique-identifier [clause]
-  (format "__%s_%d" (name clause) (first (swap-vals! *query-unique-identifier-counter* inc))))
+  (format "__%s" (*query-unique-name-fn* (name clause))))
 
 (defn- add-expression-aggregation-output-names
   [expression]
@@ -788,19 +791,23 @@
 
 (defn- handle-aggregations
   [query-type {aggregations :aggregation} druid-query]
-  (reduce
-   (fn [druid-query aggregation]
-     (driver-api/match-one aggregation
-                           [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
-                           (handle-expression-aggregation query-type &match druid-query)
+  (binding [*query-unique-name-fn* (driver-api/unique-name-generator)]
+    ;; Load unique name generator with projections from breakouts
+    (doseq [projection (:projections druid-query)]
+      (*query-unique-name-fn* (name projection)))
+    (reduce
+     (fn [druid-query aggregation]
+       (driver-api/match-one aggregation
+                             [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
+                             (handle-expression-aggregation query-type &match druid-query)
 
-                           #{:+ :- :/ :*}
-                           (handle-expression-aggregation query-type &match druid-query)
+                             #{:+ :- :/ :*}
+                             (handle-expression-aggregation query-type &match druid-query)
 
-                           _
-                           (handle-aggregation query-type &match druid-query)))
-   druid-query
-   aggregations))
+                             _
+                             (handle-aggregation query-type &match druid-query)))
+     druid-query
+     aggregations)))
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
 
@@ -1200,8 +1207,7 @@
   [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
   (let [query (assoc (:query query) :settings (:settings query))]
-    (binding [*query*                           query
-              *query-unique-identifier-counter* (atom 0)]
+    (binding [*query* query]
       (try
         (build-druid-query query)
         (catch Throwable e
