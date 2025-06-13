@@ -3,11 +3,13 @@ import { useAsync } from "react-use";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
-import { CodeSnippet } from "metabase/components/CodeSnippet";
+import { CopyButton } from "metabase/components/CopyButton";
+import { highlight } from "metabase/query_builder/components/expressions/HighlightExpression/utils";
 import {
   Box,
   Button,
   Center,
+  Code,
   Group,
   Loader,
   Stack,
@@ -142,5 +144,23 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         </Button>
       </Group>
     </Stack>
+  );
+};
+
+export const CodeSnippet = ({ code }: { code: string }) => {
+  return (
+    <Group
+      px="lg"
+      py="md"
+      bd="1px solid border"
+      bg="bg-light"
+      w="100%"
+      style={{
+        borderRadius: 8,
+      }}
+    >
+      <Code flex={1} dangerouslySetInnerHTML={{ __html: highlight(code) }} />
+      <CopyButton value={code} />
+    </Group>
   );
 };
