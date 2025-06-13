@@ -199,19 +199,6 @@ export const EmbedFrame = ({
               )}
               <Box className={EmbedFrameS.HeaderButtons} mt={titled ? "md" : 0}>
                 {headerButtons}
-                {dashboard && pdfDownloadsEnabled && (
-                  <ExportAsPdfButton
-                    dashboard={dashboard}
-                    hasTitle={titled}
-                    hasVisibleParameters={hasVisibleParameters}
-                  />
-                )}
-                {/*                 className={cx({ */}
-                {/*   [CS.CompactExportAsPdfButton]: */}
-                {/*     !hasTitle && (hasVisibleParameters || hasDashboardTabs), */}
-                {/*   [CS.ParametersVisibleWithNoTabs]: */}
-                {/*     hasVisibleParameters && !hasDashboardTabs, */}
-                {/* })} */}
               </Box>
               <FixedWidthContainer
                 data-testid="fixed-width-dashboard-tabs"
@@ -222,6 +209,20 @@ export const EmbedFrame = ({
               </FixedWidthContainer>
             </FixedWidthContainer>
             {dashboardTabs && <Divider />}
+          </Box>
+        )}
+
+        {dashboard && pdfDownloadsEnabled && (
+          <Box
+            pos="absolute"
+            top={
+              (dashboard?.tabs ?? []).length > 1 && !finalName
+                ? "1rem"
+                : "1.75rem"
+            }
+            right="2rem"
+          >
+            <ExportAsPdfButton dashboard={dashboard} />
           </Box>
         )}
 

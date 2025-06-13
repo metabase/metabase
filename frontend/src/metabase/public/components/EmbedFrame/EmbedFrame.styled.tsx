@@ -53,14 +53,6 @@ export const ContentContainer = styled.div`
   position: relative;
 `;
 
-export const Header = styled.header`
-  display: flex;
-  flex-direction: column;
-`;
-export const Separator = styled.div`
-  border-bottom: 1px solid var(--mb-color-border);
-`;
-
 export const Body = styled.main`
   display: flex;
   flex-direction: column;
