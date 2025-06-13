@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
@@ -241,11 +241,25 @@ export const EditTableDashcardVisualization = memo(
       { open: openCreateRowModal, close: closeCreateRowModal },
     ] = useDisclosure(false);
 
-    const { data: createRowFormDescription } = useActionFormDescription({
+    const {
+      data: createRowFormDescription,
+      refetch: refetchCreateRowFormDescription,
+    } = useActionFormDescription({
       actionId: BuiltInTableAction.Create,
       scope: editingScope,
-      skip: !hasCreateAction,
+      fetchOnMount: false,
     });
+
+    useEffect(() => {
+      if (hasCreateAction && !isEditing) {
+        refetchCreateRowFormDescription();
+      }
+    }, [
+      visualizationSettings, // refetch on visualizationSettings change
+      hasCreateAction,
+      isEditing,
+      refetchCreateRowFormDescription,
+    ]);
 
     const shouldDisableActions = isUndoLoading || isRedoLoading;
 
