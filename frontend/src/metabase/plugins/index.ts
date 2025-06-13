@@ -40,6 +40,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
@@ -608,7 +609,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+  areDownloadsEnabled: (_args: {
+    downloads?: string | boolean | null;
+  }): EmbedResourceDownloadOptions => ({
     pdf: true,
     results: true,
   }),

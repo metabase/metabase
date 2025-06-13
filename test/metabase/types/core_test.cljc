@@ -30,7 +30,7 @@
     :type/BigInteger         :type/Decimal                :type/Decimal
     :type/Integer            :type/Text                   :type/*
     :type/DateTimeWithZoneID :type/DateTimeWithZoneOffset :type/DateTimeWithTZ
-    :type/DateTimeWithZoneID :type/TimeWithZoneOffset     :type/Temporal
+    :type/DateTimeWithZoneID :type/TimeWithZoneOffset     :type/HasTime
     nil                      :type/Integer                :type/*
     nil                      nil                          :type/*
     :type/*                  :type/*                      :type/*))

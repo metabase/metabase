@@ -78,7 +78,6 @@
    "PulseChannelRecipient"
    "Query"
    "QueryAction"
-   "QueryAnalysis"
    "QueryCache"
    "QueryExecution"
    "QueryField"
