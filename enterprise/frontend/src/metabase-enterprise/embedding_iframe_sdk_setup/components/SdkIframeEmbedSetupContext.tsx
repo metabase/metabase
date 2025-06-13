@@ -3,6 +3,11 @@ import { type ReactNode, createContext, useContext, useState } from "react";
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
+import {
+  type RecentDashboard,
+  type RecentQuestion,
+  useRecentItems,
+} from "../hooks/useRecentItems";
 import type { EmbedPreviewOptions, Step } from "../types";
 
 interface SdkIframeEmbedSetupContextType {
@@ -20,6 +25,12 @@ interface SdkIframeEmbedSetupContextType {
   handleBack: () => void;
   canGoNext: boolean;
   canGoBack: boolean;
+
+  // Recent items
+  recentDashboards: RecentDashboard[];
+  recentQuestions: RecentQuestion[];
+  addRecentDashboard: (dashboard: RecentDashboard) => void;
+  addRecentQuestion: (question: RecentQuestion) => void;
 }
 
 const SdkIframeEmbedSetupContext =
@@ -33,6 +44,12 @@ export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
   const instanceUrl = useSetting("site-url");
+  const {
+    recentDashboards,
+    recentQuestions,
+    addRecentDashboard,
+    addRecentQuestion,
+  } = useRecentItems();
 
   const [currentStep, setCurrentStep] = useState<Step>("select-embed-type");
 
@@ -115,6 +132,10 @@ export const SdkIframeEmbedSetupProvider = ({
     handleBack,
     canGoNext,
     canGoBack,
+    recentDashboards,
+    recentQuestions,
+    addRecentDashboard,
+    addRecentQuestion,
   };
 
   return (
