@@ -268,7 +268,7 @@
    :cache_granular_controls        (enable-cache-granular-controls?)
    :cache_preemptive               (enable-preemptive-caching?)
    :collection_cleanup             (enable-collection-cleanup?)
-   :config_text_file               (enable-config-text-file?) 
+   :config_text_file               (enable-config-text-file?)
    :connection_impersonation       (enable-connection-impersonation?)
    :content_verification           (enable-content-verification?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
