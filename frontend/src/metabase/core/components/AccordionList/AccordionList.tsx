@@ -26,30 +26,30 @@ type Props<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
 > = SharedAccordionProps<TItem, TSection> & {
-  style?: CSSProperties;
+  "data-testid"?: string | null;
+  alwaysTogglable?: boolean;
   className?: string;
+  globalSearch?: boolean;
+  hasInitialFocus?: boolean;
+  hideEmptySectionsInSearch?: boolean;
+  hideSingleSectionTitle?: boolean;
+  initiallyOpenSection?: number;
   id?: string;
+  onChange?: (item: TItem) => void;
+  onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
+  openSection?: number;
+  role?: string;
+  searchCaseInsensitive?: boolean;
+  searchFuzzy?: boolean;
+  searchProp?: string | string[];
+  searchable?: boolean | ((section: Section) => boolean | undefined);
+  sections: TSection[];
+  style?: CSSProperties;
 
   // TODO: pass width to this component as solely number or string if possible
   // currently prop is number on initialization, then string afterwards
   width?: string | number;
   maxHeight?: number;
-  role?: string;
-  sections: TSection[];
-  initiallyOpenSection?: number;
-  globalSearch?: boolean;
-  openSection?: number;
-  onChange?: (item: TItem) => void;
-  onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
-  alwaysTogglable?: boolean;
-  hideSingleSectionTitle?: boolean;
-  searchable?: boolean | ((section: Section) => boolean | undefined);
-  searchProp?: string | string[];
-  searchCaseInsensitive?: boolean;
-  searchFuzzy?: boolean;
-  hideEmptySectionsInSearch?: boolean;
-  hasInitialFocus?: boolean;
-  "data-testid"?: string | null;
 };
 
 type State = {
