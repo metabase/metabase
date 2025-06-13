@@ -24,7 +24,6 @@ type DataSelectorDatabasePickerProps = {
   selectedSchema?: Schema;
   onBack?: () => void;
   onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (item: { schema?: Schema }) => void;
 };
 
 type Item = {
@@ -84,7 +83,7 @@ const DataSelectorDatabasePicker = ({
       className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
-      onChange={(item: Item) => onChangeDatabase(item.database)}
+      onChange={(item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(item) =>
         selectedDatabase && item.database.id === selectedDatabase.id

@@ -25,7 +25,7 @@ type DataSelectorDatabaseSchemaPicker = {
   selectedSchema: Schema;
   onBack: () => void;
   onChangeDatabase: (database: Database) => void;
-  onChangeSchema: (item: { schema?: Schema }) => void;
+  onChangeSchema: (schema?: Schema) => void;
 };
 
 type Item = {
@@ -116,7 +116,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
-      onChange={onChangeSchema}
+      onChange={({ schema }) => onChangeSchema(schema)}
       onChangeSection={handleChangeSection}
       itemIsSelected={({ schema }) => schema === selectedSchema}
       renderSectionIcon={renderSectionIcon}
