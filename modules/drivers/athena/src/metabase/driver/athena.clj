@@ -18,6 +18,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql
@@ -25,11 +26,16 @@
     DatabaseMetaData
     Date
     ResultSet
+    SQLFeatureNotSupportedException
     Time
     Timestamp
     Types)
    (java.time OffsetDateTime ZonedDateTime)
-   [java.util UUID]))
+   [java.util UUID]
+   (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
+   (software.amazon.awssdk.regions Region)
+   (software.amazon.awssdk.services.athena AthenaClient)
+   (software.amazon.awssdk.services.athena.model GetQueryExecutionRequest)))
 
 (set! *warn-on-reflection* true)
 
@@ -520,8 +526,85 @@
   (binding [driver/*compile-with-inline-parameters* true]
     ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
 
+(defn database-details->client
+  [{:keys [region access_key secret_key s3_staging_dir workgroup catalog] :as details}]
+  (let [credentials (AwsBasicCredentials/create access_key secret_key)]
+    (-> (AthenaClient/builder)
+        (.region (Region/of region))
+        (.credentialsProvider (StaticCredentialsProvider/create credentials))
+        (.build))))
+
+(defn fetch-query-resource-usage
+  "Get query statistics using AWS SDK"
+  [stmt details]
+  (let [athena-stmt (.unwrap stmt java.sql.Statement)
+        query-execution-id (.getQueryExecutionId athena-stmt)
+        athena-client (database-details->client details)
+        request (-> (GetQueryExecutionRequest/builder)
+                    (.queryExecutionId query-execution-id)
+                    (.build))
+        response (.getQueryExecution athena-client request)
+        stats (-> response .queryExecution .statistics)
+        bytes-scanned (.dataScannedInBytes stats)]
+    {:bytes-scanned bytes-scanned
+     :unit :bytes}))
+
+(defn execute-reducible-query
+  ;; Copied from sql-jdbc.execute with some slight variations
+  "Default impl of [[metabase.driver/execute-reducible-query]] for athena"
+  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
+  ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
+   {:pre [(string? sql) (seq sql)]}
+   (let [database (driver-api/database (driver-api/metadata-provider))
+         sql      (if (get-in database [:details :include-user-id-and-hash] true)
+                    (->> (driver-api/query->remark driver outer-query)
+                         (sql-jdbc.execute/inject-remark driver sql))
+                    sql)
+         max-rows (driver-api/determine-query-max-rows outer-query)]
+     (execute-reducible-query driver database sql params max-rows context respond)))
+
+  ([driver database sql params max-rows _context respond]
+   (sql-jdbc.execute/do-with-connection-with-options
+    driver
+    database
+    {:session-timezone (driver-api/report-timezone-id-if-supported driver database)}
+    (fn [^Connection conn]
+      (with-open [stmt          (sql-jdbc.execute/statement-or-prepared-statement driver conn sql params (driver-api/canceled-chan))
+                  ^ResultSet rs (try
+                                  (let [st (doto stmt (.setMaxRows max-rows))]
+                                    (sql-jdbc.execute/execute-statement! driver st sql))
+                                  (catch Throwable e
+                                    (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
+                                                    {:driver driver
+                                                     :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                     :params params
+                                                     :type   driver-api/qp.error-type.invalid-query}
+                                                    e))))]
+        (let [rsmeta           (.getMetaData rs)
+              resource-usage (fetch-query-resource-usage stmt (:details database))
+              results-metadata {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
+                                :resource-usage resource-usage}]
+          (try (respond results-metadata (let [row-thunk (sql-jdbc.execute/row-thunk driver rs rsmeta)]
+                                           (driver-api/reducible-rows row-thunk (driver-api/canceled-chan))))
+               ;; Following cancels the statment on the dbms side.
+               ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
+               ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+               ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
+               ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]] (#41448).
+               (finally
+                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                 ;;       It should be removed afterwards!
+                 (when-not (= :vertica driver)
+                   (try (.cancel stmt)
+                        (catch SQLFeatureNotSupportedException _
+                          (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                                     (name driver)))
+                        (catch Throwable _
+                          (log/warn "Statement cancelation failed."))))))))))))
+
 (defmethod driver/execute-reducible-query :athena
   [driver query context respond]
   (assert (empty? (get-in query [:native :params]))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
+  ;; TODO(rileythomp): use the assertion above to simplify execute-reducible-query
+  (execute-reducible-query driver query context respond))
