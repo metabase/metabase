@@ -14,7 +14,6 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { EXAMPLE_PARAMETERS } from "../constants";
 
@@ -37,23 +36,13 @@ const getConfigurableColors = () =>
   ] as const;
 
 export const ConfigureStep = () => {
-  const { options, updateOptions } = useSdkIframeEmbedSetupContext();
+  const { options, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const { settings } = options;
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
-
-  const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) => {
-    updateOptions({
-      ...options,
-      settings: {
-        ...options.settings,
-        ...nextSettings,
-      } as SdkIframeEmbedSettings,
-    });
-  };
 
   const updateColors = (nextColors: Partial<MetabaseColors>) => {
     updateSettings({
@@ -63,60 +52,57 @@ export const ConfigureStep = () => {
 
   return (
     <Stack gap="md">
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="md">
-          {t`Behavior`}
-        </Text>
-        <Stack gap="md">
-          {isQuestionOrDashboardEmbed && (
-            <>
-              <Checkbox
-                label={t`Allow users to drill through on data points`}
-                checked={settings.isDrillThroughEnabled ?? false}
-                onChange={(e) =>
-                  updateSettings({
-                    isDrillThroughEnabled: e.target.checked,
-                  })
-                }
-              />
-
-              <Checkbox
-                label={t`Allow downloads`}
-                checked={settings.withDownloads ?? false}
-                onChange={(e) =>
-                  updateSettings({
-                    withDownloads: e.target.checked,
-                  })
-                }
-              />
-            </>
-          )}
-        </Stack>
-      </Card>
-
-      <Card p="md">
-        <Text size="lg" fw="bold" mb="xs">
-          {t`Parameters`}
-        </Text>
-        <Text size="sm" c="text-medium" mb="lg">
-          {t`Set default values and control visibility`}
-        </Text>
-
-        <Stack gap="md">
-          {EXAMPLE_PARAMETERS.map((param) => (
-            <TextInput
-              key={param.id}
-              label={param.name}
-              placeholder={param.placeholder}
-              rightSection={
-                <ActionIcon variant="subtle">
-                  <Icon name="eye" size={16} />
-                </ActionIcon>
+      {isQuestionOrDashboardEmbed && (
+        <Card p="md">
+          <Text size="lg" fw="bold" mb="md">
+            {t`Behavior`}
+          </Text>
+          <Stack gap="md">
+            <Checkbox
+              label={t`Allow users to drill through on data points`}
+              checked={settings.isDrillThroughEnabled ?? false}
+              onChange={(e) =>
+                updateSettings({ isDrillThroughEnabled: e.target.checked })
               }
             />
-          ))}
-        </Stack>
-      </Card>
+
+            <Checkbox
+              label={t`Allow downloads`}
+              checked={settings.withDownloads ?? false}
+              onChange={(e) =>
+                updateSettings({ withDownloads: e.target.checked })
+              }
+            />
+          </Stack>
+        </Card>
+      )}
+
+      {isQuestionOrDashboardEmbed && (
+        <Card p="md">
+          <Text size="lg" fw="bold" mb="xs">
+            {t`Parameters`}
+          </Text>
+
+          <Text size="sm" c="text-medium" mb="lg">
+            {t`Set default values and control visibility`}
+          </Text>
+
+          <Stack gap="md">
+            {EXAMPLE_PARAMETERS.map((param) => (
+              <TextInput
+                key={param.id}
+                label={param.name}
+                placeholder={param.placeholder}
+                rightSection={
+                  <ActionIcon variant="subtle">
+                    <Icon name="eye" size={16} />
+                  </ActionIcon>
+                }
+              />
+            ))}
+          </Stack>
+        </Card>
+      )}
 
       <Card p="md">
         <Text size="lg" fw="bold" mb="lg">

@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 
-import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
@@ -15,7 +14,6 @@ declare global {
 
 export const SdkIframeEmbedPreview = () => {
   const context = useSdkIframeEmbedSetupContext();
-  const instanceUrl = useSetting("site-url");
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -28,15 +26,14 @@ export const SdkIframeEmbedPreview = () => {
       const { MetabaseEmbed } = window["metabase.embed"];
 
       embed = new MetabaseEmbed({
-        target: "#iframe-embed-container",
-        instanceUrl,
+        ...context.options.settings,
 
         // This is an invalid API key.
         // The embed uses the admin's session if the provided API key is invalid.
         apiKey: "invalid-api-key-for-embed-preview",
-        iframeClassName: S.EmbedPreviewIframe,
 
-        ...context.options.settings,
+        target: "#iframe-embed-container",
+        iframeClassName: S.EmbedPreviewIframe,
       });
     };
 

@@ -1,8 +1,11 @@
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 export type EmbedType = "dashboard" | "chart" | "exploration";
-
-export type Step = "select-type" | "select-entity" | "configure" | "get-code";
+export type Step =
+  | "select-embed-type"
+  | "select-entity"
+  | "configure"
+  | "get-code";
 
 export interface Dashboard {
   id: number;
