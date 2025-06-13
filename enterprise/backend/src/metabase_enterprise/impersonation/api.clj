@@ -1,7 +1,9 @@
 (ns metabase-enterprise.impersonation.api
+  "`/api/ee/connection-impersonation/` routes"
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.api.routes.common :refer [+auth]]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -25,3 +27,7 @@
   (api/check-404 (t2/select-one :model/ConnectionImpersonation :id id))
   (t2/delete! :model/ConnectionImpersonation :id id)
   api/generic-204-no-content)
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/ee/connection-impersonation` routes."
+  (api.macros/ns-handler *ns* +auth))
