@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -25,6 +25,10 @@ import S from "./PreviewSection.module.css";
 import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
 import { getPreviewTypeData } from "./utils";
+
+const MemoizedFilteringPreview = memo(FilteringPreview);
+const MemoizedObjectDetailPreview = memo(ObjectDetailPreview);
+const MemoizedTablePreview = memo(TablePreview);
 
 interface Props {
   className?: string;
@@ -72,7 +76,7 @@ export const PreviewSection = ({
 
       <Box className={S.tabContent} h="100%">
         {previewType === "table" && (
-          <TablePreview
+          <MemoizedTablePreview
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
@@ -81,7 +85,7 @@ export const PreviewSection = ({
         )}
 
         {previewType === "detail" && (
-          <ObjectDetailPreview
+          <MemoizedObjectDetailPreview
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
@@ -90,7 +94,7 @@ export const PreviewSection = ({
         )}
 
         {previewType === "filtering" && (
-          <FilteringPreview
+          <MemoizedFilteringPreview
             databaseId={databaseId}
             fieldId={fieldId}
             /**
