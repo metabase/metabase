@@ -64,7 +64,6 @@
 
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
- actions/*params*
  actions/cached-value
  actions/cached-database
  actions/cached-database-via-table-id
@@ -171,6 +170,10 @@
  sync-util/name-for-logging
  system/site-uuid
  upload/current-database)
+
+(defn action-params []
+  "temporary hack, remove when the underlying dynamic var is deleted"
+  actions/*params*)
 
 (defn ^:deprecated current-user
   "Fetch the user making the request."

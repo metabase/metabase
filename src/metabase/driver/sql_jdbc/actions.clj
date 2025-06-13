@@ -769,7 +769,7 @@
                             (let [database       (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
-        delete-children?  (:delete-children driver-api/*params*)
+        delete-children?  (:delete-children (driver-api/action-params))
         [errors results]  (batch-execution-by-table-id!
                            {:inputs        inputs
                             :row-action    :model.row/delete

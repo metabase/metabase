@@ -90,7 +90,7 @@
 
 (defn- test-action-error-handling! [f]
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
-    (mt/dataset action-error-handling
+    (actions.tu/with-actions-temp-db action-error-handling
       (mt/with-actions-enabled
         (let [db-id          (mt/id)]
           (f {:db-id         db-id
@@ -267,7 +267,7 @@
 (deftest actions-return-rows-with-correct-names-test
   (testing "rows returned by perform action should match the name in metabase_field.name"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (mt/dataset action-error-handling
+      (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
           (let [db-id (mt/id)
                 created-user (actions/perform-action-with-single-input-and-output
@@ -309,7 +309,7 @@
 
 (deftest delete-row-with-children-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/dataset action-error-handling
+    (actions.tu/with-actions-temp-db action-error-handling
       (mt/with-actions-enabled
         (let [group-id-col   (field-id->name (mt/id :group :id))
               group-name-col (field-id->name (mt/id :group :name))

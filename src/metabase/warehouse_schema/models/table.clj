@@ -160,7 +160,7 @@
                                            (app-db/isa :semantic_type :type/PK)       0
                                            (app-db/isa :semantic_type :type/Name)     1
                                            (app-db/isa :semantic_type :type/Temporal) 2
-                                           :else                                         3]
+                                           :else                                      3]
                                           :asc]
                                          [:%lower.name :asc]]
                           :database     [[:database_position :asc]]
