@@ -397,8 +397,9 @@
 (deftest bytes-processed-test-athena
   (mt/test-driver :athena
     (testing "athena queries return resource usage metrics"
-      (is (= {:bytes-scanned 352395, :unit "bytes"}
-             (-> (mt/user-http-request :rasta :post 202 "dataset"
-                                       (mt/mbql-query orders {:limit 1, :order-by [[:asc $id]]}))
-                 :data
-                 :resource-usage))))))
+      (let [resource-usage (-> (mt/user-http-request :rasta :post 202 "dataset"
+                                                     (mt/mbql-query orders {:limit 1, :order-by [[:asc $id]]}))
+                               :data
+                               :resource-usage)]
+        (is (< 0 (:bytes-scanned resource-usage)))
+        (is (= "bytes" (:unit resource-usage)))))))

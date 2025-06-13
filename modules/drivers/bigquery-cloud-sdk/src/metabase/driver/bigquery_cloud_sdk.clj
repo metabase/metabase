@@ -610,6 +610,7 @@
     (respond cols results)))
 
 (defn fetch-query-resource-usage
+  "Get the query statistics from the bigquery job"
   [^BigQuery client result]
   (let [job-id (.getJobId result)
         job ^Job (.getJob client job-id (u/varargs BigQuery$JobOption))
@@ -802,5 +803,5 @@
          :total-bytes-billed (.getTotalBytesBilled stats)
          :unit :bytes})
       (catch Exception e
-        (log/errorf e "error in driver/dry-run-query for bigquery")
+        (log/error e "error in driver/dry-run-query for bigquery")
         e))))

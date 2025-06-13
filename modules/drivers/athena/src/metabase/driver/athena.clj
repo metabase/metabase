@@ -527,7 +527,8 @@
     ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
 
 (defn database-details->client
-  [{:keys [region access_key secret_key s3_staging_dir workgroup catalog] :as details}]
+  "Return an athena client given the database details"
+  [{:keys [region access_key secret_key]}]
   (let [credentials (AwsBasicCredentials/create access_key secret_key)]
     (-> (AthenaClient/builder)
         (.region (Region/of region))
@@ -552,7 +553,7 @@
 (defn execute-reducible-query
   ;; Copied from sql-jdbc.execute with some slight variations
   "Default impl of [[metabase.driver/execute-reducible-query]] for athena"
-  {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
+  {:added "0.35.0", :arglists '([driver query context respond] [driver database sql params max-rows context respond])}
   ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
    (let [database (driver-api/database (driver-api/metadata-provider))
