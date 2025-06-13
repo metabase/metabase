@@ -101,6 +101,7 @@ export function FilterColumnPicker({
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
+        renderItemDescription={omitDescription}
         renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
@@ -201,4 +202,8 @@ function renderItemIcon(
 
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
+}
+
+function omitDescription() {
+  return undefined;
 }
