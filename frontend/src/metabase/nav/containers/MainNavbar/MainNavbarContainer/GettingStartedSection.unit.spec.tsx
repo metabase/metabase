@@ -1,28 +1,26 @@
-import userEvent from "@testing-library/user-event";
-
 import { renderWithProviders, screen } from "__support__/ui";
+import * as domUtils from "metabase/lib/dom";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { GettingStartedSection } from "./GettingStartedSection";
 
 const setup = ({
   hasChildren = true,
+  isEmbeddingIframe,
 }: {
   hasChildren?: boolean;
+  isEmbeddingIframe?: boolean;
 } = {}) => {
-  const onAddDataModalOpen = jest.fn();
+  if (isEmbeddingIframe) {
+    jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+  }
 
-  renderWithProviders(
-    <GettingStartedSection
-      nonEntityItem={{ type: "collection" }}
-      onAddDataModalOpen={onAddDataModalOpen}
-    >
+  return renderWithProviders(
+    <GettingStartedSection nonEntityItem={{ type: "collection" }}>
       {hasChildren && "Child"}
     </GettingStartedSection>,
     { storeInitialState: createMockState() },
   );
-
-  return { onAddDataModalOpen };
 };
 
 describe("GettingStartedSection", () => {
@@ -48,14 +46,15 @@ describe("GettingStartedSection", () => {
     expect(screen.getByText("How to use Metabase")).toBeInTheDocument();
   });
 
-  it("should render the 'Add data' button", () => {
-    setup();
-    expect(screen.getByLabelText("Add data")).toBeInTheDocument();
+  it("should not render the onboarding link within embedding iframe", () => {
+    setup({ isEmbeddingIframe: true });
+    expect(screen.getByText("Getting Started")).toBeInTheDocument();
+    expect(screen.queryByText("How to use Metabase")).not.toBeInTheDocument();
   });
 
-  it("should trigger the modal on 'Add data' click", async () => {
-    const { onAddDataModalOpen } = setup();
-    await userEvent.click(screen.getByText("Add data"));
-    expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
+  it("should not render if empty", () => {
+    setup({ hasChildren: false, isEmbeddingIframe: true });
+    expect(screen.queryByText("Getting Started")).not.toBeInTheDocument();
+    expect(screen.queryByText("How to use Metabase")).not.toBeInTheDocument();
   });
 });
