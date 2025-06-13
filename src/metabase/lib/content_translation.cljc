@@ -42,4 +42,11 @@
 
 (defn translate-display-names-in-column-metadata
   [column-metadata]
+  (log/info "column metadata is" column-metadata)
+  (log/info "display name is" (get column-metadata :display_name))
+  (log/info "type of display name is" (type (get column-metadata :display_name)))
+  (log/info "translation is"
+            (get-content-translation (get column-metadata :display_name)))
+  (log/info "type of translation is"
+            (type (get-content-translation (get column-metadata :display_name))))
   (assoc column-metadata :display_name (get-content-translation (get column-metadata :display_name))))
