@@ -9,14 +9,6 @@ import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 export type PublicOrEmbeddedDashboardProps = Pick<
   DashboardContextProps,
   | "dashboardId"
-  | "hasNightModeToggle"
-  | "isFullscreen"
-  | "isNightMode"
-  | "onFullscreenChange"
-  | "onNightModeChange"
-  | "onRefreshPeriodChange"
-  | "refreshPeriod"
-  | "setRefreshElapsedHook"
   | "background"
   | "bordered"
   | "titled"
