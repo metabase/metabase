@@ -1,6 +1,6 @@
 import { memo } from "react";
-import { useTranslateContent } from "metabase/i18n/hooks";
 
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { Box, type BoxProps, Icon, Space, Title, Tooltip } from "metabase/ui";
 
 const TitleAndDescriptionInner = ({
