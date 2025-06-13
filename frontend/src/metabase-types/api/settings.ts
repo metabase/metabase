@@ -244,7 +244,6 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
-  "query_reference_validation",
   "cache_preemptive",
   "table_data_editing",
   "metabot_v3",
@@ -373,6 +372,7 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
+  "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;

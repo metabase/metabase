@@ -6,18 +6,11 @@
    [clojure.string :as str]
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
-   [metabase.actions.args :as actions.args]
-   [metabase.actions.core :as actions]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -88,8 +81,8 @@
 
 (defn- mbql-query->raw-hsql
   [driver {database-id :database, :as query}]
-  (qp.store/with-metadata-provider database-id
-    (sql.qp/mbql->honeysql driver (qp.preprocess/preprocess query))))
+  (driver-api/with-metadata-provider database-id
+    (sql.qp/mbql->honeysql driver (driver-api/preprocess query))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Action Execution                                                 |
@@ -103,25 +96,25 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn- cast-values :- ::actions.args/row
+(mu/defn- cast-values :- driver-api/schema.actions.row
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
   [driver        :- :keyword
-   column->value :- ::actions.args/row
-   database-id   :- ::lib.schema.id/database
-   table-id      :- ::lib.schema.id/table]
+   column->value :- driver-api/schema.actions.row
+   database-id   :- driver-api/schema.id.database
+   table-id      :- driver-api/schema.id.table]
   (let [type->sql-type (base-type->sql-type-map driver)
-        column->field  (actions/cached-value
+        column->field  (driver-api/cached-value
                         [::cast-values table-id]
                         (fn []
                           (into {}
                                 #_{:clj-kondo/ignore [:deprecated-var]}
-                                (map (juxt :name qp.store/->legacy-metadata))
-                                (qp.store/with-metadata-provider database-id
+                                (map (juxt :name driver-api/->legacy-metadata))
+                                (driver-api/with-metadata-provider database-id
                                   ;; TODO the fields method here only returns visible fields, it might not cast
                                   ;; everything
-                                  (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id)))))]
+                                  (driver-api/fields (driver-api/metadata-provider) table-id)))))]
     (m/map-kv-vals (fn [col-name value]
                      (let [col-name                         (u/qualified-name col-name)
                            {base-type :base_type :as field} (get column->field col-name)]
@@ -261,7 +254,7 @@
                  (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                  {:status-code  400
                                   :database-ids db-ids})))]
-    (actions/cached-database (first db-ids))))
+    (driver-api/cached-database (first db-ids))))
 
 (defn- record-mutations
   "Update the context to reflect the modifications made by the action."
@@ -279,21 +272,21 @@
    [:context :map]
    [:outputs [:sequential output-schema]]])
 
-(mu/defn- correct-columns-name :- [:maybe [:sequential ::actions.args/row]]
+(mu/defn- correct-columns-name :- [:maybe [:sequential driver-api/schema.actions.args.row]]
   "Ensure each rows have column name match with fields name.
   Some drivers like h2 have weird issue with casing."
-  [table-id rows :- [:sequential ::actions.args/row]]
+  [table-id rows :- [:sequential driver-api/schema.actions.args.row]]
   (when (seq rows)
-    (let [field-names (actions/cached-value
+    (let [field-names (driver-api/cached-value
                        [::correct-columns-name table-id]
                        (fn []
                          (t2/select-fn-vec :name [:model/Field :name] :table_id table-id)
                          ;; can't use lib here because fields from lib only return active fields and visible fields
                          ;; :/
-                         #_(let [database (actions/cached-database-via-table-id table-id)]
-                             #_(qp.store/with-metadata-provider (:id database)
+                         #_(let [database (driver-api/cached-database-via-table-id table-id)]
+                             #_(driver-api/with-metadata-provider (:id database)
                                  (mapv :name
-                                       (lib.metadata.protocols/fields (qp.store/metadata-provider) table-id))))))
+                                       (driver-api/fields (driver-api/metadata-provider) table-id))))))
           keymap (merge (u/for-map [f field-names]
                           [(u/lower-case-en f) f])
                         (u/for-map [f field-names]
@@ -340,7 +333,7 @@
          :before   @row-before
          :after    nil}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/delete] :- (result-schema [:map [:rows-deleted :int]])
   [action context inputs]
   (let [database       (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -385,7 +378,7 @@
          :before   row-before
          :after    row-after}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/update]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/update]
   [action context inputs]
   (let [database          (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
@@ -413,7 +406,7 @@
 ;;; H2 and MySQL are dumb and `RETURN_GENERATED_KEYS` only returns the ID of
 ;;; the newly created row. This function will `SELECT` the newly created row
 ;;; assuming that `result` is a map from column names to the generated values.
-(mu/defmethod select-created-row :default :- [:maybe ::actions.args/row]
+(mu/defmethod select-created-row :default :- [:maybe driver-api/schema.actions.args.row]
   [driver create-hsql conn result]
   (let [select-hsql     (-> create-hsql
                             (dissoc :insert-into :values)
@@ -452,8 +445,8 @@
          :before   nil
          :after    row}))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row ::actions.args/row]])
-  [action context inputs :- [:sequential ::mbql.s/Query]]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :model.row/create] :- (result-schema [:map [:created-row driver-api/schema.actions.args.row]])
+  [action context inputs :- [:sequential driver-api/mbql.schema.Query]]
   (let [database (inputs->db inputs)
         ;; TODO it would be nice to make this 1 statement per table, instead of N.
         ;;      we can rely on the table lock instead of the nested row transactions.
@@ -497,7 +490,7 @@
      rows)))
 
 (defn- batch-execution-by-table-id! [{:keys [inputs row-fn row-action validate-fn input-fn]}]
-  (let [databases (into #{} (map (comp actions/cached-database-via-table-id :table-id)) inputs)
+  (let [databases (into #{} (map (comp driver-api/cached-database-via-table-id :table-id)) inputs)
         _         (when-not (= 1 (count databases))
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400
@@ -520,8 +513,8 @@
 
 (mr/def ::table-row-input
   [:map
-   [:table-id ::lib.schema.id/table]
-   [:row ::actions.args/row]])
+   [:table-id driver-api/schema.id.table]
+   [:row driver-api/schema.actions.args.row]])
 
 (defn- row-create-input-fn
   [database table-id row]
@@ -530,7 +523,7 @@
    :query      {:source-table table-id}
    :create-row row})
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create]
   [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
@@ -552,26 +545,26 @@
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
 
-(mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+(mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [database-id :- ::lib.schema.id/database
-   table-id    :- ::lib.schema.id/table]
-  (actions/cached-value
+  [database-id :- driver-api/schema.id.database
+   table-id    :- driver-api/schema.id.table]
+  (driver-api/cached-value
    [::table-id->pk-field-name->id table-id]
    #(into {}
           (comp (filter (fn [{:keys [semantic-type], :as _field}]
                           (isa? semantic-type :type/PK)))
                 (map (juxt :name :id)))
-          (qp.store/with-metadata-provider database-id
-            (lib.metadata.protocols/fields
-             (qp.store/metadata-provider)
+          (driver-api/with-metadata-provider database-id
+            (driver-api/fields
+             (driver-api/metadata-provider)
              table-id)))))
 
-(mu/defn- field-names->field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+(mu/defn- field-names->field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [table-id    :- ::lib.schema.id/table
+  [table-id    :- driver-api/schema.id.table
    field-names :- [:sequential :string]]
-  (actions/cached-value
+  (driver-api/cached-value
    [::field-names->field-name->id table-id]
    #(t2/select-fn->fn :name :id [:model/Field :id :name] :table_id table-id :name [:in field-names])))
 
@@ -579,7 +572,7 @@
   "Given [[field-name->id]] as returned by [[table-id->pk-field-name->id]] or similar and a `row` of column name to
   value build an appropriate MBQL filter clause."
   [field-name->id :- [:map-of :string :int]
-   row :- ::actions.args/row]
+   row :- driver-api/schema.actions.args.row]
   (when (empty? row)
     (throw (ex-info (tru "Cannot build filter clause: row cannot be empty.")
                     {:field-name->id field-name->id, :row row, :status-code 400})))
@@ -620,9 +613,9 @@
   "Delete rows from a table by their primary key values"
   [database-id table-id pk-rows]
   (when (seq pk-rows)
-    (let [database    (actions/cached-database database-id)
+    (let [database    (driver-api/cached-database database-id)
           driver      (:engine database)
-          delete-hsql (-> {:delete-from (keyword (:name (actions/cached-table database-id table-id)))
+          delete-hsql (-> {:delete-from (keyword (:name (driver-api/cached-table database-id table-id)))
                            :where       (build-pk-filter-clause-hsql pk-rows)}
                           (prepare-query driver :table.row/delete))
           sql-args    (sql.qp/format-honeysql driver delete-hsql)]
@@ -661,7 +654,7 @@
 
 (defn- metadata-lookup
   [table-id]
-  (actions/cached-value
+  (driver-api/cached-value
    [::table-fk-relationship table-id]
    (fn []
      (let [table-fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
@@ -692,7 +685,7 @@
                           (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
         table-pks   (keys (table-id->pk-field-name->id database-id table-id))
         row-pk      (select-keys row table-pks)]
-    (actions/delete-recursively table-id [row-pk] metadata-lookup children-fn delete-fn :max-queries 50)))
+    (driver-api/delete-recursively table-id [row-pk] metadata-lookup children-fn delete-fn :max-queries 50)))
 
 ;;;; `:table.row/delete`
 
@@ -743,11 +736,11 @@
                          (lookup-children-in-db relationship parent-rows database-id))
         table-pks      (keys (table-id->pk-field-name->id database-id table-id))
         row-pks        (map #(select-keys % table-pks) rows)
-        children-count (:counts (actions/count-descendants table-id row-pks metadata-lookup children-fn :max-queries 50))]
+        children-count (:counts (driver-api/count-descendants table-id row-pks metadata-lookup children-fn :max-queries 50))]
     (when-not (empty? (filter pos-int? (set (vals children-count))))
       (throw (ex-info (tru "Rows have children")
                       {:status-code    400
-                       :errors         {:type           actions/children-exist
+                       :errors         {:type           driver-api/children-exist
                                         :children-count children-count}})))))
 
 (defn- row-delete!*-with-children
@@ -770,18 +763,19 @@
            :after            nil
            :deleted-children table-id->deleted-children})))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/delete]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
-                            (let [database       (actions/cached-database-via-table-id table-id)
+  (when (< 1 (count (distinct (keep :delete-children inputs))))
+    (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
+  (let [delete-children?  (some :delete-children inputs)
+        table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+                            (let [database       (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
-        delete-children?  (:delete-children actions/*params*)
         [errors results]  (batch-execution-by-table-id!
-                           {:inputs        inputs
-                            :row-action    :model.row/delete
-                            :row-fn        (if delete-children? row-delete!*-with-children row-delete!*)
-                            ;; TODO :delete-children should get passed in as part of inputs, and we should get rid of *params*
+                           {:inputs       inputs
+                            :row-action   :model.row/delete
+                            :row-fn       (if delete-children? row-delete!*-with-children row-delete!*)
                             :validate-fn   (fn [database table-id rows]
                                              (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
                                                (check-consistent-row-keys rows)
@@ -810,7 +804,7 @@
 
 (mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
-  [row      :- ::actions.args/row
+  [row      :- driver-api/schema.actions.row
    pk-names :- [:set :string]]
   (doseq [pk-key pk-names
           :when  (not (contains? row pk-key))]
@@ -821,7 +815,7 @@
 
 (mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
-  [row      :- ::actions.args/row
+  [row      :- driver-api/schema.actions.row
    pk-names :- [:set :string]]
   (let [non-pk-names (set/difference (set (keys row)) pk-names)]
     (when (empty? non-pk-names)
@@ -846,7 +840,7 @@
                   :filter       (row->mbql-filter-clause pk-name->id pk-column->value)}
      :update-row (apply dissoc row pk-names)}))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/update]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/update]
   [_action context inputs :- [:sequential ::table-row-input]]
   (let [[errors results]
         (batch-execution-by-table-id!
@@ -877,7 +871,7 @@
   [action database {:keys [table-id row row-key]}]
   (with-jdbc-transaction [conn (u/the-id database)]
     (let [driver    (:engine database)
-          table-name        (:name (actions/cached-table (:id database) table-id))
+          table-name        (:name (driver-api/cached-table (:id database) table-id))
           hsql              (prepare-query {:select [:%count.*]
                                             :from   [(keyword table-name)]
                                             :where  (into [:and] (for [[k v] row-key] [:= (keyword k) v]))}
@@ -923,9 +917,9 @@
                          :duplicates-count before-count
                          :table-id         table-id}))))))
 
-(mu/defmethod actions/perform-action!* [:sql-jdbc :table.row/create-or-update]
+(mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/create-or-update]
   [action context inputs :- [:sequential ::table-row-input]]
-  (let [databases (into #{} (map (comp actions/cached-database-via-table-id :table-id)) inputs)
+  (let [databases (into #{} (map (comp driver-api/cached-database-via-table-id :table-id)) inputs)
         _         (when-not (= 1 (count databases))
                     (throw (ex-info (tru "Cannot operate on multiple databases, it would not be atomic.")
                                     {:status-code  400

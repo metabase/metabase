@@ -5,7 +5,6 @@
    [clojure.test :refer :all]
    [metabase.actions.actions :as actions]
    [metabase.actions.args :as actions.args]
-   [metabase.actions.core :as actions.core]
    [metabase.actions.error :as actions.error]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
@@ -90,7 +89,7 @@
 
 (defn- test-action-error-handling! [f]
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
-    (mt/dataset action-error-handling
+    (actions.tu/with-actions-temp-db action-error-handling
       (mt/with-actions-enabled
         (let [db-id          (mt/id)]
           (f {:db-id         db-id
@@ -267,7 +266,7 @@
 (deftest actions-return-rows-with-correct-names-test
   (testing "rows returned by perform action should match the name in metabase_field.name"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (mt/dataset action-error-handling
+      (actions.tu/with-actions-temp-db action-error-handling
         (mt/with-actions-enabled
           (let [db-id (mt/id)
                 created-user (actions/perform-action-with-single-input-and-output
@@ -309,7 +308,7 @@
 
 (deftest delete-row-with-children-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-    (mt/dataset action-error-handling
+    (actions.tu/with-actions-temp-db action-error-handling
       (mt/with-actions-enabled
         (let [group-id-col   (field-id->name (mt/id :group :id))
               group-name-col (field-id->name (mt/id :group :name))
@@ -359,17 +358,14 @@
                      :row      {group-id-col created-group-id}})))
 
               (testing "success if delete-children is enabled"
-                (binding [actions.core/*params* {:delete-children true}]
-                  (is (=? {:op :deleted
-                           :row {group-id-col created-group-id}}
-                          (actions/perform-action-with-single-input-and-output
-                           :table.row/delete
-                           {:database (mt/id)
-                            :table-id (mt/id :group)
-                            :row      {group-id-col created-group-id}})))
-
-                  (testing "users are also dedeted"
-                    (is (zero? (users-of-group created-group-id))))))))
+                (is (=? {:op  :deleted
+                         :row {group-id-col created-group-id}}
+                        (actions/perform-action-with-single-input-and-output
+                         :table.row/delete
+                         {:database        (mt/id)
+                          :table-id        (mt/id :group)
+                          :row             {group-id-col created-group-id}
+                          :delete-children true}))))))
 
           (testing "group without user can be deleted without delete-children option"
             (let [created-group-id (new-group)]

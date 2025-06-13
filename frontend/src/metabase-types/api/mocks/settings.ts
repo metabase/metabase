@@ -121,7 +121,6 @@ export const createMockTokenFeatures = (
   email_restrict_recipients: false,
   collection_cleanup: false,
   upload_management: false,
-  query_reference_validation: false,
   serialization: false,
   cache_preemptive: false,
   table_data_editing: false,
@@ -357,5 +356,6 @@ export const createMockSettings = (
   "check-for-updates": true,
   "update-channel": "latest",
   "trial-banner-dismissal-timestamp": null,
+  "license-token-missing-banner-dismissal-timestamp": [],
   ...opts,
 });

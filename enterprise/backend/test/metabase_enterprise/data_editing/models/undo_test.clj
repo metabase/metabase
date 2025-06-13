@@ -66,7 +66,7 @@
 ;; Until then, I think this is ideal.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest undo-redo-single-user-single-table-single-record-integration-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Single-user chain, non-generated pk"
         ;; TODO test with a real PK
@@ -139,7 +139,7 @@
 ;; Until then, I think this is ideal.
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest undo-redo-multi-user-single-table-single-record-integration-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Multi-user chain"
         (with-open [table-ref (data-editing.tu/open-test-table! {:id    [:int]
@@ -236,7 +236,7 @@
             (is (not (next-batch-num :redo user-1 test-scope)))))))))
 
 (deftest undo-reverted-changes-integration-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Reverted changes have their snapshots deleted when there are further changes"
         (with-open [table-ref (data-editing.tu/open-test-table! {:id     [:int]
@@ -282,7 +282,7 @@
                           :where  (or where true)}))))
 
 (deftest prune-snapshots-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "We delete older batches when they exceed our retention limits"
         (with-open [table-ref-1 (data-editing.tu/open-test-table! {:id [:int]} {:primary-key [:id]})
@@ -381,7 +381,7 @@
               (is (= 7 (count-batches [:= :table_id table-2]))))))))))
 
 (deftest undo-non-undoable-batch-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (mt/with-premium-features #{:table-data-editing}
       (testing "Cannot undo a batch marked as undoable: false"
         (with-open [table-ref (data-editing.tu/open-test-table! {:id   [:int]

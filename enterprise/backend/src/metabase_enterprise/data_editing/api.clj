@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-editing.api
   (:require
    [clojure.walk :as walk]
+   [metabase-enterprise.data-editing.configure :as data-editing.configure]
    [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase-enterprise.data-editing.describe :as data-editing.describe]
    [metabase.actions.core :as actions]
@@ -28,63 +29,48 @@
   (when (require-authz?)
     (api/check-superuser)))
 
+(declare execute!*)
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows scope]} :- [:map
-                            [:rows [:sequential {:min 1} :map]]
-                            ;; TODO make this non-optional in the future
-                            [:scope {:optional true} ::types/scope.raw]]]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
-        ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
-        scope (or scope {:table-id table-id})]
-    {:created-rows (map :row (:outputs (actions/perform-action! :data-grid.row/create scope rows)))}))
+  (let [scope {:table-id table-id}]
+    {:created-rows (map :row (execute!* "data-grid.row/create" scope {} rows))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows pks updates scope]}
+   {:keys [rows pks updates]}
    :- [:multi {:dispatch #(cond
                             (:rows %) :mixed-updates
                             (:pks %)  :uniform-updates)}
-       [:mixed-updates [:map
-                        [:rows [:sequential {:min 1} :map]]
-                        ;; TODO make :scope required
-                        [:scope {:optional true} ::types/scope.raw]]]
+       [:mixed-updates [:map [:rows [:sequential {:min 1} :map]]]]
        [:uniform-updates [:map
                           [:pks [:sequential {:min 1} :map]]
-                          [:updates :map]
-                          ;; TODO make :scope required
-                          [:scope {:optional true} ::types/scope.raw]]]]]
+                          [:updates :map]]]]]
   (check-permissions)
   (if (empty? (or rows pks))
     {:updated []}
-    (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
-          ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
-          scope   (or scope {:table-id table-id})
+    (let [scope   {:table-id table-id}
           rows    (or rows
                       ;; For now, it's just a shim, because we haven't implemented an efficient bulk update action yet.
                       ;; This is a dumb shim; we're not checking that the pk maps are really (just) the pks.
                       (map #(merge % updates) pks))]
-      {:updated (map :row (:outputs (actions/perform-action! :data-grid.row/update scope rows)))})))
+      {:updated (map :row (execute!* "data-grid.row/update" scope nil rows))})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows scope]} :- [:map
-                            [:rows [:sequential {:min 1} :map]]
-                            ;; make this non-optional in the future
-                            [:scope {:optional true} ::types/scope.raw]]]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  ;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
-  ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
-  (let [scope (or scope {:table-id table-id})]
-    (actions/perform-action! :data-grid.row/delete scope rows)
+  (let [scope {:table-id table-id}]
+    (execute!* "data-grid.row/delete" scope nil rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust
@@ -227,6 +213,36 @@
                                                :parameters]))]
       {:actions (vec (concat saved-actions table-actions))})))
 
+(mr/def ::api-action-id-saved
+  "Refers to a row in the actions table."
+  ms/PositiveInt)
+
+(mr/def ::api-action-id-primitive-or-dashboard-or-dashcard-action
+  "We refer to primitive actions through their names.
+  For now we also encode dashboard button and dashcard action ids as strings, but make we can stop that after WRK-483."
+  :string)
+
+(mr/def ::api-action-id-packed-mapping
+  "The picker currently returns negative integers which encodes certain primitive actions with some config.
+  This is just a poor man's ::api-action-expression, so maybe we can deprecate that."
+  ms/NegativeInt)
+
+(mr/def ::api-action-id
+  "Primitive actions, saved actions, and packed encodings from the picker."
+  [:or
+   ::api-action-id-saved
+   ::api-action-id-primitive-or-dashboard-or-dashcard-action
+   ::api-action-id-packed-mapping])
+
+;; TODO this should become sequential so we can save the order.
+(mr/def ::action.config.param-map
+  "Editable configuration used to transform the inputs passed to an action."
+  [:map-of :keyword :any])
+
+(mr/def ::action.config.mappings
+  "Non -editable configuration used to transform the inputs passed to an action."
+  [:map-of :keyword :any])
+
 (mr/def ::unified-action.base
   [:or
    [:map {:closed true}
@@ -235,24 +251,45 @@
     [:action-kw :keyword]
     [:mapping {:optional true} [:maybe :map]]]])
 
+;; TODO Regret this name, let's rename it to something like ::action-expression once it's pure data.
 (mr/def ::unified-action
+  "The internal representation used by our APIs, after we've parsed the relevant ids and fetched their configuration."
   [:or
    ::unified-action.base
    [:map {:closed true}
+    ;; TODO Having an opaque id like this inside is not great.
+    ;;      We eventually want to have fetched all relevant data already, so we can just dispatch.
+    ;; But, for now we're wanting to reuse legacy code which dispatches on the underlying toucan instances, and the
+    ;; time has not yet come to refactor those functions.
+    ;; TODO make this variant more self-describing, it's not clear that this integer is a dashcard id.
     [:dashboard-action ms/PositiveInt]]
    [:map {:closed true}
     [:inner-action ::unified-action.base]
-    ;; TODO type our mappings
-    [:mapping [:maybe :map]]
-    [:param-map :map]
-    ;; TODO generalize so we can support grids outside of dashboards
-    [:dashcard-id ms/PositiveInt]]])
+    [:mapping {:optional true} [:maybe ::action.config.mappings]]
+    [:param-map ::action.config.param-map]
+    ;; We will eventually want to generalize to support grids outside of dashboards.
+    [:dashcard-id {:optional true} ms/PositiveInt]
+    [:configurable {:optional true} :boolean]]])
+
+(mr/def ::api-action-expression
+  "A more relaxed version of ::unified-action that can still have opaque ::api-action-id expressions inside."
+  ;; TODO let's wait until we've written all our API tests and integrated the FE before typing this.
+  :map)
+
+(mr/def ::api-action-id-or-expression
+  "All the various ways of referring to an action with the v2 APIs."
+  [:or ::api-action-expression ::api-action-id])
 
 (mu/defn- fetch-unified-action :- ::unified-action
-  "Resolve various types of action id into a semantic map which is easier to dispatch on."
+  "Resolve various flavors of action-id into plain data, making it easier to dispatch on. Fetch config etc."
   [scope :- ::types/scope.hydrated
-   raw-id :- [:or :string ms/NegativeInt ms/PositiveInt]]
+   raw-id :- ::api-action-id-or-expression]
   (cond
+    (map? raw-id) (if-let [packed-id (:packed-id raw-id)]
+                    (merge
+                     {:inner-action (fetch-unified-action scope packed-id)}
+                     (dissoc raw-id :packed-id))
+                    raw-id)
     (pos-int? raw-id) {:action-id raw-id}
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
@@ -281,17 +318,19 @@
                              unified     (fetch-unified-action scope inner-id)
                              action-type (:actionType viz-action "data-grid/row-action")
                              mapping     (:mapping viz-action)
+                             ;; TODO we should do this *later* because it's lossy - we lose the configured ordering.
                              param-map   (->> (:parameterMappings viz-action {})
                                               (u/index-by :parameterId #(dissoc % :parameterId))
                                               walk/keywordize-keys)]
-                         (assert (:enabled viz-action) "Cannot call disabled actions")
+                         (assert (:enabled viz-action true) "Cannot call disabled actions")
                          (case action-type
                            ("data-grid/built-in"
                             "data-grid/row-action")
                            {:inner-action unified
                             :mapping      mapping
                             :param-map    param-map
-                            :dashcard-id  dashcard-id}))
+                            :dashcard-id  dashcard-id
+                            :configurable (not= action-type "data-grid/built-in")}))
                        (if-let [[_ dashcard-id] (re-matches #"^dashcard:(\d+)$" raw-id)]
                          ;; Dashboard buttons can only be invoked from dashboards
                          ;; We're not checking that the scope has the correct dashboard, but if it's incorrect, there
@@ -301,14 +340,19 @@
                            (api/read-check :model/Dashboard dashboard-id)
                            {:dashboard-action (parse-long dashcard-id)})
                          ;; Not a fancy encoded string, it must refer directly to a primitive.
-                         {:action-kw (keyword raw-id)}))
+                         (let [kw (keyword raw-id)]
+                           {:action-kw kw
+                            :mapping   (actions/default-mapping kw scope)})))
     :else
     (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
 
 (defn- hydrate-mapping [mapping]
   (walk/postwalk-replace
-   {"::root" ::root
-    "::key"  ::key}
+   {"::root"   ::root
+    "::key"    ::key
+    "::input"  ::input
+    "::params" ::params
+    "::param"  ::param}
    mapping))
 
 (defn- augment-params [{:keys [dashcard-id param-map] :as _action} input params]
@@ -344,7 +388,8 @@
      param-map)))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
-  (let [mapping (hydrate-mapping mapping)]
+  (let [mapping (hydrate-mapping mapping)
+        tag?    #(and (vector? %2) (= %1 (first %2)))]
     (if-not mapping
       (if (or params (:param-map action))
         (map #(augment-params action % params) inputs)
@@ -355,11 +400,12 @@
          (fn [x]
            (cond
              ;; TODO handle the fact this stuff can be json-ified better
-             (= ::root x)
-             root
+             (= ::root x)   root
+             (= ::input x)  input
+             (= ::params x) params
              ;; specific key
-             (and (vector? x) (= ::key (first x)))
-             (get root (keyword (second x)))
+             (tag? ::key x)   (get root (keyword (second x)))
+             (tag? ::param x) (get params (keyword (second x)))
              :else
              x))
          mapping)))))
@@ -405,17 +451,17 @@
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/action/v2/execute"
     "The One True API for invoking actions.
-  It doesn't care whether the action is saved or primitive, and whether it has been placed.
-  In particular, it supports:
-  - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
-  - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
-  Since actions are free to return multiple outputs even for a single output, the response is always plural."
+     It doesn't care whether the action is saved or primitive, and whether it has been placed.
+     In particular, it supports:
+     - Custom model actions as well as primitive actions, and encoded hack actions which use negative ids.
+     - Stand-alone actions, Dashboard actions, Row actions, and whatever else comes along.
+     Since actions are free to return multiple outputs even for a single output, the response is always plural."
     [{}
      {}
      {:keys [action_id scope params input]}
      :- [:map
        ;; TODO docstrings for these
-         [:action_id [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:action_id ::api-action-id-or-expression]
          [:scope     ::types/scope.raw]
          [:params    {:optional true} :map]
          [:input     :map]]]
@@ -429,13 +475,11 @@
      {}
      {:keys [action_id scope inputs params]}
      :- [:map
-         [:action_id               [:or :string ms/NegativeInt ms/PositiveInt]]
+         [:action_id               ::api-action-id-or-expression]
          [:scope                   ::types/scope.raw]
          [:inputs                  [:sequential :map]]
-         [:params {:optional true} :map]]]
-    ;; TODO get rid of *params* and use :mapping pattern to handle nested deletes
-    {:outputs (binding [actions/*params* params]
-                (execute!* action_id scope (dissoc params :delete-children) inputs))}))
+         [:params {:optional true} [:map-of :keyword :any]]]]
+    {:outputs (execute!* action_id scope params inputs)}))
 
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
@@ -480,6 +524,17 @@
                                      :scope       scope
                                      :action_id   action_id})))]
       (data-editing.describe/describe-unified-action unified scope input))))
+
+(def configure
+  "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
+  (api.macros/defendpoint :post "/configure-form"
+    "This API returns a data representation of the form the FE will render. It does not update the configuration."
+    [{}
+     {}
+     ;; TODO pour some malli on me
+     {:keys [action_id scope]}]
+    (let [scope (actions/hydrate-scope scope)]
+      (data-editing.configure/configuration (fetch-unified-action scope action_id) scope))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."

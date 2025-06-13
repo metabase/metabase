@@ -22,7 +22,8 @@
   (let [table (sync/create-table! db {:name table-name
                                       ;; todo figure out how to determine default schema from driver
                                       :schema (case (:engine db) :postgres "public" nil)
-                                      :display_name table-name})]
+                                      :display_name table-name
+                                      :field_order  :database})]
     (sync/sync-fields-for-table! db table)
     (:id table)))
 
@@ -70,15 +71,16 @@
   (alter-db-settings! assoc :database-enable-table-editing (boolean on-or-off)))
 
 (defmacro with-data-editing-enabled! [on-or-off & body]
-  `(let [before# (actions.settings/database-enable-table-editing)
-         _#      (toggle-data-editing-enabled! ~on-or-off)
-         tokens# (cond-> (token-check/*token-features*)
-                   ~on-or-off (conj "table-data-editing")
-                   (not ~on-or-off) (disj "table-data-editing"))
-         result# (binding [token-check/*token-features* (constantly tokens#)]
-                   ~@body)]
-     (toggle-data-editing-enabled! before#)
-     result#))
+  `(let [before# (actions.settings/database-enable-table-editing)]
+     (try
+       (toggle-data-editing-enabled! ~on-or-off)
+       (let [tokens# (cond-> (token-check/*token-features*)
+                       ~on-or-off       (conj "table-data-editing")
+                       (not ~on-or-off) (disj "table-data-editing"))]
+         (binding [token-check/*token-features* (constantly tokens#)]
+           ~@body))
+       (finally
+         (toggle-data-editing-enabled! before#)))))
 
 (defn open-test-table!
   "Sets up an anonymous table in the test db (mt/id). Return a box that can be deref'd for the table-id.

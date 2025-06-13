@@ -41,6 +41,7 @@ import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_EDITING,
   PLUGIN_LANDING_PAGE,
+  PLUGIN_METABOT,
 } from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
@@ -121,6 +122,8 @@ export const getRoutes = (store) => {
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
+          {PLUGIN_METABOT.getMetabotRoutes()}
+
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"
