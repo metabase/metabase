@@ -6,11 +6,11 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.config.core :as config]
+   [metabase.content-translation.utils :as content-translation.utils]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -134,8 +134,8 @@
   (let [qualifier (if fk-field-id
                     ;; strip off trailing ` id` from FK display name
                     (str/replace (:display-name (lib.metadata/field (qp.store/metadata-provider) fk-field-id))
-                                 #"(?i)\sid$"
-                                 "")
+                      #"(?i)\sid$"
+                      "")
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
@@ -672,7 +672,7 @@
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
        (deduplicate-cols-names)
-       (map lib.content-translation/translate-display-names-in-column-metadata)
+       (map content-translation.utils/translate-column-display-name)
        (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
        (map lib.binning/ensure-binning-in-display-name)))
 
