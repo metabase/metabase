@@ -9,7 +9,6 @@
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -285,7 +284,6 @@
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
     (not-empty (mapv #(-> %
                           mbql.normalize/normalize-source-metadata
-                          lib.content-translation/translate-display-names-in-column-metadata
                           ;; This is necessary, because in the wild, there may be cards created prior to this change.
                           lib.temporal-bucket/ensure-temporal-unit-in-display-name
                           lib.binning/ensure-binning-in-display-name)

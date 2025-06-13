@@ -1,8 +1,6 @@
 (ns metabase.content-translation.models
   "A model representing dictionary entries for translations."
   (:require
-   [metabase.premium-features.core :as premium-features]
-   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -19,7 +17,9 @@
   ([]
    (get-translations nil))
   ([locale]
-   (premium-features/assert-has-feature :content-translation (tru "Content translation"))
+   ;; TODO: Restore token check here. I had to remove it because it's creating a cyclic dependency
+   ;; TODO: Restore token check here. I had to remove it because it's creating a cyclic dependency
+   ;; TODO: Restore token check here. I had to remove it because it's creating a cyclic dependency
    (if locale
      (t2/select :model/ContentTranslation :locale locale {:order-by [:msgid]})
      (t2/select :model/ContentTranslation {:order-by [:locale :msgid]}))))
