@@ -31,7 +31,7 @@
     Timestamp
     Types)
    (java.time OffsetDateTime ZonedDateTime)
-   [java.util UUID]
+   (java.util UUID)
    (software.amazon.awssdk.auth.credentials AwsBasicCredentials StaticCredentialsProvider)
    (software.amazon.awssdk.regions Region)
    (software.amazon.awssdk.services.athena AthenaClient)

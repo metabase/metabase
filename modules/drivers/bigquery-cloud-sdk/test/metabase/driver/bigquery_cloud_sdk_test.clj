@@ -1265,14 +1265,14 @@
 (deftest dry-run-query-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "bigquery can dry run a query"
-      (is (= {:total-bytes-processed 0, :estimated-bytes-processed nil, :total-bytes-billed 0, :unit "bytes"}
+      (is (= {:amount 0 :unit "bytes" :total-bytes-processed 0 :estimated-bytes-processed nil :total-bytes-billed 0}
              (mt/user-http-request :rasta :post 200 "dataset/dryrun"
                                    (mt/mbql-query orders)))))))
 
 (deftest query-resource-usage-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "bigquery queries return resource usage metrics"
-      (is (= {:total-bytes-processed 0, :total-bytes-billed 0, :estimated-bytes-processed 0, :unit "bytes"}
+      (is (= {:amount 0 :unit "bytes" :total-bytes-processed 0 :total-bytes-billed 0 :estimated-bytes-processed 0}
              (-> (mt/user-http-request :rasta :post 202 "dataset"
                                        (mt/mbql-query orders {:limit 1, :order-by [[:asc $id]]}))
                  :data

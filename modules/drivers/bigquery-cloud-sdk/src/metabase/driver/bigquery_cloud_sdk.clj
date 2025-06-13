@@ -615,10 +615,11 @@
   (let [job-id (.getJobId result)
         job ^Job (.getJob client job-id (u/varargs BigQuery$JobOption))
         stats (.getStatistics job)]
-    {:total-bytes-processed (.getTotalBytesProcessed stats)
+    {:amount (.getTotalBytesBilled stats)
+     :unit :bytes
+     :total-bytes-processed (.getTotalBytesProcessed stats)
      :total-bytes-billed (.getTotalBytesBilled stats)
-     :estimated-bytes-processed (.getEstimatedBytesProcessed stats)
-     :unit :bytes}))
+     :estimated-bytes-processed (.getEstimatedBytesProcessed stats)}))
 
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
@@ -798,10 +799,11 @@
                          JobInfo/of)
             job (.create client job-info (u/varargs BigQuery$JobOption))
             stats (.getStatistics job)]
-        {:total-bytes-processed (.getTotalBytesProcessed stats)
-         :estimated-bytes-processed (.getEstimatedBytesProcessed stats)
+        {:amount (.getTotalBytesProcessed stats)
+         :unit :bytes
+         :total-bytes-processed (.getTotalBytesProcessed stats)
          :total-bytes-billed (.getTotalBytesBilled stats)
-         :unit :bytes})
+         :estimated-bytes-processed (.getEstimatedBytesProcessed stats)})
       (catch Exception e
         (log/error e "error in driver/dry-run-query for bigquery")
         e))))
