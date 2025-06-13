@@ -1,4 +1,5 @@
 import type {
+  CardDisplayType,
   CardId,
   CardType,
   CollectionId,
@@ -107,6 +108,7 @@ export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
   query: DatasetQuery;
+  display_type: CardDisplayType;
   chart_configs?: Array<MetabotChartConfig>;
 };
 

@@ -2,7 +2,10 @@ import dayjs from "dayjs";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import { getChartSelector } from "metabase/visualizations/lib/image-exports";
+import {
+  getChartSvgSelector,
+  getVisualizationSvgDataUri,
+} from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -149,27 +152,6 @@ function processTimelineEvents(timelines: Timeline[]) {
     .slice(0, 20);
 }
 
-function getVisualizationSvgDataUrl(
-  question: Question,
-  visualizationSettings: ComputedVisualizationSettings | undefined,
-): string | undefined {
-  if (!visualizationSettings || question.display() === "table") {
-    return undefined;
-  }
-
-  const svgElement = document.querySelector(
-    `${getChartSelector({ cardId: question.id() })} svg`,
-  );
-  const svgString = svgElement
-    ? new XMLSerializer().serializeToString(svgElement)
-    : undefined;
-  const image_base_64 = svgString
-    ? `data:image/svg;base64,${window.btoa(svgString)}`
-    : undefined;
-
-  return image_base_64;
-}
-
 const getChartConfigs = ({
   question,
   series,
@@ -187,9 +169,8 @@ const getChartConfigs = ({
 
   return [
     {
-      image_base_64: getVisualizationSvgDataUrl(
-        question,
-        visualizationSettings,
+      image_base_64: getVisualizationSvgDataUri(
+        getChartSvgSelector({ cardId: question.id() }),
       ),
       title: question.displayName(),
       description: question.description(),
