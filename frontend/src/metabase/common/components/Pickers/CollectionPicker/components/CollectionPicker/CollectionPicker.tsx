@@ -7,24 +7,23 @@ import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type { Collection, Dashboard } from "metabase-types/api";
 
-import { LoadingSpinner, NestedItemPicker } from "../../../EntityPicker";
-import { handleNewDashboard as handleNewDashboardUtil } from "../../DashboardPicker/utils";
-import { useGetInitialContainer } from "../../hooks";
-import { getCollectionIdPath, getStateFromIdPath } from "../../utils";
-import { useEnsureCollectionSelected } from "../hooks";
+import { LoadingSpinner, NestedItemPicker } from "../../../../EntityPicker";
+import { handleNewDashboard as handleNewDashboardUtil } from "../../../DashboardPicker/utils";
+import { useGetInitialContainer } from "../../../hooks";
+import { getCollectionIdPath, getStateFromIdPath } from "../../../utils";
+import { useEnsureCollectionSelected } from "../../hooks";
 import type {
   CollectionPickerItem,
   CollectionPickerModel,
   CollectionPickerOptions,
   CollectionPickerStatePath,
-} from "../types";
+} from "../../types";
 import {
   getParentCollectionId,
   getPathLevelForItem,
   isFolderFactory,
-} from "../utils";
-
-import { CollectionItemPickerResolver } from "./CollectionItemPickerResolver";
+} from "../../utils";
+import { CollectionItemPickerResolver } from "../CollectionItemPickerResolver";
 
 const defaultOptions: CollectionPickerOptions = {
   showPersonalCollections: true,
@@ -219,6 +218,7 @@ export const CollectionPickerInner = (
         const newPath = getStateFromIdPath({
           idPath: getCollectionIdPath(
             {
+              ...currentCollection,
               id: currentCollection.id,
               location: currentCollection.effective_location,
               is_personal: currentCollection.is_personal,

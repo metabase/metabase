@@ -1,6 +1,9 @@
 (ns metabase-enterprise.tenants.core
   (:require
-   [metabase-enterprise.tenants.api :as api]
+   [metabase-enterprise.tenants.api :as tenants.api]
+   [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.settings.core :as setting]
    [metabase.tenants.core :as tenants]
@@ -11,7 +14,7 @@
   attributes."
   :feature :tenants
   [{:keys [tenant_id] :as _user}]
-  (or (when (and (setting/get :use-tenants) tenant_id)
+  (or (when (and (perms/use-tenants) tenant_id)
         (when-let [{:keys [slug attributes]} (t2/select-one :model/Tenant tenant_id)]
           (merge attributes {"@tenant.slug" slug})))
       {}))
@@ -20,7 +23,7 @@
   "The set of tenant attribute keys that attempt to be merged into tenant users' attributes"
   :feature :tenants
   []
-  (if (setting/get :use-tenants)
+  (if (perms/use-tenants)
     (into #{"@tenant.slug"}
           (comp
            (mapcat keys)
@@ -42,7 +45,7 @@
   "Creates a tenant"
   :feature :tenants
   [tenant]
-  (api/create-tenant! tenant))
+  (tenants.api/create-tenant! tenant))
 
 (defenterprise attribute-structure
   "EE version of `attribute-structure` serializes the combination of tenant and user attributes for the
@@ -57,3 +60,15 @@
                                                {"@tenant.slug" (:slug tenant)}))]
     (assoc user
            :structured_attributes combined-attributes)))
+
+
+(defenterprise validate-new-tenant-collection!
+  "Throws API exceptions if the passed collection is an invalid tenant collection."
+  :feature :tenants
+  [{ttype :type :as _new-coll}]
+  (when (collection/is-tenant-collection-type? ttype)
+    ;; make sure tenants is enabled
+    (api/check-400 (perms/use-tenants))
+
+    ;; check perms - user has the application permission to create shared tenant collections
+    (api/check-403 (perms/check-has-application-permission :create-tenant-collections))))

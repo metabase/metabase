@@ -1,17 +1,16 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, within } from "__support__/ui";
 import type { CollectionPermissionsGraph } from "metabase-types/api";
-import {
-  createMockCollection,
-  createMockGroup,
-} from "metabase-types/api/mocks";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import {
+  defaultCollectionWithTenants,
   defaultCollections,
-  defaultPermissionGroups,
+  defaultPermissionGroupsWithTenants,
   defaultPermissionsGraph,
+  defaultPermissionsGraphWithTenants,
   setup,
 } from "./setup";
 
@@ -19,37 +18,58 @@ const tokenFeatures = { tenants: true, audit_app: true };
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
   describe("External Users Group", () => {
-    const externalUsersGroup = createMockGroup({
-      id: 4,
-      name: "External Users",
-    });
-
-    it("should not be able give access to Our Analytics", async () => {
+    it("should not be able get access to Our Analytics", async () => {
       await setup({
         tokenFeatures,
         initialRoute: "/admin/permissions/collections/root",
-        permissionGroups: [...defaultPermissionGroups, externalUsersGroup],
-        permissionsGraph: {
-          ...defaultPermissionsGraph,
-          groups: {
-            ...defaultPermissionsGraph.groups,
-            [externalUsersGroup.id]: Object.entries(defaultCollections).reduce(
-              (graph, [collectionId]) => {
-                return {
-                  ...graph,
-                  [collectionId]: "none",
-                };
-              },
-              { root: "none" },
-            ),
-          },
-        },
+        permissionGroups: defaultPermissionGroupsWithTenants,
+        permissionsGraph: defaultPermissionsGraphWithTenants,
       });
 
-      expect(await screen.findByText("External Users")).toBeInTheDocument();
-      expect(await screen.findByText("No access")).toBeInTheDocument();
-      expect(await screen.findAllByText("View")).toHaveLength(2);
-      expect(await screen.findAllByText("Curate")).toHaveLength(1);
+      await assertCollectionAccessForGroup("Administrators", "Curate");
+      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("Other Users", "View");
+      await assertCollectionAccessForGroup("All External Users", "No access");
+      await assertCollectionAccessIsDisabled("All External Users");
+    });
+
+    it("should not be able get access to normal collections", async () => {
+      await setup({
+        tokenFeatures,
+        initialRoute: "/admin/permissions/collections/2",
+        permissionGroups: defaultPermissionGroupsWithTenants,
+        permissionsGraph: defaultPermissionsGraphWithTenants,
+      });
+
+      await assertCollectionAccessForGroup("Administrators", "Curate");
+      await assertCollectionAccessForGroup("All Internal Users", "Curate");
+      await assertCollectionAccessForGroup("Other Users", "View");
+      await assertCollectionAccessForGroup("All External Users", "No access");
+      await assertCollectionAccessIsDisabled("All External Users");
+    });
+
+    it("should be able to have view access to shared tenant collections", async () => {
+      await setup({
+        tokenFeatures,
+        initialRoute: "/admin/permissions/collections/7",
+        permissionGroups: defaultPermissionGroupsWithTenants,
+        permissionsGraph: defaultPermissionsGraphWithTenants,
+        collections: defaultCollectionWithTenants,
+      });
+
+      await assertCollectionAccessForGroup("Administrators", "Curate");
+      await assertCollectionAccessForGroup("All Internal Users", "Curate");
+      await assertCollectionAccessForGroup("Other Users", "No access");
+      await assertCollectionAccessForGroup("All External Users", "View");
+      await assertCollectionAccessIsDisabled("All External Users", false);
+
+      await userEvent.click(
+        await getCollectionPermissionCell("All External Users"),
+      );
+
+      expect(await screen.findByRole("dialog")).toHaveTextContent("View");
+      expect(await screen.findByRole("dialog")).toHaveTextContent("No access");
+      expect(await screen.findByRole("dialog")).not.toHaveTextContent("Curate");
     });
   });
 
@@ -85,15 +105,14 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         tokenFeatures,
       });
 
-      expect(await screen.findByText("Instance Analytics")).toBeInTheDocument();
-      expect(await screen.findAllByText("View")).toHaveLength(3);
+      await assertCollectionAccessForGroup("Administrators", "View");
+      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("Other Users", "View");
 
-      await userEvent.click(
-        await screen.findAllByText("View").then((dropdowns) => dropdowns[2]),
-      );
+      await userEvent.click(await getCollectionPermissionCell("Other Users"));
 
-      expect(await screen.findByText("No access")).toBeInTheDocument();
-      expect(screen.queryByText("Curate")).not.toBeInTheDocument();
+      expect(await screen.findByRole("dialog")).toHaveTextContent("No access");
+      expect(await screen.findByRole("dialog")).not.toHaveTextContent("Curate");
     });
 
     it("should display tooltip explaining why instance analytics collection cannot be curated by admins", async () => {
@@ -104,11 +123,15 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         tokenFeatures,
       });
 
-      expect(await screen.findByText("Instance Analytics")).toBeInTheDocument();
-      expect(await screen.findAllByText("View")).toHaveLength(3);
+      await assertCollectionAccessForGroup("Administrators", "View");
+      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("Other Users", "View");
+      await assertCollectionAccessIsDisabled("Administrators");
 
       await userEvent.hover(
-        await screen.findAllByText("View").then((dropdowns) => dropdowns[1]),
+        within(await getCollectionPermissionCell("Administrators")).getByText(
+          "View",
+        ),
       );
 
       expect(
@@ -164,3 +187,25 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
     });
   });
 });
+
+const assertCollectionAccessForGroup = async (
+  group: string,
+  access: string,
+) => {
+  expect(await getCollectionPermissionCell(group)).toHaveTextContent(access);
+};
+
+const assertCollectionAccessIsDisabled = async (
+  group: string,
+  disabled: boolean = true,
+) => {
+  expect(await getCollectionPermissionCell(group)).toHaveAttribute(
+    "aria-disabled",
+    disabled.toString(),
+  );
+};
+
+const getCollectionPermissionCell = async (group: string) =>
+  within(
+    await screen.findByRole("row", { name: new RegExp(group, "i") }),
+  ).getByTestId("permissions-select");

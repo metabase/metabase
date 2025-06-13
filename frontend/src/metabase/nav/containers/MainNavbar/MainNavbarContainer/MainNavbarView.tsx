@@ -20,6 +20,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -222,6 +223,8 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
+          <PLUGIN_TENANTS.MainNavSharedCollections />
+
           <SidebarSection>
             <ErrorBoundary>
               <BrowseNavSection
@@ -271,7 +274,7 @@ function CollectionSectionHeading({
           <ActionIcon
             data-testid="navbar-new-collection-button"
             aria-label={t`Create a new collection`}
-            color="var(--mb-color-text-medium)"
+            color="text-medium"
             onClick={() => {
               trackNewCollectionFromNavInitiated();
               handleCreateNewCollection();

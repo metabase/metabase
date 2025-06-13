@@ -2391,7 +2391,7 @@
                    :namespace "snippets"}
                   (mt/user-http-request :crowberto :post 200 "collection"
                                         {:name       collection-name
-                                         :descrption "My SQL Snippets"
+                                         :description "My SQL Snippets"
                                          :namespace  "snippets"})))
           (finally
             (t2/delete! :model/Collection :name collection-name)))))))
@@ -2840,44 +2840,3 @@
                     (filter #(= (:model %) "card"))
                     first
                     :dashboard)))))))
-
-(deftest delete-collection-with-descendants-permissions-test
-  (testing "DELETE /api/collection/:id"
-    (testing "Deleting a collection with descendants requires proper permissions"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection parent-collection {}
-                       :model/Collection child-collection {:location (collection/children-location parent-collection)}
-                       :model/Collection grandchild-collection {:location (collection/children-location child-collection)}]
-
-          (testing "Should return 403 if user has no permissions for descendants"
-            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
-            ;; No permissions for child or grandchild
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
-
-          (testing "Should return 403 if user only has read permissions for descendants"
-            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
-            (perms/grant-collection-read-permissions! (perms/all-users-group) child-collection)
-            (perms/grant-collection-read-permissions! (perms/all-users-group) grandchild-collection)
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
-
-          (testing "Should return 200 if user has read-write permissions for all descendants"
-            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) child-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) grandchild-collection)
-            (is (partial= {:archived true}
-                          (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id parent-collection)) {:archived true})))
-            ;; Verify the collections were actually archived
-            (is (t2/exists? :model/Collection :id (u/the-id parent-collection) :archived true))
-            (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
-            (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))

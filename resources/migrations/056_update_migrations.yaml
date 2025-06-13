@@ -200,7 +200,6 @@ databaseChangeLog:
             dbms: h2
             path: instance_analytics_views/users/v2/h2-users.sql
             relativeToChangelogFile: true
-
   - changeSet:
       id: v56.2025-07-07T11:26:31
       author: johnswanson
@@ -336,7 +335,6 @@ databaseChangeLog:
                   remarks: JSON object containing custom tenant attributes
                   constraints:
                     nullable: true
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

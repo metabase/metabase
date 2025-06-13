@@ -15,4 +15,4 @@ export const isExternalUser = (user?: Pick<User, "tenant_id">) => {
 };
 
 export const isTenantCollection = (collection: Collection) =>
-  collection.type === "tenant";
+  collection.type === "shared-tenant-collection";
