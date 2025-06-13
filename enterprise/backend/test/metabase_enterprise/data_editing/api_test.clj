@@ -1470,12 +1470,10 @@
                 (is (=? {:title      (format "%s: Create" (t2/select-one-fn :name :model/Table @test-table))
                          :parameters [;; params are reordered by editable
                                       ;; column listing (int first)
-
                                       {:id "int" :readonly false}
                                       {:id "text" :readonly false #_:value #_"a very important string"}
                                       ;; date is hidden from the editable
                                       #_{:id "date"}
-                                      ;; timestamp is hidden in the row action
                                       {:id "timestamp"}]}
                         (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
                                               {:scope     scope
@@ -1561,11 +1559,10 @@
                          ;; params are reordered by editable
                          ;; column listing (int first)
                          [{:id "int" :readonly false}
-                          {:id "text" :readonly true :value "a very important string"}
+                          {:id "text" :readonly false #_:value #_"a very important string"}
                           ;; date is hidden from the editable
                           #_{:id "date"}
-                          ;; timestamp is hidden in the row action
-                          #_{:id "timestamp"}]}
+                          {:id "timestamp"}]}
                         (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
                                               {:scope     scope
                                                :action_id built-in-action-id

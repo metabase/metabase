@@ -327,7 +327,7 @@
                              dashcard-id (if (pos-int? dashcard-id) dashcard-id (:dashcard-id scope))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
                              ;; TODO: this should belong to our configuration
-                             actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
+                             actions     (-> dashcard :visualization_settings ((some-fn :editableTable.enabledActions :table.enabled_actions)))
                              viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
                              inner-id    (:actionId viz-action)
                              inner       (fetch-unified-action scope inner-id)
