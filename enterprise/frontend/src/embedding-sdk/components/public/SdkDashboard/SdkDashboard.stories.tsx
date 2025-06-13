@@ -71,6 +71,11 @@ const meta: Meta<typeof SdkDashboard> = {
       control: "object",
       description: "Custom dashboard actions",
     },
+    mode: {
+      control: "select",
+      options: ["static", "interactive", "editable"],
+      description: "The mode of the dashboard",
+    },
   },
 };
 
@@ -96,6 +101,7 @@ export const Default: Story = {
       height: 400,
       plugins: {},
     },
+    mode: "interactive",
   },
 };
 
@@ -145,5 +151,26 @@ export const WithHiddenParameters: Story = {
   args: {
     ...Default.args,
     hiddenParameters: ["date_range", "date_grouping"],
+  },
+};
+
+export const StaticDashboard: Story = {
+  args: {
+    ...Default.args,
+    mode: "static",
+  },
+};
+
+export const InteractiveDashboard: Story = {
+  args: {
+    ...Default.args,
+    mode: "interactive",
+  },
+};
+
+export const EditableDashboard: Story = {
+  args: {
+    ...Default.args,
+    mode: "editable",
   },
 };

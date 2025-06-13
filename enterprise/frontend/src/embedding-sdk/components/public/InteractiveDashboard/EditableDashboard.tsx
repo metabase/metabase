@@ -1,8 +1,4 @@
 import { SDK_DASHBOARD_VIEW_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
-import type Question from "metabase-lib/v1/Question";
 
 import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
@@ -31,13 +27,7 @@ export const EditableDashboard = ({
       {...sdkDashboardProps}
       dashboardActions={dashboardActions}
       plugins={plugins}
-      getClickActionMode={({ question }: { question: Question }) =>
-        getEmbeddingMode({
-          question,
-          queryMode: EmbeddingSdkMode,
-          plugins: plugins as InternalMetabasePluginsConfig,
-        })
-      }
+      mode="editable"
     />
   );
 };
