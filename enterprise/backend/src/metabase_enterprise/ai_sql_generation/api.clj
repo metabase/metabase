@@ -33,6 +33,7 @@
                                                                  :perms/create-queries :query-builder-and-native})
                             :order-by [[:view_count :desc]]
                             :limit    all-tables-limit})
+         tables (filter mi/can-read? tables)
          tables (t2/hydrate tables :fields)]
      (mapv (fn [{:keys [fields] :as table}]
              (merge (select-keys table [:name :schema :description])
