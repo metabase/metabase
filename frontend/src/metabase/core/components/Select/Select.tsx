@@ -56,7 +56,6 @@ export interface SelectProps<
   searchProp?: string;
   searchCaseInsensitive?: boolean;
   searchPlaceholder?: string;
-  searchFuzzy?: boolean;
   globalSearch?: boolean;
   hideEmptySectionsInSearch?: boolean;
   width?: number;
@@ -245,7 +244,6 @@ class BaseSelect<
       searchProp,
       searchCaseInsensitive,
       searchPlaceholder,
-      searchFuzzy,
       hideEmptySectionsInSearch,
       isInitiallyOpen,
       onClose,
@@ -319,7 +317,6 @@ class BaseSelect<
           searchable={!!searchProp}
           searchProp={searchProp}
           searchCaseInsensitive={searchCaseInsensitive}
-          searchFuzzy={searchFuzzy}
           searchPlaceholder={searchPlaceholder}
           globalSearch={this.props.globalSearch}
           hideEmptySectionsInSearch={hideEmptySectionsInSearch}
