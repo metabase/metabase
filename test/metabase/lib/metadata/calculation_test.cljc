@@ -437,6 +437,7 @@
       (is (not= (:ident reporter-email)
                 (:ident assignee-email))))))
 
+;; NOTE: If you remove this test, also remove the comment that mentions it in visible-columns-fk-to-self-test, below.
 ;; TODO: Implicit self-joins are not allowed! Perhaps they should be, but right now we don't suggest duplicate joins
 ;; since they don't work very well. I'm leaving this test case in place for now.
 #_(deftest ^:parallel implicit-self-join-test
@@ -780,7 +781,8 @@
 
 (deftest ^:parallel visible-columns-fk-to-self-test
   (testing "query with FK to self"
-    ;; Implicit self-joins currently not supported. See also implicit-self-join-test, above.
+    ;; Implicit self-joins currently not supported. If you are implementing support for implicit self-joins, see also
+    ;; the commented-out implicit-self-join-test, above.
     (check-visible-columns
      (lib/query meta/metadata-provider (meta/table-metadata :gh/comments))
      [["ID" :source/table-defaults]
