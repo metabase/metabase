@@ -350,7 +350,7 @@ export function DashCardVisualization({
 
   const titleMenuItems = useMemo(
     () =>
-      isVisualizerDashboardCard(dashcard) && rawSeries
+      !isEditing && isVisualizerDashboardCard(dashcard) && rawSeries
         ? rawSeries.map((series, index) => (
             <Menu.Item
               key={index}
@@ -362,7 +362,7 @@ export function DashCardVisualization({
             </Menu.Item>
           ))
         : undefined,
-    [dashcard, rawSeries, onOpenQuestion],
+    [dashcard, rawSeries, onOpenQuestion, isEditing],
   );
 
   const actionButtons = useMemo(() => {

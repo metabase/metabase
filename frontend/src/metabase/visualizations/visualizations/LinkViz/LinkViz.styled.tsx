@@ -81,6 +81,10 @@ export const StyledRecentsList = styled(RecentsList)`
 export const StyledInput = styled(Input)`
   pointer-events: all;
 
+  input {
+    max-height: 38px; /* prevents natural height of input from growing beyond the (bordered) card container */
+  }
+
   * {
     pointer-events: all;
   }
