@@ -1,34 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupDatabaseListEndpoint } from "__support__/server-mocks";
-import { createMockEntitiesState } from "__support__/store";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-  within,
-} from "__support__/ui";
-import { ROOT_COLLECTION } from "metabase/entities/collections";
-import {
-  createMockCollection,
-  createMockDatabase,
-  createMockSettings,
-  createMockUser,
-} from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
+import { fireEvent, screen, waitFor, within } from "__support__/ui";
 
-import { AddDataModal } from "./AddDataModal";
-
-interface SetupOpts {
-  isAdmin?: boolean;
-  opened?: boolean;
-  uploadsEnabled?: boolean;
-  canUpload?: boolean;
-}
+import { setup } from "./setup";
 
 const csvFile = new File(["test,data"], "bank-statement.csv", {
   type: "text/csv",
@@ -46,51 +20,6 @@ const largeFile = new File(["test,data"], "large-dataset.csv", {
   type: "text/csv",
 });
 Object.defineProperty(largeFile, "size", { value: 200 * 1024 * 1024 + 1 });
-
-const setup = ({
-  isAdmin = true,
-  opened = true,
-  uploadsEnabled = false,
-  canUpload = true,
-}: SetupOpts = {}) => {
-  const rootCollection = createMockCollection({
-    ...ROOT_COLLECTION,
-    can_write: true,
-  });
-
-  const database = createMockDatabase({
-    uploads_enabled: uploadsEnabled,
-    can_upload: isAdmin || canUpload,
-  });
-
-  const collections = [rootCollection];
-  const databases = [database];
-
-  const state = createMockState({
-    currentUser: createMockUser({
-      is_superuser: isAdmin,
-    }),
-    entities: createMockEntitiesState({
-      databases,
-      collections,
-    }),
-    settings: createMockSettingsState(
-      createMockSettings({
-        "uploads-settings": {
-          db_id: uploadsEnabled ? database.id : null,
-          schema_name: "uploads",
-          table_prefix: "uploaded_",
-        },
-      }),
-    ),
-  });
-
-  setupDatabaseListEndpoint(databases);
-
-  renderWithProviders(<AddDataModal onClose={jest.fn()} opened={opened} />, {
-    storeInitialState: state,
-  });
-};
 
 describe("AddDataModal", () => {
   it("should render when opened", () => {

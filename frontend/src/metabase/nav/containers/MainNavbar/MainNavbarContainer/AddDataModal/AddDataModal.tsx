@@ -44,8 +44,8 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   const areUploadsEnabled = hasAttachedDWHFeature || !!uploadDbId;
   const canUploadToDatabase = !!uploadDB?.can_upload;
 
-  const canManageUploads =
-    isAdmin || (userCanAccessSettings && canUploadToDatabase);
+  const canManageUploads = isAdmin || userCanAccessSettings;
+
   const canManageDatabases = isAdmin;
 
   const handleTabChange = (v: string | null) => {
