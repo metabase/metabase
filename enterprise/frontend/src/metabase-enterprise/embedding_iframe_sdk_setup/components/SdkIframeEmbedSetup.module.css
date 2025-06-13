@@ -6,7 +6,7 @@
 
 .Container {
   display: flex;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -23,7 +23,6 @@
 .Sidebar {
   height: 100%;
   border-right: 1px solid var(--mb-color-border);
-  padding: 1rem;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -33,16 +32,13 @@
 .SidebarContent {
   flex: 1;
   overflow-y: auto;
+  padding: 1rem;
   padding-bottom: 4rem;
 }
 
 .Navigation {
-  position: absolute;
-  bottom: 1rem;
-  left: 1rem;
-  right: 1rem;
-  background-color: var(--mb-color-bg-white);
-  padding: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--mb-color-bg-white);
   border-top: 1px solid var(--mb-color-border);
 }
 
