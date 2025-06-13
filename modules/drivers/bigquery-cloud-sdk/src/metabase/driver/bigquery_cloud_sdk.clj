@@ -37,6 +37,7 @@
     FieldValue
     FieldValueList
     Job
+    JobInfo
     QueryJobConfiguration
     Schema
     Table
@@ -779,3 +780,27 @@
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
+
+(defmethod driver/dry-run-query :bigquery-cloud-sdk
+  [_driver
+   {:keys [database] :as query}]
+  (let [db-details (t2/select-one-fn :details :model/Database :id database)
+        ^BigQuery client (database-details->client db-details)
+        sql (-> query driver-api/compile-with-inline-parameters :query)]
+    (try
+      (let [job-info (-> (QueryJobConfiguration/newBuilder sql)
+                         (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+                         (bigquery.params/set-parameters! nil) ;; TODO(rileythomp): instead of compiling inline, can we pass params? not clear because even in execute-reducible-query params is empty
+                         (.setDryRun true)
+                         #_(.setUseQueryCache false) ;; TODO(rileythomp): determine if we need this and if it should be true or false
+                         (.build)
+                         JobInfo/of)
+            job (.create client job-info (u/varargs BigQuery$JobOption))
+            stats (.getStatistics job)]
+        {:total-bytes-processed (.getTotalBytesProcessed stats)
+         :estimated-bytes-processed (.getEstimatedBytesProcessed stats)
+         :total-bytes-billed (.getTotalBytesBilled stats)
+         :unit :bytes})
+      (catch Exception e
+        (log/errorf e "error in driver/dry-run-query for bigquery")
+        e))))

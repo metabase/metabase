@@ -1095,6 +1095,17 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti dry-run-query
+  "Dry run a query to get an estimate of resource usage (e.g. bytes, credits)"
+  {:added "0.55.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dry-run-query ::driver
+  [_driver query]
+  {:query query
+   :dry-run {}})
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Upload                                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
