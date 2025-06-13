@@ -71,8 +71,7 @@ result_metadata:
   - public
   - v_view_log
   visibility_type: normal
-- aggregation_index: 0
-  base_type: type/DateTimeWithLocalTZ
+- base_type: type/DateTimeWithLocalTZ
   display_name: 'Max of Timestamp: Minute'
   field_ref:
   - aggregation

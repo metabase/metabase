@@ -60,8 +60,7 @@ dataset_query:
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
 result_metadata:
-- aggregation_index: 0
-  base_type: type/Integer
+- base_type: type/Integer
   display_name: Count
   field_ref:
   - aggregation

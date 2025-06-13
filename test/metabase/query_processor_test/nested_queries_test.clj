@@ -664,7 +664,7 @@
           (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
                                        (as-> col col
                                          (assoc col :source :fields)
-                                         (dissoc col :position :aggregation_index :ident)
+                                         (dissoc col :position :ident)
                                          (m/filter-keys simple-keyword? col)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
