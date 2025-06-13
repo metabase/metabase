@@ -24,9 +24,7 @@ import type { Item, Row, Section } from "./types";
 import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
 
 type Props<T extends Item> = {
-  style?: CSSProperties & {
-    "--accordion-list-width"?: string;
-  };
+  style?: CSSProperties;
   className?: string;
   id?: string;
 
