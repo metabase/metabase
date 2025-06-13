@@ -93,7 +93,9 @@
      (route/not-found {:status 404, :body "Not found."}))
    ;; ^/public/ -> Public frontend and download routes
    (context "/public" [] public-routes)
-   ;; ^/emebed/ -> Embed frontend and download routes
+   ;; ^/embed/new -> Iframe embedding setup route
+   (GET "/embed/new" [] index/index)
+   ;; ^/embed/ -> Embed frontend and download routes
    (context "/embed" [] embed-routes)
    ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
    (GET "*" [] index/index)))
