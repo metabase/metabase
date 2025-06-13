@@ -15,8 +15,6 @@ import {
   TextInput,
 } from "metabase/ui";
 
-import { EXAMPLE_PARAMETERS } from "../constants";
-
 import { DebouncedColorPillPicker } from "./DebouncedColorPillPicker";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
@@ -40,7 +38,8 @@ const getConfigurableColors = () =>
   ] as const;
 
 export const ConfigureStep = () => {
-  const { options, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { options, updateSettings, availableParameters, isLoadingParameters } =
+    useSdkIframeEmbedSetupContext();
 
   const { settings } = options;
   const { theme } = settings;
@@ -99,18 +98,31 @@ export const ConfigureStep = () => {
           </Text>
 
           <Stack gap="md">
-            {EXAMPLE_PARAMETERS.map((param) => (
-              <TextInput
-                key={param.id}
-                label={param.name}
-                placeholder={param.placeholder}
-                rightSection={
-                  <ActionIcon variant="subtle">
-                    <Icon name="eye" size={16} />
-                  </ActionIcon>
-                }
-              />
-            ))}
+            {isLoadingParameters ? (
+              <Text size="sm" c="text-medium">
+                {t`Loading parameters...`}
+              </Text>
+            ) : availableParameters.length > 0 ? (
+              availableParameters.map((param) => (
+                <TextInput
+                  key={param.id}
+                  label={param.name}
+                  placeholder={
+                    param.default?.toString() ||
+                    `Enter ${param.name.toLowerCase()}`
+                  }
+                  rightSection={
+                    <ActionIcon variant="subtle">
+                      <Icon name="eye" size={16} />
+                    </ActionIcon>
+                  }
+                />
+              ))
+            ) : (
+              <Text size="sm" c="text-light">
+                {t`Parameters are not available for this ${options.selectedType}.`}
+              </Text>
+            )}
           </Stack>
         </Card>
       )}
