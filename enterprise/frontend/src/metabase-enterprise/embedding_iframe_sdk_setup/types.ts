@@ -1,8 +1,4 @@
-import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import type {
-  DashboardEmbedOptions,
-  QuestionEmbedOptions,
-} from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 export type EmbedType = "dashboard" | "chart" | "exploration";
 
@@ -28,38 +24,9 @@ export interface EmbedParameter {
   placeholder: string;
 }
 
-// Dashboard-specific settings
-type DashboardSettings = Pick<
-  DashboardEmbedOptions,
-  | "isDrillThroughEnabled"
-  | "withTitle"
-  | "withDownloads"
-  | "initialParameters"
-  | "hiddenParameters"
->;
-
-// Question-specific settings
-type QuestionSettings = Pick<
-  QuestionEmbedOptions,
-  | "isDrillThroughEnabled"
-  | "withTitle"
-  | "withDownloads"
-  | "initialSqlParameters"
->;
-
 export interface EmbedPreviewOptions {
   selectedType: EmbedType;
-  selectedDashboard: number | null;
-  selectedQuestion: number | null;
-
-  // Dashboard options (optional since they only apply to dashboard embeds)
-  dashboardOptions?: DashboardSettings;
-
-  // Question options (optional since they only apply to question embeds)
-  questionOptions?: QuestionSettings;
-
-  // Theme colors for preview
-  colors?: Pick<MetabaseColors, "brand" | "text-primary" | "background">;
+  settings: SdkIframeEmbedSettings;
 }
 
 export interface StepProps {

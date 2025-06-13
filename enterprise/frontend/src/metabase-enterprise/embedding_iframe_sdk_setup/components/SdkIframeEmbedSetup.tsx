@@ -4,82 +4,32 @@ import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
-import { Box, Button, Card, Group, Stack, Text } from "metabase/ui";
-
-import type { EmbedPreviewOptions, Step } from "../types";
+import { Box, Button, Card, Group, Stack } from "metabase/ui";
 
 import { ConfigureStep } from "./ConfigureStep";
 import { GetCodeStep } from "./GetCodeStep";
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
+import {
+  SdkIframeEmbedSetupProvider,
+  useSdkIframeEmbedSetupContext,
+} from "./SdkIframeEmbedSetupContext";
 import { SelectEntityStep } from "./SelectEntityStep";
 import { SelectTypeStep } from "./SelectTypeStep";
 
-// Main Component
-export const SdkIframeEmbedSetup = () => {
-  const [currentStep, setCurrentStep] = useState<Step>("select-type");
+const SdkIframeEmbedSetupContent = () => {
   const [sidebarWidth, setSidebarWidth] = useState(400);
-  const [options, setOptions] = useState<EmbedPreviewOptions>({
-    selectedType: "dashboard",
-    selectedDashboard: null,
-    selectedQuestion: null,
-    dashboardOptions: {
-      isDrillThroughEnabled: false,
-      withDownloads: false,
-      withTitle: true,
-      initialParameters: {},
-      hiddenParameters: [],
-    },
-    questionOptions: {
-      isDrillThroughEnabled: false,
-      withDownloads: false,
-      withTitle: true,
-      initialSqlParameters: {},
-    },
-  });
-
-  const handleNext = () => {
-    if (currentStep === "select-type") {
-      setCurrentStep("select-entity");
-    } else if (currentStep === "select-entity") {
-      setCurrentStep("configure");
-    } else if (currentStep === "configure") {
-      setCurrentStep("get-code");
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep === "select-entity") {
-      setCurrentStep("select-type");
-    } else if (currentStep === "configure") {
-      setCurrentStep("select-entity");
-    } else if (currentStep === "get-code") {
-      setCurrentStep("configure");
-    }
-  };
-
-  const handleOptionsChange = (newOptions: Partial<EmbedPreviewOptions>) => {
-    setOptions((prev) => ({ ...prev, ...newOptions }));
-  };
+  const { currentStep, handleNext, handleBack, canGoNext, canGoBack } =
+    useSdkIframeEmbedSetupContext();
 
   const renderStepContent = () => {
     switch (currentStep) {
       case "select-type":
-        return (
-          <SelectTypeStep
-            selectedType={options.selectedType}
-            onTypeChange={(type) => handleOptionsChange({ selectedType: type })}
-          />
-        );
+        return <SelectTypeStep />;
       case "select-entity":
         return <SelectEntityStep />;
       case "configure":
-        return (
-          <ConfigureStep
-            options={options}
-            onOptionsChange={handleOptionsChange}
-          />
-        );
+        return <ConfigureStep />;
       case "get-code":
         return <GetCodeStep />;
       default:
@@ -104,7 +54,7 @@ export const SdkIframeEmbedSetup = () => {
             <Button
               variant="default"
               onClick={handleBack}
-              disabled={currentStep === "select-type"}
+              disabled={!canGoBack}
             >
               {t`Back`}
             </Button>
@@ -112,9 +62,7 @@ export const SdkIframeEmbedSetup = () => {
               <Button
                 variant="filled"
                 onClick={handleNext}
-                disabled={
-                  currentStep === "select-entity" && !options.selectedDashboard
-                }
+                disabled={!canGoNext}
               >
                 {currentStep === "configure" ? t`Get Code` : t`Next`}
               </Button>
@@ -125,13 +73,19 @@ export const SdkIframeEmbedSetup = () => {
       <Box className={S.PreviewPanel}>
         <Card p="md" h="100%">
           <Stack h="100%">
-            <Text size="lg" fw="bold" mb="md">
-              {t`Preview`}
-            </Text>
             <SdkIframeEmbedPreview />
           </Stack>
         </Card>
       </Box>
     </Box>
+  );
+};
+
+// Main Component with Provider
+export const SdkIframeEmbedSetup = () => {
+  return (
+    <SdkIframeEmbedSetupProvider>
+      <SdkIframeEmbedSetupContent />
+    </SdkIframeEmbedSetupProvider>
   );
 };
