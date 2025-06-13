@@ -1035,6 +1035,8 @@
                                        :params    {:status "approved"}})
                                  (select-keys [:status :body])))))))))))))))
 
+;; TODO we may want to test that data-grid/built-in actions can't get called in they're disabled?
+
 (deftest unified-execute-server-side-mapping-test
   (let [url "action/v2/execute"
         req #(mt/user-http-request-full-response (:user % :crowberto) :post url
