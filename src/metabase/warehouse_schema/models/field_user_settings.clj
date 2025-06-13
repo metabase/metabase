@@ -16,29 +16,23 @@
    :coercion_strategy field/transform-field-coercion-strategy
    :semantic_type     field/transform-field-semantic-type
    :visibility_type   mi/transform-keyword
-   :has_field_values  mi/transform-keyword})
+   :has_field_values  mi/transform-keyword
+   :settings          mi/transform-json
+   :nfc_path          mi/transform-json})
 
 (doto :model/FieldUserSettings
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(defn- reflect-field-settings-in-field [id field-settings]
-  (field/raw-update
-   id
-   (u/select-keys-when field-settings
-                       {:present #{:semantic_type :description :has_field_values :effective_type :coercion_strategy :fk_target_field_id}
-                        :non-nil #{:display_name :visibility_type}})))
-
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn upsert-user-settings
-  "Upsert FieldUserSettings, and sync Field"
+  "Upsert FieldUserSettings"
   [{:keys [id]} settings]
   (let [filtered-settings (u/select-keys-when settings :present field/field-user-settings)]
     (when-not (t2/exists? :model/FieldUserSettings id)
       (t2/insert! :model/FieldUserSettings {:field_id id}))
-    (t2/update! :model/FieldUserSettings id filtered-settings)
-    (reflect-field-settings-in-field id filtered-settings)))
+    (t2/update! :model/FieldUserSettings id filtered-settings)))
 
 (defmethod serdes/hash-fields :model/FieldUserSettings
   [_field-values]
@@ -69,7 +63,8 @@
 
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
-               :has_field_values :effective_type :coercion_strategy]
+               :has_field_values :effective_type :coercion_strategy :caveats
+               :points_of_interest :nfc_path :json_unfolding :settings]
    :transform {:created_at   (serdes/date)
                :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true

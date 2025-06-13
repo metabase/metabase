@@ -149,11 +149,12 @@
                          :effective_type effective-type
                          :coercion_strategy coercion-strategy)]
          (schema.field-user-settings/upsert-user-settings field body)
-         (t2/update! :model/Field id
+         (t2/update! :model/Field
+                     id
                      (u/select-keys-when body
-                                         ;; the rest has already been updated via `upsert-user-settings` above
-                                         :present #{:caveats :points_of_interest :nfc_path :json_unfolding}
-                                         :non-nil #{:settings})))))
+                                         {:present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type
+                                                     :coercion_strategy :effective_type :has_field_values :nfc_path :json_unfolding}
+                                          :non-nil #{:display_name :visibility_type :settings}})))))
     (when (some? json-unfolding)
       (update-nested-fields-on-json-unfolding-change! field json-unfolding))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them

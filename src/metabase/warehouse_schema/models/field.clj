@@ -137,8 +137,9 @@
     (merge defaults field)))
 
 (def field-user-settings
-  "Set of user-set values for a Field that are also updated during sync"
-  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id})
+  "Set of user-settable values for a Field"
+  #{:semantic_type :description :display_name :visibility_type :has_field_values :effective_type :coercion_strategy :fk_target_field_id
+    :caveats :points_of_interest :nfc_path :json_unfolding :settings})
 
 (defn- ensure-field-user-settings-exist-for-fk-target-field [field]
   (let [q {:select [:id]
@@ -151,8 +152,6 @@
     (t2/insert! :model/FieldUserSettings
                 (map (fn [{:keys [id]}] {:field_id id})
                      (t2/query sql)))))
-
-(def ^:private ^:dynamic *raw-update* false)
 
 (defn- sync-user-settings [field]
   ;; we transparently prevent updates that would override user-set values
@@ -170,15 +169,7 @@
       (t2/update! :model/Field k upds)
       ;; we must explicitely clear user-set fks in this case
       (t2/update! :model/FieldUserSettings k upds)))
-  (if *raw-update*
-    field
-    (sync-user-settings field)))
-
-(defn raw-update
-  "Update field directly, don't sync with FieldUserSettings"
-  [id m]
-  (binding [*raw-update* true]
-    (t2/update! :model/Field id m)))
+  (sync-user-settings field))
 
 (t2/define-before-delete :model/Field
   [field]

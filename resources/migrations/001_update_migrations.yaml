@@ -11876,14 +11876,15 @@ databaseChangeLog:
             constraintName: fk_metabot_prompt_card_id
             onDelete: CASCADE
 
+
   - changeSet:
-      id: v55.2025-06-11T10:28:00
+      id: v55.2025-06-13T11:29:00
       author: bronsa
       comment: Added 0.55.0 -- add metabase_field_user_settings
       changes:
         - createTable:
             tableName: metabase_field_user_settings
-            remarks: Mirror table of metabase_field to keep track of user-set values that are also updated during sync
+            remarks: Mirror table of metabase_field to keep track of user-set values (only settable fields are mirrored)
             columns:
               - column:
                   remarks: The related Field
@@ -11942,6 +11943,27 @@ databaseChangeLog:
                   remarks: User-set coercion_strategy for the Field
                   name: coercion_strategy
                   type: varchar(255)
+              # the fields below are never updated by sync, but we keep them for completeness
+              - column:
+                  remarks: User-set caveats for the Field
+                  name: caveats
+                  type: longtext
+              - column:
+                  remarks: User-set points_of_interest for the Field
+                  name: points_of_interest
+                  type: longtext
+              - column:
+                  remarks: User-set nfc_path for the Field
+                  name: nfc_path
+                  type: varchar(254)
+              - column:
+                  remarks: User-set json_unfolding for the Field
+                  name: json_unfolding
+                  type: ${boolean.type}
+              - column:
+                  remarks: User-set settings for the Field
+                  name: settings
+                  type: longtext
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
