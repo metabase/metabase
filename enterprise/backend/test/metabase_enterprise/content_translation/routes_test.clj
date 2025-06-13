@@ -101,7 +101,7 @@
     (testing "admin sees error when file has invalid locale"
       (ct-utils/with-clean-translations!
         (mt/with-premium-features #{:content-translation}
-          (is (=? {:errors ["Row 4: Invalid locale"]}
+          (is (=? {:errors ["Row 4: Invalid locale: xx"]}
                   (mt/user-http-request :crowberto :post 422 "ee/content-translation/upload-dictionary"
                                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                         {:file csv-with-invalid-locale}))))))))
