@@ -2,11 +2,13 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import * as Pivot from "cljs/metabase.pivot.js";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import { isNotNull } from "metabase/lib/types";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { MetabaseApi } from "metabase/services";
 import { Button, Icon, Popover } from "metabase/ui";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -148,6 +150,11 @@ export const ChartSettingNativeFieldsPartition = ({
       });
   }, [datasetQuery]);
 
+  const nonPivotGroupingColumns: RemappingHydratedDatasetColumn[] =
+    useMemo(() => {
+      return Pivot.columns_without_pivot_group(columns);
+    }, [columns]);
+
   const findColumnByEntry = useCallback(
     (
       _entry: NativeSplitGroupEntry | NativeSplitAggregationEntry,
@@ -155,19 +162,21 @@ export const ChartSettingNativeFieldsPartition = ({
       index: number,
     ) => {
       if (partition === "values") {
-        const aggregations = columns.filter(
+        const aggregations = nonPivotGroupingColumns.filter(
           (col) => col.source === "aggregation",
         );
         return aggregations[index];
       }
       if (partition === "rows" || partition === "columns") {
-        const breakouts = columns.filter((col) => col.source === "breakout");
+        const breakouts = nonPivotGroupingColumns.filter(
+          (col) => col.source === "breakout",
+        );
         const breakoutIndex =
           index + (partition === "rows" ? 0 : value.rows.length);
         return breakouts[breakoutIndex];
       }
     },
-    [columns, value],
+    [nonPivotGroupingColumns, value],
   );
 
   if (!baseMetadataResults) {
