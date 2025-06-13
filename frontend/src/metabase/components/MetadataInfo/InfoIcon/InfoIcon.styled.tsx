@@ -7,7 +7,7 @@ export const PopoverHoverTarget = styled(Icon)`
   flex-shrink: 0;
   display: none;
 
-  [aria-expanded="true"] & {
+  [aria-expanded="true"] > & {
     display: block;
   }
 `;
@@ -15,7 +15,7 @@ export const PopoverHoverTarget = styled(Icon)`
 export const PopoverDefaultIcon = styled(Icon)`
   display: block;
 
-  [aria-expanded="true"] & {
+  [aria-expanded="true"] > & {
     display: none;
   }
 `;
