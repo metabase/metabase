@@ -206,13 +206,14 @@ export class AccordionList<
   };
 
   getOpenSection() {
-    if (this.props.sections.length === 1) {
+    const { sections } = this.props;
+    if (sections.length === 1) {
       return 0;
     }
 
     let { openSection } = this.state;
     if (openSection === undefined) {
-      for (const [index, section] of this.props.sections.entries()) {
+      for (const [index, section] of sections.entries()) {
         if (this.sectionIsSelected(section, index)) {
           openSection = index;
           break;
@@ -223,12 +224,12 @@ export class AccordionList<
   }
 
   sectionIsSelected(_section: Section, sectionIndex: number) {
-    const { sections } = this.props;
+    const { sections, itemIsSelected } = this.props;
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
       if (
         _.some(sections[i]?.items ?? [], (item) =>
-          Boolean(this.props.itemIsSelected?.(item, i)),
+          Boolean(itemIsSelected?.(item, i)),
         )
       ) {
         selectedSection = i;
@@ -239,9 +240,7 @@ export class AccordionList<
   }
 
   handleChange = (item: TItem) => {
-    if (this.props.onChange) {
-      this.props.onChange(item);
-    }
+    this.props.onChange?.(item);
   };
 
   handleChangeSearchText = (searchText: string) => {
@@ -563,17 +562,19 @@ export class AccordionList<
   };
 
   isSectionExpanded = (sectionIndex: number) => {
+    const { globalSearch, alwaysExpanded } = this.props;
     const openSection = this.getOpenSection();
 
     return Boolean(
-      this.props.alwaysExpanded ||
+      alwaysExpanded ||
         openSection === sectionIndex ||
-        (this.props.globalSearch && this.state.searchText.length > 0),
+        (globalSearch && this.state.searchText.length > 0),
     );
   };
 
   canSelectSection = (sectionIndex: number) => {
-    const section = this.props.sections[sectionIndex];
+    const { globalSearch, alwaysExpanded, sections } = this.props;
+    const section = sections[sectionIndex];
     if (!section) {
       return false;
     }
@@ -583,8 +584,7 @@ export class AccordionList<
     }
 
     return (
-      !this.props.alwaysExpanded &&
-      !(this.props.globalSearch && this.state.searchText.length > 0)
+      !alwaysExpanded && !(globalSearch && this.state.searchText.length > 0)
     );
   };
 
