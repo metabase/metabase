@@ -1,2 +1,3 @@
 (ns metabase.dashboards.init
-  (:require [metabase.dashboards.settings]))
+  (:require
+   [metabase.dashboards.settings]))
