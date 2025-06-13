@@ -157,11 +157,13 @@ export const EditTableDashcardVisualization = memo(
       rowIndex: updateModalRowIndex,
       rowData: updateModalRowData,
       actionFormDescription: updateActionFormDescription,
+      refetchActionFormDescription: refetchUpdateRowFormDescription,
       openUpdateRowModal,
       closeUpdateRowModal,
     } = useActionUpdateRowModalFromDatasetWithObjectId({
       datasetData: data,
       scope: editingScope,
+      fetchOnMount: false,
       currentObjectId: objectIdParam,
       onObjectIdChange: handleCurrentObjectIdChange,
     });
@@ -255,7 +257,13 @@ export const EditTableDashcardVisualization = memo(
     });
 
     useEffect(() => {
-      if (hasCreateAction && !isEditing) {
+      if (isEditing) {
+        return;
+      }
+
+      refetchUpdateRowFormDescription();
+
+      if (hasCreateAction) {
         refetchCreateRowFormDescription();
       }
     }, [
@@ -263,6 +271,7 @@ export const EditTableDashcardVisualization = memo(
       hasCreateAction,
       isEditing,
       refetchCreateRowFormDescription,
+      refetchUpdateRowFormDescription,
     ]);
 
     const shouldDisableActions = isUndoLoading || isRedoLoading;
