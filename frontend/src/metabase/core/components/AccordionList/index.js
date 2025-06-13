@@ -1,1 +1,5 @@
-export { default } from "./AccordionList";
+export {
+  AccordionList,
+  AccordionList as default,
+  Section,
+} from "./AccordionList";

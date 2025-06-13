@@ -1,6 +1,5 @@
-/* eslint-disable react/prop-types */
-
 import cx from "classnames";
+import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -9,8 +8,11 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
+import type { TextInputProps } from "metabase/ui";
 import { Box, Icon, Text } from "metabase/ui";
 
+import type { Row, Section } from "./AccordionList";
 import styles from "./AccordionListCell.module.css";
 import {
   Content,
@@ -19,7 +21,41 @@ import {
   ListCellItem,
 } from "./AccordionListCell.styled";
 
-export const AccordionListCell = ({
+type AccordionListCellProps<T extends object> = {
+  style: CSSProperties;
+  sections: Section<T>[];
+  row: Row<T>;
+  onChange: (item: T) => void;
+  itemIsSelected: (item: T, index: number) => boolean | undefined;
+  itemIsClickable: (item: T, index: number) => boolean | undefined;
+  sectionIsExpanded: (sectionIndex: number) => boolean | undefined;
+  canToggleSections?: boolean;
+  alwaysExpanded?: boolean;
+  toggleSection: (sectionIndex: number) => void;
+
+  renderSectionIcon: (section: Section<T>) => ReactNode;
+
+  renderItemLabel: (item: T) => string | undefined;
+  renderItemName: (item: T) => string | undefined;
+  renderItemDescription: (item: T) => ReactNode;
+  renderItemIcon: (item: T) => ReactNode;
+  renderItemExtra: (item: T, isSelected: boolean) => ReactNode;
+  renderItemWrapper: (content: ReactNode, item: T) => ReactNode;
+  showSpinner: (itemOrSection: T | Section<T>) => boolean;
+  searchText: string;
+  onChangeSearchText: (searchText: string) => void;
+  searchPlaceholder?: string;
+  showItemArrows?: boolean;
+  itemTestId?: string;
+  getItemClassName: (item: T, index: number) => string | undefined;
+  getItemStyles: (item: T, index: number) => CSSProperties | undefined;
+  searchInputProps?: TextInputProps;
+  hasCursor?: boolean;
+  withBorders?: boolean;
+  color?: ColorName;
+};
+
+export function AccordionListCell<T extends object>({
   style,
   sections,
   row,
@@ -48,16 +84,9 @@ export const AccordionListCell = ({
   searchInputProps,
   hasCursor,
   withBorders,
-}) => {
-  const {
-    type,
-    section,
-    sectionIndex,
-    item,
-    itemIndex,
-    isLastItem,
-    isLastSection,
-  } = row;
+  color: colorProp = "brand",
+}: AccordionListCellProps<T>) {
+  const { type, section, sectionIndex, isLastSection } = row;
   let content;
   let borderTop;
   let borderBottom;
@@ -74,7 +103,7 @@ export const AccordionListCell = ({
             CS.textUppercase,
             CS.textBold,
           )}
-          style={{ color: color }}
+          style={{ color: color(colorProp) }}
         >
           {section.name}
         </div>
@@ -86,7 +115,7 @@ export const AccordionListCell = ({
       borderTop =
         section.type === "back" ||
         section.type === "action" ||
-        section.items?.length > 0;
+        (section.items?.length ?? 0) > 0;
       borderBottom = section.type === "back";
 
       content = (
@@ -237,8 +266,9 @@ export const AccordionListCell = ({
       />
     );
   } else if (type === "item") {
-    const isSelected = itemIsSelected(item, itemIndex);
-    const isClickable = itemIsClickable(item, itemIndex);
+    const { item, itemIndex, isLastItem } = row;
+    const isSelected = itemIsSelected(item, itemIndex) ?? false;
+    const isClickable = itemIsClickable(item, itemIndex) ?? false;
     const icon = renderItemIcon(item);
     const name = renderItemName(item);
     const description = renderItemDescription(item);
@@ -266,7 +296,7 @@ export const AccordionListCell = ({
           },
           getItemClassName(item, itemIndex),
         )}
-        style={getItemStyles(item, itemIndex)}
+        style={getItemStyles(item, itemIndex) ?? {}}
       >
         <Content
           isClickable={isClickable}
@@ -327,7 +357,7 @@ export const AccordionListCell = ({
   return (
     <div
       style={style}
-      aria-expanded={sectionIsExpanded}
+      aria-expanded={sectionIsExpanded(sectionIndex)}
       data-element-id="list-section"
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
@@ -339,4 +369,4 @@ export const AccordionListCell = ({
       {content}
     </div>
   );
-};
+}
