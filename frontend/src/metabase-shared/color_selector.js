@@ -19,7 +19,7 @@ global.makeCellBackgroundGetter = function (
 ) {
   const rows = rowsJavaList;
   const cols = JSON.parse(colsJSON);
-  const settings = settingsJSON ? JSON.parse(settingsJSON) : null;
+  const settings = settingsJSON ? JSON.parse(settingsJSON) : {};
   try {
     return makeCellBackgroundGetter(
       rows,
