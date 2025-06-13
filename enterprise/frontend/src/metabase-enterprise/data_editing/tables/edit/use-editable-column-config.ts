@@ -43,9 +43,13 @@ export function useEditableTableColumnConfigFromVisualizationSettings(
       columnOrder,
       columnVisibilityMap,
       isColumnHidden: (columnName: string) => hiddenColumnSet.has(columnName),
-      isColumnReadonly: (columnName: string) =>
-        // If there are no editable columns settings, all columns are editable
-        editableColumnSet.size > 0 && !editableColumnSet.has(columnName),
+      isColumnReadonly: (columnName: string) => {
+        return !editableColumnSet.has(columnName);
+        // if (!hasUpdateAction) {
+        //   return !editableColumnSet.has(columnName);
+        // }
+        // return editableColumnSet.size > 0 && !editableColumnSet.has(columnName);
+      },
     };
   }, [visualizationSettings]);
 }

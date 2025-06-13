@@ -173,9 +173,11 @@ export const EditTableDashcardVisualization = memo(
       visualizationSettings,
     );
 
-    const { hasCreateAction, hasDeleteAction } = useBuiltInActions(
-      visualizationSettings?.["editableTable.enabledActions"],
-    );
+    const { hasCreateAction, hasUpdateAction, hasDeleteAction } =
+      useBuiltInActions(
+        visualizationSettings?.["editableTable.enabledActions"],
+      );
+    // console.log({ hasUpdateAction });
 
     const hasEditableAndVisibleColumns = useMemo(() => {
       return data.cols.some(
@@ -258,7 +260,10 @@ export const EditTableDashcardVisualization = memo(
           justify="space-between"
           align="center"
         >
-          <Text fw="bold">{title}</Text>
+          <Group gap="sm" align="center">
+            <Text fw="bold">{title}</Text>
+            {!hasUpdateAction && <Icon name="lock" />}
+          </Group>
 
           {!isEditing && (
             <Group gap="sm" align="center">

@@ -238,6 +238,12 @@ export const addEditableTableDashCardToDashboard =
               },
               {
                 id: uuid(),
+                actionId: "data-grid.row/update",
+                enabled: true,
+                actionType: "data-grid/built-in",
+              },
+              {
+                id: uuid(),
                 actionId: "data-grid.row/delete",
                 enabled: true,
                 actionType: "data-grid/built-in",
@@ -562,6 +568,9 @@ export const updateEditableTableCardQueryInEditMode = createThunkAction(
         newDashcardAttributes.visualization_settings = {
           ...dashcard.visualization_settings,
           initial_dataset_query: newCard.dataset_query,
+          "table.editableColumns": newCard.result_metadata.map(
+            (field) => field.name,
+          ),
         };
       }
 
