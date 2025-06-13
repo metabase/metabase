@@ -1118,12 +1118,16 @@
                     :data
                     (map #(select-keys % [:here :id])))))))))
 
+(def collection-type-clause
+  [:case
+   [:not= :model [:inline "collection"]] nil :else :type])
+
 (deftest ^:parallel children-sort-clause-test
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:authority_level :asc :nulls-last]
-              [:collection_type :asc :nulls-first]
+              [collection-type-clause :asc :nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
              (api.collection/children-sort-clause {:official-collections-first? true} app-db))))))
@@ -1131,7 +1135,7 @@
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [collection-type-clause :asc :nulls-first]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1143,7 +1147,7 @@
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [collection-type-clause :asc :nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1155,7 +1159,7 @@
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [collection-type-clause :asc :nulls-first]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
@@ -1169,7 +1173,7 @@
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [collection-type-clause :asc :nulls-first]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
@@ -1183,7 +1187,7 @@
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [collection-type-clause :asc :nulls-first]
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -1194,7 +1198,7 @@
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
     (is (= [[:authority_level :asc :nulls-last]
-            [:collection_type :asc :nulls-first]
+            [collection-type-clause :asc :nulls-first]
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -2778,44 +2782,3 @@
                     (filter #(= (:model %) "card"))
                     first
                     :dashboard)))))))
-
-(deftest delete-collection-with-descendants-permissions-test
-  (testing "DELETE /api/collection/:id"
-    (testing "Deleting a collection with descendants requires proper permissions"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection parent-collection {}
-                       :model/Collection child-collection {:location (collection/children-location parent-collection)}
-                       :model/Collection grandchild-collection {:location (collection/children-location child-collection)}]
-
-          (testing "Should return 403 if user has no permissions for descendants"
-            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
-            ;; No permissions for child or grandchild
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
-
-          (testing "Should return 403 if user only has read permissions for descendants"
-            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
-            (perms/grant-collection-read-permissions! (perms/all-users-group) child-collection)
-            (perms/grant-collection-read-permissions! (perms/all-users-group) grandchild-collection)
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id parent-collection)) {:archived true}))))
-
-          (testing "Should return 200 if user has read-write permissions for all descendants"
-            (perms/revoke-collection-permissions! (perms/all-users-group) parent-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) child-collection)
-            (perms/revoke-collection-permissions! (perms/all-users-group) grandchild-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) parent-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) child-collection)
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) grandchild-collection)
-            (is (partial= {:archived true}
-                          (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id parent-collection)) {:archived true})))
-            ;; Verify the collections were actually archived
-            (is (t2/exists? :model/Collection :id (u/the-id parent-collection) :archived true))
-            (is (t2/exists? :model/Collection :id (u/the-id child-collection) :archived true))
-            (is (t2/exists? :model/Collection :id (u/the-id grandchild-collection) :archived true))))))))

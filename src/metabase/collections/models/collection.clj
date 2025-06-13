@@ -71,39 +71,22 @@
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
-(def ^:private ^:constant tenant-root-collection-type "tenant")
+(mu/defn is-tenant-collection-type?
+  "Whether or not the passed `type` is a tenant collection type."
+  [ttype :- [:maybe :string]]
+  (= ttype "shared-tenant-collection"))
 
-(def ^{:arglists '([])} tenant-root-collection
-  "Memoized copy of the tenant root collection from the DB"
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (t2/select-one :model/Collection :type tenant-root-collection-type)
-       (when-not <>
-         (throw (ex-info "Fatal error: tenant root collection not found." {})))))))
-
-(defn tenant-root-collection-id
-  "The ID representing the Tenant Root collection"
-  []
-  (u/the-id (tenant-root-collection)))
-
-(defn tenant-root-path
-  "The fixed location path for the tenant collection."
-  []
-  (str "/" (tenant-root-collection-id) "/"))
-
-(defn is-tenant-collection?
+(mu/defn is-tenant-collection?
   "Whether or not a collection is a tenant collection. Placeholder for now."
-  [_collection]
-  ;; right now nothing is a tenant collection
-  false
-  #_(str/starts-with? location (tenant-root-path)))
+  [{:keys [type]} :- [:or RootCollection [:map [:type [:maybe string?]]]]]
+  (is-tenant-collection-type? type))
 
-(defn- tenant-collection-where-clause
+(defn tenant-collection-where-clause
   "Returns a clause that will be true if this is a tenant collection, false otherwise."
-  [& [_location-column]]
-  ;; right now nothing is a tenant collection
-  #_[:like (or location-column :location) (str tenant-root-path "%")]
-  [:= [:inline 1] [:inline 0]])
+  [& [type-column]]
+  [:case
+   [:= (or type-column :type) nil] false
+   :else [:= (or type-column :type) [:inline "shared-tenant-collection"]]])
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -638,7 +621,7 @@
     ;; c) their personal collection and its descendants
     :from [(if is-superuser?
              [:collection :c]
-             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
@@ -651,19 +634,19 @@
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
                                                                        [:= :p.perm_value (h2x/literal "read")])]]}]}
-                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal "trash")]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly :c.type]
                                              :from   [[:collection :c]]
                                              :where  [:in :id [:inline personal-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
             (when-not (perms/use-tenants)
-              [:not (tenant-collection-where-clause)])
+              [:not (tenant-collection-where-clause :c.type)])
 
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
@@ -1222,8 +1205,15 @@
       (when (= :api-key (t2/select-one-fn :type :model/User user-id))
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
+(defn- assert-type-ok [collection]
+  (when (and (:type collection)
+             (is-tenant-collection? collection)
+             (not (perms/use-tenants)))
+    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)}))))
+
 (t2/define-before-insert :model/Collection
   [{collection-name :name, :as collection}]
+  (assert-type-ok collection)
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
