@@ -12,7 +12,6 @@ import type { ColorName } from "metabase/lib/colors/types";
 import type { TextInputProps } from "metabase/ui";
 import { Box, Icon, Text } from "metabase/ui";
 
-import type { Row, Section } from "./AccordionList";
 import styles from "./AccordionListCell.module.css";
 import {
   Content,
@@ -20,6 +19,7 @@ import {
   IconWrapper,
   ListCellItem,
 } from "./AccordionListCell.styled";
+import type { Row, Section } from "./types";
 
 type AccordionListCellProps<T extends object> = {
   style: CSSProperties;

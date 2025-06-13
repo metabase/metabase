@@ -1,4 +1,4 @@
-import type { Section } from "./AccordionList";
+import type { Section } from "./types";
 
 export type Cursor = {
   sectionIndex: number;
