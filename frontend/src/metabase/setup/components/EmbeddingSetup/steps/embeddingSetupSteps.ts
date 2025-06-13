@@ -46,7 +46,7 @@ export const steps: StepDefinition[] = [
   {
     key: "table-selection",
     get title() {
-      return t`Select Tables`;
+      return t`Generate starter content`;
     },
     icon: "table2",
     visibleInSidebar: true,
@@ -57,12 +57,12 @@ export const steps: StepDefinition[] = [
       return t`Processing`;
     },
     icon: "gear",
-    visibleInSidebar: true,
+    visibleInSidebar: false,
   },
   {
     key: "final",
     get title() {
-      return t`Final Steps`;
+      return t`Add to your app`;
     },
     icon: "check",
     visibleInSidebar: true,
