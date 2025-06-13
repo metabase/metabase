@@ -68,7 +68,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Connect Data",
+        "Connect to your data",
       );
     });
     step().within(() => {
