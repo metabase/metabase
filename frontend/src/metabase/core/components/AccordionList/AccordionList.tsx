@@ -231,7 +231,7 @@ export class AccordionList<
     for (let i = 0; i < sections.length; i++) {
       if (
         _.some(sections[i]?.items ?? [], (item) =>
-          Boolean(this.props.itemIsSelected?.(item)),
+          Boolean(this.props.itemIsSelected?.(item, i)),
         )
       ) {
         selectedSection = i;
@@ -285,7 +285,7 @@ export class AccordionList<
         itemIndex++
       ) {
         const item = section.items?.[itemIndex];
-        if (item && itemIsSelected(item)) {
+        if (item && itemIsSelected(item, itemIndex)) {
           return {
             sectionIndex,
             itemIndex,
@@ -398,7 +398,7 @@ export class AccordionList<
     alwaysTogglable: boolean,
     alwaysExpanded: boolean,
     hideSingleSectionTitle: boolean,
-    itemIsSelected: (item: TItem) => boolean | undefined,
+    itemIsSelected: (item: TItem, index: number) => boolean | undefined,
     hideEmptySectionsInSearch: boolean,
     openSection: number | null,
     _globalSearch: boolean,
@@ -475,7 +475,7 @@ export class AccordionList<
         for (const [itemIndex, item] of section.items.entries()) {
           if (searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
-            if (itemIsSelected(item)) {
+            if (itemIsSelected(item, itemIndex)) {
               this._initialSelectedRowIndex = rows.length;
             }
             rows.push({
