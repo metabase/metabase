@@ -36,7 +36,6 @@
   {:advanced-permissions       (deferred-tru "Advanced Permissions")
    :attached-dwh               (deferred-tru "Attached DWH")
    :audit-app                  (deferred-tru "Audit app")
-   :collection-cleanup         (deferred-tru "Collection Cleanup")
    :ai-sql-fixer               (deferred-tru "AI SQL Fixer")
    :ai-sql-generation          (deferred-tru "AI SQL Generation")
    :ai-entity-analysis         (deferred-tru "AI Entity Analysis")
