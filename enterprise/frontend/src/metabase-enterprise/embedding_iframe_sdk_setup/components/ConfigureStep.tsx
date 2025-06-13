@@ -141,13 +141,13 @@ export const ConfigureStep = () => {
                     `Enter ${param.name.toLowerCase()}`
                   }
                   onChange={(e) =>
-                    updateInitialParameterValue(param.name, e.target.value)
+                    updateInitialParameterValue(param.slug, e.target.value)
                   }
                   rightSection={
                     <ParameterVisibilityToggle
-                      parameterName={param.name}
+                      parameterName={param.slug}
                       embedType={options.selectedType}
-                      isHidden={isParameterHidden(param.name)}
+                      isHidden={isParameterHidden(param.slug)}
                       onToggle={toggleParameterVisibility}
                     />
                   }
