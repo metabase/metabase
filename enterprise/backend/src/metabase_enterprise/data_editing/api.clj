@@ -500,9 +500,6 @@
      {}
      ;; TODO support for bulk actions
      {:keys [action_id scope input]}]
-    (def action_id action_id)
-    (def scope (actions/hydrate-scope scope))
-    (def input input)
     (let [scope   (actions/hydrate-scope scope)
           ;; TODO consolidate this with [[fetch-unified-action]]
           unified (cond

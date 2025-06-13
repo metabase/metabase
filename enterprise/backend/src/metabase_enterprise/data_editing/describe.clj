@@ -85,7 +85,7 @@
                                     ;; delete only requires pk cols
                                     (:table.row/delete :data-grid.row/delete) pk
                                     ;; update takes both the pk and field (if not a row action)
-                                    (:table.row/update :data-grid.row/update) true)
+                                    (:table.row/update :data-grid.row/update :table.row/create-or-update) true)
                             ;; row-actions can explicitly hide parameters
                             :when (not= "hidden" (:visibility param-map))
                             ;; dashcard column context can hide parameters (if defined)
