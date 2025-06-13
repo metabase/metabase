@@ -62,7 +62,7 @@
   `(do-with-impersonations-for-user! ~impersonations-and-attributes-map :rasta (fn [~'&group] ~@body)))
 
 (deftest impersonated-user-test
-  (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-premium-features #{:connection-impersonation}
     (testing "Returns true when a user has an active connection impersonation policy"
       (with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "KEY"}]
                              :attributes     {"KEY" "VAL"}}

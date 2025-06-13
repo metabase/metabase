@@ -798,6 +798,9 @@
    {:name      :advanced-permissions
     :available (premium-features/enable-advanced-permissions?)
     :enabled   (premium-features/enable-advanced-permissions?)}
+   {:name      :connection-impersonation
+    :available (premium-features/enable-connection-impersonation?)
+    :enabled   (premium-features/enable-connection-impersonation?)}
    {:name      :serialization
     :available (premium-features/enable-serialization?)
     :enabled   (premium-features/enable-serialization?)}

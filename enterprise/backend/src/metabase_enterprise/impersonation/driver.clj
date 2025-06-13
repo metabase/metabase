@@ -47,7 +47,7 @@
   "Is impersonation enabled for the given database, for any groups?"
   [db-or-id]
   (boolean
-   (when (and db-or-id (premium-features/enable-advanced-permissions?))
+   (when (and db-or-id (premium-features/enable-connection-impersonation?))
      (t2/exists? :model/ConnectionImpersonation :db_id (u/id db-or-id)))))
 
 (defn enforced-impersonations-for-db
@@ -106,7 +106,7 @@
 
 (defenterprise hash-input-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [field]
   ;; Include the role in the hash key, so that we can cache the results of the query for each role.
   (let [db-id (field/field-id->database-id (u/the-id field))]
@@ -124,7 +124,7 @@
   given driver. For these drivers, the role is set to either the default role, or to a specific role configured for
   the current user, depending on the connection impersonation settings. This is a no-op for databases that do not
   support connection impersonation, or for non-EE instances."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [driver ^Connection conn database]
   (when (driver.u/supports? driver :connection-impersonation database)
     (try

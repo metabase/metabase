@@ -121,7 +121,7 @@
 
 (deftest conn-impersonation-test-clickhouse
   (mt/test-driver :clickhouse
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [table-name       (str "metabase_impersonation_test.test_" (System/currentTimeMillis))
             select-query     (format "SELECT * FROM %s;" table-name)
             cluster-port     {:port (mt/db-test-env-var :clickhouse :nginx-port)}

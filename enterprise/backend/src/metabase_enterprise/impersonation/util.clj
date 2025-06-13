@@ -9,7 +9,7 @@
 (defenterprise impersonation-enforced-for-db?
   "Returns a boolean if the current user has a connection impersonation policy which should be enforced for the provided
   database. Will throw an error if [[api/*current-user-id*]] is not bound."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [db-or-id]
   (boolean
    (when-not *is-superuser?*
@@ -25,7 +25,7 @@
   "Returns a boolean if the current user is in a group that has a connection impersonation in place for any database.
   Note: this function does not check whether the impersonation is *enforced* for the current user, since another group's
   permissions may supercede it. Will throw an error if [[api/*current-user-id*]] is not bound."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   []
   (boolean
    (when-not *is-superuser?*

@@ -20,7 +20,7 @@
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [graph & {:keys [group-ids group-id db-id audit-db?]}]
   (m/deep-merge
    graph
@@ -38,7 +38,7 @@
 (defenterprise insert-impersonations!
   "Create new Connection Impersonation records. Deletes any existing Connection Impersonation records for the same
   group and database before creating new ones."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [impersonations]
   (doall
    (for [impersonation impersonations]
@@ -74,7 +74,7 @@
   "For use only inside `metabase.permissions.models.permissions`; don't call this elsewhere. Delete Connection Impersonations that
   are no longer needed after the permissions graph is updated. `changes` are the parts of the graph that have changed,
   i.e. the `things-only-in-new` returned by `clojure.data/diff`."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [changes]
   (log/debug "Permissions updated, deleting unneeded Connection Impersonations...")
   (doseq [group-id (set (keys changes))]
