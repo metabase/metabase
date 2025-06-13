@@ -200,6 +200,7 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
 
     cy.log("2. call embed.updateSettings to show the title");
     frame.window().then((win) => {
+      // @ts-expect-error -- this is within the iframe
       win.embed.updateSettings({ withTitle: true });
     });
 
