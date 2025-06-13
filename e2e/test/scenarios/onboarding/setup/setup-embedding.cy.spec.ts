@@ -1,3 +1,5 @@
+import { setTokenFeatures } from "e2e/support/helpers";
+
 const { H } = cy;
 
 describe("scenarios > setup embedding (EMB-477)", () => {
@@ -52,8 +54,15 @@ describe("scenarios > setup embedding (EMB-477)", () => {
 
       fillOutUserForm();
 
+      cy.intercept("POST", "/api/setup").as("setup");
       cy.button("Next").should("be.enabled").click();
     });
+
+    cy.log(
+      "Now we have a user we simulate being on cloud by setting a Metatabase Token",
+    );
+    cy.wait("@setup");
+    setTokenFeatures("all");
 
     cy.log("2: Data connection step");
     sidebar().within(() => {
