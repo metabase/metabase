@@ -10,6 +10,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -671,6 +672,7 @@
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
        (deduplicate-cols-names)
+       (map lib.content-translation/translate-display-names-in-column-metadata)
        (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
        (map lib.binning/ensure-binning-in-display-name)))
 
