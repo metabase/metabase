@@ -3,7 +3,8 @@ import type { JSX } from "react";
 import type { FieldValue, RowValue } from "metabase-types/api";
 export type Option = FieldValue;
 
-export const getOptionDisplayName = (option: Option) => String(option.at(-1));
+export const getOptionDisplayName = (option: Option | RowValue[]) =>
+  String(option.at(-1));
 
 export interface ListFieldProps {
   onChange: (value: RowValue[]) => void;

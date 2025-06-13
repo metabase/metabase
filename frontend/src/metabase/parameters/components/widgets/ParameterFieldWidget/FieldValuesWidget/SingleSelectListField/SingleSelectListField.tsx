@@ -88,7 +88,10 @@ const SingleSelectListField = ({
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, DEBOUNCE_FILTER_TIME);
 
-  const isFilterInValues = optionItemEqualsFilter(value[0], filter);
+  const isFilterInValues = optionItemEqualsFilter(
+    tc(getOptionDisplayName(value)),
+    filter,
+  );
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();

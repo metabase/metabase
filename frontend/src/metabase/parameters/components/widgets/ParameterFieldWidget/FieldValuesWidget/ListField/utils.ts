@@ -1,7 +1,7 @@
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import type { FieldValue } from "metabase-types/api";
+import type { FieldValue, RowValue } from "metabase-types/api";
 
-import type { Option } from "./types";
+import type { Option } from "../SingleSelectListField/types";
 
 /**
  * Returns true when the option matches the filter. If the option has an
@@ -32,4 +32,5 @@ export function optionMatchesFilter(
 export const removeDiacritics = (value: string) =>
   value?.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-export const getOptionDisplayName = (option: Option) => String(option.at(-1));
+export const getOptionDisplayName = (option: Option | RowValue[]) =>
+  String(option.at(-1));
