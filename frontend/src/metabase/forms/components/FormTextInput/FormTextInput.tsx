@@ -49,7 +49,11 @@ export const FormTextInput = forwardRef(function FormTextInput(
     [setTouched, onBlur],
   );
 
-  const rightSection = hasCopyButton ? <CopyWidgetButton value={value} /> : props.rightSection;
+  const rightSection = hasCopyButton ? (
+    <CopyWidgetButton value={value} />
+  ) : (
+    props.rightSection
+  );
   const rightSectionWidth = hasCopyButton ? 40 : props.rightSectionWidth;
 
   return (
