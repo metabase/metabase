@@ -80,15 +80,50 @@ H.describeWithSnowplow(
           event: "data_add_clicked",
           triggered_from: "left-nav",
         });
+      });
 
-        // TODO: Extract into a separate test once we add csv and google sheets tabs
-        addDataModal()
-          .findAllByRole("tab")
-          .filter(":contains(Database)")
+      it("should track tab clicks within the 'Add data' modal", () => {
+        cy.visit("/");
+        H.navigationSidebar()
+          .findByRole("tab", { name: /^Data/i })
+          .findByLabelText("Add data")
+          .should("be.visible")
           .click();
-        H.expectUnstructuredSnowplowEvent({
-          event: "database_setup_clicked",
-          triggered_from: "add-data-modal",
+
+        addDataModal().within(() => {
+          cy.log("Tracking shouldn't happen on the default open tab");
+          cy.findAllByRole("tab")
+            .filter(":contains(Database)")
+            .should("have.attr", "data-active", "true");
+
+          cy.log("Track when CSV opens");
+          cy.findAllByRole("tab").filter(":contains(CSV)").click();
+          H.expectUnstructuredSnowplowEvent({
+            event: "csv_upload_clicked",
+            triggered_from: "add-data-modal",
+          });
+
+          cy.log("Ignore the repeated click");
+          cy.findAllByRole("tab").filter(":contains(CSV)").click();
+          H.expectUnstructuredSnowplowEvent(
+            {
+              event: "csv_upload_clicked",
+              triggered_from: "add-data-modal",
+            },
+            1,
+          );
+
+          cy.log("Track when Database tab opens");
+          cy.findAllByRole("tab").filter(":contains(Database)").click();
+          // We confirm that it didn't track the default open tab because the following assertion passes.
+          // If there were multiple events like this, the count would be higher
+          H.expectUnstructuredSnowplowEvent(
+            {
+              event: "database_setup_clicked",
+              triggered_from: "add-data-modal",
+            },
+            1,
+          );
         });
       });
     });
