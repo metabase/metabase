@@ -6,21 +6,25 @@ import type { TableEditingScope } from "../../types";
 import { BuiltInTableAction } from "../../types";
 import { useActionFormDescription } from "../use-table-action-form-description";
 
-type UseActionUpdateRowModalFromDatasetParams = {
+export type UseActionUpdateRowModalFromDatasetParams = {
   datasetData?: DatasetData;
   scope: TableEditingScope;
+  fetchOnMount?: boolean;
 };
 
 export function useActionUpdateRowModalFromDataset({
   datasetData,
   scope,
+  fetchOnMount = true,
 }: UseActionUpdateRowModalFromDatasetParams) {
   const [rowIndex, setRowIndex] = useState<number | null>(null);
 
-  const { data: actionFormDescription } = useActionFormDescription({
-    actionId: BuiltInTableAction.Update,
-    scope,
-  });
+  const { data: actionFormDescription, refetch: refetchActionFormDescription } =
+    useActionFormDescription({
+      actionId: BuiltInTableAction.Update,
+      scope,
+      fetchOnMount,
+    });
 
   const openUpdateRowModal = useCallback((rowIndex: number) => {
     setRowIndex(rowIndex);
@@ -51,6 +55,7 @@ export function useActionUpdateRowModalFromDataset({
   return {
     opened: rowIndex !== null,
     actionFormDescription,
+    refetchActionFormDescription,
     rowIndex,
     rowData,
     openUpdateRowModal,

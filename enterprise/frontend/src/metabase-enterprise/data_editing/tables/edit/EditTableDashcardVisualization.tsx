@@ -41,14 +41,14 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
 import { ActionCreateRowFormModal } from "./modals/ActionCreateRowFormModal";
+import { ActionUpdateRowFormModal } from "./modals/ActionUpdateRowFormModal";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
 import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
-import { EditingBaseRowModal } from "./modals/EditingBaseRowModal";
 import { ForeignKeyConstraintModal } from "./modals/ForeignKeyConstraintModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
+import { useActionUpdateRowModalFromDatasetWithObjectId } from "./modals/use-action-update-row-modal-with-object-id";
 import { useForeignKeyConstraintHandling } from "./modals/use-foreign-key-constraint-handling";
 import { useTableBulkDeleteConfirmation } from "./modals/use-table-bulk-delete-confirmation";
-import { useTableEditingModalControllerWithObjectId } from "./modals/use-table-modal-with-object-id";
 import { useEditableTableColumnConfigFromVisualizationSettings } from "./use-editable-column-config";
 import { useActionFormDescription } from "./use-table-action-form-description";
 import { useTableCRUD } from "./use-table-crud";
@@ -121,16 +121,6 @@ export const EditTableDashcardVisualization = memo(
       [location, dispatch, dashcardId],
     );
 
-    const {
-      state: modalState,
-      openEditRowModal,
-      closeModal,
-    } = useTableEditingModalControllerWithObjectId({
-      currentObjectId: objectIdParam,
-      datasetData: data,
-      onObjectIdChange: handleCurrentObjectIdChange,
-    });
-
     const stateUpdateStrategy = useTableEditingStateDashcardUpdateStrategy(
       dashcardId,
       cardId,
@@ -160,6 +150,22 @@ export const EditTableDashcardVisualization = memo(
       scope: editingScope,
       datasetData: data,
       stateUpdateStrategy,
+    });
+
+    const {
+      opened: isUpdateRowModalOpen,
+      rowIndex: updateModalRowIndex,
+      rowData: updateModalRowData,
+      actionFormDescription: updateActionFormDescription,
+      refetchActionFormDescription: refetchUpdateRowFormDescription,
+      openUpdateRowModal,
+      closeUpdateRowModal,
+    } = useActionUpdateRowModalFromDatasetWithObjectId({
+      datasetData: data,
+      scope: editingScope,
+      fetchOnMount: false,
+      currentObjectId: objectIdParam,
+      onObjectIdChange: handleCurrentObjectIdChange,
     });
 
     const { undo, redo, isUndoLoading, isRedoLoading, currentActionLabel } =
@@ -251,7 +257,13 @@ export const EditTableDashcardVisualization = memo(
     });
 
     useEffect(() => {
-      if (hasCreateAction && !isEditing) {
+      if (isEditing) {
+        return;
+      }
+
+      refetchUpdateRowFormDescription();
+
+      if (hasCreateAction) {
         refetchCreateRowFormDescription();
       }
     }, [
@@ -259,6 +271,7 @@ export const EditTableDashcardVisualization = memo(
       hasCreateAction,
       isEditing,
       refetchCreateRowFormDescription,
+      refetchUpdateRowFormDescription,
     ]);
 
     const shouldDisableActions = isUndoLoading || isRedoLoading;
@@ -374,7 +387,7 @@ export const EditTableDashcardVisualization = memo(
                 fieldMetadataMap={tableFieldMetadataMap}
                 cellsWithFailedUpdatesMap={cellsWithFailedUpdatesMap}
                 onCellValueUpdate={handleCellValueUpdate}
-                onRowExpandClick={openEditRowModal}
+                onRowExpandClick={openUpdateRowModal}
                 columnsConfig={columnsConfig}
                 getColumnSortDirection={getColumnSortDirection}
                 rowActions={tableActions}
@@ -404,22 +417,15 @@ export const EditTableDashcardVisualization = memo(
           isInserting={isInserting}
           onRowCreate={handleRowCreate}
         />
-        <EditingBaseRowModal
-          modalState={modalState}
-          onClose={closeModal}
-          hasDeleteAction={hasDeleteAction}
-          onEdit={handleRowUpdate}
-          onRowCreate={handleRowCreate}
+        <ActionUpdateRowFormModal
+          rowIndex={updateModalRowIndex}
+          rowData={updateModalRowData}
+          description={updateActionFormDescription}
+          opened={isUpdateRowModalOpen}
+          onClose={closeUpdateRowModal}
+          onRowUpdate={handleRowUpdate}
           onRowDelete={handleRowDelete}
-          datasetColumns={data.cols}
-          currentRowData={
-            modalState.rowIndex !== undefined
-              ? data.rows[modalState.rowIndex]
-              : undefined
-          }
-          fieldMetadataMap={tableFieldMetadataMap}
-          isLoading={isInserting}
-          columnsConfig={columnsConfig}
+          withDelete={hasDeleteAction}
         />
         <EditBulkRowsModal
           opened={isBulkEditingRequested}
