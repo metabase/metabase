@@ -845,6 +845,9 @@
    {:name      :metabot-v3
     :available (premium-features/enable-metabot-v3?)
     :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-entity-analysis
+    :available (premium-features/enable-ai-entity-analysis?)
+    :enabled   (premium-features/enable-ai-entity-analysis?)}
    {:name      :ai-sql-fixer
     :available (premium-features/enable-ai-sql-fixer?)
     :enabled   (premium-features/enable-ai-sql-fixer?)}
