@@ -5,6 +5,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
@@ -65,28 +66,28 @@
                     :sourceType       "ask-user"
                     :sourceValueTarget (:name field)})}))
 
-(mu/defn configuration :- ::action-configuration
+(mu/defn configuration :- [:or ::action-configuration [:map [:status ms/PositiveInt]]]
   "Returns configuration needed for a given action."
   [{:keys [action-id action-kw] :as action}
    scope]
-  (when (false? (:configurable action))
-    (throw (ex-info "Cannot configure this action" {:status-code 400, :action action})))
-  (cond
-    ;; Eventually will be put inside a nicely typed :configuration key
-    (:param-map action)
-    (configuration-for-pending-action action)
+  (if (false? (:configurable action))
+    {:status 400, :body "Cannot configure this action"}
+    (cond
+      ;; Eventually will be put inside a nicely typed :configuration key
+      (:param-map action)
+      (configuration-for-pending-action action)
 
-    (pos-int? action-id)
-    (configuration-for-saved-action action-id)
+      (pos-int? action-id)
+      (configuration-for-saved-action action-id)
 
-    (and action-kw (isa? action-kw :table.row/common))
-    ;; TODO eventually we will just get the table-id from having applied the mapping, which supports nesting etc
-    (configuration-for-table-action (or (:table-id (:mapping (:inner-action action)))
-                                        (:table-id (:mapping action))
-                                        (:table-id scope))
-                                    action-kw)
+      (and action-kw (isa? action-kw :table.row/common))
+      ;; TODO eventually we will just get the table-id from having applied the mapping, which supports nesting etc
+      (configuration-for-table-action (or (:table-id (:mapping (:inner-action action)))
+                                          (:table-id (:mapping action))
+                                          (:table-id scope))
+                                      action-kw)
 
-    ;; TODO support data-grid.row and model.row actions (not important yet)
+      ;; TODO support data-grid.row and model.row actions (not important yet)
 
-    :else
-    (throw (ex-info "Don't know how to handle this action" {:action action, :scope scope}))))
+      :else
+      (throw (ex-info "Don't know how to handle this action" {:action action, :scope scope})))))

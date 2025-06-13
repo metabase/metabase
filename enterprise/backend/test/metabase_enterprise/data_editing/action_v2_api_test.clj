@@ -276,39 +276,33 @@
                                                                 :timestamp [:timestamp]
                                                                 :date      [:date]}
                                                                {:primary-key [:id]})]
-        (let [expected-id-params   [{:id "field-id"        :sourceType "row-data" :sourceValueTarget "id"}]
-              expected-row-params  [{:id "field-text"      :sourceType "row-data" :sourceValueTarget "text"}
-                                    {:id "field-int"       :sourceType "ask-user" :sourceValueTarget "int"}
-                                    {:id "field-timestamp" :sourceType "ask-user" :sourceValueTarget "timestamp"}
-                                    {:id "field-date"      :sourceType "ask-user" :sourceValueTarget "date"}]]
+        (testing "custom data-grid calling a table action, with pending configuration changes"
+          (let [{action-id "table.row/update"} (->> (mt/user-http-request-full-response
+                                                     :crowberto
+                                                     :get
+                                                     "action/v2/tmp-action")
+                                                    :body :actions
+                                                    (filter #(= @test-table (:table_id %)))
+                                                    (u/index-by :kind :id))
+                pending-config {:parameters
+                                [{:parameterId "id",        :sourceType "row-data"}
+                                 {:parameterId "int",       :sourceType "constant", :value 42}
+                                 {:parameterId "text",      :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                 {:parameterId "timestamp", :visibility "hidden"}]}
 
-          (testing "custom data-grid calling a table action, with pending configuration changes"
-            (let [{action-id "table.row/update"} (->> (mt/user-http-request-full-response
-                                                       :crowberto
-                                                       :get
-                                                       "action/v2/tmp-action")
-                                                      :body :actions
-                                                      (filter #(= @test-table (:table_id %)))
-                                                      (u/index-by :kind :id))
-                  pending-config {:parameters
-                                  [{:parameterId  "id",       :sourceType "row-data"}
-                                   {:parameterId "int",       :sourceType "constant", :value 42}
-                                   {:parameterId "text",      :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
-                                   {:parameterId "timestamp", :visibility "hidden"}]}
-
-;; This gives us the format that the in-memory action looks like in the FE.
-                  wrap-action    (fn [packed-id]
-                                   {:packed-id packed-id
-                                    :param-map (->> pending-config
-                                                    :parameters
-                                                    ;; TODO we won't need to do this once we change the schema for
-                                                    ;;      unified-action
-                                                    (u/index-by :parameterId #(dissoc % :parameterId)))})]
-              (let [scope {:table-id @test-table}]
-                (is (=? {:title      (mt/malli=? :string)
-                         :parameters (for [p (:parameters pending-config)]
-                                       ;; What a silly difference, which we should squelch.
-                                       (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
-                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
-                                              {:scope     scope
-                                               :action_id (wrap-action action-id)})))))))))))
+                ;; This gives us the format that the in-memory action looks like in the FE.
+                wrap-action    (fn [packed-id]
+                                 {:packed-id packed-id
+                                  :param-map (->> pending-config
+                                                  :parameters
+                                                  ;; TODO we won't need to do this once we change the schema for
+                                                  ;;      unified-action to use a list.
+                                                  (u/index-by :parameterId #(dissoc % :parameterId)))})]
+            (let [scope {:table-id @test-table}]
+              (is (=? {:title      (mt/malli=? :string)
+                       :parameters (for [p (:parameters pending-config)]
+                                     ;; What a silly difference, which we should squelch.
+                                     (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                                            {:scope     scope
+                                             :action_id (wrap-action action-id)}))))))))))

@@ -534,6 +534,7 @@
     "This API returns a data representation of the form the FE will render. It does not update the configuration."
     [{}
      {}
+     ;; TODO pour some malli on me
      {:keys [action_id scope]}]
     (let [scope (actions/hydrate-scope scope)]
       (data-editing.configure/configuration (fetch-unified-action scope action_id) scope))))
