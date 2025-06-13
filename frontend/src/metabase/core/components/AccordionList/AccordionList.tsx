@@ -645,6 +645,7 @@ export class AccordionList<
       role = "grid",
       withBorders,
       "data-testid": testId,
+      maxHeight = Infinity,
 
       itemIsClickable = () => true,
       itemIsSelected = () => false,
@@ -732,30 +733,29 @@ export class AccordionList<
       );
     }
 
-    const mh = this.props.maxHeight ?? Infinity;
-    const maxHeight = mh > 0 && mh < Infinity ? mh : window.innerHeight;
+    const max =
+      maxHeight > 0 && maxHeight < Infinity ? maxHeight : window.innerHeight;
 
     const height = Math.min(
-      maxHeight,
+      max,
       rows.reduce(
         (height, _row, index) => height + this._cache.rowHeight({ index }),
         0,
       ),
     );
 
-    const defaultListStyle = {
-      // HACK - Ensure the component can scroll
-      // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
-      overflowY: "auto" as const,
-      outline: "none" as const,
-    };
-
     return (
       <List
         id={id}
         ref={this._list}
         className={className}
-        style={{ ...defaultListStyle, ...style }}
+        style={{
+          // HACK - Ensure the component can scroll
+          // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
+          overflowY: "auto",
+          outline: "none",
+          ...style,
+        }}
         containerStyle={{ pointerEvents: "auto" }}
         // @ts-expect-error: TODO
         width={width}
