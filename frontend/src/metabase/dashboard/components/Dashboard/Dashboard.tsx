@@ -48,6 +48,7 @@ function Dashboard() {
     setArchivedDashboard,
     moveDashboardToCollection,
     deletePermanently,
+    cardTitled,
 
     dashboardBeforeEditing,
     onFullscreenChange,
@@ -284,6 +285,7 @@ function Dashboard() {
                 autoScrollToDashcardId={autoScrollToDashcardId}
                 reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
                 handleSetEditing={handleSetEditing}
+                withCardTitle={cardTitled}
               />
             </FullWidthContainer>
           )}

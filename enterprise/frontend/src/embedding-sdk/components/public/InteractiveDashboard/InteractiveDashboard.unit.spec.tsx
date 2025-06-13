@@ -7,8 +7,12 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
+  setupGetUserKeyValueEndpoint,
+  setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { screen, waitFor } from "__support__/ui";
@@ -116,6 +120,18 @@ const setup = async ({
   });
 
   setupDashboardEndpoints(dashboard);
+  setupNotificationChannelsEndpoints({});
+  setupCollectionsEndpoints({ collections: [] });
+  setupDatabasesEndpoints([TEST_DB]);
+
+  setupGetUserKeyValueEndpoint({
+    namespace: "last_download_format",
+    key: "download_format_preference",
+    value: {
+      last_download_format: "csv",
+      last_table_download_format: "csv",
+    },
+  });
 
   setupDashboardQueryMetadataEndpoint(
     dashboard,

@@ -1,4 +1,4 @@
-import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
+import { DASHBOARD_ACTION } from "./action-types";
 
 // Buttons visible in public dashboard
 export const DASHBOARD_DISPLAY_ACTIONS = [
@@ -33,4 +33,5 @@ export const DASHBOARD_VIEW_ACTIONS = [
   DASHBOARD_ACTION.DASHBOARD_INFO,
   DASHBOARD_ACTION.DASHBOARD_ACTION_MENU,
   DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD,
+  DASHBOARD_ACTION.DOWNLOAD_DASHBOARD_PDF,
 ];

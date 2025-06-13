@@ -56,7 +56,7 @@ export const DashCardMenuItems = ({
       key: string;
     })[] = [];
 
-    if (onEditVisualization) {
+    if (withEditLink && onEditVisualization) {
       items.push({
         key: "MB_EDIT_VISUALIZER_QUESTION",
         iconName: "pencil",

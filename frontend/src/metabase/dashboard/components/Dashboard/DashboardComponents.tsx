@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 
 import { Box, type BoxProps } from "metabase/ui";
 
@@ -8,8 +9,10 @@ export const FIXED_WIDTH = "1048px";
 export const FixedWidthContainer = (
   props: BoxProps & {
     isFixedWidth: boolean;
-    children: React.ReactNode;
+    children: ReactNode;
     id?: string;
+    // TODO: Find a better typing for this from Mantine
+    component?: any;
   },
 ) => {
   const { isFixedWidth, className, ...rest } = props;

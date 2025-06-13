@@ -385,17 +385,20 @@ export function DashCardVisualization({
     }
 
     // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded && downloadsEnabled) {
-      return (
-        <DashCardQuestionDownloadButton
-          question={question}
-          result={mainSeries}
-          dashboardId={dashboard.id}
-          dashcardId={dashcard.id}
-          uuid={uuid}
-          token={token}
-        />
-      );
+    if (isPublicOrEmbedded) {
+      if (downloadsEnabled.results) {
+        return (
+          <DashCardQuestionDownloadButton
+            question={question}
+            result={mainSeries}
+            dashboardId={dashboard.id}
+            dashcardId={dashcard.id}
+            uuid={uuid}
+            token={token}
+          />
+        );
+      }
+      return null;
     }
 
     // We only show the titleMenuItems if the card has no title.
