@@ -38,7 +38,7 @@
    {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
   (let [scope {:table-id table-id}]
-    {:created-rows (map :row (:outputs (execute!* "data-grid.row/create" scope {} rows)))}))
+    {:created-rows (map :row (execute!* "data-grid.row/create" scope {} rows))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
@@ -60,7 +60,7 @@
                       ;; For now, it's just a shim, because we haven't implemented an efficient bulk update action yet.
                       ;; This is a dumb shim; we're not checking that the pk maps are really (just) the pks.
                       (map #(merge % updates) pks))]
-      {:updated (map :row (:outputs (execute!* "data-grid.row/update" scope nil rows)))})))
+      {:updated (map :row (execute!* "data-grid.row/update" scope nil rows))})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
