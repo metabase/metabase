@@ -1,6 +1,7 @@
 import _ from "underscore";
 
-import registerVisualizations from "metabase/visualizations/register";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -11,20 +12,20 @@ import type {
 import {
   createMockCard,
   createMockColumn,
+  createMockSettings,
   createMockSingleSeries,
   createMockTimeline,
   createMockTimelineEvent,
+  createMockTokenFeatures,
   createMockVisualizationSettings,
 } from "metabase-types/api/mocks";
 import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
 import { registerQueryBuilderMetabotContextFn } from "./use-register-query-builder-metabot-context";
 
-registerVisualizations();
-
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
-  getBase64ChartImage: () => Promise.resolve("test-base64"),
-  getChartSelector: () => "#chart",
+  getVisualizationSvgDataUri: () => "test-base64",
+  getChartSvgSelector: () => "#chart svg",
 }));
 
 const getUserIsViewing = (
@@ -81,6 +82,18 @@ function createMockData(opts: {
 }
 
 describe("registerQueryBuilderMetabotContextFn", () => {
+  beforeAll(() => {
+    mockSettings(
+      createMockSettings({
+        "token-features": createMockTokenFeatures({
+          ai_entity_analysis: true,
+          metabot_v3: true,
+        }),
+      }),
+    );
+    setupEnterprisePlugins();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -103,7 +116,10 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 
   it("should handle adhoc questions", async () => {
-    const data = createMockData({ question: new Question(createAdHocCard()) });
+    const question = new Question(createAdHocCard());
+    expect(question.isSaved()).toBe(false);
+
+    const data = createMockData({ question });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const viewing = getUserIsViewing(result)!;
@@ -116,37 +132,14 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const data = createMockData({ question: new Question(card) });
     const result = await registerQueryBuilderMetabotContextFn(data);
 
-    const chartConfig = getChartConfig(result)!;
+    let chartConfig = getChartConfig(result);
+    expect(chartConfig).not.toBe(undefined);
+
+    chartConfig = chartConfig!;
     expect(chartConfig.image_base_64).toEqual("test-base64");
   });
 
-  it("should produce valid series results", async () => {
-    const card = createMockCard({
-      name: "Count by name",
-      display: "line",
-      visualization_settings: createMockVisualizationSettings({
-        "graph.dimensions": ["name"],
-        "graph.metrics": ["count"],
-      }),
-    });
-    const data = createMockData({ question: new Question(card) });
-    const result = await registerQueryBuilderMetabotContextFn(data);
-
-    const chartConfig = getChartConfig(result)!;
-    expect(chartConfig.series).toEqual({
-      "Count by name": {
-        chart_type: "line",
-        display_name: "Count by name",
-        stacked: false,
-        x: { name: "name", type: "string" },
-        x_values: ["a", "b", "c"],
-        y: { name: "count", type: "number" },
-        y_values: [1, 2, 3],
-      },
-    });
-  });
-
-  it("should produce valid timeline event results", async () => {
+  it("should produce valid results for line charts", async () => {
     const card = createMockCard({
       name: "Count by name",
       display: "line",
@@ -175,11 +168,89 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.series).toEqual({
+      "Count by name": {
+        chart_type: "line",
+        display_name: "Count by name",
+        stacked: false,
+        x: { name: "name", type: "string" },
+        x_values: ["a", "b", "c"],
+        y: { name: "count", type: "number" },
+        y_values: [1, 2, 3],
+      },
+    });
     expect(chartConfig.timeline_events).toHaveLength(3);
-    expect(chartConfig.timeline_events.map((e) => e.name)).toEqual([
+    expect(chartConfig.timeline_events?.map((e) => e.name)).toEqual([
       "First Event",
       "Second Event",
       "Third Event",
     ]);
+  });
+
+  it("should produce valid series results for pie charts", async () => {
+    const card = createMockCard({
+      name: "Count by name",
+      display: "pie",
+      visualization_settings: createMockVisualizationSettings({
+        "pie.dimension": "name",
+        "pie.metric": "count",
+      }),
+    });
+    const data = createMockData({ question: new Question(card) });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.series).toEqual({
+      "Count by name": {
+        chart_type: "pie",
+        display_name: "Count by name",
+        stacked: false,
+        x: { name: "name", type: "string" },
+        x_values: ["a", "b", "c"],
+        y: { name: "count", type: "number" },
+        y_values: [1, 2, 3],
+      },
+    });
+  });
+
+  it("should produce valid series results for funnel charts", async () => {
+    const card = createMockCard({
+      name: "Count by name",
+      display: "funnel",
+      visualization_settings: createMockVisualizationSettings({
+        "funnel.dimension": "name",
+        "funnel.metric": "count",
+      }),
+    });
+    const data = createMockData({ question: new Question(card) });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.series).toEqual({
+      "Count by name": {
+        chart_type: "funnel",
+        display_name: "Count by name",
+        stacked: false,
+        x: { name: "name", type: "string" },
+        x_values: ["a", "b", "c"],
+        y: { name: "count", type: "number" },
+        y_values: [1, 2, 3],
+      },
+    });
+  });
+
+  it("should produce empty chart configs if it cannot analyze a question", async () => {
+    const card = createMockCard({
+      name: "Count by name",
+      display: "table",
+      visualization_settings: createMockVisualizationSettings({
+        "graph.dimensions": ["name"],
+        "graph.metrics": ["count"],
+      }),
+    });
+    const data = createMockData({ question: new Question(card) });
+    const result = await registerQueryBuilderMetabotContextFn(data);
+
+    expect(getUserIsViewing(result)?.chart_configs).toEqual([]);
   });
 });

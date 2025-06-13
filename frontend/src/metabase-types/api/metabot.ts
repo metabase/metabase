@@ -84,7 +84,7 @@ export type MetabotSeriesConfig = {
   x_values?: RowValue[];
   y_values?: RowValue[];
   display_name: string;
-  chart_type: string;
+  chart_type: CardDisplayType;
   stacked?: boolean;
 };
 
@@ -108,7 +108,6 @@ export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
   query: DatasetQuery;
-  display_type: CardDisplayType;
   chart_configs?: Array<MetabotChartConfig>;
 };
 

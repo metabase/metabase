@@ -73,7 +73,7 @@ const getDimensions = (
 
 const getMetrics = (visualizationSettings: ComputedVisualizationSettings) => {
   if (visualizationSettings["graph.metrics"]) {
-    return [];
+    return visualizationSettings["graph.metrics"];
   }
 
   if (visualizationSettings["pie.metric"]) {

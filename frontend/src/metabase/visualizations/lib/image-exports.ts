@@ -212,7 +212,7 @@ export const getChartSvgSelector = (
   return `${getChartSelector(input)} svg[data-type="chart"]`;
 };
 
-export const getBase64ChartImage = async (
+export const getChartImagePngDataUri = async (
   selector: string,
 ): Promise<string | undefined> => {
   const chartRoot = document.querySelector(selector);
@@ -228,7 +228,7 @@ export const getBase64ChartImage = async (
     },
   });
 
-  return canvas.toDataURL("image/png").split(",")[1];
+  return canvas.toDataURL("image/png");
 };
 
 export const saveChartImage = async (selector: string, fileName: string) => {

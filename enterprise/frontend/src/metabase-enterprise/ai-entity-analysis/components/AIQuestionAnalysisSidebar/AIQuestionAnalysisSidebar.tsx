@@ -9,7 +9,7 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { getIsLoadingComplete } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
 import {
-  getBase64ChartImage,
+  getChartImagePngDataUri,
   getChartSelector,
 } from "metabase/visualizations/lib/image-exports";
 
@@ -60,7 +60,7 @@ export function AIQuestionAnalysisSidebar({
           );
 
     analysisTimeoutRef.current = setTimeout(async () => {
-      const imageBase64 = await getBase64ChartImage(
+      const imageBase64 = await getChartImagePngDataUri(
         getChartSelector({ cardId: question.id() }),
       );
 
