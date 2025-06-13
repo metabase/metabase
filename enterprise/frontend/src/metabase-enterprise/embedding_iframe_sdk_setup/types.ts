@@ -1,3 +1,4 @@
+import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import type {
   DashboardEmbedOptions,
   QuestionEmbedOptions,
@@ -58,11 +59,7 @@ export interface EmbedPreviewOptions {
   questionOptions?: QuestionSettings;
 
   // Theme colors for preview
-  colors?: {
-    brand?: string;
-    "text-primary"?: string;
-    background?: string;
-  };
+  colors?: Pick<MetabaseColors, "brand" | "text-primary" | "background">;
 }
 
 export interface StepProps {
