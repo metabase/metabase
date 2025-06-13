@@ -127,7 +127,7 @@
                  :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database     (meta/id)
                  :stages       [{:lib/type :mbql.stage/mbql
-                                 :source-card (:id ((lib.tu/mock-cards) :orders))}]}
+                                 :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           own-fields (for [field (lib.metadata/fields (lib.tu/metadata-provider-with-mock-cards) (meta/id :orders))]
                        (-> field
                            (assoc :lib/source :source/card)))
@@ -622,9 +622,9 @@
   (testing "multi-card checkins+users+venues join"
     ;; The idea is that these are all joins between cards and nested queries.
     (let [mp1 (lib.tu/metadata-provider-with-mock-cards)
-          checkins-card ((lib.tu/mock-cards) :checkins)
-          users-card ((lib.tu/mock-cards) :users)
-          venues-card ((lib.tu/mock-cards) :venues)
+          checkins-card (:checkins (lib.tu/mock-cards))
+          users-card (:users (lib.tu/mock-cards))
+          venues-card (:venues (lib.tu/mock-cards))
           checkins-card-query (lib/query mp1 checkins-card)
           users-card-query (lib/query mp1 users-card)
           venues-card-query (lib/query mp1 venues-card)
