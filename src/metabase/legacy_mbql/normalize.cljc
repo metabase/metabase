@@ -534,14 +534,16 @@
   (canonicalize-mbql-clause (wrap-implicit-field-id clause)))
 
 (defmethod canonicalize-mbql-clause :field
-  [[_ id-or-name opts]]
-  {:pre [((some-fn map? nil?) opts)]}
-  (if (is-clause? :field id-or-name)
-    (let [[_ nested-id-or-name nested-opts] id-or-name]
-      (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
-    ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
-    ;; afterwards
-    [:field id-or-name (not-empty opts)]))
+  [[_ id-or-name opts, :as clause]]
+  (if-not ((some-fn map? nil?) opts)
+    ;; this is an MBQL 5+ clause, ignore it.
+    clause
+    (if (is-clause? :field id-or-name)
+      (let [[_ nested-id-or-name nested-opts] id-or-name]
+        (canonicalize-mbql-clause [:field nested-id-or-name (not-empty (merge nested-opts opts))]))
+      ;; remove empty stuff from the options map. The `remove-empty-clauses` step will further remove empty stuff
+      ;; afterwards
+      [:field id-or-name (not-empty opts)])))
 
 (defmethod canonicalize-mbql-clause :aggregation
   [[_tag index opts]]

@@ -651,7 +651,7 @@
     [_driver _feature _database]
     true))
 
-;;; see also [[metabase.query-processor.middleware.annotate-test/breakout-year-test]]
+;;; see also [[metabase.lib.metadata.result-metadata-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
@@ -672,7 +672,7 @@
             ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
             ;; display values of the column.
             (is (=? [(assoc date-col  :field_ref [:field (mt/id :checkins :date) nil], :unit :year)
-                     (assoc count-col :field_ref [:field "count" {:base-type :type/BigInteger}])]
+                     (assoc count-col :field_ref [:field "count" {:base-type :type/Integer}])]
                     (mt/cols
                      (qp/process-query (query-with-source-card 1)))))))))))
 
@@ -1072,7 +1072,7 @@
                    :base_type    :type/Text}
                   {:name         "count"
                    :display_name "Count"
-                   :field_ref    [:field "count" {:base-type :type/BigInteger}]
+                   :field_ref    [:field "count" {:base-type :type/Integer}]
                    :base_type    (:base_type (qp.test-util/aggregate-col :count))}])
                (for [col (mt/cols results)]
                  (select-keys col [:name :display_name :id :field_ref :base_type]))))))))
@@ -1093,9 +1093,6 @@
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
                                     (qp.preprocess/query->expected-cols (mt/mbql-query orders)))]
-        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                       expected-cols))
-            "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
         ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
         (doseq [[description result-metadata] {"NONE"                   nil
                                                "from running the query" card-results-metadata

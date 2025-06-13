@@ -64,7 +64,7 @@
                                           :dataset-query   card-query
                                           :result-metadata results-metadata}]})
             query              (lib/query metadata-provider (lib.metadata/card metadata-provider 1))
-            longitude          (lib.field/resolve-column-name-in-metadata "LATITUDE" (lib/returned-columns query))
+            longitude          (#'lib.field/resolve-column-name-in-metadata "LATITUDE" (lib/returned-columns query))
             _                  (is (=? {:name           "LATITUDE"
                                         :effective-type :type/Float
                                         :fingerprint    {:type {:type/Number {:min number?, :max number?}}}}

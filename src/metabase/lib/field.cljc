@@ -32,25 +32,26 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.time :as u.time]))
 
-(mu/defn resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
    column-metadatas :- [:sequential ::lib.schema.metadata/column]]
-  (or (some (fn [k]
-              (m/find-first #(= (get % k) column-name)
-                            column-metadatas))
-            [:lib/desired-column-alias :name])
-      (do
-        (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
-                   (pr-str column-name)
-                   (pr-str (mapv :lib/desired-column-alias column-metadatas)))
-        nil)))
+  (let [resolution-keys [:lib/desired-column-alias :lib/deduplicated-name :name :lib/original-name]]
+    (or (some (fn [k]
+                (m/find-first #(= (get % k) column-name)
+                              column-metadatas))
+              resolution-keys)
+        (do
+          (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
+                     (pr-str column-name)
+                     (pr-str (mapv #(select-keys % resolution-keys) column-metadatas)))
+          nil))))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
   "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
   false)
 
-(mu/defn- resolve-column-name :- [:maybe ::lib.schema.metadata/column]
+(mu/defn resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
@@ -76,12 +77,16 @@
                                                  (pr-str column-name)))]
         (when-let [column (and (seq stage-columns)
                                (resolve-column-name-in-metadata column-name stage-columns))]
-          (cond-> column
-            previous-stage-number (-> (dissoc :table-id
-                                              ::binning ::temporal-unit)
-                                      (lib.join/with-join-alias nil)
-                                      #_(assoc :name (or (:lib/desired-column-alias column) (:name column)))
-                                      (assoc :lib/source :source/previous-stage))))))))
+          (if-not previous-stage-number
+            column
+            (merge
+             (-> column
+                 (lib.join/with-join-alias nil)
+                 (dissoc :table-id ::binning ::temporal-unit))
+             (when-let [join-alias ((some-fn lib.join.util/current-join-alias :source-alias) column)]
+               {:lib/previous-stage-join-alias join-alias})
+             {:lib/original-name ((some-fn :lib/original-name :name) column)
+              :lib/source        :source/previous-stage})))))))
 
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
@@ -155,7 +160,7 @@
                       (if join-alias
                         (merge
                          {:lib/type :metadata/column, :name (str id-or-name)}
-                         (select-keys resolved [:semantic-type]))
+                         (select-keys resolved [:id :semantic-type])) ; CRITICAL THAT WE INCLUDE ID!
                         resolved))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
@@ -216,8 +221,9 @@
   (let [metadata (merge
                   {:lib/type        :metadata/column}
                   metadata
-                  {:display-name (or (:display-name opts)
-                                     (lib.metadata.calculation/display-name query stage-number field-ref))})
+                  {:lib/original-ref field-ref
+                   :display-name     (or (:display-name opts)
+                                         (lib.metadata.calculation/display-name query stage-number field-ref))})
         default-type (fn [original default]
                        (if (or (nil? original) (= original :type/*))
                          default
@@ -243,7 +249,7 @@
       ident                   (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
-(defmethod lib.metadata.calculation/metadata-method :field
+(mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.schema.metadata/column
   [query stage-number field-ref]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
         metadata       (extend-column-metadata-from-ref query stage-number field-metadata field-ref)]
@@ -356,6 +362,8 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
+;;; TODO (Cam 6/12/25) -- not sure what the correct name to be using here is but it's probably not `:name`. Either
+;;; `:lib/source-column-alias` or `:lib/original-name` is probably the right one to use here?
 (defmethod lib.metadata.calculation/column-name-method :metadata/column
   [_query _stage-number {field-name :name}]
   field-name)
@@ -550,7 +558,7 @@
                                                                       (:fk-join-alias metadata))]
                                    {:source-field-join-alias source-field-join-alias}))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
-                              ((some-fn :id :name) metadata))]
+                              ((some-fn :id :lib/deduplicated-name :lib/original-name :name) metadata))]
     [:field options id-or-name]))
 
 (defmethod lib.ref/ref-method :metadata/column

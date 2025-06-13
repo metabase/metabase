@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
@@ -451,6 +452,53 @@
       (is (= (inc (lib/stage-count query))
              (lib/stage-count (lib/ensure-filter-stage query)))))))
 
+;;; adapted from [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel add-correct-fields-for-join-test
+  (testing "Make sure we do the right thing with deduplicated field refs like ID_2"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query orders
+                 {:fields [$id $subtotal $tax $total $created-at $quantity]
+                  :joins [{:source-table $$products
+                           :alias "Product"
+                           :condition
+                           [:= $orders.product-id
+                            [:field %products.id {:join-alias "Product"}]]
+                           :fields
+                           [[:field %products.id {:join-alias "Product"}] ; AKA ID_2
+                            [:field %products.title {:join-alias "Product"}]
+                            [:field %products.vendor {:join-alias "Product"}]
+                            [:field %products.price {:join-alias "Product"}]
+                            [:field %products.rating {:join-alias "Product"}]]}]})])
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:fields [[:field "ID_2"   {:join-alias "Card", :base-type :type/BigInteger}]
+                             [:field "TOTAL"  {:join-alias "Card", :base-type :type/Float}]
+                             [:field "TAX"    {:join-alias "Card", :base-type :type/Float}]
+                             [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]
+                    :joins [{:source-table "card__1"
+                             :alias "Card"
+                             :condition
+                             [:= $products.id
+                              [:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}]]
+                             :fields
+                             [[:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}] ; PRODUCTS.ID -- (meta/id :products :id)
+                              [:field "TOTAL" {:join-alias "Card"
+                                               :base-type :type/Float}]
+                              [:field "TAX" {:join-alias "Card"
+                                             :base-type :type/Float}]
+                              [:field "VENDOR" {:join-alias "Card"
+                                                :base-type :type/Text}]]}]}))]
+      ;; should include ID as well.
+      (is (=? [{:id (meta/id :products :id),    :display-name "ID 2"} ; not 100% sure about this display name
+               {:id (meta/id :orders :total),   :display-name "Total"}
+               {:id (meta/id :orders :tax),     :display-name "Tax"}
+               {:id (meta/id :products :vendor) :display-name "Vendor"}]
+              (lib.metadata.calculation/returned-columns query))))))
+
 (deftest ^:parallel deduplicate-field-from-join-test
   (testing "We should correctly deduplicate columns in :fields and [:join :fields] (QUE-1330)"
     (let [query (lib/query meta/metadata-provider
@@ -490,7 +538,7 @@
              (map :lib/desired-column-alias (lib/returned-columns query)))))))
 
 (deftest ^:parallel calculate-names-without-truncation-test
-  (testing "QUE-1341"
+  (testing "Do not truncate column `:name` ever (QUE-1341)"
     (let [query {:lib/type     :mbql/query
                  :lib/metadata meta/metadata-provider
                  :stages       [{:lib/type           :mbql.stage/native

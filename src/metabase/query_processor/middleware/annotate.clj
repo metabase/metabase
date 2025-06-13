@@ -77,8 +77,7 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (for [col (lib.metadata.result-metadata/expected-cols query initial-cols)]
-     (->snake_case col))))
+   (map ->snake_case (lib.metadata.result-metadata/expected-cols query initial-cols))))
 
 (mu/defmethod add-column-info :mbql.stage/mbql :- ::qp.schema/rff
   [query :- ::lib.schema/query

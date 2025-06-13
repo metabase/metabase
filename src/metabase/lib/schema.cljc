@@ -24,6 +24,7 @@
    [metabase.lib.schema.info :as info]
    [metabase.lib.schema.join :as join]
    [metabase.lib.schema.literal :as literal]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.order-by :as order-by]
    [metabase.lib.schema.parameter :as parameter]
    [metabase.lib.schema.ref :as ref]
@@ -338,6 +339,10 @@
     [:lib/type [:=
                 {:decode/normalize common/normalize-keyword}
                 :mbql/query]]
+    ;; TODO (Cam 6/12/25) -- why in the HECC is `:lib/metadata` not a required key here? It's virtually REQUIRED for
+    ;; anything to work correctly outside of the low-level conversion code. We should make it required and then fix
+    ;; whatever breaks.
+    [:lib/metadata {:optional true} ::lib.schema.metadata/metadata-provider]
     [:database {:optional true} [:multi {:dispatch (partial = id/saved-questions-virtual-database-id)}
                                  [true  ::id/saved-questions-virtual-database]
                                  [false ::id/database]]]

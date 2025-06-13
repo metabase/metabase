@@ -583,6 +583,7 @@
           metabase.lib.schema.expression.window
           metabase.lib.schema.id
           metabase.lib.schema.info
+          metabase.lib.schema.join
           metabase.lib.schema.literal
           metabase.lib.schema.metadata
           metabase.lib.schema.parameter

@@ -125,9 +125,7 @@
                               (let [metadata (meta/field-metadata :venues field-key)]
                                 (-> metadata
                                     (select-keys [:id :name :ident])
-                                    (assoc :field_ref (if (zero? level)
-                                                        legacy-ref
-                                                        [:field (:name metadata) {:base-type (:base-type metadata)}])))))]]
+                                    (assoc :field_ref legacy-ref))))]]
           (testing (format "%d level(s) of nesting" level)
             (let [nested-query (lib/query
                                 (qp.store/metadata-provider)
@@ -142,15 +140,11 @@
                         {:name      "ID_2"
                          :id        %categories.id
                          :ident     (lib/explicitly-joined-ident (meta/ident :categories :id) join-ident)
-                         :field_ref (if (zero? level)
-                                      &c.categories.id
-                                      [:field "c__ID" {:base-type :type/BigInteger}])}
+                         :field_ref &c.categories.id}
                         {:name      "NAME_2"
                          :id        %categories.name
                          :ident     (lib/explicitly-joined-ident (meta/ident :categories :name) join-ident)
-                         :field_ref (if (zero? level)
-                                      &c.categories.name
-                                      [:field "c__NAME" {:base-type :type/Text}])}])
+                         :field_ref &c.categories.name}])
                      (map #(select-keys % [:name :id :field_ref :ident])
                           (:cols (add-column-info nested-query {:cols []}))))))))))))
 
@@ -217,9 +211,7 @@
                               :base_type     :type/Text
                               :semantic_type nil
                               :id            %ean
-                              :field_ref     (if (zero? level)
-                                               &Products.ean
-                                               [:field "Products__EAN" {:base-type :type/Text}])})
+                              :field_ref     &Products.ean})
                            (ean-metadata (add-column-info nested-query {:cols []}))))))))))))))
 
 (deftest ^:parallel col-info-for-fields-from-card-test

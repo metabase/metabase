@@ -8,10 +8,13 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -202,9 +205,10 @@
 ;;; metadata to restore the escaped aliases back to what they were in the original query so things don't break if you
 ;;; try to take stuff like the field refs and manipulate the original query with them.
 
-(defn- rename-join-aliases
+(mu/defn- rename-join-aliases :- ::mbql.s/Query
   "Rename joins in `query` by replacing aliases whose keys appear in `original->new` with their corresponding values."
-  [query original->new]
+  [query         :- ::mbql.s/Query
+   original->new :- [:maybe [:map-of ::lib.schema.join/alias ::lib.schema.join/alias]]]
   (let [original->new      (into {} (remove (fn [[original-alias escaped-alias]] (= original-alias escaped-alias))
                                             original->new))
         aliases-to-replace (set (keys original->new))]
@@ -224,9 +228,9 @@
                      {:alias (original->new (:alias join))})))]
           (rename-join-aliases* query))))))
 
-(defn restore-aliases
+(mu/defn restore-aliases
   "Restore aliases in query.
   If aliases were changed in [[escape-join-aliases]], there is a key in `:info` of `:alias/escaped->original` which we
   can restore the aliases in the query."
-  [query escaped->original]
+  [query escaped->original :- [:maybe [:map-of ::lib.schema.join/alias ::lib.schema.join/alias]]]
   (rename-join-aliases query escaped->original))

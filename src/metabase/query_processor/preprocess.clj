@@ -1,6 +1,5 @@
 (ns metabase.query-processor.preprocess
   (:require
-   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -84,6 +83,7 @@
              to
              from))
 
+;;; TODO -- this is broken and disables enforcement inside the middleware itself -- see QUE-1346
 (defn- ensure-pmbql-for-unclean-query
   [middleware-fn]
   (-> (fn [query]
@@ -203,8 +203,4 @@
       ;; check where this is used.
       (->> (annotate/expected-cols
             (lib/query (qp.store/metadata-provider) preprocessed))
-           ;; remove MLv2 columns so we don't break a million tests. Once the whole QP is updated to use MLv2 metadata
-           ;; directly we can stop stripping these out
-           (mapv (fn [col]
-                   (m/remove-keys #(= "lib" (namespace %)) col)))
            not-empty))))

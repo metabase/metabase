@@ -864,7 +864,8 @@
     (let [card (:orders (lib.tu/mock-cards))
           metadata-provider (lib.tu/metadata-provider-with-mock-card card)
           query (lib/query metadata-provider card)
-          lib-col (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
+          lib-col  (-> (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
+                       (dissoc :lib/deduplicated-name :lib/original-name))
           card-col (m/find-first #(= (:name %) "CREATED_AT") (:result-metadata card))
           context {:column     card-col
                    :column-ref (lib/ref card-col)

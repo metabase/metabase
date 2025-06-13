@@ -138,19 +138,31 @@
     ;; an own column.
     (clojure.core/= (column-join-alias column) join-alias)))
 
-(mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
+(mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
-      (filter #(and (clojure.core/= (:name %) ref-name)
-                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                    (or (and (not (:join-alias opts))
-                             (#{:source/fields :source/card} (:lib/source %)))
-                        (matching-join? a-ref %)))
-              columns)))
+      ;; first look for a match on `:name`, then look for a match on `:lib/deduplicated-name`
+      (letfn [(matches-for-name [k]
+                (not-empty
+                 (filter #(and (clojure.core/= (get % k) ref-name)
+                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                               (or (and (not (:join-alias opts))
+                                        (#{:source/fields :source/card} (:lib/source %)))
+                                   (matching-join? a-ref %)))
+                         columns)))]
+        (some matches-for-name
+              [;; TODO (Cam 6/12/25) -- if these columns came from the previous stage or a join
+               ;; then we should look at `:lib/desired-column-alias`, or if they came from the
+               ;; current stage we should look at `:lib/source-column-alias`. It's not
+               ;; well-defined where these columns come from.
+               #_:lib/desired-column-alias
+               #_:lib/source-column-alias
+               :lib/deduplicated-name
+               :name]))))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref

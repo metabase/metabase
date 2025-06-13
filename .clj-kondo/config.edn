@@ -754,9 +754,10 @@
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.
     :discouraged-var
-    {medley.core/map-keys    {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals    {:message "Use clojure.core/update-vals"}
-     metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
+    {medley.core/map-keys                            {:message "Use clojure.core/update-keys"}
+     medley.core/map-vals                            {:message "Use clojure.core/update-vals"}
+     metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}
+     metabase.test/with-temp                         {:message "Don't use application database inside MLv2 code"}}
 
     :discouraged-namespace
     {metabase.driver            {:message "MLv2 code should be independent of driver code/methods"}

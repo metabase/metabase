@@ -8,6 +8,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
@@ -1569,3 +1570,50 @@
                 (-> base
                     (bad-fields [0 1 2 3])
                     lib/returned-columns)))))))
+
+;;; adapted from [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel returned-columns-with-deduplicated-name-refs-test
+  (testing "Make sure we do the right thing with deduplicated field refs like ID_2"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query orders
+                 {:fields [$id $subtotal $tax $total $created-at $quantity]
+                  :joins [{:source-table $$products
+                           :alias "Product"
+                           :condition
+                           [:= $orders.product-id
+                            [:field %products.id {:join-alias "Product"}]]
+                           :fields
+                           [[:field %products.id {:join-alias "Product"}] ; AKA ID_2
+                            [:field %products.title {:join-alias "Product"}]
+                            [:field %products.vendor {:join-alias "Product"}]
+                            [:field %products.price {:join-alias "Product"}]
+                            [:field %products.rating {:join-alias "Product"}]]}]})])
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:fields [[:field "ID_2"   {:join-alias "Card", :base-type :type/BigInteger}]
+                             [:field "TOTAL"  {:join-alias "Card", :base-type :type/Float}]
+                             [:field "TAX"    {:join-alias "Card", :base-type :type/Float}]
+                             [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]
+                    :joins [{:source-table "card__1"
+                             :alias "Card"
+                             :condition
+                             [:= $products.id
+                              [:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}]]
+                             :fields
+                             [[:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}] ; PRODUCTS.ID -- (meta/id :products :id)
+                              [:field "TOTAL" {:join-alias "Card", :base-type :type/Float}]
+                              [:field "TAX" {:join-alias "Card", :base-type :type/Float}]
+                              [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]}]}))
+          join (m/find-first (fn [join]
+                               (= (lib.join.util/current-join-alias join) "Card"))
+                             (lib/joins query))]
+      (assert (some? join))
+      ;; should contain IDs as well.
+      (is (= [{:id (meta/id :products :id),    :display-name "ID"}
+              {:id (meta/id :orders :total),   :display-name "Total"}
+              {:id (meta/id :orders :tax),     :display-name "Tax"}
+              {:id (meta/id :products :vendor) :display-name "Vendor"}]
+             (map #(select-keys % [:id :display-name])
+                  (lib.metadata.calculation/returned-columns query -1 join)))))))

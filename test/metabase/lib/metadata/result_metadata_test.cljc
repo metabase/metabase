@@ -7,13 +7,15 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as result-metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-util.macros :as lib.tu.macros]))
+   [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn- column-info [query {initial-columns :cols}]
+(mu/defn- column-info [query :- ::lib.schema/query {initial-columns :cols}]
   (result-metadata/expected-cols query initial-columns))
 
 (deftest ^:parallel col-info-field-ids-test
@@ -216,21 +218,23 @@
 
 (deftest ^:parallel col-info-field-literals-test
   (testing "field literals should get the information from the matching `:source-metadata` if it was supplied"
-    (let [query {:database (meta/id)
-                 :lib/type :mbql/query
-                 :stages   [{:lib/type           :mbql.stage/native
-                             :lib/stage-metadata {:columns [{:lib/type :metadata/column
-                                                             :name          "abc"
-                                                             :display-name  "another Field"
-                                                             :base-type     :type/Integer
-                                                             :semantic-type :type/FK}
-                                                            {:lib/type :metadata/column
-                                                             :name          "sum"
-                                                             :display-name  "sum of User ID"
-                                                             :base-type     :type/Integer
-                                                             :semantic-type :type/FK}]}}
-                            {:lib/type :mbql.stage/mbql
-                             :fields   [[:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"]]}]}]
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:database (meta/id)
+                  :lib/type :mbql/query
+                  :stages   [{:lib/type           :mbql.stage/native
+                              :lib/stage-metadata {:columns [{:lib/type :metadata/column
+                                                              :name          "abc"
+                                                              :display-name  "another Field"
+                                                              :base-type     :type/Integer
+                                                              :semantic-type :type/FK}
+                                                             {:lib/type :metadata/column
+                                                              :name          "sum"
+                                                              :display-name  "sum of User ID"
+                                                              :base-type     :type/Integer
+                                                              :semantic-type :type/FK}]}}
+                             {:lib/type :mbql.stage/mbql
+                              :fields   [[:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"]]}]})]
       (is (=? {:name          "sum"
                :display-name  "sum of User ID"
                :base-type     :type/Integer
@@ -814,7 +818,7 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field "DATE" {:base-type :type/Date}], :unit :year)
+      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) {}], :unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/expected-cols
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
