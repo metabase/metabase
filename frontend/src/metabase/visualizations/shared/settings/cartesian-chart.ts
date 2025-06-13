@@ -128,10 +128,17 @@ export const getDefaultStackingValue = (
     return settings["stackable.stacked"];
   }
 
+  const hasSeveralMetrics = (settings["graph.metrics"] ?? []).length > 1;
+
+  const hasSeveralDimensions = (settings["graph.dimensions"] ?? []).length > 1;
+
+  const hasSeveralEnabledSeries =
+    (settings["graph.series_order"] ?? []).filter((s) => s.enabled).length > 1;
+
   const shouldStack =
     card.display === "area" &&
-    ((settings["graph.metrics"] ?? []).length > 1 ||
-      (settings["graph.dimensions"] ?? []).length > 1);
+    (hasSeveralMetrics || hasSeveralDimensions) &&
+    hasSeveralEnabledSeries;
 
   return shouldStack ? "stacked" : null;
 };
