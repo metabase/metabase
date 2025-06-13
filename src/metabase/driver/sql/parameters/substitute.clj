@@ -67,7 +67,7 @@
         (substitute-time-grouping [sql args missing] param v)
 
         (throw (ex-info (tru "Unrecognized function: {0}" function-name)
-                        {:type    qp.error-type/invalid-query
+                        {:type    driver-api/qp.error-type.invalid-query
                          :missing missing}))))))
 
 (declare substitute*)
