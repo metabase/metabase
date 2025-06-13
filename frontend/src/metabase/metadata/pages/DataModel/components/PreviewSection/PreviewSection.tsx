@@ -26,6 +26,7 @@ import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
 import { getPreviewTypeData } from "./utils";
 
+// memoize components for smooth column resizing experience
 const MemoizedFilteringPreview = memo(FilteringPreview);
 const MemoizedObjectDetailPreview = memo(ObjectDetailPreview);
 const MemoizedTablePreview = memo(TablePreview);

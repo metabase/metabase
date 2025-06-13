@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -21,6 +22,12 @@ import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
+
+// memoize components for smooth column resizing experience
+const MemoizedDataSection = memo(DataSection);
+const MemoizedMetadataSection = memo(MetadataSection);
+const MemoizedBehaviorSection = memo(BehaviorSection);
+const MemoizedFormattingSection = memo(FormattingSection);
 
 interface Props {
   databaseId: DatabaseId;
@@ -96,10 +103,10 @@ export const FieldSection = ({
       </Group>
 
       <Stack gap="xl">
-        <DataSection field={field} />
-        <MetadataSection databaseId={databaseId} field={field} />
-        <BehaviorSection databaseId={databaseId} field={field} />
-        <FormattingSection field={field} />
+        <MemoizedDataSection field={field} />
+        <MemoizedMetadataSection databaseId={databaseId} field={field} />
+        <MemoizedBehaviorSection databaseId={databaseId} field={field} />
+        <MemoizedFormattingSection field={field} />
 
         <Stack gap="sm" mt="lg">
           <RescanFieldButton fieldId={getRawTableFieldId(field)} />
