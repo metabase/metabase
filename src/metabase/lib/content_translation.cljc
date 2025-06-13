@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.content-translation.models :as ct]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]))
 
 (def content-translations
@@ -25,9 +26,10 @@
 (defn- get-content-translation-from-table
   "Get the current content translation based on msgid from the app db table"
   [msgid]
-  (let [locale "de" ; TODO: Use actual current locale
+  (let [locale (i18n/user-locale-string)
         translations (ct/get-translations locale)
         translation (some #(when (= (:msgid %) (str/trim msgid)) %) translations)]
+    (log/info "translation found:" translation)
     (if translation
       (:msgstr translation)
       msgid)))
