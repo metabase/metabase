@@ -331,6 +331,7 @@
   {:api  #{metabase.dashboards.api
            metabase.dashboards.autoplace
            metabase.dashboards.constants
+           metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab}
@@ -357,6 +358,7 @@
            request
            revisions
            search
+           settings
            util
            warehouse-schema
            xrays}}
