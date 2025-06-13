@@ -21,8 +21,6 @@
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.permissions.models.collection.graph :as graph]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
@@ -1353,7 +1351,7 @@
    {:keys [namespace]} :- [:map
                            [:namespace {:optional true} [:maybe ms/NonBlankString]]]]
   (api/check-superuser)
-  (graph/graph namespace))
+  (perms/graph namespace))
 
 (def CollectionID "an id for a [[Collection]]."
   [pos-int? {:title "Collection ID"}])
@@ -1393,10 +1391,10 @@
 (defn- update-graph!
   "Handles updating the graph for a given namespace."
   [namespace graph skip-graph force?]
-  (graph/update-graph! namespace graph force?)
+  (perms/update-graph! namespace graph force?)
   (if skip-graph
-    {:revision (c-perm-revision/latest-id)}
-    (graph/graph namespace)))
+    {:revision (perms/latest-collection-permissions-revision-id)}
+    (perms/graph namespace)))
 
 (api.macros/defendpoint :put "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph. Will overwrite parts of the graph that
