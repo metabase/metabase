@@ -24,21 +24,19 @@
   [metadata]
   (letfn [(standardize-metadata [m]
             (cond
-              (keyword? m) (str (symbol m))
-              (map? m) (dissoc (reduce-kv
-                                (fn [acc k v]
-                                  (assoc acc k
-                                         (standardize-metadata v))) {} m) :ident :display_name)
+              (keyword? m)    (u/qualified-name m)
+              (map? m)        (-> (update-vals m standardize-metadata)
+                                  (dissoc :ident :display_name))
               (sequential? m) (mapv standardize-metadata m)
-              (set? m) (set (map standardize-metadata m))
-              :else m))]
+              (set? m)        (into #{} (map standardize-metadata) m)
+              :else           m))]
     (standardize-metadata metadata)))
 
 (defn- record-metadata! [{{:keys [card-id]} :info, :as query} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (let [actual-metadata (or (get-in query [:info :pivot/result-metadata]) metadata)]
+    (let [actual-metadata (get-in query [:info :pivot/result-metadata] metadata)]
       (when (and actual-metadata
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
