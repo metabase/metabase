@@ -187,13 +187,14 @@ export const PLUGIN_DATA_PERMISSIONS: {
 // user form fields, e.x. login attributes
 export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
   FormLoginAttributes: PluginPlaceholder,
+  formatUserAttribute: (val: string) => val,
 };
 
 // menu items in people management tab
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [] as Array<
   (user: User) => React.ReactNode
 >;
-export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
+export const PLUGIN_ADMIN_USER_MENU_ROUTES = [] as (() => ReactNode)[];
 
 // authentication providers
 
@@ -743,4 +744,15 @@ export const PLUGIN_API = {
     parameterId: ParameterId,
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
+};
+
+export const PLUGIN_TENANTS = {
+  userStrategyRoute: null as React.ReactElement | null,
+  tenantsRoutes: null as React.ReactElement | null,
+  EditUserStrategySettingsButton: PluginPlaceholder,
+  FormTenantWidget: (_props: any) => null as React.ReactElement | null,
+  TenantDisplayName: (_props: any) => null as React.ReactElement | null,
+  isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
+  isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
+  isTenantCollection: (_collection: Collection) => false,
 };

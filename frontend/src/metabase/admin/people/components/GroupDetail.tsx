@@ -16,9 +16,9 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { GroupMembersTable } from "./GroupMembersTable";
@@ -126,9 +126,15 @@ export const GroupDetail = ({
           </Box>
         </Fragment>
       }
-      buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
-      buttonDisabled={addUserVisible}
+      titleActions={
+        canEditMembership(group) && (
+          <Button
+            variant="filled"
+            onClick={onAddUsersClicked}
+            disabled={addUserVisible}
+          >{t`Add members`}</Button>
+        )
+      }
     >
       <GroupDescription group={group} />
       <GroupMembersTable
@@ -146,6 +152,19 @@ export const GroupDetail = ({
 };
 
 const GroupDescription = ({ group }: { group: Group }) => {
+  if (PLUGIN_TENANTS.isExternalUsersGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`All external users belong to the ${getGroupNameLocalized(
+            group,
+          )} group and can't be removed from it. Setting permissions for this group is a great way to
+        make sure you know what new Metabase users will be able to see.`}
+        </p>
+      </Box>
+    );
+  }
+
   if (isDefaultGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">

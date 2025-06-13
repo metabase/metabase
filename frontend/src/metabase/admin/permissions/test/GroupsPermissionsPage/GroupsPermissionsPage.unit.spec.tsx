@@ -27,7 +27,7 @@ const TEST_DATABASE = createSampleDatabase();
 
 const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators" }),
-  createMockGroup({ name: "All Users" }),
+  createMockGroup({ name: "All Internal Users" }),
 ];
 
 const setup = async ({

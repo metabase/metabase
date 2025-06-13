@@ -18,6 +18,7 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
+import { regexpEscape } from "metabase/lib/string";
 import {
   Box,
   Button,
@@ -32,6 +33,7 @@ import type { ApiKey, GroupInfo } from "metabase-types/api";
 import { groupIdToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
+import { SearchFilter } from "./SearchFilter";
 
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
@@ -375,6 +377,7 @@ interface GroupsListingProps {
 }
 
 export const GroupsListing = (props: GroupsListingProps) => {
+  const [searchText, setSearchText] = useState("");
   const [text, setText] = useState("");
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
   const [groupBeingEdited, setGroupBeingEdited] = useState<GroupInfo | null>(
@@ -483,17 +486,31 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   const { groups, isAdmin } = props;
 
+  const groupNameFilter = new RegExp(`\\b${regexpEscape(searchText)}`, "i");
+  const filteredGroups = groups.filter((g) => groupNameFilter.test(g.name));
+
   return (
     <AdminPaneLayout
       title={t`Groups`}
-      buttonText={isAdmin ? t`Create a group` : undefined}
-      buttonAction={
-        isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
+      titleActions={
+        isAdmin && !isShowingAddGroupRow ? (
+          <Button
+            variant="filled"
+            onClick={onCreateAGroupButtonClicked}
+          >{t`Create a group`}</Button>
+        ) : null
+      }
+      headerContent={
+        <SearchFilter
+          value={searchText}
+          onChange={setSearchText}
+          placeholder={t`Find a group`}
+        />
       }
       description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
     >
       <GroupsTable
-        groups={groups}
+        groups={filteredGroups}
         text={text}
         showAddGroupRow={isShowingAddGroupRow}
         groupBeingEdited={groupBeingEdited}

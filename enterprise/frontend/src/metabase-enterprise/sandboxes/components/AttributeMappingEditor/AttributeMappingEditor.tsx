@@ -2,12 +2,14 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { MappingEditor } from "metabase/core/components/MappingEditor";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon, Tooltip, Select } from "metabase/ui";
 import type { GroupTableAccessPolicyDraft } from "metabase-enterprise/sandboxes/types";
-import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
+import {
+  getRawDataQuestionForTable,
+  getSelectDataForUserAttributes,
+  renderUserAttributesForSelect,
+} from "metabase-enterprise/sandboxes/utils";
 import type {
   GroupTableAccessPolicy,
   Table,
@@ -109,23 +111,21 @@ const AttributePicker = ({
   value,
   onChange,
   attributesOptions,
-}: AttributePickerProps) => (
-  <div style={{ minWidth: 200 }}>
-    <Select
-      value={value}
-      onChange={(e: SelectChangeEvent<string>) => onChange(e.target.value)}
-      placeholder={
-        attributesOptions.length === 0
-          ? t`No user attributes`
-          : t`Pick a user attribute`
-      }
-      disabled={attributesOptions.length === 0}
-    >
-      {attributesOptions.map((attributesOption) => (
-        <Option key={attributesOption} value={attributesOption}>
-          {attributesOption}
-        </Option>
-      ))}
-    </Select>
-  </div>
-);
+}: AttributePickerProps) => {
+  return (
+    <div style={{ minWidth: 200 }}>
+      <Select
+        value={value}
+        onChange={(value) => onChange(value)}
+        placeholder={
+          attributesOptions.length === 0
+            ? t`No user attributes`
+            : t`Pick a user attribute`
+        }
+        disabled={attributesOptions.length === 0}
+        data={getSelectDataForUserAttributes(attributesOptions)}
+        renderOption={renderUserAttributesForSelect}
+      ></Select>
+    </div>
+  );
+};

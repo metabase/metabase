@@ -720,7 +720,7 @@
       (-> (t2/instance :model/Collection row)
           collection/maybe-localize-trash-name
           (update :archived api/bit->boolean)
-          (t2/hydrate :can_write :effective_location :can_restore :can_delete)
+          (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_tenant_collection)
           (dissoc :collection_position :display :moderated_status :icon
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
@@ -983,7 +983,7 @@
 (api.macros/defendpoint :get "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
-  (collection-detail (api/read-check (collection/trash-collection))))
+  (collection-detail (collection/trash-collection)))
 
 (api.macros/defendpoint :get "/:id/items"
   "Fetch a specific Collection's items with the following options:

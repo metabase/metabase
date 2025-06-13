@@ -28,6 +28,10 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
+import {
+  getSelectDataForUserAttributes,
+  renderUserAttributesForSelect,
+} from "metabase-enterprise/sandboxes/utils";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
 
@@ -161,10 +165,11 @@ export const DatabaseRoutingSection = ({
                   data-testid="db-routing-user-attribute"
                   name="db-routing-user-attribute"
                   placeholder={t`Choose an attribute`}
-                  data={userAttributeOptions}
+                  data={getSelectDataForUserAttributes(userAttributeOptions)}
                   disabled={!isAdmin || !!disabledFeatMsg}
                   value={userAttribute}
                   onChange={handleUserAttributeChange}
+                  renderOption={renderUserAttributesForSelect}
                 />
               </Tooltip>
             </Flex>

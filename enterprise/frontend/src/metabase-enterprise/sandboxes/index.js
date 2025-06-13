@@ -26,6 +26,7 @@ import { LoginAttributesWidget } from "./components/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
+import { formatUserAttribute } from "./utils";
 
 const OPTION_SEGMENTED = {
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -58,6 +59,7 @@ const getEditSegmentedAccessPostAction = (entityId, groupId, view) =>
 
 if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes = LoginAttributesWidget;
+  PLUGIN_ADMIN_USER_FORM_FIELDS.formatUserAttribute = formatUserAttribute;
 
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES.push(
     <ModalRoute

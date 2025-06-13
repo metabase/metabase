@@ -89,11 +89,9 @@ function MainNavbarContainer({
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
-  const {
-    data: trashCollection,
-    isLoading,
-    error,
-  } = useGetCollectionQuery({ id: "trash" });
+  const { data: trashCollection, isLoading } = useGetCollectionQuery({
+    id: "trash",
+  });
 
   const { data: collections = [] } = useListCollectionsTreeQuery({
     "exclude-other-user-collections": true,
@@ -170,7 +168,7 @@ function MainNavbarContainer({
     return null;
   }, [modal, closeModal, onChangeLocation]);
 
-  const allError = props.allError || !!error;
+  const allError = props.allError;
   if (allError) {
     return <NavbarErrorView />;
   }

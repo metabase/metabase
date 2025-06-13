@@ -45,6 +45,7 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_METABOT,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 
 import { PerformanceTabId } from "./performance/types";
@@ -94,6 +95,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
 
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />
+            {PLUGIN_TENANTS.userStrategyRoute}
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
@@ -109,6 +111,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
+
+      {/* Tenants */}
+      {PLUGIN_TENANTS.tenantsRoutes}
+
       {/* Troubleshooting */}
       <Route
         path="troubleshooting"

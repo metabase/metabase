@@ -8,6 +8,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
@@ -51,6 +52,8 @@ const NewItemMenu = ({
     getSetting(state, "last-used-native-database-id"),
   );
 
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+
   const menuItems = useMemo(() => {
     const items: NewMenuItem[] = [];
 
@@ -85,14 +88,16 @@ const NewItemMenu = ({
       });
     }
 
-    items.push({
-      title: t`Dashboard`,
-      icon: "dashboard",
-      action: () => {
-        trackNewMenuItemClicked("dashboard");
-        dispatch(setOpenModal("dashboard"));
-      },
-    });
+    if (canWriteToCollections) {
+      items.push({
+        title: t`Dashboard`,
+        icon: "dashboard",
+        action: () => {
+          trackNewMenuItemClicked("dashboard");
+          dispatch(setOpenModal("dashboard"));
+        },
+      });
+    }
 
     return items;
   }, [
@@ -103,7 +108,12 @@ const NewItemMenu = ({
     hasDatabaseWithJsonEngine,
     lastUsedDatabaseId,
     dispatch,
+    canWriteToCollections,
   ]);
+
+  if (menuItems.length === 0) {
+    return null;
+  }
 
   return (
     <EntityMenu

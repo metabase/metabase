@@ -11876,6 +11876,8 @@ databaseChangeLog:
             constraintName: fk_metabot_prompt_card_id
             onDelete: CASCADE
 
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

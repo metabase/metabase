@@ -3,11 +3,56 @@ import fetchMock from "fetch-mock";
 
 import { screen } from "__support__/ui";
 import type { CollectionPermissionsGraph } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockGroup,
+} from "metabase-types/api/mocks";
 
-import { defaultCollections, defaultPermissionsGraph, setup } from "./setup";
+import {
+  defaultCollections,
+  defaultPermissionGroups,
+  defaultPermissionsGraph,
+  setup,
+} from "./setup";
+
+const tokenFeatures = { tenants: true, audit_app: true };
 
 describe("Admin > CollectionPermissionsPage (enterprise)", () => {
+  describe("External Users Group", () => {
+    const externalUsersGroup = createMockGroup({
+      id: 4,
+      name: "External Users",
+    });
+
+    it("should not be able give access to Our Analytics", async () => {
+      await setup({
+        tokenFeatures,
+        initialRoute: "/admin/permissions/collections/root",
+        permissionGroups: [...defaultPermissionGroups, externalUsersGroup],
+        permissionsGraph: {
+          ...defaultPermissionsGraph,
+          groups: {
+            ...defaultPermissionsGraph.groups,
+            [externalUsersGroup.id]: Object.entries(defaultCollections).reduce(
+              (graph, [collectionId]) => {
+                return {
+                  ...graph,
+                  [collectionId]: "none",
+                };
+              },
+              { root: "none" },
+            ),
+          },
+        },
+      });
+
+      expect(await screen.findByText("External Users")).toBeInTheDocument();
+      expect(await screen.findByText("No access")).toBeInTheDocument();
+      expect(await screen.findAllByText("View")).toHaveLength(2);
+      expect(await screen.findAllByText("Curate")).toHaveLength(1);
+    });
+  });
+
   describe("Instance Analytics", () => {
     const iaCollection = createMockCollection({
       id: 13371337,
@@ -37,7 +82,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures: { audit_app: true },
+        tokenFeatures,
       });
 
       expect(await screen.findByText("Instance Analytics")).toBeInTheDocument();
@@ -56,7 +101,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures: { audit_app: true },
+        tokenFeatures,
       });
 
       expect(await screen.findByText("Instance Analytics")).toBeInTheDocument();
@@ -76,7 +121,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
         collections: [...defaultCollections, iaCollection],
         permissionsGraph: iaPermissionsGraph,
         initialRoute: `/admin/permissions/collections/${iaCollection.id}`,
-        tokenFeatures: { audit_app: true },
+        tokenFeatures,
       });
 
       // change all users users view to no access

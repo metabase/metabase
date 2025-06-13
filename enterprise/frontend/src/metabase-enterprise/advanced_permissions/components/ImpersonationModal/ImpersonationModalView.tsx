@@ -8,12 +8,15 @@ import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink/ExternalLink";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import { FormFooter } from "metabase/core/components/FormFooter";
-import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import Link from "metabase/core/components/Link/Link";
 import CS from "metabase/css/core/index.css";
-import { Form, FormProvider } from "metabase/forms";
+import { Form, FormProvider, FormSelect } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import {
+  getSelectDataForUserAttributes,
+  renderUserAttributesForSelect,
+} from "metabase-enterprise/sandboxes/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttribute } from "metabase-types/api";
 
@@ -55,10 +58,7 @@ export const ImpersonationModalView = ({
         ? [selectedAttribute, ...attributes]
         : attributes;
 
-    return selectableAttributes.map((attribute) => ({
-      name: attribute,
-      value: attribute,
-    }));
+    return getSelectDataForUserAttributes(selectableAttributes);
   }, [attributes, selectedAttribute]);
 
   const hasAttributes = attributeOptions.length > 0;
@@ -126,8 +126,10 @@ export const ImpersonationModalView = ({
               <FormSelect
                 name="attribute"
                 placeholder={t`Pick a user attribute`}
-                title={t`User attribute`}
-                options={attributeOptions}
+                label={t`User attribute`}
+                data={attributeOptions}
+                mb="1.25rem"
+                renderOption={renderUserAttributesForSelect}
               />
 
               <ImpersonationWarning database={database} />
