@@ -1,9 +1,15 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import type { MetabotStoreState } from "./types";
+import { getIsEmbedding } from "metabase/selectors/embed";
+import { METABOT_TAG, metabotApi } from "metabase-enterprise/api";
 
-export const LONG_CONVO_MSG_LENGTH_THRESHOLD = 120000;
+import {
+  FIXED_METABOT_IDS,
+  LONG_CONVO_MSG_LENGTH_THRESHOLD,
+} from "../constants";
+
+import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
@@ -61,5 +67,28 @@ export const getIsLongMetabotConversation = createSelector(
       return sum + msg.message.length;
     }, 0);
     return totalMessageLength >= LONG_CONVO_MSG_LENGTH_THRESHOLD;
+  },
+);
+
+export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
+  isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
+);
+
+export const getPrevAgentResponse = metabotApi.endpoints.metabotAgent.select({
+  requestId: undefined,
+  fixedCacheKey: METABOT_TAG,
+});
+
+/**
+ * Used to access values like history + state from the previous request
+ * which are meant to be repeated back on future requests
+ */
+export const getPrevAgentRequestMeta = createSelector(
+  getPrevAgentResponse,
+  (res) => {
+    return {
+      state: res.data?.state ?? {},
+      history: res.data?.history ?? [],
+    };
   },
 );

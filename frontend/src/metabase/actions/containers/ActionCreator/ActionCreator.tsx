@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Modal from "metabase/components/Modal";
 import type {
   CreateActionParams,
@@ -192,7 +192,7 @@ function ActionCreator({
       )}
 
       {route && (
-        <LeaveConfirmationModal
+        <LeaveRouteConfirmModal
           isEnabled={showUnsavedChangesWarning}
           route={route}
         />
