@@ -127,9 +127,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
                 );
               });
 
-              cy.log("Non-categorical field values are not translated");
-              cy.findByText("Rustic Paper Wallet").should("be.visible");
-              cy.findByText("Rustikale Papierbörse").should("not.exist");
+              cy.log("Non-categorical string values are translated");
+              cy.findByText("Rustic Paper Wallet").should("not.exist");
+              cy.findByText("Rustikale Papierbörse").should("be.visible");
 
               cy.log("After filtering, only selected categories are shown");
               H.filterWidget().findByText("Kategorie").click();
