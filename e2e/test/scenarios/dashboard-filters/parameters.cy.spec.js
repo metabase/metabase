@@ -1170,6 +1170,146 @@ describe("scenarios > dashboard > parameters", () => {
         .should("not.exist");
       H.undoToast().should("not.exist");
     });
+
+    it("should work correctly in public dashboards", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        const dashboardId = dashcard.dashboard_id;
+
+        H.updateDashboardCards({
+          dashboard_id: dashboardId,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitPublicDashboard(dashboardId);
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("be.visible");
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Widget").should("be.visible");
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+
+      // Verify filter doesn't show up in the dashboard header
+      H.dashboardParametersContainer().should("not.exist");
+    });
+
+    it("should work correctly in embedded dashboards", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+          enable_embedding: true,
+        },
+      }).then(({ body: dashcard }) => {
+        const dashboardId = dashcard.dashboard_id;
+
+        H.updateDashboardCards({
+          dashboard_id: dashboardId,
+          cards: [
+            createMockHeadingDashboardCard({
+              inline_parameters: [categoryParameter.id],
+              size_x: 24,
+              size_y: 1,
+            }),
+            {
+              id: dashcard.id,
+              row: 1,
+              size_x: 12,
+              size_y: 6,
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitEmbeddedPage({
+          resource: { dashboard: dashboardId },
+          params: {},
+        });
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("be.visible");
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Widget").should("be.visible");
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+
+      // Verify filter doesn't show up in the dashboard header
+      H.dashboardParametersContainer().should("not.exist");
+    });
   });
 });
 
