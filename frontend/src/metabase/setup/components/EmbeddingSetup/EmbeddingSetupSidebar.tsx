@@ -113,7 +113,8 @@ const Step = ({ title, status, isLast, icon }: StepProps) => {
           circleBorderCss: "2px solid var(--mb-color-brand)",
         }) as const,
     )
-    .otherwise(
+    .with(
+      "future",
       () =>
         ({
           iconName: icon,
@@ -121,7 +122,8 @@ const Step = ({ title, status, isLast, icon }: StepProps) => {
           circleBgCssColor: "#fff",
           circleBorderCss: "2px solid var(--mb-color-border)",
         }) as const,
-    );
+    )
+    .exhaustive();
 
   return (
     <Flex

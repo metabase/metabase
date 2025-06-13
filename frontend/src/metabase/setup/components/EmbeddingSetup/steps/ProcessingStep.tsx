@@ -12,7 +12,7 @@ export const ProcessingStep = () => {
 
   const { goToNextStep } = useEmbeddingSetup();
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [processingStep, setProcessingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [updateSettings] = useUpdateSettingsMutation();
 
@@ -42,7 +42,7 @@ export const ProcessingStep = () => {
       try {
         setProcessingStatus(t`Setting up settings...`);
         await setupSettings();
-        setCurrentStep((prev) => prev + 1);
+        setProcessingStep((prev) => prev + 1);
 
         // Create models for each table
         setProcessingStatus(t`Creating models...`);
@@ -74,7 +74,7 @@ export const ProcessingStep = () => {
 
           const model = await response.json();
           models.push(model);
-          setCurrentStep((prev) => prev + 1);
+          setProcessingStep((prev) => prev + 1);
         }
 
         // Create x-ray dashboards for each model
@@ -105,7 +105,7 @@ export const ProcessingStep = () => {
 
           const savedDashboard = await saveResponse.json();
           dashboardIds.push(savedDashboard.id);
-          setCurrentStep((prev) => prev + 1);
+          setProcessingStep((prev) => prev + 1);
         }
 
         // Store the created dashboard IDs
@@ -137,7 +137,7 @@ export const ProcessingStep = () => {
   }
 
   const totalSteps = selectedTables?.length * 2 + 1 || 0;
-  const progress = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0;
+  const progress = totalSteps > 0 ? (processingStep / totalSteps) * 100 : 0;
 
   return (
     <Box>

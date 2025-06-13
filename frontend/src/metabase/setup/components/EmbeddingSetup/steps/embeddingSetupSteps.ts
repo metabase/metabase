@@ -18,7 +18,7 @@ export interface StepProps {
   totalSteps: number;
 }
 
-export const steps: StepDefinition[] = [
+export const STEPS: StepDefinition[] = [
   {
     key: "welcome",
     get title() {
@@ -77,10 +77,7 @@ export const steps: StepDefinition[] = [
   },
 ];
 
-export const getStepIndexByKey = (
-  steps: StepDefinition[],
-  key: string,
-): number => {
-  const index = steps.findIndex((step) => step.key === key);
+export const getStepIndexByKey = (key: string): number => {
+  const index = STEPS.findIndex((step) => step.key === key);
   return index === -1 ? 0 : index;
 };

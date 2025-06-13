@@ -10,10 +10,10 @@ import { TableSelectionStep } from "./steps/TableSelectionStep";
 import { UserCreationStep } from "./steps/UserCreationStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
 import type { StepDefinition } from "./steps/embeddingSetupSteps";
-import { getStepIndexByKey, steps } from "./steps/embeddingSetupSteps";
+import { STEPS, getStepIndexByKey } from "./steps/embeddingSetupSteps";
 import { useForceLocaleRefresh } from "./useForceLocaleRefresh";
 
-export const stepComponents = [
+export const STEP_COMPONENTS = [
   WelcomeStep,
   UserCreationStep,
   DataConnectionStep,
@@ -40,7 +40,7 @@ type EmbeddingSetupContextType = {
   stepIndex: number;
   totalSteps: number;
   goToNextStep: () => void;
-  StepComponent: (typeof stepComponents)[number];
+  StepComponent: (typeof STEP_COMPONENTS)[number];
 };
 
 const EmbeddingSetupContext = createContext<EmbeddingSetupContextType | null>(
@@ -70,14 +70,14 @@ export const EmbeddingSetupProvider = ({
   const [error, setError] = useState("");
   const [selectedTables, setSelectedTables] = useState<Table[]>([]);
   const [createdDashboardIds, setCreatedDashboardIds] = useState<number[]>([]);
-  const [stepKey, goToStep] = useState(steps[0].key);
+  const [stepKey, goToStep] = useState(STEPS[0].key);
 
-  const stepIndex = getStepIndexByKey(steps, stepKey);
-  const totalSteps = stepComponents.length;
-  const StepComponent = stepComponents[stepIndex];
+  const stepIndex = getStepIndexByKey(stepKey);
+  const totalSteps = STEP_COMPONENTS.length;
+  const StepComponent = STEP_COMPONENTS[stepIndex];
 
   const goToNextStep = useCallback(() => {
-    const nextKey = steps[stepIndex + 1]?.key;
+    const nextKey = STEPS[stepIndex + 1]?.key;
     if (nextKey) {
       goToStep(nextKey);
     }
@@ -98,7 +98,7 @@ export const EmbeddingSetupProvider = ({
         setCreatedDashboardIds,
         stepKey,
         goToStep,
-        steps,
+        steps: STEPS,
         stepIndex,
         totalSteps,
         goToNextStep,

@@ -103,13 +103,8 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
-          trackPageView(nextState.location.pathname);
+          trackPageView(location.pathname);
           done();
-        }}
-        onChange={(prevState, nextState) => {
-          if (nextState.location.pathname !== prevState.location.pathname) {
-            trackPageView(nextState.location.pathname);
-          }
         }}
         disableCommandPalette
       />
