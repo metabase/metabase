@@ -15,7 +15,10 @@
   "Retrieve a value from a map-like JavaScript object."
   [obj field default-value]
   (if (some? obj)
-    (or (aget obj (name field)) default-value)
+    (let [field-key (if (keyword? field) field (keyword field))]
+      #?(:clj  (get obj field-key default-value)
+         :cljs (let [field-str (name field)]
+                 (or (aget obj field-str) default-value))))
     default-value))
 
 (defn get-content-translation
