@@ -11,6 +11,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.time :as u.time]))
 
@@ -491,6 +492,7 @@
   The `:default` temporal unit is not appended. If `temporal-unit` is already suffix of `s`, do not add it
   for the second time. This function may be called multiple times during processing of a query stage."
   [s temporal-unit]
+  (log/info "the string" s)
   (if (or (not (string? s)) ; ie. nil or something that definitely should not occur here
           (= :default temporal-unit)
           (ends-with-temporal-unit? s temporal-unit))
