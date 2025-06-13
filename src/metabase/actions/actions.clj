@@ -22,6 +22,15 @@
    [toucan2.core :as t2])
   (:import (clojure.lang ExceptionInfo)))
 
+(defmulti default-mapping
+  "Allow actions to dynamically generating a :mapping, in none has been configured."
+  ;; TODO revise this version when we land it
+  {:arglists '([action-kw scope]), :added "0.9999.0"}
+  (fn [action-kw _scope]
+    action-kw))
+
+(defmethod default-mapping :default [_ _])
+
 (defmulti perform-action!*
   "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
   of each input depends on the action being performed. [[action-arg-map-schema]] returns the appropriate spec to use to
@@ -268,9 +277,9 @@
           (cond
             (:query arg-map) (qp.perms/check-query-action-permissions* arg-map)
             (:table-id arg-map) (qp.perms/check-query-action-permissions*
-                                 {:type :query,
+                                 {:type     :query,
                                   :database (:database arg-map)
-                                  :query {:source-table (:table-id arg-map)}}))))
+                                  :query    {:source-table (:table-id arg-map)}}))))
 
       (let [result (let [context (-> existing-context
                                      ;; TODO fix tons of tests which execute without user scope

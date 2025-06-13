@@ -765,16 +765,17 @@
 
 (mu/defmethod driver-api/perform-action!* [:sql-jdbc :table.row/delete]
   [_action context inputs :- [:sequential ::table-row-input]]
-  (let [table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
+  (when (< 1 (count (distinct (keep :delete-children inputs))))
+    (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
+  (let [delete-children?  (some :delete-children inputs)
+        table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
                             (let [database       (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
-        delete-children?  (:delete-children (driver-api/action-params))
         [errors results]  (batch-execution-by-table-id!
-                           {:inputs        inputs
-                            :row-action    :model.row/delete
-                            :row-fn        (if delete-children? row-delete!*-with-children row-delete!*)
-                            ;; TODO :delete-children should get passed in as part of inputs, and we should get rid of *params*
+                           {:inputs       inputs
+                            :row-action   :model.row/delete
+                            :row-fn       (if delete-children? row-delete!*-with-children row-delete!*)
                             :validate-fn   (fn [database table-id rows]
                                              (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
                                                (check-consistent-row-keys rows)

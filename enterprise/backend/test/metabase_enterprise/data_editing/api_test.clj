@@ -289,7 +289,7 @@
                     (mt/user-http-request :crowberto :post 400 execute-v2-url
                                           body))))
 
-          (testing "sucess with delete-children options"
+          (testing "success with delete-children options"
             (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
                                {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
                     (mt/user-http-request :crowberto :post 200 execute-v2-url
