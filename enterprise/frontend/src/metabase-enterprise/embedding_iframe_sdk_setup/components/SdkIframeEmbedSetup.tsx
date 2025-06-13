@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ResizableBox } from "react-resizable";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
@@ -22,20 +23,12 @@ const SdkIframeEmbedSetupContent = () => {
   const { currentStep, handleNext, handleBack, canGoNext, canGoBack } =
     useSdkIframeEmbedSetupContext();
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case "select-type":
-        return <SelectTypeStep />;
-      case "select-entity":
-        return <SelectEntityStep />;
-      case "configure":
-        return <ConfigureStep />;
-      case "get-code":
-        return <GetCodeStep />;
-      default:
-        return null;
-    }
-  };
+  const StepContent = match(currentStep)
+    .with("select-type", () => SelectTypeStep)
+    .with("select-entity", () => SelectEntityStep)
+    .with("configure", () => ConfigureStep)
+    .with("get-code", () => GetCodeStep)
+    .exhaustive();
 
   return (
     <Box className={S.Container}>
@@ -49,7 +42,9 @@ const SdkIframeEmbedSetupContent = () => {
         handle={<Box className={S.ResizeHandle} />}
       >
         <Box className={S.Sidebar}>
-          <Box className={S.SidebarContent}>{renderStepContent()}</Box>
+          <Box className={S.SidebarContent}>
+            <StepContent />
+          </Box>
           <Group className={S.Navigation} justify="space-between">
             <Button
               variant="default"
@@ -70,6 +65,7 @@ const SdkIframeEmbedSetupContent = () => {
           </Group>
         </Box>
       </ResizableBox>
+
       <Box className={S.PreviewPanel}>
         <Card p="md" h="100%">
           <Stack h="100%">
