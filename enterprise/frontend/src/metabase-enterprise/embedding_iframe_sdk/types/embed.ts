@@ -131,3 +131,12 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;
