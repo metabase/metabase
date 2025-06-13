@@ -19,43 +19,43 @@ import {
   IconWrapper,
   ListCellItem,
 } from "./AccordionListCell.styled";
-import type { Row, Section } from "./types";
+import type { Item, Row, Section } from "./types";
 
-type AccordionListCellProps<T extends object> = {
+type AccordionListCellProps<TItem extends Item> = {
   style: CSSProperties;
-  sections: Section<T>[];
-  row: Row<T>;
-  onChange: (item: T) => void;
-  itemIsSelected: (item: T, index: number) => boolean | undefined;
-  itemIsClickable: (item: T, index: number) => boolean | undefined;
+  sections: Section<TItem>[];
+  row: Row<TItem>;
+  onChange: (item: TItem) => void;
+  itemIsSelected: (item: TItem, index: number) => boolean | undefined;
+  itemIsClickable: (item: TItem, index: number) => boolean | undefined;
   sectionIsExpanded: (sectionIndex: number) => boolean | undefined;
   canToggleSections?: boolean;
   alwaysExpanded?: boolean;
   toggleSection: (sectionIndex: number) => void;
 
-  renderSectionIcon: (section: Section<T>) => ReactNode;
+  renderSectionIcon: (section: Section<TItem>) => ReactNode;
 
-  renderItemLabel: (item: T) => string | undefined;
-  renderItemName: (item: T) => string | undefined;
-  renderItemDescription: (item: T) => ReactNode;
-  renderItemIcon: (item: T) => ReactNode;
-  renderItemExtra: (item: T, isSelected: boolean) => ReactNode;
-  renderItemWrapper: (content: ReactNode, item: T) => ReactNode;
-  showSpinner: (itemOrSection: T | Section<T>) => boolean;
+  renderItemLabel: (item: TItem) => string | undefined;
+  renderItemName: (item: TItem) => string | undefined;
+  renderItemDescription: (item: TItem) => ReactNode;
+  renderItemIcon: (item: TItem) => ReactNode;
+  renderItemExtra: (item: TItem, isSelected: boolean) => ReactNode;
+  renderItemWrapper: (content: ReactNode, item: TItem) => ReactNode;
+  showSpinner: (itemOrSection: TItem | Section<TItem>) => boolean;
   searchText: string;
   onChangeSearchText: (searchText: string) => void;
   searchPlaceholder?: string;
   showItemArrows?: boolean;
   itemTestId?: string;
-  getItemClassName: (item: T, index: number) => string | undefined;
-  getItemStyles: (item: T, index: number) => CSSProperties | undefined;
+  getItemClassName: (item: TItem, index: number) => string | undefined;
+  getItemStyles: (item: TItem, index: number) => CSSProperties | undefined;
   searchInputProps?: TextInputProps;
   hasCursor?: boolean;
   withBorders?: boolean;
   color?: ColorName;
 };
 
-export function AccordionListCell<T extends object>({
+export function AccordionListCell<TItem extends Item>({
   style,
   sections,
   row,
@@ -85,7 +85,7 @@ export function AccordionListCell<T extends object>({
   hasCursor,
   withBorders,
   color: colorProp = "brand",
-}: AccordionListCellProps<T>) {
+}: AccordionListCellProps<TItem>) {
   const { type, section, sectionIndex, isLastSection } = row;
   let content;
   let borderTop;

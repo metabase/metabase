@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
 
-export type Section<T extends Item = Item> = {
+export type Item = object;
+
+export type Section<TItem extends Item = Item> = {
   key?: string;
   name?: ReactNode;
   displayName?: ReactNode;
@@ -16,15 +18,13 @@ export type Section<T extends Item = Item> = {
     | "back";
   icon?: IconName | null;
   loading?: boolean;
-  items?: T[];
+  items?: TItem[];
   active?: boolean;
   className?: string | null;
 };
 
-export type Item = object;
-
-export type Row<T extends object> = {
-  section: Section<T>;
+export type Row<TItem extends Item> = {
+  section: Section<TItem>;
   sectionIndex: number;
   isLastSection: boolean;
 } & (
@@ -48,7 +48,7 @@ export type Row<T extends object> = {
     }
   | {
       type: "item";
-      item: T;
+      item: TItem;
       itemIndex: number;
       isLastItem: boolean;
     }

@@ -23,7 +23,7 @@ import { AccordionListCell } from "./AccordionListCell";
 import type { Item, Row, Section } from "./types";
 import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
 
-type Props<T extends Item> = {
+type Props<TItem extends Item> = {
   style?: CSSProperties;
   className?: string;
   id?: string;
@@ -35,37 +35,37 @@ type Props<T extends Item> = {
 
   role?: string;
 
-  sections: Section<T>[];
+  sections: Section<TItem>[];
 
   initiallyOpenSection?: number;
   globalSearch?: boolean;
   openSection?: number;
-  onChange?: (item: T) => void;
+  onChange?: (item: TItem) => void;
   onChangeSection?: (
-    section: Section<T>,
+    section: Section<TItem>,
     sectionIndex: number,
   ) => boolean | void;
 
   // section getters/render props
-  renderSectionIcon?: (section: Section<T>) => ReactNode;
-  renderSearchSection?: (section: Section<T>) => ReactNode;
+  renderSectionIcon?: (section: Section<TItem>) => ReactNode;
+  renderSearchSection?: (section: Section<TItem>) => ReactNode;
 
   // item getters/render props
-  itemIsSelected?: (item: T) => boolean | undefined;
-  itemIsClickable?: (item: T) => boolean;
-  renderItemName?: (item: T) => string | undefined;
-  renderItemLabel?: (item: T) => string | undefined;
-  renderItemDescription?: (item: T) => ReactNode;
-  renderItemIcon?: (item: T) => ReactNode;
-  renderItemExtra?: (item: T, isSelected: boolean) => ReactNode;
-  renderItemWrapper?: (content: ReactNode, item: T) => ReactNode;
-  getItemClassName?: (item: T) => string | undefined;
-  getItemStyles?: (item: T) => CSSProperties | undefined;
+  itemIsSelected?: (item: TItem) => boolean | undefined;
+  itemIsClickable?: (item: TItem) => boolean;
+  renderItemName?: (item: TItem) => string | undefined;
+  renderItemLabel?: (item: TItem) => string | undefined;
+  renderItemDescription?: (item: TItem) => ReactNode;
+  renderItemIcon?: (item: TItem) => ReactNode;
+  renderItemExtra?: (item: TItem, isSelected: boolean) => ReactNode;
+  renderItemWrapper?: (content: ReactNode, item: TItem) => ReactNode;
+  getItemClassName?: (item: TItem) => string | undefined;
+  getItemStyles?: (item: TItem) => CSSProperties | undefined;
 
   alwaysTogglable?: boolean;
   alwaysExpanded?: boolean;
   hideSingleSectionTitle?: boolean;
-  showSpinner?: (itemOrSection: T | Section<T>) => boolean;
+  showSpinner?: (itemOrSection: TItem | Section<TItem>) => boolean;
   showItemArrows?: boolean;
 
   searchable?: boolean | ((section: Section) => boolean | undefined);
@@ -90,7 +90,10 @@ type State = {
   scrollToAlignment: Alignment;
 };
 
-export class AccordionList<T extends Item> extends Component<Props<T>, State> {
+export class AccordionList<TItem extends Item> extends Component<
+  Props<TItem>,
+  State
+> {
   _cache: CellMeasurerCache;
 
   _list: RefObject<List>;
@@ -101,7 +104,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
   _stopIndex?: number;
   _forceUpdateTimeout?: NodeJS.Timeout | null;
 
-  constructor(props: Props<T>, context: unknown) {
+  constructor(props: Props<TItem>, context: unknown) {
     super(props, context);
 
     let openSection;
@@ -168,7 +171,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
     }, 0);
   }
 
-  componentDidUpdate(_prevProps: Props<T>, prevState: State) {
+  componentDidUpdate(_prevProps: Props<TItem>, prevState: State) {
     // if anything changes that affects the selected rows we need to clear the row height cache
     if (
       this.state.openSection !== prevState.openSection ||
@@ -266,7 +269,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
     return selectedSection === sectionIndex;
   }
 
-  handleChange = (item: T) => {
+  handleChange = (item: TItem) => {
     if (this.props.onChange) {
       this.props.onChange(item);
     }
@@ -276,7 +279,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
     this.setState({ searchText, cursor: null });
   };
 
-  searchPredicate = (item: T, searchPropMember: string) => {
+  searchPredicate = (item: TItem, searchPropMember: string) => {
     const { searchCaseInsensitive = true, searchFuzzy } = this.props;
     let { searchText } = this.state;
     const path = searchPropMember.split(".");
@@ -293,8 +296,8 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
   };
 
   checkSectionHasItemsMatchingSearch = (
-    section: Section<T>,
-    searchFilter: (item: T) => boolean,
+    section: Section<TItem>,
+    searchFilter: (item: TItem) => boolean,
   ) => {
     return (section.items?.filter(searchFilter).length ?? 0) > 0;
   };
@@ -397,7 +400,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
     }
   };
 
-  searchFilter = (item: T) => {
+  searchFilter = (item: TItem) => {
     const { searchProp = ["name", "displayName"] } = this.props;
     const { searchText } = this.state;
 
@@ -414,21 +417,21 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
   };
 
   getRowsCached = (
-    searchFilter: (item: T) => boolean,
+    searchFilter: (item: TItem) => boolean,
     searchable:
       | boolean
-      | ((section: Section<T>) => boolean | undefined)
+      | ((section: Section<TItem>) => boolean | undefined)
       | undefined,
-    sections: Section<T>[],
+    sections: Section<TItem>[],
     alwaysTogglable: boolean,
     alwaysExpanded: boolean,
     hideSingleSectionTitle: boolean,
-    itemIsSelected: (item: T) => boolean | undefined,
+    itemIsSelected: (item: TItem) => boolean | undefined,
     hideEmptySectionsInSearch: boolean,
     openSection: number | null,
     _globalSearch: boolean,
     searchText: string,
-  ): Row<T>[] => {
+  ): Row<TItem>[] => {
     // if any section is searchable just enable a global search
     let globalSearch = _globalSearch;
 
@@ -442,7 +445,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
         ? searchable(sections[sectionIndex])
         : searchable;
 
-    const rows: Row<T>[] = [];
+    const rows: Row<TItem>[] = [];
     for (const [sectionIndex, section] of sections.entries()) {
       const isLastSection = sectionIndex === sections.length - 1;
       if (
@@ -549,10 +552,10 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
     return rows;
   };
 
-  getRows(): Row<T>[] {
+  getRows(): Row<TItem>[] {
     const {
       sections,
-      searchable = (section: Section<T>) =>
+      searchable = (section: Section<TItem>) =>
         section?.items && section.items.length > 10,
       alwaysTogglable = false,
       alwaysExpanded = false,
@@ -588,7 +591,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
     return alwaysTogglable || sections.length > 1;
   };
 
-  isRowSelected = (row: Row<T>) => {
+  isRowSelected = (row: Row<TItem>) => {
     if (!this.state.cursor) {
       return false;
     }
@@ -646,13 +649,14 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
 
       itemIsClickable = () => true,
       itemIsSelected = () => false,
-      renderSectionIcon = (section: Section<T>) =>
+      renderSectionIcon = (section: Section<TItem>) =>
         section.icon && <Icon name={section.icon as IconName} />,
       renderItemLabel = () => undefined,
-      renderItemName = (item: T) => ("name" in item ? item.name : "") as string,
-      renderItemDescription = (item: T) =>
+      renderItemName = (item: TItem) =>
+        ("name" in item ? item.name : "") as string,
+      renderItemDescription = (item: TItem) =>
         "description" in item ? (item.description as string) : "",
-      renderItemIcon = (item: T) =>
+      renderItemIcon = (item: TItem) =>
         "icon" in item && item.icon ? (
           <Icon name={item.icon as IconName} />
         ) : null,
@@ -660,7 +664,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
       renderItemWrapper = (content: ReactNode) => content,
       showSpinner = () => false,
 
-      getItemClassName = (item: T) =>
+      getItemClassName = (item: TItem) =>
         "className" in item && typeof item.className === "string"
           ? item.className
           : undefined,
@@ -707,7 +711,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
           data-testid={testId}
         >
           {rows.map((row, index) => (
-            <AccordionListCell<T>
+            <AccordionListCell<TItem>
               key={index}
               {...itemProps}
               row={row}
@@ -781,7 +785,7 @@ export class AccordionList<T extends Item> extends Component<Props<T>, State> {
               parent={parent}
             >
               {() => (
-                <AccordionListCell<T>
+                <AccordionListCell<TItem>
                   hasCursor={this.isRowSelected(rows[index])}
                   {...itemProps}
                   style={style}
