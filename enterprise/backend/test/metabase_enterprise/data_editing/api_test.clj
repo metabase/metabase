@@ -1461,9 +1461,14 @@
                                                "date"]
 
                                               :editableTable.enabledActions
-                                              ;; WTF this is not the right shape
-                                              [{#_:id #_"dashcard:unknown:uuid"
-                                                :id                "table.row/create" ;; should be actionId
+                                              [{:id                "dashcard:unknown:built-in-create"
+                                                :actionId          "data-grid.row/create"
+                                                :actionType        "data-grid/built-in"}
+                                               {:id                "dashcard:unknown:custom-create"
+                                                :actionId          "table.row/create"
+                                                :actionType        "data-grid/row-action"
+                                                :mapping           {:table-id @test-table
+                                                                    :row      "::root"}
                                                 :parameterMappings [{:parameterId "int"
                                                                      :sourceType  "const"
                                                                      :value       42}
@@ -1480,23 +1485,15 @@
                                   {:rows [{:text "a very important string"}]})
 
             (testing "table actions on a dashcard"
-              (let [create-id "table.row/create"
-                    update-id "table.row/update"
-                    delete-id "table.row/delete"
-                    ;; magic scope detection, deprecated
-                    scope {:dashcard-id (:id dashcard)}]
+              (let [built-in-action-id "dashcard:unknown:built-in-create"
+                    custom-action-id   "dashcard:unknown:custom-create"
+                    scope              {:dashcard-id (:id dashcard)}]
 
-                (testing "without a table-id"
-                  (let [scope {:dashboard-id (:dashboard_id dashcard)}]
-                    (doseq [action-id [create-id update-id delete-id]]
-                      (testing action-id
-                        (is (=? {:status 400} (req {:action_id action-id, :scope scope})))))))
-
-                (testing "create"
+                (testing "built-in"
                   (is (=? {:status 200
                            :body   {:parameters
-                                        ;; params are reordered by editable
-                                        ;; column listing (int first)
+                                    ;; params are reordered by editable
+                                    ;; column listing (int first)
                                     [{:id "int" :readonly false}
                                      {:id "text" :readonly true :value "a very important string"}
                                          ;; date is hidden from the editable
@@ -1504,14 +1501,23 @@
                                          ;; timestamp is hidden in the row action
                                      #_{:id "timestamp"}]}}
                           (req {:scope     scope
-                                :action_id create-id
+                                :action_id built-in-action-id
                                 :input     {:id 1}}))))
 
-                (testing "update"
-                  (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
-
-                (testing "delete"
-                  (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
+                (testing "custom"
+                  (is (=? {:status 200
+                           :body   {:parameters
+                                    ;; params are reordered by editable
+                                    ;; column listing (int first)
+                                    [{:id "int" :readonly false}
+                                     {:id "text" :readonly true :value "a very important string"}
+                                     ;; date is hidden from the editable
+                                     #_{:id "date"}
+                                     ;; timestamp is hidden in the row action
+                                     #_{:id "timestamp"}]}}
+                          (req {:scope     scope
+                                :action_id custom-action-id
+                                :input     {:id 1}}))))))))))))
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.
