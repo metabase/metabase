@@ -22,20 +22,12 @@ import {
 import type { Item, Row, Section } from "./types";
 import { get } from "./utils";
 
-type AccordionListCellProps<
+export type SharedAccordionProps<
   TItem extends Item,
   TSection extends Section<TItem>,
 > = {
-  style?: CSSProperties;
-  sections: TSection[];
-  row: Row<TItem, TSection>;
-  onChange: (item: TItem) => void;
   itemIsSelected?: (item: TItem, index: number) => boolean | undefined;
   itemIsClickable?: (item: TItem, index: number) => boolean | undefined;
-  sectionIsExpanded: (sectionIndex: number) => boolean | undefined;
-  canToggleSections?: boolean;
-  alwaysExpanded?: boolean;
-  toggleSection: (sectionIndex: number) => void;
   renderSectionIcon?: (section: TSection) => ReactNode;
   renderItemLabel?: (item: TItem) => string | undefined;
   renderItemName?: (item: TItem) => string | undefined;
@@ -44,17 +36,31 @@ type AccordionListCellProps<
   renderItemExtra?: (item: TItem, isSelected: boolean) => ReactNode;
   renderItemWrapper?: (content: ReactNode, item: TItem) => ReactNode;
   showSpinner?: (itemOrSection: TItem | TSection) => boolean;
-  searchText: string;
-  onChangeSearchText: (searchText: string) => void;
-  searchPlaceholder?: string;
-  showItemArrows?: boolean;
-  itemTestId?: string;
   getItemClassName?: (item: TItem, index: number) => string | undefined;
   getItemStyles?: (item: TItem, index: number) => CSSProperties | undefined;
   searchInputProps?: TextInputProps;
-  hasCursor?: boolean;
+  searchPlaceholder?: string;
+  itemTestId?: string;
+  showItemArrows?: boolean;
+  alwaysExpanded?: boolean;
   withBorders?: boolean;
   color?: ColorName;
+};
+
+type AccordionListCellProps<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+> = SharedAccordionProps<TItem, TSection> & {
+  style?: CSSProperties;
+  sections: TSection[];
+  row: Row<TItem, TSection>;
+  onChange: (item: TItem) => void;
+  sectionIsExpanded: (sectionIndex: number) => boolean | undefined;
+  canToggleSections: boolean;
+  toggleSection: (sectionIndex: number) => void;
+  searchText: string;
+  onChangeSearchText: (searchText: string) => void;
+  hasCursor: boolean;
 };
 
 export function AccordionListCell<

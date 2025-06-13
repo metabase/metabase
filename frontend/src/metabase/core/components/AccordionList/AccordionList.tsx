@@ -3,7 +3,6 @@ import {
   type CSSProperties,
   Component,
   type KeyboardEvent,
-  type ReactNode,
   type RefObject,
   createRef,
 } from "react";
@@ -15,17 +14,18 @@ import {
 } from "react-virtualized";
 import _ from "underscore";
 
-import type { TextInputProps } from "metabase/ui";
-
 import { AccordionListRoot } from "./AccordionList.styled";
-import { AccordionListCell } from "./AccordionListCell";
+import {
+  AccordionListCell,
+  type SharedAccordionProps,
+} from "./AccordionListCell";
 import type { Item, Row, Section } from "./types";
 import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
 
 type Props<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
-> = {
+> = SharedAccordionProps<TItem, TSection> & {
   style?: CSSProperties;
   className?: string;
   id?: string;
@@ -34,52 +34,22 @@ type Props<
   // currently prop is number on initialization, then string afterwards
   width?: string | number;
   maxHeight?: number;
-
   role?: string;
-
   sections: TSection[];
-
   initiallyOpenSection?: number;
   globalSearch?: boolean;
   openSection?: number;
   onChange?: (item: TItem) => void;
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
-
-  // section getters/render props
-  renderSectionIcon?: (section: TSection) => ReactNode;
-  renderSearchSection?: (section: TSection) => ReactNode;
-
-  // item getters/render props
-  itemIsSelected?: (item: TItem) => boolean | undefined;
-  itemIsClickable?: (item: TItem) => boolean;
-  renderItemName?: (item: TItem) => string | undefined;
-  renderItemLabel?: (item: TItem) => string | undefined;
-  renderItemDescription?: (item: TItem) => ReactNode;
-  renderItemIcon?: (item: TItem) => ReactNode;
-  renderItemExtra?: (item: TItem, isSelected: boolean) => ReactNode;
-  renderItemWrapper?: (content: ReactNode, item: TItem) => ReactNode;
-  getItemClassName?: (item: TItem) => string | undefined;
-  getItemStyles?: (item: TItem) => CSSProperties | undefined;
-
   alwaysTogglable?: boolean;
-  alwaysExpanded?: boolean;
   hideSingleSectionTitle?: boolean;
-  showSpinner?: (itemOrSection: TItem | TSection) => boolean;
-  showItemArrows?: boolean;
-
   searchable?: boolean | ((section: Section) => boolean | undefined);
   searchProp?: string | string[];
   searchCaseInsensitive?: boolean;
   searchFuzzy?: boolean;
-  searchPlaceholder?: string;
-  searchInputProps?: TextInputProps;
   hideEmptySectionsInSearch?: boolean;
   hasInitialFocus?: boolean;
-
-  itemTestId?: string;
   "data-testid"?: string | null;
-
-  withBorders?: boolean;
 };
 
 type State = {
