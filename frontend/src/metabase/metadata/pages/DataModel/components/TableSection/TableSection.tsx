@@ -94,7 +94,7 @@ export const TableSection = ({ params, table }: Props) => {
               )}
             </Group>
 
-            <Group gap="md">
+            <Group gap="md" justify="flex-end">
               {!isSorting && (
                 <Button
                   h={32}

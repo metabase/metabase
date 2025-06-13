@@ -86,36 +86,38 @@ export const FieldSection = ({
         />
       </Box>
 
-      <Group align="center" h={48} justify="space-between">
-        <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
+      <Stack gap={12}>
+        <Group align="center" gap="md" justify="space-between" wrap="nowrap">
+          <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
-        <Group gap="md">
-          {!isPreviewOpen && (
+          <Group gap="md" justify="flex-end">
+            {!isPreviewOpen && (
+              <Button
+                leftSection={<Icon name="eye" />}
+                px="sm"
+                py="xs"
+                size="xs"
+                onClick={onPreviewClick}
+              >{t`Preview`}</Button>
+            )}
+
             <Button
-              leftSection={<Icon name="eye" />}
+              h={32}
+              leftSection={<Icon name="gear_settings_filled" />}
               px="sm"
               py="xs"
               size="xs"
-              onClick={onPreviewClick}
-            >{t`Preview`}</Button>
-          )}
-
-          <Button
-            h={32}
-            leftSection={<Icon name="gear_settings_filled" />}
-            px="sm"
-            py="xs"
-            size="xs"
-            onClick={() => setIsFieldValuesModalOpen(true)}
-          >{t`Field values`}</Button>
+              onClick={() => setIsFieldValuesModalOpen(true)}
+            >{t`Field values`}</Button>
+          </Group>
         </Group>
-      </Group>
 
-      <Stack gap="xl">
-        <MemoizedDataSection field={field} />
-        <MemoizedMetadataSection databaseId={databaseId} field={field} />
-        <MemoizedBehaviorSection databaseId={databaseId} field={field} />
-        <MemoizedFormattingSection field={field} />
+        <Stack gap="xl">
+          <MemoizedDataSection field={field} />
+          <MemoizedMetadataSection databaseId={databaseId} field={field} />
+          <MemoizedBehaviorSection databaseId={databaseId} field={field} />
+          <MemoizedFormattingSection field={field} />
+        </Stack>
       </Stack>
 
       <FieldValuesModal
