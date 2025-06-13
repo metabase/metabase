@@ -3,6 +3,7 @@
   border: 2px solid transparent;
   will-change: border-color;
   transition: border-color 0.2s ease-in-out;
+  user-select: none;
 }
 
 .EntityCardSelected {
