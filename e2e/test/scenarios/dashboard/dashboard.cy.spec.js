@@ -1309,8 +1309,10 @@ describe("scenarios > dashboard", () => {
     function createNewDashboard() {
       H.newButton("Dashboard").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("Test");
-        cy.findByRole("button", { name: "Create" }).click();
+        cy.findByLabelText("Name").should("be.focused");
+        cy.findByLabelText("Name").realType("Test");
+        cy.findByRole("button", { name: "Create" }).should("not.be.disabled");
+        cy.findByRole("button", { name: "Create" }).realClick({ force: true });
       });
     }
 
