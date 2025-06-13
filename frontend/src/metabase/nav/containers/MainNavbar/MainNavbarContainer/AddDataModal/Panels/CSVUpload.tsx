@@ -31,6 +31,11 @@ import S from "../AddDataModal.module.css";
 import IconCSV from "./icons/csv.svg?component";
 import IconCSVWarning from "./icons/csv_warning.svg?component";
 
+type UploadState = {
+  file: File | null;
+  error: string | null;
+};
+
 export const CSVUpload = ({
   onCloseAddDataModal,
 }: {
@@ -39,8 +44,10 @@ export const CSVUpload = ({
   const dispatch = useDispatch();
   const initialCollectionId = useGetDefaultCollectionId() ?? "root";
 
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [fileUploadError, setFileUploadError] = useState<string | null>(null);
+  const [uploadState, setUploadState] = useState<UploadState>({
+    file: null,
+    error: null,
+  });
 
   const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
   const [uploadCollectionId, setUploadCollectionId] =
@@ -71,10 +78,11 @@ export const CSVUpload = ({
       return;
     }
 
-    setUploadedFile(null);
-
     if (rejected.length > 1) {
-      setFileUploadError(t`Please upload files individually`);
+      setUploadState({
+        file: null,
+        error: t`Please upload files individually`,
+      });
     }
 
     if (rejected.length === 1) {
@@ -83,13 +91,19 @@ export const CSVUpload = ({
 
       switch (code) {
         case "file-invalid-type":
-          setFileUploadError(t`Sorry, this file type is not supported`);
+          setUploadState({
+            file: null,
+            error: t`Sorry, this file type is not supported`,
+          });
           break;
         case "file-too-large":
-          setFileUploadError(t`Sorry, this file is too large`);
+          setUploadState({
+            file: null,
+            error: t`Sorry, this file is too large`,
+          });
           break;
         default:
-          setFileUploadError("An error has occurred");
+          setUploadState({ file: null, error: "An error has occurred" });
           break;
       }
     }
@@ -98,8 +112,7 @@ export const CSVUpload = ({
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]) => {
       if (acceptedFiles.length === 1) {
-        setFileUploadError(null);
-        setUploadedFile(acceptedFiles[0]);
+        setUploadState({ file: acceptedFiles[0], error: null });
       }
 
       handleFileRejections(fileRejections);
@@ -132,12 +145,11 @@ export const CSVUpload = ({
       }
 
       if (file.size > MAX_UPLOAD_SIZE) {
-        setFileUploadError(t`Sorry, this file is too large`);
+        setUploadState({ file: null, error: t`Sorry, this file is too large` });
         return;
       }
 
-      setFileUploadError(null);
-      setUploadedFile(file);
+      setUploadState({ file, error: null });
 
       // reset the input so that the same file can be uploaded again
       if (uploadInputRef.current) {
@@ -161,23 +173,23 @@ export const CSVUpload = ({
         }),
       );
 
-      setUploadedFile(null);
+      setUploadState({ file: null, error: null });
       onCloseAddDataModal();
     },
     [dispatch, onCloseAddDataModal, uploadCollectionId],
   );
 
   const primaryText = useMemo(() => {
-    if (uploadedFile) {
-      return uploadedFile.name;
+    if (uploadState.file) {
+      return uploadState.file.name;
     }
 
-    if (fileUploadError) {
-      return fileUploadError;
+    if (uploadState.error) {
+      return uploadState.error;
     }
 
     return t`Drag and drop a file here`;
-  }, [uploadedFile, fileUploadError]);
+  }, [uploadState]);
 
   return (
     <>
@@ -189,11 +201,11 @@ export const CSVUpload = ({
           data-testid="add-data-modal-csv-dropzone"
         >
           <Stack gap="sm" align="center">
-            {fileUploadError ? (
+            {uploadState.error ? (
               <Box component={IconCSVWarning} h={50} />
             ) : (
               <Box
-                c={uploadedFile ? "brand" : "text-secondary-inverse"}
+                c={uploadState.file ? "brand" : "text-secondary-inverse"}
                 component={IconCSV}
                 h={50}
               />
@@ -201,19 +213,19 @@ export const CSVUpload = ({
 
             <div>
               <Text fw={700}>{primaryText}</Text>
-              {!uploadedFile && (
+              {!uploadState.file && (
                 <Text c="text-light">
                   {c("The allowed MB size of a file")
                     .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
                 </Text>
               )}
             </div>
-            {uploadedFile ? (
+            {uploadState.file ? (
               <Button
                 variant="subtle"
                 p={0}
                 h="auto"
-                onClick={() => setUploadedFile(null)}
+                onClick={() => setUploadState({ file: null, error: null })}
               >
                 {t`Remove`}
               </Button>
@@ -247,8 +259,8 @@ export const CSVUpload = ({
           </Button>
           <Button
             variant="filled"
-            disabled={!uploadedFile}
-            onClick={() => handleFileUpload(uploadedFile)}
+            disabled={!uploadState.file}
+            onClick={() => handleFileUpload(uploadState.file)}
           >
             {t`Upload`}
           </Button>
