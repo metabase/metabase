@@ -7,7 +7,7 @@
 
 (defenterprise apply-impersonation
   "Pre-processing middleware. Adds a key to the query. Currently used solely for caching."
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [query]
   (if-let [role (impersonation.driver/connection-impersonation-role
                  (lib.metadata/database (qp.store/metadata-provider)))]
@@ -16,7 +16,7 @@
 
 (defenterprise apply-impersonation-postprocessing
   "Post-processing middleware. Binds the dynamic var"
-  :feature :advanced-permissions
+  :feature :connection-impersonation
   [qp]
   (fn [query rff]
     (if-let [role (:impersonation/role query)]

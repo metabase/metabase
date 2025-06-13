@@ -182,6 +182,10 @@
   "Should we enable extra knobs around permissions (block access, connection impersonation, etc.)?"
   :advanced-permissions)
 
+(define-premium-feature ^{:added "0.56.0"} enable-connection-impersonation?
+  "Should we enable connection impersonation functionality?"
+  :connection-impersonation)
+
 (define-premium-feature ^{:added "0.56.0"} enable-content-translation?
   "Should we enable translation of user-generated content, like question names?"
   :content-translation)
@@ -268,7 +272,8 @@
    :cache_granular_controls        (enable-cache-granular-controls?)
    :cache_preemptive               (enable-preemptive-caching?)
    :collection_cleanup             (enable-collection-cleanup?)
-   :config_text_file               (enable-config-text-file?)
+   :config_text_file               (enable-config-text-file?) 
+   :connection_impersonation       (enable-connection-impersonation?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)

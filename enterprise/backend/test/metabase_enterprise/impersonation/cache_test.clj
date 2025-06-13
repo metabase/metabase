@@ -14,7 +14,7 @@
                       :multiplier 60
                       :avg-execution-ms 1000
                       :min-duration-ms 1})]
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (cache-test/with-mock-cache! [save-chan purge-chan]
         (while (a/poll! save-chan))
         (while (a/poll! purge-chan))

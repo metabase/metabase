@@ -84,7 +84,7 @@
 
 (deftest connection-impersonation-role-test-9
   (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues)}}}
         (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                        :attributes     {"impersonation_attr" "impersonation_role"}}
@@ -96,7 +96,7 @@
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [db-name "conn_impersonation_test"
             details (mt/dbdef->connection-details :postgres :db {:database-name db-name})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
@@ -202,7 +202,7 @@
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
             role-a (u/lower-case-en (mt/random-name))
@@ -242,7 +242,7 @@
 
 (deftest conn-impersonation-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/column-impersonation)
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             products-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "products")
             role-a (u/lower-case-en (mt/random-name))
@@ -284,7 +284,7 @@
 
 (deftest conn-impersonation-row-level-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/rls-impersonation)
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             products-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "products")
             role-a (u/lower-case-en (mt/random-name))
@@ -325,7 +325,7 @@
 (deftest conn-impersonation-column-and-row-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/rls-impersonation)
                                      (mt/normal-drivers-with-feature :test/column-impersonation))
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             products-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "products")
             role-a (u/lower-case-en (mt/random-name))
@@ -373,7 +373,7 @@
 
 (deftest conn-impersonation-sqlserver-test
   (mt/test-driver :sqlserver
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))
             impersonation-user (impersonation-default-user driver/*driver*)
@@ -428,7 +428,7 @@
 
 (deftest conn-impersonation-with-db-routing
   (mt/test-driver :postgres
-    (mt/with-premium-features #{:advanced-permissions :database-routing}
+    (mt/with-premium-features #{:connection-impersonation :database-routing}
       (let [router-db-name "db_routing_router"
             router-details (mt/dbdef->connection-details :postgres :db {:database-name router-db-name})
             router-spec    (sql-jdbc.conn/connection-details->spec :postgres router-details)
@@ -538,7 +538,7 @@
 
 (deftest conn-impersonation-test-redshift
   (mt/test-driver :redshift
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (let [details (mt/dbdef->connection-details :redshift nil nil)
             spec    (sql-jdbc.conn/connection-details->spec :redshift details)
             user    (u/lower-case-en (mt/random-name))
@@ -577,7 +577,7 @@
 
 (deftest conn-impersonation-test-snowflake
   (mt/test-driver :snowflake
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                      :attributes     {"impersonation_attr" "LIMITED.ROLE"}}
         ;; Test database initially has no default role set. All queries should fail, even for non-impersonated users,
@@ -618,7 +618,7 @@
 (deftest persistence-disabled-when-impersonated-test
   ;; Test explicitly with postgres since it supports persistence and impersonation
   (mt/test-driver :postgres
-    (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-premium-features #{:connection-impersonation}
       (mt/dataset test-data
         (mt/with-temp [:model/Card model {:type          :model
                                           :dataset_query (mt/mbql-query products)}]
