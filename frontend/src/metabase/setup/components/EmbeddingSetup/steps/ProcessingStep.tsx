@@ -41,12 +41,12 @@ export const ProcessingStep = () => {
       }
 
       try {
-        setProcessingStatus("Setting up settings...");
+        setProcessingStatus(t`Setting up settings...`);
         await setupSettings();
         setCurrentStep((prev) => prev + 1);
 
         // Create models for each table
-        setProcessingStatus("Creating models...");
+        setProcessingStatus(t`Creating models...`);
         const models = [];
         for (const table of selectedTables) {
           const response = await fetch("/api/card", {
@@ -79,7 +79,7 @@ export const ProcessingStep = () => {
         }
 
         // Create x-ray dashboards for each model
-        setProcessingStatus("Creating dashboards...");
+        setProcessingStatus(t`Creating dashboards...`);
         const dashboardIds = [];
         for (const model of models) {
           // Get the x-ray dashboard layout
@@ -148,7 +148,7 @@ export const ProcessingStep = () => {
           <Loader size="lg" />
           <Text mt="md">{t`${progress.toFixed(0)}% Complete`}</Text>
         </Box>
-        <Text ta="center">{t`${processingStatus}`}</Text>
+        <Text ta="center">{processingStatus}</Text>
       </Stack>
     </Box>
   );
