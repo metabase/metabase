@@ -7,9 +7,10 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
+import AccordionList, {
+  type Section,
+} from "metabase/core/components/AccordionList";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -32,15 +33,7 @@ export interface FilterColumnPickerProps {
   withColumnItemIcon?: boolean;
 }
 
-type Section = {
-  key?: string;
-  type: string;
-  name: string;
-  items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
-  icon?: IconName;
-};
-
-const CUSTOM_EXPRESSION_SECTION: Section = {
+const CUSTOM_EXPRESSION_SECTION: Section<ColumnListItem | SegmentListItem> = {
   key: "custom-expression",
   type: "action",
   get name() {
@@ -99,7 +92,7 @@ export function FilterColumnPicker({
 
   return (
     <DelayGroup>
-      <AccordionList
+      <AccordionList<ColumnListItem | SegmentListItem>
         className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
@@ -111,7 +104,10 @@ export function FilterColumnPicker({
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
         // disable scrollbars inside the list
-        style={{ overflow: "visible", "--accordion-list-width": `${WIDTH}px` }}
+        style={{
+          overflow: "visible",
+          width: WIDTH,
+        }}
         maxHeight={Infinity}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
@@ -129,7 +125,7 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
-) {
+): Section<ColumnListItem | SegmentListItem>[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -154,9 +150,7 @@ function getSections(
       const segmentItems = segments.map((segment) => {
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
-          name: segmentInfo.name,
-          displayName: segmentInfo.displayName,
-          filterPositions: segmentInfo.filterPositions,
+          ...segmentInfo,
           segment,
           stageIndex,
         };
@@ -178,7 +172,7 @@ function getSections(
   ];
 }
 
-function renderItemName(item: ColumnListItem) {
+function renderItemName(item: ColumnListItem | SegmentListItem) {
   return item.displayName;
 }
 
