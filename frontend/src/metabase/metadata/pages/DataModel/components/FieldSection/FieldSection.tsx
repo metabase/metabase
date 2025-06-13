@@ -1,14 +1,10 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import {
-  DiscardFieldValuesButton,
-  NameDescriptionInput,
-  RescanFieldButton,
-} from "metabase/metadata/components";
+import { NameDescriptionInput } from "metabase/metadata/components";
 import {
   getFieldDisplayName,
   getRawTableFieldId,
@@ -20,6 +16,7 @@ import type { DatabaseId, Field } from "metabase-types/api";
 import { BehaviorSection } from "./BehaviorSection";
 import { DataSection } from "./DataSection";
 import S from "./FieldSection.module.css";
+import { FieldValuesModal } from "./FieldValuesModal";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
@@ -45,6 +42,7 @@ export const FieldSection = ({
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
+  const [isFieldValuesModalOpen, setIsFieldValuesModalOpen] = useState(false);
 
   return (
     <Stack gap={0} p="xl" pt={0}>
@@ -89,17 +87,28 @@ export const FieldSection = ({
       </Box>
 
       <Group align="center" h={48} justify="space-between">
-        <Text fw="bold">{t`Field settings`}</Text>
+        <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
-        {!isPreviewOpen && (
+        <Group gap="md">
+          {!isPreviewOpen && (
+            <Button
+              leftSection={<Icon name="eye" />}
+              px="sm"
+              py="xs"
+              size="xs"
+              onClick={onPreviewClick}
+            >{t`Preview`}</Button>
+          )}
+
           <Button
-            leftSection={<Icon name="eye" />}
+            h={32}
+            leftSection={<Icon name="gear_settings_filled" />}
             px="sm"
             py="xs"
             size="xs"
-            onClick={onPreviewClick}
-          >{t`Preview`}</Button>
-        )}
+            onClick={() => setIsFieldValuesModalOpen(true)}
+          >{t`Field values`}</Button>
+        </Group>
       </Group>
 
       <Stack gap="xl">
@@ -107,12 +116,13 @@ export const FieldSection = ({
         <MemoizedMetadataSection databaseId={databaseId} field={field} />
         <MemoizedBehaviorSection databaseId={databaseId} field={field} />
         <MemoizedFormattingSection field={field} />
-
-        <Stack gap="sm" mt="lg">
-          <RescanFieldButton fieldId={getRawTableFieldId(field)} />
-          <DiscardFieldValuesButton fieldId={getRawTableFieldId(field)} />
-        </Stack>
       </Stack>
+
+      <FieldValuesModal
+        fieldId={id}
+        isOpen={isFieldValuesModalOpen}
+        onClose={() => setIsFieldValuesModalOpen(false)}
+      />
     </Stack>
   );
 };
