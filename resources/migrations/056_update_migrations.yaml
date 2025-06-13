@@ -75,10 +75,12 @@ databaseChangeLog:
       author: johnswanson
       comment: add an index for `core_user.tenant_id`
       changes:
-        - addUniqueConstraint:
+        - createIndex:
             tableName: core_user
-            constraintName: idx_unique_core_user_tenant_id
-            columnNames: tenant_id
+            indexName: idx_core_user_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
 
   - changeSet:
       id: v56.2025-06-11T11:34:34
