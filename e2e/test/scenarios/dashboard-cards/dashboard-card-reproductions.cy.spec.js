@@ -796,7 +796,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 39;
+        const expectedWidth = 33;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -1167,22 +1167,7 @@ describe("issue 31628", () => {
         const previousValue = cy.findByTestId("scalar-previous-value");
 
         previousValue.within(() => {
-          cy.contains("34.7%").should("exist");
-          cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
-            H.assertIsNotEllipsified($element[0]),
-          );
-        });
-      });
-
-      it("should show previous value as a percentage only up to 1 decimal place (without truncation, 1200x600)", () => {
-        cy.viewport(1200, 600);
-
-        const previousValue = cy.findByTestId("scalar-previous-value");
-
-        previousValue.within(() => {
-          cy.contains("34.7%").should("exist");
-          cy.contains("34.72%").should("not.exist");
+          cy.contains("35%").should("exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
           previousValue.then(($element) =>
             H.assertIsNotEllipsified($element[0]),

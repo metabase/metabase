@@ -50,7 +50,7 @@ const DashboardCopyModal = ({
   ...props
 }) => {
   const [isShallowCopy, setIsShallowCopy] = useState(true);
-  const initialDashboardId = Urls.extractEntityId(params.slug);
+  const dashboardIdFromSlug = Urls.extractEntityId(params.slug);
 
   const title = getTitle(dashboard, isShallowCopy);
 
@@ -68,7 +68,7 @@ const DashboardCopyModal = ({
       title={title}
       overwriteOnInitialValuesChange
       copy={async (object) =>
-        await copyDashboard({ id: initialDashboardId }, dissoc(object, "id"))
+        await copyDashboard({ id: dashboardIdFromSlug }, dissoc(object, "id"))
       }
       onClose={onClose}
       onSaved={(dashboard) => onReplaceLocation(Urls.dashboard(dashboard))}
