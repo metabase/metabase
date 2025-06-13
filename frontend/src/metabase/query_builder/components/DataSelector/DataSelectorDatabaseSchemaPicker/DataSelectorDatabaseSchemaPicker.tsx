@@ -123,7 +123,7 @@ const DataSelectorDatabaseSchemaPicker = ({
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
-      showSpinner={(x) => "active" in x && Boolean(x.active)}
+      showSpinner={(x) => "active" in x && !x.active}
       showItemArrows={hasNextStep}
       maxHeight={Infinity}
     />
