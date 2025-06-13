@@ -105,11 +105,26 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       cy.button("Continue").should("be.enabled").click();
     });
 
-    cy.log("4: Embed in your app step");
-    step()
-      .findByRole("heading", { name: "Add to your app" })
-      .should("be.visible");
+    cy.log("4: Processing step");
+    sidebar().within(() => {
+      cy.findByRole("listitem", { current: "step" }).should(
+        "have.text",
+        "Processing",
+      );
+    });
 
+    step().within(() => {
+      cy.findByRole("heading", { name: "Setting Up Your Analytics" }).should(
+        "be.visible",
+      );
+      /**
+       * Since this loader will go away automatically it's crucial to wait for it to go away
+       * before start asserting the next steps.
+       */
+      cy.findByText("Creating dashboards...").should("not.exist");
+    });
+
+    cy.log("5: Embed in your app step");
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
@@ -118,6 +133,9 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     });
 
     step().within(() => {
+      cy.findByRole("heading", { name: "Add to your app" }).should(
+        "be.visible",
+      );
       cy.findByRole("tab", { name: 'A look at "Feedback"' }).click();
       H.getIframeBody().within(() => {
         cy.findByText('A look at "Feedback"').should("be.visible");
