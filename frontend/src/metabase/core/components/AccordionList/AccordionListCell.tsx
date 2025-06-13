@@ -285,12 +285,12 @@ export function AccordionListCell<
     );
   } else if (type === "item") {
     const { item, itemIndex, isLastItem } = row;
-    const isSelected = itemIsSelected(item, itemIndex) ?? false;
+    const isSelected = itemIsSelected(item, itemIndex);
     const isClickable = itemIsClickable(item, itemIndex) ?? false;
     const icon = renderItemIcon(item);
     const name = renderItemName(item);
     const description = renderItemDescription(item);
-    const extra = renderItemExtra(item, isSelected);
+    const extra = renderItemExtra(item, isSelected ?? false);
     const label = renderItemLabel ? renderItemLabel(item) : name;
 
     content = (
