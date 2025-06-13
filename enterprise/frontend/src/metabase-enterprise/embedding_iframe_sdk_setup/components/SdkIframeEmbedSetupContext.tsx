@@ -37,8 +37,8 @@ interface SdkIframeEmbedSetupContextType {
   // Dynamic parameters
   availableParameters: Parameter[];
   isLoadingParameters: boolean;
-  toggleParameterVisibility: (parameterId: string) => void;
-  isParameterHidden: (parameterId: string) => boolean;
+  toggleParameterVisibility: (parameterName: string) => void;
+  isParameterHidden: (parameterName: string) => boolean;
 }
 
 const SdkIframeEmbedSetupContext =
@@ -133,7 +133,7 @@ export const SdkIframeEmbedSetupProvider = ({
   };
 
   // Parameter visibility management (only for dashboards)
-  const toggleParameterVisibility = (parameterId: string) => {
+  const toggleParameterVisibility = (parameterName: string) => {
     if (
       options.selectedType !== "dashboard" ||
       !("hiddenParameters" in settings)
@@ -142,29 +142,31 @@ export const SdkIframeEmbedSetupProvider = ({
     }
 
     const currentHidden = settings.hiddenParameters || [];
-    const isCurrentlyHidden = currentHidden.includes(parameterId);
+    const isCurrentlyHidden = currentHidden.includes(parameterName);
 
     if (isCurrentlyHidden) {
       // Remove from hidden list (show parameter)
       updateSettings({
-        hiddenParameters: currentHidden.filter((id) => id !== parameterId),
+        hiddenParameters: currentHidden.filter(
+          (name) => name !== parameterName,
+        ),
       });
     } else {
       // Add to hidden list (hide parameter)
       updateSettings({
-        hiddenParameters: [...currentHidden, parameterId],
+        hiddenParameters: [...currentHidden, parameterName],
       });
     }
   };
 
-  const isParameterHidden = (parameterId: string) => {
+  const isParameterHidden = (parameterName: string) => {
     if (
       options.selectedType !== "dashboard" ||
       !("hiddenParameters" in settings)
     ) {
       return false; // Questions don't support hidden parameters
     }
-    return (settings.hiddenParameters || []).includes(parameterId);
+    return (settings.hiddenParameters || []).includes(parameterName);
   };
 
   const canGoNext = !(

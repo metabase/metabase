@@ -5,14 +5,14 @@ import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 import type { EmbedType } from "../types";
 
 interface ParameterVisibilityToggleProps {
-  parameterId: string;
+  parameterName: string;
   embedType: EmbedType;
   isHidden: boolean;
-  onToggle: (parameterId: string) => void;
+  onToggle: (parameterName: string) => void;
 }
 
 export const ParameterVisibilityToggle = ({
-  parameterId,
+  parameterName,
   embedType,
   isHidden,
   onToggle,
@@ -29,7 +29,7 @@ export const ParameterVisibilityToggle = ({
     <Tooltip label={tooltipLabel}>
       <ActionIcon
         variant="subtle"
-        onClick={() => onToggle(parameterId)}
+        onClick={() => onToggle(parameterName)}
         title={tooltipLabel}
       >
         <Icon name={iconName} size={16} />
