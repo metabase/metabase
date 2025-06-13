@@ -1,20 +1,10 @@
-import {
-  type ReactNode,
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
-import { useLatest } from "react-use";
+import { type ReactNode, createContext, useContext, useState } from "react";
 
-import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import type { Card, Parameter } from "metabase-types/api";
+import type { Parameter } from "metabase-types/api";
 
+import { useParameterList } from "../hooks/useParameterList";
 import {
   type RecentDashboard,
   type RecentQuestion,
@@ -87,31 +77,14 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const { settings } = options;
 
-  // Fetch dashboard/question data for parameter extraction
-  const { data: dashboard, isLoading: isDashboardLoading } =
-    useGetDashboardQuery(
-      settings.dashboardId ? { id: settings.dashboardId } : skipToken,
-    );
+  // Use parameter list hook for dynamic parameter loading
+  const { availableParameters, isLoadingParameters } = useParameterList({
+    selectedType: options.selectedType,
 
-  const { data: card, isLoading: isCardLoading } = useGetCardQuery(
-    settings.questionId ? { id: settings.questionId as number } : skipToken,
-  );
-
-  const metadata = useSelector(getMetadata);
-  const metadataRef = useLatest(metadata);
-
-  // Extract parameters from the loaded dashboard/card
-  const availableParameters = useMemo((): Parameter[] => {
-    if (options.selectedType === "dashboard" && dashboard) {
-      return dashboard.parameters || [];
-    } else if (options.selectedType === "chart" && card) {
-      return getCardUiParameters(card as Card, metadataRef.current) || [];
-    }
-
-    return [];
-  }, [options.selectedType, dashboard, card, metadataRef]);
-
-  const isLoadingParameters = isDashboardLoading || isCardLoading;
+    // We're always using numeric IDs for previews.
+    ...(settings.dashboardId && { dashboardId: Number(settings.dashboardId) }),
+    ...(settings.questionId && { questionId: Number(settings.questionId) }),
+  });
 
   const updateOptions = (newOptions: Partial<EmbedPreviewOptions>) => {
     setOptions((prev) => ({ ...prev, ...newOptions }));
