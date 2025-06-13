@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useShadowRoot } from "embedding-sdk/components/public/InteractiveQuestion/shadow-root-provider";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
@@ -36,6 +37,7 @@ export function useModelsAndOption(
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
+  const { rootElement } = useShadowRoot();
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
   const seriesToRender = useMemo(
@@ -121,8 +123,9 @@ export function useModelsAndOption(
       settings,
       card.display as CardDisplayType,
       containerRef,
+      rootElement,
     );
-  }, [chartModel, settings, card.display, containerRef]);
+  }, [rootElement, chartModel, settings, card.display, containerRef]);
 
   const option = useMemo(() => {
     if (width === 0 || height === 0) {

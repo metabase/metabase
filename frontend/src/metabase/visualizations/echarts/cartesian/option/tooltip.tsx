@@ -52,9 +52,10 @@ export const getTooltipOption = (
   settings: ComputedVisualizationSettings,
   display: CardDisplayType,
   containerRef: React.RefObject<HTMLDivElement>,
+  rootElement: HTMLDivElement,
 ): TooltipOption => {
   return {
-    ...getTooltipBaseOption(containerRef),
+    ...getTooltipBaseOption(containerRef, rootElement),
     trigger: "item",
     formatter: (params) => {
       if (Array.isArray(params)) {

@@ -3,6 +3,7 @@ import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 
+import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
@@ -63,14 +64,19 @@ export const getTooltipPositionFn =
 
 export const getTooltipBaseOption = (
   containerRef: React.RefObject<HTMLDivElement>,
+  rootElement: HTMLDivElement,
 ) => {
   return {
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
-      let container = document.querySelector(
-        ".echarts-tooltip-container",
-      ) as HTMLDivElement;
+      let container = rootElement
+        ? rootElement.querySelector(
+            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} .echarts-tooltip-container`,
+          )
+        : (document.querySelector(
+            ".echarts-tooltip-container",
+          ) as HTMLDivElement);
 
       if (!container) {
         container = document.createElement("div");
@@ -85,7 +91,13 @@ export const getTooltipBaseOption = (
           "calc(var(--mb-overlay-z-index) + 1)",
         );
 
-        document.body.append(container);
+        if (rootElement) {
+          rootElement
+            .querySelector(`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`)
+            .append(container);
+        } else {
+          document.body.append(container);
+        }
       }
 
       return container;

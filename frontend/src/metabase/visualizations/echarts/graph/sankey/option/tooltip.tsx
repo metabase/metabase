@@ -91,9 +91,10 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
 export const getTooltipOption = (
   containerRef: React.RefObject<HTMLDivElement>,
   chartModel: SankeyChartModel,
+  rootElement: HTMLDivElement,
 ): TooltipOption => {
   return {
-    ...getTooltipBaseOption(containerRef),
+    ...getTooltipBaseOption(containerRef, rootElement),
     trigger: "item",
     triggerOn: "mousemove",
     formatter: (params) => {
