@@ -37,6 +37,8 @@ interface SdkIframeEmbedSetupContextType {
   // Dynamic parameters
   availableParameters: Parameter[];
   isLoadingParameters: boolean;
+  toggleParameterVisibility: (parameterId: string) => void;
+  isParameterHidden: (parameterId: string) => boolean;
 }
 
 const SdkIframeEmbedSetupContext =
@@ -130,6 +132,41 @@ export const SdkIframeEmbedSetupProvider = ({
     });
   };
 
+  // Parameter visibility management (only for dashboards)
+  const toggleParameterVisibility = (parameterId: string) => {
+    if (
+      options.selectedType !== "dashboard" ||
+      !("hiddenParameters" in settings)
+    ) {
+      return; // Only dashboards support hidden parameters
+    }
+
+    const currentHidden = settings.hiddenParameters || [];
+    const isCurrentlyHidden = currentHidden.includes(parameterId);
+
+    if (isCurrentlyHidden) {
+      // Remove from hidden list (show parameter)
+      updateSettings({
+        hiddenParameters: currentHidden.filter((id) => id !== parameterId),
+      });
+    } else {
+      // Add to hidden list (hide parameter)
+      updateSettings({
+        hiddenParameters: [...currentHidden, parameterId],
+      });
+    }
+  };
+
+  const isParameterHidden = (parameterId: string) => {
+    if (
+      options.selectedType !== "dashboard" ||
+      !("hiddenParameters" in settings)
+    ) {
+      return false; // Questions don't support hidden parameters
+    }
+    return (settings.hiddenParameters || []).includes(parameterId);
+  };
+
   const canGoNext = !(
     currentStep === "select-entity" &&
     !options.settings.dashboardId &&
@@ -155,6 +192,8 @@ export const SdkIframeEmbedSetupProvider = ({
     addRecentQuestion,
     availableParameters,
     isLoadingParameters,
+    toggleParameterVisibility,
+    isParameterHidden,
   };
 
   return (
