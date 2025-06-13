@@ -37,9 +37,7 @@ To create an alert:
 
 ## Send a one-time alert 
 
-When setting up an alert, if you select the option to **Only send the alert once**. Metabase will send a single alert, then delete itself. Useful for things like letting you know when you reach a one-time milestone.
-
-If you want to send the alert a second time, you'll have to create a new alert.
+When setting up an alert, if you select the option to **Only send the alert once**, Metabase will send that alert once, then delete itself, never to alert anyone ever again. These "disposable" alerts are handy for things like letting you know when you reach a one-time milestone.
 
 ## Testing alerts
 
