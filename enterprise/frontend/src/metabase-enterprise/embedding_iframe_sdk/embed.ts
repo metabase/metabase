@@ -31,6 +31,10 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "initialSqlParameters",
   "hiddenParameters",
   "isDrillThroughEnabled",
+  "entityTypes",
+  "initialCollection",
+  "isSaveEnabled",
+  "targetCollection",
 ] as const satisfies SdkIframeEmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
