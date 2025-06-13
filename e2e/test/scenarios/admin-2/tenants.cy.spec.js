@@ -1,3 +1,5 @@
+import * as jose from "jose";
+
 const {
   WRITABLE_DB_ID,
   SAMPLE_DB_ID,
@@ -128,5 +130,49 @@ describe("Tenants - management", () => {
     );
     cy.findByPlaceholderText("Pick a user attribute").click();
     H.popover().findByText("@tenant.name").should("be.visible");
+  });
+});
+
+describe("tenant users", () => {
+  const JWT_SECRET =
+    "0000000000000000000000000000000000000000000000000000000000000000";
+
+  const TENANT = {
+    name: "Birds",
+    slug: "birds",
+  };
+
+  const TENANT_USER = {
+    first_name: "tenant",
+    last_name: "user",
+    email: "tenant.user@email.com",
+    tenant: TENANT.slug,
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.request("PUT", "/api/setting", {
+      "jwt-attribute-email": "email",
+      "jwt-attribute-firstname": "first_name",
+      "jwt-attribute-lastname": "last_name",
+      "jwt-enabled": true,
+      "jwt-identity-provider-uri": null,
+      "jwt-shared-secret": JWT_SECRET,
+      "jwt-user-provisioning-enabled?": true,
+    });
+
+    cy.request("POST", "/api/ee/tenants", TENANT);
+  });
+
+  it("should accept a tenant when provisioning a user via JWT", () => {
+    new jose.SignJWT(TENANT_USER)
+      .setProtectedHeader({ alg: "HS256" })
+      .sign(new TextEncoder().encode(JWT_SECRET))
+      .then((key) => {
+        cy.log(key);
+        cy.visit(`/auth/sso?return_to=/&jwt=${key}`);
+      });
   });
 });
