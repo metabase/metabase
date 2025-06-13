@@ -81,11 +81,9 @@ export const TableSection = ({ params, table }: Props) => {
             wrap="nowrap"
           >
             <Group align="center" gap="md" h="100%" wrap="nowrap">
-              <Text
-                flex="0 0 auto"
-                fw="bold"
-                size="sm"
-              >{t`Field sorting`}</Text>
+              {!isSorting && (
+                <Text flex="0 0 auto" fw="bold" size="sm">{t`Fields`}</Text>
+              )}
 
               {isSorting && (
                 <FieldOrderPicker
