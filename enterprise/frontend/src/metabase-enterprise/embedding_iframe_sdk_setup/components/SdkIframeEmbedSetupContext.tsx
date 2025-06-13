@@ -3,7 +3,6 @@ import { type ReactNode, createContext, useContext, useState } from "react";
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import { SDK_IFRAME_EMBED_STEPS } from "../constants";
 import type { EmbedPreviewOptions, Step } from "../types";
 
 interface SdkIframeEmbedSetupContextType {
@@ -58,16 +57,32 @@ export const SdkIframeEmbedSetupProvider = ({
   };
 
   const handleNext = () => {
-    const currentIndex = SDK_IFRAME_EMBED_STEPS.indexOf(currentStep);
-    if (currentIndex < SDK_IFRAME_EMBED_STEPS.length - 1) {
-      setCurrentStep(SDK_IFRAME_EMBED_STEPS[currentIndex + 1]);
+    if (currentStep === "select-embed-type") {
+      // Skip select-entity for exploration
+      if (options.selectedType === "exploration") {
+        setCurrentStep("configure");
+      } else {
+        setCurrentStep("select-entity");
+      }
+    } else if (currentStep === "select-entity") {
+      setCurrentStep("configure");
+    } else if (currentStep === "configure") {
+      setCurrentStep("get-code");
     }
   };
 
   const handleBack = () => {
-    const currentIndex = SDK_IFRAME_EMBED_STEPS.indexOf(currentStep);
-    if (currentIndex > 0) {
-      setCurrentStep(SDK_IFRAME_EMBED_STEPS[currentIndex - 1]);
+    if (currentStep === "select-entity") {
+      setCurrentStep("select-embed-type");
+    } else if (currentStep === "configure") {
+      // Skip select-entity for exploration
+      if (options.selectedType === "exploration") {
+        setCurrentStep("select-embed-type");
+      } else {
+        setCurrentStep("select-entity");
+      }
+    } else if (currentStep === "get-code") {
+      setCurrentStep("configure");
     }
   };
 

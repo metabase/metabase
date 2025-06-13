@@ -8,14 +8,13 @@ import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 
 import type {
   SdkIframeEmbedMessage,
+  SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
   SdkIframeEmbedTagSettings,
 } from "./types/embed";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
-
-type EmbedSettingKey = keyof SdkIframeEmbedSettings;
 
 const ALLOWED_EMBED_SETTING_KEYS = [
   "apiKey",
@@ -26,7 +25,11 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "theme",
   "locale",
   "preferredAuthMethod",
-] as const satisfies EmbedSettingKey[];
+  "withTitle",
+  "withDownloads",
+  "initialParameters",
+  "hiddenParameters",
+] as const satisfies SdkIframeEmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
 
