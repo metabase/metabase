@@ -24,7 +24,8 @@
                            :db_id database-id
                            :active true
                            :visibility_type nil
-                           {:limit all-tables-limit})
+                           {:order-by [[:view_count :desc]]
+                            :limit    all-tables-limit})
          tables (filter mi/can-read? tables)
          tables (t2/hydrate tables :fields)]
      (mapv (fn [{:keys [fields] :as table}]
