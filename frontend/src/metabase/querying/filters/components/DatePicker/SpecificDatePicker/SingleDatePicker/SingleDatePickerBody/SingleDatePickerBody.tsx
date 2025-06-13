@@ -1,7 +1,8 @@
+import type { DateStringValue } from "@mantine/dates";
+import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { DateValue } from "metabase/ui";
 import { DateInput, DatePicker, Stack, TimeInput } from "metabase/ui";
 
 import { setDatePart, setTimePart } from "../../utils";
@@ -19,8 +20,8 @@ export function SingleDatePickerBody({
 }: SingleDatePickerBodyProps) {
   const [date, setDate] = useState<Date>(value);
 
-  const handleDateChange = (newDate: DateValue) => {
-    newDate && onChange(setDatePart(value, new Date(newDate)));
+  const handleDateChange = (newDate: DateStringValue | null) => {
+    newDate && onChange(setDatePart(value, dayjs(newDate).toDate()));
   };
 
   const handleTimeChange = (newTime: Date | null) => {

@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -34,8 +35,8 @@ export function DateRangePickerBody({
     const [newStartDate, newEndDate] = newDateRange;
     if (newStartDate && newEndDate) {
       onChange([
-        setDatePart(startDate, new Date(newStartDate)),
-        setDatePart(endDate, new Date(newEndDate)),
+        setDatePart(startDate, dayjs(newStartDate).toDate()),
+        setDatePart(endDate, dayjs(newEndDate).toDate()),
       ]);
       setInProgressDateRange(null);
     } else {
@@ -67,7 +68,7 @@ export function DateRangePickerBody({
           value={startDate}
           popoverProps={{ opened: false }}
           aria-label={t`Start date`}
-          onChange={(val) => val && handleStartDateChange(new Date(val))}
+          onChange={(val) => val && handleStartDateChange(dayjs(val).toDate())}
         />
         <Text c="text-light">{t`and`}</Text>
         <DateInput
@@ -75,7 +76,7 @@ export function DateRangePickerBody({
           value={endDate}
           popoverProps={{ opened: false }}
           aria-label={t`End date`}
-          onChange={(val) => val && handleEndDateChange(new Date(val))}
+          onChange={(val) => val && handleEndDateChange(dayjs(val).toDate())}
         />
       </Group>
       {hasTime && (
