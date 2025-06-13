@@ -2,6 +2,7 @@
   "/api/notification endpoints"
   (:require
    [clojure.data :refer [diff]]
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -19,6 +20,7 @@
    [metabase.notification.payload.impl.system-event :as notification.system-event]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -254,10 +256,23 @@
                                                         {:status-code 400})))
                                       (catch Throwable e
                                         (throw (ex-info (tru "Failed to render template: {0}" (ex-message e))
-                                                        {:status-code 400}))))]
+                                                        {:status-code 400}))))
 
-    {:context  sample-notification-context
-     :rendered rendered}))
+        block-kit-builder-url
+        (when (= :channel/slack (:channel_type template))
+          (str "https://app.slack.com/block-kit-builder"
+               "/" (channel.settings/slack-team-id)
+               ;; note: slack seems to normalize urls when loading the document, which will usually be fine,
+               ;; but if you have embedded links with encoding (e.g http://foo.com/hello%20world)
+               ;; then they might not be encoded correctly in the preview.
+               ;; This should not affect sending, so I think its probably acceptable in practice.
+               "#" (-> (json/encode (select-keys rendered [:blocks]))
+                       (java.net.URLEncoder/encode "utf-8")
+                       (str/replace "+" "%20"))))]
+    (u/remove-nils
+     {:context                     sample-notification-context
+      :preview_url                 block-kit-builder-url
+      :rendered                    rendered})))
 
 (defn- notify-notification-updates!
   "Send notification emails based on changes between updated and existing notification"
