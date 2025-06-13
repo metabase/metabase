@@ -1,5 +1,6 @@
 ---
 title: Notification permissions
+summary: Learn who can create and edit alerts and dashboard subscriptions, and what data recipients can see in their notifications.
 ---
 
 # Notification permissions
