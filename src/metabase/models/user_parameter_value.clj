@@ -3,6 +3,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.models.setting :as setting]
    [metabase.util.grouper :as grouper]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -36,18 +37,19 @@
 (defn batched-upsert!
   "Delete param with nil value and upsert the rest."
   [parameters]
-  (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
-    (t2/with-transaction [_conn]
-      (doseq [batch (partition-all 1000 parameters)]
-        (t2/delete! :model/UserParameterValue
-                    {:where (into [:or] (for [p batch]
-                                          [:and
-                                           [:= :user_id (:user_id p)]
-                                           [:= :dashboard_id (:dashboard_id p)]
-                                           [:= :parameter_id (:parameter_id p)]]))}))
-      (doseq [batch (partition-all 1000 to-insert)]
-        (t2/insert! :model/UserParameterValue
-                    (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch))))))
+  (when (setting/get :dashboards-save-last-used-parameters)
+    (let [to-insert (remove #(and (nil? (:value %)) (nil? (:default %))) parameters)]
+      (t2/with-transaction [_conn]
+        (doseq [batch (partition-all 1000 parameters)]
+          (t2/delete! :model/UserParameterValue
+                      {:where (into [:or] (for [p batch]
+                                            [:and
+                                             [:= :user_id (:user_id p)]
+                                             [:= :dashboard_id (:dashboard_id p)]
+                                             [:= :parameter_id (:parameter_id p)]]))}))
+        (doseq [batch (partition-all 1000 to-insert)]
+          (t2/insert! :model/UserParameterValue
+                      (map #(select-keys % [:user_id :dashboard_id :parameter_id :value]) batch)))))))
 
 (defonce ^:private user-parameter-value-queue
   (delay (grouper/start!
@@ -73,16 +75,18 @@
   [user-id         :- ms/PositiveInt
    dashboard-id    :- ms/PositiveInt
    parameters      :- [:sequential :map]]
-  (grouper/submit! @user-parameter-value-queue {:user-id      user-id
-                                                :dashboard-id dashboard-id
-                                                :parameters   parameters}))
+  (when (setting/get :dashboards-save-last-used-parameters)
+    (grouper/submit! @user-parameter-value-queue {:user-id user-id
+                                                  :dashboard-id dashboard-id
+                                                  :parameters
+                                                  parameters})))
 
 ;; hydration
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
   "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
-  (if-let [user-id api/*current-user-id*]
+  (if-let [user-id (and (setting/get :dashboards-save-last-used-parameters) api/*current-user-id*)]
     (mi/instances-with-hydrated-data
      dashboards
      :last_used_param_values
