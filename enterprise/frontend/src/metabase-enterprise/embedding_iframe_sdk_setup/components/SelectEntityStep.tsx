@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
@@ -36,32 +37,6 @@ export const SelectEntityStep = () => {
     }
 
     setIsPickerOpen(false);
-  };
-
-  const getTitle = () => {
-    switch (options.selectedType) {
-      case "dashboard":
-        return t`Select a dashboard to embed`;
-      case "chart":
-        return t`Select a chart to embed`;
-      case "exploration":
-        return t`Exploration embed setup`;
-      default:
-        return t`Select content to embed`;
-    }
-  };
-
-  const getDescription = () => {
-    switch (options.selectedType) {
-      case "dashboard":
-        return t`Choose from your recently visited dashboards`;
-      case "chart":
-        return t`Choose from your recently visited questions`;
-      case "exploration":
-        return null;
-      default:
-        return t`Choose your content to embed`;
-    }
   };
 
   const renderPickerModal = () => {
@@ -117,7 +92,7 @@ export const SelectEntityStep = () => {
       <Card p="md" mb="md">
         <Group justify="space-between" mb="md">
           <Text size="lg" fw="bold">
-            {getTitle()}
+            {getEmbedTitle(options.selectedType)}
           </Text>
           {options.selectedType !== "exploration" && (
             <ActionIcon
@@ -136,7 +111,7 @@ export const SelectEntityStep = () => {
         </Group>
 
         <Text c="text-medium" mb="md">
-          {getDescription()}
+          {getEmbedDescription(options.selectedType)}
         </Text>
       </Card>
 
@@ -144,3 +119,17 @@ export const SelectEntityStep = () => {
     </>
   );
 };
+
+const getEmbedTitle = (selectedType: string) =>
+  match(selectedType)
+    .with("dashboard", () => t`Select a dashboard to embed`)
+    .with("chart", () => t`Select a chart to embed`)
+    .with("exploration", () => t`Exploration embed setup`)
+    .otherwise(() => t`Select content to embed`);
+
+const getEmbedDescription = (selectedType: string) =>
+  match(selectedType)
+    .with("dashboard", () => t`Choose from your recently visited dashboards`)
+    .with("chart", () => t`Choose from your recently visited questions`)
+    .with("exploration", () => null)
+    .otherwise(() => t`Choose your content to embed`);
