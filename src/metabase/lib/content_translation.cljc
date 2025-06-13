@@ -1,5 +1,7 @@
 (ns metabase.lib.content-translation
   (:require
+   [clojure.string :as str]
+   [metabase.content-translation.models :as ct]
    [metabase.util.log :as log]))
 
 (def content-translations
@@ -7,10 +9,28 @@
   (atom {}))
 
 (defn- get-content-translations
-  "Get the current content translations. This is a map of user-generated strings to their translations in the user's current locale."
+  "Get the current content translation dictionary from an atom that is set in
+  the FE. This dictionary is a map of user-generated strings to their
+  translations in the user's current locale."
   []
   (log/info "In content_translation.cljc, content translations =" (pr-str @content-translations))
   @content-translations)
+
+; (defn- get-content-translation-from-table
+;   "Get the current content translation dictionary directly from the app db table."
+;   [msgid]
+;   (log/info "translation from table-based func:" (get (ct/get-translations "de") (str/trim msgid) msgid))
+;   (get (ct/get-translations) msgid msgid))
+
+(defn- get-content-translation-from-table
+  "Get the current content translation based on msgid from the app db table"
+  [msgid]
+  (let [locale "de" ; TODO: Use actual current locale
+        translations (ct/get-translations locale)
+        translation (some #(when (= (:msgid %) (str/trim msgid)) %) translations)]
+    (if translation
+      (:msgstr translation)
+      msgid)))
 
 ;; TODO: Refactor this away if possible
 ;; I don't understand why both the clj and cljs forms are needed
@@ -26,18 +46,16 @@
 
 (defn get-content-translation
   "Get content translation of the string, if one exists. Otherwise, return the string untranslated."
-  [s]
-  ;; TODO: For testing
-  (if (= s "Created At")
-    "Erstellt Am"
-    (get-field-value (get-content-translations) s s)))
+  [msgid]
+  (get-field-value (get-content-translations) msgid msgid))
 
 (defn set-content-translations
   "Set the current content-translation dictionary."
-  [m]
-  (log/info "In content_translation.cljc, setting content translations to" (pr-str m))
-  (reset! content-translations m)
+  [dict]
+  (log/info "In content_translation.cljc, setting content translations to" (pr-str dict))
+  (reset! content-translations dict)
   (log/info "get-content-translations= " (pr-str (get-content-translations)))
+  (log/info "type of 'Created At'" (type "Created At"))
   (log/info (str "WHOA translation of Created At: " (get-field-value (get-content-translations) "Created At" "default value"))))
 
 (defn translate-display-names-in-column-metadata
@@ -46,7 +64,7 @@
   (log/info "display name is" (get column-metadata :display_name))
   (log/info "type of display name is" (type (get column-metadata :display_name)))
   (log/info "translation is"
-            (get-content-translation (get column-metadata :display_name)))
+            (get-content-translation-from-table (get column-metadata :display_name)))
   (log/info "type of translation is"
-            (type (get-content-translation (get column-metadata :display_name))))
-  (assoc column-metadata :display_name (get-content-translation (get column-metadata :display_name))))
+            (type (get-content-translation-from-table (get column-metadata :display_name))))
+  (assoc column-metadata :display_name (get-content-translation-from-table (get column-metadata :display_name))))
