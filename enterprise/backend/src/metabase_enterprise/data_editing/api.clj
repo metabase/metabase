@@ -29,63 +29,48 @@
   (when (require-authz?)
     (api/check-superuser)))
 
+(declare execute!*)
+
 (api.macros/defendpoint :post "/table/:table-id"
   "Insert row(s) into the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows scope]} :- [:map
-                            [:rows [:sequential {:min 1} :map]]
-                            ;; TODO make this non-optional in the future
-                            [:scope {:optional true} ::types/scope.raw]]]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
-        ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
-        scope (or scope {:table-id table-id})]
-    {:created-rows (map :row (:outputs (actions/perform-action! :data-grid.row/create scope rows)))}))
+  (let [scope {:table-id table-id}]
+    {:created-rows (map :row (:outputs #p (execute!* "data-grid.row/create" scope {} rows)))}))
 
 (api.macros/defendpoint :put "/table/:table-id"
   "Update row(s) within the given table."
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows pks updates scope]}
+   {:keys [rows pks updates]}
    :- [:multi {:dispatch #(cond
                             (:rows %) :mixed-updates
                             (:pks %)  :uniform-updates)}
-       [:mixed-updates [:map
-                        [:rows [:sequential {:min 1} :map]]
-                        ;; TODO make :scope required
-                        [:scope {:optional true} ::types/scope.raw]]]
+       [:mixed-updates [:map [:rows [:sequential {:min 1} :map]]]]
        [:uniform-updates [:map
                           [:pks [:sequential {:min 1} :map]]
-                          [:updates :map]
-                          ;; TODO make :scope required
-                          [:scope {:optional true} ::types/scope.raw]]]]]
+                          [:updates :map]]]]]
   (check-permissions)
   (if (empty? (or rows pks))
     {:updated []}
-    (let [;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
-          ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
-          scope   (or scope {:table-id table-id})
+    (let [scope   {:table-id table-id}
           rows    (or rows
                       ;; For now, it's just a shim, because we haven't implemented an efficient bulk update action yet.
                       ;; This is a dumb shim; we're not checking that the pk maps are really (just) the pks.
                       (map #(merge % updates) pks))]
-      {:updated (map :row (:outputs (actions/perform-action! :data-grid.row/update scope rows)))})))
+      {:updated (map :row (:outputs (execute!* "data-grid.row/update" scope nil rows)))})))
 
 ;; This is a POST instead of DELETE as not all web proxies pass on the body of DELETE requests.
 (api.macros/defendpoint :post "/table/:table-id/delete"
   "Delete row(s) from the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]
    {}
-   {:keys [rows scope]} :- [:map
-                            [:rows [:sequential {:min 1} :map]]
-                            ;; make this non-optional in the future
-                            [:scope {:optional true} ::types/scope.raw]]]
+   {:keys [rows]} :- [:map [:rows [:sequential {:min 1} :map]]]]
   (check-permissions)
-  ;; This is a bit unfortunate... we ignore the table-id in the path when called with a custom scope...
-  ;; The solution is to stop accepting custom scope once we migrate the data grid to action/execute
-  (let [scope (or scope {:table-id table-id})]
-    (actions/perform-action! :data-grid.row/delete scope rows)
+  (let [scope {:table-id table-id}]
+    (execute!* "data-grid.row/delete" scope nil rows)
     {:success true}))
 
 ;; might later be changed, or made driver specific, we might later drop the requirement depending on admin trust

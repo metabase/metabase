@@ -66,7 +66,7 @@
 
 (mu/defmethod actions/default-mapping :data-grid.row/common
   [_ scope]
-  (assoc (select-keys scope [:table-id]) :row ::root))
+  (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.data-editing.api/root))
 
 (mu/defmethod actions/default-mapping :data-grid.row/delete
   [_ scope]
