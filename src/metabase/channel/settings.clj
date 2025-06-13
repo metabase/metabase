@@ -3,7 +3,9 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
@@ -137,7 +139,7 @@
   :audit      :getter
   :setter     (fn [new-value]
                 ;; Validate based on chars in https://www.ietf.org/rfc/rfc5322.txt via https://docs.aws.amazon.com/ses/latest/dg/send-email-concepts-email-format.html
-                (when (and new-value (not (re-matches #"^[\w\d !#$%&'*+-/=?^_`{|}~]*$" new-value)))
+                (when (and new-value (re-matches #".*[()<>\[\]:;@/\\,\.\"].*" new-value))
                   (throw (ex-info (tru "Invalid special character included.") {:status-code 400})))
                 (setting/set-value-of-type! :string :email-from-name new-value)))
 

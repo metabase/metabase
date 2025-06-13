@@ -23,12 +23,20 @@
       (doseq [valid-name [nil
                           "Test Name"
                           "Test-Name"
-                          "Test123!#$%&'*+-/=?^`{|}~"]]
-        (channel.settings/email-from-name! valid-name)
-        (is (= (channel.settings/email-from-name) valid-name))))
+                          "Test 123 !#$%&'*+-=?^`~"
+                          "\uD83D\uDC7E"
+                          "بسمة"]]
+        (testing valid-name
+          (channel.settings/email-from-name! valid-name)
+          (is (= (channel.settings/email-from-name) valid-name)))))
     (testing "invalid names"
-      (doseq [invalid-name ["Name : Invalid"
+      (doseq [invalid-name ["Bad :"
                             ":"
-                            "Name \" Invalid"]]
-        (is (thrown-with-msg? ExceptionInfo #"Invalid special character included."
-                              (channel.settings/email-from-name! invalid-name)))))))
+                            "Bad \""
+                            "Bad ("
+                            "Bad )"
+                            "Bad ("
+                            "Bad @"]]
+        (testing invalid-name
+          (is (thrown-with-msg? ExceptionInfo #"Invalid special character included."
+                                (channel.settings/email-from-name! invalid-name))))))))
