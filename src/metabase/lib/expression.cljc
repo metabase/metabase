@@ -22,6 +22,7 @@
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -59,6 +60,11 @@
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
    (or (maybe-resolve-expression query stage-number expression-name)
+       (log/warnf "Expression %s does not in stage %d" (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
+       (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+         (u/prog1 (resolve-expression query previous-stage-number expression-name)
+           (when <>
+             (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query

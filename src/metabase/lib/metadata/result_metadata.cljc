@@ -12,6 +12,7 @@
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.aggregation :as lib.aggregation]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
@@ -325,38 +326,17 @@
   (for [col (lib.field.util/add-deduplicated-names cols)]
     (assoc col :name (:lib/deduplicated-name col))))
 
-(def ^:private preserved-keys
-  "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
-  metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
-  can be merged on top."
-  ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
-  [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type])
-
-(defn- combine-metadata
-  "Blend saved metadata from previous runs into fresh metadata from an actual run of the query.
-
-  Ensure that saved metadata from datasets or source queries can remain in the results metadata. We always recompute
-  metadata in general, so need to blend the saved metadata on top of the computed metadata. First argument should be
-  the metadata from a run from the query, and `pre-existing` should be the metadata from the database we wish to
-  ensure survives."
-  [fresh pre-existing]
-  (let [by-name (m/index-by :name pre-existing)]
-    (for [{:keys [source] :as col} fresh]
-      (if-let [existing (and (not= :aggregation source)
-                             (get by-name (:name col)))]
-        (merge col (select-keys existing preserved-keys))
-        col))))
-
+;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
+;;; well as [[metabase.lib.field/previous-stage-metadata]] -- find a way to deduplicate these
 (mu/defn- merge-model-metadata :- [:sequential ::kebab-cased-map]
   "Merge in snake-cased `:metadata/model-metadata`."
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
-  (let [model-metadata (map (fn [col]
-                              (update-keys col u/->kebab-case-en))
-                            (get-in query [:info :metadata/model-metadata]))]
+  (let [model-metadata (some->> (get-in query [:info :metadata/model-metadata])
+                                (lib.card/->card-metadata-columns query))]
     (cond-> cols
       (seq model-metadata)
-      (combine-metadata model-metadata))))
+      (lib.card/merge-model-metadata model-metadata))))
 
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata.

@@ -101,11 +101,14 @@
      source-query-has-source-metadata? :source-metadata
      :as                               source-query} :source-query
     :keys                                            [source-metadata]}]
-  (and source-query
-       (or (not source-metadata)
-           (legacy-source-metadata-without-field-ref? source-metadata))
-       (or (not native-source-query?)
-           source-query-has-source-metadata?)))
+  (let [source-metadata source-metadata]
+    (and source-query
+         (let [valid-source-metadata? (and source-metadata
+                                           (not (legacy-source-metadata-without-field-ref? source-metadata)))]
+           (not valid-source-metadata?))
+         (or (not native-source-query?)
+             source-query-has-source-metadata?
+             (:qp/stage-is-from-source-card source-query)))))
 
 (defn- maybe-add-source-metadata [x]
   (if (and (map? x) (should-add-source-metadata? x))

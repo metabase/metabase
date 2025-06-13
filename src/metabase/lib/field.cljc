@@ -88,6 +88,29 @@
              {:lib/original-name ((some-fn :lib/original-name :name) column)
               :lib/source        :source/previous-stage})))))))
 
+;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
+;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
+;;;
+;;; TODO (Cam 6/13/25) -- not sure if this should ONLY be done if the previous stage was from a model or not/only be
+;;; done for the very first stage. It seems like the only failing tests this fixed were for ones where there was a
+;;; model at SOME prior stage (not necessarily the one IMMEDIATELY prior). The logic
+;;; in [[metabase.lib.card/source-model-cols]] effectively only looks at the first stage. I guess that runs into
+;;; issues when we're running in the QP and the source card stage gets expanded out to the underlying stages however
+(defn- previous-stage-metadata
+  "Propagate stuff like display-name from the previous stage metadata if it exists."
+  [query stage-number join-alias field-id]
+  (when-let [previous-stage (lib.util/previous-stage query stage-number)]
+    (when-let [cols (get-in previous-stage [:lib/stage-metadata :columns])]
+      (when-let [col (m/find-first (fn [col]
+                                     (and (= (:id col) field-id)
+                                          (= (lib.join.util/current-join-alias col)
+                                             join-alias)))
+                                   cols)]
+        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])]
+          (merge
+           col
+           (m/filter-keys some? (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias field-id))))))))
+
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
@@ -139,18 +162,9 @@
                     {:options external-namespaced-options})
                   (when (integer? id-or-name)
                     (merge
-                     (or (lib.equality/resolve-field-id query stage-number id-or-name)
+                     (or (m/filter-keys some? (lib.equality/resolve-field-id query stage-number id-or-name))
                          {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                     ;; propagate stuff like display-name from the previous stage metadata if it exists.
-                     (when-let [previous-stage (lib.util/previous-stage query stage-number)]
-                       (when-let [previous-stage-cols (or (:metabase.lib.stage/cached-metadata previous-stage)
-                                                          (get-in previous-stage [:lib/stage-metadata :columns]))]
-                         (when-let [previous-stage-col (m/find-first (fn [col]
-                                                                       (and (= (:id col) id-or-name)
-                                                                            (= (lib.join.util/current-join-alias col)
-                                                                               join-alias)))
-                                                                     previous-stage-cols)]
-                           (select-keys previous-stage-col [:display-name]))))))
+                     (previous-stage-metadata query stage-number join-alias id-or-name)))
                   (when (string? id-or-name)
                     (let [resolved (or (resolve-column-name query stage-number id-or-name)
                                        {:lib/type :metadata/column, :name (str id-or-name)})]
@@ -160,8 +174,8 @@
                       (if join-alias
                         (merge
                          {:lib/type :metadata/column, :name (str id-or-name)}
-                         (select-keys resolved [:id :semantic-type])) ; CRITICAL THAT WE INCLUDE ID!
-                        resolved))))]
+                         (u/select-non-nil-keys resolved [:id :semantic-type])) ; CRITICAL THAT WE INCLUDE ID!
+                        (m/filter-keys some? resolved)))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -251,10 +265,10 @@
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.schema.metadata/column
   [query stage-number field-ref]
-  (let [field-metadata (resolve-field-metadata query stage-number field-ref)
-        metadata       (extend-column-metadata-from-ref query stage-number field-metadata field-ref)]
-    (cond->> metadata
-      (:parent-id metadata) (add-parent-column-metadata query))))
+  (let [col (resolve-field-metadata query stage-number field-ref)
+        col (extend-column-metadata-from-ref query stage-number col field-ref)]
+    (cond->> col
+      (:parent-id col) (add-parent-column-metadata query))))
 
 (defn- field-nesting-path
   [metadata-providerable {:keys [display-name parent-id] :as _field-metadata}]
@@ -385,10 +399,7 @@
     :long-display-name (lib.metadata.calculation/display-name query stage-number field-metadata :long)}
    ;; Include description and fingerprint if they're present on the column. Only proper fields or columns from a model
    ;; have these, not aggregations or expressions.
-   (when-let [description (:description field-metadata)]
-     {:description description})
-   (when-let [fingerprint (:fingerprint field-metadata)]
-     {:fingerprint fingerprint})
+   (u/select-non-nil-keys field-metadata [:description :fingerprint])
    ;; if this column comes from a source Card (Saved Question/Model/etc.) use the name of the Card as the 'table' name
    ;; rather than the ACTUAL table name.
    (when (= (:lib/source field-metadata) :source/card)

@@ -6,7 +6,6 @@
     :as ee.qp.perms]
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]

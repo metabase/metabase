@@ -2817,7 +2817,7 @@
               (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
               (is (= [nil nil nil 7 18760 69540] (last rows))))))))))
 
-(deftest ^:parallel dataset-card
+(deftest ^:parallel model-card-test
   (testing "Setting a question to a dataset makes it viz type table"
     (mt/with-temp [:model/Card card {:display       :bar
                                      :dataset_query (mbql-count-query)}]
@@ -2825,7 +2825,8 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                     (assoc card :type :model :type "model")))))))
 
-(deftest dataset-card-2
+;;; see also [[metabase.lib.card-test/preserve-edited-metadata-test]], a pure-Lib version of this test.
+(deftest model-card-test-2
   (testing "Cards preserve their edited metadata"
     (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
             (only-user-edits [col] (select-keys col [:name :description :display_name :semantic_type]))
@@ -2843,55 +2844,60 @@
                                              refine-type
                                              :base_type)
                                             cols)))]
-      (mt/with-temp [:model/Card mbql-ds {:dataset_query
-                                          {:database (mt/id)
-                                           :type     :query
-                                           :query    {:source-table (mt/id :venues)}}
-                                          :type :model}
-                     :model/Card mbql-nested {:dataset_query
+      (mt/with-temp [:model/Card mbql-model {:name "mbql-model" ; names are for debugging purposes
+                                             :dataset_query
+                                             {:database (mt/id)
+                                              :type     :query
+                                              :query    {:source-table (mt/id :venues)}}
+                                             :type :model}
+                     :model/Card mbql-nested {:name "mbql-nested"
+                                              :dataset_query
                                               {:database (mt/id)
                                                :type     :query
                                                :query    {:source-table
-                                                          (str "card__" (u/the-id mbql-ds))}}}
-                     :model/Card native-ds {:type :model
-                                            :dataset_query
-                                            {:database (mt/id)
-                                             :type :native
-                                             :native
-                                             {:query
-                                              "select * from venues"
-                                              :template-tags {}}}}
-                     :model/Card native-nested {:dataset_query
+                                                          (str "card__" (u/the-id mbql-model))}}}
+                     :model/Card native-model {:name "native-model"
+                                               :type :model
+                                               :dataset_query
+                                               {:database (mt/id)
+                                                :type :native
+                                                :native
+                                                {:query
+                                                 "select * from venues"
+                                                 :template-tags {}}}}
+                     :model/Card native-nested {:name "native-nested"
+                                                :dataset_query
                                                 {:database (mt/id)
                                                  :type :query
                                                  :query {:source-table
-                                                         (str "card__" (u/the-id native-ds))}}}]
-        (doseq [[_query-type card-id nested-id] [[:mbql
-                                                  (u/the-id mbql-ds) (u/the-id mbql-nested)]
-                                                 [:native
-                                                  (u/the-id native-ds) (u/the-id native-nested)]]]
-          (query! card-id) ;; populate metadata
-          (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
-                ;; simulate updating metadat with user changed stuff
-                user-edited (add-preserved metadata)]
-            (t2/update! :model/Card card-id {:result_metadata user-edited})
-            (testing "Saved metadata preserves user edits"
-              (is (= (map only-user-edits user-edited)
-                     (map only-user-edits (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
-            (testing "API response includes user edits"
-              (is (= (map only-user-edits user-edited)
-                     (->> (query! card-id)
-                          :data :results_metadata :columns
-                          (map only-user-edits)
-                          (map #(update % :semantic_type keyword))))))
-            (testing "Nested queries have metadata"
-              (is (= (map only-user-edits user-edited)
-                     (->> (query! nested-id)
-                          :data :results_metadata :columns
-                          (map only-user-edits)
-                          (map #(update % :semantic_type keyword))))))))))))
+                                                         (str "card__" (u/the-id native-model))}}}]
+        (doseq [[query-type card-id nested-id] [[:mbql
+                                                 (u/the-id mbql-model) (u/the-id mbql-nested)]
+                                                [:native
+                                                 (u/the-id native-model) (u/the-id native-nested)]]]
+          (testing query-type
+            (query! card-id)            ; populate metadata by running the query.
+            (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
+                  ;; simulate updating metadat with user changed stuff
+                  user-edited (add-preserved metadata)]
+              (t2/update! :model/Card card-id {:result_metadata user-edited})
+              (testing "Saved metadata preserves user edits"
+                (is (= (map only-user-edits user-edited)
+                       (map only-user-edits (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
+              (testing "API response includes user edits"
+                (is (= (map only-user-edits user-edited)
+                       (->> (query! card-id)
+                            :data :results_metadata :columns
+                            (map only-user-edits)
+                            (map #(update % :semantic_type keyword))))))
+              (testing "Nested queries have metadata"
+                (is (= (map only-user-edits user-edited)
+                       (->> (query! nested-id)
+                            :data :results_metadata :columns
+                            (map only-user-edits)
+                            (map #(update % :semantic_type keyword)))))))))))))
 
-(deftest dataset-card-3
+(deftest model-card-test-3
   (testing "Cards preserve edits to metadata when query changes"
     (let [query          (mt/mbql-query venues {:fields [$id $name]})
           modified-query (mt/mbql-query venues {:fields [$id $name $price]})
@@ -2943,7 +2949,7 @@
                             :result_metadata
                             (map :description))))))))))))
 
-(deftest dataset-card-4
+(deftest model-card-test-4
   (testing "Cards preserve edits to `visibility_type` (#22520)"
     (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query venues
                                                        {:fields [$id $name]

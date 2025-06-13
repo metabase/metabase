@@ -196,9 +196,9 @@
 (deftest ^:parallel nested-with-aggregations-at-both-levels-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (mt/dataset test-data
-      (doseq [dataset? [true false]]
+      (doseq [model? [true false]]
         (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
-                         (if dataset? "questions" "models"))
+                         (if model? "questions" "models"))
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [(mt/mbql-query products
                                                {:aggregation [[:aggregation-options
@@ -230,7 +230,7 @@
                                                                                 {:name "count"}]]
                                                                 :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
                                                                                      1 "q0awK8v8lIp1iW_ZhSS_E"}}}
-                                                    (when dataset?
+                                                    (when model?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 

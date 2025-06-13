@@ -9,11 +9,13 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]))
 
 (comment lib/keep-me)
 
@@ -64,6 +66,7 @@
     (testing (str "metadata = \n" (u/pprint-to-str metadata))
       (let [query {:lib/type     :mbql/query
                    :lib/metadata (lib.tu/mock-metadata-provider
+                                  meta/metadata-provider
                                   {:cards [metadata]})
                    :database     (meta/id)
                    :stages       [{:lib/type    :mbql.stage/mbql
@@ -279,3 +282,126 @@
   (is (lib.card/source-card-is-model? (lib.tu/query-with-source-model)))
   (is (not (lib.card/source-card-is-model? (lib.tu/query-with-source-card))))
   (is (not (lib.card/source-card-is-model? (lib/query meta/metadata-provider (meta/table-metadata :orders))))))
+
+;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+(deftest ^:parallel preserve-edited-metadata-test
+  (testing "Cards preserve their edited metadata"
+    (doseq [[result-metadata-style result-metadata-fn] {:mlv2-returned-columns lib.metadata.calculation/returned-columns
+                                                        :mlv2-expected-columns lib.metadata.result-metadata/expected-cols
+                                                        :legacy-snake-case-qp  (mu/fn :- [:sequential :map]
+                                                                                 [query]
+                                                                                 (for [col (lib.metadata.result-metadata/expected-cols query)]
+                                                                                   (-> col
+                                                                                       (update-keys (fn [k]
+                                                                                                      (cond-> k
+                                                                                                        (simple-keyword? k) u/->snake_case_en)))
+                                                                                       (dissoc :lib/type))))}]
+      (testing (str "result metadata style = " result-metadata-style)
+        (letfn [(only-user-edits [col] (select-keys
+                                        (update-keys col u/->kebab-case-en)
+                                        [:name :description :display-name :semantic-type]))
+                (refine-type [base-type] (condp #(isa? %2 %1) base-type
+                                           :type/Integer :type/Quantity
+                                           :type/Float   :type/Cost
+                                           :type/Text    :type/Name
+                                           base-type))
+                (add-preserved [cols] (map merge
+                                           cols
+                                           (repeat {:description  "user description"
+                                                    (if (= result-metadata-style :legacy-snake-case-qp)
+                                                      :display_name
+                                                      :display-name)
+                                                    "user display name"})
+                                           (map (if (= result-metadata-style :legacy-snake-case-qp)
+                                                  (comp
+                                                   (fn [x] {:semantic_type x})
+                                                   refine-type
+                                                   :base_type)
+                                                  (comp
+                                                   (fn [x] {:semantic-type x})
+                                                   refine-type
+                                                   :base-type))
+                                                cols)))]
+          (let [mp (as-> meta/metadata-provider mp
+                     (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [(let [query {:database (meta/id)
+                                            :type     :query
+                                            :query    {:source-table (meta/id :venues)}}]
+                                 {:id              1
+                                  :database-id     (meta/id)
+                                  :name            "mbql-model"
+                                  :dataset-query   query
+                                  :result-metadata (result-metadata-fn (lib/query mp query))
+                                  :type            :model})]})
+                     (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [(let [query {:database (meta/id)
+                                            :type     :query
+                                            :query    {:source-table
+                                                       "card__1"}}]
+                                 {:id              2
+                                  :database-id     (meta/id)
+                                  :name            "mbql-nested"
+                                  :dataset-query   query
+                                  :result-metadata (result-metadata-fn (lib/query mp query))})
+                               (let [query {:database (meta/id)
+                                            :type     :native
+                                            :native   {:query "select * from venues"}}]
+                                 {:id              3
+                                  :database-id     (meta/id)
+                                  :name            "native-model"
+                                  :type            :model
+                                  :dataset-query   query
+                                  :result-metadata (for [col (result-metadata-fn (lib/query mp (meta/table-metadata :venues)))]
+                                                     (dissoc col :id :table-id :table_id))})]})
+                     (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [(let [query {:database (meta/id)
+                                            :type     :query
+                                            :query    {:source-table "card__3"}}]
+                                 {:id              4
+                                  :database-id     (meta/id)
+                                  :name            "native-nested"
+                                  :dataset-query   query
+                                  :result-metadata (result-metadata-fn (lib/query mp query))})]}))]
+            (doseq [[query-type card-id nested-id] [[:mbql   1 2]
+                                                    [:native 3 4]]]
+              (testing (str "query type = " query-type " Model card id = " card-id)
+                (let [metadata (:result-metadata (lib.metadata/card mp card-id))
+                      ;; simulate updating metadat with user changed stuff
+                      user-edited (add-preserved metadata)
+                      edited-mp   (lib.tu/merged-mock-metadata-provider
+                                   mp
+                                   {:cards [{:id              card-id
+                                             :result-metadata user-edited}]})]
+                  (testing (str "user edits are preserved in card id = " card-id)
+                    (is (= (map only-user-edits user-edited)
+                           (->> (lib.metadata.calculation/returned-columns (lib/query edited-mp (lib.metadata/card edited-mp card-id)))
+                                (map only-user-edits)))))
+                  (testing "nested queries flow user edits"
+                    (testing (str "in card id = " nested-id)
+                      (let [query (lib/query edited-mp (lib.metadata/card edited-mp nested-id))]
+                        (testing query-type
+                          (is (= (map only-user-edits user-edited)
+                                 (->> (lib.metadata.calculation/returned-columns query)
+                                      (map only-user-edits))))
+                          (testing "with columns that shadow columns in the model"
+                            ;; actually ok if description comes back as nil, it's just not ok if it comes back as "user
+                            ;; description"
+                            (is (=? [{:name "ID", :display-name "ID", :description (symbol "nil #_\"key is not present.\"")}]
+                                    (lib.metadata.calculation/returned-columns
+                                     (as-> query query
+                                       (lib/expression query "ID" 1)
+                                       (lib/with-fields query [(lib/expression-ref query "ID")])))))))))
+                    (testing "ad-hoc query"
+                      (let [query (lib/query edited-mp (:dataset-query (lib.metadata/card edited-mp nested-id)))]
+                        (is (= (map only-user-edits user-edited)
+                               (->> (lib.metadata.calculation/returned-columns query)
+                                    (map only-user-edits))))
+                        (testing "with columns that shadow columns in the model"
+                          (is (=? [{:name "ID", :display-name "ID", :description (symbol "nil #_\"key is not present.\"")}]
+                                  (lib.metadata.calculation/returned-columns
+                                   (as-> query query
+                                     (lib/expression query "ID" 1)
+                                     (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))

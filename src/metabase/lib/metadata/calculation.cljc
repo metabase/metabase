@@ -511,11 +511,7 @@
     options        :- [:maybe ReturnedColumnsOptions]]
    (let [options (merge (default-returned-columns-options) options)]
      (binding [*propagate-binning-and-bucketing* true]
-       (u/prog1 (returned-columns-method query stage-number x options)
-         (lib.metadata.ident/assert-idents-present! <> {:query        query
-                                                        :stage-number stage-number
-                                                        :target       x
-                                                        :options      options}))))))
+       (returned-columns-method query stage-number x options)))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."

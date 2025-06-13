@@ -341,6 +341,11 @@
           (remove duplicate-col?)
           join-cols)))
 
+#_(defn- flow-previous-stage-metadata [query stage-number cols options]
+    (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+      (let [previous-stage (lib.util/query-stage query previous-stage-number)]
+        (when-let [cols (lib.metadata.calculation/returned-columns query previous-stage-number previous-stage)]))))
+
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
@@ -379,6 +384,7 @@
               (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
               (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
               (lib.join/all-joins-expected-columns query stage-number options))))
+         #_(as-> cols (flow-previous-stage-metadata query stage-number cols options))
          lib.field.util/add-deduplicated-names))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native

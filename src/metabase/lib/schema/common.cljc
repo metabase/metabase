@@ -26,6 +26,7 @@
   (cond-> x
     (string? x) (-> u/lower-case-en keyword)))
 
+;;; TODO (Cam 6/13/25) -- shouldn't we also normalize to `kebab-case` here?
 (defn normalize-map
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`."
   [m]
