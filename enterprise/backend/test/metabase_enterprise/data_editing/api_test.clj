@@ -1472,7 +1472,7 @@
                                       ;; column listing (int first)
 
                                       {:id "int" :readonly false}
-                                      {:id "text" :readonly true #_:value #_"a very important string"}
+                                      {:id "text" :readonly false #_:value #_"a very important string"}
                                       ;; date is hidden from the editable
                                       #_{:id "date"}
                                       ;; timestamp is hidden in the row action
