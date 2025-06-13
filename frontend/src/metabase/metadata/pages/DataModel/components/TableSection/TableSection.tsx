@@ -99,6 +99,7 @@ export const TableSection = ({ params, table }: Props) => {
 
             {!isSorting && (
               <Button
+                h={32}
                 leftSection={<Icon name="sort_arrows" />}
                 px="sm"
                 py="xs"
@@ -109,6 +110,7 @@ export const TableSection = ({ params, table }: Props) => {
 
             {isSorting && (
               <Button
+                h={32}
                 px="md"
                 py="xs"
                 size="xs"
