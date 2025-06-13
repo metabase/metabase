@@ -98,9 +98,11 @@ describe("scenarios > setup embedding (EMB-477)", () => {
         "Others non-selected options should be disabled after selecting 3 options (max limit)",
       );
       cy.findByRole("checkbox", { name: "reviews" }).should("be.disabled");
-
-      cy.button("Continue").should("be.enabled").click();
     });
+
+    // The database sync status is getting in a way, so we need to collapse it first.
+    cy.findByRole("status").button("Collapse").click();
+    step().button("Continue").should("be.enabled").click();
 
     cy.log("4: Embed in your app step");
     sidebar().within(() => {
