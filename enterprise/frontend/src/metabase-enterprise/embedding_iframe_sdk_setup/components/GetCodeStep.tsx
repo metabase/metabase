@@ -44,7 +44,8 @@ export const GetCodeStep = () => {
           {t`This API key is for demonstration purposes only. In production, you should create a least privileged and sandboxed API key to prevent unwanted access to your Metabase instance.`}
         </Text>
         <TextInput
-          value={API_KEY_PLACEHOLDER}
+          value=""
+          placeholder={API_KEY_PLACEHOLDER}
           readOnly
           rightSection={
             <ActionIcon
