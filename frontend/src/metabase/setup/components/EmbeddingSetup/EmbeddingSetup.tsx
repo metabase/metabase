@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Box, Flex } from "metabase/ui";
 
 import {
@@ -28,7 +30,13 @@ const EmbeddingSetupInner = () => {
       <Flex h="100vh" style={{ position: "sticky", top: 0 }}>
         <EmbeddingSetupSidebar />
       </Flex>
-      <Box p="xl" flex={1} maw="53rem">
+      <Box
+        component="section"
+        aria-label={t`Embedding setup current step`}
+        p="xl"
+        flex={1}
+        maw="53rem"
+      >
         <Box
           p="xl"
           flex={1}

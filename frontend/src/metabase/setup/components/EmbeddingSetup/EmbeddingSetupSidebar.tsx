@@ -2,6 +2,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import LogoIcon from "metabase/components/LogoIcon";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { Box, Center, Flex, Icon, type IconName, Text } from "metabase/ui";
 
 import { LanguageSelector } from "../LanguageSelector";
@@ -22,6 +23,7 @@ export const EmbeddingSetupSidebar = () => {
 
   return (
     <Box
+      component="aside"
       aria-label="Embedding Setup Sidebar"
       w="250px"
       pt="xl"
@@ -40,7 +42,7 @@ export const EmbeddingSetupSidebar = () => {
           {t`Embedded Analytics`}
         </Text>
       </Flex>
-      <Box role="list" style={{ position: "relative" }}>
+      <Box component="ol" style={{ position: "relative" }}>
         {steps.map((step: StepDefinition, index: number) => {
           if (!step.visibleInSidebar) {
             return null;
@@ -87,6 +89,7 @@ interface StepProps {
 }
 
 const Step = ({ title, status, isLast, icon }: StepProps) => {
+  const uniqueId = useUniqueId("step-label");
   const { iconName, iconCssColor, circleBgCssColor, circleBorderCss } = match(
     status,
   )
@@ -122,6 +125,9 @@ const Step = ({ title, status, isLast, icon }: StepProps) => {
 
   return (
     <Flex
+      component="li"
+      aria-labelledby={uniqueId}
+      aria-current={status === "active" ? "step" : undefined}
       style={{
         gap: 12,
         alignItems: "center",
@@ -171,7 +177,7 @@ const Step = ({ title, status, isLast, icon }: StepProps) => {
           <Icon name={iconName} color={iconCssColor} size={16} />
         </Box>
       </Box>
-      <Text c="text-primary" size="md">
+      <Text c="text-primary" size="md" id={uniqueId}>
         {title}
       </Text>
     </Flex>
