@@ -42,7 +42,7 @@ export const DoneStep = () => {
           description={t`Evolve these starter dashboards or create new analysis.`}
         />
       </Stack>
-      <Button component={Link} role="button" to="/" variant="filled">
+      <Button component={Link} to="/" variant="filled">
         {t`Take me to Metabase`}
       </Button>
     </Box>

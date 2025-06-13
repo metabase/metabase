@@ -151,7 +151,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       });
       cy.findByRole("code").contains(
         new RegExp(
-          '<iframe src="http://localhost:4000/dashboard/\\d+" width="800px" height="500px" />',
+          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
         ),
       );
 
@@ -166,7 +166,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       });
       cy.findByRole("code").contains(
         new RegExp(
-          '<iframe src="http://localhost:4000/dashboard/\\d+" width="800px" height="500px" />',
+          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
         ),
       );
 
@@ -177,7 +177,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       });
       cy.findByRole("code").contains(
         new RegExp(
-          '<iframe src="http://localhost:4000/dashboard/\\d+" width="800px" height="500px" />',
+          `<iframe src="${Cypress.config("baseUrl")}/dashboard/\\d+" width="800px" height="500px" />`,
         ),
       );
 
@@ -188,7 +188,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       });
       cy.findByRole("code").contains(
         new RegExp(
-          '<iframe src="http://localhost:4000/question/new" width="800px" height="500px" />',
+          `<iframe src="${Cypress.config("baseUrl")}/question/new" width="800px" height="500px" />`,
         ),
       );
 
@@ -197,7 +197,7 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       cy.findByRole("heading", { name: "You're on your way!" }).should(
         "be.visible",
       );
-      cy.button("Take me to Metabase").click();
+      cy.findByRole("link", { name: "Take me to Metabase" }).click();
     });
 
     cy.log("5: Metabase");
