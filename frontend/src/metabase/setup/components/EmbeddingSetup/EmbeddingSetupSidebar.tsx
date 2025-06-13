@@ -48,7 +48,7 @@ export const EmbeddingSetupSidebar = () => {
             return null;
           }
           const indexInVisibleSteps = visibleSteps.findIndex(
-            (s) => s.key === step.key,
+            (visibleStep) => visibleStep.key === step.key,
           );
 
           const status = match({ index, indexInVisibleSteps })
