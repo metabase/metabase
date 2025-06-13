@@ -31,10 +31,10 @@
    [:parameters [:sequential ::describe-param]]])
 
 (defn- param-value
-  [param-mapping row-delay]
-  (case (:sourceType param-mapping)
-    "constant" (:value param-mapping)
-    "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-mapping))))
+  [param-map row-delay]
+  (case (:sourceType param-map)
+    "constant" (:value param-map)
+    "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-map))))
     nil))
 
 (defn- field-input-type
@@ -53,11 +53,10 @@
 (defn- describe-table-action
   [& {:keys [action-kw
              table-id
-             param-mapping
+             param-map
              dashcard-viz
              row-delay]}]
   (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
-        field-name->mapping         (u/index-by :parameterId param-mapping)
         fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
                                                     :has_field_values
@@ -78,17 +77,17 @@
      :parameters (->> (for [field (sort-by sort-key fields)
                             :let [{field-values :values} field
                                   pk                     (= :type/PK (:semantic_type field))
-                                  param-mapping          (field-name->mapping (:name field))
+                                  param-map              (get param-map (keyword (:name field)))
                                   dashcard-column        (field-name->dashcard-column (:name field))]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
-                                    :table.row/create (not (:database_is_auto_increment field))
+                                    (:table.row/create :data-grid.row/create) (not (:database_is_auto_increment field))
                                     ;; delete only requires pk cols
-                                    :table.row/delete pk
+                                    (:table.row/delete :data-grid.row/delete) pk
                                     ;; update takes both the pk and field (if not a row action)
-                                    :table.row/update true)
+                                    (:table.row/update :data-grid.row/update) true)
                             ;; row-actions can explicitly hide parameters
-                            :when (not= "hidden" (:visibility param-mapping))
+                            :when (not= "hidden" (:visibility param-map))
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled dashcard-column true)
                             :let [required (or pk (:database_required field))]]
@@ -102,9 +101,9 @@
                           :optional                (not required)
                           :nullable                (:database_is_nullable field)
                           :database_default        (:database_default field)
-                          :readonly                (or (= "readonly" (:visibility param-mapping))
+                          :readonly                (or (= "readonly" (:visibility param-map))
                                                        (not (dashcard-column-editable? (:name field))))
-                          :value                   (param-value param-mapping row-delay)}))
+                          :value                   (param-value param-map row-delay)}))
                       vec)}))
 
 (defn- saved-param-base-type
@@ -141,8 +140,8 @@
 
 (defn- describe-saved-action
   [& {:keys [action-id
-             ;; TODO: refactor to not relying on param-mapping
-             param-mapping
+             ;; TODO: refactor to not relying on param-map
+             param-map
              row-delay]}]
   (let [action              (-> (actions/select-action :id action-id
                                                        :archived false
@@ -150,24 +149,24 @@
                                 api/read-check
                                 api/check-404)
         param-id->viz-field (-> action :visualization_settings (:fields {}))
-        param-id->mapping   (u/index-by :parameterId param-mapping)]
+        param-id->mapping   (u/index-by :parameterId param-map)]
     ;; TODO: this assumes this is a query action, we need to handle implicit actions as well
     {:title      (:name action)
      :parameters (->> (for [param (:parameters action)
                             ;; query type actions store most stuff in viz settings rather than the
                             ;; parameter
                             :let [viz-field     (param-id->viz-field (:id param))
-                                  param-mapping (param-id->mapping (:id param))]
+                                  param-map (param-id->mapping (:id param))]
                             :when (and (not (:hidden viz-field))
-                                       (not= "hidden" (:visibility param-mapping)))]
+                                       (not= "hidden" (:visibility param-map)))]
                         (u/remove-nils
                          {:id            (:id param)
                           :display_name  (or (:display-name param) (:name param))
                           :input_type    (saved-param-input-type (:type param) viz-field)
                           :optional      (and (not (:required param)) (not (:required viz-field)))
                           :nullable      true ; is there a way to know this?
-                          :readonly      (= "readonly" (:visibility param-mapping))
-                          :value         (param-value param-mapping row-delay)
+                          :readonly      (= "readonly" (:visibility param-map))
+                          :value         (param-value param-map row-delay)
                           :value_options (:valueOptions viz-field)}))
                       vec)}))
 
@@ -190,18 +189,24 @@
       ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
       :table-id      (or (:table-id (:mapping (:inner-action unified)))
                          (:table-id (:mapping unified)))
-      :param-mapping (:param-mapping unified)
+      :param-map (:param-map unified)
       ;; TODO is it really 2 layers deep?
       :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
     (:inner-action unified)
     (let [inner       (:inner-action unified)
           mapping     (:param-map unified)
           dashcard-id (:dashcard-id unified)
+          dashcard-viz (or (:dashcard-viz unified)
+                           ;; TODO get rid of dashcard-viz in unified, we should always get it from querying the
+                           ;; dashcard table
+                           (t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))
           saved-id    (:action-id inner)
           action-kw   (:action-kw inner)
           table-id    (or (:table-id mapping)
                           (:table-id (:mapping inner))
-                          (:table-id scope))
+                          (:table-id scope)
+                          ;; built-in actions on editable
+                          (:table_id dashcard-viz))
           _           (when-not table-id
                         (throw (ex-info "Must provide table-id" {:status-code 400})))
           row-delay   (delay
@@ -217,13 +222,13 @@
         saved-id
         (describe-saved-action :action-id              saved-id
                                :row-action-dashcard-id dashcard-id
-                               :param-mapping          mapping
+                               :param-map          mapping
                                :row-delay              row-delay)
         action-kw
         (describe-table-action :action-kw     action-kw
                                :table-id      table-id
-                               :param-mapping mapping
-                               :dashcard-viz  (:dashcard-viz unified)
+                               :param-map mapping
+                               :dashcard-viz  (or (:dashcard-viz unified) dashcard-viz)
                                :row-delay     row-delay)
         :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified unified})))
     :else
