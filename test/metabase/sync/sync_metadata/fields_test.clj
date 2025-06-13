@@ -233,6 +233,10 @@
         (let [db (mt/db)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
               get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+          (testing "initially, country's continent_id is targeting nothing"
+            (is (=? {:fk_target_field_id nil
+                     :semantic_type      nil}
+                    (get-fk))))
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! db {:scan :schema})
@@ -244,10 +248,10 @@
           (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
           ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
-          #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
-              (is (=? {:fk_target_field_id nil
-                       :semantic_type      :type/Category}
-                      (get-fk))))
+          (testing "after dropping the FK relationship, country's continent_id is targeting nothing"
+            (is (=? {:fk_target_field_id nil
+                     :semantic_type      nil}
+                    (get-fk))))
           ;; 3. add back the FK relationship but targeting continent_2
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
