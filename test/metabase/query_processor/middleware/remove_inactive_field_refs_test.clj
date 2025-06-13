@@ -78,24 +78,47 @@
                [:field "VENDOR" {:join-alias "Card"
                                  :base-type :type/Text}]]}]}))
 
-(deftest ^:parallel deleted-columns-before-deletion-test
+(deftest ^:parallel deleted-columns-before-deletion-test-1a
   (qp.store/with-metadata-provider (test-metadata-provider)
     (testing "Behavior before the deletion (if this changes, the other cases have to change accordingly)"
-      (doseq [[card-id fields] {1 ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT"
-                                   "CREATED_AT" "QUANTITY"
-                                   "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
-                                   "RATING" "CREATED_AT_2"]
-                                2 ["ID" "SUBTOTAL" "TAX" "TOTAL" "CREATED_AT" "QUANTITY"
-                                   "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
-                                   "RATING" "CREATED_AT_2"]
-                                3 ["ID" "SUBTOTAL" "TAX" "TOTAL" "CREATED_AT" "QUANTITY"
-                                   "ID_2" "TITLE" "VENDOR" "PRICE" "RATING"]
-                                4 ["ID" "TAX" "TOTAL" "ID_2" "RATING"]}]
-        (let [query (mt/mbql-query orders
-                      {:source-table (str "card__" card-id)})
-              results (qp/process-query query)]
-          (is (=? fields
-                  (map :name (mt/cols results)))))))))
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__1"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT"
+                 "CREATED_AT" "QUANTITY"
+                 "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
+                 "RATING" "CREATED_AT_2"]
+                (map :name (mt/cols results))))))))
+
+(deftest ^:parallel deleted-columns-before-deletion-test-1b
+  (qp.store/with-metadata-provider (test-metadata-provider)
+    (testing "Behavior before the deletion (if this changes, the other cases have to change accordingly)"
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__2"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "SUBTOTAL" "TAX" "TOTAL" "CREATED_AT" "QUANTITY"
+                 "ID_2" "EAN" "TITLE" "CATEGORY" "VENDOR" "PRICE"
+                 "RATING" "CREATED_AT_2"]
+                (map :name (mt/cols results))))))))
+
+(deftest ^:parallel deleted-columns-before-deletion-test-1c
+  (qp.store/with-metadata-provider (test-metadata-provider)
+    (testing "Behavior before the deletion (if this changes, the other cases have to change accordingly)"
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__3"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "SUBTOTAL" "TAX" "TOTAL" "CREATED_AT" "QUANTITY"
+                 "ID_2" "TITLE" "VENDOR" "PRICE" "RATING"]
+                (map :name (mt/cols results))))))))
+
+(deftest ^:parallel deleted-columns-before-deletion-test-1d
+  (qp.store/with-metadata-provider (test-metadata-provider)
+    (testing "Behavior before the deletion (if this changes, the other cases have to change accordingly)"
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__4"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "TAX" "TOTAL" "ID_2" "RATING"]
+                (map :name (mt/cols results))))))))
 
 (deftest ^:parallel deleted-columns-before-deletion-test-2
   (qp.store/with-metadata-provider (test-metadata-provider)
@@ -125,26 +148,55 @@
                       (mt/id :products :vendor)]]
               {:id id, :active false})}))
 
-(deftest ^:parallel deleted-columns-test
+(deftest ^:parallel deleted-columns-test-1a
   (qp.store/with-metadata-provider (inactive-columns-test-metadata-provider)
     ;; running these questions after fields have been removed from the database
     ;; and the change has been detected by syncing
     (testing "Questions return the same columns except the ones deleted"
-      (doseq [[card-id fields] {1 ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TOTAL" "DISCOUNT"
-                                   "CREATED_AT" "QUANTITY"
-                                   "ID_2" "TITLE" "CATEGORY" "PRICE"
-                                   "RATING" "CREATED_AT_2"]
-                                2 ["ID" "SUBTOTAL" "TOTAL" "CREATED_AT" "QUANTITY"
-                                   "ID_2" "TITLE" "CATEGORY" "PRICE"
-                                   "RATING" "CREATED_AT_2"]
-                                3 ["ID" "SUBTOTAL" "TOTAL" "CREATED_AT" "QUANTITY"
-                                   "ID_2" "TITLE" "PRICE" "RATING"]
-                                4 ["ID" "TOTAL" "ID_2" "RATING"]}]
-        (let [query (mt/mbql-query orders
-                      {:source-table (str "card__" card-id)})
-              results (qp/process-query query)]
-          (is (=? fields
-                  (map :name (mt/cols results)))))))))
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__1"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TOTAL" "DISCOUNT"
+                 "CREATED_AT" "QUANTITY"
+                 "ID_2" "TITLE" "CATEGORY" "PRICE"
+                 "RATING" "CREATED_AT_2"]
+                (map :name (mt/cols results))))))))
+
+(deftest ^:parallel deleted-columns-test-1b
+  (qp.store/with-metadata-provider (inactive-columns-test-metadata-provider)
+    ;; running these questions after fields have been removed from the database
+    ;; and the change has been detected by syncing
+    (testing "Questions return the same columns except the ones deleted"
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__2"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "SUBTOTAL" "TOTAL" "CREATED_AT" "QUANTITY"
+                 "ID_2" "TITLE" "CATEGORY" "PRICE"
+                 "RATING" "CREATED_AT_2"]
+                (map :name (mt/cols results))))))))
+
+(deftest ^:parallel deleted-columns-test-1c
+  (qp.store/with-metadata-provider (inactive-columns-test-metadata-provider)
+    ;; running these questions after fields have been removed from the database
+    ;; and the change has been detected by syncing
+    (testing "Questions return the same columns except the ones deleted"
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__3"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "SUBTOTAL" "TOTAL" "CREATED_AT" "QUANTITY"
+                 "ID_2" "TITLE" "PRICE" "RATING"]
+                (map :name (mt/cols results))))))))
+
+(deftest ^:parallel deleted-columns-test-1d
+  (qp.store/with-metadata-provider (inactive-columns-test-metadata-provider)
+    ;; running these questions after fields have been removed from the database
+    ;; and the change has been detected by syncing
+    (testing "Questions return the same columns except the ones deleted"
+      (let [query (mt/mbql-query orders
+                    {:source-table "card__4"})
+            results (qp/process-query query)]
+        (is (=? ["ID" "TOTAL" "ID_2" "RATING"]
+                (map :name (mt/cols results))))))))
 
 (deftest ^:parallel deleted-columns-test-2
   (qp.store/with-metadata-provider (inactive-columns-test-metadata-provider)
