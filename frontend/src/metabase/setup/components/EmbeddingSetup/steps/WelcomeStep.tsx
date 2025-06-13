@@ -9,12 +9,7 @@ export const WelcomeStep = () => {
   useForceLocaleRefresh();
 
   return (
-    <Box
-      p="2xl"
-      style={{ borderRadius: 16, boxShadow: "var(--shadow-md)" }}
-      my="xxl"
-      bg="white"
-    >
+    <Box p="2xl" style={{ borderRadius: 16 }} my="xxl" bg="white">
       <Title order={2} mb="lg">
         {t`Howdy,`}
       </Title>
