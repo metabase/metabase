@@ -48,12 +48,13 @@
 
 (defn- strip-model-ident
   [modeled-ident card-entity-id]
-  (let [prefix (model-ident "" card-entity-id)]
-    (if (str/starts-with? modeled-ident prefix)
-      (subs modeled-ident (count prefix))
-      (do (log/warnf "Attempting to strip-model-ident for %s but ident is not for that model: %s"
-                     card-entity-id modeled-ident)
-          modeled-ident))))
+  (when modeled-ident
+    (let [prefix (model-ident "" card-entity-id)]
+      (if (str/starts-with? modeled-ident prefix)
+        (subs modeled-ident (count prefix))
+        (do (log/warnf "Attempting to strip-model-ident for %s but ident is not for that model: %s"
+                       card-entity-id modeled-ident)
+            modeled-ident)))))
 
 (defn remove-model-ident
   "Given a column with a [[model-ident]] style `:ident`, return the original, \"inner\" ident for that column.
