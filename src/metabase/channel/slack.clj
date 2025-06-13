@@ -96,8 +96,8 @@
 
 (defn- oauth-scopes
   "Returns the set of scopes associated with the current token"
-  []
-  (let [{::keys [headers]} (GET "auth.test")
+  [auth-test-response]
+  (let [{::keys [headers]} auth-test-response
         {:strs [x-oauth-scopes]} headers]
     (set (str/split x-oauth-scopes #","))))
 
@@ -205,6 +205,7 @@
 (defn clear-channel-cache!
   "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
   []
+  (channel.settings/slack-team-id! nil)
   (channel.settings/slack-channels-and-usernames-last-updated! channel.settings/zoned-time-epoch)
   (channel.settings/slack-cached-channels-and-usernames! {:channels []}))
 
@@ -215,8 +216,11 @@
   (when (slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
-          private-channels? #(contains? (oauth-scopes) "groups:read")
+          auth-test (GET "auth.test")
+          oauth-scope-set (oauth-scopes auth-test)
+          private-channels? #(contains? oauth-scope-set "groups:read")
           conversations (future (vec (conversations-list :private-channels (private-channels?))))]
+      (channel.settings/slack-team-id! (:team_id auth-test))
       (channel.settings/slack-cached-channels-and-usernames! {:channels (concat @conversations @users)})
       (channel.settings/slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
