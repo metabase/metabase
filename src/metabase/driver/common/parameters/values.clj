@@ -8,6 +8,7 @@
                              :param {:type   \"date/range\"
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
@@ -423,7 +424,7 @@
 
 (mu/defn referenced-card-ids :- [:set ::lib.schema.id/card]
   "Return a set of all Card IDs referenced in the parameters in `params-map`. This should be added to the (inner) query
-  under the `:metabase.permissions.models.query.permissions/referenced-card-ids` key when doing parameter expansion."
+  under the `:query-permissions/referenced-card-ids` key when doing parameter expansion."
   [params-map :- [:map-of ::lib.schema.common/non-blank-string ParsedParamValue]]
   (into #{}
         (keep (fn [param]

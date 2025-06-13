@@ -22,9 +22,11 @@
                               :email-restrict-recipients
                               :embedding
                               :embedding-sdk
+                              :embedding-iframe-sdk
                               :hosting
                               :llm-autodescription
                               :metabot-v3
+                              :ai-entity-analysis
                               :ai-sql-fixer
                               :ai-sql-generation
                               :no-upsell
@@ -58,9 +60,11 @@
             :email_restrict_recipients      true
             :embedding                      true
             :embedding_sdk                  true
+            :embedding_iframe_sdk           true
             :hosting                        true
             :llm_autodescription            true
             :metabot_v3                     true
+            :ai_entity_analysis             true
             :ai_sql_fixer                   true
             :ai_sql_generation              true
             :official_collections           true

@@ -118,7 +118,7 @@
    (ensure-legacy #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing)
    (ensure-legacy #'qp.add-source-metadata/add-source-metadata-for-source-queries)
    (ensure-pmbql #'qp.middleware.enterprise/apply-impersonation)
-   (ensure-pmbql #'qp.middleware.enterprise/attach-mirror-db-middleware)
+   (ensure-pmbql #'qp.middleware.enterprise/attach-destination-db-middleware)
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
    (ensure-legacy #'qp.persistence/substitute-persisted-query)
    (ensure-legacy #'qp.add-implicit-clauses/add-implicit-clauses)
@@ -138,7 +138,7 @@
    (ensure-legacy #'qp.cumulative-aggregations/rewrite-cumulative-aggregations)
    (ensure-legacy #'qp.pre-alias-aggregations/pre-alias-aggregations)
    (ensure-legacy #'qp.wrap-value-literals/wrap-value-literals)
-   (ensure-legacy #'auto-parse-filter-values/auto-parse-filter-values)
+   (ensure-pmbql-for-unclean-query #'auto-parse-filter-values/auto-parse-filter-values)
    (ensure-legacy #'validate-temporal-bucketing/validate-temporal-bucketing)
    (ensure-legacy #'optimize-temporal-filters/optimize-temporal-filters)
    (ensure-legacy #'limit/add-default-limit)
@@ -184,7 +184,8 @@
      query
      middleware)))
 
-(defn- restore-join-aliases [preprocessed-query]
+(mu/defn- restore-join-aliases :- :map
+  [preprocessed-query :- :map]
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
     (escape-join-aliases/restore-aliases preprocessed-query replacement)))
 

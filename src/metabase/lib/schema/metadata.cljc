@@ -124,6 +124,12 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+(mr/def ::source-column-alias
+  [:maybe ::lib.schema.common/non-blank-string])
+
+(mr/def ::desired-column-alias
+  [:maybe [:string {:min 1}]])
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -156,6 +162,12 @@
    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
    ;; `:source-field`.
    [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+   ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
+   ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
+   ;; referenced by a name, normally when it's coming from a card or a previous query stage.
+   [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   ;; if this is a field from another table (implicit join), this is the join alias of the source field.
+   [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
    ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
    ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
@@ -179,10 +191,10 @@
    ;;
    ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
    ;; name of this clause as exported by the previous stage, source table, or join.
-   [:lib/source-column-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:lib/source-column-alias {:optional true} ::source-column-alias]
    ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
    ;; guaranteed to be unique in each stage of the query.
-   [:lib/desired-column-alias {:optional true} [:maybe [:string {:min 1, :max 60}]]]
+   [:lib/desired-column-alias {:optional true} ::desired-column-alias]
    ;; when column metadata is returned by certain things
    ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
    ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.

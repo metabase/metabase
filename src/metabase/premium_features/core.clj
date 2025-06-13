@@ -37,6 +37,7 @@
   define-premium-feature
   development-mode?
   enable-advanced-permissions?
+  enable-ai-entity-analysis?
   enable-ai-sql-fixer?
   enable-ai-sql-generation?
   enable-any-sso?
@@ -51,6 +52,7 @@
   enable-email-allow-list?
   enable-email-restrict-recipients?
   enable-embedding-sdk-origins?
+  enable-embedding-iframe-sdk?
   enable-llm-autodescription?
   enable-metabot-v3?
   enable-official-collections?
@@ -72,6 +74,5 @@
   is-hosted?
   premium-embedding-token
   site-uuid-for-premium-features-token-checks
-  table-data-editing?
   token-features
   token-status))

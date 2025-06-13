@@ -7,6 +7,7 @@
                26
                {:source-field 5}]]
      :value [3 5]}"
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]

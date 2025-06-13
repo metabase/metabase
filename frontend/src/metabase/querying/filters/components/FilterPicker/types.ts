@@ -4,7 +4,7 @@ export type FilterPickerWidgetProps = {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter?: Lib.Filterable;
   isNew: boolean;
   withAddButton: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;

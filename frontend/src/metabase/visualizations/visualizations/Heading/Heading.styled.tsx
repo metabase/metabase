@@ -71,7 +71,6 @@ export const HeadingContainer = styled.div`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding-left: 0.75rem;
   width: 100%;
 `;
 

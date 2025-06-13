@@ -2,12 +2,12 @@
   "Tests for /api/user endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.api.response :as api.response]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.util :as perms-util]
-   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
@@ -52,10 +52,10 @@
 (deftest user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
-      (is (= (get request/response-unauthentic :body)
+      (is (= (get api.response/response-unauthentic :body)
              (client/client :get 401 "user"))))
     (testing "GET /api/user/current"
-      (is (= (get request/response-unauthentic :body)
+      (is (= (get api.response/response-unauthentic :body)
              (client/client :get 401 "user/current"))))))
 
 (deftest user-list-test
@@ -438,14 +438,14 @@
 (deftest get-current-user-test-3
   (testing "GET /api/user/current"
     (testing "on a fresh instance, `has_question_and_dashboard` is `false`"
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (is (=? {:has_question_and_dashboard false}
                 (mt/user-http-request :rasta :get 200 "user/current")))))))
 
 (deftest get-current-user-test-4
   (testing "GET /api/user/current"
     (testing "on a fresh instance, `has_model` is `false`"
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (is (=? {:has_model false}
                 (mt/user-http-request :rasta :get 200 "user/current")))))))
 

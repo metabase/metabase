@@ -214,10 +214,6 @@
   "Should we allow admins to clean up tables created from uploads?"
   :upload-management)
 
-(define-premium-feature table-data-editing?
-  "Should we allow users to edit the data within tables?"
-  :table-data-editing)
-
 (define-premium-feature has-attached-dwh?
   "Does the Metabase Cloud instance have an internal data warehouse attached?"
   :attached-dwh)
@@ -250,10 +246,19 @@
   "Should Metabase generate SQL queries?"
   :ai-sql-generation)
 
+(define-premium-feature ^{:added "0.55.0"} enable-embedding-iframe-sdk?
+  "Should we allow users to embed the SDK in iframes?"
+  :embedding-iframe-sdk)
+
+(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
+  "Should Metabase do AI analysis on entities?"
+  :ai-entity-analysis)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
    :ai_sql_generation              (enable-ai-sql-generation?)
+   :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)
@@ -270,6 +275,7 @@
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
    :embedding_sdk                  (enable-embedding-sdk-origins?)
+   :embedding_iframe_sdk           (enable-embedding-iframe-sdk?)
    :hosting                        (is-hosted?)
    :llm_autodescription            (enable-llm-autodescription?)
    :metabot_v3                     (enable-metabot-v3?)

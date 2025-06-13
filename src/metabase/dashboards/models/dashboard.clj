@@ -13,10 +13,9 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.search.core :as search]
@@ -99,11 +98,6 @@
       (collection/check-collection-namespace :model/Dashboard (:collection_id dashboard))
       (when (:archived changes)
         (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
-
-(t2/define-after-update :model/Dashboard
-  [dashboard]
-  ; TODO -- should this be done on `:event/dashboard-update` ?
-  (pulse/update-dashboard-subscription-pulses! dashboard))
 
 (defn- migrate-parameter [p]
   (cond-> p
@@ -407,7 +401,7 @@
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :coerce {:parameters [:maybe [:sequential ms/Parameter]]}})
+   :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]

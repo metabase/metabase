@@ -11,8 +11,8 @@
    [honey.sql.pg-ops :as sql.pg-ops]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common :as driver.common]
    [metabase.driver.postgres.actions :as postgres.actions]
    [metabase.driver.postgres.ddl :as postgres.ddl]
@@ -28,14 +28,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.field :as lib.field]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.temporal-bucketing
-    :as lib.schema.temporal-bucketing]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.secrets.core :as secret]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -513,7 +505,7 @@
     (make-time hour minute second)))
 
 (mu/defn- date-trunc
-  [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+  [unit :- driver-api/schema.temporal-bucketing.unit.date-time.truncate
    expr]
   (condp = (h2x/database-type expr)
     ;; apparently there is no convenient way to truncate a TIME column in Postgres, you can try to use `date_trunc`
@@ -570,7 +562,7 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
+(mu/defn- quoted? [database-type :- driver-api/schema.common.non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
@@ -740,17 +732,17 @@
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
   (let [stored-field  (when (integer? id-or-name)
-                        (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+                        (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)]
     (cond
       (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
 
-      (lib.field/json-field? stored-field)
+      (driver-api/json-field? stored-field)
       (if (or (::sql.qp/forced-alias opts)
-              (= (::add/source-table opts) ::add/source))
-        (keyword (::add/source-alias opts))
+              (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
+        (keyword (driver-api/qp.add.source-alias opts))
         (walk/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
@@ -768,7 +760,7 @@
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
   (let [stored-field-ids (map second breakout-fields)
         stored-fields    (map #(when (integer? %)
-                                 (lib.metadata/field (qp.store/metadata-provider) %))
+                                 (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
         parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                   driver clause honeysql-form)
@@ -776,7 +768,7 @@
         unqualified      (parent-method (update query
                                                 :breakout
                                                 #(sql.qp/rewrite-fields-to-force-using-column-aliases % {:is-breakout true})))]
-    (if (some lib.field/json-field? stored-fields)
+    (if (some driver-api/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))
       qualified)))
@@ -786,10 +778,10 @@
   (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
         stored-field-id (-> clause (second) (second))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
-                          (lib.metadata/field (qp.store/metadata-provider) stored-field-id))]
+                          (driver-api/field (driver-api/metadata-provider) stored-field-id))]
     (and
      (some? stored-field)
-     (lib.field/json-field? stored-field))))
+     (driver-api/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -906,7 +898,7 @@
   "If a value was uploaded for the SSL key, return whether it's using the PKCS-12 format."
   [ssl-key-value]
   (when ssl-key-value
-    (= (second (re-find secret/uploaded-base-64-prefix-pattern ssl-key-value))
+    (= (second (re-find driver-api/uploaded-base-64-prefix-pattern ssl-key-value))
        "x-pkcs12")))
 
 (defn- ssl-params
@@ -915,16 +907,16 @@
   (-> (set/rename-keys db-details {:ssl-mode :sslmode})
       ;; if somehow there was no ssl-mode set, just make it required (preserves existing behavior)
       (cond-> (nil? (:ssl-mode db-details)) (assoc :sslmode "require"))
-      (m/assoc-some :sslrootcert (secret/value-as-file! :postgres db-details "ssl-root-cert"))
-      (m/assoc-some :sslkey (secret/value-as-file! :postgres db-details "ssl-key" (when (pkcs-12-key-value? ssl-key-value) ".p12")))
-      (m/assoc-some :sslcert (secret/value-as-file! :postgres db-details "ssl-client-cert"))
+      (m/assoc-some :sslrootcert (driver-api/secret-value-as-file! :postgres db-details "ssl-root-cert"))
+      (m/assoc-some :sslkey (driver-api/secret-value-as-file! :postgres db-details "ssl-key" (when (pkcs-12-key-value? ssl-key-value) ".p12")))
+      (m/assoc-some :sslcert (driver-api/secret-value-as-file! :postgres db-details "ssl-client-cert"))
       ;; Pass an empty string as password if none is provided; otherwise the driver will prompt for one
-      (assoc :sslpassword (or (secret/value-as-string :postgres db-details "ssl-key-password") ""))
+      (assoc :sslpassword (or (driver-api/secret-value-as-string :postgres db-details "ssl-key-password") ""))
 
       (as-> params ;; from outer cond->
             (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
                     :ssl-use-client-auth)
-        (secret/clean-secret-properties-from-details params :postgres))))
+        (driver-api/clean-secret-properties-from-details params :postgres))))
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
@@ -950,7 +942,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (mdb/spec :postgres it)
+                (driver-api/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 
@@ -1188,7 +1180,7 @@
 
 (defmethod sql-jdbc/impl-query-canceled? :postgres [_ e]
   ;; ok to hardcode driver name here because this function only supports app DB types
-  (mdb/query-canceled-exception? :postgres e))
+  (driver-api/query-canceled-exception? :postgres e))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
   [_ e]

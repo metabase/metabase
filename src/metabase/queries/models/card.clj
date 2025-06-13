@@ -28,7 +28,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.parameters.params :as params]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
@@ -36,7 +35,7 @@
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
    [metabase.queries.models.query :as query]
-   [metabase.query-analysis.core :as query-analysis]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -241,9 +240,9 @@
         (prefetch-tables-for-cards! dataset-cards)
         (catch Throwable t
           (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
-    (binding [query-perms/*card-instances*
-              (when (seq source-card-ids)
-                (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema] :id [:in source-card-ids]))]
+    (query-perms/with-card-instances (when (seq source-card-ids)
+                                       (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema]
+                                                         :id [:in source-card-ids]))
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []
@@ -657,10 +656,6 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
-      ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
-      ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
-      (when (contains? changes :dataset_query)
-        (query-analysis/analyze! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
@@ -837,8 +832,7 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-analysis/analyze! card)))
+    (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))))
 
 (defn- apply-dashboard-question-updates [changes]
   (if-let [dashboard-id (:dashboard_id changes)]

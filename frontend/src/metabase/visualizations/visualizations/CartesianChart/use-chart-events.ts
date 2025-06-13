@@ -156,7 +156,11 @@ export const useChartEvents = (
           }
 
           if (event.seriesId === GOAL_LINE_SERIES_ID) {
-            const eventData = getGoalLineHoverData(settings, event);
+            const eventData = getGoalLineHoverData(
+              settings,
+              event,
+              chartModel.leftAxisModel?.formatGoal,
+            );
 
             onHoverChange?.(eventData);
             return;
@@ -223,7 +227,7 @@ export const useChartEvents = (
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
           const eventData = getBrushData(
-            rawSeries,
+            isVisualizerViz ? visualizerRawSeries : rawSeries,
             metadata,
             chartModel,
             event,
@@ -250,6 +254,8 @@ export const useChartEvents = (
       onDeselectTimelineEvents,
       onOpenQuestion,
       rawSeries,
+      visualizerRawSeries,
+      isVisualizerViz,
       metadata,
       onChangeCardAndRun,
     ],

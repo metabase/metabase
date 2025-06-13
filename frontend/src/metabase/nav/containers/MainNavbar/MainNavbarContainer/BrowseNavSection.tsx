@@ -4,10 +4,8 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import {
-  getEmbedOptions,
-  getIsEmbeddingIframe,
-} from "metabase/selectors/embed";
+import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { Collapse, Group, Icon, UnstyledButton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
@@ -32,9 +30,7 @@ export const BrowseNavSection = ({
 
   const [opened, { toggle }] = useDisclosure(expandBrowse);
 
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
-  );
+  const entityTypes = useSelector(getEntityTypes);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const handleToggle = () => {
@@ -59,18 +55,6 @@ export const BrowseNavSection = ({
       </Group>
 
       <Collapse in={opened} transitionDuration={0} role="tabpanel">
-        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
-          <PaddedSidebarLink
-            icon="model"
-            url={BROWSE_MODELS_URL}
-            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
-            onClick={onItemSelect}
-            aria-label={t`Browse models`}
-          >
-            {t`Models`}
-          </PaddedSidebarLink>
-        )}
-
         {hasDataAccess &&
           (!isEmbeddingIframe || entityTypes.includes("table")) && (
             <PaddedSidebarLink
@@ -83,6 +67,18 @@ export const BrowseNavSection = ({
               {t`Databases`}
             </PaddedSidebarLink>
           )}
+
+        {(!isEmbeddingIframe || entityTypes.includes("model")) && (
+          <PaddedSidebarLink
+            icon="model"
+            url={BROWSE_MODELS_URL}
+            isSelected={nonEntityItem?.url?.startsWith(BROWSE_MODELS_URL)}
+            onClick={onItemSelect}
+            aria-label={t`Browse models`}
+          >
+            {t`Models`}
+          </PaddedSidebarLink>
+        )}
 
         {!isEmbeddingIframe && (
           <PaddedSidebarLink

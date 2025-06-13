@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import { pick } from "underscore";
 
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
@@ -10,6 +9,7 @@ import {
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { isNotNull } from "metabase/lib/types";
 
@@ -28,14 +28,11 @@ export type SdkDashboardDisplayProps = {
   /**
    * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
    * <br/>
-   * <br/>
-   * @remarks
-   * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
    */
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
 
   /**
    * Whether the dashboard should display a title.
@@ -55,9 +52,6 @@ export type SdkDashboardDisplayProps = {
   /**
    * A list of [parameters to hide](https://www.metabase.com/docs/latest/embedding/public-links.html#appearance-parameters).
    * <br/>
-   * <br/>
-   * @remarks
-   * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
    * <br/>
    * - Combining {@link SdkDashboardDisplayProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
@@ -66,7 +60,7 @@ export type SdkDashboardDisplayProps = {
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   withDownloads,
   withTitle,
   hiddenParameters,
@@ -74,7 +68,7 @@ export const useSdkDashboardParams = ({
 }: SdkDashboardDisplayProps) => {
   const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
-    id: initialDashboardId,
+    id: dashboardIdProp,
   });
 
   // temporary name until we change `hideDownloadButton` to `downloads`

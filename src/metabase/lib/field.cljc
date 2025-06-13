@@ -4,10 +4,10 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -180,7 +180,9 @@
    stage-number
    metadata
    [_tag {source-uuid :lib/uuid
-          :keys [base-type binning effective-type ident join-alias source-field temporal-unit], :as opts}
+          :keys [base-type binning effective-type ident join-alias source-field source-field-name
+                 source-field-join-alias temporal-unit]
+          :as opts}
     :as field-ref]]
   (let [metadata (merge
                   {:lib/type        :metadata/column}
@@ -192,20 +194,24 @@
                          default
                          original))]
     (cond-> metadata
-      source-uuid    (assoc :lib/source-uuid source-uuid)
-      base-type      (-> (assoc :base-type base-type)
-                         (update :effective-type default-type base-type))
-      effective-type (assoc :effective-type effective-type)
-      temporal-unit  (assoc ::temporal-unit temporal-unit)
-      binning        (assoc ::binning binning)
-      source-field   (-> (assoc :fk-field-id source-field)
-                         (update :ident lib.metadata.ident/implicitly-joined-ident
-                                 (:ident (lib.metadata/field query source-field))))
-      join-alias     (-> (lib.join/with-join-alias join-alias)
-                         (update :ident lib.metadata.ident/explicitly-joined-ident
-                                 (:ident (lib.join/maybe-resolve-join-across-stages query stage-number join-alias))))
+      source-uuid             (assoc :lib/source-uuid source-uuid)
+      base-type               (-> (assoc :base-type base-type)
+                                  (update :effective-type default-type base-type))
+      effective-type          (assoc :effective-type effective-type)
+      temporal-unit           (assoc ::temporal-unit temporal-unit)
+      binning                 (assoc ::binning binning)
+      source-field            (-> (assoc :fk-field-id source-field)
+                                  (update :ident lib.metadata.ident/implicitly-joined-ident
+                                          (:ident (lib.metadata/field query source-field))))
+      source-field-name       (assoc :fk-field-name source-field-name)
+      source-field-join-alias (assoc :fk-join-alias source-field-join-alias)
+      join-alias              (-> (lib.join/with-join-alias join-alias)
+                                  (update :ident lib.metadata.ident/explicitly-joined-ident
+                                          (:ident (lib.join/maybe-resolve-join-across-stages query
+                                                                                             stage-number
+                                                                                             join-alias))))
       ;; Overwriting the ident with one from the options, eg. for a breakout clause.
-      ident          (assoc :ident ident))))
+      ident                   (assoc :ident ident))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
@@ -242,6 +248,8 @@
                        parent-id           :parent-id
                        simple-display-name ::simple-display-name
                        hide-bin-bucket?    :lib/hide-bin-bucket?
+                       source              :lib/source
+                       source-uuid         :lib/source-uuid
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or simple-display-name
@@ -250,6 +258,23 @@
                                           (or (nil? field-display-name)
                                               (= field-display-name humanized-name)))
                                  (nest-display-name query field-metadata))
+                               (when-let [[source-index source-clause]
+                                          (and source-uuid
+                                               field-display-name
+                                               (= style :long)
+                                               (= source :source/previous-stage)
+                                               (not (or fk-field-id join-alias))
+                                               (not (str/includes? field-display-name " → "))
+                                               (lib.util/find-stage-index-and-clause-by-uuid
+                                                query
+                                                (dec stage-number)
+                                                source-uuid))]
+                                 ;; The :display-name from the field metadata is probably not a :long display name, so
+                                 ;; if the caller requested a :long name and we can lookup the original clause by the
+                                 ;; source-uuid, use that to get the :long name. This allows display-info to get the
+                                 ;; long display-name with join info included for aggregations over a joined field
+                                 ;; from the previous stage, like "Max of Products -> ID" rather than "Max of ID".
+                                 (lib.metadata.calculation/display-name query source-index source-clause style))
                                field-display-name
                                (if (string? field-name)
                                  humanized-name
@@ -453,8 +478,7 @@
 
 (defn- column-metadata->field-ref
   [metadata]
-  (let [inherited-column? (when-not (::lib.card/force-broken-id-refs metadata)
-                            (#{:source/card :source/native :source/previous-stage} (:lib/source metadata)))
+  (let [inherited-column? (lib.field.util/inherited-column? metadata)
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :base-type      (:base-type metadata)
                                   :effective-type (column-metadata-effective-type metadata)}
@@ -483,11 +507,15 @@
                                    {:was-binned was-binned})
                                  (when-let [source-field-id (when-not inherited-column?
                                                               (:fk-field-id metadata))]
-                                   {:source-field source-field-id}))
-        id-or-name        ((if inherited-column?
-                             (some-fn :lib/desired-column-alias :name)
-                             (some-fn :id :name))
-                           metadata)]
+                                   {:source-field source-field-id})
+                                 (when-let [source-field-name (when-not inherited-column?
+                                                                (:fk-field-name metadata))]
+                                   {:source-field-name source-field-name})
+                                 (when-let [source-field-join-alias (when-not inherited-column?
+                                                                      (:fk-join-alias metadata))]
+                                   {:source-field-join-alias source-field-join-alias}))
+        id-or-name        (or (lib.field.util/inherited-column-name metadata)
+                              ((some-fn :id :name) metadata))]
     [:field options id-or-name]))
 
 (defmethod lib.ref/ref-method :metadata/column
@@ -821,7 +849,7 @@
           search-field-id (:id search-column)]
       {:field-id (when (int? column-field-id) column-field-id)
        :search-field-id (when (int? search-field-id) search-field-id)
-       :search-field search-column
-       :has-field-values (if column
+       :search-field (when (int? search-field-id) search-column)
+       :has-field-values (if (int? column-field-id)
                            (infer-has-field-values column)
                            :none)})))

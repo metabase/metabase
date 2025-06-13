@@ -42,6 +42,9 @@
     :model/HTTPAction                        metabase.actions.models
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
+    :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
+    :model/MetabotEntity                     metabase-enterprise.metabot-v3.models.metabot-entity
+    :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
@@ -63,7 +66,6 @@
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.queries.models.query
     :model/QueryAction                       metabase.actions.models
-    :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
     :model/QueryCache                        metabase.cache.models.query-cache
     :model/QueryExecution                    metabase.queries.models.query-execution
     :model/QueryField                        metabase.queries.models.query-field

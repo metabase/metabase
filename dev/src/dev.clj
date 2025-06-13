@@ -64,12 +64,13 @@
    [java-time.api :as t]
    [malli.dev :as malli-dev]
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
+   [metabase.app-db.env :as mdb.env]
    [metabase.channel.email :as email]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
-   [metabase.app-db.core :as mdb]
-   [metabase.app-db.env :as mdb.env]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor.compile :as qp.compile]
@@ -149,7 +150,7 @@
         in-memory? (fn [db] (some-> db :details :db (str/starts-with? "mem:")))
         can-connect? (fn [db]
                        #_:clj-kondo/ignore
-                       (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+                       (binding [driver.settings/*allow-testing-h2-connections* true]
                          (try
                            (driver/can-connect? :h2 (:details db))
                            (catch org.h2.jdbc.JdbcSQLNonTransientConnectionException _

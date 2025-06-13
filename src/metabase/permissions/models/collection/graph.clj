@@ -72,6 +72,7 @@
                                                 ;; Does 'NULL != "trash"'? Postgres says the answer is undefined, aka
                                                 ;; NULL, which... is falsey. :sob:
                                                 [:or [:= :type nil] [:not= :type "trash"]]
+                                                [:not :archived]
                                                 (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
                                                 [:= :personal_owner_id nil]]
                                                (for [collection-id personal-collection-ids]

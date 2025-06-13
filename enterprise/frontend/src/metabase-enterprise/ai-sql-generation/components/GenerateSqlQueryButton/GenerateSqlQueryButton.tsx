@@ -2,22 +2,28 @@ import { t } from "ttag";
 
 import type { GenerateSqlQueryButtonProps } from "metabase/plugins";
 import { Button, Icon, Tooltip } from "metabase/ui";
-import { useGenerateSqlQueryMutation } from "metabase-enterprise/api";
+import { useLazyGenerateSqlQueryQuery } from "metabase-enterprise/api";
+import * as Lib from "metabase-lib";
+import type { GenerateSqlQueryRequest } from "metabase-types/api";
 
 export function GenerateSqlQueryButton({
   className,
-  prompt,
-  databaseId,
+  query,
+  selectedQueryText,
   onGenerateQuery,
 }: GenerateSqlQueryButtonProps) {
-  const isEmpty = prompt.trim().length === 0;
-  const [generateSql, { isLoading }] = useGenerateSqlQueryMutation();
+  const [generateSql, { isFetching }] = useLazyGenerateSqlQueryQuery();
+  const request = getRequest(query, selectedQueryText);
 
   const handleClick = async () => {
-    const { data } = await generateSql({ prompt, database_id: databaseId });
-    if (data) {
-      onGenerateQuery(data.generated_sql);
+    if (request == null) {
+      return;
     }
+    const { data } = await generateSql(request);
+    if (data == null) {
+      return;
+    }
+    onGenerateQuery(getQueryText(request.prompt, data.generated_sql));
   };
 
   return (
@@ -25,11 +31,53 @@ export function GenerateSqlQueryButton({
       <Button
         className={className}
         variant="subtle"
+        p={0}
+        h="fit-content"
+        bd="none"
         leftSection={<Icon name="metabot" />}
-        loading={isLoading}
-        disabled={isEmpty}
+        loading={isFetching}
+        disabled={request == null}
+        aria-label={t`Generate SQL based on the prompt`}
         onClick={handleClick}
       />
     </Tooltip>
   );
+}
+
+const COMMENT_PREFIX = "--";
+
+function getRequest(
+  query: Lib.Query,
+  selectedQueryText: string | undefined,
+): GenerateSqlQueryRequest | undefined {
+  const databaseId = Lib.databaseID(query);
+  const queryInfo = Lib.queryDisplayInfo(query);
+  if (!queryInfo.isNative || databaseId == null) {
+    return;
+  }
+
+  const promptFromSelection = selectedQueryText?.trim();
+  if (promptFromSelection != null && promptFromSelection.length > 0) {
+    return {
+      prompt: promptFromSelection,
+      database_id: databaseId,
+    };
+  }
+
+  const promptFromComment = Lib.rawNativeQuery(query)
+    .split("\n")
+    .find((line) => line.startsWith(COMMENT_PREFIX))
+    ?.substring(COMMENT_PREFIX.length)
+    ?.trim();
+  if (promptFromComment != null && promptFromComment.length > 0) {
+    return {
+      prompt: promptFromComment,
+      database_id: databaseId,
+    };
+  }
+}
+
+function getQueryText(prompt: string, generatedSql: string) {
+  const singleLinePrompt = prompt.replaceAll("\n", " ");
+  return `${COMMENT_PREFIX} ${singleLinePrompt}\n${generatedSql}`;
 }

@@ -143,44 +143,42 @@
 
 (deftest ^:parallel returned-columns-31769-source-card-test
   (testing "Queries with `:source-card`s with joins should return correct column metadata/refs (#31769)"
-    (binding [lib.card/*force-broken-card-refs* false]
-      (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
-            card              (lib.metadata/card metadata-provider 1)
-            q                 (lib/query metadata-provider card)
-            cols              (lib/returned-columns q)]
-        (is (=? [{:name                     "CATEGORY"
-                  :lib/source               :source/card
-                  :lib/source-column-alias  "CATEGORY"
-                  :lib/desired-column-alias "Products__CATEGORY"}
-                 {:name                     "count"
-                  :lib/source               :source/card
-                  :lib/source-column-alias  "count"
-                  :lib/desired-column-alias "count"}]
-                cols))
-        (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-                 [:field {:base-type :type/Integer} "count"]]
-                (map lib.ref/ref cols)))))))
+    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
+          card              (lib.metadata/card metadata-provider 1)
+          q                 (lib/query metadata-provider card)
+          cols              (lib/returned-columns q)]
+      (is (=? [{:name                     "CATEGORY"
+                :lib/source               :source/card
+                :lib/source-column-alias  "CATEGORY"
+                :lib/desired-column-alias "Products__CATEGORY"}
+               {:name                     "count"
+                :lib/source               :source/card
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
+              cols))
+      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+               [:field {:base-type :type/Integer} "count"]]
+              (map lib.ref/ref cols))))))
 
 (deftest ^:parallel returned-columns-31769-source-card-previous-stage-test
   (testing "Queries with `:source-card`s with joins in the previous stage should return correct column metadata/refs (#31769)"
-    (binding [lib.card/*force-broken-card-refs* false]
-      (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
-            card              (lib.metadata/card metadata-provider 1)
-            q                 (-> (lib/query metadata-provider card)
-                                  lib/append-stage)
-            cols              (lib/returned-columns q)]
-        (is (=? [{:name                     "CATEGORY"
-                  :lib/source               :source/previous-stage
-                  :lib/source-column-alias  "Products__CATEGORY"
-                  :lib/desired-column-alias "Products__CATEGORY"}
-                 {:name                     "count"
-                  :lib/source               :source/previous-stage
-                  :lib/source-column-alias  "count"
-                  :lib/desired-column-alias "count"}]
-                cols))
-        (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
-                 [:field {:base-type :type/Integer} "count"]]
-                (map lib.ref/ref cols)))))))
+    (let [metadata-provider (lib.tu.mocks-31769/mock-metadata-provider)
+          card              (lib.metadata/card metadata-provider 1)
+          q                 (-> (lib/query metadata-provider card)
+                                lib/append-stage)
+          cols              (lib/returned-columns q)]
+      (is (=? [{:name                     "CATEGORY"
+                :lib/source               :source/previous-stage
+                :lib/source-column-alias  "Products__CATEGORY"
+                :lib/desired-column-alias "Products__CATEGORY"}
+               {:name                     "count"
+                :lib/source               :source/previous-stage
+                :lib/source-column-alias  "count"
+                :lib/desired-column-alias "count"}]
+              cols))
+      (is (=? [[:field {:base-type :type/Text} "Products__CATEGORY"]
+               [:field {:base-type :type/Integer} "count"]]
+              (map lib.ref/ref cols))))))
 
 (deftest ^:parallel card-source-query-visible-columns-test
   (testing "Explicitly joined fields do not also appear as implictly joinable"
@@ -242,11 +240,14 @@
 (deftest ^:parallel card-display-info-test
   (testing "Cards with joins should return correct column metadata/refs (#31769)"
     (let [query (lib.tu.mocks-31769/query)
-          card  (lib.metadata/card query 1)]
-      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1"}
-             (lib/display-info query card)))
-      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :metric? true}
-             (lib/display-info query (assoc card :type :metric)))))))
+          card-1  (lib.metadata/card query 1)
+          card-2  (lib.metadata/card query 2)]
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true}
+             (lib/display-info query card-1)))
+      (is (= {:name "Card 2", :display-name "Card 2", :long-display-name "Card 2"}
+             (lib/display-info query card-2)))
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :is-source-card true, :metric? true}
+             (lib/display-info query (assoc card-1 :type :metric)))))))
 
 (deftest ^:parallel ->card-metadata-column-test
   (testing ":effective-type is set for columns coming from an aggregation in a card (#47184)"
@@ -256,7 +257,6 @@
                :name "count"
                :lib/source :source/aggregations}
           card-id 176
-          card {:type :model}
           field nil
           expected-col {:lib/type :metadata/column
                         :base-type :type/Integer
@@ -268,7 +268,7 @@
                         :lib/source-column-alias "count"
                         :fk-target-field-id nil}]
       (is (=? expected-col
-              (#'lib.card/->card-metadata-column col card-id card field))))))
+              (#'lib.card/->card-metadata-column col card-id field))))))
 
 (deftest ^:parallel source-card-type-test
   (is (= :model (lib.card/source-card-type (lib.tu/query-with-source-model))))

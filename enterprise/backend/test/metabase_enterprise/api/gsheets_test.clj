@@ -137,7 +137,7 @@
     `(mt/with-temp [:model/Database ~db-sym {:is_attached_dwh true}]
        ~@body)))
 
-(deftest post-folder-test
+(deftest create-folder-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (mt/with-temporary-setting-values [gsheets nil]
@@ -153,7 +153,7 @@
             (is (pos-int? (:created-at saved)))
             (is (u.string/valid-uuid? (:gdrive/conn-id saved)))))))))
 
-(deftest post-sheet-test
+(deftest create-sheet-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
@@ -161,14 +161,20 @@
              {:status "syncing", :url sheet-link}
              (mt/user-http-request :crowberto :post 200 "ee/gsheets/connection" {:url sheet-link})))))))
 
-(deftest post-error-test
+(deftest create-error-test
   (with-sample-db-as-dwh
     (mt/with-premium-features #{:etl-connections :attached-dwh :hosting}
       (mt/with-temporary-setting-values [gsheets nil]
         (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
-          (let [result (mt/user-http-request :crowberto :post 500 "ee/gsheets/connection" {:url gsheet-error-link})]
+          (let [result (mt/user-http-request :crowberto :post 502 "ee/gsheets/connection" {:url gsheet-error-link})]
             (is (partial=
-                 {:message "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions.", :errors true}
+                 {:message     "Unable to setup drive folder sync.\nPlease check that the folder is shared with the proper service account email and sharing permissions."
+                  :error_message "Status Reason"
+                  :errors      true
+                  :hm/response {:status 400
+                                :body   {:error-detail "Error detail"
+                                         :status-reason "Status Reason"}}}
+
                  result)))
           (let [saved (gsheets)]
             (is (= {} saved))))))))
@@ -187,7 +193,7 @@
     (testing "Error if folder not set up"
       (mt/with-temporary-setting-values [gsheets nil]
         (let [response (mt/user-http-request :crowberto :post 404 "ee/gsheets/connection/sync")]
-          (is (partial= {:errors true, :message "No attached google sheet(s) found."} response)))))))
+          (is (partial= {:errors true, :message "No attached google sheet(s) found.", :error_message nil} response)))))))
 
 (deftest get-folder-test
   (with-sample-db-as-dwh
@@ -243,7 +249,13 @@
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-paused-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
-                (is (partial= {:status "error", :url "test-url" :created_by_id 2 :error_message "DWH quota exceeded"}
+                (is (partial= {:status "error",
+                               :url "test-url"
+                               :created_by_id 2
+                               :error_message "DWH quota exceeded"
+                               :hm/response {:status 200
+                                             :body {:status "paused"
+                                                    :status-reason "DWH quota exceeded"}}}
                               response))
                 (is (pos-int? (:db_id response)))
                 (is (nil? (:sync_started_at response)))
@@ -252,11 +264,49 @@
                   (is (nil? (:sync_started_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets))))
                   (is (nil? (:last_sync_at (gsheets)))))))))
+        (testing "when paused and no last sync"
+          (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id "never-synced")]
+            (with-redefs [hm.client/make-request (partial mock-make-request
+                                                          (assoc happy-responses
+                                                                 {:method :get, :url "/api/v2/mb/connections/never-synced", :body nil}
+                                                                 [:ok
+                                                                  {:status 200,
+                                                                   :body   {:last-sync-started-at        nil
+                                                                            :hosted-instance-resource-id 15378,
+                                                                            :last-sync-at                nil
+                                                                            :type                        "gdrive"
+                                                                            :status-reason               "DWH quota exceeded."
+                                                                            :updated-at                  "2025-05-29T14:36:26Z"
+                                                                            :hosted-instance-id          "c6633c12-8ed2-4e74-ba7f-3602791d252c"
+                                                                            :status                      "paused"
+                                                                            :id                          "7346e101-fa51-4f1a-9655-810aaea63fe4"
+                                                                            :error                       nil
+                                                                            :sync-callback-token         nil
+                                                                            :created-at                  "2025-05-29T14:36:25Z"
+                                                                            :error-detail                nil}}]))]
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
+                (is (partial= {:status "error", :url "test-url" :created_by_id 2 :error_message "DWH quota exceeded."}
+                              response))
+                (is (pos-int? (:db_id response)))
+                (is (nil? (:sync_started_at response)))
+                (is (nil? (:last_sync_at response)))
+                (testing "current state info doesn't get persisted"
+                  (is (nil? (:sync_started_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets))))
+                  (is (nil? (:last_sync_at (gsheets)))))))))
         (testing "when 400 error response"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-400-error-link)]
             (with-redefs [hm.client/make-request (partial mock-make-request happy-responses)]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
-                (is (partial= {:status "error", :url "test-url" :created_by_id 2} response))
+                (is (partial= {:status "error"
+                               :url "test-url"
+                               :created_by_id 2
+                               :error_message "Unable to check Google Drive connection. Reconnect if the issue persists."
+                               :hm/response {:status 400
+                                             :body {:error-detail "Error Detail"
+                                                    :type "gdrive"}}}
+
+                              response))
                 (is (pos-int? (:db_id response)))))))
         (testing "when 200 error response"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-200-error-link)]
@@ -286,7 +336,10 @@
                                                                                     {:status 403,
                                                                                      :body   {:error "User not authorized to act over resource."}}]))]
               (let [response (mt/user-http-request :crowberto :get 200 "ee/gsheets/connection")]
-                (is (= "error" (:status response)))
+                (is (partial= {:status "error"
+                               :error_message "Unable to check Google Drive connection. Reconnect if the issue persists."
+                               :hm/response {:status 403
+                                             :body {:error "User not authorized to act over resource."}}} response))
                 (is (= 15 (:created-at (gsheets))))))))
         (testing "when the HM gives a 403 response for the connection, and the connection list fails, then it is not deleted"
           (mt/with-temporary-setting-values [gsheets (assoc mock-gsheet :gdrive/conn-id gdrive-403-error-link)]
@@ -339,3 +392,14 @@
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "https://docs.google.com/spreadsheets/abc")))
   (is (= "google_spreadsheet" (#'gsheets.api/url-type "http://docs.google.com/spreadsheets/abc")))
   (is (thrown-with-msg? Exception #"Invalid URL: https://not.google.com/file" (#'gsheets.api/url-type "https://not.google.com/file"))))
+
+(deftest loggable-response
+  (is (= {:status 404, :body {:foo "bar"}}
+         (#'gsheets.api/loggable-response {:status 404, :body {:foo "bar"}})))
+  (is (= {:status 404, :body {:foo "bar2"}}
+         (#'gsheets.api/loggable-response [{:status 405, :body {:foo "bar1"}}
+                                           {:status 404, :body {:foo "bar2"}}])))
+  (is (= {:status 500, :body "foo"}
+         (#'gsheets.api/loggable-response {:status 500, :body "foo"})))
+  (is (= {:status 200, :body nil}
+         (#'gsheets.api/loggable-response {:status 200, :body nil}))))

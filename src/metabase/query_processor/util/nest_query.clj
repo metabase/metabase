@@ -9,15 +9,47 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
+
+(defn- all-fields-for-table [table-id]
+  (->> (lib.metadata/fields (qp.store/metadata-provider) table-id)
+       ;; The remove line is taken from the add-implicit-clauses middleware. It shouldn't be necessary, because any
+       ;; unused fields should be dropped from the inner query. It also shouldn't hurt anything, because the outer
+       ;; query shouldn't use these fields in the first place.
+       (remove #(#{:sensitive :retired} (:visibility-type %)))
+       (map (fn [field]
+              [:field (u/the-id field) nil]))))
+
+(defn- add-all-fields
+  "This adds all non-sensitive/retired fields (including fields with parent ids) to the passed-in query.
+
+  The issue is that nest-query mostly relies on the preprocessor (specifically, the add-implicit-clauses middleware)
+  to add all possible fields to the newly created inner query. However, add-implicit-fields ignores fields with a
+  parent id. The main user of parent-id is mongo, and mongo doesn't use nest-query, so this usually isn't an
+  issue. However, bigquery also uses parent-id, and bigquery is a sql driver that uses nest-query. As a result,
+  without this function, nest-query wasn't adding bigquery struct member fields to the inner query, which caused sql
+  errors. This function adds in any missing fields and fixes those errors."
+  [{{source-table-id :source-table, :keys [fields]} :query, :as outer-query}]
+  (if source-table-id
+    (let [all-fields (all-fields-for-table source-table-id)
+          existing-fields (into #{} (map second) fields)]
+      (assoc-in outer-query [:query :fields]
+                (into fields
+                      (remove (comp existing-fields second))
+                      all-fields)))
+    outer-query))
 
 (defn- joined-fields [inner-query]
   (m/distinct-by
@@ -95,6 +127,7 @@
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
                      :query    source}))
+                 (add-all-fields source)
                  (add/add-alias-info source)
                  (:query source)
                  (dissoc source :limit)
@@ -107,12 +140,19 @@
         (assoc :source-query source)
         (cond-> keep-filter? (dissoc :filter)))))
 
+(mu/defn- infer-expression-type :- [:maybe ::lib.schema.common/base-type]
+  [inner-query :- :map
+   expression  :- [:maybe ::mbql.s/FieldOrExpressionDef]]
+  (when expression
+    (let [mlv2-query (annotate.legacy-helper-fns/legacy-inner-query->mlv2-query inner-query)]
+      (lib/type-of mlv2-query (lib/->pMBQL expression)))))
+
 (defn- raise-source-query-expression-ref
   "Convert an `:expression` reference from a source query into an appropriate `:field` clause for use in the surrounding
   query."
   [{:keys [source-query], :as query} [_ expression-name opts :as _clause]]
   (let [expression-definition        (mbql.u/expression-with-name query expression-name)
-        {base-type :base_type}       (some-> expression-definition annotate/infer-expression-type)
+        base-type                    (infer-expression-type query expression-definition)
         {::add/keys [desired-alias]} (lib.util.match/match-one source-query
                                        [:expression (_ :guard (partial = expression-name)) source-opts]
                                        source-opts)

@@ -1,6 +1,9 @@
 import type { VisualizationDisplay } from "metabase-types/api";
 
-import { getDashboardCard } from "./e2e-dashboard-helpers";
+import {
+  getDashboardCard,
+  showDashboardCardActions,
+} from "./e2e-dashboard-helpers";
 import { modal, sidebar } from "./e2e-ui-elements-helpers";
 
 export function clickVisualizeAnotherWay(name: string) {
@@ -10,7 +13,11 @@ export function clickVisualizeAnotherWay(name: string) {
       .findByLabelText("Visualize another way")
       .click({ force: true });
   });
-  cy.findByTestId("visualization-canvas-loader").should("not.exist");
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function dataImporter() {
@@ -63,8 +70,19 @@ export function assertDataSourceColumnSelected(
 }
 
 export function selectDataset(datasetName: string) {
-  cy.findByPlaceholderText("Search for something").type(datasetName);
+  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
   cy.findAllByText(datasetName).first().click({ force: true });
+  cy.wait("@cardQuery");
+}
+
+export function deselectDataset(datasetName: string) {
+  cy.findByPlaceholderText("Search for something").clear().type(datasetName);
+  cy.findAllByText(datasetName)
+    .first()
+    .closest("button")
+    .siblings('[data-testid="remove-dataset-button"]')
+    .first()
+    .click({ force: true });
   cy.wait("@cardQuery");
 }
 
@@ -223,31 +241,50 @@ export function chartLegendItem(name: string) {
 }
 
 export function showDashcardVisualizerModal(index = 0) {
-  return getDashboardCard(index)
-    .realHover()
-    .within(() => {
-      cy.findByLabelText("Edit visualization").click({ force: true });
-    });
+  showDashboardCardActions(index);
+
+  getDashboardCard(index)
+    .findByLabelText("Edit visualization")
+    .click({ force: true });
+
+  modal().within(() => {
+    cy.findByTestId("visualization-canvas-loader").should("not.exist");
+    dataImporter().findByTestId("loading-indicator").should("not.exist");
+  });
 }
 
 export function showDashcardVisualizerModalSettings(index = 0) {
   showDashcardVisualizerModal(index);
 
   return modal().within(() => {
-    // TODO: replace this with data-testid
-    // when https://github.com/metabase/metabase/pull/56483 is merged
-    cy.findByText("Settings").click();
+    toggleVisualizerSettingsSidebar();
   });
 }
 
+export function toggleVisualizerSettingsSidebar() {
+  return cy.findByTestId("visualizer-settings-button").click();
+}
+
 export function saveDashcardVisualizerModal(
-  mode: "create" | "update" = "update",
+  options: {
+    mode?: "create" | "update";
+    waitMs?: number;
+  } = {},
 ) {
+  const { mode = "update", waitMs = 1 } = options;
+
   modal().within(() => {
     cy.findByText(mode === "create" ? "Add to dashboard" : "Save").click();
   });
 
   modal({ timeout: 6000 }).should("not.exist");
+  cy.wait(waitMs); // Wait for the modal to close and the dashboard to update
+}
+
+export function closeDashcardVisualizerModal() {
+  return modal().within(() => {
+    cy.findByTestId("visualizer-close-button").click();
+  });
 }
 
 export function saveDashcardVisualizerModalSettings() {

@@ -23,6 +23,7 @@
   (concat data-model
           content
           ["FieldValues"
+           "Metabot"
            "Setting"]))
 
 (def inlined-models
@@ -34,6 +35,8 @@
    "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
+   "MetabotEntity"
+   "MetabotPrompt"
    "TimelineEvent"])
 
 (def excluded-models
@@ -75,7 +78,6 @@
    "PulseChannelRecipient"
    "Query"
    "QueryAction"
-   "QueryAnalysis"
    "QueryCache"
    "QueryExecution"
    "QueryField"

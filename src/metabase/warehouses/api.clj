@@ -12,7 +12,7 @@
    [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -362,13 +362,13 @@
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
-            include-mirror-databases?]}
+            include-destination-databases?]}
     :- [:map
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
-        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
-         database               (api/check-404 (if include-mirror-databases?
+         database               (api/check-404 (if include-destination-databases?
                                                  (t2/select-one :model/Database :id id)
                                                  (t2/select-one :model/Database :id id :router_database_id nil)))
          router-db-id           (:router_database_id database)]
@@ -380,10 +380,10 @@
 (mu/defn- check-database-exists
   ([id] (check-database-exists id {}))
   ([id :- ms/PositiveInt
-    {:keys [include-mirror-databases?]}
+    {:keys [include-destination-databases?]}
     :- [:map
-        [:include-mirror-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
-   (api/check-404 (if (and include-mirror-databases? api/*is-superuser?*)
+        [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
+   (api/check-404 (if (and include-destination-databases? api/*is-superuser?*)
                     (t2/exists? :model/Database :id id)
                     (t2/exists? :model/Database :id id :router_database_id nil)))))
 
@@ -425,7 +425,7 @@
    (get-database id {:include include
                      :include-editable-data-model? include_editable_data_model
                      :exclude-uneditable-details? exclude_uneditable_details
-                     :include-mirror-databases? true})
+                     :include-destination-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
     :exclude-uneditable-details? exclude_uneditable_details}))
@@ -1008,13 +1008,14 @@
     (if-let [ex (try
                   ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
                   ;; purposes of creating a new H2 database.
-                  (binding [h2/*allow-testing-h2-connections* true]
+                  (binding [driver.settings/*allow-testing-h2-connections* true]
                     (driver.u/can-connect-with-details? (:engine db) (:details db) :throw-exceptions))
                   nil
                   (catch Throwable e
                     e))]
       (throw (ex-info (ex-message ex) {:status-code 422}))
       (do
+        (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
         (quick-task/submit-task!
          (fn []
            (database-routing/with-database-routing-off
@@ -1053,6 +1054,7 @@
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-manual-scan {:object db :user-id api/*current-user-id*})
+    (analytics/track-event! :snowplow/simple_event {:event "database_manual_scan" :target_id id})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
@@ -1080,6 +1082,7 @@
                     [:id ms/PositiveInt]]]
   (let [db (api/write-check (get-database id {:exclude-uneditable-details? true}))]
     (events/publish-event! :event/database-discard-field-values {:object db :user-id api/*current-user-id*})
+    (analytics/track-event! :snowplow/simple_event {:event "database_discard_field_values" :target_id id})
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
@@ -1241,7 +1244,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [{:keys [engine details]} (t2/select-one :model/Database :id id)]
     ;; we only want to prevent creating new H2 databases. Testing the existing database is fine.
-    (binding [h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (if-let [err-map (test-database-connection engine details)]
         (merge err-map {:status "error"})
         {:status "ok"}))))

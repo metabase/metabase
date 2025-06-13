@@ -47,7 +47,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
     H.createQuestion(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY, {
       idAlias: "productsCountByCreatedAtAndCategoryQuestionId",
-      entityIdAlias: "productsCountByCreatedAtAndCategoryQuestionEntityId",
       wrapId: true,
     });
     H.createQuestion(PRODUCTS_AVERAGE_BY_CREATED_AT, {
@@ -97,7 +96,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       // Ensure the chart legend contains original series name
       H.chartLegend().within(() => {
-        cy.findByText("Count (Products by Created At (Month))").should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       });
 
       // Edit series settings
@@ -124,9 +123,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       // Ensure the chart legend contains renamed series
       H.chartLegend().within(() => {
         cy.findByText("Series B").should("exist");
-        cy.findByText("Count (Products by Created At (Month))").should(
-          "not.exist",
-        );
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
       });
       H.chartPathWithFillColor("#DCDFE0");
     };
@@ -196,14 +193,18 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.assertWellItemsCount({ vertical: 3 });
     });
 
-    H.saveDashcardVisualizerModal("create");
+    H.saveDashcardVisualizerModal({ mode: "create" });
+    // Wait for card queries before saving the dashboard
+    H.getDashboardCard(0).within(() => {
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findByText("Created At: Month").should("exist");
+    });
+
     H.saveDashboard();
 
-    // Making sure the card renders
+    // Making sure the card renders after saving the dashboard
     H.getDashboardCard(0).within(() => {
-      cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
-        "exist",
-      );
+      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
   });
@@ -249,6 +250,84 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
         "Category",
       );
+    });
+  });
+
+  it("should handle implicit viz settings (VIZ-947)", () => {
+    function assertDataSourceColumnSelected(
+      columnName: string,
+      isSelected = true,
+    ) {
+      H.assertDataSourceColumnSelected(
+        PIVOT_TABLE_CARD.name,
+        columnName,
+        isSelected,
+      );
+    }
+
+    H.createQuestion(PIVOT_TABLE_CARD);
+
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+    H.openQuestionsSidebar();
+    H.clickVisualizeAnotherWay(PIVOT_TABLE_CARD.name);
+
+    H.modal().within(() => {
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity", false);
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.chartPathWithFillColor("#88BF4D").should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+
+      // Add Category column
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Product → Category").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity", false);
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category");
+      H.chartLegendItems().should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Add Average of Quantity column
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Average of Quantity").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category");
+      H.chartLegendItems().should("have.length", 5);
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
+
+      // Remove dimensions
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Created At: Year",
+      );
+      H.deselectColumnFromColumnsList(
+        PIVOT_TABLE_CARD.name,
+        "Product → Category",
+      );
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year", false);
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.echartsContainer().should("not.exist");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 0);
+
+      // Add a dimension back
+      H.dataSourceColumn(PIVOT_TABLE_CARD.name, "Created At: Year").click();
+      assertDataSourceColumnSelected("Count");
+      assertDataSourceColumnSelected("Average of Quantity");
+      assertDataSourceColumnSelected("Created At: Year");
+      assertDataSourceColumnSelected("Product → Category", false);
+      H.echartsContainer().should("exist");
+      H.verticalWell().findAllByTestId("well-item").should("have.length", 2);
+      H.horizontalWell().findAllByTestId("well-item").should("have.length", 1);
+      H.chartLegendItems().should("have.length", 2);
     });
   });
 
