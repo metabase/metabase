@@ -651,9 +651,9 @@ export class AccordionList<
       itemIsSelected = () => false,
       renderSectionIcon = (section: TSection) =>
         section.icon && <Icon name={section.icon as IconName} />,
-      renderItemLabel = () => undefined,
       renderItemName = (item: TItem) =>
-        ("name" in item ? item.name : "") as string,
+        "name" in item ? (item.name as string) : undefined,
+      renderItemLabel,
       renderItemDescription = (item: TItem) =>
         "description" in item ? (item.description as string) : "",
       renderItemIcon = (item: TItem) =>

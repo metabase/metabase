@@ -38,7 +38,7 @@ type AccordionListCellProps<
 
   renderSectionIcon: (section: TSection) => ReactNode;
 
-  renderItemLabel: (item: TItem) => string | undefined;
+  renderItemLabel?: (item: TItem) => string | undefined;
   renderItemName: (item: TItem) => string | undefined;
   renderItemDescription: (item: TItem) => ReactNode;
   renderItemIcon: (item: TItem) => ReactNode;
