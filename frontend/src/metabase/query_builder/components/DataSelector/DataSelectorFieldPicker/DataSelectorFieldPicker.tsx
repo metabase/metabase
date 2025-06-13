@@ -5,7 +5,7 @@ import {
   HoverParent,
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Box, DelayGroup, Icon } from "metabase/ui";

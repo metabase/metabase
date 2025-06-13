@@ -7,7 +7,8 @@ import {
   PopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/components/MetadataInfo/Popover";
-import AccordionList, {
+import {
+  AccordionList,
   type Section,
 } from "metabase/core/components/AccordionList";
 import Markdown from "metabase/core/components/Markdown";

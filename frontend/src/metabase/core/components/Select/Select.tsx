@@ -11,7 +11,7 @@ import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import type { SelectButtonProps } from "metabase/core/components/SelectButton";
 import SelectButton from "metabase/core/components/SelectButton";
 import CS from "metabase/css/core/index.css";

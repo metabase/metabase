@@ -7,7 +7,8 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList, {
+import {
+  AccordionList,
   type Section,
 } from "metabase/core/components/AccordionList";
 import { getGroupName } from "metabase/querying/filters/utils/groups";

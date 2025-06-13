@@ -6,7 +6,8 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList, {
+import {
+  AccordionList,
   type Section,
 } from "metabase/core/components/AccordionList";
 import { color } from "metabase/lib/colors";

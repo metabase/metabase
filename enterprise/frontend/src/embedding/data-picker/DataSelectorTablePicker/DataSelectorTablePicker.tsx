@@ -7,7 +7,8 @@ import {
   HoverParent,
   TableInfoIcon,
 } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import AccordionList, {
+import {
+  AccordionList,
   type Section,
 } from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";

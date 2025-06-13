@@ -1,7 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import AccordionList, {
+import {
+  AccordionList,
   type Section,
 } from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
