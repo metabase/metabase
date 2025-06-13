@@ -129,6 +129,8 @@ export const LicenseTokenForm = ({
             <Anchor
               onClick={onSkip}
               variant="brand"
+              component="button"
+              className={styles.skipButton}
             >{t`I'll activate later`}</Anchor>
             <Text c="text-light" size="sm">
               {t`You won't have access to the paid features until you activate.`}

@@ -27,3 +27,8 @@
   /* --mb-color-shadow is rgba(0, 0, 0, 0.13); but the design uses a different value */
   box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
 }
+
+.skipButton {
+  align-self: flex-start;
+  width: fit-content;
+}
