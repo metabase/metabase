@@ -23,11 +23,14 @@ import {
 import type { Table } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
+import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY = 1000;
 
 export const TableSelectionStep = () => {
+  useForceLocaleRefresh();
+
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
