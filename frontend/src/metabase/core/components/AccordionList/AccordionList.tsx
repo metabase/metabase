@@ -20,7 +20,7 @@ import { Icon, type IconName, type TextInputProps } from "metabase/ui";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { AccordionListCell } from "./AccordionListCell";
 import type { Item, Row, Section } from "./types";
-import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
+import { type Cursor, get, getNextCursor, getPrevCursor } from "./utils";
 
 type Props<
   TItem extends Item,
@@ -650,23 +650,21 @@ export class AccordionList<
       itemIsSelected = () => false,
       renderSectionIcon = (section: TSection) =>
         section.icon && <Icon name={section.icon as IconName} />,
-      renderItemName = (item: TItem) =>
-        "name" in item ? (item.name as string) : undefined,
+      renderItemName = (item: TItem) => get<string>(item, "name"),
       renderItemLabel,
-      renderItemDescription = (item: TItem) =>
-        "description" in item ? (item.description as string) : "",
-      renderItemIcon = (item: TItem) =>
-        "icon" in item && item.icon ? (
-          <Icon name={item.icon as IconName} />
-        ) : null,
+      renderItemDescription = (item: TItem) => get<string>(item, "description"),
+      renderItemIcon = (item: TItem) => {
+        const icon = get<IconName>(item, "icon");
+        return icon ? <Icon name={icon} /> : null;
+      },
       renderItemExtra = () => null,
       renderItemWrapper = (content: ReactNode) => content,
       showSpinner = () => false,
 
-      getItemClassName = (item: TItem) =>
-        "className" in item && typeof item.className === "string"
-          ? item.className
-          : undefined,
+      getItemClassName = (item: TItem) => {
+        const className = get(item, "className");
+        return typeof className === "string" ? className : undefined;
+      },
       getItemStyles = () => ({}),
       alwaysExpanded = false,
     } = this.props;

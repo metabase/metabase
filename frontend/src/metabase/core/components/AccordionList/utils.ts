@@ -1,3 +1,5 @@
+import { getIn } from "icepick";
+
 import type { Section } from "./types";
 
 export type Cursor = {
@@ -160,3 +162,7 @@ export const getPrevCursor = (
 
   return cursor;
 };
+
+export function get<T = unknown>(object: unknown, path: string): T | undefined {
+  return getIn(object, path.split("."));
+}
