@@ -263,13 +263,7 @@ function useEditableTableColumnSettingItems(
       }
     }
 
-    // By default, all columns are editable if no settings are provided
-    // If settings are provided, we preserve them even if a new column is added
-    const editableColumnSet = new Set(
-      columnEditableSettings.length > 0
-        ? columnEditableSettings
-        : fields.map((it) => it.name),
-    );
+    const editableColumnSet = new Set(columnEditableSettings);
 
     return nameOrder.map((name) => {
       const setting = nameToDisplaySettingMap[name];
