@@ -1215,6 +1215,7 @@ describe("scenarios > dashboard", () => {
   describe("warn before leave", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     });
 
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
@@ -1232,6 +1233,7 @@ describe("scenarios > dashboard", () => {
       cy.wait("@queryMetadata");
       assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
+      cy.reload();
 
       // edit
       H.editDashboard();
@@ -1241,6 +1243,7 @@ describe("scenarios > dashboard", () => {
       dragOnXAxis(card, 100);
       assertPreventLeave();
       H.saveDashboard();
+      cy.reload();
 
       // remove
       H.editDashboard();
@@ -1257,6 +1260,8 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
       H.saveDashboard();
 
+      cy.reload();
+
       // move tab
       H.editDashboard();
       dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
@@ -1267,6 +1272,8 @@ describe("scenarios > dashboard", () => {
       cy.wait(1000);
       assertPreventLeave();
       H.saveDashboard();
+
+      cy.reload();
 
       // duplicate tab
       H.editDashboard();
@@ -1280,6 +1287,8 @@ describe("scenarios > dashboard", () => {
         "true",
       );
 
+      cy.reload();
+
       // remove tab
       H.editDashboard();
       H.deleteTab("Copy of Tab 1");
@@ -1288,6 +1297,8 @@ describe("scenarios > dashboard", () => {
       cy.url().should("include", "tab-1");
       assertPreventLeave();
       H.saveDashboard({ waitMs: 100 });
+
+      cy.reload();
 
       // rename tab
       H.editDashboard();
