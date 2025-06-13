@@ -14,7 +14,7 @@ Pivot tables allow you swap rows and columns, group data, and include subtotals 
 
 ## Pivot tables vs. regular tables
 
-Your typical, basic table is a grid of cells. Every dimension (aka attribute, "group by") is represented by a column. Every record is represented by a row. For example, in the table below, `Source`, `Plan`, and `Created at` are dimensions/attributes for metric values `Sum of Seats` and `Count`:
+Your typical, basic table is a grid of cells. Every dimension (also known as attribute, "group by") is represented by a column. Each record is represented as a row. For example, in the table below, `Source`, `Plan`, and `Created at` are dimensions/attributes for metric values `Sum of Seats` and `Count`:
 
 ![Unpivoted table](../images/unpivoted-table.png)
 
@@ -22,7 +22,7 @@ A pivot table is a table that has dimensions in both rows and columns, and metri
 
 ![Pivoted table](../images/pivoted-table.png)
 
-The reason they're called pivot tables is because you can rotate ("pivot") a column 90 degrees so that the values in that column become column headings themselves. Pivoting values into column headings can be really helpful when trying to analyze data across multiple attributes, like time, location, and category. You can pivot multiple rows to columns and vice versa, or not pivot any at all.
+The reason they're called pivot tables is because you can rotate ("pivot") a column 90 degrees so that the values in that column become column headings themselves. Pivoting values into column headings is useful when analyzing data across multiple attributes, like time, location, and category. You can pivot multiple rows to columns and vice versa, or not pivot any at all.
 
 Pivot table is the only Metabase visualization type (besides the plain table, of course) can display several metrics simultaneously along several dimensions.
 
@@ -47,7 +47,7 @@ To create a pivot table, you'll need to use the query builder. Currently, you ca
 
    You can put multiple fields in the "rows" and "columns" buckets, but note that the order of the fields changes how Metabase displays the table: each additional field will nest within the previous field.
 
-Currently, all the dimension and metrics that you have in your query must appear as either rows, columns, or measures in the pivot table (although you can [collapse rows to their totals](#totals-and-grand-totals)). If you don't want to display a breakout or metric in the pivot table, you'll need to remove it from the query - you can't hide it from the pivot table.
+Currently, all the dimension and metrics in your query must appear as either rows, columns, or measures in the pivot table (although you can [collapse rows to their totals](#totals-and-grand-totals)). If you don't want to display a breakout or metric in the pivot table, you'll need to remove it from the query - you can't hide it from the pivot table.
 
 ## Totals and grand totals
 
@@ -67,7 +67,7 @@ You can add colors to pivot tables based on conditions, or using a range of valu
 
 ![Conditional formatting](../images/pivot-conditional-formatting.png)
 
-Note that totals and grand totals will not be formatted.
+Metabase won't format totals or grand totals.
 
 Conditional formatting for pivot tables works the same way as for regular tables, so see [Conditional formatting](./table.md#conditional-table-formatting)
 
@@ -77,17 +77,17 @@ You can use conditional formatting in pivot tables to mimic a "heat map" of valu
 
 1. Create a query builder question with a summary block that has:
 
-- one metric that defines the intensity of the cells in heatmap
-- two breakouts - horizontal and vertical components of the map;
+- One metric that defines the intensity of the cells in heatmap
+- Two breakouts to define the horizontal and vertical components of the map
 
-2. Visualize the query as a pivot table;
-3. Add a **"Color range"** conditional formatting
+2. Visualize the query as a pivot table.
+3. Add a **"Color range"** conditional formatting.
 
 For example, to build a heatmap of hourly activity by day of the week, use a query with breakouts by hour of day and day of the week:
 
 ![Query for the heatmap](../images/heatmap-query.png)
 
-and use pivot table with conditional formatting:
+Use pivot table with conditional formatting:
 
 ![Pivot table as a heatmap](../images/pivot-table-as-heatmap.png)
 
@@ -97,9 +97,9 @@ There are special considerations when exporting pivot tables as XLSX files. See 
 
 ## Pivot table limitations
 
-- Pivot tables are only available for SQL databases
-- All metrics and dimensions specified in the query will be displayed in the pivot table
+- Pivot tables are only available for SQL databases.
+- All metrics and dimensions specified in the query will be displayed in the pivot table.
 - Pivot tables are only available for questions built with the query builder.
-- The query builder question must have a summary block
+- The query builder question must have a summary block.
 
 If you must use SQL, and your SQL query does not have parameters, you can save that SQL query , then use its [results as the starting point](../native-editor/writing-sql.md#explore-sql-question-results-using-the-query-builder) for a query builder question in order to build a question. The trick here is to do your aggregation and grouping in the query builder. That is, use the SQL question to grab the raw data you want to work with (maybe [create a model](../../data-modeling/models.md)), then start a new question in the query builder to filter, summarize, and group that data.
