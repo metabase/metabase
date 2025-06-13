@@ -1,13 +1,12 @@
 import { t } from "ttag";
 
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import ColorPicker from "metabase/core/components/ColorPicker";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
-import { colors } from "metabase/lib/colors";
+import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import {
   ActionIcon,
   Card,
   Checkbox,
-  Divider,
   Group,
   Icon,
   Stack,
@@ -24,14 +23,17 @@ const getConfigurableColors = () =>
     {
       name: t`Brand Color`,
       key: "brand",
+      defaultColor: defaultMetabaseColors.brand,
     },
     {
       name: t`Text Color`,
       key: "text-primary",
+      defaultColor: defaultMetabaseColors["text-dark"],
     },
     {
       name: t`Background Color`,
       key: "background",
+      defaultColor: defaultMetabaseColors["bg-white"],
     },
   ] as const;
 
@@ -110,24 +112,21 @@ export const ConfigureStep = () => {
         </Text>
 
         <Group align="start" gap="xl" mb="lg">
-          {getConfigurableColors().map(({ key, name }) => (
+          {getConfigurableColors().map(({ key, name, defaultColor }) => (
             <Stack gap="xs" align="start" key={key}>
               <Text size="sm" fw="bold">
                 {name}
               </Text>
 
-              <ColorSelector
-                value={colors.brand}
-                colors={Object.values(colors)}
+              <ColorPicker
+                value={settings.theme?.colors?.[key] ?? defaultColor}
                 onChange={(color) => updateColors({ [key]: color })}
               />
             </Stack>
           ))}
         </Group>
 
-        <Divider mb="lg" />
-
-        {!!settings.dashboardId && (
+        {isQuestionOrDashboardEmbed && (
           <Checkbox
             label={t`Show dashboard title`}
             checked={settings.withTitle ?? true}

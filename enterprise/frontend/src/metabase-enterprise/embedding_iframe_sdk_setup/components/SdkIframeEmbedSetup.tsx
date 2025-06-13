@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -20,15 +20,18 @@ import { SelectEntityStep } from "./SelectEntityStep";
 
 const SdkIframeEmbedSetupContent = () => {
   const [sidebarWidth, setSidebarWidth] = useState(400);
+
   const { currentStep, handleNext, handleBack, canGoNext, canGoBack } =
     useSdkIframeEmbedSetupContext();
 
-  const StepContent = match(currentStep)
-    .with("select-embed-type", () => SelectEmbedTypeStep)
-    .with("select-entity", () => SelectEntityStep)
-    .with("configure", () => ConfigureStep)
-    .with("get-code", () => GetCodeStep)
-    .exhaustive();
+  const StepContent = useMemo(() => {
+    return match(currentStep)
+      .with("select-embed-type", () => SelectEmbedTypeStep)
+      .with("select-entity", () => SelectEntityStep)
+      .with("configure", () => ConfigureStep)
+      .with("get-code", () => GetCodeStep)
+      .exhaustive();
+  }, [currentStep]);
 
   return (
     <Box className={S.Container}>

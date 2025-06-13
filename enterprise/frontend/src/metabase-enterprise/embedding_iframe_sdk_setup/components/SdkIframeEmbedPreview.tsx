@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
@@ -14,19 +14,21 @@ declare global {
 
 export const SdkIframeEmbedPreview = () => {
   const context = useSdkIframeEmbedSetupContext();
+  const { settings } = context.options;
+
+  const embedJsRef = useRef<MetabaseEmbed | null>(null);
 
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "/app/embed.js";
     document.body.appendChild(script);
 
-    let embed: MetabaseEmbed;
-
     script.onload = () => {
       const { MetabaseEmbed } = window["metabase.embed"];
 
-      embed = new MetabaseEmbed({
-        ...context.options.settings,
+      embedJsRef.current = new MetabaseEmbed({
+        dashboardId: 1,
+        instanceUrl: settings.instanceUrl,
 
         // This is an invalid API key.
         // The embed uses the admin's session if the provided API key is invalid.
@@ -38,10 +40,14 @@ export const SdkIframeEmbedPreview = () => {
     };
 
     return () => {
-      embed.destroy();
+      embedJsRef.current?.destroy();
       script.remove();
     };
-  });
+  }, [settings.instanceUrl]);
+
+  useEffect(() => {
+    embedJsRef.current?.updateSettings(settings);
+  }, [settings]);
 
   return (
     <div>

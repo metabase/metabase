@@ -43,7 +43,7 @@ export const SelectEntityStep = () => {
       case "dashboard":
         return t`Select a dashboard to embed`;
       case "chart":
-        return t`Select a question to embed`;
+        return t`Select a chart to embed`;
       case "exploration":
         return t`Exploration embed setup`;
       default:
@@ -58,7 +58,7 @@ export const SelectEntityStep = () => {
       case "chart":
         return t`Choose from your recently visited questions`;
       case "exploration":
-        return t`No content selection needed for exploration embeds`;
+        return null;
       default:
         return t`Choose your content to embed`;
     }
