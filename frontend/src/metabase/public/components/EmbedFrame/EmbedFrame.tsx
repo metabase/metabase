@@ -25,7 +25,7 @@ import { SyncedParametersList } from "metabase/query_builder/components/SyncedPa
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Divider, Space } from "metabase/ui";
+import { Box, Divider, Group, Space } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -199,6 +199,26 @@ export const EmbedFrame = ({
               )}
               <Box className={EmbedFrameS.HeaderButtons} mt={titled ? "md" : 0}>
                 {headerButtons}
+                {dashboard && pdfDownloadsEnabled && (
+                  <Group
+                    justify="flex-end"
+                    pos={
+                      (dashboard?.tabs ?? []).length === 0 &&
+                      !finalName &&
+                      hasVisibleParameters
+                        ? "absolute"
+                        : "static"
+                    }
+                    top={
+                      (dashboard?.tabs ?? []).length > 1 && !finalName
+                        ? "1rem"
+                        : "1.75rem"
+                    }
+                    right={0}
+                  >
+                    <ExportAsPdfButton dashboard={dashboard} />
+                  </Group>
+                )}
               </Box>
               <FixedWidthContainer
                 data-testid="fixed-width-dashboard-tabs"
@@ -209,20 +229,6 @@ export const EmbedFrame = ({
               </FixedWidthContainer>
             </FixedWidthContainer>
             {dashboardTabs && <Divider />}
-          </Box>
-        )}
-
-        {dashboard && pdfDownloadsEnabled && (
-          <Box
-            pos="absolute"
-            top={
-              (dashboard?.tabs ?? []).length > 1 && !finalName
-                ? "1rem"
-                : "1.75rem"
-            }
-            right="2rem"
-          >
-            <ExportAsPdfButton dashboard={dashboard} />
           </Box>
         )}
 
