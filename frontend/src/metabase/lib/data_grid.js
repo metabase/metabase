@@ -3,7 +3,7 @@ import _ from "underscore";
 import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import * as Lib from "metabase-lib";
+// import * as Lib from "metabase-lib";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
@@ -25,23 +25,31 @@ export function multiLevelPivot(data, settings) {
     return null;
   }
 
+  const columns = Pivot.columns_without_pivot_group(data.cols);
+
   let columnSplit;
   // TODO: refactor to unify with frontend/src/metabase/visualizations/components/settings/ChartSettingNativeFieldsPartition.tsx
   if (settings[NATIVE_COLUMN_SPLIT_SETTING]) {
-    const flatEntries = [
-      ...settings[NATIVE_COLUMN_SPLIT_SETTING].values,
-      ...settings[NATIVE_COLUMN_SPLIT_SETTING].rows,
-      ...settings[NATIVE_COLUMN_SPLIT_SETTING].columns,
-    ];
-    const flatColumnNames = Lib.uniqueNames(flatEntries.map((c) => c.name));
+    const aggregations = columns.filter((col) => col.source === "aggregation");
+    const breakouts = columns.filter((col) => col.source === "breakout");
     columnSplit = _.mapObject(
       settings[NATIVE_COLUMN_SPLIT_SETTING],
-      (entry) => {
-        const deduplicatedColumnNames = entry.map((col) => {
-          const entryIndex = flatEntries.indexOf(col);
-          return flatColumnNames[entryIndex];
-        });
-        return deduplicatedColumnNames;
+      (entry, partition) => {
+        if (partition === "values") {
+          return entry.map((_val, index) => {
+            return aggregations[index].name;
+          });
+        }
+        if (partition === "rows" || partition === "columns") {
+          return entry.map((_val, index) => {
+            const breakoutIndex =
+              index +
+              (partition === "rows"
+                ? 0
+                : settings[NATIVE_COLUMN_SPLIT_SETTING].rows.length);
+            return breakouts[breakoutIndex].name;
+          });
+        }
       },
     );
   } else {
@@ -50,8 +58,6 @@ export function multiLevelPivot(data, settings) {
       data.cols,
     );
   }
-
-  const columns = Pivot.columns_without_pivot_group(data.cols);
 
   const {
     columns: columnIndexes,

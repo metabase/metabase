@@ -12,6 +12,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   NativeSplitAggregationEntry,
   NativeSplitGroupEntry,
+  PartitionName,
 } from "metabase-types/api";
 
 import {
@@ -134,6 +135,8 @@ export const ChartSettingNativeFieldsPartition = ({
   const query = question.query();
   const datasetQuery = question.datasetQuery();
 
+  // const [pivotedQuery, setPivotedQuery] = useState<Lib.Query | null>(null);
+
   // TODO: use RTK query instead
   const [baseMetadataResults, setMetadataResults] = useState(null);
   useEffect(() => {
@@ -145,34 +148,38 @@ export const ChartSettingNativeFieldsPartition = ({
       });
   }, [datasetQuery]);
 
-  const flatOrderedEntries = useMemo(
-    () => [...value.values, ...value.rows, ...value.columns],
-    [value],
-  );
-
-  const flatDeduplicatedColumnNames = useMemo(() => {
-    return Lib.uniqueNames(flatOrderedEntries.map((c) => c.name));
-  }, [flatOrderedEntries]);
-
   const findColumnByEntry = useCallback(
-    (entry: NativeSplitGroupEntry | NativeSplitAggregationEntry) => {
-      const entryIndex = flatOrderedEntries.indexOf(entry);
-      const deduplicatedColumnName = flatDeduplicatedColumnNames[entryIndex];
-      return columns.find((c) => c.name === deduplicatedColumnName);
+    (
+      _entry: NativeSplitGroupEntry | NativeSplitAggregationEntry,
+      partition: PartitionName,
+      index: number,
+    ) => {
+      if (partition === "values") {
+        const aggregations = columns.filter(
+          (col) => col.source === "aggregation",
+        );
+        return aggregations[index];
+      }
+      if (partition === "rows" || partition === "columns") {
+        const breakouts = columns.filter((col) => col.source === "breakout");
+        const breakoutIndex =
+          index + (partition === "rows" ? 0 : value.rows.length);
+        return breakouts[breakoutIndex];
+      }
     },
-    [columns, flatDeduplicatedColumnNames, flatOrderedEntries],
+    [columns, value],
   );
 
   if (!baseMetadataResults) {
     return;
   }
 
-  const wrappedQuery = Lib.wrapAdhocNativeQuery(query, baseMetadataResults);
+  const wrappedBaseQuery = Lib.wrapAdhocNativeQuery(query, baseMetadataResults);
 
   const handleAddAggregation = (query: Lib.Query) => {
     const aggs = Lib.aggregations(query, -1);
     const aggDetails = aggs
-      .map((agg) => {
+      .map((agg, i) => {
         const aggDisplay = Lib.displayInfo(query, -1, agg);
         const column = Lib.aggregationColumn(query, -1, agg);
 
@@ -183,14 +190,16 @@ export const ChartSettingNativeFieldsPartition = ({
 
         return {
           name: aggDisplay.name,
+          index: i,
           column: columnName,
         };
       })
       .filter(isNotNull);
 
+    // setPivotedQuery(query);
     onChange({
       ...value,
-      values: [...value.values, ...aggDetails],
+      values: [...aggDetails],
     });
   };
 
@@ -209,6 +218,11 @@ export const ChartSettingNativeFieldsPartition = ({
       ? Lib.displayInfo(query, 0, binning)
       : undefined;
 
+    // const newPivotedQuery = Lib.breakout(wrappedBaseQuery, -1, column);
+    // setPivotedQuery(newPivotedQuery);
+
+    const existingBreakoutCount =
+      value["rows"]?.length ?? 0 + value["columns"]?.length ?? 0;
     onChange({
       ...value,
       [partition]: columnAdd(
@@ -216,6 +230,7 @@ export const ChartSettingNativeFieldsPartition = ({
         value[partition]?.length ?? 0,
         {
           name: columnName,
+          index: existingBreakoutCount,
           bucket: bucketName,
           binning: binningInfo,
         },
@@ -235,12 +250,12 @@ export const ChartSettingNativeFieldsPartition = ({
       renderAddColumnButton={(partitionName) =>
         partitionName === "values" ? (
           <AddAggregationPopover
-            query={wrappedQuery}
+            query={wrappedBaseQuery}
             onAddAggregation={handleAddAggregation}
           />
         ) : (
           <AddBreakoutPopover
-            query={wrappedQuery}
+            query={wrappedBaseQuery}
             onAddBreakout={(col) => handleAddBreakout(partitionName, col)}
           />
         )

@@ -171,14 +171,18 @@ export type ColumnFormattingSetting =
 
 export type NativeSplitAggregationEntry = {
   name: string;
+  // returnedName: string;
   column?: string;
+  index: number;
 };
 
 export type NativeSplitGroupEntry = {
   name: string;
+  // returnedName: string;
   column?: string;
   bucket?: string;
   binning?: BucketDisplayInfo;
+  index: number;
 };
 
 export type ColumnNameColumnSplitSetting = {
