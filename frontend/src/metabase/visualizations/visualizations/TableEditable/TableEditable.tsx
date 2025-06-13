@@ -5,10 +5,11 @@ import _ from "underscore";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { Flex, Loader, Title } from "metabase/ui";
 import LoadingView from "metabase/visualizations/components/Visualization/LoadingView";
-import { mergeSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DatasetData } from "metabase-types/api";
+
+import { mergeSettings } from "../../lib/settings/typed-utils";
 
 import { TableEditableConfigureActionButton } from "./TableEditableConfigureActionButton";
 
