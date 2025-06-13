@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import { groupBy } from "underscore";
 
@@ -23,11 +22,12 @@ import {
 import type { Table } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
+import type { StepProps } from "./embeddingSetupSteps";
 
 const MAX_RETRIES = 30;
 const RETRY_DELAY = 1000;
 
-export const TableSelectionStep = () => {
+export const TableSelectionStep = ({ nextStep, prevStep }: StepProps) => {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +91,7 @@ export const TableSelectionStep = () => {
 
   const handleSubmit = () => {
     setProcessingStatus("Creating models and dashboards...");
-    dispatch(push("/setup/embedding/processing"));
+    nextStep();
   };
 
   const filteredTables = useMemo(() => {
@@ -112,7 +112,9 @@ export const TableSelectionStep = () => {
   if (loading) {
     return (
       <FullHeightContainer ta="center" py="xl">
-        <Loader size="lg" />
+        <Center>
+          <Loader size="lg" />
+        </Center>
         <Stack gap="md" mt="md">
           <Text>
             {retryCount > 0
@@ -137,11 +139,7 @@ export const TableSelectionStep = () => {
           <Button variant="outline" onClick={handleManualRefresh}>
             {t`Try Again`}
           </Button>
-          <Button
-            onClick={() => dispatch(push("/setup/embedding/data-connection"))}
-          >
-            {t`Go Back`}
-          </Button>
+          <Button onClick={prevStep}>{t`Go Back`}</Button>
         </Stack>
       </FullHeightContainer>
     );
@@ -198,9 +196,16 @@ export const TableSelectionStep = () => {
         </Center>
       )}
 
-      <Group justify="end" mt="xl">
-        <Button onClick={handleSubmit} disabled={selectedTables.length === 0}>
-          {t`Continue`}
+      <Group justify="space-between" mt="xl">
+        <Button variant="outline" onClick={prevStep}>
+          {t`Back`}
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={selectedTables.length === 0}
+          variant="filled"
+        >
+          {t`Next`}
         </Button>
       </Group>
     </FullHeightContainer>
