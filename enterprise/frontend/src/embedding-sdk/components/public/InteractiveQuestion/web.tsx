@@ -76,6 +76,10 @@ function createMetabaseProvider(config = {}) {
       });
 
       this._observer.observe(this, { childList: true });
+
+      // To properly position elements
+      this.style.position = "relative";
+      this.style.zIndex = "0";
     }
 
     disconnectedCallback() {
