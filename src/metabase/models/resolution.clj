@@ -129,3 +129,8 @@
       ;; loading the model namespace by calling `resolve-model` can add a new implementation to `table-name`, and
       ;; apparently we need to refer back to the var to pick up the updated multimethod.
       (#'t2.model/table-name (t2.model/resolve-model model)))))
+
+(methodical/prefer-method!
+ #'toucan2.pipeline/build
+ [:toucan.query-type/select.instances-from-pks :toucan2.tools.transformed/transformed.model :default]
+ [:toucan.query-type/select.* :toucan2.tools.before-select/model :default])
