@@ -1,4 +1,3 @@
-import { replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -8,10 +7,13 @@ import type { UserInfo } from "metabase-types/store";
 import { submitUser } from "../../../actions";
 import { getIsHosted } from "../../../selectors";
 import { UserForm } from "../../UserForm";
+import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const UserCreationStep = () => {
   useForceLocaleRefresh();
+
+  const { goToNextStep } = useEmbeddingSetup();
 
   // const user = {}; // TODO: pre-fill from
   const isHosted = useSelector(getIsHosted);
@@ -19,7 +21,7 @@ export const UserCreationStep = () => {
 
   const handleSubmit = async (user: UserInfo) => {
     await dispatch(submitUser(user)).unwrap();
-    dispatch(replace("/setup/embedding/data-connection"));
+    goToNextStep();
   };
 
   return (

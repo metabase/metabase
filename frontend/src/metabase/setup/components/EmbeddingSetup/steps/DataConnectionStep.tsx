@@ -14,12 +14,12 @@ export const DataConnectionStep = () => {
   useForceLocaleRefresh();
 
   const dispatch = useDispatch();
-  const { setDatabase } = useEmbeddingSetup();
+  const { setDatabase, goToNextStep } = useEmbeddingSetup();
 
   const handleSubmit = async (databaseData: DatabaseData) => {
     const createdDatabase = await dispatch(createDatabase(databaseData));
     setDatabase(createdDatabase);
-    dispatch(push("/setup/embedding/table-selection"));
+    goToNextStep();
   };
 
   return (

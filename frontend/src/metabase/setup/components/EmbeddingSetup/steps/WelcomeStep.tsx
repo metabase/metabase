@@ -3,9 +3,10 @@ import { t } from "ttag";
 
 import { Box, Button, List, Space, Text, Title } from "metabase/ui";
 
+import type { StepProps } from "../steps/embeddingSetupSteps";
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
-export const WelcomeStep = () => {
+export const WelcomeStep = ({ nextStep }: StepProps) => {
   useForceLocaleRefresh();
 
   return (
@@ -37,13 +38,7 @@ export const WelcomeStep = () => {
 
       <Space h="xl" />
 
-      <Button
-        component={Link}
-        to="/setup/embedding/user"
-        variant="filled"
-        mb="md"
-        miw={"12rem"}
-      >
+      <Button onClick={nextStep} variant="filled" mb="md" miw={"12rem"}>
         {t`Start`}
       </Button>
 

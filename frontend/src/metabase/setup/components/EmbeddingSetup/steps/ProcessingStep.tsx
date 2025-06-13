@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api/settings";
-import { useDispatch } from "metabase/lib/redux";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
@@ -12,7 +10,8 @@ import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 export const ProcessingStep = () => {
   useForceLocaleRefresh();
 
-  const dispatch = useDispatch();
+  const { goToNextStep } = useEmbeddingSetup();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [updateSettings] = useUpdateSettingsMutation();
@@ -113,7 +112,7 @@ export const ProcessingStep = () => {
         setCreatedDashboardIds(dashboardIds);
 
         // Move to final step
-        dispatch(push("/setup/embedding/final"));
+        goToNextStep();
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
       }
@@ -123,10 +122,10 @@ export const ProcessingStep = () => {
   }, [
     database?.id,
     selectedTables,
-    dispatch,
     setProcessingStatus,
     setCreatedDashboardIds,
     setupSettings,
+    goToNextStep,
   ]);
 
   if (error) {

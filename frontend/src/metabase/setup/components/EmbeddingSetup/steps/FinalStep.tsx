@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
@@ -16,11 +15,14 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
-export const FinalStep = () => {
+import type { StepProps } from "./embeddingSetupSteps";
+
+export const FinalStep = ({ nextStep }: StepProps) => {
   useForceLocaleRefresh();
 
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
@@ -39,7 +41,7 @@ export const FinalStep = () => {
 
   const tabs = useMemo(
     () => [
-      ...(dashboards ?? []).map((dashboard) => ({
+      ...(dashboards ?? []).map((dashboard: Dashboard) => ({
         title: dashboard.name,
         url: `${window.location.origin}/dashboard/${dashboard.id}`,
       })),
@@ -127,11 +129,15 @@ export const FinalStep = () => {
       </Tabs>
 
       <Group justify="space-between" mt="xl">
-        <Button component={Link} to="/" variant="subtle" color="text-primary">
+        <Button
+          variant="subtle"
+          color="text-primary"
+          onClick={() => (window.location.href = "/")}
+        >
           {t`I'll do this later`}
         </Button>
 
-        <Button component={Link} to="/setup/embedding/done" variant="filled">
+        <Button variant="filled" onClick={nextStep}>
           {t`I see Metabase`}
         </Button>
       </Group>

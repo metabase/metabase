@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-import { useLocation } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -8,54 +6,19 @@ import { Box, Center, Flex, Icon, type IconName, Text } from "metabase/ui";
 
 import { LanguageSelector } from "../LanguageSelector";
 
+import { useEmbeddingSetup } from "./EmbeddingSetupContext";
+import type { StepDefinition } from "./steps/embeddingSetupSteps";
+
 const ICON_SIZE = 30;
 const STEP_GAP = 22;
 
-interface StepType {
-  key: string;
-  title: string;
-  slugs: string[];
-  icon: IconName;
-}
-
 export const EmbeddingSetupSidebar = () => {
-  const pathname = useLocation().pathname?.split("/").at(-1);
+  const { stepKey, steps, stepIndex: currentStepIndex } = useEmbeddingSetup();
 
-  const steps = useMemo<StepType[]>(() => {
-    return [
-      {
-        key: "account",
-        title: t`Set up your account`,
-        slugs: ["user"],
-        icon: "person",
-      },
-      {
-        key: "connect_data",
-        title: t`Connect to your data`,
-        slugs: ["data-connection"],
-        icon: "database",
-      },
-      {
-        key: "generate_starter_content",
-        title: t`Generate starter content`,
-        slugs: ["table-selection", "processing"],
-        icon: "bolt",
-      },
-      {
-        key: "add_to_app",
-        title: t`Add to your app`,
-        slugs: ["final"],
-        icon: "snippet",
-      },
-    ];
-  }, []);
-
-  const currentStepIndex = useMemo(() => {
-    if (pathname === "done") {
-      return steps.length;
-    }
-    return steps.findIndex((step) => step.slugs.includes(pathname ?? ""));
-  }, [steps, pathname]);
+  const visibleSteps = steps.filter((step) => step.visibleInSidebar);
+  const currentStepIndexInVisibleSteps = visibleSteps.findIndex(
+    (step) => step.key === stepKey,
+  );
 
   return (
     <Box
@@ -78,24 +41,36 @@ export const EmbeddingSetupSidebar = () => {
         </Text>
       </Flex>
       <Box role="list" style={{ position: "relative" }}>
-        {steps.map((step, index) => (
-          <Step
-            key={step.key}
-            icon={step.icon}
-            title={step.title}
-            isLast={index === steps.length - 1}
-            status={match(index)
-              .when(
-                (i) => i < currentStepIndex,
-                () => "done" as const,
-              )
-              .when(
-                (i) => i === currentStepIndex,
-                () => "active" as const,
-              )
-              .otherwise(() => "future" as const)}
-          />
-        ))}
+        {steps.map((step: StepDefinition, index: number) => {
+          if (!step.visibleInSidebar) {
+            return null;
+          }
+          const indexInVisibleSteps = visibleSteps.findIndex(
+            (s) => s.key === step.key,
+          );
+
+          const status = match({ index, indexInVisibleSteps })
+            .when(
+              ({ indexInVisibleSteps }) =>
+                indexInVisibleSteps === currentStepIndexInVisibleSteps,
+              () => "active" as const,
+            )
+            .when(
+              ({ index }) => index < currentStepIndex,
+              () => "done" as const,
+            )
+            .otherwise(() => "future" as const);
+
+          return (
+            <Step
+              key={step.key}
+              icon={step.icon}
+              title={step.title}
+              isLast={indexInVisibleSteps === visibleSteps.length - 1}
+              status={status}
+            />
+          );
+        })}
       </Box>
       <Center mt="auto" pt="xl" mb="xxl">
         <LanguageSelector />

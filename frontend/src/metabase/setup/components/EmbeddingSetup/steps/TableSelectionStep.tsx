@@ -34,8 +34,13 @@ export const TableSelectionStep = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
-  const { database, selectedTables, setSelectedTables, setProcessingStatus } =
-    useEmbeddingSetup();
+  const {
+    database,
+    selectedTables,
+    setSelectedTables,
+    setProcessingStatus,
+    goToNextStep,
+  } = useEmbeddingSetup();
 
   const getDatabaseTables = useCallback(async () => {
     const data = await dispatch(
@@ -91,7 +96,7 @@ export const TableSelectionStep = () => {
 
   const handleSubmit = () => {
     setProcessingStatus("Creating models and dashboards...");
-    dispatch(push("/setup/embedding/processing"));
+    goToNextStep();
   };
 
   const filteredTables = useMemo(() => {

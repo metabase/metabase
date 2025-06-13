@@ -58,15 +58,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
-import {
-  DataConnectionStep,
-  DoneStep,
-  FinalStep,
-  ProcessingStep,
-  TableSelectionStep,
-  WelcomeStep,
-} from "metabase/setup/components/EmbeddingSetup";
-import { EmbeddingSetupWrapper } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetupWrapper";
+import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -80,7 +72,6 @@ import {
 import { createEntityIdRedirect } from "./routes-stable-id-aware";
 import { getSetting } from "./selectors/settings";
 import { getApplicationName } from "./selectors/whitelabel";
-import { UserCreationStep } from "./setup/components/EmbeddingSetup/steps/UserCreationStep";
 
 export const getRoutes = (store) => {
   const applicationName = getApplicationName(store.getState());
@@ -107,7 +98,7 @@ export const getRoutes = (store) => {
       {/* EMBEDDING SETUP */}
       <Route
         path="/setup/embedding"
-        component={EmbeddingSetupWrapper}
+        component={EmbeddingSetup}
         onEnter={async (nextState, replace, done) => {
           if (hasUserSetup) {
             replace("/");
@@ -121,15 +112,7 @@ export const getRoutes = (store) => {
           }
         }}
         disableCommandPalette
-      >
-        <IndexRoute component={WelcomeStep} />
-        <Route path="user" component={UserCreationStep} />
-        <Route path="data-connection" component={DataConnectionStep} />
-        <Route path="table-selection" component={TableSelectionStep} />
-        <Route path="processing" component={ProcessingStep} />
-        <Route path="final" component={FinalStep} />
-        <Route path="done" component={DoneStep} />
-      </Route>
+      />
 
       {/* APP */}
       <Route
