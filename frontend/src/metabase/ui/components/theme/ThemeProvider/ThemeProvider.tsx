@@ -75,7 +75,7 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
       theme={theme}
       getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
       classNamesPrefix="mb-mantine"
-      cssVariablesSelector=":host, :root"
+      cssVariablesSelector={isEmbeddingSdk ? ".mb-wrapper" : undefined}
       {...props.mantineProviderProps}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>

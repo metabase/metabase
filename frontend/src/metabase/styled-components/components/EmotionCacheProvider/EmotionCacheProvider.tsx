@@ -7,17 +7,19 @@ import { useMemo } from "react";
 import { isCypressActive } from "metabase/env";
 
 interface EmotionCacheProviderProps {
+  cacheKey?: string;
   container?: Node;
   children?: ReactNode;
 }
 
 export const EmotionCacheProvider = ({
+  cacheKey,
   container,
   children,
 }: EmotionCacheProviderProps) => {
   const emotionCache = useMemo(() => {
     const cache = createCache({
-      key: "emotion",
+      key: cacheKey ?? "emotion",
       container,
       nonce: window.MetabaseNonce,
       ...(isCypressActive && { speedy: true }),
@@ -26,7 +28,7 @@ export const EmotionCacheProvider = ({
     // Source: https://github.com/emotion-js/emotion/issues/1105#issuecomment-557726922
     cache.compat = true;
     return cache;
-  }, [container]);
+  }, [cacheKey, container]);
 
   return <CacheProvider value={emotionCache}>{children}</CacheProvider>;
 };
