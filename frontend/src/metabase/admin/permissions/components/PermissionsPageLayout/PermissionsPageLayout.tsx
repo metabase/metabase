@@ -15,7 +15,7 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
@@ -129,7 +129,7 @@ export function PermissionsPageLayout({
           </ModalContent>
         </Modal>
 
-        <LeaveConfirmationModal isEnabled={!!isDirty} route={route} />
+        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />

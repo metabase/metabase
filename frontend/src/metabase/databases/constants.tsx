@@ -23,13 +23,6 @@ export const SAVED_QUESTIONS_DATABASE = {
   features: ["basic-aggregations"],
 };
 
-/**
- * How many of the (elevated) engines we want to show in the DatabaseEngineList widget/component.
- * This should ensure that the list still looks visually pleasing in the modal even if we alter
- * the ELEVATED_ENGINES array.
- */
-export const MAX_INITIAL_ENGINES_SHOWN = 6;
-
 export const ELEVATED_ENGINES = [
   "mysql",
   "postgres",
