@@ -24,6 +24,10 @@ describe("STACKABLE_SETTINGS", () => {
         const value = getDefault([{ card: { display: "area" } }], {
           "graph.metrics": ["foo", "bar"],
           "graph.dimensions": [],
+          "graph.series_order": [
+            { key: "A", enabled: true, name: "a" },
+            { key: "B", enabled: true, name: "b" },
+          ],
         });
 
         expect(value).toBe("stacked");
@@ -33,6 +37,10 @@ describe("STACKABLE_SETTINGS", () => {
         const value = getDefault([{ card: { display: "area" } }], {
           "graph.metrics": [],
           "graph.dimensions": ["foo", "bar"],
+          "graph.series_order": [
+            { key: "A", enabled: true, name: "a" },
+            { key: "B", enabled: true, name: "b" },
+          ],
         });
 
         expect(value).toBe("stacked");
@@ -42,6 +50,7 @@ describe("STACKABLE_SETTINGS", () => {
         const value = getDefault([{ card: { display: "area" } }], {
           "graph.metrics": ["foo"],
           "graph.dimensions": ["bar"],
+          "graph.series_order": [{ key: "A", enabled: true, name: "a" }],
         });
 
         expect(value).toBeNull();
@@ -52,6 +61,10 @@ describe("STACKABLE_SETTINGS", () => {
           "stackable.stacked": "normalized",
           "graph.metrics": ["foo", "bar"],
           "graph.dimensions": ["bar"],
+          "graph.series_order": [
+            { key: "A", enabled: true, name: "a" },
+            { key: "B", enabled: true, name: "b" },
+          ],
         });
 
         expect(value).toBe("normalized");
