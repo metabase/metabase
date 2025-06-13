@@ -3,6 +3,8 @@ const RESTRICTED_CONSOLE_PATTERNS = [
   /UNSAFE_component.*DashboardGrid/,
   /Warning: React does not recognize the `.*?` prop on a DOM element/,
   /Warning: Received `.*?` for a non-boolean attribute `.*?`./,
+  // (metabase#58474)
+  /null/,
 ];
 
 // Store the original console.error
@@ -12,7 +14,8 @@ const originalConsoleError = console.error;
 console.error = (...args) => {
   originalConsoleError(...args);
 
-  const errorMsg = args.join(" ");
+  // parse `null` as a string, otherwise, it will get dropped with `join()`
+  const errorMsg = args.map(String).join(" ");
 
   const matchedPattern = RESTRICTED_CONSOLE_PATTERNS.find((pattern) =>
     pattern.test(errorMsg),
