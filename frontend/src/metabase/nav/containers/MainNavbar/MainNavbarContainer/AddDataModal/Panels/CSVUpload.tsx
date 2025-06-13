@@ -186,6 +186,7 @@ export const CSVUpload = ({
           ta="center"
           {...dropzoneProps}
           className={cx(S.dropZone, isDragActive && S.isActive)}
+          data-testid="add-data-modal-csv-dropzone"
         >
           <Stack gap="sm" align="center">
             {fileUploadError ? (
