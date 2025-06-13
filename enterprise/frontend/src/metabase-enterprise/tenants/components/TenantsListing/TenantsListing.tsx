@@ -4,7 +4,10 @@ import { t } from "ttag";
 
 import { ActiveStatusFilter } from "metabase/admin/people/components/ActiveStatusFilter";
 import { SearchFilter } from "metabase/admin/people/components/SearchFilter";
-import type { ActiveStatus } from "metabase/admin/people/constants";
+import {
+  ACTIVE_STATUS,
+  type ActiveStatus,
+} from "metabase/admin/people/constants";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import UserAvatar from "metabase/components/UserAvatar";
@@ -112,13 +115,14 @@ export const TenantsListing = ({
           ))}
         </AdminContentTable>
 
-        {tenants.length !== 0 && filteredTenants.length === 0 && (
+        {((tenants.length !== 0 && filteredTenants.length === 0) ||
+          (tenants.length === 0 && status === ACTIVE_STATUS.deactivated)) && (
           <Text size="lg" fw="700" ta="center" mt="4rem">
             {t`No matching tenants found.`}
           </Text>
         )}
 
-        {tenants.length === 0 && (
+        {tenants.length === 0 && status === ACTIVE_STATUS.active && (
           <Text size="lg" fw="700" ta="center" mt="4rem">
             {t`Add your first tenant to get started.`}
           </Text>

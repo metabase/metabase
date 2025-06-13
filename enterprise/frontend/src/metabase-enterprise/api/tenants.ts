@@ -28,9 +28,10 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
       { data: Tenant[] },
       { status: "active" | "deactivated" }
     >({
-      query: () => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/ee/tenants",
+        params,
       }),
       providesTags: [listTag("tenant")],
     }),
@@ -41,7 +42,7 @@ export const tenantsApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("tenant", id)]),
+        invalidateTags(error, [listTag("tenant"), idTag("tenant", id)]),
     }),
   }),
 });

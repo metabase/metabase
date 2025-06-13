@@ -33,7 +33,7 @@ export const TenantActivationModal = ({
       <ConfirmModal
         opened
         title={t`Deactivate ${tenant.name}?`}
-        message="TODO: SOME KIND OF COPY HERE"
+        message={t`This is disable all users on this tenant`}
         confirmButtonText={t`Deactivate`}
         onClose={onClose}
         onConfirm={async () => {
