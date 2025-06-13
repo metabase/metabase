@@ -21,6 +21,7 @@ import {
   Select,
   type SelectProps,
   Stack,
+  rem,
 } from "metabase/ui";
 import type { Database, Field, FieldId } from "metabase-types/api";
 
@@ -162,7 +163,7 @@ export const RemappingPicker = ({
 
       {isFkMapping && (
         <>
-          <Flex ml={12}>
+          <Flex ml={rem(12)}>
             <SubInputIllustration />
           </Flex>
 

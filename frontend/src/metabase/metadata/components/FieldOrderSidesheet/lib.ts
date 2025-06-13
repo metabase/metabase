@@ -10,6 +10,7 @@ interface Item {
   icon: IconName;
   label: string;
   position: number;
+  field: Field;
 }
 
 export function getId(item: Item): Item["id"] {
@@ -25,6 +26,7 @@ export function getItems(fields: Field[] = []): Item[] {
       icon: isValidIconName(icon) ? icon : "empty",
       label: field.displayName() || NULL_DISPLAY_VALUE,
       position: field.position,
+      field,
     };
   });
 }

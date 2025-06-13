@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -13,12 +14,13 @@ import {
   SortableFieldList,
   SyncTableSchemaButton,
 } from "metabase/metadata/components";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
 
 import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 
+import { FieldList } from "./FieldList";
 import S from "./TableSection.module.css";
 
 interface Props {
@@ -31,6 +33,7 @@ export const TableSection = ({ params, table }: Props) => {
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
+  const [isSorting, setIsSorting] = useState(false);
 
   return (
     <Stack gap={0} p="xl" pt={0}>
@@ -47,6 +50,7 @@ export const TableSection = ({ params, table }: Props) => {
           descriptionPlaceholder={t`Give this table a description`}
           name={table.display_name}
           nameIcon="table2"
+          nameMaxLength={254}
           namePlaceholder={t`Give this table a name`}
           onDescriptionChange={async (description) => {
             await updateTable({ id: table.id, description });
@@ -68,16 +72,62 @@ export const TableSection = ({ params, table }: Props) => {
       </Box>
 
       <Stack gap="lg">
-        <Stack gap="sm">
-          <Flex align="flex-end" gap="md" justify="space-between">
-            <Text fw="bold" size="sm">{t`Fields`}</Text>
+        <Stack gap={12}>
+          <Group align="center" gap="md" justify="space-between" wrap="nowrap">
+            <Group align="center" gap="md" h="100%" wrap="nowrap">
+              {!isSorting && (
+                <Text flex="0 0 auto" fw="bold" size="sm">{t`Fields`}</Text>
+              )}
 
-            <FieldOrderPicker
-              value={table.field_order}
+              {isSorting && (
+                <FieldOrderPicker
+                  value={table.field_order}
+                  onChange={async (fieldOrder) => {
+                    await updateTable({
+                      id: table.id,
+                      field_order: fieldOrder,
+                    });
+
+                    sendToast({
+                      icon: "check",
+                      message: t`Field order updated`,
+                    });
+                  }}
+                />
+              )}
+            </Group>
+
+            {!isSorting && (
+              <Button
+                h={32}
+                leftSection={<Icon name="sort_arrows" />}
+                px="sm"
+                py="xs"
+                size="xs"
+                onClick={() => setIsSorting(true)}
+              >{t`Sorting`}</Button>
+            )}
+
+            {isSorting && (
+              <Button
+                h={32}
+                px="md"
+                py="xs"
+                size="xs"
+                onClick={() => setIsSorting(false)}
+              >{t`Done`}</Button>
+            )}
+          </Group>
+
+          {isSorting && (
+            <SortableFieldList
+              activeFieldId={fieldId}
+              table={table}
               onChange={async (fieldOrder) => {
-                await updateTable({
+                await updateTableFieldsOrder({
                   id: table.id,
-                  field_order: fieldOrder,
+                  // in this context field id will never be a string because it's a raw table field, so it's ok to cast
+                  field_order: fieldOrder as FieldId[],
                 });
 
                 sendToast({
@@ -86,25 +136,15 @@ export const TableSection = ({ params, table }: Props) => {
                 });
               }}
             />
-          </Flex>
+          )}
 
-          <SortableFieldList
-            activeFieldId={fieldId}
-            getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
-            table={table}
-            onChange={async (fieldOrder) => {
-              await updateTableFieldsOrder({
-                id: table.id,
-                // in this context field id will never be a string because it's a raw table field, so it's ok to cast
-                field_order: fieldOrder as FieldId[],
-              });
-
-              sendToast({
-                icon: "check",
-                message: t`Field order updated`,
-              });
-            }}
-          />
+          {!isSorting && (
+            <FieldList
+              activeFieldId={fieldId}
+              getFieldHref={(fieldId) => getUrl({ ...parsedParams, fieldId })}
+              table={table}
+            />
+          )}
         </Stack>
 
         <Stack gap="sm">

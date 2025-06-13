@@ -21,7 +21,7 @@ import type { TableFieldOrder, TableId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
-import { SortableField } from "../SortableField";
+import { SortableFieldItem } from "../SortableFieldItem";
 
 import { getId, getItems, getItemsOrder, sortItems } from "./lib";
 
@@ -113,12 +113,10 @@ const FieldOrderSidesheetBase = ({
             getId={getId}
             items={sortedItems}
             renderItem={({ item, id }) => (
-              <SortableField
+              <SortableFieldItem
                 disabled={isDragDisabled}
-                icon={item.icon}
-                id={id}
+                field={item.field.getPlainObject()}
                 key={id}
-                label={item.label}
               />
             )}
             sensors={[pointerSensor]}

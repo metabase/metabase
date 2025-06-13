@@ -9,25 +9,21 @@
 
   &.draggable {
     cursor: grab;
-
-    &:hover {
-      .grabber {
-        color: var(--mb-color-brand);
-      }
-    }
-  }
-
-  &.active {
-    background-color: var(--mb-color-brand-lighter);
-
-    .label {
-      color: var(--mb-color-brand);
-    }
   }
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    &:not(.active) {
+      background-color: var(--mb-color-background-light) !important;
+    }
+
+    .grabber {
+      color: var(--mb-color-brand);
+    }
   }
+}
+
+.icon {
+  color: var(--mb-color-brand);
 }
 
 .label {
