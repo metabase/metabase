@@ -38,7 +38,7 @@ export const steps: StepDefinition[] = [
   {
     key: "data-connection",
     get title() {
-      return t`Connect Data`;
+      return t`Connect to your data`;
     },
     icon: "database",
     visibleInSidebar: true,
