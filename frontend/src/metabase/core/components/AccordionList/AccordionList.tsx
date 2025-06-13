@@ -709,34 +709,32 @@ export class AccordionList<
           onKeyDown: this.handleKeyDown,
           "data-testid": testId,
         }}
-        rowRenderer={({ key, index, parent, style }) => {
-          return (
-            <CellMeasurer
-              cache={this._cache}
-              columnIndex={0}
-              key={key}
-              rowIndex={index}
-              parent={parent}
-            >
-              {() => (
-                <AccordionListCell<TItem, TSection>
-                  hasCursor={this.isRowSelected(rows[index])}
-                  {...this.props}
-                  style={style}
-                  row={rows[index]}
-                  sections={sections}
-                  onChange={this.handleChange}
-                  searchText={this.state.searchText}
-                  onChangeSearchText={this.handleChangeSearchText}
-                  sectionIsExpanded={this.isSectionExpanded}
-                  canToggleSections={this.canToggleSections()}
-                  toggleSection={this.toggleSection}
-                  withBorders={withBorders}
-                />
-              )}
-            </CellMeasurer>
-          );
-        }}
+        rowRenderer={({ key, index, parent, style }) => (
+          <CellMeasurer
+            cache={this._cache}
+            columnIndex={0}
+            key={key}
+            rowIndex={index}
+            parent={parent}
+          >
+            {() => (
+              <AccordionListCell<TItem, TSection>
+                hasCursor={this.isRowSelected(rows[index])}
+                {...this.props}
+                style={style}
+                row={rows[index]}
+                sections={sections}
+                onChange={this.handleChange}
+                searchText={this.state.searchText}
+                onChangeSearchText={this.handleChangeSearchText}
+                sectionIsExpanded={this.isSectionExpanded}
+                canToggleSections={this.canToggleSections()}
+                toggleSection={this.toggleSection}
+                withBorders={withBorders}
+              />
+            )}
+          </CellMeasurer>
+        )}
         onRowsRendered={({ startIndex, stopIndex }) => {
           this._startIndex = startIndex;
           this._stopIndex = stopIndex;
