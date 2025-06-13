@@ -56,7 +56,6 @@ export interface SelectProps<
   searchProp?: string;
   searchPlaceholder?: string;
   globalSearch?: boolean;
-  hideEmptySectionsInSearch?: boolean;
   width?: number;
 
   optionNameFn?: (option: TOption) => string | undefined;
@@ -242,7 +241,6 @@ class BaseSelect<
       placeholder,
       searchProp,
       searchPlaceholder,
-      hideEmptySectionsInSearch,
       isInitiallyOpen,
       onClose,
       disabled,
@@ -316,7 +314,6 @@ class BaseSelect<
           searchProp={searchProp}
           searchPlaceholder={searchPlaceholder}
           globalSearch={this.props.globalSearch}
-          hideEmptySectionsInSearch={hideEmptySectionsInSearch}
           data-testid={testId ? `${testId}-list` : null}
           style={{
             color: "var(--mb-color-brand)",

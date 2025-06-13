@@ -34,7 +34,6 @@ type Props<
   className?: string;
   globalSearch?: boolean;
   hasInitialFocus?: boolean;
-  hideEmptySectionsInSearch?: boolean;
   hideSingleSectionTitle?: boolean;
   initiallyOpenSection?: number;
   id?: string;
@@ -390,7 +389,6 @@ export class AccordionList<
     alwaysExpanded: boolean,
     hideSingleSectionTitle: boolean,
     itemIsSelected: (item: TItem, index: number) => boolean | undefined,
-    hideEmptySectionsInSearch: boolean,
     openSection: number | null,
     _globalSearch: boolean,
     searchText: string,
@@ -417,7 +415,7 @@ export class AccordionList<
       ) {
         if (
           !searchable ||
-          !(hideEmptySectionsInSearch || globalSearch) ||
+          !globalSearch ||
           this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
           section.type === "action"
         ) {
@@ -524,7 +522,6 @@ export class AccordionList<
       alwaysExpanded = false,
       hideSingleSectionTitle = false,
       itemIsSelected = () => false,
-      hideEmptySectionsInSearch = false,
       globalSearch = false,
     } = this.props;
 
@@ -540,7 +537,6 @@ export class AccordionList<
       alwaysExpanded,
       hideSingleSectionTitle,
       itemIsSelected,
-      hideEmptySectionsInSearch,
       openSection,
       globalSearch,
       searchText,
