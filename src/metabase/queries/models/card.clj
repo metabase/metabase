@@ -1349,23 +1349,7 @@
                                              :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id              true
                   :display                  true
-                  :has-temporal-dimensions  [:exists {:select [1]
-                                                      :from   [[:metabase_field :f]]
-                                                      :where  [:and
-                                                               [:= :f.table_id :this.table_id]
-                                                              ;; Field is a dimension (not a metric)
-                                                               [:not= :f.semantic_type "type/Number"]
-                                                              ;; Field is temporal
-                                                               [:or
-                                                                [:like :f.base_type "%Date%"]
-                                                                [:like :f.base_type "%Time%"]
-                                                                [:like :f.base_type "%Temporal%"]
-                                                                [:like :f.effective_type "%Date%"]
-                                                                [:like :f.effective_type "%Time%"]
-                                                                [:like :f.effective_type "%Temporal%"]
-                                                                [:like :f.semantic_type "%Date%"]
-                                                                [:like :f.semantic_type "%Time%"]
-                                                                [:like :f.semantic_type "%Temporal%"]]]}]
+                  :has-temporal-dimensions  [:like :this.result_metadata "%\"temporal_unit\":%"]
                   :last-viewed-at           :last_used_at
                   :native-query             (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection      [:= "official" :collection.authority_level]
