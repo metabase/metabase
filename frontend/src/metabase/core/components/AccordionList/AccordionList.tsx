@@ -252,7 +252,7 @@ export class AccordionList<
   };
 
   searchPredicate = (item: TItem, searchPropMember: string) => {
-    const { searchCaseInsensitive = true, searchFuzzy } = this.props;
+    const { searchCaseInsensitive = true, searchFuzzy = true } = this.props;
     let { searchText } = this.state;
     const path = searchPropMember.split(".");
     let itemText = String(getIn(item, path) || "");
