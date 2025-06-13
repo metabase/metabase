@@ -20,7 +20,7 @@ import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { setDatasetEditorTab } from "metabase/query_builder/actions";
 import { calcInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
-import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
 import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import ViewSidebar from "metabase/query_builder/components/view/ViewSidebar";
@@ -43,7 +43,7 @@ import {
 } from "metabase-lib/v1/metadata/utils/models";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
-import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
+import { DatasetFieldMetadataSidebar } from "./DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
 import { EditorTabs } from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
