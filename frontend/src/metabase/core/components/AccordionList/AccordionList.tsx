@@ -15,12 +15,12 @@ import {
 } from "react-virtualized";
 import _ from "underscore";
 
-import { Icon, type IconName, type TextInputProps } from "metabase/ui";
+import type { TextInputProps } from "metabase/ui";
 
 import { AccordionListRoot } from "./AccordionList.styled";
 import { AccordionListCell } from "./AccordionListCell";
 import type { Item, Row, Section } from "./types";
-import { type Cursor, get, getNextCursor, getPrevCursor } from "./utils";
+import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
 
 type Props<
   TItem extends Item,
@@ -647,26 +647,6 @@ export class AccordionList<
       "data-testid": testId,
       maxHeight = Infinity,
 
-      itemIsClickable = () => true,
-      itemIsSelected = () => false,
-      renderSectionIcon = (section: TSection) =>
-        section.icon && <Icon name={section.icon as IconName} />,
-      renderItemName = (item: TItem) => get<string>(item, "name"),
-      renderItemLabel,
-      renderItemDescription = (item: TItem) => get<string>(item, "description"),
-      renderItemIcon = (item: TItem) => {
-        const icon = get<IconName>(item, "icon");
-        return icon ? <Icon name={icon} /> : null;
-      },
-      renderItemExtra = () => null,
-      renderItemWrapper = (content: ReactNode) => content,
-      showSpinner = () => false,
-
-      getItemClassName = (item: TItem) => {
-        const className = get(item, "className");
-        return typeof className === "string" ? className : undefined;
-      },
-      getItemStyles = () => ({}),
       alwaysExpanded = false,
     } = this.props;
     const { cursor, scrollToAlignment } = this.state;
@@ -677,23 +657,6 @@ export class AccordionList<
       cursor != null ? rows.findIndex(this.isRowSelected) : undefined;
 
     const searchRowIndex = rows.findIndex((row) => row.type === "search");
-
-    const itemProps = {
-      ...this.props,
-      itemIsClickable,
-      itemIsSelected,
-      renderSectionIcon,
-      renderItemLabel,
-      renderItemName,
-      renderItemDescription,
-      renderItemIcon,
-      renderItemExtra,
-      renderItemWrapper,
-      showSpinner,
-      getItemClassName,
-      getItemStyles,
-      style,
-    };
 
     if (!this.isVirtualized()) {
       return (
@@ -712,7 +675,7 @@ export class AccordionList<
           {rows.map((row, index) => (
             <AccordionListCell<TItem, TSection>
               key={index}
-              {...itemProps}
+              {...this.props}
               row={row}
               sections={sections}
               onChange={this.handleChange}
@@ -785,7 +748,7 @@ export class AccordionList<
               {() => (
                 <AccordionListCell<TItem, TSection>
                   hasCursor={this.isRowSelected(rows[index])}
-                  {...itemProps}
+                  {...this.props}
                   style={style}
                   row={rows[index]}
                   sections={sections}

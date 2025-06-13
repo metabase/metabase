@@ -9,7 +9,7 @@ import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { TextInputProps } from "metabase/ui";
+import type { IconName, TextInputProps } from "metabase/ui";
 import { Box, Icon, Text } from "metabase/ui";
 
 import styles from "./AccordionListCell.module.css";
@@ -20,38 +20,37 @@ import {
   ListCellItem,
 } from "./AccordionListCell.styled";
 import type { Item, Row, Section } from "./types";
+import { get } from "./utils";
 
 type AccordionListCellProps<
   TItem extends Item,
   TSection extends Section<TItem>,
 > = {
-  style: CSSProperties;
+  style?: CSSProperties;
   sections: TSection[];
   row: Row<TItem, TSection>;
   onChange: (item: TItem) => void;
-  itemIsSelected: (item: TItem, index: number) => boolean | undefined;
-  itemIsClickable: (item: TItem, index: number) => boolean | undefined;
+  itemIsSelected?: (item: TItem, index: number) => boolean | undefined;
+  itemIsClickable?: (item: TItem, index: number) => boolean | undefined;
   sectionIsExpanded: (sectionIndex: number) => boolean | undefined;
   canToggleSections?: boolean;
   alwaysExpanded?: boolean;
   toggleSection: (sectionIndex: number) => void;
-
-  renderSectionIcon: (section: TSection) => ReactNode;
-
+  renderSectionIcon?: (section: TSection) => ReactNode;
   renderItemLabel?: (item: TItem) => string | undefined;
-  renderItemName: (item: TItem) => string | undefined;
-  renderItemDescription: (item: TItem) => ReactNode;
-  renderItemIcon: (item: TItem) => ReactNode;
-  renderItemExtra: (item: TItem, isSelected: boolean) => ReactNode;
-  renderItemWrapper: (content: ReactNode, item: TItem) => ReactNode;
-  showSpinner: (itemOrSection: TItem | TSection) => boolean;
+  renderItemName?: (item: TItem) => string | undefined;
+  renderItemDescription?: (item: TItem) => ReactNode;
+  renderItemIcon?: (item: TItem) => ReactNode;
+  renderItemExtra?: (item: TItem, isSelected: boolean) => ReactNode;
+  renderItemWrapper?: (content: ReactNode, item: TItem) => ReactNode;
+  showSpinner?: (itemOrSection: TItem | TSection) => boolean;
   searchText: string;
   onChangeSearchText: (searchText: string) => void;
   searchPlaceholder?: string;
   showItemArrows?: boolean;
   itemTestId?: string;
-  getItemClassName: (item: TItem, index: number) => string | undefined;
-  getItemStyles: (item: TItem, index: number) => CSSProperties | undefined;
+  getItemClassName?: (item: TItem, index: number) => string | undefined;
+  getItemStyles?: (item: TItem, index: number) => CSSProperties | undefined;
   searchInputProps?: TextInputProps;
   hasCursor?: boolean;
   withBorders?: boolean;
@@ -66,27 +65,36 @@ export function AccordionListCell<
   sections,
   row,
   onChange,
-  itemIsSelected,
-  itemIsClickable,
+  itemIsClickable = () => true,
+  itemIsSelected = () => false,
   sectionIsExpanded,
   canToggleSections,
   alwaysExpanded,
   toggleSection,
-  renderSectionIcon,
+  renderSectionIcon = (section: TSection) =>
+    section.icon && <Icon name={section.icon as IconName} />,
   renderItemLabel,
-  renderItemName,
-  renderItemDescription,
-  renderItemIcon,
-  renderItemExtra,
-  renderItemWrapper,
-  showSpinner,
+  renderItemName = (item: TItem) => get<string>(item, "name"),
+  renderItemDescription = (item: TItem) => get<string>(item, "description"),
+  renderItemIcon = (item: TItem) => {
+    const icon = get<IconName>(item, "icon");
+    return icon ? <Icon name={icon} /> : null;
+  },
+
+  renderItemExtra = () => null,
+  renderItemWrapper = (content: ReactNode) => content,
+  showSpinner = () => false,
+
   searchText,
   onChangeSearchText,
   searchPlaceholder = t`Find...`,
   showItemArrows,
   itemTestId,
-  getItemClassName,
-  getItemStyles,
+  getItemClassName = (item: TItem) => {
+    const className = get(item, "className");
+    return typeof className === "string" ? className : undefined;
+  },
+  getItemStyles = () => ({}),
   searchInputProps,
   hasCursor,
   withBorders,
