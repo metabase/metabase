@@ -31,10 +31,10 @@
    [:parameters [:sequential ::describe-param]]])
 
 (defn- param-value
-  [param-map row-delay]
-  (case (:sourceType param-map)
-    "constant" (:value param-map)
-    "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-map))))
+  [param-setting row-delay]
+  (case (:sourceType param-setting)
+    "constant" (:value param-setting)
+    "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-setting))))
     nil))
 
 (defn- field-input-type
@@ -77,7 +77,7 @@
      :parameters (->> (for [field (sort-by sort-key fields)
                             :let [{field-values :values} field
                                   pk                     (= :type/PK (:semantic_type field))
-                                  param-map              (get param-map (keyword (:name field)))
+                                  param-setting          (get param-map (keyword (:name field)))
                                   dashcard-column        (field-name->dashcard-column (:name field))]
                             :when (case action-kw
                                     ;; create does not take pk cols if auto increment, todo generated cols?
@@ -87,7 +87,7 @@
                                     ;; update takes both the pk and field (if not a row action)
                                     (:table.row/update :data-grid.row/update :table.row/create-or-update) true)
                             ;; row-actions can explicitly hide parameters
-                            :when (not= "hidden" (:visibility param-map))
+                            :when (not= "hidden" (:visibility param-setting))
                             ;; dashcard column context can hide parameters (if defined)
                             :when (:enabled dashcard-column true)
                             :let [required (or pk (:database_required field))]]
@@ -101,9 +101,9 @@
                           :optional                (not required)
                           :nullable                (:database_is_nullable field)
                           :database_default        (:database_default field)
-                          :readonly                (or (= "readonly" (:visibility param-map))
+                          :readonly                (or (= "readonly" (:visibility param-setting))
                                                        (not (dashcard-column-editable? (:name field))))
-                          :value                   (param-value param-map row-delay)}))
+                          :value                   (param-value param-setting row-delay)}))
                       vec)}))
 
 (defn- saved-param-base-type
