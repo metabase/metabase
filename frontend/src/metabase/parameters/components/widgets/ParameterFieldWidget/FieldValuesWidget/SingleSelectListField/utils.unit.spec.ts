@@ -1,7 +1,7 @@
-import { isValidOptionItem } from "./utils";
+import { optionItemContainsFilter } from "./utils";
 
 describe("ListField - utils", () => {
-  describe("isValidOptionItem", () => {
+  describe("optionItemContainsFilter", () => {
     const TEST_CASES = [
       ["Marble Shoes", "marble", true],
       [[6, "Marble Shoes"], "marble", true],
@@ -14,7 +14,7 @@ describe("ListField - utils", () => {
 
     TEST_CASES.map(([optionItem, filter, expectedResult]) => {
       it(`includes "${filter}" in: ${optionItem}`, () => {
-        const result = isValidOptionItem(optionItem, String(filter));
+        const result = optionItemContainsFilter(optionItem, String(filter));
         expect(result).toEqual(expectedResult);
       });
     });

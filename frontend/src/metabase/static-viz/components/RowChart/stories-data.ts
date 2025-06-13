@@ -98,7 +98,6 @@ export const MULTIPLE_SERIES: StaticRowChartProps = {
         visibility_type: "normal",
         display_name: "Product → Category",
         base_type: "type/Text",
-        source_alias: "PRODUCTS__via__PRODUCT_ID",
       },
       {
         base_type: "type/BigInteger",
@@ -276,7 +275,6 @@ export const METRIC_COLUMN_WITH_SCALING: StaticRowChartProps = {
         visibility_type: "normal",
         display_name: "Product → Category",
         base_type: "type/Text",
-        source_alias: "PRODUCTS__via__PRODUCT_ID",
       },
       {
         base_type: "type/BigInteger",

@@ -73,7 +73,7 @@
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 
-(defn- legacy-source-metadata?
+(defn- legacy-source-metadata-without-field-ref?
   "Whether this source metadata is *legacy* source metadata from < 0.38.0. Legacy source metadata did not include
   `:field_ref` or `:id`, which made it hard to correctly construct queries with. For MBQL queries, we're better off
   ignoring legacy source metadata and using [[metabase.query-processor.preprocess/query->expected-cols]] to infer the
@@ -98,7 +98,7 @@
     :keys                                            [source-metadata]}]
   (and source-query
        (or (not source-metadata)
-           (legacy-source-metadata? source-metadata))
+           (legacy-source-metadata-without-field-ref? source-metadata))
        (or (not native-source-query?)
            source-query-has-source-metadata?)))
 

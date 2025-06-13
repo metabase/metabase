@@ -8,6 +8,7 @@ import * as DataGrid from "metabase/lib/data_grid";
 import { displayNameForColumn } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
+import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
 import {
   ChartSettingsTableFormatting,
@@ -216,6 +217,26 @@ class Table extends Component<TableProps, TableState> {
           data: { cols },
         },
       ]: Series) => cols.filter(isFormattable).length === 0,
+      readDependencies: ["table.pivot"],
+    },
+    [DataGrid.TABLE_ACTIONS_SETTING]: {
+      get section() {
+        return t`Actions`;
+      },
+      get widget() {
+        return PLUGIN_TABLE_ACTIONS.ConfigureTableActions;
+      },
+      default: [],
+      getProps: (series: Series, settings: VisualizationSettings) => ({
+        cols: series[0].data.cols,
+        isPivoted: settings["table.pivot"],
+      }),
+
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]: Series) => !PLUGIN_TABLE_ACTIONS.isEnabled() || cols.length === 0,
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {

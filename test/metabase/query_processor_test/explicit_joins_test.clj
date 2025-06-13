@@ -384,12 +384,12 @@
                                                                  qp.preprocess/query->expected-cols
                                                                  (map :name))
                     cid2 (str cid "_2")
-                    col-data-fn   (juxt            :id       :name     :source_alias)
-                    top-card-cols [[(mt/id :people :id)      cid       nil]
-                                   [(mt/id :orders :user_id) cuser-id  "ord1"]
-                                   [nil                      ccount    "ord1"]
-                                   [(mt/id :orders :user_id) cuser-id2 "ord2"]
-                                   [nil                      ccount2   "ord2"]]]
+                    col-data-fn   (juxt            :id       :name)
+                    top-card-cols [[(mt/id :people :id)      cid]
+                                   [(mt/id :orders :user_id) cuser-id]
+                                   [nil                      ccount]
+                                   [(mt/id :orders :user_id) cuser-id2]
+                                   [nil                      ccount2]]]
                 (testing "sanity"
                   (is (= top-card-cols
                          (->> top-card-query

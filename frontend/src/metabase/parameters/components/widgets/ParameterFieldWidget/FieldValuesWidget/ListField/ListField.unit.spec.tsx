@@ -149,4 +149,16 @@ describe("ListField", () => {
       expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument(),
     );
   });
+
+  it("should not create duplicate options on pressing Enter for non-string values", async () => {
+    setup({
+      value: [],
+      options: [[true], [false]],
+      placeholder: "Find...",
+      optionRenderer: ([value]) => <span>{String(value)}</span>,
+    });
+    const input = screen.getByPlaceholderText("Find...");
+    await userEvent.type(input, "false");
+    expect(screen.getAllByText("false")).toHaveLength(1);
+  });
 });

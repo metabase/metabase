@@ -35,11 +35,9 @@ interface NativeQueryEditorActionButtonsProps {
   isShowingDataReference: boolean;
   isShowingTemplateTagsEditor: boolean;
   isShowingSnippetSidebar: boolean;
-  isPromptInputVisible?: boolean;
   runQuery?: () => void;
   cancelQuery?: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  onShowPromptInput: () => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
   toggleSnippetSidebar: () => void;

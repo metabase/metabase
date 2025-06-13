@@ -139,7 +139,8 @@
 
 (mr/def ::options
   [:map
-   {:decode/normalize (fn [m]
+   {:default {}
+    :decode/normalize (fn [m]
                         (let [m (normalize-map m)]
                           ;; add `:lib/uuid` if it's missing
                           (cond-> m

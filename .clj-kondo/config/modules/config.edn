@@ -48,14 +48,18 @@
  {actions
   {:team "Workflows"
    :api  #{metabase.actions.api
+           metabase.actions.args
            metabase.actions.core
-           metabase.actions.init}
+           metabase.actions.init
+           metabase.actions.types}
    :uses #{analytics
            api
            collections
            driver
+           events
            legacy-mbql
            lib
+           lib-be
            model-persistence
            models
            permissions
@@ -429,6 +433,13 @@
           metabase.driver.sql.util
           metabase.driver.sync
           metabase.driver.util}
+   :uses #{driver-api
+           util}}
+
+  driver-api
+  {:team "Drivers"
+   :api #{metabase.driver-api.core
+          metabase.driver-api.init}
    :uses #{actions
            api
            app-db
@@ -491,8 +502,16 @@
   {:team "DevEx"
    :api  #{metabase.events.core
            metabase.events.init}
-   :uses #{models
-           util}}
+   :uses #{api
+           audit-app
+           channel
+           config
+           driver
+           models
+           notification
+           premium-features
+           util
+           view-log}}
 
   formatter
   {:team "DashViz"
@@ -685,7 +704,8 @@
            metabase.notification.init
            metabase.notification.models
            metabase.notification.payload.core}
-   :uses #{analytics
+   :uses #{actions
+           analytics
            api
            appearance
            channel
@@ -693,6 +713,7 @@
            dashboards
            driver
            events
+           lib
            models
            parameters
            permissions
@@ -705,8 +726,10 @@
            system
            task
            task-history
+           types
            users
-           util}}
+           util
+           warehouse-schema}}
 
   ;; TODO -- too many API namespaces
   parameters
@@ -1479,8 +1502,7 @@
            query-analysis
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
@@ -1569,10 +1591,33 @@
 
   enterprise/data-editing
   {:team "Workflows"
-   :api  #{metabase-enterprise.data-editing.api}
+   :api  #{metabase-enterprise.data-editing.api
+           metabase-enterprise.data-editing.core
+           metabase-enterprise.data-editing.init}
    :uses #{actions
            api
-           util}}
+           driver
+           events
+           lib
+           models
+           notification
+           query-processor
+           upload
+           util
+           warehouse-schema}}
+
+  enterprise/data-editing-public
+  {:team "Workflows"
+   :api #{}
+   :uses #{actions
+           api
+           driver
+           events
+           lib
+           query-processor
+           upload
+           util
+           enterprise/data-editing}}
 
   enterprise/database-routing
   {:team "Admin Webapp"

@@ -5,7 +5,6 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -35,7 +34,7 @@
   (let [driver (driver.u/database->driver database)]
     (cond-> fields
       (driver.u/supports? driver :nested-field-columns database)
-      (set/union (sql-jdbc.sync/describe-nested-field-columns driver database table)))))
+      (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database table)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's

@@ -109,12 +109,14 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
-    :model/NotificationCard]
+    :model/NotificationCard
+    :model/NotificationSystemEvent]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation
       :model/Metabot
-      :model/MetabotEntity])))
+      :model/MetabotEntity
+      :model/MetabotPrompt])))
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`

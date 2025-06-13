@@ -63,7 +63,13 @@ title: Driver interface changelog
   settings formerly in a `metabase.query-processor.*` namespace have been moved to
   `metabase.query-processor.settings`.
 
+## Metabase 0.54.12
+
+- The function `metabase.driver.sql-jdbc.sync/describe-table-fields-xf` now takes a table instead of a database
+
+
 ## Metabase 0.54.11
+
 - The multimethods `metabase.driver.sql-jdbc.sync.interface/active-tables` and `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas`, aswell as the functions
 `metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
 

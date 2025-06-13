@@ -234,6 +234,7 @@ export const FIELD_FILTER_PARAMETER_TYPES = [
   "date",
   "string",
   "number",
+  "boolean",
   "id",
   "category",
   "location",

@@ -3,12 +3,12 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.actions.actions :as actions]
+   [metabase.actions.args :as actions.args]
    [metabase.actions.http-action :as http-action]
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.queries.models.query :as query]
@@ -99,9 +99,14 @@
                 :parameters             request-parameters
                 :destination-parameters destination-param-ids})))
 
+(def ^:private legacy->current
+  {:row/create :model.row/create
+   :row/update :model.row/update
+   :row/delete :model.row/delete})
+
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
-                                   [:row-parameters ::lib.schema.actions/row]
+                                   [:row-parameters ::actions.args/row]
                                    ;; TODO -- the schema for these should probably be
                                    ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
                                    ;; 100% sure about that.
@@ -130,8 +135,8 @@
                                       (into {}))
         pk-field-name            (:name pk-field)
         row-parameters           (cond-> simple-parameters
-                                   (not= implicit-action :row/create) (dissoc pk-field-name))
-        requires-pk?             (contains? #{:row/delete :row/update} implicit-action)]
+                                   (not= implicit-action :model.row/create) (dissoc pk-field-name))
+        requires-pk?             (contains? #{:model.row/delete :model.row/update} implicit-action)]
     (api/check (or (not requires-pk?)
                    (some? (get simple-parameters pk-field-name)))
                400
@@ -151,21 +156,27 @@
                                     :type "id"
                                     :value [(get simple-parameters pk-field-name)]}]))))
 
+(defn- parse-implicit-action [action-instance]
+  (let [k (keyword (:kind action-instance))]
+    (legacy->current k k)))
+
 (defn- execute-implicit-action!
   [action request-parameters]
-  (let [implicit-action (keyword (:kind action))
+  (let [model-id        (:model_id action)
+        implicit-action (parse-implicit-action action)
         {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
-        _ (api/check (or (= implicit-action :row/delete) (seq row-parameters))
-                     400
-                     (tru "Implicit parameters must be provided."))
-        arg-map (cond-> query
-                  (= implicit-action :row/create)
-                  (assoc :create-row row-parameters)
+        _               (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
+                                   400
+                                   (tru "Implicit parameters must be provided."))
+        arg-map         (cond-> query
+                          (= implicit-action :model.row/create)
+                          (assoc :create-row row-parameters)
 
-                  (= implicit-action :row/update)
-                  (assoc :update-row row-parameters))]
-    (binding [qp.perms/*card-id* (:model_id action)]
-      (actions/perform-action! implicit-action arg-map))))
+                          (= implicit-action :model.row/update)
+                          (assoc :update-row row-parameters))]
+    (binding [qp.perms/*card-id* model-id]
+      (actions/perform-action-with-single-input-and-output implicit-action arg-map {:scope  {:model-id model-id}
+                                                                                    :policy :model-action}))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
@@ -192,7 +203,18 @@
       (execute-implicit-action! action request-parameters)
       (:query :http)
       (execute-custom-action! action request-parameters)
-      (throw (ex-info (tru "Unknown action type {0}." (name (:type action))) action)))))
+      (throw (ex-info (tru "Unknown action type {0}." (name (:type action :unknown))) action)))))
+
+(defn- execute-table-action! [action-kw table-id request-parameters]
+  ;; removing nils for update is a tmp hack to ignore inputs that have not been interacted with from the FE
+  ;; we should have the FE omit these keys longer term
+  (let [request-parameters' (case action-kw
+                              :table.row/update (u/remove-nils request-parameters)
+                              request-parameters)]
+    (actions/perform-action-with-single-input-and-output
+     action-kw
+     {:table-id table-id :row request-parameters'}
+     :policy :data-editing)))
 
 (mu/defn execute-dashcard!
   "Execute the given action in the dashboard/dashcard context with the given parameters
@@ -200,23 +222,28 @@
   [dashboard-id       :- ::lib.schema.id/dashboard
    dashcard-id        :- ::lib.schema.id/dashcard
    request-parameters :- [:maybe [:map-of :string :any]]]
-  (let [dashcard (api/check-404 (t2/select-one :model/DashboardCard
-                                               :id dashcard-id
-                                               :dashboard_id dashboard-id))
-        action (api/check-404 (action/select-action :id (:action_id dashcard)))]
-    (analytics/track-event! :snowplow/action
-                            {:event     :action-executed
-                             :source    :dashboard
-                             :type      (:type action)
-                             :action_id (:id action)})
-    (execute-action! action request-parameters)))
+  (let [dashcard     (api/check-404 (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
+        action-id    (:action_id dashcard)
+        table-action (-> dashcard :visualization_settings :table_action)]
+    (api/check-404 (or action-id table-action))
+    (if table-action
+      (let [{:keys [kind table_id]} table-action]
+        ;; avoiding snowplow for now, to avoid adding new actions into their schema
+        (execute-table-action! (keyword kind) table_id request-parameters))
+      (let [action (api/check-404 (action/select-action :id action-id :archived false))]
+        (analytics/track-event! :snowplow/action
+                                {:event     :action-executed
+                                 :source    :dashboard
+                                 :type      (:type action)
+                                 :action_id (:id action)})
+        (execute-action! action request-parameters)))))
 
 (defn- fetch-implicit-action-values
   [action request-parameters]
-  (api/check (contains? #{"row/update" "row/delete"} (:kind action))
+  (api/check (contains? #{:model.row/update :model.row/delete} (parse-implicit-action action))
              400
              (tru "Values can only be fetched for actions that require a Primary Key."))
-  (let [implicit-action (keyword (:kind action))
+  (let [implicit-action (parse-implicit-action action)
         {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
               :context     :action

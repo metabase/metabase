@@ -3,6 +3,7 @@ import type {
   ColumnDef,
   ColumnSizingState,
 } from "@tanstack/react-table";
+import cx from "classnames";
 import type React from "react";
 import { memo } from "react";
 
@@ -14,7 +15,7 @@ import type {
   ExpandedColumnsState,
 } from "metabase/data-grid/types";
 
-const getDefaultCellTemplate = <TRow, TValue>(
+export const getDefaultCellTemplate = <TRow, TValue>(
   {
     id,
     align,
@@ -24,17 +25,25 @@ const getDefaultCellTemplate = <TRow, TValue>(
     wrap,
     getCellClassName,
     getCellStyle,
+    getCellClassNameByCellId,
+    getIsCellEditing,
+    editingCell: EditingCellComponent,
   }: ColumnOptions<TRow, TValue>,
   isTruncated: boolean,
   onExpand: (columnName: string, content: React.ReactNode) => void,
 ) => {
-  return function Cell({
-    getValue,
-    row,
-    isSelected,
-  }: CellContext<TRow, TValue> & { isSelected?: boolean }) {
+  return function Cell(
+    cellContext: CellContext<TRow, TValue> & { isSelected?: boolean },
+  ) {
+    const { cell, getValue, row, isSelected } = cellContext;
     const value = getValue();
     const backgroundColor = getBackgroundColor?.(value, row?.index);
+
+    const isEditing = getIsCellEditing?.(cell.id);
+
+    if (isEditing && EditingCellComponent) {
+      return <EditingCellComponent {...cellContext} />;
+    }
 
     return (
       <BodyCell
@@ -49,7 +58,10 @@ const getDefaultCellTemplate = <TRow, TValue>(
         onExpand={onExpand}
         variant={cellVariant}
         wrap={wrap}
-        className={getCellClassName?.(value, row.index)}
+        className={cx(
+          getCellClassName?.(value, row.index),
+          getCellClassNameByCellId?.(cellContext),
+        )}
         style={getCellStyle?.(value, row.index)}
       />
     );

@@ -25,6 +25,7 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
   if (id === SAVED_QUESTIONS_VIRTUAL_DB_ID) {
     return {
       title: t`Saved Questions`,
+      database: null,
       to: Urls.browseDatabase({ id: SAVED_QUESTIONS_VIRTUAL_DB_ID }),
     };
   }
@@ -34,12 +35,14 @@ export const useDatabaseCrumb = (id: DatabaseId) => {
   if (!database) {
     return {
       title: null,
+      database: null,
       to: Urls.browseDatabase({ id }),
     };
   }
 
   return {
     title: database.name,
+    database,
     to: Urls.browseDatabase(database),
   };
 };

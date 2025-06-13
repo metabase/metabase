@@ -8,13 +8,14 @@ export const ActionSettingsWrapper = styled.div`
   height: 80vh;
   overflow: hidden;
   min-width: 50rem;
+  padding: 2rem;
 `;
 
 export const ActionSettingsHeader = styled.h2`
   font-size: 1.25rem;
-  padding-bottom: ${space(1)};
-  padding-left: ${space(3)};
-  padding-right: ${space(3)};
+  padding-bottom: 0.5rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
 `;
 
 // make strolling nicer by fading out the top and bottom of the column
@@ -31,11 +32,9 @@ const fade = (side: "top" | "bottom") => `
 `;
 
 export const ActionSettingsLeft = styled.div`
-  padding-left: ${space(3)};
-  padding-top: ${space(3)};
-  padding-bottom: ${space(3)};
   width: 20rem;
   overflow-y: auto;
+  border-right: 1px solid var(--mb-color-border);
 
   &:before {
     ${fade("top")}
@@ -53,12 +52,11 @@ export const ActionSettingsLeft = styled.div`
 `;
 
 export const ActionSettingsRight = styled.div`
-  max-width: 30rem;
+  width: 30rem;
   display: flex;
   flex: 1;
   flex-direction: column;
   padding-top: ${space(3)};
-  border-left: 1px solid var(--mb-color-border);
 `;
 
 export const ParameterMapperContainer = styled.div`
@@ -77,6 +75,6 @@ export const ModalActions = styled.div`
   flex: 0 0 auto;
   justify-content: flex-end;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1rem 1rem 0;
   border-top: 1px solid var(--mb-color-border);
 `;

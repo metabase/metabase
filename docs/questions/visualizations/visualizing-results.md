@@ -26,7 +26,7 @@ To visualize results of a native query, click on the **Visualization** button in
 
 ![Visualize a native query](../images/visualize-native.png)
 
-As long as the shape of the native query results is appropriate for the chart type - for example, a metric grouped by a date column for a trend chart - you'll be able to use to use all chart types, except [pivot tables](./pivot-table.md). [Pivot tables](./pivot-table.md) are currently unavailable for native queries.
+As long as the shape of the native query results is appropriate for the chart type - for example, a metric grouped by a date column for a trend chart - you'll be able to use all chart types, except [pivot tables](./pivot-table.md). [Pivot tables](./pivot-table.md) are currently unavailable for native queries.
 
 ## Change visualization type
 
