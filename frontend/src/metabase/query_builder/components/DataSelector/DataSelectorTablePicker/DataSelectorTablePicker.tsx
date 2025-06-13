@@ -7,7 +7,9 @@ import {
   HoverParent,
   TableInfoIcon,
 } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
+import AccordionList, {
+  type Section,
+} from "metabase/core/components/AccordionList";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
@@ -40,6 +42,12 @@ type HeaderProps = Pick<
   DataSelectorTablePickerProps,
   "schemas" | "selectedSchema" | "selectedDatabase" | "onBack"
 >;
+
+type Item = {
+  name: string;
+  table: Table;
+  database: Database;
+};
 
 const DataSelectorTablePicker = ({
   schemas,
@@ -75,7 +83,7 @@ const DataSelectorTablePicker = ({
   );
 
   if (tables.length > 0 || isLoading) {
-    const sections = [
+    const sections: Section<Item>[] = [
       {
         name: header,
         items: tables.filter(isNotNull).map((table) => ({
@@ -101,8 +109,8 @@ const DataSelectorTablePicker = ({
       <HoverParent>{content}</HoverParent>
     );
 
-    const showSpinner = ({ table }: { table: Table }) =>
-      Boolean(table && !isSyncCompleted(table));
+    const showSpinner = (x: Item | Section<Item>) =>
+      "table" in x && !isSyncCompleted(x.table);
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
@@ -111,7 +119,7 @@ const DataSelectorTablePicker = ({
     return (
       <DelayGroup>
         <Box w={rem(300)} style={{ overflowY: "auto" }}>
-          <AccordionList
+          <AccordionList<Item>
             id="TablePicker"
             key="tablePicker"
             className={CS.textBrand}

@@ -91,7 +91,7 @@ const DataSelectorFieldPicker = ({
           searchable={hasFiltering}
           onChange={(item: { field: Field }) => onChangeField(item.field)}
           itemIsSelected={checkIfItemIsSelected}
-          itemIsClickable={(item: FieldWithName) => item.field}
+          itemIsClickable={(item: FieldWithName) => Boolean(item.field)}
           renderItemWrapper={renderItemWrapper}
           renderItemIcon={renderItemIcon}
         />
