@@ -3,8 +3,9 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import { groupBy } from "underscore";
 
-import { databaseApi } from "metabase/api";
+import { databaseApi, useListDatabasesQuery } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
+import { isSyncInProgress } from "metabase/lib/syncing";
 import {
   Box,
   Button,
@@ -41,6 +42,7 @@ export const TableSelectionStep = () => {
     setProcessingStatus,
     goToNextStep,
   } = useEmbeddingSetup();
+  const shouldFetchTables = useShouldFetchTables(setLoading);
 
   const getDatabaseTables = useCallback(async () => {
     const data = await dispatch(
@@ -75,11 +77,12 @@ export const TableSelectionStep = () => {
     setLoading(false);
     setTables(tables || []);
   }, [getDatabaseTables]);
-
   useEffect(() => {
     // initial loading
-    fetchTables();
-  }, [fetchTables]);
+    if (shouldFetchTables) {
+      fetchTables();
+    }
+  }, [fetchTables, shouldFetchTables]);
 
   const handleManualRefresh = () => {
     setRetryCount(0);
@@ -264,3 +267,32 @@ const retry = async <T,>({
   }
   onMaxTries?.();
 };
+
+function useShouldFetchTables(setLoading: (loading: boolean) => void) {
+  const [shouldFetchTables, setShouldFetchTables] = useState(false);
+
+  const { data: databases, refetch: refetchDatabases } =
+    useListDatabasesQuery();
+
+  // Checks if databases are synced
+  useEffect(() => {
+    setLoading(true);
+    const userDatabases =
+      databases?.data.filter((database) => !database.is_sample) || [];
+    if (
+      userDatabases.length > 0 &&
+      userDatabases.every((database) => !isSyncInProgress(database))
+    ) {
+      setLoading(false);
+      setShouldFetchTables(true);
+    } else {
+      // Same value as in `frontend/src/metabase/status/containers/DatabaseStatus/DatabaseStatus.tsx`
+      const DATABASES_RELOAD_INTERVAL = 2000;
+      setTimeout(() => {
+        refetchDatabases();
+      }, DATABASES_RELOAD_INTERVAL);
+    }
+  }, [databases, refetchDatabases, setLoading]);
+
+  return shouldFetchTables;
+}
