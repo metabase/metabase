@@ -5,9 +5,7 @@ import type { IconName } from "metabase/ui";
 export type Item = object;
 
 export type Section<TItem extends Item = Item> = {
-  key?: string;
   name?: ReactNode;
-  displayName?: ReactNode;
   type?:
     | "action"
     | "header"
@@ -18,13 +16,12 @@ export type Section<TItem extends Item = Item> = {
     | "back";
   icon?: IconName | null;
   loading?: boolean;
+  className?: string;
   items?: TItem[];
-  active?: boolean;
-  className?: string | null;
 };
 
-export type Row<TItem extends Item> = {
-  section: Section<TItem>;
+export type Row<TItem extends Item, TSection extends Section<TItem>> = {
+  section: TSection;
   sectionIndex: number;
   isLastSection: boolean;
 } & (

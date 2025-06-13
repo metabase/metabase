@@ -21,10 +21,13 @@ import {
 } from "./AccordionListCell.styled";
 import type { Item, Row, Section } from "./types";
 
-type AccordionListCellProps<TItem extends Item> = {
+type AccordionListCellProps<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+> = {
   style: CSSProperties;
-  sections: Section<TItem>[];
-  row: Row<TItem>;
+  sections: TSection[];
+  row: Row<TItem, TSection>;
   onChange: (item: TItem) => void;
   itemIsSelected: (item: TItem, index: number) => boolean | undefined;
   itemIsClickable: (item: TItem, index: number) => boolean | undefined;
@@ -33,7 +36,7 @@ type AccordionListCellProps<TItem extends Item> = {
   alwaysExpanded?: boolean;
   toggleSection: (sectionIndex: number) => void;
 
-  renderSectionIcon: (section: Section<TItem>) => ReactNode;
+  renderSectionIcon: (section: TSection) => ReactNode;
 
   renderItemLabel: (item: TItem) => string | undefined;
   renderItemName: (item: TItem) => string | undefined;
@@ -41,7 +44,7 @@ type AccordionListCellProps<TItem extends Item> = {
   renderItemIcon: (item: TItem) => ReactNode;
   renderItemExtra: (item: TItem, isSelected: boolean) => ReactNode;
   renderItemWrapper: (content: ReactNode, item: TItem) => ReactNode;
-  showSpinner: (itemOrSection: TItem | Section<TItem>) => boolean;
+  showSpinner: (itemOrSection: TItem | TSection) => boolean;
   searchText: string;
   onChangeSearchText: (searchText: string) => void;
   searchPlaceholder?: string;
@@ -55,7 +58,10 @@ type AccordionListCellProps<TItem extends Item> = {
   color?: ColorName;
 };
 
-export function AccordionListCell<TItem extends Item>({
+export function AccordionListCell<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>({
   style,
   sections,
   row,
@@ -85,7 +91,7 @@ export function AccordionListCell<TItem extends Item>({
   hasCursor,
   withBorders,
   color: colorProp = "brand",
-}: AccordionListCellProps<TItem>) {
+}: AccordionListCellProps<TItem, TSection>) {
   const { type, section, sectionIndex, isLastSection } = row;
   let content;
   let borderTop;
