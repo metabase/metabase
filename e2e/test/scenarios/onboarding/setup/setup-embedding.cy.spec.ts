@@ -106,17 +106,18 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     });
 
     cy.log("4: Embed in your app step");
+    step()
+      .findByRole("heading", { name: "Add to your app" })
+      .should("be.visible");
+
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
         "Final Steps",
       );
     });
-    step().within(() => {
-      cy.findByRole("heading", { name: "Add to your app" }).should(
-        "be.visible",
-      );
 
+    step().within(() => {
       cy.findByRole("tab", { name: 'A look at "Feedback"' }).click();
       H.getIframeBody().within(() => {
         cy.findByText('A look at "Feedback"').should("be.visible");
