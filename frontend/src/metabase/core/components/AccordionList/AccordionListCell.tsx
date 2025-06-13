@@ -375,7 +375,6 @@ export function AccordionListCell<
   return (
     <div
       style={style}
-      aria-expanded={sectionIsExpanded(sectionIndex)}
       data-element-id="list-section"
       className={cx(section.className, {
         [ListS.ListSectionExpanded]: sectionIsExpanded(sectionIndex),
