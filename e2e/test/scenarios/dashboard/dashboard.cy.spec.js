@@ -1215,7 +1215,6 @@ describe("scenarios > dashboard", () => {
   describe("warn before leave", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     });
 
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
