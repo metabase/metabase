@@ -22,6 +22,7 @@ const userOptions = {
   SHOW_BACKEND_LOGS: false,
   GENERATE_SNAPSHOTS: true,
   QUIET: false,
+  TZ: "UTC",
   ...booleanify(process.env),
 };
 
@@ -61,6 +62,7 @@ printBold(`Running Cypress with options:
   - START_BACKEND      : ${options.START_BACKEND}
   - OPEN_UI            : ${options.OPEN_UI}
   - SHOW_BACKEND_LOGS  : ${options.SHOW_BACKEND_LOGS}
+  - TZ                 : ${options.TZ}
 `);
 
 const init = async () => {
