@@ -29,6 +29,7 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "withDownloads",
   "initialParameters",
   "hiddenParameters",
+  "isDrillThroughEnabled",
 ] as const satisfies SdkIframeEmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];

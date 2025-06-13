@@ -44,7 +44,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
       // Default to dashboard with common settings
       dashboardId: 1,
-      isDrillThroughEnabled: false,
+      isDrillThroughEnabled: true,
       withDownloads: false,
       withTitle: true,
       initialParameters: {},
