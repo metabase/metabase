@@ -96,6 +96,25 @@ databaseChangeLog:
             constraintName: fk_core_user_tenant_id
             onDelete: RESTRICT
 
+  - changeSet:
+      id: v56.2025-06-13T11:42:34
+      author: edpaget
+      comment: Create the top-level tenant collection
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: 0
+            sql: >-
+              SELECT COUNT(*) FROM collection WHERE entity_id = 'tenanttenanttenantten';
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM collection WHERE entity_id = 'tenanttenanttenantten';
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO collection (name, slug, entity_id, type) VALUES ('All Tenant Collection', 'tenant-collection', 'tenanttenanttenantten', 'all-tenant-collection');
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

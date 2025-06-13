@@ -69,7 +69,7 @@
        (when-not <>
          (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
 
-(def ^:private ^:constant tenant-root-collection-type "tenant")
+(def ^:private ^:constant tenant-root-collection-type "all-tenant-collection")
 
 (def ^{:arglists '([])} tenant-root-collection
   "Memoized copy of the tenant root collection from the DB"
@@ -91,17 +91,13 @@
 
 (defn is-tenant-collection?
   "Whether or not a collection is a tenant collection. Placeholder for now."
-  [_collection]
-  ;; right now nothing is a tenant collection
-  false
-  #_(str/starts-with? location (tenant-root-path)))
+  [{:keys [location]}]
+  (str/starts-with? location (tenant-root-path)))
 
 (defn- tenant-collection-where-clause
   "Returns a clause that will be true if this is a tenant collection, false otherwise."
-  [& [_location-column]]
-  ;; right now nothing is a tenant collection
-  #_[:like (or location-column :location) (str tenant-root-path "%")]
-  [:= [:inline 1] [:inline 0]])
+  [& [location-column]]
+  [:like (or location-column :location) (str tenant-root-path "%")])
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
