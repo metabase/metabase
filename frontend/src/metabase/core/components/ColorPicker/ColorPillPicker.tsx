@@ -6,6 +6,8 @@ import ColorPickerContent from "metabase/core/components/ColorPicker/ColorPicker
 import { ColorPill } from "metabase/core/components/ColorPill";
 import { Group } from "metabase/ui";
 
+import S from "./ColorPillPicker.module.css";
+
 export interface ColorPillPickerProps extends ColorPickerAttributes {
   value: string;
   placeholder?: string;
@@ -25,6 +27,7 @@ export const ColorPillPicker = forwardRef(function ColorPillPicker(
         </Group>
       )}
       popoverContent={<ColorPickerContent value={value} onChange={onChange} />}
+      className={S.ColorPillPicker}
     />
   );
 });

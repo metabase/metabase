@@ -4,18 +4,17 @@ import { t } from "ttag";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import {
-  ActionIcon,
   Card,
   Checkbox,
   Divider,
   Group,
-  Icon,
   Stack,
   Text,
   TextInput,
 } from "metabase/ui";
 
 import { DebouncedColorPillPicker } from "./DebouncedColorPillPicker";
+import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 const getConfigurableColors = () =>
@@ -38,8 +37,14 @@ const getConfigurableColors = () =>
   ] as const;
 
 export const ConfigureStep = () => {
-  const { options, updateSettings, availableParameters, isLoadingParameters } =
-    useSdkIframeEmbedSetupContext();
+  const {
+    options,
+    updateSettings,
+    availableParameters,
+    isLoadingParameters,
+    toggleParameterVisibility,
+    isParameterHidden,
+  } = useSdkIframeEmbedSetupContext();
 
   const { settings } = options;
   const { theme } = settings;
@@ -112,9 +117,12 @@ export const ConfigureStep = () => {
                     `Enter ${param.name.toLowerCase()}`
                   }
                   rightSection={
-                    <ActionIcon variant="subtle">
-                      <Icon name="eye" size={16} />
-                    </ActionIcon>
+                    <ParameterVisibilityToggle
+                      parameterId={param.id}
+                      embedType={options.selectedType}
+                      isHidden={isParameterHidden(param.id)}
+                      onToggle={toggleParameterVisibility}
+                    />
                   }
                 />
               ))
