@@ -9,6 +9,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.validation :as validation]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -26,14 +27,31 @@
    :email-from-address  :sender
    :email-reply-to      :reply-to})
 
+(def ^:private cloud-mb-to-smtp-settings
+  {:cloud-email-smtp-host     :host
+   :cloud-email-smtp-username :user
+   :cloud-email-smtp-password :pass
+   :cloud-email-smtp-port     :port
+   :cloud-email-smtp-security :security
+   :cloud-email-from-name     :sender-name
+   :cloud-email-from-address  :sender
+   :cloud-email-reply-to      :reply-to})
+
+(defn- smtp->mb-setting [smtp-setting mb-to-smtp-map]
+  "Convert a SMTP setting to a Metabase setting name."
+  (get (set/map-invert mb-to-smtp-map) smtp-setting))
+
+(comment
+  (smtp->mb-setting :username mb-to-smtp-settings))
+
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
-  [{::email/keys [error]}]
+  [mb-to-smtp-map {::email/keys [error]}]
   (when error
-    (let [conn-error  {:errors {:email-smtp-host "Wrong host or port"
-                                :email-smtp-port "Wrong host or port"}}
-          creds-error {:errors {:email-smtp-username "Wrong username or password"
-                                :email-smtp-password "Wrong username or password"}}
+    (let [conn-error  {:errors {(smtp->mb-setting :host mb-to-smtp-map) "Wrong host or port"
+                                (smtp->mb-setting :port mb-to-smtp-map) "Wrong host or port"}}
+          creds-error {:errors {(smtp->mb-setting :user mb-to-smtp-map) "Wrong username or password"
+                                (smtp->mb-setting :pass mb-to-smtp-map) "Wrong username or password"}}
           exceptions  (u/full-exception-chain error)
           message     (str/join ": " (map ex-message exceptions))
           match-error (fn match-error [regex-or-exception-class [message exceptions]]
@@ -72,59 +90,92 @@
 
 (defn- humanize-email-corrections
   "Formats warnings when security settings are autocorrected."
-  [corrections]
+  [corrections mb-to-smtp-map]
   (into
    {}
    (for [[k v] corrections]
      [k (tru "{0} was autocorrected to {1}"
-             (name (mb-to-smtp-settings k))
+             (name (mb-to-smtp-map k))
              (u/upper-case-en v))])))
 
 (defn- env-var-values-by-email-setting
   "Returns a map of setting names (keywords) and env var values.
    If an env var is not set, the setting is not included in the result."
-  []
+  [mb-to-smtp-map]
   (into {}
-        (for [setting-name (keys mb-to-smtp-settings)
+        (for [setting-name (keys mb-to-smtp-map)
               :let         [value (setting/env-var-value setting-name)]
               :when        (some? value)]
           [setting-name value])))
+
+(defn- check-and-update-settings [settings mb-to-smtp-map current-smtp-password]
+  (validation/check-has-application-permission :setting)
+  (let [env-var-settings (env-var-values-by-email-setting mb-to-smtp-map)
+        smtp-settings (-> settings
+                        ;; override `nil` values in the request with environment variables for testing the SMTP connection
+                          (merge env-var-settings)
+                          (select-keys (keys mb-to-smtp-map))
+                          (set/rename-keys mb-to-smtp-map))
+        ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
+        ;; the obfuscated version
+        obfuscated? (and (:pass smtp-settings) current-smtp-password
+                         (= (:pass smtp-settings) (setting/obfuscate-value current-smtp-password)))
+        smtp-settings         (cond-> smtp-settings
+                                obfuscated?
+                                (assoc :pass current-smtp-password))
+        smtp-settings         (cond-> smtp-settings
+                                (string? (:port smtp-settings))     (update :port #(Long/parseLong ^String %))
+                                (string? (:security smtp-settings)) (update :security keyword))
+        response         (email/test-smtp-connection smtp-settings)]
+    (if-not (::email/error response)
+      ;; test was good, save our settings
+      (let [[_ corrections] (data/diff smtp-settings response)
+            new-settings    (set/rename-keys response (set/map-invert mb-to-smtp-map))]
+        ;; don't update settings if they are set by environment variables
+        (setting/set-many! (apply dissoc new-settings (keys env-var-settings)))
+        (cond-> (assoc new-settings :with-corrections (-> corrections
+                                                          (set/rename-keys (set/map-invert mb-to-smtp-map))
+                                                          (#(humanize-email-corrections % mb-to-smtp-map))))
+          obfuscated? (update (smtp->mb-setting :pass mb-to-smtp-map) setting/obfuscate-value)))
+      ;; test failed, return response message
+      {:status 400
+       :body   (humanize-error-messages mb-to-smtp-map response)})))
 
 (api.macros/defendpoint :put "/"
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [_route-params
    _query-params
-   settings :- :map]
-  (validation/check-has-application-permission :setting)
-  (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
-        ;; the obfuscated version
-        obfuscated? (and (:email-smtp-password settings) (channel.settings/email-smtp-password)
-                         (= (:email-smtp-password settings) (setting/obfuscate-value (channel.settings/email-smtp-password))))
-        ;; override `nil` values in the request with environment variables for testing the SMTP connection
-        env-var-settings (env-var-values-by-email-setting)
-        settings         (merge settings env-var-settings)
-        settings         (-> (cond-> settings
-                               obfuscated?
-                               (assoc :email-smtp-password (channel.settings/email-smtp-password)))
-                             (select-keys (keys mb-to-smtp-settings))
-                             (set/rename-keys mb-to-smtp-settings))
-        settings         (cond-> settings
-                           (string? (:port settings))     (update :port #(Long/parseLong ^String %))
-                           (string? (:security settings)) (update :security keyword))
-        response         (email/test-smtp-connection settings)]
-    (if-not (::email/error response)
-      ;; test was good, save our settings
-      (let [[_ corrections] (data/diff settings response)
-            new-settings    (set/rename-keys response (set/map-invert mb-to-smtp-settings))]
-        ;; don't update settings if they are set by environment variables
-        (setting/set-many! (apply dissoc new-settings (keys env-var-settings)))
-        (cond-> (assoc new-settings :with-corrections (-> corrections
-                                                          (set/rename-keys (set/map-invert mb-to-smtp-settings))
-                                                          humanize-email-corrections))
-          obfuscated? (update :email-smtp-password setting/obfuscate-value)))
-      ;; test failed, return response message
-      {:status 400
-       :body   (humanize-error-messages response)})))
+   settings :- [:map
+                [:email-smtp-host {:optional true} [:or string? nil?]]
+                [:email-smtp-password {:optional true} [:or string? nil?]]
+                [:email-smtp-port {:optional true} [:or int? nil?]]
+                [:email-smtp-security {:optional true} [:or string? nil?]]
+                [:email-smtp-username {:optional true} [:or string? nil?]]]]
+  (check-and-update-settings settings mb-to-smtp-settings (channel.settings/email-smtp-password)))
+
+(api.macros/defendpoint :put "/cloud"
+  "Update multiple cloud email Settings. You must be a superuser or have `setting` permission to do this."
+  [_route-params
+   _query-params
+   settings :- [:map
+                [:cloud-email-smtp-host {:optional true} [:or string? nil?]]
+                [:cloud-email-smtp-password {:optional true} [:or string? nil?]]
+                [:cloud-email-smtp-port {:optional true} [:or int? nil?]]
+                [:cloud-email-smtp-security {:optional true} [:or string? nil?]]
+                [:cloud-email-smtp-username {:optional true} [:or string? nil?]]]]
+  (when (not (premium-features/has-feature? :cloud-custom-smtp))
+    (throw (ex-info (tru "API is not available in your Metabase plan. Please upgrade to use this feature.")
+                    {:status-code 403})))
+
+  ;; Validations match validation in settings, but pre-checking here to avoid attempting network checks for invalid settings.
+  (when (and (:cloud-email-smtp-port settings) (not (#{465 587 2525} (:cloud-email-smtp-port settings))))
+    (throw (ex-info (tru "Invalid cloud-email-smtp-port value")
+                    {:status-code 400})))
+  (when (and (:cloud-email-smtp-security settings) (not (#{:tls :ssl :starttls} (keyword (:cloud-email-smtp-security settings)))))
+    (throw (ex-info (tru "Invalid cloud-email-smtp-security value")
+                    {:status-code 400})))
+
+  (check-and-update-settings settings cloud-mb-to-smtp-settings (channel.settings/cloud-email-smtp-password)))
 
 (api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
@@ -149,4 +200,4 @@
     (if-not (::email/error response)
       {:ok true}
       {:status 400
-       :body   (humanize-error-messages response)})))
+       :body   (humanize-error-messages mb-to-smtp-settings response)})))

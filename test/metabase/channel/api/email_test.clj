@@ -37,6 +37,17 @@
    :email-from-name     (setting/get :email-from-name)
    :email-reply-to      (setting/get :email-reply-to)})
 
+(defn- cloud-email-settings
+  []
+  {:cloud-email-smtp-host     (setting/get :cloud-email-smtp-host)
+   :cloud-email-smtp-port     (setting/get :cloud-email-smtp-port)
+   :cloud-email-smtp-security (setting/get :cloud-email-smtp-security)
+   :cloud-email-smtp-username (setting/get :cloud-email-smtp-username)
+   :cloud-email-smtp-password (setting/get :cloud-email-smtp-password)
+   :cloud-email-from-address  (setting/get :cloud-email-from-address)
+   :cloud-email-from-name     (setting/get :cloud-email-from-name)
+   :cloud-email-reply-to      (setting/get :cloud-email-reply-to)})
+
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
    :email-smtp-port     789
@@ -46,6 +57,16 @@
    :email-from-address  "eating@hungry.com"
    :email-from-name     "Eating"
    :email-reply-to      ["reply-to@hungry.com"]})
+
+(def ^:private cloud-default-email-settings
+  {:cloud-email-smtp-host     "foobar"
+   :cloud-email-smtp-port     465
+   :cloud-email-smtp-security :tls
+   :cloud-email-smtp-username "munchkin"
+   :cloud-email-smtp-password "gobble gobble"
+   :cloud-email-from-address  "eating@hungry.com"
+   :cloud-email-from-name     "Eating"
+   :cloud-email-reply-to      ["reply-to@hungry.com"]})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
@@ -69,6 +90,8 @@
                @mt/inbox))))))
 
 (deftest update-email-settings-test
+  ;; There is a lot of overlap with the /api/email/cloud test, but enough differences that we keep them separate.
+  ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email/cloud test?"
   (testing "PUT /api/email - check updating email settings"
     ;; [[metabase.channel.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
     ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
@@ -153,6 +176,101 @@
                              (assoc :email-smtp-password "new-password"))
                 response (mt/user-http-request :crowberto :put 200 "email" payload)]
             (is (= "new-password" (:email-smtp-password response)))))))))
+
+(deftest update-cloud-email-settings-test
+  ;; There is a lot of overlap with the /api/email test, but enough differences that we keep them separate.
+  ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email test?"
+  (testing "PUT /api/email/cloud - check updating email settings"
+    (testing "Cannot call without the :cloud-custom-smtp feature"
+      (is (= "API is not available in your Metabase plan. Please upgrade to use this feature."
+             (mt/user-http-request :crowberto :put 403 "email/cloud" cloud-default-email-settings))))
+    (mt/with-premium-features [:cloud-custom-smtp]
+      (let [original-values (cloud-email-settings)
+            body cloud-default-email-settings]
+        (doseq [;; test what happens on both a successful and an unsuccessful connection.
+                [success? f] {true  (fn [thunk]
+                                      (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                                        (thunk)))
+                              false (fn [thunk]
+                                      (with-redefs [email/retry-delay-ms 0]
+                                        (thunk)))}]
+          (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
+                                       cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
+            (testing (format "SMTP connection is valid? %b\n" success?)
+              (f (fn []
+                   (testing "API request"
+                     (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
+                       (if success?
+                         (is (= (-> cloud-default-email-settings
+                                    (assoc :with-corrections {})
+                                    (update :cloud-email-smtp-security name))
+                                (mt/user-http-request :crowberto :put 200 "email/cloud" body)))
+                         (is (= {:errors {:cloud-email-smtp-host "Wrong host or port"
+                                          :cloud-email-smtp-port "Wrong host or port"}}
+                                (mt/user-http-request :crowberto :put 400 "email/cloud" body))))))
+                   (testing "Settings after API request is finished"
+                     (is (= (if success?
+                              cloud-default-email-settings
+                              original-values)
+                            (cloud-email-settings)))))))))
+        (testing (format "SMTP connection is still valid when some settings are not specified, but set with env vars")
+          (let [body (dissoc cloud-default-email-settings
+                             :cloud-mail-smtp-port
+                             :cloud-email-smtp-host
+                             :cloud-email-smtp-security
+                             :cloud-email-smtp-username
+                             :cloud-email-smtp-password
+                             :cloud-email-from-address)]
+            (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
+                                         cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
+              (mt/with-temp-env-var-value! [mb-cloud-email-smtp-port (:cloud-email-smtp-port cloud-default-email-settings)
+                                            mb-cloud-email-smtp-host (:cloud-email-smtp-host cloud-default-email-settings)
+                                            mb-cloud-email-smtp-security (name (:cloud-email-smtp-security cloud-default-email-settings))
+                                            mb-cloud-email-smtp-username (:cloud-email-smtp-username cloud-default-email-settings)
+                                            mb-cloud-email-smtp-password (:cloud-email-smtp-password cloud-default-email-settings)
+                                            mb-cloud-email-from-address (:cloud-email-from-address cloud-default-email-settings)]
+                (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+                  (testing "API request"
+                    (is (= (-> cloud-default-email-settings
+                               (assoc :with-corrections {})
+                               (update :cloud-email-smtp-security name))
+                           (mt/user-http-request :crowberto :put 200 "email/cloud" body))))
+                  (testing "Settings after API request is finished"
+                    (is (= cloud-default-email-settings
+                           (cloud-email-settings)))))))))))
+
+    (mt/with-premium-features [:cloud-custom-smtp]
+      (testing "Cannot use non-secure settings"
+        (is (= (mt/user-http-request :crowberto :put 400 "email/cloud" (assoc cloud-default-email-settings :cloud-email-smtp-security "none"))
+               "Invalid cloud-email-smtp-security value"))
+        (is (= (mt/user-http-request :crowberto :put 400 "email/cloud" (assoc cloud-default-email-settings :cloud-email-smtp-port 25))
+               "Invalid cloud-email-smtp-port value")))
+      (testing "Updating values with obfuscated password (#23919)"
+        (mt/with-temporary-setting-values [cloud-email-from-address "notifications@metabase.com"
+                                           cloud-email-from-name "Sender Name"
+                                           cloud-email-reply-to ["reply-to@metabase.com"]
+                                           cloud-email-smtp-host "www.test.com"
+                                           cloud-email-smtp-password "preexisting"]
+          (with-redefs [email/test-smtp-connection (fn [settings]
+                                                     (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+                                                       (is (not obfuscated?) "We received an obfuscated password!")
+                                                       (if obfuscated?
+                                                         {::email/error (ex-info "Sent obfuscated password" {})}
+                                                         settings)))]
+            (testing "If we don't change the password we don't see the password"
+              (let [payload (-> (cloud-email-settings)
+                              ;; user changes one property
+                                (assoc :cloud-email-from-name "notifications")
+                              ;; the FE will have an obfuscated value
+                                (update :cloud-email-smtp-password setting/obfuscate-value))
+                    response (mt/user-http-request :crowberto :put 200 "email/cloud" payload)]
+                (is (= (setting/obfuscate-value "preexisting") (:cloud-email-smtp-password response)))))
+            (testing "If we change the password we can receive the password"
+              (let [payload (-> (cloud-email-settings)
+                              ;; user types in a new password
+                                (assoc :cloud-email-smtp-password "new-password"))
+                    response (mt/user-http-request :crowberto :put 200 "email/cloud" payload)]
+                `(is (= "new-password" (:cloud-email-smtp-password response)))))))))))
 
 (deftest clear-email-settings-test
   (testing "DELETE /api/email"
