@@ -66,7 +66,6 @@ export const submitInput = createAsyncThunk(
     const sendMessageRequestPromise = dispatch(
       sendMessageRequest({ ...data, ...meta }),
     );
-
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
     });

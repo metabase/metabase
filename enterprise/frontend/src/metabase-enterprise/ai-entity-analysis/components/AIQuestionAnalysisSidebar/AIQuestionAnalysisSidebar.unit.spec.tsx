@@ -16,7 +16,7 @@ import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 import { AIQuestionAnalysisSidebar } from "./AIQuestionAnalysisSidebar";
 
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
-  getBase64ChartImage: () => Promise.resolve("test-base64"),
+  getChartImagePngDataUri: () => Promise.resolve("test-base64"),
   getChartSelector: () => "#chart",
 }));
 
