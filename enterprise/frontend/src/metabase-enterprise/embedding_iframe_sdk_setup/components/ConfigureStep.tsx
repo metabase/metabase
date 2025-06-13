@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ColorSelector } from "metabase/core/components/ColorSelector";
+import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors } from "metabase/lib/colors";
 import {
   ActionIcon,
@@ -13,136 +14,141 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { EXAMPLE_PARAMETERS } from "../constants";
-import type { EmbedPreviewOptions } from "../types";
 
-interface ConfigureStepProps {
-  options: EmbedPreviewOptions;
-  onOptionsChange: (options: Partial<EmbedPreviewOptions>) => void;
-}
+import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
-export const ConfigureStep = ({
-  options,
-  onOptionsChange,
-}: ConfigureStepProps) => (
-  <Stack gap="md">
-    <Card p="md">
-      <Text size="lg" fw="bold" mb="md">
-        {t`Behavior`}
-      </Text>
-      <Stack gap="md">
-        <Checkbox
-          label={t`Allow users to drill through on data points`}
-          checked={options.dashboardOptions?.isDrillThroughEnabled ?? false}
-          onChange={(e) =>
-            onOptionsChange({
-              dashboardOptions: {
-                ...options.dashboardOptions,
-                isDrillThroughEnabled: e.target.checked,
-              },
-            })
-          }
-        />
-        <Checkbox
-          label={t`Allow downloads`}
-          checked={options.dashboardOptions?.withDownloads ?? false}
-          onChange={(e) =>
-            onOptionsChange({
-              dashboardOptions: {
-                ...options.dashboardOptions,
-                withDownloads: e.target.checked,
-              },
-            })
-          }
-        />
-      </Stack>
-    </Card>
+const getConfigurableColors = () =>
+  [
+    {
+      name: t`Brand Color`,
+      key: "brand",
+    },
+    {
+      name: t`Text Color`,
+      key: "text-primary",
+    },
+    {
+      name: t`Background Color`,
+      key: "background",
+    },
+  ] as const;
 
-    <Card p="md">
-      <Text size="lg" fw="bold" mb="xs">
-        {t`Parameters`}
-      </Text>
-      <Text size="sm" c="text-medium" mb="lg">
-        {t`Set default values and control visibility`}
-      </Text>
-      <Stack gap="md">
-        {EXAMPLE_PARAMETERS.map((param) => (
-          <TextInput
-            key={param.id}
-            label={param.name}
-            placeholder={param.placeholder}
-            rightSection={
-              <ActionIcon variant="subtle">
-                <Icon name="eye" size={16} />
-              </ActionIcon>
-            }
-          />
-        ))}
-      </Stack>
-    </Card>
+export const ConfigureStep = () => {
+  const { options, updateOptions } = useSdkIframeEmbedSetupContext();
 
-    <Card p="md">
-      <Text size="lg" fw="bold" mb="lg">
-        {t`Appearance`}
-      </Text>
-      <Group align="start" gap="xl" mb="lg">
-        <Stack gap="xs" align="start">
-          <Text size="sm" fw="bold">
-            {t`Brand Color`}
-          </Text>
-          <ColorSelector
-            value={options.colors?.brand || colors.brand}
-            colors={Object.values(colors)}
-            onChange={(color) =>
-              onOptionsChange({
-                colors: { ...options.colors, brand: color },
-              })
-            }
-          />
+  const { settings } = options;
+  const { theme } = settings;
+
+  const isQuestionOrDashboardEmbed =
+    !!settings.questionId || !!settings.dashboardId;
+
+  const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) => {
+    updateOptions({
+      ...options,
+      settings: {
+        ...options.settings,
+        ...nextSettings,
+      } as SdkIframeEmbedSettings,
+    });
+  };
+
+  const updateColors = (nextColors: Partial<MetabaseColors>) => {
+    updateSettings({
+      theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
+    });
+  };
+
+  return (
+    <Stack gap="md">
+      <Card p="md">
+        <Text size="lg" fw="bold" mb="md">
+          {t`Behavior`}
+        </Text>
+        <Stack gap="md">
+          {isQuestionOrDashboardEmbed && (
+            <>
+              <Checkbox
+                label={t`Allow users to drill through on data points`}
+                checked={settings.isDrillThroughEnabled ?? false}
+                onChange={(e) =>
+                  updateSettings({
+                    isDrillThroughEnabled: e.target.checked,
+                  })
+                }
+              />
+
+              <Checkbox
+                label={t`Allow downloads`}
+                checked={settings.withDownloads ?? false}
+                onChange={(e) =>
+                  updateSettings({
+                    withDownloads: e.target.checked,
+                  })
+                }
+              />
+            </>
+          )}
         </Stack>
-        <Stack gap="xs" align="start">
-          <Text size="sm" fw="bold">
-            {t`Text Color`}
-          </Text>
-          <ColorSelector
-            value={options.colors?.["text-primary"] || colors["text-dark"]}
-            colors={Object.values(colors)}
-            onChange={(color) =>
-              onOptionsChange({
-                colors: { ...options.colors, "text-primary": color },
-              })
-            }
-          />
+      </Card>
+
+      <Card p="md">
+        <Text size="lg" fw="bold" mb="xs">
+          {t`Parameters`}
+        </Text>
+        <Text size="sm" c="text-medium" mb="lg">
+          {t`Set default values and control visibility`}
+        </Text>
+
+        <Stack gap="md">
+          {EXAMPLE_PARAMETERS.map((param) => (
+            <TextInput
+              key={param.id}
+              label={param.name}
+              placeholder={param.placeholder}
+              rightSection={
+                <ActionIcon variant="subtle">
+                  <Icon name="eye" size={16} />
+                </ActionIcon>
+              }
+            />
+          ))}
         </Stack>
-        <Stack gap="xs" align="start">
-          <Text size="sm" fw="bold">
-            {t`Background`}
-          </Text>
-          <ColorSelector
-            value={options.colors?.background || colors.white}
-            colors={Object.values(colors)}
-            onChange={(color) =>
-              onOptionsChange({
-                colors: { ...options.colors, background: color },
-              })
-            }
+      </Card>
+
+      <Card p="md">
+        <Text size="lg" fw="bold" mb="lg">
+          {t`Appearance`}
+        </Text>
+
+        <Group align="start" gap="xl" mb="lg">
+          {getConfigurableColors().map(({ key, name }) => (
+            <Stack gap="xs" align="start" key={key}>
+              <Text size="sm" fw="bold">
+                {name}
+              </Text>
+
+              <ColorSelector
+                value={colors.brand}
+                colors={Object.values(colors)}
+                onChange={(color) => updateColors({ [key]: color })}
+              />
+            </Stack>
+          ))}
+        </Group>
+
+        <Divider mb="lg" />
+
+        {!!settings.dashboardId && (
+          <Checkbox
+            label={t`Show dashboard title`}
+            checked={settings.withTitle ?? true}
+            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
           />
-        </Stack>
-      </Group>
-      <Divider mb="lg" />
-      <Checkbox
-        label={t`Show dashboard title`}
-        checked={options.dashboardOptions?.withTitle ?? true}
-        onChange={(e) =>
-          onOptionsChange({
-            dashboardOptions: {
-              ...options.dashboardOptions,
-              withTitle: e.target.checked,
-            },
-          })
-        }
-      />
-    </Card>
-  </Stack>
-);
+        )}
+      </Card>
+    </Stack>
+  );
+};
