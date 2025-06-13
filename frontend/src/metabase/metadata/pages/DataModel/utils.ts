@@ -54,3 +54,10 @@ export function getTableMetadataQuery(
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   };
 }
+
+export function clamp(
+  value: number,
+  { min, max }: { min: number; max: number },
+): number {
+  return Math.max(min, Math.min(max, value));
+}

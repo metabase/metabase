@@ -1,6 +1,13 @@
 import { useElementSize, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, memo, useCallback, useState } from "react";
+import {
+  type ReactNode,
+  memo,
+  useCallback,
+  useLayoutEffect,
+  useState,
+} from "react";
+import { useLatest, usePrevious, useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -20,9 +27,9 @@ import {
   SegmentsLink,
   TableSection,
 } from "./components";
-import { COLUMN_CONFIG } from "./constants";
+import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
-import { getTableMetadataQuery, parseRouteParams } from "./utils";
+import { clamp, getTableMetadataQuery, parseRouteParams } from "./utils";
 
 // memoize components for smooth column resizing experience
 const MemoizedFieldSection = memo(FieldSection);
@@ -37,12 +44,14 @@ interface Props {
 
 export const DataModel = ({ params, location, children }: Props) => {
   const { databaseId, fieldId, tableId, schemaId } = parseRouteParams(params);
+  const previousTableId = usePrevious(tableId);
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isResizing, setIsResizing] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [navWidth, setNavWidth] = useState(COLUMN_CONFIG.nav.initial);
   const [tableWidth, setTableWidth] = useState(COLUMN_CONFIG.table.initial);
   const [fieldWidth, setFieldWidth] = useState(COLUMN_CONFIG.field.initial);
+  const { width } = useWindowSize();
   const { height, ref } = useElementSize();
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
@@ -69,6 +78,24 @@ export const DataModel = ({ params, location, children }: Props) => {
       setIsPreviewOpen(false);
     }
   });
+
+  const isOpeningTableColumn = previousTableId == null && tableId != null;
+
+  const tableLayoutEffectRef = useLatest(() => {
+    if (isOpeningTableColumn) {
+      const remainingWidth = Math.max(
+        width - navWidth - EMPTY_STATE_MIN_WIDTH,
+        0,
+      );
+
+      // take as much room as possible
+      setTableWidth(clamp(remainingWidth, COLUMN_CONFIG.table));
+    }
+  });
+
+  useLayoutEffect(() => {
+    tableLayoutEffectRef.current();
+  }, [isOpeningTableColumn, tableLayoutEffectRef]);
 
   return (
     <Flex className={cx({ [S.resizing]: isResizing })} h="100%" ref={ref}>
@@ -191,7 +218,7 @@ export const DataModel = ({ params, location, children }: Props) => {
               bg="bg-white"
               flex="1"
               justify="center"
-              miw={rem(240)}
+              miw={rem(EMPTY_STATE_MIN_WIDTH)}
             >
               <Box maw={rem(320)} p="xl">
                 <EmptyState
