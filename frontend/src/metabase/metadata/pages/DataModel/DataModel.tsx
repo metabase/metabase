@@ -142,7 +142,7 @@ export const DataModel = ({ params, location, children }: Props) => {
 
   useLayoutEffect(() => {
     if (isOpeningFieldColumn) {
-      const resizeHandleSafety = RESIZE_HANDLE_WIDTH / 2 - 1;
+      const resizeHandleSafety = RESIZE_HANDLE_WIDTH / 2 + 1;
       const remainingWidth = Math.max(
         width - navWidth - tableWidth - resizeHandleSafety,
         0,
