@@ -45,6 +45,7 @@ const SdkIframeEmbedSetupContent = () => {
           <Box className={S.SidebarContent}>
             <StepContent />
           </Box>
+
           <Group className={S.Navigation} justify="space-between">
             <Button
               variant="default"
@@ -53,6 +54,7 @@ const SdkIframeEmbedSetupContent = () => {
             >
               {t`Back`}
             </Button>
+
             {currentStep !== "get-code" && (
               <Button
                 variant="filled"
