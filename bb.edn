@@ -15,6 +15,16 @@
                     (vector 'parsed (list 'cli/parse! (list 'current-task)))
                     (cons 'do body))))
 
+  alias
+  {:doc        "Installs 'mage' alias and autocomplete"
+   :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
+                ["./bin/mage alias zsh" "Prints shell script to put into .zshrc for zsh users"]]
+   :requires   [[mage.alias :as alias]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum "bash" "zsh" "fish"]]]
+   :task       (task! (alias/instructions parsed))}
+
   cljfmt-staged
   {:doc      "Runs cljfmt on staged files"
    :requires [[mage.format :as format]]
@@ -136,26 +146,11 @@
                     (str "\n\nnote: If you get an error about 'Invalid or corrupt jarfile', run this command again with --delete.")))
    :task       (task! (jar-download/jar-download parsed))}
 
-  alias
-  {:doc      "Installs the alias for ./bin/mage"
-   :examples [["./bin/mage alias" "Interactively installs the alias for ./bin/mage"]]
-   :requires [[mage.alias :as alias]]
-   :task     (task! (alias/install parsed))}
-
   setup-stats-repl
   {:doc "Connect to the stats repl"
    :examples [["./bin/mage connect-stats-repl" "Connects to the stats repl"]]
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
-
-  setup-autocomplete
-  {:doc      "Prints instructions to setup autocomplete"
-   :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
-   :requires [[mage.autotab :as autotab]]
-   :arg-schema [:or
-                [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
-   :task     (task! (autotab/instructions parsed))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:

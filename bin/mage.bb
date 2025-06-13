@@ -44,7 +44,7 @@
            (zen))))
 
 (defn- print-help []
-  (lolcat "./mage/resource.txt")
+  (lolcat "./mage/resources/splash.txt")
   (flush)
   (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
   (println "")
