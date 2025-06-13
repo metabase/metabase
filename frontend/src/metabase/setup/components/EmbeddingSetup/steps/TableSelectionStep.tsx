@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 import { groupBy } from "underscore";
 
@@ -87,6 +86,7 @@ export const TableSelectionStep = () => {
   const handleManualRefresh = () => {
     setRetryCount(0);
     fetchTables();
+    setError(null);
   };
 
   const handleTableToggle = (table: Table) => {
@@ -143,16 +143,9 @@ export const TableSelectionStep = () => {
     return (
       <FullHeightContainer ta="center" py="xl">
         <Text color="error">{error}</Text>
-        <Stack gap="md" mt="md">
-          <Button variant="outline" onClick={handleManualRefresh}>
-            {t`Try Again`}
-          </Button>
-          <Button
-            onClick={() => dispatch(push("/setup/embedding/data-connection"))}
-          >
-            {t`Go Back`}
-          </Button>
-        </Stack>
+        <Button variant="outline" mt="md" onClick={handleManualRefresh}>
+          {t`Try Again`}
+        </Button>
       </FullHeightContainer>
     );
   }
