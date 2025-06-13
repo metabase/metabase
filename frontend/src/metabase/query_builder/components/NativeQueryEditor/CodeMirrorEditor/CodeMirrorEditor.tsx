@@ -31,6 +31,7 @@ export type CodeMirrorEditorProps = {
 export interface CodeMirrorEditorRef {
   focus: () => void;
   getSelectionTarget: () => Element | null;
+  element: HTMLDivElement | null;
 }
 
 import S from "./CodeMirrorEditor.module.css";
@@ -72,6 +73,7 @@ export const CodeMirrorEditor = forwardRef<
       getSelectionTarget() {
         return document.querySelector(".cm-selectionBackground");
       },
+      element: editorRef.current?.editor ?? null,
     };
   }, []);
 

@@ -6,6 +6,7 @@ import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 
 const LINE_HEIGHT = 16;
+const MAX_HEIGHT_PADDING = 100;
 
 export function getEditorLineHeight(lines: number) {
   return lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
@@ -13,6 +14,10 @@ export function getEditorLineHeight(lines: number) {
 
 function getLinesForHeight(height: number) {
   return (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
+}
+
+export function getEditorMaxHeight(viewHeight: number, top: number) {
+  return viewHeight - top - MAX_HEIGHT_PADDING;
 }
 
 const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
