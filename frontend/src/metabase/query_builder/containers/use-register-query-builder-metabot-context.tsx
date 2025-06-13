@@ -1,10 +1,12 @@
 import dayjs from "dayjs";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { getChartSelector } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
+  MetabotChartConfig,
   MetabotColumnType,
   MetabotSeriesConfig,
   RawSeries,
@@ -19,7 +21,6 @@ import {
   getVisualizationSettings,
 } from "../selectors";
 
-// TODO: not sure this is properly exhaustive?
 const colTypeToMetabotColTypeMap: Record<string, MetabotColumnType> = {
   "type/*": "string",
   "type/Array": "string",
@@ -49,6 +50,40 @@ const getMetabotColType = (
     : "string";
 };
 
+const getDimensions = (
+  visualizationSettings: ComputedVisualizationSettings,
+) => {
+  if (visualizationSettings["graph.dimensions"]) {
+    return visualizationSettings["graph.dimensions"];
+  }
+
+  if (visualizationSettings["pie.dimension"]) {
+    return [visualizationSettings["pie.dimension"]];
+  }
+
+  if (visualizationSettings["funnel.dimension"]) {
+    return [visualizationSettings["funnel.dimension"]];
+  }
+
+  return [];
+};
+
+const getMetrics = (visualizationSettings: ComputedVisualizationSettings) => {
+  if (visualizationSettings["graph.metrics"]) {
+    return [];
+  }
+
+  if (visualizationSettings["pie.metric"]) {
+    return [visualizationSettings["pie.metric"]];
+  }
+
+  if (visualizationSettings["funnel.metric"]) {
+    return [visualizationSettings["funnel.metric"]];
+  }
+
+  return [];
+};
+
 export function processSeriesData(
   transformedSeriesData: RawSeries,
   visualizationSettings: ComputedVisualizationSettings | undefined,
@@ -62,8 +97,8 @@ export function processSeriesData(
     .reduce(
       (acc, series, index) => {
         const { cols, rows } = series.data;
-        const dimensions = visualizationSettings["graph.dimensions"] ?? [];
-        const metrics = visualizationSettings["graph.metrics"] ?? [];
+        const dimensions = getDimensions(visualizationSettings);
+        const metrics = getMetrics(visualizationSettings);
 
         const seriesKey = series.card.name || `series_${index}`;
 
@@ -114,6 +149,56 @@ function processTimelineEvents(timelines: Timeline[]) {
     .slice(0, 20);
 }
 
+function getVisualizationSvgDataUrl(
+  question: Question,
+  visualizationSettings: ComputedVisualizationSettings | undefined,
+): string | undefined {
+  if (!visualizationSettings || question.display() === "table") {
+    return undefined;
+  }
+
+  const svgElement = document.querySelector(
+    `${getChartSelector({ cardId: question.id() })} svg`,
+  );
+  const svgString = svgElement
+    ? new XMLSerializer().serializeToString(svgElement)
+    : undefined;
+  const image_base_64 = svgString
+    ? `data:image/svg;base64,${window.btoa(svgString)}`
+    : undefined;
+
+  return image_base_64;
+}
+
+const getChartConfigs = ({
+  question,
+  series,
+  visualizationSettings,
+  timelines,
+}: {
+  question: Question;
+  series: RawSeries;
+  visualizationSettings: ComputedVisualizationSettings | undefined;
+  timelines: Timeline[];
+}): MetabotChartConfig[] => {
+  if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
+    return [];
+  }
+
+  return [
+    {
+      image_base_64: getVisualizationSvgDataUrl(
+        question,
+        visualizationSettings,
+      ),
+      title: question.displayName(),
+      description: question.description(),
+      series: processSeriesData(series, visualizationSettings),
+      timeline_events: processTimelineEvents(timelines),
+    },
+  ];
+};
+
 export const registerQueryBuilderMetabotContextFn = async ({
   question,
   series,
@@ -129,16 +214,6 @@ export const registerQueryBuilderMetabotContextFn = async ({
     return {};
   }
 
-  const svgElement = document.querySelector(
-    `${getChartSelector({ cardId: question.id() })} svg`,
-  );
-  const svgString = svgElement
-    ? new XMLSerializer().serializeToString(svgElement)
-    : undefined;
-  const image_base_64 = svgString
-    ? `data:image/svg;base64,${window.btoa(svgString)}`
-    : undefined;
-
   return {
     user_is_viewing: [
       {
@@ -146,15 +221,13 @@ export const registerQueryBuilderMetabotContextFn = async ({
           ? { id: question.id(), type: question.type() }
           : { type: "adhoc" as const }),
         query: question.datasetQuery(),
-        chart_configs: [
-          {
-            image_base_64,
-            title: question.displayName(),
-            description: question.description(),
-            series: processSeriesData(series, visualizationSettings),
-            timeline_events: processTimelineEvents(timelines),
-          },
-        ],
+        display_type: question.display(),
+        chart_configs: getChartConfigs({
+          question,
+          series,
+          visualizationSettings,
+          timelines,
+        }),
       },
     ],
   };
