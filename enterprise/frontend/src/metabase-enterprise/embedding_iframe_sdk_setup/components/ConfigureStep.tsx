@@ -1,12 +1,13 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 
-import ColorPicker from "metabase/core/components/ColorPicker";
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
 import {
   ActionIcon,
   Card,
   Checkbox,
+  Divider,
   Group,
   Icon,
   Stack,
@@ -16,6 +17,7 @@ import {
 
 import { EXAMPLE_PARAMETERS } from "../constants";
 
+import { DebouncedColorPillPicker } from "./DebouncedColorPillPicker";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 const getConfigurableColors = () =>
@@ -46,11 +48,14 @@ export const ConfigureStep = () => {
   const isQuestionOrDashboardEmbed =
     !!settings.questionId || !!settings.dashboardId;
 
-  const updateColors = (nextColors: Partial<MetabaseColors>) => {
-    updateSettings({
-      theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
-    });
-  };
+  const updateColor = useCallback(
+    (nextColors: Partial<MetabaseColors>) => {
+      updateSettings({
+        theme: { ...theme, colors: { ...theme?.colors, ...nextColors } },
+      });
+    },
+    [theme, updateSettings],
+  );
 
   return (
     <Stack gap="md">
@@ -118,20 +123,25 @@ export const ConfigureStep = () => {
                 {name}
               </Text>
 
-              <ColorPicker
-                value={settings.theme?.colors?.[key] ?? defaultColor}
-                onChange={(color) => updateColors({ [key]: color })}
+              <DebouncedColorPillPicker
+                initialValue={settings.theme?.colors?.[key] ?? defaultColor}
+                onChange={(color) => updateColor({ [key]: color })}
+                debounceMs={300}
               />
             </Stack>
           ))}
         </Group>
 
         {isQuestionOrDashboardEmbed && (
-          <Checkbox
-            label={t`Show dashboard title`}
-            checked={settings.withTitle ?? true}
-            onChange={(e) => updateSettings({ withTitle: e.target.checked })}
-          />
+          <>
+            <Divider mb="md" />
+
+            <Checkbox
+              label={t`Show dashboard title`}
+              checked={settings.withTitle ?? true}
+              onChange={(e) => updateSettings({ withTitle: e.target.checked })}
+            />
+          </>
         )}
       </Card>
     </Stack>
