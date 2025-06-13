@@ -172,6 +172,11 @@ export const getRoutes = (store) => {
           />
 
           <Route
+            path="embed/new"
+            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
+          />
+
+          <Route
             path="collection/entity/:entity_id(**)"
             component={createEntityIdRedirect({
               parametersToTranslate: [
@@ -356,11 +361,6 @@ export const getRoutes = (store) => {
               component={TableQuestionsContainer}
             />
           </Route>
-
-          <Route
-            path="/embed/new"
-            component={PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.SdkIframeEmbedSetup}
-          />
 
           {/* ACCOUNT */}
           {getAccountRoutes(store, IsAuthenticated)}
