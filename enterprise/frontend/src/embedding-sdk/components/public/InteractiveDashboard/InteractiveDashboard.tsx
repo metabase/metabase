@@ -5,7 +5,6 @@ import {
   useEffect,
 } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
@@ -93,17 +92,7 @@ const InteractiveDashboardInner = ({
     onLoadWithoutCards,
   });
 
-  const {
-    displayOptions,
-    ref,
-    isFullscreen,
-    onFullscreenChange,
-    refreshPeriod,
-    onRefreshPeriodChange,
-    setRefreshElapsedHook,
-    dashboardId,
-    isLoading,
-  } = useSdkDashboardParams({
+  const { displayOptions, dashboardId, isLoading } = useSdkDashboardParams({
     dashboardId: dashboardIdProp,
     withDownloads,
     withTitle,
@@ -157,11 +146,7 @@ const InteractiveDashboardInner = ({
 
   if (errorPage) {
     return (
-      <StyledPublicComponentWrapper
-        className={className}
-        style={style}
-        ref={ref}
-      >
+      <StyledPublicComponentWrapper className={className} style={style}>
         <SdkError
           message={errorPage.data?.message ?? t`Something's gone wrong`}
         />
@@ -169,7 +154,7 @@ const InteractiveDashboardInner = ({
     );
   }
   return (
-    <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
+    <StyledPublicComponentWrapper className={className} style={style}>
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
@@ -194,20 +179,12 @@ const InteractiveDashboardInner = ({
             withFooter={false}
             theme={theme}
             getClickActionMode={getClickActionMode}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={onFullscreenChange}
-            refreshPeriod={refreshPeriod}
-            onRefreshPeriodChange={onRefreshPeriodChange}
-            setRefreshElapsedHook={setRefreshElapsedHook}
             bordered={displayOptions.bordered}
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
             onLoad={handleLoad}
             onLoadWithoutCards={handleLoadWithoutCards}
             onError={(error) => dispatch(setErrorPage(error))}
             downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
-            isNightMode={false}
-            onNightModeChange={_.noop}
-            hasNightModeToggle={false}
           />
         </InteractiveDashboardProvider>
       )}

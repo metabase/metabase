@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useEffect } from "react";
-import _ from "underscore";
 
 import {
   DashboardNotFoundError,
@@ -54,17 +53,7 @@ export const StaticDashboardInner = ({
     onLoadWithoutCards,
   });
 
-  const {
-    displayOptions,
-    ref,
-    isFullscreen,
-    onFullscreenChange,
-    refreshPeriod,
-    onRefreshPeriodChange,
-    setRefreshElapsedHook,
-    dashboardId,
-    isLoading,
-  } = useSdkDashboardParams({
+  const { displayOptions, dashboardId, isLoading } = useSdkDashboardParams({
     dashboardId: dashboardIdProp,
     initialParameters,
     withTitle,
@@ -90,12 +79,7 @@ export const StaticDashboardInner = ({
   }
 
   return (
-    <Box
-      w="100%"
-      ref={ref}
-      className={cx(CS.overflowAuto, className)}
-      style={style}
-    >
+    <Box w="100%" className={cx(CS.overflowAuto, className)} style={style}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}
@@ -104,19 +88,11 @@ export const StaticDashboardInner = ({
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
         theme={theme}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-        refreshPeriod={refreshPeriod}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        setRefreshElapsedHook={setRefreshElapsedHook}
         bordered={displayOptions.bordered}
         onLoad={handleLoad}
         onLoadWithoutCards={handleLoadWithoutCards}
         onError={(error) => dispatch(setErrorPage(error))}
         downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
-        isNightMode={false}
-        onNightModeChange={_.noop}
-        hasNightModeToggle={false}
         withFooter={false}
         getClickActionMode={({ question }) =>
           getEmbeddingMode({ question, queryMode: StaticQuestionSdkMode })

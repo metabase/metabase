@@ -3,11 +3,6 @@ import { pick } from "underscore";
 import type { SdkDashboardId } from "embedding-sdk/types/dashboard";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
-import {
-  useDashboardFullscreen,
-  useDashboardRefreshPeriod,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
@@ -64,7 +59,6 @@ export const useSdkDashboardParams = ({
   withDownloads,
   withTitle,
   hiddenParameters,
-  initialParameters = {},
 }: SdkDashboardDisplayProps) => {
   const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
@@ -85,25 +79,8 @@ export const useSdkDashboardParams = ({
       isNotNull,
     ),
   };
-
-  const { refreshDashboard } = useRefreshDashboard({
-    dashboardId,
-    parameterQueryParams: initialParameters,
-  });
-  const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
-  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
-    useDashboardRefreshPeriod({
-      onRefresh: refreshDashboard,
-    });
-
   return {
     displayOptions,
-    isFullscreen,
-    onFullscreenChange,
-    ref,
-    onRefreshPeriodChange,
-    refreshPeriod,
-    setRefreshElapsedHook,
     dashboardId,
     isLoading,
   };
