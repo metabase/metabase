@@ -29,9 +29,10 @@ export const getTooltipOption = (
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
   containerRef: React.RefObject<HTMLDivElement>,
+  rootElement: HTMLDivElement,
 ): TooltipOption => {
   return {
-    ...getTooltipBaseOption(containerRef),
+    ...getTooltipBaseOption(containerRef, rootElement),
     trigger: "item",
     formatter: (params) => {
       if (Array.isArray(params) || typeof params.dataIndex !== "number") {

@@ -1,9 +1,10 @@
 import r2wc from "@r2wc/react-to-web-component";
 
-import { InteractiveDashboard } from "../InteractiveDashboard";
+import { EditableDashboard } from "../InteractiveDashboard";
 import { MetabaseProvider } from "../MetabaseProvider";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
+import { ShadowRootProvider } from "./shadow-root-provider";
 
 interface WebComponentInstance extends HTMLElement {
   connectedCallback?(): void;
@@ -160,16 +161,18 @@ const MbQuestion = (
   const Constructor = r2wc(
     ({ metabaseInstanceUrl, apiKey, fetchRequestToken, questionId }) => {
       return (
-        <MetabaseProvider
-          authConfig={{
-            metabaseInstanceUrl,
-            apiKey,
-            fetchRequestToken,
-          }}
-          theme={{ fontFamily: "Lato" }}
-        >
-          <InteractiveQuestion questionId={questionId} />
-        </MetabaseProvider>
+        <ShadowRootProvider>
+          <MetabaseProvider
+            authConfig={{
+              metabaseInstanceUrl,
+              apiKey,
+              fetchRequestToken,
+            }}
+            theme={{ fontFamily: "Lato" }}
+          >
+            <InteractiveQuestion questionId={questionId} />
+          </MetabaseProvider>
+        </ShadowRootProvider>
       );
     },
     {
@@ -190,16 +193,18 @@ const MbDashboard = (
 ): CustomElementConstructor => {
   const Constructor = r2wc(
     ({ metabaseInstanceUrl, apiKey, fetchRequestToken, dashboardId }) => (
-      <MetabaseProvider
-        authConfig={{
-          metabaseInstanceUrl,
-          apiKey,
-          fetchRequestToken,
-        }}
-        theme={{ fontFamily: "Lato" }}
-      >
-        <InteractiveDashboard dashboardId={dashboardId} />
-      </MetabaseProvider>
+      <ShadowRootProvider>
+        <MetabaseProvider
+          authConfig={{
+            metabaseInstanceUrl,
+            apiKey,
+            fetchRequestToken,
+          }}
+          theme={{ fontFamily: "Lato" }}
+        >
+          <EditableDashboard dashboardId={dashboardId} />
+        </MetabaseProvider>
+      </ShadowRootProvider>
     ),
     {
       shadow,

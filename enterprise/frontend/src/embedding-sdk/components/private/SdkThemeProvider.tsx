@@ -2,6 +2,7 @@ import { Global } from "@emotion/react";
 import { useMemo } from "react";
 
 import type { MetabaseTheme } from "embedding-sdk";
+import { useShadowRoot } from "embedding-sdk/components/public/InteractiveQuestion/shadow-root-provider";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
+  const { rootElement } = useShadowRoot();
+
   const font = useSelector(getFont);
   const appColors = useSelector((state) =>
     getApplicationColors(getSettings(state)),
@@ -28,8 +31,8 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     // This must be done before ThemeProvider calls getThemeOverrides.
     setGlobalEmbeddingColors(theme?.colors, appColors ?? {});
 
-    return getEmbeddingThemeOverride(theme || {}, font);
-  }, [appColors, theme, font]);
+    return getEmbeddingThemeOverride(theme || {}, font, rootElement);
+  }, [rootElement, appColors, theme, font]);
 
   return (
     <ThemeProvider theme={themeOverride}>

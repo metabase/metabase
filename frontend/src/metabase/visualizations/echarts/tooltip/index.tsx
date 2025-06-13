@@ -65,6 +65,7 @@ export const getTooltipPositionFn =
 
 export const getTooltipBaseOption = (
   containerRef: React.RefObject<HTMLDivElement>,
+  rootElement: HTMLDivElement,
 ) => {
   return {
     enterable: true,
@@ -75,7 +76,7 @@ export const getTooltipBaseOption = (
         ? echartsTooltipContainerSelector
         : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
 
-      let container = document.querySelector(
+      let container = rootElement.querySelector(
         containerSelector,
       ) as HTMLDivElement;
 
@@ -93,10 +94,10 @@ export const getTooltipBaseOption = (
         );
 
         if (!isEmbeddingSdk) {
-          document.body.append(container);
+          rootElement.append(container);
         } else {
-          document
-            .getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID)
+          rootElement
+            .querySelector(`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`)
             ?.append(container);
         }
       }
