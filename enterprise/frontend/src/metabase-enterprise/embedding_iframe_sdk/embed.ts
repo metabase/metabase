@@ -28,6 +28,7 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "withTitle",
   "withDownloads",
   "initialParameters",
+  "initialSqlParameters",
   "hiddenParameters",
   "isDrillThroughEnabled",
 ] as const satisfies SdkIframeEmbedSettingKey[];

@@ -1,3 +1,4 @@
+import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -65,6 +66,29 @@ export const ConfigureStep = () => {
     !!settings.dashboardId ||
     (!!settings.questionId && settings.isDrillThroughEnabled);
 
+  const updateInitialParameterValue = useDebouncedCallback(
+    (paramId: string, value: string) => {
+      if (settings.dashboardId) {
+        updateSettings({
+          initialParameters: {
+            ...settings.initialParameters,
+            [paramId]: value,
+          },
+        });
+      }
+
+      if (settings.questionId) {
+        updateSettings({
+          initialSqlParameters: {
+            ...settings.initialSqlParameters,
+            [paramId]: value,
+          },
+        });
+      }
+    },
+    500,
+  );
+
   return (
     <Stack gap="md">
       {isQuestionOrDashboardEmbed && (
@@ -116,11 +140,14 @@ export const ConfigureStep = () => {
                     param.default?.toString() ||
                     `Enter ${param.name.toLowerCase()}`
                   }
+                  onChange={(e) =>
+                    updateInitialParameterValue(param.name, e.target.value)
+                  }
                   rightSection={
                     <ParameterVisibilityToggle
-                      parameterId={param.id}
+                      parameterName={param.name}
                       embedType={options.selectedType}
-                      isHidden={isParameterHidden(param.id)}
+                      isHidden={isParameterHidden(param.name)}
                       onToggle={toggleParameterVisibility}
                     />
                   }
