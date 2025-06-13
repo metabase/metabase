@@ -52,6 +52,7 @@ export const FieldSection = ({
         <NameDescriptionInput
           name={field.display_name}
           nameIcon={getColumnIcon(Lib.legacyColumnTypeInfo(field))}
+          nameMaxLength={254}
           namePlaceholder={t`Give this field a name`}
           onNameChange={async (name) => {
             await updateField({ id, display_name: name });
@@ -64,7 +65,13 @@ export const FieldSection = ({
           description={field.description ?? ""}
           descriptionPlaceholder={t`Give this field a description`}
           onDescriptionChange={async (description) => {
-            await updateField({ id, description });
+            const newDescription = description.trim();
+
+            await updateField({
+              id,
+              // API does not accept empty strings
+              description: newDescription.length === 0 ? null : newDescription,
+            });
 
             sendToast({
               icon: "check",

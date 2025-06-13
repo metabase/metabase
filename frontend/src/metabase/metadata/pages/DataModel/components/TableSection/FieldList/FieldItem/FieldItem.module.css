@@ -1,0 +1,35 @@
+.field {
+  border-radius: var(--default-border-radius);
+  border: 1px solid var(--mb-color-border);
+
+  &:hover {
+    &:not(.active) {
+      background-color: var(--mb-color-background-light) !important;
+    }
+  }
+}
+
+.icon {
+  color: var(--mb-color-brand);
+}
+
+.input {
+  &,
+  & textarea {
+    height: 1.5rem !important;
+  }
+
+  &:focus-within {
+    border-color: #789cbc !important;
+  }
+
+  textarea {
+    cursor: text;
+    white-space: nowrap;
+
+    &:focus {
+      color: var(--mb-color-text-secondary);
+      background-color: #a0c9ed;
+    }
+  }
+}
