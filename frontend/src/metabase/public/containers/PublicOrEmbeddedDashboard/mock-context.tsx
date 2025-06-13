@@ -81,7 +81,7 @@ export const MockDashboardContext = ({
 
   return (
     <ConnectedDashboardContextWithReduxProps
-      dashboardIdProp={dashboardId}
+      dashboardIdProp={dashboardId ?? undefined}
       dashboardId={dashboardId}
       parameterQueryParams={parameterQueryParams}
       onLoad={onLoad}

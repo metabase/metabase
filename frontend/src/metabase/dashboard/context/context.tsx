@@ -53,7 +53,7 @@ export type DashboardContextOwnProps = {
 
 export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
-  initialDashboardId: DashboardContextOwnProps["dashboardId"];
+  dashboardIdProp: DashboardContextOwnProps["dashboardId"];
   dashboardId: DashboardId | null;
 };
 
@@ -80,7 +80,7 @@ export const DashboardContext = createContext<ContextReturned | undefined>(
 );
 
 const DashboardContextProviderInner = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   parameterQueryParams = {},
   onLoad,
   onLoadWithoutCards,
@@ -255,21 +255,17 @@ const DashboardContextProviderInner = ({
   ]);
 
   useEffect(() => {
-    if (initialDashboardId !== dashboardId) {
-      fetchId(initialDashboardId);
+    if (dashboardIdProp !== dashboardId) {
+      fetchId(dashboardIdProp);
     }
-  }, [dashboardId, dispatch, fetchId, handleError, initialDashboardId]);
+  }, [dashboardId, dispatch, fetchId, handleError, dashboardIdProp]);
 
   useEffect(() => {
-    if (
-      initialDashboardId &&
-      dashboardId &&
-      dashboardId !== previousDashboardId
-    ) {
+    if (dashboardIdProp && dashboardId && dashboardId !== previousDashboardId) {
       reset();
       fetchData(dashboardId);
     }
-  }, [dashboardId, fetchData, initialDashboardId, previousDashboardId, reset]);
+  }, [dashboardId, fetchData, dashboardIdProp, previousDashboardId, reset]);
 
   useEffect(() => {
     if (dashboard) {
@@ -326,7 +322,7 @@ const DashboardContextProviderInner = ({
   return (
     <DashboardContext.Provider
       value={{
-        initialDashboardId,
+        dashboardIdProp: dashboardIdProp,
         dashboardId,
         parameterQueryParams,
         onLoad,
