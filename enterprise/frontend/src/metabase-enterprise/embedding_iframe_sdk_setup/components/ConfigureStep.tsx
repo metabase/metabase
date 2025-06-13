@@ -57,6 +57,10 @@ export const ConfigureStep = () => {
     [theme, updateSettings],
   );
 
+  const showTitleOption =
+    !!settings.dashboardId ||
+    (!!settings.questionId && settings.isDrillThroughEnabled);
+
   return (
     <Stack gap="md">
       {isQuestionOrDashboardEmbed && (
@@ -132,12 +136,12 @@ export const ConfigureStep = () => {
           ))}
         </Group>
 
-        {isQuestionOrDashboardEmbed && (
+        {showTitleOption && (
           <>
             <Divider mb="md" />
 
             <Checkbox
-              label={t`Show dashboard title`}
+              label={t`Show ${options.selectedType} title`}
               checked={settings.withTitle ?? true}
               onChange={(e) => updateSettings({ withTitle: e.target.checked })}
             />
