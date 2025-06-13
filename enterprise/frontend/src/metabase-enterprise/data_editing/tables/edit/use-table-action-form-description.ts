@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 
 import { useDescribeActionFormMutation } from "metabase-enterprise/api";
 
@@ -7,42 +7,32 @@ import type { BuiltInTableAction, TableEditingScope } from "../types";
 type UseTableDescribeTmpModalProps = {
   actionId: BuiltInTableAction;
   scope: TableEditingScope;
-  skip?: boolean;
-  refetchDependencies?: unknown[];
+  fetchOnMount?: boolean;
 };
 
 export const useActionFormDescription = ({
   actionId,
   scope,
-  skip,
-  refetchDependencies = [],
+  fetchOnMount = true,
 }: UseTableDescribeTmpModalProps) => {
-  const [shouldFetch, setShouldFetch] = useState(!skip);
   const [fetchModalDescription, { data, isLoading }] =
     useDescribeActionFormMutation();
 
-  // Request re-fetch when `refetchDependencies` or `skip` changes
-  useEffect(() => {
-    if (!skip) {
-      setShouldFetch(true);
-    }
+  const refetch = useCallback(() => {
+    fetchModalDescription({
+      action_id: actionId,
+      scope,
+    });
+  }, [actionId, scope, fetchModalDescription]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skip, ...refetchDependencies]);
-
-  // Fetch modal description when `shouldFetch` is true and not currently loading
   useEffect(() => {
-    if (shouldFetch && !isLoading) {
-      fetchModalDescription({
-        action_id: actionId,
-        scope,
-      }).then(() => {
-        setShouldFetch(false);
-      });
+    if (fetchOnMount) {
+      refetch();
     }
-  }, [fetchModalDescription, shouldFetch, isLoading, actionId, scope]);
+  }, [fetchOnMount, refetch]);
 
   return {
+    refetch,
     data,
     isLoading,
   };
