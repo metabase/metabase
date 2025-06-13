@@ -54,7 +54,7 @@
                 (is (not random-entity-id?))))))))))
 
 (deftest serialization-complete-spec-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     ;; When serialization spec is defined, it describes every column
     (doseq [m    (-> (methods serdes/make-spec)
                      (dissoc :default)

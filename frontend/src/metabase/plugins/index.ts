@@ -21,8 +21,6 @@ import {
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
-import { InteractiveEmbeddingSettings } from "metabase/admin/settings/components/EmbeddingSettings/InteractiveEmbeddingSettings";
-import type { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import type {
   MetricFilterControlsProps,
   MetricFilterSettings,
@@ -42,6 +40,7 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
@@ -121,14 +120,9 @@ export const PLUGIN_ADMIN_TROUBLESHOOTING = {
 };
 
 export const PLUGIN_ADMIN_SETTINGS = {
-  InteractiveEmbeddingSettings: InteractiveEmbeddingSettings,
+  InteractiveEmbeddingSettings: NotFoundPlaceholder,
   LicenseAndBillingSettings: PluginPlaceholder,
 };
-
-// functions that update the sections
-export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
-  sections: typeof ADMIN_SETTINGS_SECTIONS,
-) => void)[] = [];
 
 // admin permissions
 export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES = [];
@@ -615,7 +609,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+  areDownloadsEnabled: (_args: {
+    downloads?: string | boolean | null;
+  }): EmbedResourceDownloadOptions => ({
     pdf: true,
     results: true,
   }),
@@ -704,6 +700,7 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,

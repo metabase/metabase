@@ -4,7 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -39,22 +39,22 @@
    (fn [^java.sql.Connection conn]
      (jdbc/execute! {:connection conn} [statement]))))
 
-(deftest mirror-databases-get-used
+(deftest destination-databases-get-used
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
         (met/with-user-attributes!
           :rasta
-          {"db_name" "mirror-db-1"}
+          {"db_name" "destination-db-1"}
           (met/with-user-attributes!
             :lucky
-            {"db_name" "mirror-db-2"}
-            (with-temp-dbs! [router-db mirror-db-1 mirror-db-2]
-              ;; configure the Mirror Databases
-              (t2/update! :model/Database (u/the-id mirror-db-1) {:name "mirror-db-1" :router_database_id (u/the-id router-db)})
-              (t2/update! :model/Database (u/the-id mirror-db-2) {:name "mirror-db-2" :router_database_id (u/the-id router-db)})
+            {"db_name" "destination-db-2"}
+            (with-temp-dbs! [router-db destination-db-1 destination-db-2]
+              ;; configure the destination Databases
+              (t2/update! :model/Database (u/the-id destination-db-1) {:name "destination-db-1" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database (u/the-id destination-db-2) {:name "destination-db-2" :router_database_id (u/the-id router-db)})
               ;; sync the Router database
               (sync/sync-database! router-db)
               ;; Configure the router database and set up a card that uses it.
@@ -65,23 +65,23 @@
                                                                :type     :query
                                                                :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}}]
                 (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
-                (execute-statement! mirror-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-1')")
-                (execute-statement! mirror-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-2')")
+                (execute-statement! destination-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-1')")
+                (execute-statement! destination-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-2')")
                 (let [response (mt/user-http-request :rasta :post 202 (str "card/" (u/the-id card) "/query"))]
-                  (is (= [["mirror-1"]] (mt/rows response))))
+                  (is (= [["destination-1"]] (mt/rows response))))
                 (let [response (mt/user-http-request :lucky :post 202 (str "card/" (u/the-id card) "/query"))]
-                  (is (= [["mirror-2"]] (mt/rows response))))
+                  (is (= [["destination-2"]] (mt/rows response))))
                 (let [response (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card) "/query"))]
                   (is (= [["router"]] (mt/rows response))))))))))))
 
 (deftest an-error-is-thrown-if-user-attribute-is-missing-or-no-match
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "nonexistent_database_name"}
-        (with-temp-dbs! [router-db mirror-db]
-          (t2/update! :model/Database (u/the-id mirror-db) {:name "my database name" :router_database_id (u/the-id router-db)})
+        (with-temp-dbs! [router-db destination-db]
+          (t2/update! :model/Database (u/the-id destination-db) {:name "my database name" :router_database_id (u/the-id router-db)})
           (sync/sync-database! router-db)
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                   :user_attribute "db_name"}]
@@ -105,18 +105,18 @@
 
 (deftest caching-works
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
         (met/with-user-attributes!
           :rasta
-          {"db_name" "mirror database"}
-          (with-temp-dbs! [router-db mirror-db]
-            (t2/update! :model/Database (u/the-id mirror-db) {:name "mirror database" :router_database_id (u/the-id router-db)})
+          {"db_name" "destination database"}
+          (with-temp-dbs! [router-db destination-db]
+            (t2/update! :model/Database (u/the-id destination-db) {:name "destination database" :router_database_id (u/the-id router-db)})
             (sync/sync-database! router-db)
             (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
-            (execute-statement! mirror-db "INSERT INTO \"my_database_name\" (str) VALUES ('mirror')")
+            (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination')")
             (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                     :user_attribute "db_name"}]
 
@@ -142,7 +142,7 @@
                                                             :avg-execution-ms 1000
                                                             :min-duration-ms  1}}))))
               (mt/with-test-user :rasta
-                (is (=? {:data {:rows [["mirror"]]}}
+                (is (=? {:data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
                                            :type :query
                                            :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}
@@ -151,7 +151,7 @@
                                                             :avg-execution-ms 1000
                                                             :min-duration-ms  1}})))
                 (is (=? {:cache/details {:cached true}
-                         :data {:rows [["mirror"]]}}
+                         :data {:rows [["destination"]]}}
                         (qp/process-query {:database (u/the-id router-db)
                                            :type :query
                                            :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}
@@ -162,20 +162,20 @@
 
 (deftest get-field-values-endpoint-works
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
         (met/with-user-attributes!
           :rasta
-          {"db_name" "mirror-db-1"}
+          {"db_name" "destination-db-1"}
           (met/with-user-attributes!
             :lucky
-            {"db_name" "mirror-db-2"}
-            (with-temp-dbs! [router-db mirror-db-1 mirror-db-2]
-              ;; configure the Mirror Databases
-              (t2/update! :model/Database (u/the-id mirror-db-1) {:name "mirror-db-1" :router_database_id (u/the-id router-db)})
-              (t2/update! :model/Database (u/the-id mirror-db-2) {:name "mirror-db-2" :router_database_id (u/the-id router-db)})
+            {"db_name" "destination-db-2"}
+            (with-temp-dbs! [router-db destination-db-1 destination-db-2]
+              ;; configure the destination Databases
+              (t2/update! :model/Database (u/the-id destination-db-1) {:name "destination-db-1" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database (u/the-id destination-db-2) {:name "destination-db-2" :router_database_id (u/the-id router-db)})
               ;; sync the Router database
               (sync/sync-database! router-db)
               ;; Configure the router database and set up a card that uses it.
@@ -184,14 +184,14 @@
                 (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id router-db))
                       field-id (t2/select-one-pk :model/Field :table_id table-id)]
                   (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
-                  (execute-statement! mirror-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-1')")
-                  (execute-statement! mirror-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('mirror-2')")
+                  (execute-statement! destination-db-1 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-1')")
+                  (execute-statement! destination-db-2 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-2')")
                   (let [response (mt/user-http-request :rasta :get 200 (str "field/" field-id "/values"))]
-                    (is (= {:values [["mirror-1"]], :field_id field-id, :has_more_values false}
+                    (is (= {:values [["destination-1"]], :field_id field-id, :has_more_values false}
                            response)))
                   (let [response (mt/user-http-request :crowberto :get 200 (str "field/" field-id "/values"))]
                     (is (= {:values [["router"]] :field_id field-id :has_more_values false}
                            response)))
                   (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
-                    (is (= {:values [["mirror-2"]] :field_id field-id :has_more_values false}
+                    (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
                            response))))))))))))

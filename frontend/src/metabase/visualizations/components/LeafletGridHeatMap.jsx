@@ -8,7 +8,7 @@ import Question from "metabase-lib/v1/Question";
 import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import { isMetric, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
-import { computeNumericDataInverval } from "../lib/numeric";
+import { computeNumericDataInterval } from "../lib/numeric";
 
 import LeafletMap from "./LeafletMap";
 
@@ -17,7 +17,7 @@ const isValidCoordinatesColumn = (column) =>
 
 const computeValueRange = (value, values) => [
   value,
-  value + computeNumericDataInverval(values),
+  value + computeNumericDataInterval(values),
 ];
 
 const getValueRange = (value, column, values) => {

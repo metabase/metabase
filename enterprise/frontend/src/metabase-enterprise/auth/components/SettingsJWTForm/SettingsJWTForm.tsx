@@ -93,6 +93,7 @@ export const SettingsJWTForm = () => {
                   name="jwt-identity-provider-uri"
                   label={t`JWT Identity Provider URI`}
                   placeholder="https://jwt.yourdomain.org"
+                  required
                   autoFocus
                   {...getExtraFormFieldProps(
                     settingDetails?.["jwt-identity-provider-uri"],
@@ -101,6 +102,7 @@ export const SettingsJWTForm = () => {
                 <FormSecretKey
                   name="jwt-shared-secret"
                   label={t`String used by the JWT signing key`}
+                  required
                   confirmation={{
                     header: t`Regenerate JWT signing key?`,
                     dialog: t`This will cause existing tokens to stop working until the identity provider is updated with the new key.`,

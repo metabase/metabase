@@ -212,11 +212,6 @@ export const AutoApi = {
   }),
 };
 
-export const SlackApi = {
-  getManifest: GET("/api/slack/manifest"),
-  updateSettings: PUT("/api/slack/settings"),
-};
-
 export const MetabaseApi = {
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {

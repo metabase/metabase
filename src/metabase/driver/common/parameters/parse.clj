@@ -1,4 +1,5 @@
 (ns metabase.driver.common.parameters.parse
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]

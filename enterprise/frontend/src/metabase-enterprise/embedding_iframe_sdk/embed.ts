@@ -1,4 +1,13 @@
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSessionToken,
+} from "embedding/auth-common";
+import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
+
 import type {
+  SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
   SdkIframeEmbedTagSettings,
@@ -16,12 +25,13 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "template",
   "theme",
   "locale",
+  "preferredAuthMethod",
 ] as const satisfies EmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
 
 class MetabaseEmbed {
-  static readonly VERSION = "1.0.0";
+  static readonly VERSION = "1.1.0";
 
   private _settings: SdkIframeEmbedTagSettings;
   private _isEmbedReady: boolean = false;
@@ -117,8 +127,8 @@ class MetabaseEmbed {
   }
 
   private _validateEmbedSettings(settings: SdkIframeEmbedTagSettings) {
-    if (!settings.apiKey || !settings.instanceUrl) {
-      raiseError("API key and instance URL must be provided");
+    if (!settings.instanceUrl) {
+      raiseError("instanceUrl must be provided");
     }
 
     if (!settings.dashboardId && !settings.questionId && !settings.template) {
@@ -157,7 +167,9 @@ class MetabaseEmbed {
     }
   }
 
-  private _handleMessage = (event: MessageEvent<SdkIframeEmbedTagMessage>) => {
+  private _handleMessage = async (
+    event: MessageEvent<SdkIframeEmbedTagMessage>,
+  ) => {
     if (!event.data) {
       return;
     }
@@ -170,26 +182,94 @@ class MetabaseEmbed {
       this._isEmbedReady = true;
       this._setEmbedSettings(this._settings);
     }
+
+    if (event.data.type === "metabase.embed.requestSessionToken") {
+      await this._authenticate();
+    }
   };
 
-  private _sendMessage(type: string, data: unknown) {
+  private _sendMessage<Message extends SdkIframeEmbedMessage>(
+    type: Message["type"],
+    data: Message["data"],
+  ) {
     if (this.iframe?.contentWindow) {
       this.iframe.contentWindow.postMessage({ type, data }, "*");
     }
   }
-}
 
-class MetabaseEmbedError extends Error {
-  constructor(message: string) {
-    super(message);
+  private async _authenticate() {
+    // If we are using an API key, we don't need to authenticate via SSO.
+    if (this._settings.apiKey) {
+      return;
+    }
 
-    // eslint-disable-next-line no-literal-metabase-strings -- used in error messages
-    this.name = "MetabaseEmbedError";
+    try {
+      const { method, sessionToken } = await this._getMetabaseSessionToken();
+      validateSessionToken(sessionToken);
+
+      if (sessionToken) {
+        this._sendMessage("metabase.embed.submitSessionToken", {
+          authMethod: method,
+          sessionToken,
+        });
+      }
+    } catch (error) {
+      // if the error is an authentication error, show it to the iframe too
+      if (error instanceof MetabaseError) {
+        this._sendMessage("metabase.embed.reportAuthenticationError", {
+          error,
+        });
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * @returns {{ method: "saml" | "jwt", sessionToken: {jwt: string} }}
+   */
+  private async _getMetabaseSessionToken() {
+    const { instanceUrl, preferredAuthMethod } = this._settings;
+
+    const urlResponseJson = await connectToInstanceAuthSso(instanceUrl, {
+      headers: this._getAuthRequestHeader(),
+      preferredAuthMethod,
+    });
+
+    const { method, url: responseUrl, hash } = urlResponseJson || {};
+
+    if (method === "saml") {
+      const sessionToken = await openSamlLoginPopup(responseUrl);
+
+      return { method, sessionToken };
+    }
+
+    if (method === "jwt") {
+      const sessionToken = await jwtDefaultRefreshTokenFunction(
+        responseUrl,
+        instanceUrl,
+        this._getAuthRequestHeader(hash),
+      );
+
+      return { method, sessionToken };
+    }
+
+    throw INVALID_AUTH_METHOD({ method });
+  }
+
+  private _getAuthRequestHeader(hash?: string) {
+    return {
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      "X-Metabase-Client": "embedding-sdk-react",
+
+      // eslint-disable-next-line no-literal-metabase-strings -- header name
+      ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
+    };
   }
 }
 
 const raiseError = (message: string) => {
-  throw new MetabaseEmbedError(message);
+  throw new MetabaseError("EMBED_ERROR", message);
 };
 
 const warn = (...messages: unknown[]) =>

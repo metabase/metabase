@@ -16,7 +16,11 @@ import { getErrorMessage } from "../constants";
 import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { metabot } from "./reducer";
-import { getIsProcessing, getMetabotConversationId } from "./selectors";
+import {
+  getIsProcessing,
+  getMetabotConversationId,
+  getPrevAgentRequestMeta,
+} from "./selectors";
 
 const isAbortError = isMatching({ name: "AbortError" });
 
@@ -47,8 +51,6 @@ export const submitInput = createAsyncThunk(
     data: {
       message: string;
       context: MetabotChatContext;
-      history: any[];
-      state: any;
       metabot_id?: string;
     },
     { dispatch, getState, signal },
@@ -59,7 +61,11 @@ export const submitInput = createAsyncThunk(
     }
 
     dispatch(addUserMessage(data.message));
-    const sendMessageRequestPromise = dispatch(sendMessageRequest(data));
+
+    const meta = getPrevAgentRequestMeta(getState() as any);
+    const sendMessageRequestPromise = dispatch(
+      sendMessageRequest({ ...data, ...meta }),
+    );
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
     });
@@ -139,6 +145,8 @@ export const resetConversation = createAsyncThunk(
         fixedCacheKey: METABOT_TAG,
       }),
     );
+    // clear out suggested prompts so the user is shown something fresh
+    dispatch(EnterpriseApi.util.invalidateTags(["metabot-prompt-suggestions"]));
 
     dispatch(clearMessages());
     dispatch(resetConversationId());

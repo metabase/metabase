@@ -4,11 +4,13 @@ import {
   useCallback,
   useEffect,
 } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
   DashboardNotFoundError,
+  SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
@@ -25,7 +27,8 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import { setErrorPage } from "metabase/redux/app";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
+import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
@@ -66,7 +69,7 @@ export type InteractiveDashboardProps = {
   DashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -85,6 +88,11 @@ const InteractiveDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
 }: InteractiveDashboardProps) => {
+  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+    onLoad,
+    onLoadWithoutCards,
+  });
+
   const {
     displayOptions,
     ref,
@@ -96,7 +104,7 @@ const InteractiveDashboardInner = ({
     dashboardId,
     isLoading,
   } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
+    dashboardId: dashboardIdProp,
     withDownloads,
     withTitle,
     hiddenParameters,
@@ -127,7 +135,7 @@ const InteractiveDashboardInner = ({
   const dispatch = useSdkDispatch();
   useEffect(() => {
     if (dashboardId) {
-      dispatch(setErrorPage(null));
+      dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
 
@@ -142,11 +150,24 @@ const InteractiveDashboardInner = ({
   if (!dashboardId || errorPage?.status === 404) {
     return (
       <StyledPublicComponentWrapper className={className} style={style}>
-        <DashboardNotFoundError id={initialDashboardId} />
+        <DashboardNotFoundError id={dashboardIdProp} />
       </StyledPublicComponentWrapper>
     );
   }
 
+  if (errorPage) {
+    return (
+      <StyledPublicComponentWrapper
+        className={className}
+        style={style}
+        ref={ref}
+      >
+        <SdkError
+          message={errorPage.data?.message ?? t`Something's gone wrong`}
+        />
+      </StyledPublicComponentWrapper>
+    );
+  }
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (
@@ -180,8 +201,9 @@ const InteractiveDashboardInner = ({
             setRefreshElapsedHook={setRefreshElapsedHook}
             bordered={displayOptions.bordered}
             navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
-            onLoad={onLoad}
-            onLoadWithoutCards={onLoadWithoutCards}
+            onLoad={handleLoad}
+            onLoadWithoutCards={handleLoadWithoutCards}
+            onError={(error) => dispatch(setErrorPage(error))}
             downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
             isNightMode={false}
             onNightModeChange={_.noop}

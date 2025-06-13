@@ -1,6 +1,5 @@
 (ns ^:mb/driver-tests metabase.driver.mongo.query-processor-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -13,9 +12,7 @@
    [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.test :as mt]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -245,19 +242,6 @@
                   (mt/mbql-query tips
                     {:aggregation [[:count]]
                      :breakout    [$tips.source.username]}))))
-          (testing "Parent fields are removed from projections when child fields are included (#19135)"
-            (let [table       (t2/select-one :model/Table :db_id (mt/id))
-                  fields      (t2/select :model/Field :table_id (u/the-id table))
-                  projections (-> (mongo.qp/mbql->native
-                                   (mt/mbql-query tips {:fields (mapv (fn [f]
-                                                                        [:field (u/the-id f) nil])
-                                                                      fields)}))
-                                  :projections
-                                  set)]
-              ;; the "source", "url", and "venue" fields should NOT have been chosen as projections, since they have
-              ;; at least one child field selected as a projection, which is not allowed as of MongoDB 4.4
-              ;; see docstring on mongo.qp/remove-parent-fields for full details
-              (is (empty? (set/intersection projections #{"source" "url" "venue"})))))
           (testing "Nested fields in join condition aliases are transformed to use `_` instead of a `.` (#32182)"
             (let [query (mt/mbql-query tips
                           {:joins [{:alias "Tips"

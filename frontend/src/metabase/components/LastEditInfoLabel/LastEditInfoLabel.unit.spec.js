@@ -1,5 +1,5 @@
+import dayjs from "dayjs";
 import mockDate from "mockdate";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockUser } from "metabase-types/api/mocks";
@@ -11,7 +11,7 @@ describe("LastEditInfoLabel", () => {
     mockDate.reset();
   });
 
-  const NOW_REAL = moment().toISOString();
+  const NOW_REAL = dayjs().toISOString();
 
   const TEST_USER = createMockUser({
     id: 2,
@@ -45,16 +45,17 @@ describe("LastEditInfoLabel", () => {
     );
   }
 
-  const A_FEW_SECONDS_AGO = moment().add(5, "seconds");
-  const IN_15_MIN = moment().add(15, "minutes");
-  const IN_HOUR = moment().add(1, "hours");
-  const IN_4_HOURS = moment().add(4, "hours");
-  const TOMORROW = moment().add(1, "days");
-  const IN_THREE_DAYS = moment().add(3, "days");
-  const NEXT_WEEK = moment().add(1, "week");
-  const NEXT_MONTH = moment().add(1, "month");
-  const IN_4_MONTHS = moment().add(4, "month");
-  const NEXT_YEAR = moment().add(1, "year");
+  const now = dayjs();
+  const A_FEW_SECONDS_AGO = now.add(5, "seconds");
+  const IN_15_MIN = now.add(15, "minutes");
+  const IN_HOUR = now.add(1, "hours");
+  const IN_4_HOURS = now.add(4, "hours");
+  const TOMORROW = now.add(1, "days");
+  const IN_THREE_DAYS = now.add(3, "days");
+  const NEXT_WEEK = now.add(1, "week");
+  const NEXT_MONTH = now.add(1, "month");
+  const IN_4_MONTHS = now.add(4, "month");
+  const NEXT_YEAR = now.add(1, "year");
 
   const testCases = [
     {
