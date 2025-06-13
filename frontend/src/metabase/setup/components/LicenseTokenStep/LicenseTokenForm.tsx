@@ -79,7 +79,7 @@ export const LicenseTokenForm = ({
                     <Icon
                       cursor="pointer"
                       name="info_filled"
-                      aria-label={t`Token`}
+                      aria-label={t`Token details information`}
                       size={16}
                       c="var(--mb-color-brand)"
                       onMouseEnter={() => debouncedMouseMove(true)}
