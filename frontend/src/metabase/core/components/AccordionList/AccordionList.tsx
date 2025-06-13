@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { getIn } from "icepick";
 import {
   type CSSProperties,
@@ -14,7 +15,9 @@ import {
 } from "react-virtualized";
 import _ from "underscore";
 
-import { AccordionListRoot } from "./AccordionList.styled";
+import { Box } from "metabase/ui";
+
+import S from "./AccordionList.module.css";
 import {
   AccordionListCell,
   type SharedAccordionProps,
@@ -630,12 +633,12 @@ export class AccordionList<
 
     if (!this.isVirtualized()) {
       return (
-        <AccordionListRoot
+        <Box
+          className={cx(S.accordionListRoot, className)}
           ref={this.listRootRef}
           role="tree"
           onKeyDown={this.handleKeyDown}
           tabIndex={-1}
-          className={className}
           style={{
             width,
             ...style,
@@ -662,7 +665,7 @@ export class AccordionList<
               withBorders={withBorders}
             />
           ))}
-        </AccordionListRoot>
+        </Box>
       );
     }
 
