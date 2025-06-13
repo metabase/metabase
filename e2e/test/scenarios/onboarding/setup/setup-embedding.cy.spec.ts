@@ -1,4 +1,4 @@
-import { setTokenFeatures } from "e2e/support/helpers";
+import { main, setTokenFeatures } from "e2e/support/helpers";
 
 const { H } = cy;
 
@@ -26,6 +26,43 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       });
 
     cy.location("pathname").should("eq", "/setup");
+  });
+
+  it("should allow users to use existing setup flow", () => {
+    cy.visit("/setup/embedding");
+    assertEmbeddingOnboardingPageLoaded();
+
+    cy.log("Go to user step");
+    step().within(() => {
+      cy.button("Start").should("be.visible").click();
+    });
+
+    cy.log("Create user");
+    step().within(() => {
+      cy.findByRole("heading", { name: "What should we call you?" }).should(
+        "be.visible",
+      );
+
+      fillOutUserForm();
+
+      cy.intercept("POST", "/api/setup").as("setup");
+
+      cy.intercept("PUT", "/api/setting").as("setting");
+      cy.button("Next").should("be.enabled").click();
+    });
+
+    cy.wait("@setup");
+    // We set the embedding homepage as visible right after we create the
+    // user, we need to make sure that request is done before navigating
+    // otherwise it'll get cancelled by the browser
+    cy.wait("@setting");
+
+    cy.log("Navigate to '/', it should show the embedding homepage");
+    cy.visit("/");
+
+    main()
+      .findByText("Get started with Embedding Metabase in your app")
+      .should("be.visible");
   });
 
   it("should allow users to go through the embedding setup and onboarding flow", () => {
