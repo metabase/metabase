@@ -69,7 +69,7 @@ export type InteractiveDashboardProps = {
   DashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -104,7 +104,7 @@ const InteractiveDashboardInner = ({
     dashboardId,
     isLoading,
   } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
+    dashboardId: dashboardIdProp,
     withDownloads,
     withTitle,
     hiddenParameters,
@@ -150,7 +150,7 @@ const InteractiveDashboardInner = ({
   if (!dashboardId || errorPage?.status === 404) {
     return (
       <StyledPublicComponentWrapper className={className} style={style}>
-        <DashboardNotFoundError id={initialDashboardId} />
+        <DashboardNotFoundError id={dashboardIdProp} />
       </StyledPublicComponentWrapper>
     );
   }

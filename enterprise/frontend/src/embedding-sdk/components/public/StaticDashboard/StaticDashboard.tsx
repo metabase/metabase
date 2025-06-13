@@ -35,7 +35,7 @@ export type StaticDashboardProps = SdkDashboardDisplayProps &
   DashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
@@ -65,7 +65,7 @@ export const StaticDashboardInner = ({
     dashboardId,
     isLoading,
   } = useSdkDashboardParams({
-    dashboardId: initialDashboardId,
+    dashboardId: dashboardIdProp,
     initialParameters,
     withTitle,
     withDownloads,
@@ -86,7 +86,7 @@ export const StaticDashboardInner = ({
   }
 
   if (!dashboardId || errorPage?.status === 404) {
-    return <DashboardNotFoundError id={initialDashboardId} />;
+    return <DashboardNotFoundError id={dashboardIdProp} />;
   }
 
   return (
