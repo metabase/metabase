@@ -2,7 +2,6 @@ import { getIn } from "icepick";
 import {
   type CSSProperties,
   Component,
-  type HTMLProps,
   type KeyboardEvent,
   type ReactNode,
   type RefObject,
@@ -16,7 +15,7 @@ import {
 } from "react-virtualized";
 import _ from "underscore";
 
-import { Icon, type IconName } from "metabase/ui";
+import { Icon, type IconName, type TextInputProps } from "metabase/ui";
 
 import { AccordionListRoot } from "./AccordionList.styled";
 import { AccordionListCell } from "./AccordionListCell";
@@ -73,7 +72,7 @@ type Props<
   searchCaseInsensitive?: boolean;
   searchFuzzy?: boolean;
   searchPlaceholder?: string;
-  searchInputProps?: HTMLProps<HTMLInputElement>;
+  searchInputProps?: TextInputProps;
   hideEmptySectionsInSearch?: boolean;
   hasInitialFocus?: boolean;
 
@@ -681,6 +680,7 @@ export class AccordionList<
     const searchRowIndex = rows.findIndex((row) => row.type === "search");
 
     const itemProps = {
+      ...this.props,
       itemIsClickable,
       itemIsSelected,
       renderSectionIcon,
