@@ -4,11 +4,7 @@ import _ from "underscore";
 
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type {
-  DatasetColumn,
-  DictionaryArray,
-  Series,
-} from "metabase-types/api";
+import type { DictionaryArray, Series } from "metabase-types/api";
 
 import { hasTranslations, useTranslateContent } from "./use-translate-content";
 
@@ -85,11 +81,6 @@ export const translateDisplayNames = <T>(
   return traverse(obj);
 };
 
-export const shouldTranslateFieldValuesOfColumn = (col: DatasetColumn) =>
-  ["type/Category", "type/Country", "type/State", "type/Source"].includes(
-    col?.semantic_type || "",
-  );
-
 export const translateFieldValuesInHoveredObject = (
   obj: HoveredObject | null,
   tc?: ContentTranslationFunction,
@@ -104,12 +95,7 @@ export const translateFieldValuesInHoveredObject = (
 
       return {
         ...row,
-        value:
-          col &&
-          shouldTranslateFieldValuesOfColumn(col) &&
-          typeof value === "string"
-            ? tc(value)
-            : value,
+        value: col && typeof value === "string" ? tc(value) : value,
       };
     }),
   };
@@ -135,19 +121,8 @@ export const translateFieldValuesInSeries = (
     if (!singleSeries.data) {
       return singleSeries;
     }
-    const { rows, cols } = singleSeries.data;
-    const indexesOfColsToTranslate = cols.reduce<number[]>(
-      (acc, col, index) =>
-        shouldTranslateFieldValuesOfColumn(col) ? [...acc, index] : acc,
-      [],
-    );
-
-    const translatedRows = rows.map((row) =>
-      row.map((value, index) =>
-        indexesOfColsToTranslate.includes(index) && typeof value === "string"
-          ? tc(value)
-          : value,
-      ),
+    const translatedRows = singleSeries.data.rows.map((row) =>
+      row.map((value) => tc(value)),
     );
     return {
       ...singleSeries,

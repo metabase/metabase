@@ -5,7 +5,6 @@ import { ContentTranslationConfiguration } from "./components";
 import { contentTranslationEndpoints } from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
-  shouldTranslateFieldValuesOfColumn,
   translateDisplayNames,
   useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
@@ -22,7 +21,6 @@ if (hasPremiumFeature("content_translation")) {
     setEndpointsForStaticEmbedding: (encodedToken: string) => {
       contentTranslationEndpoints.getDictionary = `/api/ee/content-translation/dictionary/${encodedToken}`;
     },
-    shouldTranslateFieldValuesOfColumn,
     translateDisplayNames,
     ContentTranslationConfiguration,
   });

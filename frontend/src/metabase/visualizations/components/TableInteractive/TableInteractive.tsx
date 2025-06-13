@@ -44,7 +44,6 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -238,15 +237,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((value, rowIndex) => {
+      return memoize((untranslatedValue, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
 
-        const maybeTranslatedValue =
-          PLUGIN_CONTENT_TRANSLATION.shouldTranslateFieldValuesOfColumn(col)
-            ? tc(value)
-            : value;
+        const value = tc(untranslatedValue);
 
-        return formatValue(maybeTranslatedValue, {
+        return formatValue(value, {
           ...columnSettings,
           type: "cell",
           jsx: true,
