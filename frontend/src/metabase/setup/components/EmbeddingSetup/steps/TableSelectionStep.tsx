@@ -112,7 +112,9 @@ export const TableSelectionStep = () => {
   if (loading) {
     return (
       <FullHeightContainer ta="center" py="xl">
-        <Loader size="lg" />
+        <Center>
+          <Loader size="lg" />
+        </Center>
         <Stack gap="md" mt="md">
           <Text>
             {retryCount > 0
