@@ -41,7 +41,6 @@
    [metabase.public-sharing.init]
    [metabase.pulse.init]
    [metabase.queries.init]
-   [metabase.query-analysis.init]
    [metabase.query-processor.init]
    [metabase.request.init]
    [metabase.revisions.init]
