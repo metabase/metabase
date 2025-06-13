@@ -19,7 +19,7 @@ What you can do with alerts and dashboard subscriptions depends on whether you'r
 Everyone's in the All Users group. Which means that everyone can:
 
 - Create [alerts](../questions/alerts.md) and [dashboard subscriptions](../dashboards/subscriptions.md#setting-up-a-dashboard-subscription).
-- Add new recipients to dashboard subscriptions that they created. Non-admins can only add themselves to alerts.
+- Add new recipients to dashboard subscriptions and alerts that they created.
 - Unsubscribe from any alert or subscription in their [Account settings](../people-and-groups/account-settings.md).
 
 When a notification creator adds new recipients to an alert or subscription, Metabase will display data to the recipients using the **creator's** [data permissions](../permissions/data.md) and [collection permissions](../permissions/collections.md).
