@@ -7,7 +7,7 @@ import {
   useLayoutEffect,
   useState,
 } from "react";
-import { useLatest, usePrevious, useWindowSize } from "react-use";
+import { usePrevious, useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -27,7 +27,12 @@ import {
   SegmentsLink,
   TableSection,
 } from "./components";
-import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
+import {
+  COLUMN_CONFIG,
+  EMPTY_STATE_MIN_WIDTH,
+  MIN_PREVIEW_CONTAINER_WIDTH,
+  RESIZE_HANDLE_WIDTH,
+} from "./constants";
 import type { RouteParams } from "./types";
 import { clamp, getTableMetadataQuery, parseRouteParams } from "./utils";
 
@@ -45,8 +50,10 @@ interface Props {
 export const DataModel = ({ params, location, children }: Props) => {
   const { databaseId, fieldId, tableId, schemaId } = parseRouteParams(params);
   const previousTableId = usePrevious(tableId);
+  const previousFieldId = usePrevious(fieldId);
+  const isOpeningTableColumn = previousTableId == null && tableId != null;
+  const isOpeningFieldColumn = previousFieldId == null && fieldId != null;
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
-  const [isResizing, setIsResizing] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [navWidth, setNavWidth] = useState(COLUMN_CONFIG.nav.initial);
   const [tableWidth, setTableWidth] = useState(COLUMN_CONFIG.table.initial);
@@ -63,8 +70,50 @@ export const DataModel = ({ params, location, children }: Props) => {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
+  const [isResizing, setIsResizing] = useState(false);
   const handleResizeStart = useCallback(() => setIsResizing(true), []);
   const handleResizeStop = useCallback(() => setIsResizing(false), []);
+
+  const adjustLayout = (remainingWidth: number, neededWidth: number) => {
+    const missingWidth = neededWidth - remainingWidth;
+
+    if (missingWidth <= 0) {
+      return;
+    }
+
+    const howMuchCanTableShrink = Math.max(
+      tableWidth - COLUMN_CONFIG.table.min,
+      0,
+    );
+    const howMuchCanFieldShrink = Math.max(
+      fieldWidth - COLUMN_CONFIG.field.min,
+      0,
+    );
+    const totalShrinkable = howMuchCanTableShrink + howMuchCanFieldShrink;
+
+    if (totalShrinkable >= missingWidth) {
+      // shrink columns proportionally
+      const tableShrink =
+        (howMuchCanTableShrink / totalShrinkable) * missingWidth;
+      const fieldShrink =
+        (howMuchCanFieldShrink / totalShrinkable) * missingWidth;
+
+      setTableWidth(tableWidth - tableShrink);
+      setFieldWidth(fieldWidth - fieldShrink);
+    } else {
+      setTableWidth(COLUMN_CONFIG.table.min);
+      setFieldWidth(COLUMN_CONFIG.field.min);
+    }
+  };
+
+  const handlePreviewClick = () => {
+    const remainingWidth = Math.max(
+      width - navWidth - tableWidth - fieldWidth,
+      0,
+    );
+    adjustLayout(remainingWidth, MIN_PREVIEW_CONTAINER_WIDTH);
+    setIsPreviewOpen(true);
+  };
 
   useWindowEvent("keydown", (event) => {
     const activeElement = document.activeElement;
@@ -79,9 +128,7 @@ export const DataModel = ({ params, location, children }: Props) => {
     }
   });
 
-  const isOpeningTableColumn = previousTableId == null && tableId != null;
-
-  const tableLayoutEffectRef = useLatest(() => {
+  useLayoutEffect(() => {
     if (isOpeningTableColumn) {
       const remainingWidth = Math.max(
         width - navWidth - EMPTY_STATE_MIN_WIDTH,
@@ -91,11 +138,22 @@ export const DataModel = ({ params, location, children }: Props) => {
       // take as much room as possible
       setTableWidth(clamp(remainingWidth, COLUMN_CONFIG.table));
     }
-  });
+  }, [isOpeningTableColumn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
-    tableLayoutEffectRef.current();
-  }, [isOpeningTableColumn, tableLayoutEffectRef]);
+    if (isOpeningFieldColumn) {
+      const resizeHandleSafety = RESIZE_HANDLE_WIDTH / 2 - 1;
+      const remainingWidth = Math.max(
+        width - navWidth - tableWidth - resizeHandleSafety,
+        0,
+      );
+
+      adjustLayout(
+        remainingWidth,
+        isPreviewOpen ? MIN_PREVIEW_CONTAINER_WIDTH : fieldWidth,
+      );
+    }
+  }, [isOpeningFieldColumn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Flex className={cx({ [S.resizing]: isResizing })} h="100%" ref={ref}>
@@ -180,7 +238,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                            * This is to avoid state mix-up with optimistic updates.
                            */
                           key={getRawTableFieldId(field)}
-                          onPreviewClick={() => setIsPreviewOpen(true)}
+                          onPreviewClick={handlePreviewClick}
                         />
                       </Box>
                     )}
