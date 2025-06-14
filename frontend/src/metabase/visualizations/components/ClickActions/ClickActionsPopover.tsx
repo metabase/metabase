@@ -140,7 +140,6 @@ export class ClickActionsPopover extends Component<
           }
         }}
         trapFocus
-        closeOnEscape
         position="bottom-start"
         offset={8}
         popoverContentTestId="click-actions-popover"
