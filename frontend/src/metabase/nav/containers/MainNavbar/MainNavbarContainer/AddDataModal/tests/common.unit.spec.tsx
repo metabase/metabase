@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen, waitFor, within } from "__support__/ui";
+import { fireEvent, screen, within } from "__support__/ui";
 
 import { setup } from "./setup";
 
@@ -209,15 +209,15 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         await inputUpload(csvFile);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
 
         // It allows the same file to be uploaded again
         await inputUpload(csvFile);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
 
         // It should update with a new file
         await inputUpload(tsvFile);
-        assertFileAccepted(tsvFile.name);
+        await assertFileAccepted(tsvFile.name);
       });
 
       /**
@@ -230,7 +230,7 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         await inputUpload(largeFile);
-        expectError("Sorry, this file is too large");
+        await expectError("Sorry, this file is too large");
       });
     });
 
@@ -240,15 +240,15 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         dropUpload([csvFile]);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
 
         // It allows the same file to be uploaded again
         dropUpload([csvFile]);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
 
         // It should update with a new file
         dropUpload([tsvFile]);
-        assertFileAccepted(tsvFile.name);
+        await assertFileAccepted(tsvFile.name);
       });
 
       it("should error when multiple files are dropped at once", async () => {
@@ -256,7 +256,7 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         dropUpload([csvFile, tsvFile]);
-        expectError("Please upload files individually");
+        await expectError("Please upload files individually");
       });
 
       it("should error when wrong file type is dropped", async () => {
@@ -264,7 +264,7 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         dropUpload([mp3File]);
-        expectError("Sorry, this file type is not supported");
+        await expectError("Sorry, this file type is not supported");
       });
 
       it("should error when the file is too large", async () => {
@@ -272,7 +272,7 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         dropUpload([largeFile]);
-        expectError("Sorry, this file is too large");
+        await expectError("Sorry, this file is too large");
       });
     });
 
@@ -282,10 +282,10 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         await inputUpload(csvFile);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
 
         dropUpload([tsvFile]);
-        assertFileAccepted(tsvFile.name);
+        await assertFileAccepted(tsvFile.name);
       });
 
       it("should nullify the accepted file", async () => {
@@ -293,10 +293,10 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         await inputUpload(csvFile);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
 
-        dropUpload([csvFile, mp3File]);
-        expectError("Please, upload files individually");
+        dropUpload([csvFile, tsvFile]);
+        await expectError("Please upload files individually");
       });
 
       it("should update the error", async () => {
@@ -304,10 +304,10 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         await inputUpload(largeFile);
-        expectError("Sorry, this file is too large");
+        await expectError("Sorry, this file is too large");
 
-        dropUpload([csvFile, mp3File]);
-        expectError("Please, upload files individually");
+        dropUpload([csvFile, tsvFile]);
+        await expectError("Please upload files individually");
       });
 
       it("should nullify the error", async () => {
@@ -315,10 +315,10 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         await inputUpload(largeFile);
-        expectError("Sorry, this file is too large");
+        await expectError("Sorry, this file is too large");
 
         dropUpload([tsvFile]);
-        assertFileAccepted(tsvFile.name);
+        await assertFileAccepted(tsvFile.name);
       });
     });
 
@@ -328,10 +328,10 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         dropUpload([tsvFile]);
-        assertFileAccepted(tsvFile.name);
+        await assertFileAccepted(tsvFile.name);
 
         await inputUpload(csvFile);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
       });
 
       it("should nullify the accepted file", async () => {
@@ -339,32 +339,32 @@ describe("AddDataModal", () => {
         await openTab("CSV");
 
         dropUpload([tsvFile]);
-        assertFileAccepted(tsvFile.name);
+        await assertFileAccepted(tsvFile.name);
 
         await inputUpload(largeFile);
-        expectError("Sorry, this file is too large");
+        await expectError("Sorry, this file is too large");
       });
 
       it("should update the error", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
         await openTab("CSV");
 
-        dropUpload([csvFile, mp3File]);
-        expectError("Please, upload files individually");
+        dropUpload([csvFile, tsvFile]);
+        await expectError("Please upload files individually");
 
         await inputUpload(largeFile);
-        expectError("Sorry, this file is too large");
+        await expectError("Sorry, this file is too large");
       });
 
       it("should nullify the error", async () => {
         setup({ isAdmin: true, uploadsEnabled: true });
         await openTab("CSV");
 
-        dropUpload([csvFile, mp3File]);
-        expectError("Please, upload files individually");
+        dropUpload([csvFile, tsvFile]);
+        await expectError("Please upload files individually");
 
         await inputUpload(csvFile);
-        assertFileAccepted(csvFile.name);
+        await assertFileAccepted(csvFile.name);
       });
     });
   });
@@ -397,19 +397,11 @@ function dropUpload(files: File[]) {
 }
 
 async function expectError(error: string) {
-  await waitFor(() => {
-    expect(screen.getByText(error)).toBeInTheDocument();
-  });
-  await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Upload" })).toBeDisabled();
-  });
+  expect(await screen.findByText(error)).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Upload" })).toBeDisabled();
 }
 
 async function assertFileAccepted(name: string) {
-  await waitFor(() => {
-    expect(screen.getByText(name)).toBeInTheDocument();
-  });
-  await waitFor(() => {
-    expect(screen.getByRole("button", { name: "Upload" })).toBeEnabled();
-  });
+  expect(await screen.findByText(name)).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Upload" })).toBeEnabled();
 }
