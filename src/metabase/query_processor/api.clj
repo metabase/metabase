@@ -270,3 +270,12 @@
                                            [:value :any]
                                            [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
   (param-remapped-value field_ids parameter value))
+
+(api.macros/defendpoint :post "/dryrun"
+  "Dry run a query to get an estimate of resource usage (e.g. bytes, credits)"
+  [_route-params
+   _query-params
+   {:keys [database] :as query} :- [:map
+                                    [:database ms/PositiveInt]]]
+  (let [driver (driver.u/database->driver database)]
+    (driver/dry-run-query driver query)))
