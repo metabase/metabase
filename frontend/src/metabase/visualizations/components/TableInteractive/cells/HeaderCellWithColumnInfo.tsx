@@ -13,6 +13,8 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetColumn } from "metabase-types/api";
 
+import { useTableInteractiveContext } from "../context/TableInteractiveContext";
+
 import S from "./HeaderCellWithColumnInfo.module.css";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
@@ -36,7 +38,7 @@ export const HeaderCellWithColumnInfo = memo(
     align,
     sort,
     variant = "light",
-    infoPopoversDisabled,
+    infoPopoversDisabled: propInfoPopoversDisabled,
     question,
     timezone,
     column,
@@ -45,6 +47,10 @@ export const HeaderCellWithColumnInfo = memo(
     className,
     renderTableHeader,
   }: HeaderCellWithColumnInfoProps) {
+    // Passing `clicked` through the context instead of as a prop to avoid
+    // updating column options which rerenders the entire table and cells
+    const { clicked } = useTableInteractiveContext();
+    const infoPopoversDisabled = propInfoPopoversDisabled || clicked != null;
     const isMousePressed = useMousePressed();
     const query = question?.query();
     const stageIndex = -1;
