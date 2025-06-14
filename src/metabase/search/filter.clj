@@ -1,5 +1,6 @@
 (ns metabase.search.filter
   (:require
+   [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
@@ -8,6 +9,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
@@ -35,12 +37,21 @@
   [search-ctx]
   ;; Archived is an eccentric one - we treat it as false for models that don't map it, rather than removing them.
   ;; TODO move this behavior to the spec somehow
-  (let [required (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))]
+  (let [required-filters (->> (remove-if-falsey search-ctx :archived?) keys (keep context-key->filter))
+        ;; Map each filter to the attribute it actually requires
+        required-attrs (into #{}
+                             (map (fn [filter-key]
+                                    (let [{:keys [field]} (get search.config/filters filter-key)]
+                                     ;; If filter specifies a field, use that; otherwise use the filter key
+                                      (if field
+                                        (keyword (str/replace field "_" "-"))
+                                        filter-key))))
+                             required-filters)]
     (into #{}
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required-attrs))
               (:name spec))))))
 
 (defn models-without-collection
@@ -84,6 +95,8 @@
 (defmethod where-clause* ::date-range [_ k v] (date-range-filter-clause k v))
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
+
+(defmethod where-clause* ::single-value-exclude [_ k v] [:not= k v])
 
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
@@ -147,6 +160,7 @@
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
                     (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
                       (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
+                        (log/info "Generated WHERE clause:" c)
                         (sql.helpers/where qry c))))
                   qry))
             qry

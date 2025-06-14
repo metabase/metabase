@@ -37,24 +37,26 @@
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived            :boolean
-   :collection-id       :pk
-   :created-at          :timestamp
-   :creator-id          :pk
-   :dashboard-id        :int
-   :dashboardcard-count :int
-   :database-id         :pk
-   :id                  :text
-   :last-edited-at      :timestamp
-   :last-editor-id      :pk
-   :last-viewed-at      :timestamp
-   :name                :text
-   :native-query        nil
-   :official-collection :boolean
-   :pinned              :boolean
-   :updated-at          :timestamp
-   :verified            :boolean
-   :view-count          :int})
+  {:archived                 :boolean
+   :collection-id            :pk
+   :created-at               :timestamp
+   :creator-id               :pk
+   :dashboard-id             :int
+   :dashboardcard-count      :int
+   :database-id              :pk
+   :display                  :text
+   :has-temporal-dimensions  :boolean
+   :id                       :text
+   :last-edited-at           :timestamp
+   :last-editor-id           :pk
+   :last-viewed-at           :timestamp
+   :name                     :text
+   :native-query             nil
+   :official-collection      :boolean
+   :pinned                   :boolean
+   :updated-at               :timestamp
+   :verified                 :boolean
+   :view-count               :int})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -63,7 +65,7 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  (->> (keys (apply dissoc search.config/filters explicit-attrs))
+  (->> (keys (apply dissoc search.config/filters (conj explicit-attrs :exclude-display)))
        ;; identifiers and rankers
        (into
         [:id                                                ;;  in addition to being a filter, this is a key property

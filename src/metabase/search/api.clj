@@ -16,6 +16,7 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.response :as response]))
@@ -111,6 +112,128 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
+;; Helper functions for visualization compatibility checking
+
+(defn- field-temporal?
+  "Check if a field represents a temporal/date dimension."
+  [field]
+  (let [check-type (fn [type-str]
+                     (when type-str
+                       (let [type-str (str type-str)]
+                         (or (re-find #"Date|Time|Temporal" type-str)
+                             (re-find #"type/Date|type/Time|type/Temporal" type-str)))))]
+    (boolean
+     (or (check-type (:base_type field))
+         (check-type (:effective_type field))
+         (check-type (:semantic_type field))))))
+
+(defn- field-dimension?
+  "Check if a field is a dimension (not a metric/measure)."
+  [field]
+  (not= (:semantic_type field) "type/Number"))
+
+(defn- extract-dimension-ids
+  "Extract temporal and non-temporal dimension IDs from fields."
+  [fields]
+  (let [dimension-fields (filter field-dimension? fields)
+        temporal-dims (filter field-temporal? dimension-fields)
+        other-dims (remove field-temporal? dimension-fields)]
+    {:temporal (map :id temporal-dims)
+     :non-temporal (map :id other-dims)}))
+
+(defn- check-dimension-compatibility
+  "Check if target item's dimensions are compatible with current visualization."
+  [current-dims target-dims]
+  (let [{current-temporal :temporal current-non-temporal :non_temporal} current-dims
+        {target-temporal :temporal target-non-temporal :non_temporal} target-dims]
+    (and
+     ;; Current must have at least one dimension
+     (or (seq current-temporal) (seq current-non-temporal))
+
+     ;; Bidirectional temporal compatibility
+     (or (empty? current-temporal)
+         (seq target-temporal))
+
+     (or (empty? target-temporal)
+         (seq current-temporal))
+
+     ;; Non-temporal dimensions must match by ID
+     (or (empty? current-non-temporal)
+         (every? (set target-non-temporal) current-non-temporal))
+
+     (or (empty? target-non-temporal)
+         (every? (set current-non-temporal) target-non-temporal)))))
+
+(defn- item-compatible?
+  "Check if a search result item is compatible with the visualization context."
+  [item visualization-context]
+  (let [{:keys [display dimensions]} visualization-context]
+    ;; Early exit for pie charts
+    (if (= display "pie")
+      false
+      ;; Check dimension compatibility for items with metadata
+      (if-let [metadata (:result_metadata item)]
+        (let [target-dims (extract-dimension-ids metadata)]
+          (check-dimension-compatibility dimensions target-dims))
+        ;; If no metadata, we can't determine compatibility
+        true))))
+
+(api.macros/defendpoint :post "/visualization-compatible"
+  "Search for items compatible with current visualization context.
+  Test endpoint for visualization-specific search filtering."
+  [_route-params
+   _query-params
+   {:keys                       [q limit models display exclude_display include_dashboard_questions visualization_context include_metadata has_temporal_dimensions]}
+   :- [:map
+       [:q                            {:optional true} [:maybe ms/NonBlankString]]
+       [:limit                        {:default 10} ms/PositiveInt]
+       [:models                       {:default ["card" "dataset" "metric"]}
+        [:vector [:enum "card" "dataset" "metric"]]]
+       [:display                      {:optional true} [:maybe [:vector ms/NonBlankString]]]
+       [:exclude_display              {:optional true} [:maybe ms/NonBlankString]]
+       [:include_dashboard_questions  {:default true} :boolean]
+       [:include_metadata             {:default true} :boolean]
+       [:has_temporal_dimensions      {:optional true} [:maybe :boolean]]
+       [:visualization_context        {:optional true}
+        [:map
+         [:display string?]
+         [:dimensions [:map
+                       [:temporal [:sequential ms/PositiveInt]]
+                       [:non_temporal [:sequential ms/PositiveInt]]]]]]]]
+  ;; Build search context
+  (let [search-ctx (search/search-context
+                    {:current-user-id              api/*current-user-id*
+                     :is-impersonated-user?        (perms/impersonated-user?)
+                     :is-sandboxed-user?           (perms/sandboxed-user?)
+                     :is-superuser?                api/*is-superuser?*
+                     :current-user-perms           @api/*current-user-permissions-set*
+                     :limit                        limit
+                     :models                       (set models)
+                     :offset                       0
+                     :search-string                q
+                     :display                      (set display)
+                     :exclude-display              exclude_display
+                     :has-temporal-dimensions?     has_temporal_dimensions
+                     :include-dashboard-questions? include_dashboard_questions
+                     :include-metadata?            include_metadata})]
+
+    ;; Run search
+    (let [search-results (search/search search-ctx)
+          {:keys [data]} search-results]
+
+      (log/info " ~$~$~$~ Search returned" (count data) "results")
+      (log/info " ~$~$~$~ :exclude-display " exclude_display)
+
+      ;; Apply visualization compatibility filtering if context provided
+      (if visualization_context
+        (do
+          (log/info "Filtering with visualization context:" visualization_context)
+          (let [filtered-data (filter #(item-compatible? % visualization_context) data)
+                filtered-count (count filtered-data)]
+            (log/info "Filtered to" filtered-count "compatible items")
+            (assoc search-results :data filtered-data)))
+        search-results))))
+
 (api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
@@ -122,6 +245,9 @@
   - `filters_items_in_personal_collection`: only search for items in personal collections
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
+  - `display`: search for cards/models with specific display types
+  - `exclude_display`: exclude cards/models with a specific display type
+  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
@@ -134,11 +260,13 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys                               [q context archived models verified ids]
+   {:keys                               [q context archived models verified ids display]
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
+    exclude-display                     :exclude_display
     filter-items-in-personal-collection :filter_items_in_personal_collection
+    has-temporal-dimensions             :has_temporal_dimensions
     include-dashboard-questions         :include_dashboard_questions
     last-edited-at                      :last_edited_at
     last-edited-by                      :last_edited_by
@@ -156,6 +284,9 @@
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+       [:exclude_display                     {:optional true} [:maybe ms/NonBlankString]]
+       [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
@@ -175,6 +306,8 @@
                 :created-at                          created-at
                 :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
+                :display                             (set display)
+                :exclude-display                     exclude-display
                 :is-impersonated-user?               (perms/impersonated-user?)
                 :is-sandboxed-user?                  (perms/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
