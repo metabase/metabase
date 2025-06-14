@@ -3,7 +3,7 @@ import {
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, RowValue } from "metabase-types/api";
 
 import { getDatasetKey } from "../../model/dataset";
 import type { ChartDataset, Datum } from "../../model/types";
@@ -30,10 +30,26 @@ export function getScatterPlotDataset(
         if (columnIndex === columnDescs.dimension.index) {
           datum[X_AXIS_DATA_KEY] = value;
         }
+
+        let breakoutIndexes: number[] | undefined = undefined;
+        if (
+          "breakout" in columnDescs &&
+          columnDescs.breakout.breakoutDimensions.length > 0
+        ) {
+          breakoutIndexes = columnDescs.breakout.breakoutDimensions.map(
+            (b) => b.index,
+          );
+        }
+
+        let breakoutValue: RowValue | undefined = undefined;
+        if (breakoutIndexes && breakoutIndexes.length > 0) {
+          breakoutValue = breakoutIndexes.map((idx) => row[idx]).join(" - ");
+        }
+
         const seriesKey =
-          "breakout" in columnDescs
-            ? getDatasetKey(column, card.id, row[columnDescs.breakout.index])
-            : getDatasetKey(column, card.id);
+          !breakoutIndexes || breakoutIndexes.length === 0
+            ? getDatasetKey(column, card.id)
+            : getDatasetKey(column, card.id, breakoutValue);
 
         datum[seriesKey] = value;
       });

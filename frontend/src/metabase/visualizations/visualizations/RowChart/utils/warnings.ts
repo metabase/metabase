@@ -10,7 +10,7 @@ export const getChartWarnings = (
     rows.map((row) => {
       const dimensionValue = row[chartColumns.dimension.index];
       return "breakout" in chartColumns
-        ? `${row[chartColumns.breakout.index]}:${dimensionValue}`
+        ? `${row[chartColumns.breakout.breakoutDimensions[0].index]}:${dimensionValue}`
         : String(dimensionValue);
     }),
   );
