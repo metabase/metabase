@@ -132,7 +132,7 @@
                                               remove-replace-fn location target-clause)
           target-uuid (lib.options/uuid target-clause)]
       (if (not= query result)
-        (lib.util.match/match-one location
+        (lib.util.match/match-lite location
           [:expressions]
           (-> result
               (remove-local-references
@@ -155,11 +155,10 @@
               (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
               (update-stale-references stage-number unmodified-query-for-stage))
 
-          #_{:clj-kondo/ignore [:invalid-arity]}
-          (:or
-           [:breakout]
-           [:fields]
-           [:joins _ :fields])
+          (q :guard (and (vector? q)
+                         (or (= q [:breakout])
+                             (= q [:fields])
+                             (and (= (nth q 0) :joins) (= (nth q 2) :fields)))))
           (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
               (update-stale-references stage-number unmodified-query-for-stage))
 
@@ -174,7 +173,7 @@
                      (when-let [clauses (get-in stage location)]
                        (->> clauses
                             (keep (fn [clause]
-                                    (lib.util.match/match-one clause
+                                    (lib.util.match/match-lite clause
                                       [target-op
                                        (_ :guard #(or (empty? target-opts)
                                                       (set/subset? (set target-opts) (set %))))
@@ -613,13 +612,9 @@
              normalize-fields-clauses)))
      query)))
 
-(defn- has-field-from-join? [form join-alias]
-  (some? (lib.util.match/match-one form
-           (field :guard #(field-clause-with-join-alias? % join-alias)))))
-
 (defn- dependent-join? [join join-alias]
   (or (= (:alias join) join-alias)
-      (has-field-from-join? join join-alias)))
+      (field-clause-with-join-alias? join join-alias)))
 
 (mu/defn remove-join :- :metabase.lib.schema/query
   "Remove the join specified by `join-spec` in `query` at `stage-number`.
