@@ -72,6 +72,7 @@ import {
   type HeaderCellWithColumnInfoProps,
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
+import { TableInteractiveContext } from "./context/TableInteractiveContext";
 import { useObjectDetail } from "./hooks/use-object-detail";
 import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
 
@@ -753,17 +754,19 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         className,
       )}
     >
-      <DataGrid
-        {...tableProps}
-        styles={dataGridStyles}
-        showRowsCount={isDashboard}
-        isColumnReorderingDisabled={isColumnReorderingDisabled}
-        emptyState={emptyState}
-        onBodyCellClick={handleBodyCellClick}
-        onAddColumnClick={handleAddColumnButtonClick}
-        onHeaderCellClick={handleHeaderCellClick}
-        onWheel={handleWheel}
-      />
+      <TableInteractiveContext.Provider value={{ clicked }}>
+        <DataGrid
+          {...tableProps}
+          styles={dataGridStyles}
+          showRowsCount={isDashboard}
+          isColumnReorderingDisabled={isColumnReorderingDisabled}
+          emptyState={emptyState}
+          onBodyCellClick={handleBodyCellClick}
+          onAddColumnClick={handleAddColumnButtonClick}
+          onHeaderCellClick={handleHeaderCellClick}
+          onWheel={handleWheel}
+        />
+      </TableInteractiveContext.Provider>
     </div>
   );
 });
