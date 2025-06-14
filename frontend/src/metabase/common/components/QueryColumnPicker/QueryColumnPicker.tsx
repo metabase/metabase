@@ -6,14 +6,17 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/core/components/AccordionList";
+import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
-import { StyledAccordionList } from "./QueryColumnPicker.styled";
 
 export type ColumnListItem = Lib.ColumnDisplayInfo & {
   column: Lib.ColumnMetadata;
@@ -40,12 +43,6 @@ export interface QueryColumnPickerProps {
   disableSearch?: boolean;
 }
 
-type Sections = {
-  name: string;
-  items: ColumnListItem[];
-  icon?: IconName;
-};
-
 export function QueryColumnPicker({
   className,
   query,
@@ -55,7 +52,7 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
-  color = "brand",
+  color: colorProp = "brand",
   checkIsColumnSelected,
   onSelect,
   onClose,
@@ -65,7 +62,7 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
-  const sections: Sections[] = useMemo(
+  const sections: Section<ColumnListItem>[] = useMemo(
     () =>
       columnGroups.map((group) => {
         const groupInfo = Lib.displayInfo(query, stageIndex, group);
@@ -161,7 +158,7 @@ export function QueryColumnPicker({
             hasBinning={hasBinning}
             hasTemporalBucketing={hasTemporalBucketing}
             hasChevronDown={withInfoIcons}
-            color={color}
+            color={colorProp}
             onSelect={handleSelect}
           />
         )
@@ -174,7 +171,7 @@ export function QueryColumnPicker({
       hasBinning,
       hasTemporalBucketing,
       withInfoIcons,
-      color,
+      colorProp,
       handleSelect,
     ],
   );
@@ -193,7 +190,7 @@ export function QueryColumnPicker({
 
   return (
     <DelayGroup>
-      <StyledAccordionList
+      <AccordionList<ColumnListItem>
         className={className}
         sections={sections}
         alwaysExpanded={alwaysExpanded}
@@ -204,7 +201,9 @@ export function QueryColumnPicker({
         renderItemExtra={renderItemExtra}
         renderItemDescription={omitItemDescription}
         renderItemIcon={renderItemIcon}
-        color={color}
+        style={{
+          color: color(colorProp),
+        }}
         maxHeight={Infinity}
         data-testid={dataTestId}
         searchProp={["name", "displayName"]}
