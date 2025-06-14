@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
@@ -69,6 +70,8 @@ export const ParameterValueWidget = ({
   value,
   ...popoverProps
 }: ParameterValueWidgetProps) => {
+  const tc = useTranslateContent();
+
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
@@ -230,11 +233,13 @@ export const ParameterValueWidget = ({
     );
   }
 
+  const translatedPlaceholder = tc(placeholder);
+
   const placeholderText = isEditing
     ? isDateParameter(parameter)
       ? t`Select a default value…`
       : t`Enter a default value…`
-    : placeholder || t`Select…`;
+    : translatedPlaceholder || t`Select…`;
 
   return (
     <Popover

@@ -1,9 +1,11 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Stack } from "metabase/ui";
 
@@ -32,6 +34,9 @@ export function LocalizationSettingsPage() {
             </Stack>
           }
         />
+        <ErrorBoundary>
+          <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+        </ErrorBoundary>
         <AdminSettingInput
           name="report-timezone"
           searchable

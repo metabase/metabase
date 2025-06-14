@@ -10,7 +10,8 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 import type { IconProps } from "metabase/ui";
 import { Icon, Menu, Tooltip } from "metabase/ui";
 
-import LegendActions from "./LegendActions";
+import LegendActions from "../LegendActions";
+
 import {
   LegendCaptionRoot,
   LegendDescriptionIcon,
