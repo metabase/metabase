@@ -3517,6 +3517,39 @@
                    (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
                                                   :filtered [%venues.price] :filtering [%categories.name]))))))))))
 
+(deftest uuid-id-column-is-not-implicitly-remapped-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                    :test/uuids-in-create-table-statements
+                                    :test/dynamic-dataset-loading)
+    (testing "Values for uuid fields are searched using test pattern (#59020)"
+      (mt/dataset
+        uuid-dogs
+        (mt/with-temp
+          [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
+                                                                (lib.convert/->legacy-MBQL)))}
+           :model/Dashboard     dashboard {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_text_"
+                                                         :type      "string/="
+                                                         :sectionId "string"
+                                                         :default   ["Doohickey"]}]}
+           :model/DashboardCard _dashcard {:parameter_mappings     [{:parameter_id "_text_"
+                                                                     :card_id      (:id card)
+                                                                     :target
+                                                                     [:dimension [:field (mt/id :dogs :id) nil]]}]
+                                           :card_id                (:id card)
+                                           :visualization_settings {}
+                                           :dashboard_id           (:id dashboard)}]
+          (is (=? {:values [["27e164bc-54f8-47a0-a85a-9f0e90dd7667"]
+                            ["3a0c0508-6b00-40ff-97f6-549666b2d16b"]]}
+                  (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
+                                                                (:id dashboard)
+                                                                "_text_"
+                                                              ;; a0 is part of first 2 rows of queried table
+                                                                "a0")))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
