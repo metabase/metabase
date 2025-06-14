@@ -75,18 +75,39 @@
 ;;; believe it or not, a `:case` clause really has the syntax [:case {} [[pred1 expr1] [pred2 expr2] ...]]
 ;;; `:if` is an alias to `:case`
 (doseq [tag [:case :if]]
-  (mbql-clause/define-catn-mbql-clause tag
-    ;; TODO -- we should further constrain this so all of the exprs are of the same type
-    [:pred-expr-pairs [:sequential {:min 1} [:tuple
-                                             {:error/message "Valid [pred expr] pair"}
-                                             #_pred [:ref ::expression/boolean]
-                                             #_expr [:ref ::expression/expression]]]]
-    [:default [:? [:schema [:ref ::expression/expression]]]])
+  (mbql-clause/define-mbql-clause
+    tag
+    [:schema
+     [:and
+      (:schema
+       (mbql-clause/catn-clause-schema tag
+                                       [:pred-expr-pairs
+                                        [:sequential {:min 1}
+                                         [:tuple
+                                          {:error/message "Valid [pred expr] pair"}
+                                          #_pred [:ref ::expression/boolean]
+                                          #_expr [:ref ::expression/expression]]]]
+                                       [:default [:? [:schema [:ref ::expression/expression]]]]))
+      [:fn
+       ;; further constrain this so all of the exprs are of the same type
+       {:error/message "All clauses should have the same type"}
+       (fn
+         [[_tag _opts pred-expr-pairs default]]
+         (let [exprs (concat
+                      (map second pred-expr-pairs)
+                      (when (some? default)
+                        [default]))
+               types (expression/type-of exprs)
+               return-type (case-coalesce-return-type types)]
+           (or
+            (not= return-type :type/*)
+            (some #{:expression/type.unknown} types))))]]])
+
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]
     (let [exprs (concat
                  (map second pred-expr-pairs)
-                 (when default
+                 (when (some? default)
                    [default]))
           types (keep expression/type-of exprs)]
       (case-coalesce-return-type types))))
