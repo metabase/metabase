@@ -315,10 +315,21 @@ export const STACKABLE_SETTINGS = {
 
       return isStackingValueValid(settings, seriesDisplays);
     },
+    getValue: (_series, settings) => {
+      if (settings["graph.series_order"].filter((s) => s.enabled).length <= 1) {
+        return null;
+      }
+
+      return settings["stackable.stack_type"];
+    },
     getDefault: ([{ card, data }], settings) => {
       return getDefaultStackingValue(settings, card);
     },
     getHidden: (series, settings) => {
+      if (settings["graph.series_order"].filter((s) => s.enabled).length <= 1) {
+        return true;
+      }
+
       const displays = series.map((single) => settings.series(single).display);
       const stackableDisplays = displays.filter((display) =>
         STACKABLE_SERIES_DISPLAY_TYPES.has(display),

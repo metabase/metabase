@@ -16,7 +16,13 @@
             "suffix": "!!!!!!!!!!!"
           }
         },
-        "graph.metrics": ["count"]
+        "graph.metrics": ["count"],
+        "graph.series_order": [
+          { "key": "Gadget", "enabled": true, "name": "Gadget" },
+          { "key": "Gizmo", "enabled": true, "name": "Gizmo" },
+          { "key": "Doohickey", "enabled": true, "name": "Doohickey" },
+          { "key": "Widget", "enabled": true, "name": "Widget" }
+        ]
       },
       "collection_preview": true,
       "entity_id": "WHg5OH8QMs7SYw_FvZrIE",

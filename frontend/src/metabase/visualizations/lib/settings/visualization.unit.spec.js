@@ -24,6 +24,12 @@ describe("visualization_settings", () => {
           cardWithTimeseriesBreakoutAndTwoMetrics({
             display: "area",
             unit: "month",
+            visualization_settings: {
+              "graph.series_order": [
+                { key: "col1", name: "col1", enabled: true },
+                { key: "col2", name: "col2", enabled: true },
+              ],
+            },
           }),
         );
         expect(settings["stackable.stack_type"]).toBe("stacked");
