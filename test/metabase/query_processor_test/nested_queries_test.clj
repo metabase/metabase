@@ -651,6 +651,7 @@
     [_driver _feature _database]
     true))
 
+;;; see also [[metabase.lib.metadata.result-metadata-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
@@ -660,11 +661,11 @@
                             :breakout     [!year.date]})]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [source-query])
-          (let [[date-col count-col] (for [col (-> (qp/process-query source-query)
-                                                   :data :cols)]
-                                       (-> (into {} col)
-                                           (assoc :source :fields)
-                                           (dissoc :position :aggregation_index :ident)))]
+          (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
+                                       (as-> col col
+                                         (assoc col :source :fields)
+                                         (dissoc col :position :aggregation_index :ident)
+                                         (m/filter-keys simple-keyword? col)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
@@ -1092,9 +1093,6 @@
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
                                     (qp.preprocess/query->expected-cols (mt/mbql-query orders)))]
-        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                       expected-cols))
-            "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
         ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
         (doseq [[description result-metadata] {"NONE"                   nil
                                                "from running the query" card-results-metadata

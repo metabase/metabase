@@ -401,7 +401,7 @@
                   (testing "suggested join condition references the FK by name"
                     (let [query (lib/query metadata-provider (lib.metadata/table metadata-provider (mt/id :people)))
                           card-meta (lib.metadata/card metadata-provider 3)]
-                      (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} cuser-id]]]
+                      (is (=? [[:= {} [:field {} (mt/id :people :id)] [:field {} "ord1__USER_ID"]]]
                               (lib/suggested-join-conditions query card-meta))))))
 
                 (testing "the query runs and returns correct data"

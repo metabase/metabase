@@ -2,6 +2,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
@@ -54,10 +55,7 @@
                    ;; don't add remapped columns to the source metadata for the source query, otherwise we're going
                    ;; to end up adding it again when the middleware runs at the top level
                    :query    (assoc-in source-query [:middleware :disable-remaps?] true)}))]
-      (for [col cols
-            :when (not (:remapped_from col))]
-        (select-keys col [:name :id :ident :table_id :display_name :base_type :effective_type :coercion_strategy
-                          :semantic_type :unit :fingerprint :settings :source_alias :field_ref :nfc_path :parent_id])))
+      (remove :remapped_from cols))
     (catch Throwable e
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
@@ -69,7 +67,14 @@
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
                     native-source-query->metadata
-                    mbql-source-query->metadata) source-query)]
+                    mbql-source-query->metadata) source-query)
+        metadata (when metadata
+                   (let [unique-name-fn (mbql.u/unique-name-generator)]
+                     (for [col  metadata
+                           :let [original-name ((some-fn :lib/original-name :name) col)]]
+                       (assoc col
+                              :lib/original-name     original-name
+                              :lib/deduplicated-name (unique-name-fn original-name)))))]
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 

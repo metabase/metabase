@@ -643,33 +643,33 @@
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
                                                     :source-card 3}]})]
-      (is (= [{:lib/type                 :metadata/column
-               :base-type                :type/*
-               :effective-type           :type/*
-               :id                       4
-               :name                     "Field 4"
-               :ident                    "ybTElkkGoYYBAyDRTIiUe"
-               :fk-target-field-id       nil
-               :lib/source               :source/card
-               :lib/card-id              3
-               :lib/source-column-alias  "Field 4"
-               :lib/desired-column-alias "Field 4"}]
-             (lib/returned-columns query)))
-      (is (= {:lib/type                :metadata/column
-              :base-type               :type/Text
-              :effective-type          :type/Text
-              :id                      4
-              :name                    "Field 4"
-              :ident                   "ybTElkkGoYYBAyDRTIiUe"
-              :fk-target-field-id      nil
-              :display-name            "Field 4"
-              :lib/card-id             3
-              :lib/source              :source/card
-              :lib/source-column-alias "Field 4"
-              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
-             (lib/metadata
-              query
-              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+      (is (=? [{:lib/type                 :metadata/column
+                :base-type                :type/*
+                :effective-type           :type/*
+                :id                       4
+                :name                     "Field 4"
+                :ident                    "ybTElkkGoYYBAyDRTIiUe"
+                :fk-target-field-id       nil
+                :lib/source               :source/card
+                :lib/card-id              3
+                :lib/source-column-alias  "Field 4"
+                :lib/desired-column-alias "Field 4"}]
+              (lib/returned-columns query)))
+      (is (=? {:lib/type                :metadata/column
+               :base-type               :type/Text
+               :effective-type          :type/Text
+               :id                      4
+               :name                    "Field 4"
+               :ident                   "ybTElkkGoYYBAyDRTIiUe"
+               :fk-target-field-id      nil
+               :display-name            "Field 4"
+               :lib/card-id             3
+               :lib/source              :source/card
+               :lib/source-column-alias "Field 4"
+               :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
+              (lib/metadata
+               query
+               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
 (deftest ^:parallel base-type-in-field-ref-does-not-overwrite-everything-test
   (testing "base-type of reference doesn't override a non-default effective-type in the column (#55171)"
@@ -695,35 +695,35 @@
                                         :database 1
                                         :stages   [{:lib/type    :mbql.stage/mbql
                                                     :source-card 3}]})]
-      (is (= [{:lib/type                 :metadata/column
-               :base-type                :type/Text
-               :effective-type           :type/Date
-               :coercion-strategy        :Coercion/ISO8601->Date
-               :id                       4
-               :name                     "Field 4"
-               :ident                    "ybTElkkGoYYBAyDRTIiUe"
-               :fk-target-field-id       nil
-               :lib/source               :source/card
-               :lib/card-id              3
-               :lib/source-column-alias  "Field 4"
-               :lib/desired-column-alias "Field 4"}]
-             (lib/returned-columns query)))
-      (is (= {:lib/type                :metadata/column
-              :base-type               :type/Text
-              :effective-type          :type/Date
-              :coercion-strategy       :Coercion/ISO8601->Date
-              :id                      4
-              :name                    "Field 4"
-              :ident                   "ybTElkkGoYYBAyDRTIiUe"
-              :fk-target-field-id      nil
-              :display-name            "Field 4"
-              :lib/card-id             3
-              :lib/source              :source/card
-              :lib/source-column-alias "Field 4"
-              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
-             (lib/metadata
-              query
-              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
+      (is (=? [{:lib/type                 :metadata/column
+                :base-type                :type/Text
+                :effective-type           :type/Date
+                :coercion-strategy        :Coercion/ISO8601->Date
+                :id                       4
+                :name                     "Field 4"
+                :ident                    "ybTElkkGoYYBAyDRTIiUe"
+                :fk-target-field-id       nil
+                :lib/source               :source/card
+                :lib/card-id              3
+                :lib/source-column-alias  "Field 4"
+                :lib/desired-column-alias "Field 4"}]
+              (lib/returned-columns query)))
+      (is (=? {:lib/type                :metadata/column
+               :base-type               :type/Text
+               :effective-type          :type/Date
+               :coercion-strategy       :Coercion/ISO8601->Date
+               :id                      4
+               :name                    "Field 4"
+               :ident                   "ybTElkkGoYYBAyDRTIiUe"
+               :fk-target-field-id      nil
+               :display-name            "Field 4"
+               :lib/card-id             3
+               :lib/source              :source/card
+               :lib/source-column-alias "Field 4"
+               :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
+              (lib/metadata
+               query
+               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
 (deftest ^:parallel ref-to-joined-column-from-previous-stage-test
   (let [query (-> (lib.tu/venues-query)
@@ -1840,3 +1840,50 @@
              (lib/display-name query -1 max-venues-id :long)))
       (is (= "Max of Cat → ID"
              (lib/display-name query -1 max-categories-id :long))))))
+
+;;; adapted from [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel resolve-deduplicated-field-ref-test
+  (testing "Make sure we do the right thing with deduplicated field refs like ID_2"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query orders
+                 {:fields [$id $subtotal $tax $total $created-at $quantity]
+                  :joins [{:source-table $$products
+                           :alias "Product"
+                           :condition
+                           [:= $orders.product-id
+                            [:field %products.id {:join-alias "Product"}]]
+                           :fields
+                           [[:field %products.id {:join-alias "Product"}] ; AKA ID_2
+                            [:field %products.title {:join-alias "Product"}]
+                            [:field %products.vendor {:join-alias "Product"}]
+                            [:field %products.price {:join-alias "Product"}]
+                            [:field %products.rating {:join-alias "Product"}]]}]})])
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:fields [[:field "ID_2"   {:join-alias "Card", :base-type :type/BigInteger}]
+                             [:field "TOTAL"  {:join-alias "Card", :base-type :type/Float}]
+                             [:field "TAX"    {:join-alias "Card", :base-type :type/Float}]
+                             [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]
+                    :joins [{:source-table "card__1"
+                             :alias "Card"
+                             :condition
+                             [:= $products.id
+                              [:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}]]
+                             :fields
+                             [[:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}] ; PRODUCTS.ID -- (meta/id :products :id)
+                              [:field "TOTAL" {:join-alias "Card"
+                                               :base-type :type/Float}]
+                              [:field "TAX" {:join-alias "Card"
+                                             :base-type :type/Float}]
+                              [:field "VENDOR" {:join-alias "Card"
+                                                :base-type :type/Text}]]}]}))
+          col (lib.metadata.calculation/metadata query -1 [:field
+                                                           {:join-alias "Card", :base-type :type/BigInteger, :lib/uuid "c259c779-04f2-43d3-8635-d80c98a57c7c"}
+                                                           "ID_2"])]
+      (testing "Should correctly resolve Field ID"
+        (is (=? {:id (meta/id :products :id)}
+                col))))))

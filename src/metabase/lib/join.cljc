@@ -259,11 +259,12 @@
                        ::lib.schema.common/non-blank-string]]
    unique-name-fn :- ::lib.metadata.calculation/unique-name-fn
    col            :- :map]
-  (assoc col
-         :lib/source-column-alias  ((some-fn :lib/source-column-alias :name) col)
-         :lib/desired-column-alias (unique-name-fn (lib.join.util/joined-field-desired-alias
-                                                    (:alias join)
-                                                    ((some-fn :lib/source-column-alias :name) col)))))
+  (let [source-column-alias ((some-fn :lib/source-column-alias :name) col)]
+    (assoc col
+           :lib/source-column-alias  source-column-alias
+           :lib/desired-column-alias (unique-name-fn (lib.join.util/joined-field-desired-alias
+                                                      (:alias join)
+                                                      source-column-alias)))))
 
 (mu/defn- adjust-ident :- :map
   [join :- [:map
@@ -273,25 +274,36 @@
    col  :- :map]
   (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
 
-(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join
+(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [query
    stage-number
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
    {:keys [unique-name-fn], :as options} :- [:map
                                              [:unique-name-fn ::lib.metadata.calculation/unique-name-fn]]]
   (when-not (= fields :none)
-    (let [ensure-previous-stages-have-metadata (resolve 'metabase.lib.stage/ensure-previous-stages-have-metadata)
-          join-query (cond-> (assoc query :stages stages)
-                       ensure-previous-stages-have-metadata
-                       (ensure-previous-stages-have-metadata -1 options))
+    (let [;; TODO (Cam 6/12/25) -- this seems to serve no purpose. Commenting out for now.
+          ;;
+          ;; ensure-previous-stages-have-metadata
+          ;; (#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.stage/ensure-previous-stages-have-metadata)
+          ;; join-query (-> (assoc query :stages stages)
+          ;;                (ensure-previous-stages-have-metadata -1 options))
+          join-query      (assoc query :stages stages)
           join-cols       (lib.metadata.calculation/returned-columns
                            join-query -1 (lib.util/query-stage join-query -1)
-                           (assoc options :include-remaps? false))
+                           (assoc options
+                                  :include-remaps? false
+                                  ;; make sure we don't 'poison the well' by using our unique name function
+                                  ;; recursively. Calling with zero args creates a 'fresh' generator.
+                                  :unique-name-fn (unique-name-fn)))
           field-metadatas (if (= fields :all)
                             join-cols
                             (for [field-ref fields
                                   :let [join-field (lib.options/update-options field-ref dissoc :join-alias)
-                                        match      (lib.equality/find-matching-column join-field join-cols)]
+                                        match      (or (lib.equality/find-matching-column join-field join-cols)
+                                                       (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
+                                                                  (pr-str join-alias)
+                                                                  (pr-str field-ref)
+                                                                  (u/pprint-to-str join-cols)))]
                                   :when match]
                               (assoc match :lib/source-uuid (lib.options/uuid join-field))))
           ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`

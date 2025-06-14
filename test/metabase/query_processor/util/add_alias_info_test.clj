@@ -585,7 +585,7 @@
                                       ::add/position      1
                                       ::add/source-alias  "CC"
                                       ::add/source-table  ::add/source
-                                      :base-type          :type/Float}]]
+                                      :base-type          :type/Integer}]]
                      :limit        1})
                   (-> (lib.tu.macros/mbql-query orders
                         {:source-query {:source-table $$orders
