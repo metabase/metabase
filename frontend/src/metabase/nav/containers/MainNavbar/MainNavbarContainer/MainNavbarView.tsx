@@ -9,7 +9,7 @@ import {
   isExamplesCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
+import { useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import { Tree } from "metabase/components/tree";
 import {
@@ -38,7 +38,6 @@ import {
   TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink } from "../SidebarItems";
-import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
 import {
   trackAddDataModalOpened,
   trackNewCollectionFromNavInitiated,
@@ -135,9 +134,6 @@ export function MainNavbarView({
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const shouldDisplayGettingStarted = isNewInstance && canAccessOnboarding;
 
-  const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
-  const showUploadMenu = hasAttachedDWHFeature && isAdmin;
-
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -151,8 +147,6 @@ export function MainNavbarView({
             >
               {t`Home`}
             </PaddedSidebarLink>
-
-            {showUploadMenu && <DwhUploadMenu />}
           </SidebarSection>
 
           {shouldDisplayGettingStarted && (
