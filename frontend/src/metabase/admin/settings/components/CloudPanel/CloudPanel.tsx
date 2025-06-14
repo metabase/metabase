@@ -93,7 +93,7 @@ export const CloudPanel = ({
           isStarting={createCloudMigrationResult.isLoading}
         />
       )}
-      <Box maw="36rem">
+      <Box>
         {migration && isInProgressMigration(migration) && (
           <MigrationInProgress
             migration={migration}

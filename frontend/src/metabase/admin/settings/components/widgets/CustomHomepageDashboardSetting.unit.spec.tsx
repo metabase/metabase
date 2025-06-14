@@ -86,7 +86,7 @@ const setup = (
 describe("CustomHomepageDashboardSetting", () => {
   it("should render a Custom homepage toggle", async () => {
     setup();
-    expect(await screen.findByText("Custom Homepage")).toBeInTheDocument();
+    expect(await screen.findByText("Custom homepage")).toBeInTheDocument();
     expect(
       await screen.findByText(/Pick one of your dashboards/),
     ).toBeInTheDocument();

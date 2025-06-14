@@ -99,7 +99,7 @@ describe("CustomGeoJSONWIdget", () => {
       screen.getByRole("button", { name: "Add a map" }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText("Custom Maps")).toBeInTheDocument();
+    expect(screen.getByText("Custom maps")).toBeInTheDocument();
   });
 
   it("should remove a saved map", async () => {
