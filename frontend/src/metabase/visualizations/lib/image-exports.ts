@@ -171,6 +171,31 @@ export const getDashboardImage = async (
   return canvas.toDataURL("image/png").split(",")[1];
 };
 
+export const getVisualizationSvgDataUri = (
+  selector: string,
+): string | undefined => {
+  const element = document.querySelector(selector)?.cloneNode(true);
+  if (element && !(element instanceof SVGElement)) {
+    throw new Error("Selector did not provide an SVG element");
+  }
+
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+  if (backgroundColor && element instanceof SVGElement) {
+    element.style.backgroundColor = backgroundColor;
+  }
+
+  const svgString = element
+    ? new XMLSerializer().serializeToString(element)
+    : undefined;
+  const image_base_64 = svgString
+    ? `data:image/svg+xml;base64,${window.btoa(svgString)}`
+    : undefined;
+
+  return image_base_64;
+};
+
 export const getChartSelector = (
   input: { dashcardId: number | undefined } | { cardId: number | undefined },
 ) => {
@@ -181,7 +206,13 @@ export const getChartSelector = (
   }
 };
 
-export const getBase64ChartImage = async (
+export const getChartSvgSelector = (
+  input: { dashcardId: number | undefined } | { cardId: number | undefined },
+) => {
+  return `${getChartSelector(input)} svg[data-type="chart"]`;
+};
+
+export const getChartImagePngDataUri = async (
   selector: string,
 ): Promise<string | undefined> => {
   const chartRoot = document.querySelector(selector);
@@ -197,7 +228,7 @@ export const getBase64ChartImage = async (
     },
   });
 
-  return canvas.toDataURL("image/png").split(",")[1];
+  return canvas.toDataURL("image/png");
 };
 
 export const saveChartImage = async (selector: string, fileName: string) => {

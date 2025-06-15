@@ -45,6 +45,7 @@ export const useMetabotAgent = () => {
   const submitInput = useCallback(
     async (message: string, metabotId?: string) => {
       const context = await getChatContext();
+
       return dispatch(
         submitInputAction({
           message,
@@ -80,7 +81,6 @@ export const useMetabotAgent = () => {
     visible: useSelector(getMetabotVisible as any) as ReturnType<
       typeof getMetabotVisible
     >,
-    setVisible,
     messages,
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,
@@ -88,9 +88,10 @@ export const useMetabotAgent = () => {
     isLongConversation: useSelector(
       getIsLongMetabotConversation as any,
     ) as ReturnType<typeof getIsLongMetabotConversation>,
-    submitInput,
-    startNewConversation,
     resetConversation,
+    setVisible,
+    startNewConversation,
+    submitInput,
     isDoingScience: sendMessageReq.isLoading || isProcessing,
   };
 };
