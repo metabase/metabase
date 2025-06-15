@@ -191,29 +191,29 @@
 (defn funnel
   "Clojure entrypoint to render a funnel chart. Data should be vec of [[Step Measure]] where Step is
 
-    {:name name :format format-options}
+  {:name name :format format-options}
 
   and Measure is {:format format-options} and you go and look to
   frontend/src/metabase/static-viz/components/FunnelChart/types.ts for the actual format options. Returns a byte array
   of a png file."
   [data settings]
   (let [svg-string (with-static-viz-context context
-                     (.asString (js.engine/execute-fn-name context "funnel" (json/encode data)
-                                                           (json/encode settings)
-                                                           (json/encode (premium-features/token-features)))))]
+                     (.asString (js.engine/execute-fn-name context "funnel" data
+                                                           settings
+                                                           (premium-features/token-features))))]
     (svg-string->bytes svg-string)))
 
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynanic only for testing purposes."
   [cards-with-data dashcard-viz-settings]
   (let [response (with-static-viz-context context
-                   (.asString (js.engine/execute-fn-name context "javascript_visualization"
-                                                         (json/encode cards-with-data)
-                                                         (json/encode dashcard-viz-settings)
-                                                         (json/encode {:applicationColors (appearance/application-colors)
-                                                                       :startOfWeek (lib-be/start-of-week)
-                                                                       :customFormatting (appearance/custom-formatting)
-                                                                       :tokenFeatures (premium-features/token-features)}))))]
+                   (js.engine/execute-fn-name context "javascript_visualization"
+                                              cards-with-data
+                                              dashcard-viz-settings
+                                              {:applicationColors (appearance/application-colors)
+                                               :startOfWeek (lib-be/start-of-week)
+                                               :customFormatting (appearance/custom-formatting)
+                                               :tokenFeatures (premium-features/token-features)}))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
@@ -221,36 +221,31 @@
 (defn row-chart
   "Clojure entrypoint to render a row chart."
   [settings data]
-  (let [svg-string (with-static-viz-context context
-                     (.asString (js.engine/execute-fn-name context "row_chart"
-                                                           (json/encode settings)
-                                                           (json/encode data)
-                                                           (json/encode (appearance/application-colors))
-                                                           (json/encode (premium-features/token-features)))))]
-    (svg-string->bytes svg-string)))
+  (with-static-viz-context context
+    (svg-string->bytes (js.engine/execute-fn-name context "row_chart"
+                                                  settings
+                                                  data
+                                                  (appearance/application-colors)
+                                                  (premium-features/token-features)))))
 
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]
   (with-static-viz-context context
-    (let [js-res (js.engine/execute-fn-name context "gauge"
-                                            (json/encode card)
-                                            (json/encode data)
-                                            (json/encode (premium-features/token-features)))
-          svg-string (.asString js-res)]
-      (svg-string->bytes svg-string))))
+    (svg-string->bytes (js.engine/execute-fn-name context "gauge"
+                                                  card
+                                                  data
+                                                  (premium-features/token-features)))))
 
 (defn progress
   "Clojure entrypoint to render a progress bar. Returns a byte array of a png file"
   [value goal settings]
   (with-static-viz-context context
-    (let [js-res (js.engine/execute-fn-name context "progress"
-                                            (json/encode {:value value :goal goal})
-                                            (json/encode settings)
-                                            (json/encode (appearance/application-colors))
-                                            (json/encode (premium-features/token-features)))
-          svg-string (.asString js-res)]
-      (svg-string->bytes svg-string))))
+    (svg-string->bytes (js.engine/execute-fn-name context "progress"
+                                                  {:value value :goal goal}
+                                                  settings
+                                                  (appearance/application-colors)
+                                                  (premium-features/token-features)))))
 
 (def ^:private icon-paths
   {:dashboard "M32 28a4 4 0 0 1-4 4H4a4.002 4.002 0 0 1-3.874-3H0V4a4 4 0 0 1 4-4h25a3 3 0 0 1 3 3v25zm-4 0V8H4v20h24zM7.273 18.91h10.182v4.363H7.273v-4.364zm0-6.82h17.454v4.365H7.273V12.09zm13.09 6.82h4.364v4.363h-4.363v-4.364z"
