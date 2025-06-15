@@ -58,6 +58,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -90,6 +91,20 @@ export const getRoutes = (store) => {
         }}
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
+        }}
+        disableCommandPalette
+      />
+
+      {/* EMBEDDING SETUP */}
+      <Route
+        path="/setup/embedding"
+        component={EmbeddingSetup}
+        onEnter={async (nextState, replace, done) => {
+          if (hasUserSetup) {
+            replace("/");
+          }
+          trackPageView(location.pathname);
+          done();
         }}
         disableCommandPalette
       />
