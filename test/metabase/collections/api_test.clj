@@ -2580,6 +2580,30 @@
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
 
+(deftest graph-excludes-archived-collections-test
+  (mt/with-temp [:model/Collection {archived-id :id} {:archived true}
+                 :model/Collection {not-archived-id :id} {:archived false}
+                 :model/PermissionsGroup {group-id :id}    {}]
+    (letfn [(nice-graph [graph]
+              (let [id->alias {archived-id     "Archived Collection"
+                               not-archived-id "Not Archived Collection"}]
+                (transduce
+                 identity
+                 (fn
+                   ([graph]
+                    (-> (get-in graph [:groups group-id])
+                        (select-keys (vals id->alias))))
+                   ([graph [collection-id k]]
+                    (graph.test/replace-collection-ids collection-id graph k)))
+                 graph
+                 id->alias)))]
+      (doseq [collection [archived-id not-archived-id]]
+        (perms/grant-collection-read-permissions! group-id collection))
+      (testing "GET /api/collection/graph\n"
+        (testing "Should be able to fetch the permissions graph for the default namespace"
+          (is (= {"Not Archived Collection" "read"}
+                 (nice-graph (mt/user-http-request :crowberto :get 200 "collection/graph")))))))))
+
 (deftest cards-and-dashboards-get-can-write
   (mt/with-temp [:model/Collection {collection-id :id :as collection} {}
                  :model/Card _ {:collection_id collection-id}

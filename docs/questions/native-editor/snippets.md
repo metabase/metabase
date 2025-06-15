@@ -7,7 +7,7 @@ redirect_from:
 
 # Snippets
 
-![Highlight and save as snippet](../images/highlight_and_save_as_snippet.gif)
+![SQL snippet](../images/sql-snippets.png)
 
 **Snippets** are reusable bits of SQL or native queries. Anyone with permissions to the [SQL editor](./writing-sql.md) can create and edit snippets, which are then available for all SQL authors.
 
@@ -18,10 +18,11 @@ For example, if you frequently perform queries that involve multiple tables, you
 Here's a simple query with a join using the **Sample Database** included with Metabase.
 
 ```sql
-SELECT *
-FROM orders AS o
-LEFT JOIN products AS p
-ON o.product_id = p.id
+SELECT
+  *
+FROM
+  orders AS o
+  LEFT JOIN products AS p ON o.product_id = p.id
 ```
 
 Let's save everything after FROM as a snippet to reuse in other queries.
@@ -32,8 +33,7 @@ In the **SQL editor**:
 
    ```sql
    orders AS o
-   LEFT JOIN products AS p
-   ON o.product_id = p.id
+   LEFT JOIN products AS p ON o.product_id = p.id
    ```
 
 2. **Right-click on the highlighted section.**
@@ -43,8 +43,12 @@ In the **SQL editor**:
 In this case, we named the snippet "Orders and Products". The snippet will now be available for anyone to use. Here's what the snippet looks like in the SQL editor:
 
 ```sql
-SELECT *
-FROM {% raw %}{{snippet: Orders and Products}}{% endraw %}
+{% raw %}
+SELECT
+  *
+FROM
+  {{snippet: Orders and products}}
+{% endraw %}
 ```
 
 When writing in the SQL editor, you can now start typing `{% raw %}{{snippet:}}{% endraw %}` and Metabase will present autocomplete options for available snippets.
@@ -52,8 +56,6 @@ When writing in the SQL editor, you can now start typing `{% raw %}{{snippet:}}{
 Note: if you use aliases in a snippet, you'll need to observe those aliases outside of the snippet as well. For example, if a snippet aliases `products AS p`, code outside of the snippet will need to use the alias `p` to reference columns in that table (as in `p.column_name`).
 
 ## Snippet menu
-
-![Snippet sidebar and insertion](../images/snippet_sidebar_and_insertion.gif)
 
 The SQL editor **sidebar** has a **Snippets** menu to list available and archived snippets.
 

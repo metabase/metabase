@@ -36,6 +36,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotEntity"
+   "MetabotPrompt"
    "TimelineEvent"])
 
 (def excluded-models
@@ -64,6 +65,7 @@
    "Notification"
    "NotificationCard"
    "NotificationSubscription"
+   "NotificationSystemEvent"
    "NotificationHandler"
    "NotificationRecipient"
    "Permissions"
@@ -88,6 +90,7 @@
    "Secret"
    "Session"
    "TaskHistory"
+   "Undo"
    "User"
    "UserKeyValue"
    "UserParameterValue"

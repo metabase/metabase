@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
-import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
+import { DeleteConfirmModal } from "metabase/notifications/modals/shared/DeleteConfirmModal";
 import { addUndo } from "metabase/redux/undo";
 import type { Notification } from "metabase-types/api";
 
@@ -65,7 +65,7 @@ export const DeleteAlertModal = ({
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
       {() =>
         notification ? (
-          <DeleteAlertConfirmModal
+          <DeleteConfirmModal
             title={
               hasUnsubscribed
                 ? t`You’re unsubscribed. Delete this alert as well?`

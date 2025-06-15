@@ -209,7 +209,8 @@
   [ctx param-dashcard-info stage-number]
   (let [param-id           (get-in param-dashcard-info [:param-mapping :parameter_id])
         param-target       (get-in param-dashcard-info [:param-mapping :target])
-        card-id            (get-in param-dashcard-info [:dashcard :card :id])
+        card-id            (or (get-in param-dashcard-info [:param-mapping :card_id])
+                               (get-in param-dashcard-info [:dashcard :card :id]))
         filterable-columns (get-in ctx [:card-id->filterable-columns card-id stage-number])
         [_ dimension]      (->> (mbql.normalize/normalize-tokens param-target :ignore-path)
                                 (mbql.u/check-clause :dimension))]
@@ -260,7 +261,12 @@
   ([ctx {:keys [param-mapping param-target-field] :as param-dashcard-info}]
    (if-not param-target-field
      ctx
-     (let [card (get-in param-dashcard-info [:dashcard :card])
+     (let [card-id (:card_id param-mapping)
+           card (if card-id
+                  (m/find-first #(= (:id %) card-id)
+                                (cons (get-in param-dashcard-info [:dashcard :card])
+                                      (get-in param-dashcard-info [:dashcard :series])))
+                  (get-in param-dashcard-info [:dashcard :card]))
            param-id (:parameter_id param-mapping)
            stage-number (get-in param-mapping [:target 2 :stage-number] -1)]
        ;; Get the field id from the field-clause if it contains it. This is the common case

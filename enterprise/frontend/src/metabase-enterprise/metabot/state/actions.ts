@@ -139,6 +139,8 @@ export const resetConversation = createAsyncThunk(
         fixedCacheKey: METABOT_TAG,
       }),
     );
+    // clear out suggested prompts so the user is shown something fresh
+    dispatch(EnterpriseApi.util.invalidateTags(["metabot-prompt-suggestions"]));
 
     dispatch(clearMessages());
     dispatch(resetConversationId());

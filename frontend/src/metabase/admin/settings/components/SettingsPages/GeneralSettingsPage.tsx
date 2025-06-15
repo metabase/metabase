@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import { Stack } from "metabase/ui";
@@ -15,8 +15,6 @@ export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
-
-  const hasQueryValidation = useHasTokenFeature("query_reference_validation");
 
   return (
     <Stack gap="xl" maw="42rem" px="lg" py="sm">
@@ -58,13 +56,6 @@ export function GeneralSettingsPage() {
       <AdminSettingInput
         name="enable-xrays"
         title={t`Enable X-Ray Features`}
-        inputType="boolean"
-      />
-
-      <AdminSettingInput
-        hidden={!hasQueryValidation}
-        name="query-analysis-enabled"
-        title={t`Enable query analysis`}
         inputType="boolean"
       />
 

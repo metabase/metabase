@@ -7,22 +7,22 @@ import type {
   CollectionAuthorityLevel,
   CollectionId,
   Database,
+  EditableTableActionsDisplaySettings,
   Field,
+  FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
   ParameterValueOrArray,
   Table,
+  TableColumnOrderSetting,
   UserId,
   VirtualCardDisplay,
   VisualizerVizDefinition,
+  WritebackActionId,
 } from "metabase-types/api";
 
-import type {
-  ActionDisplayType,
-  WritebackAction,
-  WritebackActionId,
-} from "./actions";
+import type { ActionDisplayType, WritebackAction } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
@@ -126,6 +126,11 @@ export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+
+  // "table-editable" specific settings
+  "table.columns"?: TableColumnOrderSetting[];
+  "table.editableColumns"?: string[]; // list of column names
+  "editableTable.enabledActions"?: EditableTableActionsDisplaySettings[];
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -138,6 +143,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
+  isAdded?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -336,4 +342,9 @@ export type GetRemappedDashboardParameterValueRequest = {
   dashboard_id: DashboardId;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
+};
+
+export type GetValidDashboardFilterFieldsRequest = {
+  filtered: FieldId[];
+  filtering: FieldId[];
 };

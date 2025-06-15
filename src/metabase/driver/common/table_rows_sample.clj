@@ -1,4 +1,5 @@
 (ns metabase.driver.common.table-rows-sample
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]

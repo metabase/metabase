@@ -205,15 +205,13 @@
                                           :field_ref     field-ref
                                           :id            %categories.name
                                           :display_name  "c → Name"
-                                          :base_type     :type/Text
-                                          :source_alias  "c"}
+                                          :base_type     :type/Text}
                                          {:table_id     $$categories
                                           :name         "NAME"
                                           :field_ref    $category-id->categories.name
                                           :id           %categories.name
                                           :display_name "Category → Name"
-                                          :base_type    :type/Text
-                                          :source_alias "CATEGORIES__via__CATEGORY_ID"}]})]
+                                          :base_type    :type/Text}]})]
           (is (=? (lib.tu.macros/$ids [$venues.id
                                        (mbql.u/update-field-options field-ref dissoc :temporal-unit)
                                        $venues.category-id->categories.name])

@@ -10,6 +10,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
@@ -25,6 +26,8 @@ if (hasPremiumFeature("metabot_v3")) {
       key: "metabot",
     },
   ];
+
+  PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
   PLUGIN_METABOT.AdminRoute = (
     <Route
