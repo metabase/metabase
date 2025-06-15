@@ -39,14 +39,14 @@ const setup = async () => {
     },
   );
 
-  await screen.findByText("Localization options");
+  await screen.findByText("Dates and times");
 };
 
-describe("PublicSharingSettingsPage", () => {
+describe("FormattingWidget", () => {
   it("should render a FormattingWidget", async () => {
     await setup();
     [
-      "Dates and Times",
+      "Dates and times",
       "Date style",
       "Abbreviate days and months",
       "Time style",
@@ -101,7 +101,7 @@ describe("PublicSharingSettingsPage", () => {
   it("should update multiple settings", async () => {
     await setup();
     const blur = async () => {
-      const elementOutside = screen.getByText("Dates and Times");
+      const elementOutside = screen.getByText("Dates and times");
       await userEvent.click(elementOutside); // blur
     };
 
