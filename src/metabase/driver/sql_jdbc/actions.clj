@@ -868,7 +868,7 @@
                     results)}))
 
 (defn- create-or-update!*
-  [action database {:keys [table-id row row-key]}]
+  [action database {:keys [table-id row row-key] :as x}]
   (with-jdbc-transaction [conn (u/the-id database)]
     (let [driver    (:engine database)
           table-name        (:name (driver-api/cached-table (:id database) table-id))
@@ -935,7 +935,10 @@
                            :xform    (map (fn [{:keys [database row-key row table-id] :as input}]
                                             ;; HACK to avoid the fact that FE don't provide row-key for now
                                             (if (empty? row-key)
-                                              (assoc input :row-key (select-keys row (keys (table-id->pk-field-name->id database table-id))))
+                                              (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
+                                                (-> input
+                                                    (assoc :row-key (select-keys row pk-cols))
+                                                    (update :row (fn [row] (apply dissoc row pk-cols)))))
                                               input)))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) creating or updating rows.")
