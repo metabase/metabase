@@ -275,6 +275,22 @@
   [_driver _semantic_type expr]
   (->time expr))
 
+(defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  (h2x/with-database-type-info [:concat
+                                [:substr expr 1 4]
+                                "-"
+                                [:substr expr 5 2]
+                                "-"
+                                [:substr expr 7 2]
+                                " "
+                                [:substr expr 9 2]
+                                ":"
+                                [:substr expr 11 2]
+                                ":"
+                                [:substr expr 13 2]]
+                               "timestamp"))
+
 (defmethod sql.qp/->date :sqlite
   [_driver value]
   (->date value))
