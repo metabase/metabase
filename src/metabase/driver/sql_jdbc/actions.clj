@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.actions
   #_{:clj-kondo/ignore [:discouraged-namespace]} ;; for using toucan2 in this ns
+  #_{:clj-kondo/ignore [:metabase/modules]}      ;; for using metabase.actions
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
