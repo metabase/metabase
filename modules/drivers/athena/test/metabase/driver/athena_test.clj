@@ -393,3 +393,13 @@
                        first
                        (zipmap units))))]
           (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
+
+(deftest query-resource-usage-test
+  (mt/test-driver :athena
+    (testing "athena queries return resource usage metrics"
+      (let [resource-usage (-> (mt/user-http-request :rasta :post 202 "dataset"
+                                                     (mt/mbql-query orders {:limit 1, :order-by [[:asc $id]]}))
+                               :data
+                               :resource-usage)]
+        (is (< 0 (:bytes-scanned resource-usage)))
+        (is (= "bytes" (:unit resource-usage)))))))

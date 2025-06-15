@@ -36,6 +36,8 @@
     Field$Mode
     FieldValue
     FieldValueList
+    Job
+    JobInfo
     QueryJobConfiguration
     Schema
     Table
@@ -587,7 +589,7 @@
 
 (defn- bigquery-execute-response
   "Given the initial query page, respond with metadata and a lazy reducible that will page through the rest of the data."
-  [^TableResult page ^BigQuery client respond cancel-chan]
+  [^TableResult page ^BigQuery client respond cancel-chan resource-usage]
   (let [job-id (.getJobId page)
         attempt-job-cancel-fn #(try
                                  (.cancel client job-id)
@@ -600,11 +602,24 @@
                   (-> column
                       (set/rename-keys {:base-type :base_type})
                       (dissoc :database-type :database-position)))
-        cols {:cols columns}
+        cols {:cols columns
+              :resource-usage resource-usage}
         results (eduction (map (fn [^FieldValueList row]
                                  (mapv parse-field-value row parsers)))
                           (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn))]
     (respond cols results)))
+
+(defn fetch-query-resource-usage
+  "Get the query statistics from the bigquery job"
+  [^BigQuery client result]
+  (let [job-id (.getJobId result)
+        job ^Job (.getJob client job-id (u/varargs BigQuery$JobOption))
+        stats (.getStatistics job)]
+    {:amount (.getTotalBytesBilled stats)
+     :unit :bytes
+     :total-bytes-processed (.getTotalBytesProcessed stats)
+     :total-bytes-billed (.getTotalBytesBilled stats)
+     :estimated-bytes-processed (.getEstimatedBytesProcessed stats)}))
 
 (defn- execute-bigquery
   [respond database-details ^String sql parameters cancel-chan]
@@ -621,7 +636,8 @@
                        (try
                          (*page-callback*)
                          (if-let [result (.query client request (u/varargs BigQuery$JobOption))]
-                           (deliver result-promise [:ready result])
+                           (let [resource-usage (fetch-query-resource-usage client result)]
+                             (deliver result-promise [:ready result resource-usage]))
                            (throw (ex-info "Null response from query" {})))
                          (catch Throwable t
                            (deliver result-promise [:error t]))))]
@@ -636,11 +652,11 @@
 
     ;; Now block the original thread on that promise.
     ;; It will receive either [:ready [& respond-args]], [:error Throwable], or [:cancel truthy].
-    (let [[status result] @result-promise]
+    (let [[status result resource-usage] @result-promise]
       (case status
         :error  (handle-bigquery-exception result sql parameters)
         :cancel (throw-cancelled sql parameters)
-        :ready  (bigquery-execute-response result client respond cancel-chan)))))
+        :ready  (bigquery-execute-response result client respond cancel-chan resource-usage)))))
 
 (mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
@@ -699,7 +715,9 @@
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
                               :set-timezone             true
-                              :expression-literals      true}]
+                              :expression-literals      true
+                              :dry-run-queries          true
+                              :query-resource-usage     true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
@@ -764,3 +782,28 @@
 (defmethod driver/prettify-native-form :bigquery-cloud-sdk
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
+
+(defmethod driver/dry-run-query :bigquery-cloud-sdk
+  [_driver
+   {:keys [database] :as query}]
+  (let [db-details (t2/select-one-fn :details :model/Database :id database)
+        ^BigQuery client (database-details->client db-details)
+        sql (-> query driver-api/compile-with-inline-parameters :query)]
+    (try
+      (let [job-info (-> (QueryJobConfiguration/newBuilder sql)
+                         (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+                         (bigquery.params/set-parameters! nil) ;; TODO(rileythomp): instead of compiling inline, can we pass params? not clear because even in execute-reducible-query params is empty
+                         (.setDryRun true)
+                         #_(.setUseQueryCache false) ;; TODO(rileythomp): determine if we need this and if it should be true or false
+                         (.build)
+                         JobInfo/of)
+            job (.create client job-info (u/varargs BigQuery$JobOption))
+            stats (.getStatistics job)]
+        {:amount (.getTotalBytesProcessed stats)
+         :unit :bytes
+         :total-bytes-processed (.getTotalBytesProcessed stats)
+         :total-bytes-billed (.getTotalBytesBilled stats)
+         :estimated-bytes-processed (.getEstimatedBytesProcessed stats)})
+      (catch Exception e
+        (log/error e "error in driver/dry-run-query for bigquery")
+        e))))
