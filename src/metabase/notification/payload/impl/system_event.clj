@@ -315,7 +315,8 @@
 
 (mu/defmethod notification.payload/notification-payload :notification/system-event :- :map
   [notification-info :- ::notification.payload/Notification]
-  (transform-event-info notification-info))
+  (or (:custom_payload notification-info)
+      (transform-event-info notification-info)))
 
 (defmethod notification.payload/notification-payload-schema :notification/system-event
   [notification-info]
