@@ -221,6 +221,7 @@ export function addHeadingWhileEditing(
 }
 
 export function openQuestionsSidebar() {
+  dashboardHeader().findByLabelText("Add questions").should("not.be.disabled");
   dashboardHeader().findByLabelText("Add questions").click();
 }
 
