@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import type { ActionFormParameter } from "../../types";
 import { ActionFormInputType } from "../../types";
 
@@ -9,49 +7,33 @@ import { ActionInputText } from "./ActionInputText";
 import { ActionInputTextarea } from "./ActionInputTextarea";
 import type { ActionInputSharedProps } from "./types";
 
-type ParameterActionInputProps = ActionInputSharedProps & {
+export type ParameterActionInputProps = ActionInputSharedProps & {
   parameter: ActionFormParameter;
 };
 
 export function ParameterActionInput(props: ParameterActionInputProps) {
   const { parameter, ...rest } = props;
 
-  const placeholder = parameter.database_default
-    ? t`Auto populated`
-    : parameter.optional
-      ? t`Optional`
-      : undefined;
-
-  const disabled = parameter.readonly;
-
-  const inputProps = {
-    ...rest.inputProps,
-    placeholder,
-    disabled,
-  };
-
   switch (parameter.input_type) {
     case ActionFormInputType.Date:
-      return <ActionInputDateTime {...rest} inputProps={inputProps} />;
+      return <ActionInputDateTime {...rest} />;
     case ActionFormInputType.DateTime:
-      return (
-        <ActionInputDateTime {...rest} inputProps={inputProps} isDateTime />
-      );
+      return <ActionInputDateTime {...rest} isDateTime />;
     case ActionFormInputType.Textarea:
-      return <ActionInputTextarea {...rest} inputProps={inputProps} />;
+      return <ActionInputTextarea {...rest} />;
     case ActionFormInputType.Dropdown:
       if (parameter.field_id) {
         return (
           <ActionInputSearchableSelect
             {...rest}
-            inputProps={inputProps}
             fieldId={parameter.field_id}
             searchFieldId={parameter.human_readable_field_id}
+            isNullable={parameter.nullable}
             withCreateNew
           />
         );
       }
   }
 
-  return <ActionInputText {...rest} inputProps={inputProps} />;
+  return <ActionInputText {...rest} />;
 }

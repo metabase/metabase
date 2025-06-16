@@ -63,7 +63,7 @@ export const ActionInputSearchableSelect = ({
 
       // Close the dropdown
       onBlur?.(value);
-      combobox.toggleDropdown();
+      combobox.closeDropdown();
     },
     [setValue, onChange, onBlur, combobox],
   );
@@ -122,10 +122,14 @@ export const ActionInputSearchableSelect = ({
           style={{ overflow: "hidden" }} // for label truncation
           rightSectionPointerEvents="all"
           rightSection={
-            <Combobox.ClearButton
-              hidden={!shouldDisplayClearButton}
-              onClear={() => handleOptionSubmit(null)}
-            />
+            shouldDisplayClearButton && (
+              <Icon
+                name="close"
+                color="var(--mb-color-text-light)"
+                onClick={() => handleOptionSubmit(null)}
+                onMouseDown={(event) => event.stopPropagation()}
+              />
+            )
           }
           {...inputProps}
         >
