@@ -48,8 +48,6 @@ interface SdkIframeEmbedSetupContextType {
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
   isLoadingParameters: boolean;
-  toggleParameterVisibility: (parameterName: string) => void;
-  isParameterHidden: (parameterName: string) => boolean;
 }
 
 const SdkIframeEmbedSetupContext =
@@ -105,30 +103,6 @@ export const SdkIframeEmbedSetupProvider = ({
         ({ ...prevSettings, ...nextSettings }) as SdkIframeEmbedSettings,
     );
 
-  const toggleParameterVisibility = (parameterName: string) => {
-    // Only dashboards supports hiding parameters
-    if (!settings.dashboardId) {
-      return;
-    }
-
-    const hiddenParameters = settings?.hiddenParameters ?? [];
-
-    const nextHiddenParameters = hiddenParameters.includes(parameterName)
-      ? hiddenParameters.filter((name) => name !== parameterName)
-      : [...hiddenParameters, parameterName];
-
-    updateSettings({ hiddenParameters: nextHiddenParameters });
-  };
-
-  const isParameterHidden = (parameterName: string) => {
-    // Only dashboards support hiding parameters
-    if (!settings.dashboardId) {
-      return false;
-    }
-
-    return (settings.hiddenParameters ?? []).includes(parameterName);
-  };
-
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
     setCurrentStep,
@@ -147,8 +121,6 @@ export const SdkIframeEmbedSetupProvider = ({
 
     availableParameters,
     isLoadingParameters,
-    toggleParameterVisibility,
-    isParameterHidden,
   };
 
   return (

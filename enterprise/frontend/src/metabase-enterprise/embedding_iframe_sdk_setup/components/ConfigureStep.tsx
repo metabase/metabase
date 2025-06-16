@@ -14,6 +14,8 @@ import {
   TextInput,
 } from "metabase/ui";
 
+import { useHideParameter } from "../hooks/use-hide-parameter";
+
 import { DebouncedColorPillPicker } from "./DebouncedColorPillPicker";
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
@@ -44,9 +46,9 @@ export const ConfigureStep = () => {
     updateSettings,
     availableParameters,
     isLoadingParameters,
-    toggleParameterVisibility,
-    isParameterHidden,
   } = useSdkIframeEmbedSetupContext();
+
+  const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
 
   const { theme } = settings;
 
