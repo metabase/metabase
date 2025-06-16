@@ -6,12 +6,6 @@ export type Step =
   | "configure"
   | "get-code";
 
-export interface EmbedParameter {
-  id: string;
-  name: string;
-  placeholder: string;
-}
-
 export interface StepProps {
   onNext: () => void;
   onBack: () => void;

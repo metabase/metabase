@@ -1,4 +1,4 @@
-import type { EmbedParameter, EmbedType } from "./types";
+import type { EmbedType } from "./types";
 
 export const EMBED_TYPES = [
   {
@@ -15,24 +15,6 @@ export const EMBED_TYPES = [
     value: "exploration" as EmbedType,
     title: "Exploration",
     description: "Embed an interactive data exploration experience",
-  },
-];
-
-export const EXAMPLE_PARAMETERS: EmbedParameter[] = [
-  {
-    id: "date_range",
-    name: "Date Range",
-    placeholder: "Last 30 days",
-  },
-  {
-    id: "region",
-    name: "Region",
-    placeholder: "All regions",
-  },
-  {
-    id: "product_category",
-    name: "Product Category",
-    placeholder: "All categories",
   },
 ];
 
