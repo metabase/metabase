@@ -28,16 +28,14 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     cy.location("pathname").should("eq", "/setup");
   });
 
-  it("should allow users to use existing setup flow", () => {
+  it("should show the embedding homepage if the user skips the flow after having created the user", () => {
     cy.visit("/setup/embedding");
     assertEmbeddingOnboardingPageLoaded();
 
-    cy.log("Go to user step");
     step().within(() => {
       cy.button("Start").should("be.visible").click();
     });
 
-    cy.log("Create user");
     step().within(() => {
       cy.findByRole("heading", { name: "What should we call you?" }).should(
         "be.visible",
@@ -46,7 +44,6 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       fillOutUserForm();
 
       cy.intercept("POST", "/api/setup").as("setup");
-
       cy.intercept("PUT", "/api/setting").as("setting");
       cy.button("Next").should("be.enabled").click();
     });
@@ -56,8 +53,6 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     // user, we need to make sure that request is done before navigating
     // otherwise it'll get cancelled by the browser
     cy.wait("@setting");
-
-    cy.log("Navigate to '/', it should show the embedding homepage");
     cy.visit("/");
 
     main()
