@@ -116,6 +116,7 @@ export function FilterColumnPicker({
         itemTestId="dimension-list-item"
         searchProp={["name", "displayName"]}
         globalSearch
+        fuzzySearch
         withBorders
       />
     </DelayGroup>
