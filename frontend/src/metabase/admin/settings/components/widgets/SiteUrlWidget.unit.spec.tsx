@@ -40,7 +40,7 @@ const setup = () => {
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
     setup();
-    expect(await screen.findByText("Site Url")).toBeInTheDocument();
+    expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {

@@ -16,6 +16,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
@@ -377,3 +378,23 @@
   [_ {:keys [content]}]
   {:prepared-statement-args nil
    :replacement-snippet     content})
+
+(defmulti time-grouping->replacement-snippet-info
+  "Like ->replacement-snipped-info, but specialized for converting time-groupings.  This is separate from the main
+  ->replacement-snippet-info because it requires an extra argument."
+  {:arglists '([driver column temporal-unit])
+   :added "0.55.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(def date-groupings
+  "Set of time groupings that should be coerced to dates"
+  #{"day" "week" "month" "quarter" "year"})
+
+(defmethod time-grouping->replacement-snippet-info :sql
+  [driver column {:keys [value]}]
+  (honeysql->replacement-snippet-info driver
+                                      (if (= value params/no-value)
+                                        [:raw column]
+                                        (cond-> (sql.qp/date driver (keyword value) [:raw column])
+                                          (date-groupings value) h2x/->date))))

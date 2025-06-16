@@ -503,6 +503,9 @@
     ],
     "enterprise/frontend/src/embedding-sdk/README.md": [
       "prettier --write"
+    ],
+    "+(.storybook|.storybook-sdk)/**/*.{js,jsx,ts,tsx,css}": [
+      "prettier --write"
     ]
   },
   "browserslist": [

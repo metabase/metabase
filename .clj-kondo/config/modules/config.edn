@@ -350,6 +350,14 @@
    :api  #{metabase.connection-pool}
    :uses #{}}
 
+  content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase.content-translation.api
+           metabase.content-translation.models}
+   :uses #{api
+           premium-features
+           util}}
+
   content-verification
   {:team "Admin Webapp"
    :api  #{metabase.content-verification.core
@@ -368,6 +376,7 @@
    :api  #{metabase.dashboards.api
            metabase.dashboards.autoplace
            metabase.dashboards.constants
+           metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab}
@@ -394,6 +403,7 @@
            request
            revisions
            search
+           settings
            util
            warehouse-schema
            xrays}}
@@ -475,6 +485,7 @@
   {:team "Embedding"
    :api  #{metabase.embedding.api
            metabase.embedding.init
+           metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.validation}
    :uses #{analytics
@@ -885,7 +896,6 @@
            premium-features
            public-sharing
            pulse
-           query-analysis
            query-permissions
            query-processor
            request
@@ -894,19 +904,6 @@
            util
            view-log
            warehouse-schema}}
-
-  query-analysis
-  {:team "Querying"
-   :api  #{metabase.query-analysis.core
-           metabase.query-analysis.init}
-   :uses #{config
-           driver
-           legacy-mbql
-           lib
-           query-processor
-           settings
-           task
-           util}}
 
   query-permissions
   {:team "Admin Webapp"
@@ -1483,11 +1480,9 @@
    :api  #{metabase-enterprise.ai-sql-fixer.api}
    :uses #{api
            driver
-           query-analysis
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
@@ -1555,6 +1550,17 @@
            query-processor
            task
            util}}
+
+  enterprise/content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.content-translation.dictionary
+           metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           embedding
+           premium-features
+           util
+           enterprise/api}}
 
   enterprise/content-verification
   {:team "Admin Webapp"
@@ -1676,15 +1682,6 @@
   {:team "Admin Webapp"
    :api  #{}
    :uses #{premium-features
-           util}}
-
-  enterprise/query-reference-validation
-  {:team "Querying"
-   :api  #{metabase-enterprise.query-reference-validation.api}
-   :uses #{api
-           collections
-           query-analysis
-           request
            util}}
 
   enterprise/sandbox
