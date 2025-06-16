@@ -6,20 +6,6 @@ export type Step =
   | "configure"
   | "get-code";
 
-export interface Dashboard {
-  id: number;
-  name: string;
-  description: string;
-  updatedAt: string;
-}
-
-export interface Question {
-  id: number;
-  name: string;
-  description: string;
-  updatedAt: string;
-}
-
 export interface EmbedParameter {
   id: string;
   name: string;
