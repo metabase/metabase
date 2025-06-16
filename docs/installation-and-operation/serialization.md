@@ -59,7 +59,7 @@ Metabase will only export the following entities:
 - Public sharing settings for questions and dashboards
 - [General Metabase settings](#general-metabase-settings-that-are-exported)
 - Events and timelines
-- Database connection strings (only if specified through [export options](#customize-what-gets-exported)).
+- Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
 All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
 
@@ -145,7 +145,7 @@ See [export parameters in CLI commands](#export-options) or [export parameters i
 
 Questions can be found in the `cards` directory of a collection directory. Here's an example card YAML file for a question written with SQL that uses a field filter and has an area chart visualization.
 
-> To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
+To preserve a native query's multi-line format, remove trailing whitespace from native queries. If your native query has trailing whitespace, YAML will convert your query to a single string literal (which only affects presentation, not functionality).
 
 ```yml
 name: Products by week
@@ -767,7 +767,7 @@ A few other changes to call out:
 
 - The exported YAML files have a slightly different structure:
   - Metabase will prefix each file with a 24-character Entity ID (like `IA96oUzmUbYfNFl0GzhRj_accounts_model.yaml`).
-    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids) before exporting.
+    You can run a Metabase command to [drop Entity IDs](./commands.md#drop-entity-ids).
   - The file tree is slightly different.
 - To serialize personal collections, you just need to include the personal collection IDs in the list of comma-separated IDs following the `-c` option (short for `--collection`).
 
@@ -779,7 +779,8 @@ If you've written scripts to automate serialization, you'll need to:
 
 ## Further reading
 
-- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization).
+- [Serialization tutorial](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/serialization)
+- [Database routing](../permissions/database-routing.md)
 - [Multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
-- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow).
-- Need help? Contact [support@metabase.com](mailto:support@metabase.com).
+- [Setting up a git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow)
+- Need help? Contact [support@metabase.com](mailto:support@metabase.com)
