@@ -47,6 +47,7 @@
    :display                  :text
    :has-temporal-dimensions  :boolean
    :id                       :text
+   :non-temporal-dimension-ids :json
    :last-edited-at           :timestamp
    :last-editor-id           :pk
    :last-viewed-at           :timestamp

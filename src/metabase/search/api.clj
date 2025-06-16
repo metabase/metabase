@@ -183,7 +183,7 @@
   Test endpoint for visualization-specific search filtering."
   [_route-params
    _query-params
-   {:keys                       [q limit models display exclude_display include_dashboard_questions visualization_context include_metadata has_temporal_dimensions]}
+   {:keys                       [q limit models display exclude_display include_dashboard_questions visualization_context include_metadata has_temporal_dimensions required_non_temporal_dimension_ids]}
    :- [:map
        [:q                            {:optional true} [:maybe ms/NonBlankString]]
        [:limit                        {:default 10} ms/PositiveInt]
@@ -194,6 +194,7 @@
        [:include_dashboard_questions  {:default true} :boolean]
        [:include_metadata             {:default true} :boolean]
        [:has_temporal_dimensions      {:optional true} [:maybe :boolean]]
+       [:required_non_temporal_dimension_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
        [:visualization_context        {:optional true}
         [:map
          [:display string?]
@@ -214,8 +215,10 @@
                      :display                      (set display)
                      :exclude-display              exclude_display
                      :has-temporal-dimensions?     has_temporal_dimensions
+                     :required-non-temporal-dimension-ids required_non_temporal_dimension_ids
                      :include-dashboard-questions? include_dashboard_questions
                      :include-metadata?            include_metadata})]
+    (log/info " ~$~$~$~ BUILT SEARCH CONTEXT")
 
     ;; Run search
     (let [search-results (search/search search-ctx)
@@ -223,6 +226,7 @@
 
       (log/info " ~$~$~$~ Search returned" (count data) "results")
       (log/info " ~$~$~$~ :exclude-display " exclude_display)
+      (log/info " ~$~$~$~ :required-non-temporal-dimension-ids " required_non_temporal_dimension_ids)
 
       ;; Apply visualization compatibility filtering if context provided
       (if visualization_context

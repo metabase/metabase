@@ -1338,6 +1338,23 @@
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
+(defn- non-temporal-dimension-ids-clause
+  "Creates a PostgreSQL-specific clause to extract field IDs from result_metadata JSON.
+  Returns a JSON array of field IDs for non-temporal dimensions."
+  []
+  [:raw "COALESCE(
+           (SELECT jsonb_agg(field_id ORDER BY field_id)
+            FROM (
+              SELECT DISTINCT (elem->>'id')::integer as field_id
+              FROM jsonb_array_elements(this.result_metadata::jsonb) elem
+              WHERE elem->>'id' IS NOT NULL
+                AND elem->>'temporal_unit' IS NULL
+            ) sorted_ids),
+           '[]'::jsonb
+         )"])
+
+;;;; ------------------------------------------------- Search ----------------------------------------------------------
+
 (def ^:private base-search-spec
   {:model        :model/Card
    :attrs        {:archived                 true
@@ -1350,6 +1367,7 @@
                   :database-id              true
                   :display                  true
                   :has-temporal-dimensions  [:like :this.result_metadata "%\"temporal_unit\":%"]
+                  :non-temporal-dimension-ids (non-temporal-dimension-ids-clause)
                   :last-viewed-at           :last_used_at
                   :native-query             (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection      [:= "official" :collection.authority_level]
