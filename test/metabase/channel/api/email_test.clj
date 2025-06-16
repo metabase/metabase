@@ -10,12 +10,16 @@
    [metabase.util :as u]))
 
 (deftest humanize-error-messages-test
-  (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
-         (#'api.email/humanize-error-messages
-          {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
+  (testing "host and port"
+    (is (= {:errors {:email-smtp-host "Wrong host or port", :email-smtp-port "Wrong host or port"}}
+           (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings
+                                                {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")})))
+    (is (= {:errors {:cloud-email-smtp-host "Wrong host or port", :cloud-email-smtp-port "Wrong host or port"}}
+           (#'api.email/humanize-error-messages @#'api.email/cloud-mb-to-smtp-settings
+                                                {::email/error (Exception. "Couldn't connect to host, port: foobar, 789; timeout 1000: foobar")}))))
   (is (= {:message "Sorry, something went wrong. Please try again. Error: Some unexpected message"}
-         (#'api.email/humanize-error-messages
-          {::email/error (Exception. "Some unexpected message")})))
+         (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings
+                                              {::email/error (Exception. "Some unexpected message")})))
   (testing "Checks error classes for auth errors (#23918)"
     (let [exception (javax.mail.AuthenticationFailedException.
                      "" ;; Office365 returns auth exception with no message so we only saw "Read timed out" prior
@@ -24,7 +28,10 @@
                       (java.net.SocketTimeoutException. "Read timed out")))]
       (is (= {:errors {:email-smtp-username "Wrong username or password"
                        :email-smtp-password "Wrong username or password"}}
-             (#'api.email/humanize-error-messages {::email/error exception}))))))
+             (#'api.email/humanize-error-messages @#'api.email/mb-to-smtp-settings {::email/error exception})))
+      (is (= {:errors {:cloud-email-smtp-username "Wrong username or password"
+                       :cloud-email-smtp-password "Wrong username or password"}}
+             (#'api.email/humanize-error-messages @#'api.email/cloud-mb-to-smtp-settings {::email/error exception}))))))
 
 (defn- email-settings
   []
@@ -46,7 +53,8 @@
    :cloud-email-smtp-password (setting/get :cloud-email-smtp-password)
    :cloud-email-from-address  (setting/get :cloud-email-from-address)
    :cloud-email-from-name     (setting/get :cloud-email-from-name)
-   :cloud-email-reply-to      (setting/get :cloud-email-reply-to)})
+   :cloud-email-reply-to      (setting/get :cloud-email-reply-to)
+   :cloud-smtp-enabled?       (str (setting/get :cloud-smtp-enabled?))})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -66,7 +74,8 @@
    :cloud-email-smtp-password "gobble gobble"
    :cloud-email-from-address  "eating@hungry.com"
    :cloud-email-from-name     "Eating"
-   :cloud-email-reply-to      ["reply-to@hungry.com"]})
+   :cloud-email-reply-to      ["reply-to@hungry.com"]
+   :cloud-smtp-enabled?       "true"})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
@@ -195,7 +204,7 @@
                                       (with-redefs [email/retry-delay-ms 0]
                                         (thunk)))}]
           (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
-                                       cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
+                                       cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to cloud-smtp-enabled?]
             (testing (format "SMTP connection is valid? %b\n" success?)
               (f (fn []
                    (testing "API request"
