@@ -16,17 +16,27 @@ import type { CreateApiKeyRequest } from "metabase-types/api";
 import { SecretKeyModal } from "./SecretKeyModal";
 import { API_KEY_VALIDATION_SCHEMA } from "./utils";
 
-export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
+export const CreateApiKeyModal = ({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate?: (key: string) => void;
+}) => {
   const [createApiKey, response] = useCreateApiKeyMutation();
   const secretKey = response?.data?.unmasked_key || "";
 
   const handleSubmit = useCallback(
     async (vals: { group_id: number | null; name: string }) => {
       if (vals.group_id !== null) {
-        await createApiKey(vals as CreateApiKeyRequest).unwrap();
+        const response = await createApiKey(
+          vals as CreateApiKeyRequest,
+        ).unwrap();
+
+        onCreate?.(response.unmasked_key);
       }
     },
-    [createApiKey],
+    [createApiKey, onCreate],
   );
 
   if (response.isSuccess) {

@@ -1,7 +1,11 @@
-import { t } from "ttag";
+import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
+import { c, t } from "ttag";
 
+import { CreateApiKeyModal } from "metabase/admin/settings/components/ApiKeys/CreateApiKeyModal";
 import {
   ActionIcon,
+  Anchor,
   Button,
   Card,
   Code,
@@ -9,11 +13,18 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
 } from "metabase/ui";
 
 import { API_KEY_PLACEHOLDER } from "../constants";
 
 export const GetCodeStep = () => {
+  const [apiKey, setApiKey] = useState("");
+  const [
+    isCreateApiKeyModalOpen,
+    { open: openCreateApiKeyModal, close: closeCreateApiKeyModal },
+  ] = useDisclosure(false);
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -36,33 +47,46 @@ export const GetCodeStep = () => {
   return (
     <Stack gap="md">
       <Card p="md">
-        <Text size="lg" fw="bold" mb="md">
-          {t`Authentication`}
-        </Text>
-        <Text size="sm" c="text-medium" mb="md">
-          {/* eslint-disable-next-line no-literal-metabase-strings -- This is an example message for admins */}
-          {t`This API key is for demonstration purposes only. In production, you should create a least privileged and sandboxed API key to prevent unwanted access to your Metabase instance.`}
-        </Text>
-        <TextInput
-          value=""
-          placeholder={API_KEY_PLACEHOLDER}
-          readOnly
-          rightSection={
-            <ActionIcon
-              onClick={() => copyToClipboard(API_KEY_PLACEHOLDER)}
-              variant="subtle"
-            >
-              <Icon name="copy" size={16} />
-            </ActionIcon>
-          }
-        />
+        <Stack gap="md">
+          <Text size="lg" fw="bold">
+            {t`Authentication`}
+          </Text>
+
+          <Text size="sm" c="text-medium">
+            {/* eslint-disable-next-line no-literal-metabase-strings -- this is a message for admins */}
+            {c(`{0} is a button to create an api key`)
+              .jt`Enter an existing API key or ${(
+              <Anchor
+                component="span"
+                size="sm"
+                onClick={openCreateApiKeyModal}
+              >
+                {t`create one`}
+              </Anchor>
+            )}. API keys are only usable for local development. In production, you must use SSO authentication with sandboxing to prevent unwanted access.`}
+          </Text>
+
+          <TextInput
+            label={t`API Key`}
+            value={apiKey}
+            placeholder={API_KEY_PLACEHOLDER}
+            onChange={(e) => setApiKey(e.target.value)}
+            rightSection={
+              <Tooltip label={t`Create API key`}>
+                <ActionIcon onClick={openCreateApiKeyModal} variant="subtle">
+                  <Icon name="key" size={16} />
+                </ActionIcon>
+              </Tooltip>
+            }
+          />
+        </Stack>
       </Card>
 
       <Card p="md">
         <Text size="lg" fw="bold" mb="md">
           {t`Embed Code`}
         </Text>
-        <Stack gap="xs">
+        <Stack gap="sm">
           <Code block>{snippet}</Code>
           <Button
             leftSection={<Icon name="copy" size={16} />}
@@ -72,6 +96,13 @@ export const GetCodeStep = () => {
           </Button>
         </Stack>
       </Card>
+
+      {isCreateApiKeyModalOpen && (
+        <CreateApiKeyModal
+          onClose={closeCreateApiKeyModal}
+          onCreate={(key) => setApiKey(key)}
+        />
+      )}
     </Stack>
   );
 };
