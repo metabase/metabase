@@ -79,6 +79,22 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       cy.findByRole("option", { name: "PostgreSQL" }).click();
       fillOutDatabaseForm();
 
+      cy.log("simulate database that takes some time to fully sync");
+      const NO_OF_MIN_RETRY = 4;
+      let currentRetry = 0;
+      cy.intercept("GET", "api/database", (req) => {
+        req.on("response", (res) => {
+          currentRetry++;
+          const [postgresDb] = res.body.data;
+          if (
+            postgresDb.initial_sync_status !== "complete" ||
+            currentRetry < NO_OF_MIN_RETRY
+          ) {
+            // Simulate syncing not complete until we reach a certain number of retries
+            postgresDb.initial_sync_status = "incomplete";
+          }
+        });
+      });
       cy.button("Connect database").should("be.enabled").click();
     });
 
@@ -90,8 +106,13 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       );
     });
 
+    const SECOND = 1000;
+    // Waiting for the database sync to complete
     step()
-      .findByRole("heading", { name: "Select Tables to Embed" })
+      .findByRole("heading", {
+        name: "Select Tables to Embed",
+        timeout: 10 * SECOND,
+      })
       .should("be.visible");
 
     cy.log("Ensure the database sync status is not shown");
