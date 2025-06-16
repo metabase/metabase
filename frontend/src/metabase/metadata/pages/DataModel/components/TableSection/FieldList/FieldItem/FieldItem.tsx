@@ -45,11 +45,17 @@ export const FieldItem = ({ active, field, href }: Props) => {
   };
 
   const handleDescriptionChange = async (description: string) => {
-    if ((field.description ?? "") === description) {
+    const newDescription = description.trim();
+
+    if ((field.description ?? "") === newDescription) {
       return;
     }
 
-    const { error } = await updateField({ id, description });
+    const { error } = await updateField({
+      id,
+      // API does not accept empty strings
+      description: newDescription.length === 0 ? null : newDescription,
+    });
 
     if (!error) {
       sendToast({
