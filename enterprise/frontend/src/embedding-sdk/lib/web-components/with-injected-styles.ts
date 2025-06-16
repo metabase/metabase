@@ -31,9 +31,9 @@ export function withInjectedStyles(
           sheets.push(sheet);
         });
 
-      if (this.shadowRoot) {
-        this.shadowRoot.adoptedStyleSheets = [
-          ...this.shadowRoot.adoptedStyleSheets,
+      if (this.container) {
+        this.container.adoptedStyleSheets = [
+          ...this.container.adoptedStyleSheets,
           ...sheets,
         ];
       }
