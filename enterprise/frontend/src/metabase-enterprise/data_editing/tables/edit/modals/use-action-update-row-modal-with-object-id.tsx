@@ -2,17 +2,19 @@ import { useCallback, useEffect } from "react";
 
 import type { DatasetData } from "metabase-types/api";
 
-import type { TableEditingScope } from "../../types";
 import { getPkColumns, getRowUniqueKeyByPkIndexes } from "../utils";
 
-import { useActionUpdateRowModalFromDataset } from "./use-action-update-row-modal";
+import {
+  type UseActionUpdateRowModalFromDatasetParams,
+  useActionUpdateRowModalFromDataset,
+} from "./use-action-update-row-modal";
 
-type UseActionUpdateRowModalFromDatasetWithObjectId = {
-  currentObjectId?: string;
-  onObjectIdChange: (objectId?: string) => void;
-  datasetData?: DatasetData;
-  scope: TableEditingScope;
-};
+type UseActionUpdateRowModalFromDatasetWithObjectId =
+  UseActionUpdateRowModalFromDatasetParams & {
+    currentObjectId?: string;
+    onObjectIdChange: (objectId?: string) => void;
+    datasetData?: DatasetData;
+  };
 
 /**
  * In contrast to the `useActionUpdateRowModalFromDataset`, this hook relies on the
@@ -28,6 +30,7 @@ export function useActionUpdateRowModalFromDatasetWithObjectId({
   currentObjectId,
   datasetData,
   scope,
+  fetchOnMount,
   onObjectIdChange,
 }: UseActionUpdateRowModalFromDatasetWithObjectId) {
   const {
@@ -35,11 +38,13 @@ export function useActionUpdateRowModalFromDatasetWithObjectId({
     actionFormDescription,
     rowIndex,
     rowData,
+    refetchActionFormDescription,
     openUpdateRowModal,
     closeUpdateRowModal,
   } = useActionUpdateRowModalFromDataset({
     datasetData,
     scope,
+    fetchOnMount,
   });
 
   useEffect(() => {
@@ -82,6 +87,7 @@ export function useActionUpdateRowModalFromDatasetWithObjectId({
   return {
     opened,
     actionFormDescription,
+    refetchActionFormDescription,
     rowIndex,
     rowData,
     openUpdateRowModal: handleOpenUpdateRowModal,

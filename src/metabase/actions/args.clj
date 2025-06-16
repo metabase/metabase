@@ -153,28 +153,29 @@
   ::table.common)
 
 (defmethod normalize-action-arg-map :table.row/common
-  [_action {:keys [database table-id row] row-arg :arg :as _arg-map}]
+  [_action-kw {:keys [database table-id row delete-children] row-arg :arg :as _arg-map}]
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
-  ;; TODO fix tests that rely on fetching db_id using table_id
-  {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
-   :table-id table-id
-   :row      (update-keys (or row row-arg) u/qualified-name)})
+  ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
+  (cond-> {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
+           :table-id table-id
+           :row      (update-keys (or row row-arg) u/qualified-name)}
+    delete-children (assoc :delete-children delete-children)))
 
 ;;;; `:table.row/create-or-update` -- similar to common but with additional :key field
 
-(mr/def ::table.create-or-udpate
+(mr/def ::table.create-or-update
   [:merge
    ::table.common
    [:map [:row-key ::row]]])
 
 (defmethod action-arg-map-schema :table.row/create-or-update
   [_action]
-  ::table.create-or-udpate)
+  ::table.create-or-update)
 
 (defmethod normalize-action-arg-map :table.row/create-or-update
   [_action {:keys [database table-id row row-key] :as _arg-map}]
-  {:database database
+  {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
    :table-id table-id
    :row      (update-keys row u/qualified-name)
    :row-key  (update-keys row-key u/qualified-name)})

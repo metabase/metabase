@@ -28,6 +28,16 @@
      :type     :query
      :query    {:source-table table-id}})))
 
+(defn- list-actions
+  ([]
+   (:actions (mt/user-http-request :crowberto :get 200 "action/v2/tmp-action")))
+  ([table-id]
+   (filter #(= table-id (:table_id %)) (list-actions))))
+
+(defn- execute-action!
+  [body]
+  (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" body))
+
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
@@ -289,7 +299,7 @@
                     (mt/user-http-request :crowberto :post 400 execute-v2-url
                                           body))))
 
-          (testing "sucess with delete-children options"
+          (testing "success with delete-children options"
             (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
                                {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
                     (mt/user-http-request :crowberto :post 200 execute-v2-url
@@ -927,8 +937,7 @@
                              :model/DashboardCard dashcard {:dashboard_id   (:id dash)
                                                             :card_id        (:id model)
                                                             :visualization_settings
-                                                            {:table-id
-                                                             @test-table
+                                                            {:table-id @test-table
                                                              :editableTable.enabledActions
                                                              (let [param-maps
                                                                    ;; we might need to change these to use field ids
@@ -1153,110 +1162,121 @@
                                      (select-keys [:status :body])))))))))))))))))
 
 (deftest list-and-add-to-dashcard-test
-  (let [list-req #(mt/user-http-request-full-response
-                   (:user % :crowberto)
-                   :get
-                   "action/v2/tmp-action")]
-    (mt/with-premium-features #{:table-data-editing}
-      (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
-        (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
-                                                                  :text      [:text]
-                                                                  :int       [:int]
-                                                                  :timestamp [:timestamp]
-                                                                  :date      [:date]}
-                                                                 {:primary-key [:id]})]
-          (let [{:keys [status body]}
-                (list-req {})
-                all-actions   (:actions body)
-                table-actions (filter #(= @test-table (:table_id %)) all-actions)]
-            (is (= 200 status))
-            (testing "table actions have neg ids"
-              (is (every? neg? (map :id table-actions))))
-            (testing "one action for each crud op"
-              (is (= {"table.row/create"           1
-                      "table.row/create-or-update" 1
-                      "table.row/update"           1
-                      "table.row/delete"           1}
-                     (frequencies (map :kind table-actions)))))
-            (mt/with-temp [:model/Dashboard dash {}]
-              (let [{create-action "table.row/create"
-                     update-action "table.row/update"
-                     delete-action "table.row/delete"}
-                    (u/index-by :kind table-actions)
-                    dashboard-url (str "dashboard/" (:id dash))
-                    card-input (fn [id action]
-                                 {:id id
-                                  :size_x 1
-                                  :size_y 1
-                                  :row 0
-                                  :col 0
-                                  :action_id (:id action)})
-                    {:keys [dashcards]}
-                    (mt/user-http-request
-                     :crowberto
-                     :put
-                     dashboard-url
-                     {:dashcards [(card-input -1 create-action)
-                                  (card-input -2 update-action)
-                                  (card-input -3 delete-action)]})
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                :text      [:text]
+                                                                :int       [:int]
+                                                                :timestamp [:timestamp]
+                                                                :date      [:date]}
+                                                               {:primary-key [:id]})]
+        (let [table-actions (list-actions @test-table)]
+          (testing "table actions have neg ids"
+            (is (every? neg? (map :id table-actions))))
+          (testing "one action for each crud op"
+            (is (= {"table.row/create"           1
+                    "table.row/create-or-update" 1
+                    "table.row/update"           1
+                    "table.row/delete"           1}
+                   (frequencies (map :kind table-actions)))))
+          (mt/with-temp [:model/Dashboard dash {}]
+            (let [{create-action "table.row/create"
+                   upsert-action "table.row/create-or-update"
+                   update-action "table.row/update"
+                   delete-action "table.row/delete"} (u/index-by :kind table-actions)
+                  dashboard-url (str "dashboard/" (:id dash))
+                  card-input (fn [id action]
+                               {:id id
+                                :size_x 1
+                                :size_y 1
+                                :row 0
+                                :col 0
+                                :action_id (:id action)})
+                  {:keys [dashcards]} (mt/user-http-request
+                                       :crowberto
+                                       :put
+                                       dashboard-url
+                                       {:dashcards [(card-input -1 create-action)
+                                                    (card-input -2 update-action)
+                                                    (card-input -3 delete-action)
+                                                    (card-input -4 upsert-action)]})
 
-                    exec-url #(str dashboard-url "/dashcard/" (:id %) "/execute")
+                  exec-url #(str dashboard-url "/dashcard/" (:id %) "/execute")
 
-                    prefill-values
-                    #(mt/user-http-request
-                      :crowberto
-                      :get
-                      (exec-url %1)
-                      :parameters (json/encode %2))
+                  prefill-values #(mt/user-http-request
+                                   :crowberto
+                                   :get
+                                   (exec-url %1)
+                                   :parameters (json/encode %2))
 
-                    execute!
-                    #(mt/user-http-request
-                      :crowberto
-                      :post
-                      (exec-url %1)
-                      {:parameters %2})
+                  execute! #(mt/user-http-request
+                             :crowberto
+                             :post
+                             200
+                             (exec-url %1)
+                             {:parameters %2})
 
-                    {create-card "table.row/create"
-                     update-card "table.row/update"
-                     delete-card "table.row/delete"}
-                    (u/index-by (comp :kind :action) dashcards)]
+                  {create-card "table.row/create"
+                   update-card "table.row/update"
+                   upsert-card "table.row/create-or-update"
+                   delete-card "table.row/delete"}
+                  (u/index-by (comp :kind :action) dashcards)]
 
-                (testing "create"
-                  (testing "prefill does not crash"
-                    (is (= {} (prefill-values create-card {}))))
-                  (execute! create-card
-                            {:text      "hello, world!"
-                             :int       42
-                             :timestamp "2025-05-12 14:32:16"
-                             :date      "2025-05-12"})
-                  (execute! create-card
-                            {:text      "seeya, world!"})
-                  (is (= [[1 "hello, world!" 42 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
-                          [2 "seeya, world!" nil nil                   nil]]
-                         (->> (table-rows @test-table)
-                              (sort-by first)))))
+              (testing "create"
+                (testing "prefill does not crash"
+                  (is (= {} (prefill-values create-card {}))))
+                (execute! create-card
+                          {:text      "hello, world!"
+                           :int       42
+                           :timestamp "2025-05-12 14:32:16"
+                           :date      "2025-05-12"})
+                (execute! create-card
+                          {:text      "seeya, world!"})
+                (is (= [[1 "hello, world!" 42 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                        [2 "seeya, world!" nil nil                   nil]]
+                       (->> (table-rows @test-table)
+                            (sort-by first)))))
 
+              (testing "update"
+                (testing "prefill does not crash"
+                  (is (= {} (prefill-values update-card {})))
+                  (is (= {} (prefill-values update-card {:id 1}))))
+                (execute! update-card
+                          {:id 1
+                           :int 43})
+                (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                        [2 "seeya, world!" nil nil                   nil]]
+                       (->> (table-rows @test-table)
+                            (sort-by first)))))
+
+              (testing "create-or-update"
                 (testing "update"
-                  (testing "prefill does not crash"
-                    (is (= {} (prefill-values update-card {})))
-                    (is (= {} (prefill-values update-card {:id 1}))))
-                  (execute! update-card
-                            {:id 1
-                             :int 43})
-                  (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                  (execute! upsert-card {:id 1
+                                         :int 44})
+                  (is (= [[1 "hello, world!" 44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
                           [2 "seeya, world!" nil nil                   nil]]
                          (->> (table-rows @test-table)
                               (sort-by first)))))
-
-                (testing "delete"
-                  (testing "prefill does not crash"
-                    (is (= {} (prefill-values delete-card {})))
-                    (is (= {} (prefill-values delete-card {:id 2}))))
-                  (execute! delete-card {:id 2})
-                  (is (= [[1 "hello, world!" 43 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
+                (testing "insert"
+                  (execute! upsert-card {:id        3
+                                         :text      "hello, world!!!"
+                                         :int       45})
+                  (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                          [2 "seeya, world!"   nil nil                   nil]
+                          [3 "hello, world!!!" 45 nil                   nil]]
                          (->> (table-rows @test-table)
-                              (sort-by first)))))))))))))
+                              (sort-by first))))))
+
+              (testing "delete"
+                (testing "prefill does not crash"
+                  (is (= {} (prefill-values delete-card {})))
+                  (is (= {} (prefill-values delete-card {:id 2}))))
+                (execute! delete-card {:id 3})
+                (is (= [[1 "hello, world!" 44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                        [2 "seeya, world!"   nil nil                   nil]]
+                       (->> (table-rows @test-table)
+                            (sort-by first))))))))))))
 
 (deftest tmp-modal-saved-action-test
   (mt/with-premium-features #{:table-data-editing}

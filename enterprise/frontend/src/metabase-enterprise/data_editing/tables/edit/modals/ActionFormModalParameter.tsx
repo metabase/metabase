@@ -5,7 +5,7 @@ import { Group, Icon, type IconName, Text } from "metabase/ui";
 
 import { ActionFormInputType, type ActionFormParameter } from "../../types";
 
-import S from "./EditingBaseRowModal.module.css";
+import S from "./ActionFormModal.css";
 
 type ActionFormModalParameterProps = PropsWithChildren<{
   parameter: ActionFormParameter;

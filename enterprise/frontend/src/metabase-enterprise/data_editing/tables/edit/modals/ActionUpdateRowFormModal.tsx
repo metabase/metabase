@@ -12,9 +12,9 @@ import type {
 } from "../../types";
 import { ParameterActionInput } from "../inputs_v2/ParameterActionInput";
 
+import S from "./ActionFormModal.css";
 import { ActionFormModalParameter } from "./ActionFormModalParameter";
 import { DeleteRowConfirmationModal } from "./DeleteRowConfirmationModal";
-import S from "./EditingBaseRowModal.module.css";
 
 interface ActionUpdateRowFormModalProps {
   opened: boolean;

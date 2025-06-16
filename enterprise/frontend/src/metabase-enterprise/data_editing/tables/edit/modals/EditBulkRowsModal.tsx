@@ -22,8 +22,8 @@ import type {
 import { EditingBodyCellConditional } from "../inputs";
 import type { EditableTableColumnConfig } from "../use-editable-column-config";
 
+import S from "./ActionFormModal.css";
 import { DeleteBulkRowConfirmationModal } from "./DeleteBulkRowConfirmationModal";
-import S from "./EditingBaseRowModal.module.css";
 import { useEditingModalOrderedVisibleDatasetColumns } from "./use-editing-modal-ordered-dataset-columns";
 
 interface EditBulkRowsModalProps {
