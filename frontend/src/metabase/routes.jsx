@@ -28,8 +28,8 @@ import { UserCollectionList } from "metabase/containers/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -205,7 +205,7 @@ export const getRoutes = (store) => {
           <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
-            component={DashboardAppConnected}
+            component={DashboardApp}
           >
             <ModalRoute
               path="move"
@@ -288,10 +288,7 @@ export const getRoutes = (store) => {
 
           {/* INDIVIDUAL DASHBOARDS */}
 
-          <Route
-            path="/auto/dashboard/*"
-            component={AutomaticDashboardAppConnected}
-          />
+          <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>

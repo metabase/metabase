@@ -114,16 +114,17 @@ export const CustomGeoJSONWidget = () => {
       <div className={cx(CS.flex, CS.justifyBetween)}>
         <SettingHeader
           id={settingDetails.key}
-          title={t`Custom Maps`}
+          title={t`Custom maps`}
           description={t`Add your own GeoJSON files to enable different region map visualizations`}
         />
         {!map && (
-          <button
+          <Button
             className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary, CS.ml1)}
             onClick={handleAddMap}
+            variant="filled"
           >
             {t`Add a map`}
-          </button>
+          </Button>
         )}
       </div>
       <ListMaps
@@ -186,7 +187,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
                   className={CS.cursorPointer}
                   onClick={() => onEditMap(map, mapId)}
                 >
-                  <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+                  <Ellipsified style={{ maxWidth: 400 }}>{map.url}</Ellipsified>
                 </td>
                 <td className={AdminS.TableActions}>
                   <Button

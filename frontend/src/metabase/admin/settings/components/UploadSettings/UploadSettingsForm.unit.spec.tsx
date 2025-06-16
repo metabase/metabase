@@ -145,7 +145,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
   it("should render a description", async () => {
     setup();
     expect(
-      screen.getByText("Allow people to upload data to Collections"),
+      screen.getByText("Allow people to upload data to collections"),
     ).toBeInTheDocument();
   });
 

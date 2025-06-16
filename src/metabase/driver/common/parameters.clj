@@ -26,6 +26,16 @@
   [x]
   (instance? FieldFilter x))
 
+(p.types/defrecord+ TemporalUnit [name value]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->TemporalUnit) (into {} this))))
+
+(defn TemporalUnit?
+  "Is `x` an instance of the `TemporalUnit` record type?"
+  [x]
+  (instance? TemporalUnit x))
+
 ;; A "ReferencedCardQuery" parameter expands to the native query of the referenced card.
 ;;
 ;; `card-id` is the ID of the Card instance whose query is the value for this parameter.
@@ -88,17 +98,27 @@
   (pretty [_]
     (list (pretty/qualify-symbol-for-*ns* `->Param) k)))
 
+(p.types/defrecord+ FunctionParam [function-name args]
+  pretty/PrettyPrintable
+  (pretty [_]
+    (list (pretty/qualify-symbol-for-*ns* `->FunctionParam) function-name args)))
+
 (p.types/defrecord+ Optional [args]
   pretty/PrettyPrintable
   (pretty [_]
     (cons (pretty/qualify-symbol-for-*ns* `->Optional) args)))
 
-;; `Param?` and `Optional?` exist mostly so you don't have to try to import the classes from this namespace which can
-;; cause problems if the ns isn't loaded first
+;; `Param?`, `FunctionParam?`, and `Optional?` exist mostly so you don't have to try to import the classes from this
+;; namespace which can cause problems if the ns isn't loaded first
 (defn Param?
   "Is `x` an instance of the `Param` record type?"
   [x]
   (instance? Param x))
+
+(defn FunctionParam?
+  "Is `x` an instance of the `FunctionParam` record type?"
+  [x]
+  (instance? FunctionParam x))
 
 (defn Optional?
   "Is `x` an instance of the `Optional` record type?"
