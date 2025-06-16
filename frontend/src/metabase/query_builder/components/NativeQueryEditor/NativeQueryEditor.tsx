@@ -125,7 +125,6 @@ interface NativeQueryEditorState {
   initialHeight: number;
   isSelectedTextPopoverOpen: boolean;
   mobileShowParameterList: boolean;
-  isVisibilityTogglerOpen: boolean;
   isCollapsing: boolean;
 }
 
@@ -141,7 +140,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
       mobileShowParameterList: false,
-      isVisibilityTogglerOpen: props.isNativeEditorOpen,
       isCollapsing: false,
     };
   }
@@ -276,65 +274,65 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             setDatasetQuery={this.props.setDatasetQuery}
           />
         )}
-        <ResizableBox
-          ref={this.resizeBox}
-          height={this.state.initialHeight}
-          className={cx(
-            S.resizableBox,
-            isNativeEditorOpen && S.open,
-            this.state.isCollapsing && S.collapsing,
-          )}
-          minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-          axis="y"
-          handle={dragHandle}
-          resizeHandles={["s"]}
-          {...resizableBoxProps}
-          onResizeStop={(e, data) => {
-            this.props.handleResize();
-            if (typeof resizableBoxProps?.onResizeStop === "function") {
-              resizableBoxProps.onResizeStop(e, data);
-            }
-            const size = data.size;
-
-            if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
-              // Start animation to collapse
-              this.setState({ isCollapsing: true });
-              this.props.setIsNativeEditorOpen?.(false);
-            }
-          }}
+        <div
+          className={S.editorWrapper}
+          onTransitionEnd={this.handleTransitionEnd}
         >
-          <Flex
-            w="100%"
-            flex="1"
-            className={S.editorWrapper}
-            onTransitionEnd={this.handleTransitionEnd}
-          >
-            <CodeMirrorEditor
-              ref={this.editor}
-              query={question.query()}
-              readOnly={readOnly}
-              highlightedLineNumbers={highlightedLineNumbers}
-              onChange={this.onChange}
-              onRunQuery={runQuery}
-              onSelectionChange={setNativeEditorSelectedRange}
-              onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-              onRightClickSelection={this.handleRightClickSelection}
-            />
-
-            {hasEditingSidebar && !readOnly && (
-              <NativeQueryEditorRunButton
-                cancelQuery={this.props.cancelQuery}
-                isResultDirty={this.props.isResultDirty}
-                isRunnable={this.props.isRunnable}
-                isRunning={this.props.isRunning}
-                nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                runQuery={this.props.runQuery}
-              />
+          <ResizableBox
+            ref={this.resizeBox}
+            height={this.state.initialHeight}
+            className={cx(
+              S.resizableBox,
+              isNativeEditorOpen && S.open,
+              this.state.isCollapsing && S.collapsing,
             )}
-          </Flex>
+            minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
+            axis="y"
+            handle={dragHandle}
+            resizeHandles={["s"]}
+            {...resizableBoxProps}
+            onResizeStop={(e, data) => {
+              this.props.handleResize();
+              if (typeof resizableBoxProps?.onResizeStop === "function") {
+                resizableBoxProps.onResizeStop(e, data);
+              }
+              const size = data.size;
 
-          <NativeQueryValidationError query={query.question().query()} />
-        </ResizableBox>
+              if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
+                // Start animation to collapse
+                this.setState({ isCollapsing: true });
+                this.props.setIsNativeEditorOpen?.(false);
+              }
+            }}
+          >
+            <Flex w="100%" flex="1">
+              <CodeMirrorEditor
+                ref={this.editor}
+                query={question.query()}
+                readOnly={readOnly}
+                highlightedLineNumbers={highlightedLineNumbers}
+                onChange={this.onChange}
+                onRunQuery={runQuery}
+                onSelectionChange={setNativeEditorSelectedRange}
+                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                onRightClickSelection={this.handleRightClickSelection}
+              />
+
+              {hasEditingSidebar && !readOnly && (
+                <NativeQueryEditorRunButton
+                  cancelQuery={this.props.cancelQuery}
+                  isResultDirty={this.props.isResultDirty}
+                  isRunnable={this.props.isRunnable}
+                  isRunning={this.props.isRunning}
+                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                  runQuery={this.props.runQuery}
+                />
+              )}
+            </Flex>
+
+            <NativeQueryValidationError query={query.question().query()} />
+          </ResizableBox>
+        </div>
 
         <RightClickPopover
           isOpen={this.state.isSelectedTextPopoverOpen}
