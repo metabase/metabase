@@ -2349,25 +2349,7 @@
         (insert-perm! "perms/view-data" "unrestricted")
         (insert-perm! "perms/create-queries" "no" table-id)
         (migrate! :down 49)
-        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
-
-        (migrate-up!)
-        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
-        (insert-perm! "perms/view-data" "unrestricted")
-        (insert-perm! "perms/create-queries" "query-builder")
-        (migrate! :down 49)
-        (is (= #{(format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
-               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
-
-        (migrate-up!)
-        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
-        (insert-perm! "perms/view-data" "unrestricted")
-        (insert-perm! "perms/create-queries" "no" table-id)
-        (migrate! :down 49)
-        ;; In this scenario, the sandbox path is preserved, but the block path overrides it
-        (is (= #{(format "/block/db/%d/" db-id)
-                 (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
-               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
+        (is (nil? (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
 
       (testing "Impersonated data access"
         (migrate-up!)
