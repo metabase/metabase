@@ -377,23 +377,22 @@ export class AccordionList<
     return searchResults.reduce((acc, curr) => acc || curr);
   };
 
-  getRowsCached = (
-    searchFilter: (item: TItem) => boolean,
-    searchable:
-      | boolean
-      | ((section: TSection) => boolean | undefined)
-      | undefined,
-    sections: TSection[],
-    alwaysTogglable: boolean,
-    alwaysExpanded: boolean,
-    hideSingleSectionTitle: boolean,
-    itemIsSelected: (item: TItem, index: number) => boolean | undefined,
-    openSection: number | null,
-    _globalSearch: boolean,
-    searchText: string,
-  ): Row<TItem, TSection>[] => {
+  getRows = (): Row<TItem, TSection>[] => {
+    const {
+      alwaysTogglable = false,
+      alwaysExpanded = false,
+      hideSingleSectionTitle = false,
+      itemIsSelected = () => false,
+      searchable = (section: TSection) =>
+        section?.items && section.items.length > 10,
+      sections,
+    } = this.props;
+    const { searchText } = this.state;
+
+    const openSection = this.getOpenSection();
+
     // if any section is searchable just enable a global search
-    let globalSearch = _globalSearch;
+    let globalSearch = this.props.globalSearch ?? false;
 
     const sectionIsExpanded = (sectionIndex: number) =>
       alwaysExpanded ||
@@ -415,7 +414,7 @@ export class AccordionList<
         if (
           !searchable ||
           !globalSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
+          this.checkSectionHasItemsMatchingSearch(section, this.searchFilter) ||
           section.type === "action"
         ) {
           if (section.type === "action") {
@@ -461,7 +460,7 @@ export class AccordionList<
         !section.loading
       ) {
         for (const [itemIndex, item] of section.items.entries()) {
-          if (searchFilter(item)) {
+          if (this.searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
             if (itemIsSelected(item, itemIndex)) {
               this._initialSelectedRowIndex = rows.length;
@@ -511,36 +510,6 @@ export class AccordionList<
 
     return rows;
   };
-
-  getRows(): Row<TItem, TSection>[] {
-    const {
-      sections,
-      searchable = (section: TSection) =>
-        section?.items && section.items.length > 10,
-      alwaysTogglable = false,
-      alwaysExpanded = false,
-      hideSingleSectionTitle = false,
-      itemIsSelected = () => false,
-      globalSearch = false,
-    } = this.props;
-
-    const { searchText } = this.state;
-
-    const openSection = this.getOpenSection();
-
-    return this.getRowsCached(
-      this.searchFilter,
-      searchable,
-      sections,
-      alwaysTogglable,
-      alwaysExpanded,
-      hideSingleSectionTitle,
-      itemIsSelected,
-      openSection,
-      globalSearch,
-      searchText,
-    );
-  }
 
   isVirtualized = () => this.props.maxHeight !== Infinity;
 
