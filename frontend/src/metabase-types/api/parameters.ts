@@ -62,6 +62,7 @@ export interface ParameterValuesConfig {
   values_query_type?: ValuesQueryType;
   values_source_type?: ValuesSourceType;
   values_source_config?: ValuesSourceConfig;
+  temporal_units?: TemporalUnit[];
 }
 
 export type ValuesQueryType = "list" | "search" | "none";

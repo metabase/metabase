@@ -13,7 +13,6 @@ interface SdkProblemOptions {
   isEnabled: boolean;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
-  isJwtProviderUriSet?: boolean;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
@@ -58,13 +57,7 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const {
-    isEnabled,
-    hasTokenFeature,
-    authConfig,
-    isDevelopmentMode,
-    isJwtProviderUriSet,
-  } = options;
+  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode } = options;
   const { apiKey } = authConfig;
 
   const isSSO = !apiKey;
@@ -86,7 +79,6 @@ export function getSdkUsageProblem(
       isApiKey,
       isLocalhost,
       isEnabled,
-      isJwtProviderUriSet,
       isDevelopmentMode,
     })
       .with({ isDevelopmentMode: true }, () =>
