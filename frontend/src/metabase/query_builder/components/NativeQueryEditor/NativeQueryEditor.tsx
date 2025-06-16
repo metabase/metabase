@@ -124,7 +124,6 @@ type Props = OwnProps &
 interface NativeQueryEditorState {
   initialHeight: number;
   isSelectedTextPopoverOpen: boolean;
-  mobileShowParameterList: boolean;
   isCollapsing: boolean;
 }
 
@@ -139,7 +138,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     this.state = {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
-      mobileShowParameterList: false,
       isCollapsing: false,
     };
   }
