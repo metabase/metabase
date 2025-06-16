@@ -311,11 +311,11 @@
                              ;; From a semantic point of view, this hack still sucks. It'll be fixed by WRK-483.
                              dashcard-id (if (pos-int? dashcard-id) dashcard-id (:dashcard-id scope))
                              dashcard    (api/check-404 (some->> dashcard-id (t2/select-one [:model/DashboardCard :visualization_settings])))
-                             ;; TODO: this should belongs to our configuration
-                             actions     (-> dashcard :visualization_settings :editableTable.enabledActions)
+                             ;; TODO: this should belong to our configuration
+                             actions     (-> dashcard :visualization_settings ((some-fn :editableTable.enabledActions :table.enabled_actions)))
                              viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
                              inner-id    (:actionId viz-action)
-                             unified     (fetch-unified-action scope inner-id)
+                             inner       (fetch-unified-action scope inner-id)
                              action-type (:actionType viz-action "data-grid/row-action")
                              mapping     (:mapping viz-action)
                              ;; TODO we should do this *later* because it's lossy - we lose the configured ordering.
@@ -326,7 +326,7 @@
                          (case action-type
                            ("data-grid/built-in"
                             "data-grid/row-action")
-                           {:inner-action unified
+                           {:inner-action inner
                             :mapping      mapping
                             :param-map    param-map
                             :dashcard-id  dashcard-id
