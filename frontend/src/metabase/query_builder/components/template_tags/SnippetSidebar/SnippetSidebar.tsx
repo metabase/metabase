@@ -21,6 +21,7 @@ import type {
   Collection,
   CollectionId,
   NativeQuerySnippet,
+  User,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -44,6 +45,8 @@ export interface SnippetSidebarProps {
   setSnippetCollectionId: (
     collectionId: CollectionId | null | undefined,
   ) => void;
+  // it is used
+  user?: User;
 }
 
 class SnippetSidebarInner extends Component<SnippetSidebarProps> {
