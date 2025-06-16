@@ -800,40 +800,35 @@
                                              {:expression (lib/concat "2025-05-15T22:20:01" "")
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}
+                                                          "2025-05-15 22:20:01"}}
                                              {:expression (lib/concat "2025-05-15 22:20:01" "")
                                               :mode nil
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}
+                                                          "2025-05-15 22:20:01"}}
 
                                              ;; iso mode
                                              {:expression (lib/concat "2025-05-15T22:20:01" "")
                                               :mode :iso
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}
+                                                          "2025-05-15 22:20:01"}}
                                              {:expression (lib/concat "2025-05-15 22:20:01" "")
                                               :mode :iso
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}
+                                                          "2025-05-15 22:20:01"}}
 
                                              ;; simple mode
                                              {:expression (lib/concat "20250515222001" "")
                                               :mode :simple
                                               :expected #{"2025-05-15T22:20:01Z"
-                                                          "2025-05-15 22:20:01"}
-                                              :limit 1}]]]
-              {:keys [expression mode expected limit]} expressions]
+                                                          "2025-05-15 22:20:01"}}]]]
+              {:keys [expression mode expected]} expressions]
         (testing (str "Parsing " expression " as datetime with " (or mode "no mode") ".")
           (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
                           (lib/with-fields [(lib.metadata/field mp (mt/id table :id))])
                           (lib/expression "DATETIME_PARSE" (if mode
                                                              (lib/datetime expression mode)
                                                              (lib/datetime expression)))
-                          (lib/limit limit))
+                          (lib/limit 1))
                 result (-> query qp/process-query)
                 cols (mt/cols result)
                 rows (mt/rows result)]
