@@ -145,13 +145,12 @@
             {:update [:metabase_field]
              :set    {:fk_target_field_id nil
                       :semantic_type      nil}
-             :where  [:and
-                      [:in :id {:select [:fk_f.id]
-                                :from   [[:metabase_field :fk_f]]
-                                :join   [[:metabase_table :fk_t] [:= :fk_f.table_id :fk_t.id]
-                                         [:metabase_field :pk_f] [:= :fk_f.fk_target_field_id :pk_f.id]
-                                         [:metabase_table :pk_t] [:= :pk_f.table_id :pk_t.id]]
-                                :where  where-clause}]]}
+             :where  [:in :id {:select [:fk_f.id]
+                               :from   [[:metabase_field :fk_f]]
+                               :join   [[:metabase_table :fk_t] [:= :fk_f.table_id :fk_t.id]
+                                        [:metabase_field :pk_f] [:= :fk_f.fk_target_field_id :pk_f.id]
+                                        [:metabase_table :pk_t] [:= :pk_f.table_id :pk_t.id]]
+                               :where  where-clause}]}
 
             {:update [:metabase_field :fk_f]
              :set    {:fk_target_field_id nil
