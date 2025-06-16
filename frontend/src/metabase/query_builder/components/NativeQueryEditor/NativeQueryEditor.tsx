@@ -24,6 +24,7 @@ import SnippetFormModal from "metabase/query_builder/components/template_tags/Sn
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -49,7 +50,11 @@ import {
   THRESHOLD_FOR_AUTO_CLOSE,
 } from "./constants";
 import type { SelectionRange, SidebarFeatures } from "./types";
-import { calcInitialEditorHeight } from "./utils";
+import {
+  calcInitialEditorHeight,
+  formatQuery,
+  getEditorLineHeight,
+} from "./utils";
 
 type OwnProps = {
   question: Question;
@@ -201,6 +206,22 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     }
   };
 
+  handleFormatQuery = async () => {
+    const { question } = this.props;
+    const query = question.query();
+    const engine = Lib.engine(query);
+    const queryText = Lib.rawNativeQuery(query);
+
+    if (!engine) {
+      // no engine found, do nothing
+      return;
+    }
+
+    const formattedQuery = await formatQuery(queryText, engine);
+    this.onChange(formattedQuery);
+    this.focus();
+  };
+
   render() {
     const {
       canChangeDatabase = true,
@@ -270,6 +291,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             toggleEditor={this.props.toggleEditor}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
+            onFormatQuery={this.handleFormatQuery}
           />
         )}
         <div
