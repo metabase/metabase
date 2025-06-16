@@ -73,61 +73,61 @@
 (def static-weights
   "Strength of the various scorers."
   {:default
-   {:pinned              0
-    :bookmarked          1
-    :recency             1
-    :user-recency        5
-    :dashboard           0
-    :model               2
+   {:pinned 0
+    :bookmarked 1
+    :recency 1
+    :user-recency 5
+    :dashboard 0
+    :model 2
     :official-collection 1
-    :verified            1
-    :view-count          2
-    :text                5
-    :mine                1
-    :exact               5
-    :prefix              0}
+    :verified 1
+    :view-count 2
+    :text 5
+    :mine 1
+    :exact 5
+    :prefix 0}
    :command-palette
-   {:prefix               5
-    :model/collection     1
-    :model/dashboard      1
-    :model/metric         1
-    :model/dataset        0.8
-    :model/table          0.8
+   {:prefix 5
+    :model/collection 1
+    :model/dashboard 1
+    :model/metric 1
+    :model/dataset 0.8
+    :model/table 0.8
     :model/indexed-entity 0.5
-    :model/database       0.5
-    :model/question       0}
+    :model/database 0.5
+    :model/question 0}
    :entity-picker
-   {:model/table    1
-    :model/dataset  1
-    :model/metric   1
+   {:model/table 1
+    :model/dataset 1
+    :model/metric 1
     :model/question 0}})
 
 (def ^:private FilterDef
   "A relaxed definition, capturing how we can write the filter - with some fields omitted."
   [:map {:closed true}
-   [:key                               :keyword]
-   [:type                              :keyword]
-   [:field            {:optional true} :string]
-   [:context-key      {:optional true} :keyword]
+   [:key :keyword]
+   [:type :keyword]
+   [:field {:optional true} :string]
+   [:context-key {:optional true} :keyword]
    [:supported-value? {:optional true} ifn?]
    [:required-feature {:optional true} :keyword]])
 
 (def ^:private Filter
   "A normalized representation, for the application to leverage."
   [:map {:closed true}
-   [:key              :keyword]
-   [:type             :keyword]
-   [:field            :string]
-   [:context-key      :keyword]
+   [:key :keyword]
+   [:type :keyword]
+   [:field :string]
+   [:context-key :keyword]
    [:supported-value? ifn?]
    [:required-feature [:maybe :keyword]]])
 
 (mu/defn- build-filter :- Filter
   [{k :key t :type :keys [context-key field supported-value? required-feature]} :- FilterDef]
-  {:key              k
-   :type             (keyword "metabase.search.filter" (name t))
-   :field            (or field (u/->snake_case_en (name k)))
-   :context-key      (or context-key k)
+  {:key k
+   :type (keyword "metabase.search.filter" (name t))
+   :field (or field (u/->snake_case_en (name k)))
+   :context-key (or context-key k)
    :supported-value? (or supported-value? (constantly true))
    :required-feature required-feature})
 
@@ -139,26 +139,27 @@
 (def filters
   "Specifications for the optional search filters."
   (build-filters
-   {:archived                 {:type :single-value, :context-key :archived?}
+   {:archived {:type :single-value, :context-key :archived?}
     ;; TODO dry this alias up with the index hydration code
-    :created-at               {:type :date-range, :field "model_created_at"}
-    :creator-id               {:type :list, :context-key :created-by}
+    :created-at {:type :date-range, :field "model_created_at"}
+    :creator-id {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
-    :database-id              {:type :single-value, :context-key :table-db-id}
-    :display                  {:type :list}
-    :exclude-display          {:type :single-value-exclude, :context-key :exclude-display :field "display"}
-    :has-temporal-dimensions  {:type :single-value, :context-key :has-temporal-dimensions?}
-    :id                       {:type :list, :context-key :ids, :field "model_id"}
-    :last-edited-at           {:type :date-range}
-    :last-editor-id           {:type :list, :context-key :last-edited-by}
-    :native-query             {:type :native-query, :context-key :search-native-query}
-    :verified                 {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
+    :database-id {:type :single-value, :context-key :table-db-id}
+    :display {:type :list}
+    :exclude-display {:type :single-value-exclude, :context-key :exclude-display :field "display"}
+    :has-temporal-dimensions {:type :single-value, :context-key :has-temporal-dimensions?}
+    :id {:type :list, :context-key :ids, :field "model_id"}
+    :last-edited-at {:type :date-range}
+    :last-editor-id {:type :list, :context-key :last-edited-by}
+    :native-query {:type :native-query, :context-key :search-native-query}
+    :non-temporal-dimension-ids {:type :field-id-list, :context-key :required-non-temporal-dimension-ids, :field "non_temporal_dimension_ids"}
+    :verified {:type :single-value, :supported-value? #{true}, :required-feature :content-verification}}))
 
 (def ^:private filter-defaults-by-context
-  {:default         {:archived               false
+  {:default {:archived false
                      ;; keys will typically those in [[filters]], but this is an atypical filter.
                      ;; we plan to generify it, by precalculating it on the index.
-                     :personal-collection-id "all"}
+             :personal-collection-id "all"}
    :command-palette {:personal-collection-id "exclude-others"}})
 
 (defn filter-default
@@ -173,7 +174,7 @@
 (defn weights
   "Strength of the various scorers. Copied from metabase.search.in-place.scoring, but allowing divergence."
   [context]
-  (let [context   (or context :default)
+  (let [context (or context :default)
         overrides (search.settings/experimental-search-weight-overrides)]
     (if (= :all context)
       (merge-with merge static-weights overrides)
@@ -204,7 +205,7 @@
 
   (column-with-model-alias \"card\" :id) => :card.id)"
   [model-string :- ms/KeywordOrString
-   column       :- ms/KeywordOrString]
+   column :- ms/KeywordOrString]
   (keyword (str (name (model->alias model-string)) "." (name column))))
 
 (def SearchableModel
@@ -219,40 +220,41 @@
    ;;
    ;; required
    ;;
-   [:archived?          [:maybe :boolean]]
-   [:current-user-id    pos-int?]
-   [:is-superuser?      :boolean]
+   [:archived? [:maybe :boolean]]
+   [:current-user-id pos-int?]
+   [:is-superuser? :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
-   [:context               {:optional true} [:maybe :keyword]]
+   [:context {:optional true} [:maybe :keyword]]
    [:is-impersonated-user? {:optional true} [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
+   [:is-sandboxed-user? {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
 
-   [:model-ancestors?   :boolean]
-   [:models             [:set SearchableModel]]
+   [:model-ancestors? :boolean]
+   [:models [:set SearchableModel]]
    ;; TODO this is optional only for tests, clean those up!
-   [:search-engine      {:optional true} keyword?]
-   [:search-string      {:optional true} [:maybe ms/NonBlankString]]
+   [:search-engine {:optional true} keyword?]
+   [:search-string {:optional true} [:maybe ms/NonBlankString]]
    ;;
    ;; optional
    ;;
-   [:created-at                          {:optional true} ms/NonBlankString]
-   [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:display                             {:optional true} [:set {:min 1} ms/NonBlankString]]
-   [:exclude-display                     {:optional true} [:maybe ms/NonBlankString]]
+   [:created-at {:optional true} ms/NonBlankString]
+   [:created-by {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:display {:optional true} [:set {:min 1} ms/NonBlankString]]
+   [:exclude-display {:optional true} [:maybe ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
-   [:has-temporal-dimensions?            {:optional true} [:maybe :boolean]]
-   [:last-edited-at                      {:optional true} ms/NonBlankString]
-   [:last-edited-by                      {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:limit-int                           {:optional true} ms/Int]
-   [:offset-int                          {:optional true} ms/Int]
-   [:search-native-query                 {:optional true} true?]
-   [:table-db-id                         {:optional true} ms/PositiveInt]
+   [:has-temporal-dimensions? {:optional true} [:maybe :boolean]]
+   [:last-edited-at {:optional true} ms/NonBlankString]
+   [:last-edited-by {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:limit-int {:optional true} ms/Int]
+   [:offset-int {:optional true} ms/Int]
+   [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:search-native-query {:optional true} true?]
+   [:table-db-id {:optional true} ms/PositiveInt]
    ;; true to search for verified items only, nil will return all items
-   [:verified                            {:optional true} true?]
-   [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:include-dashboard-questions?        {:optional true} :boolean]
-   [:include-metadata?                   {:optional true} :boolean]])
+   [:verified {:optional true} true?]
+   [:ids {:optional true} [:set {:min 1} ms/PositiveInt]]
+   [:include-dashboard-questions? {:optional true} :boolean]
+   [:include-metadata? {:optional true} :boolean]])
 
 (defmulti column->string
   "Turn a complex column into a string"

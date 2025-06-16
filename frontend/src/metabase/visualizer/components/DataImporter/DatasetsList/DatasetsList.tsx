@@ -167,6 +167,10 @@ export function DatasetsList({
         //   "sankey",
         // ],
         has_temporal_dimensions: timeDimensions.length > 0,
+        required_non_temporal_dimension_ids: otherDimensions
+          .map(dim => dim.id)
+          .filter(id => id != null)
+          .sort((a, b) => a - b),
         // visualization_context: {
         //   display: visualizationType || null,
         //   dimensions: {

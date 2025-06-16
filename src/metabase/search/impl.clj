@@ -269,6 +269,7 @@
    [:include-dashboard-questions?        {:optional true} [:maybe boolean?]]
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
+   [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]
    [:exclude-display                     {:optional true} [:maybe ms/NonBlankString]]])
 
@@ -284,6 +285,7 @@
            display
            exclude-display
            has-temporal-dimensions?
+           required-non-temporal-dimension-ids
            filter-items-in-personal-collection
            ids
            is-impersonated-user?
@@ -340,6 +342,7 @@
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
                  (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?)
+                 (seq required-non-temporal-dimension-ids)   (assoc :required-non-temporal-dimension-ids required-non-temporal-dimension-ids)
                  (seq ids)                                   (assoc :ids ids))]
     (when (and (seq ids)
                (not= (count models) 1))

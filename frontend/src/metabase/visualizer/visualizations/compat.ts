@@ -72,6 +72,8 @@ export function groupColumnsBySuitableVizSettings(
     return { "*": columns };
   }
 
+  console.log("TSP ownColumns: ", ownColumns);
+
   if (isCartesianChart(display)) {
     const hasCompatibleDimensions =
       checkDimensionCompatibilityForCartesianCharts(ownColumns, columns);

@@ -19,7 +19,7 @@
 
 (defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
-    :all      true
+    :all true
     :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
 
 (def ^:private context-key->filter
@@ -68,11 +68,11 @@
                      (params.dates/date-string->range dt-val {:inclusive-end? false})
                      (catch Exception _e
                        (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
-        start      (some-> (:start date-range) u.date/parse)
-        end        (some-> (:end date-range) u.date/parse)
-        dt-col     (if (some #(instance? LocalDate %) [start end])
-                     [:cast dt-col :date]
-                     dt-col)]
+        start (some-> (:start date-range) u.date/parse)
+        end (some-> (:end date-range) u.date/parse)
+        dt-col (if (some #(instance? LocalDate %) [start end])
+                 [:cast dt-col :date]
+                 dt-col)]
     (cond
       (= start end)
       [:= dt-col start]
@@ -98,6 +98,16 @@
 
 (defmethod where-clause* ::single-value-exclude [_ k v] [:not= k v])
 
+(defmethod where-clause* ::field-id-list [_ k v]
+  "Filter for checking if all required field IDs are contained in a JSON array column.
+  Uses JSON path query for maximum compatibility across JSON types."
+  (when (seq v)
+    (let [ids-str (str/join "," v)]
+      ;; Use JSON containment with explicit casting
+      [:raw (format "COALESCE((%s)::jsonb, '[]'::jsonb) @> '[%s]'::jsonb"
+                    (name k)
+                    ids-str)])))
+
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
@@ -116,7 +126,7 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+    (let [personal-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
           child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"
