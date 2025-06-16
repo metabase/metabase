@@ -16,31 +16,30 @@ import {
   type RecentQuestion,
   useRecentItems,
 } from "../hooks/use-recent-items";
+import { useValidateApiKey } from "../hooks/use-validate-api-key";
 import type { EmbedType, Step } from "../types";
 
 interface SdkIframeEmbedSetupContextType {
-  // State
+  // Setup steps
   currentStep: Step;
-  selectedType: EmbedType;
-  settings: SdkIframeEmbedSettings;
-
-  // Actions
   setCurrentStep: (step: Step) => void;
+
+  // Embed settings
+  embedType: EmbedType;
+  settings: SdkIframeEmbedSettings;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
 
-  // Navigation helpers
-  handleNext: () => void;
-  handleBack: () => void;
-  canGoNext: boolean;
-  canGoBack: boolean;
+  // API key validation
+  isValidatingApiKey: boolean;
+  apiKeyValidationError: string | null;
 
-  // Recent items
+  // Recent entities
   recentDashboards: RecentDashboard[];
   recentQuestions: RecentQuestion[];
   addRecentDashboard: (dashboard: RecentDashboard) => void;
   addRecentQuestion: (question: RecentQuestion) => void;
 
-  // Dynamic parameters
+  // Dashboard and question parameters
   availableParameters: Parameter[];
   isLoadingParameters: boolean;
   toggleParameterVisibility: (parameterName: string) => void;
@@ -101,35 +100,9 @@ export const SdkIframeEmbedSetupProvider = ({
     ...(settings.questionId && { questionId: Number(settings.questionId) }),
   });
 
-  const handleNext = () => {
-    if (currentStep === "select-embed-type") {
-      // Skip select-entity for exploration
-      if (selectedType === "exploration") {
-        setCurrentStep("configure");
-      } else {
-        setCurrentStep("select-entity");
-      }
-    } else if (currentStep === "select-entity") {
-      setCurrentStep("configure");
-    } else if (currentStep === "configure") {
-      setCurrentStep("get-code");
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep === "select-entity") {
-      setCurrentStep("select-embed-type");
-    } else if (currentStep === "configure") {
-      // Skip select-entity for exploration
-      if (selectedType === "exploration") {
-        setCurrentStep("select-embed-type");
-      } else {
-        setCurrentStep("select-entity");
-      }
-    } else if (currentStep === "get-code") {
-      setCurrentStep("configure");
-    }
-  };
+  // API Key validation
+  const { error: apiKeyValidationError, isValidating: isValidatingApiKey } =
+    useValidateApiKey(settings.apiKey);
 
   const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) =>
     setSettings(
@@ -162,25 +135,14 @@ export const SdkIframeEmbedSetupProvider = ({
     return (settings.hiddenParameters || []).includes(parameterName);
   };
 
-  const canGoNext = !(
-    currentStep === "select-entity" &&
-    !settings.dashboardId &&
-    !settings.questionId &&
-    settings.template !== "exploration"
-  );
-
-  const canGoBack = currentStep !== "select-embed-type";
-
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
-    selectedType,
+    embedType: selectedType,
     settings,
+    isValidatingApiKey,
+    apiKeyValidationError,
     setCurrentStep,
     updateSettings,
-    handleNext,
-    handleBack,
-    canGoNext,
-    canGoBack,
     recentDashboards,
     recentQuestions,
     addRecentDashboard,

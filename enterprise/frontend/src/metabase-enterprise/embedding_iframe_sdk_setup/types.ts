@@ -9,6 +9,4 @@ export type Step =
 export interface StepProps {
   onNext: () => void;
   onBack: () => void;
-  canGoNext: boolean;
-  canGoBack: boolean;
 }

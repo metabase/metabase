@@ -39,7 +39,7 @@ const getConfigurableColors = () =>
 
 export const ConfigureStep = () => {
   const {
-    selectedType,
+    embedType: selectedType,
     settings,
     updateSettings,
     availableParameters,

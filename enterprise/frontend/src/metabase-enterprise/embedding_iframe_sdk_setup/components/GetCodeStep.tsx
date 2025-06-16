@@ -13,7 +13,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Tooltip,
 } from "metabase/ui";
 
 import { API_KEY_PLACEHOLDER } from "../constants";
@@ -23,7 +22,14 @@ import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
-  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
+
+  const {
+    settings,
+    updateSettings,
+
+    isValidatingApiKey,
+    apiKeyValidationError,
+  } = useSdkIframeEmbedSetupContext();
 
   const [
     isCreateApiKeyModalOpen,
@@ -57,12 +63,15 @@ export const GetCodeStep = () => {
             value={settings.apiKey}
             placeholder={API_KEY_PLACEHOLDER}
             onChange={(e) => updateSettings({ apiKey: e.target.value })}
+            error={apiKeyValidationError}
             rightSection={
-              <Tooltip label={t`Create API key`}>
-                <ActionIcon onClick={openCreateApiKeyModal} variant="subtle">
-                  <Icon name="key" size={16} />
-                </ActionIcon>
-              </Tooltip>
+              <ActionIcon
+                onClick={openCreateApiKeyModal}
+                variant="subtle"
+                loading={isValidatingApiKey}
+              >
+                <Icon name="key" size={16} />
+              </ActionIcon>
             }
           />
         </Stack>

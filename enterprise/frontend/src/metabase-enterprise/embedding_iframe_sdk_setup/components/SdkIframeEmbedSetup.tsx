@@ -21,8 +21,51 @@ import { SelectEntityStep } from "./SelectEntityStep";
 const SdkIframeEmbedSetupContent = () => {
   const [sidebarWidth, setSidebarWidth] = useState(400);
 
-  const { currentStep, handleNext, handleBack, canGoNext, canGoBack } =
-    useSdkIframeEmbedSetupContext();
+  const {
+    settings,
+    embedType: selectedType,
+    currentStep,
+    setCurrentStep,
+  } = useSdkIframeEmbedSetupContext();
+
+  const handleNext = () => {
+    if (currentStep === "select-embed-type") {
+      // Skip select-entity for exploration
+      if (selectedType === "exploration") {
+        setCurrentStep("configure");
+      } else {
+        setCurrentStep("select-entity");
+      }
+    } else if (currentStep === "select-entity") {
+      setCurrentStep("configure");
+    } else if (currentStep === "configure") {
+      setCurrentStep("get-code");
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === "select-entity") {
+      setCurrentStep("select-embed-type");
+    } else if (currentStep === "configure") {
+      // Skip select-entity for exploration
+      if (selectedType === "exploration") {
+        setCurrentStep("select-embed-type");
+      } else {
+        setCurrentStep("select-entity");
+      }
+    } else if (currentStep === "get-code") {
+      setCurrentStep("configure");
+    }
+  };
+
+  const canGoNext = !(
+    currentStep === "select-entity" &&
+    !settings.dashboardId &&
+    !settings.questionId &&
+    settings.template !== "exploration"
+  );
+
+  const canGoBack = currentStep !== "select-embed-type";
 
   const StepContent = useMemo(() => {
     return match(currentStep)

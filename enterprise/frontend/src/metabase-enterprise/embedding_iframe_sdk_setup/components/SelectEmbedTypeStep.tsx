@@ -10,8 +10,11 @@ import type { EmbedType } from "../types";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const SelectEmbedTypeStep = () => {
-  const { selectedType, settings, updateSettings } =
-    useSdkIframeEmbedSetupContext();
+  const {
+    embedType: selectedType,
+    settings,
+    updateSettings,
+  } = useSdkIframeEmbedSetupContext();
 
   const handleTypeChange = (type: EmbedType) => {
     const nextSettings: Partial<SdkIframeEmbedSettings> = match(type)

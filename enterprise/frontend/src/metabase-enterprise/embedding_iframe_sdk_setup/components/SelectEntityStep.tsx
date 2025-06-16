@@ -13,7 +13,7 @@ import S from "./SelectEntityStep.module.css";
 
 export const SelectEntityStep = () => {
   const {
-    selectedType,
+    embedType: selectedType,
     settings,
     updateSettings,
     recentDashboards,
