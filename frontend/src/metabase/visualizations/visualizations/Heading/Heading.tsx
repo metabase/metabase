@@ -7,7 +7,6 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
-import { TextInput } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -19,6 +18,7 @@ import {
   HeadingContainer,
   HeadingContent,
   InputContainer,
+  TextInput,
 } from "./Heading.styled";
 
 interface HeadingProps {
