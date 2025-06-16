@@ -20,7 +20,8 @@ import {
 
 import { LandingPageWidget } from "./components/LandingPageWidget";
 import LogoIcon from "./components/LogoIcon";
-import { WhiteLabelSettingsPage } from "./components/WhiteLabelSettingsPage";
+import { WhiteLabelBrandingSettingsPage } from "./components/WhiteLabelBrandingSettingsPage";
+import { WhiteLabelConcealSettingsPage } from "./components/WhiteLabelConcealSettingsPage";
 import { updateColors } from "./lib/whitelabel";
 
 if (hasPremiumFeature("whitelabel")) {
@@ -28,7 +29,10 @@ if (hasPremiumFeature("whitelabel")) {
     MetabaseSettings.get("landing-page");
   PLUGIN_LANDING_PAGE.LandingPageWidget = LandingPageWidget;
 
-  PLUGIN_WHITELABEL.WhiteLabelSettingsPage = WhiteLabelSettingsPage;
+  PLUGIN_WHITELABEL.WhiteLabelBrandingSettingsPage =
+    WhiteLabelBrandingSettingsPage;
+  PLUGIN_WHITELABEL.WhiteLabelConcealSettingsPage =
+    WhiteLabelConcealSettingsPage;
 
   PLUGIN_APP_INIT_FUNCTIONS.push(() => {
     updateColors();

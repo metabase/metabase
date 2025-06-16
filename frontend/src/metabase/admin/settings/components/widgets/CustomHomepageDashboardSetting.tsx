@@ -66,7 +66,7 @@ export function CustomHomepageDashboardSetting() {
     <Stack data-testid="custom-homepage-setting">
       <SettingHeader
         id="custom-homepage"
-        title={t`Custom Homepage`}
+        title={t`Custom homepage`}
         description={description}
       />
       <BasicAdminSettingInput

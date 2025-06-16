@@ -6,7 +6,7 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DeprecatedTooltip from "metabase/core/components/Tooltip";
-import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
+import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -143,7 +143,6 @@ export const DashCardCardParameterMapperButton = ({
               handleChangeTarget(target);
               setIsDropdownVisible(false);
             }}
-            target={target}
             mappingOptions={mappingOptions}
             selectedMappingOption={selectedMappingOption}
           />
