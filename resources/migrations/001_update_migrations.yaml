@@ -6956,6 +6956,8 @@ databaseChangeLog:
       runInTransaction: false
       changes:
         - sql:
+            sql: select * from permissions limit 1;
+        - sql:
             sql: ANALYZE permissions;
             dbms: postgresql
         - sql:
