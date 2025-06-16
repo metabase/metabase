@@ -1383,14 +1383,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getTableCell(COLUMN_INDEX.COUNT)
             .should("have.text", `Count: ${POINT_COUNT}`)
-            .as("cell");
+            .scrollIntoView()
+            .click();
 
-          cy.get("@cell").click();
-
-          cy.findAllByTestId("field-set")
-            .should("have.length", 2)
-            .should("contain.text", POINT_COUNT)
-            .should("contain.text", POINT_CREATED_AT_FORMATTED);
           cy.get("@targetDashboardId").then((targetDashboardId) => {
             cy.location().should(({ pathname, search }) => {
               expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -1399,6 +1394,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               );
             });
           });
+
+          cy.findAllByTestId("field-set")
+            .should("have.length", 2)
+            .should("contain.text", POINT_COUNT)
+            .should("contain.text", POINT_CREATED_AT_FORMATTED);
         })();
 
         cy.go("back");
