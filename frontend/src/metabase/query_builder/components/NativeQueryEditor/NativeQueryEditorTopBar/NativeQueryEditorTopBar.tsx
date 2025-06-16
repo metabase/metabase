@@ -42,7 +42,7 @@ interface NativeQueryEditorTopBarProps {
 
   toggleEditor: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
-  onFormatQuery: () => void;
+  onFormatQuery?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   onOpenModal: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;

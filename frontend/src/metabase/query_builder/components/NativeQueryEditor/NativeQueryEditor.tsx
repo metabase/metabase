@@ -52,6 +52,7 @@ import {
 import type { SelectionRange, SidebarFeatures } from "./types";
 import {
   calcInitialEditorHeight,
+  canFormatForEngine,
   formatQuery,
   getEditorLineHeight,
 } from "./utils";
@@ -212,7 +213,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     const engine = Lib.engine(query);
     const queryText = Lib.rawNativeQuery(query);
 
-    if (!engine) {
+    if (!engine || !canFormatForEngine(engine)) {
       // no engine found, do nothing
       return;
     }
@@ -259,6 +260,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       (collection) => collection.can_write,
     );
 
+    const engine = Lib.engine(question.query());
+    const canFormatQuery = engine != null && canFormatForEngine(engine);
+
     return (
       <div
         className={S.queryEditor}
@@ -291,7 +295,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             toggleEditor={this.props.toggleEditor}
             setParameterValue={this.props.setParameterValue}
             setDatasetQuery={this.props.setDatasetQuery}
-            onFormatQuery={this.handleFormatQuery}
+            onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
           />
         )}
         <div
@@ -336,7 +340,9 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 onSelectionChange={setNativeEditorSelectedRange}
                 onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                 onRightClickSelection={this.handleRightClickSelection}
-                onFormatQuery={this.handleFormatQuery}
+                onFormatQuery={
+                  canFormatQuery ? this.handleFormatQuery : undefined
+                }
               />
 
               {hasEditingSidebar && !readOnly && (
