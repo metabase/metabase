@@ -107,7 +107,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
         <Icon className={S.icon} flex="0 0 auto" name={icon} />
 
         <Box
-          className={S.input}
+          className={cx(S.input, S.name)}
           component={EditableText}
           fw="bold"
           initialValue={field.display_name}

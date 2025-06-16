@@ -22,11 +22,19 @@
 
   textarea {
     cursor: text;
-    white-space: nowrap;
 
     &:focus {
       color: var(--mb-color-text-secondary);
       background-color: var(--mb-color-brand-lighter);
     }
+  }
+}
+
+.name {
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
+
+  textarea {
+    white-space: nowrap;
   }
 }
