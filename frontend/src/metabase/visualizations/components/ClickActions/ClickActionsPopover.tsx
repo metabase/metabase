@@ -133,6 +133,7 @@ export class ClickActionsPopover extends Component<
         anchorEl={popoverAnchor}
         opened={!!popoverAnchor}
         onClose={this.close}
+        trapFocus
         position="bottom-start"
         offset={8}
         popoverContentTestId="click-actions-popover"
