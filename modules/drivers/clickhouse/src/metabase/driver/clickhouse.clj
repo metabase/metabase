@@ -53,7 +53,6 @@
                               :left-join                       (not driver-api/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :uuid-type                       true
                               :metadata/key-constraints        (not driver-api/is-test?)}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 

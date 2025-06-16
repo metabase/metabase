@@ -408,3 +408,11 @@ export function visitPublicDashboard(id, { params = {}, hash = {} } = {}) {
     },
   );
 }
+
+export const goToAuthOverviewPage = () => {
+  cy.findByTestId("admin-layout-sidebar")
+    .findAllByText("Overview") // auth overview page
+    .should("have.length", 2)
+    .first()
+    .click();
+};

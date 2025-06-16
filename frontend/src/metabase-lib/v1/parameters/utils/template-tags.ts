@@ -16,6 +16,7 @@ function getParameterType(tag: TemplateTag) {
   }
 
   const { type } = tag;
+
   if (type === "date") {
     return "date/single";
   }
@@ -26,6 +27,11 @@ function getParameterType(tag: TemplateTag) {
   if (type === "number") {
     return "number/=";
   }
+
+  if (type === "temporal-unit") {
+    return "temporal-unit";
+  }
+
   return "category";
 }
 
@@ -39,9 +45,12 @@ export function getTemplateTagParameter(
   tag: TemplateTag,
   config?: ParameterValuesConfig,
 ): ParameterWithTarget {
+  const type = getParameterType(tag);
+  const isTemporalUnit = type === "temporal-unit";
+
   return {
     id: tag.id,
-    type: getParameterType(tag),
+    type,
     target: getParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
@@ -51,6 +60,9 @@ export function getTemplateTagParameter(
     values_query_type: config?.values_query_type,
     values_source_type: config?.values_source_type,
     values_source_config: config?.values_source_config,
+    ...(isTemporalUnit && {
+      temporal_units: config?.temporal_units,
+    }),
   };
 }
 
@@ -90,9 +102,9 @@ export function getParametersFromCard(
 
   if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
-  } else {
-    return getTemplateTagParametersFromCard(card);
   }
+
+  return getTemplateTagParametersFromCard(card);
 }
 
 export function getTemplateTagParametersFromCard(card: Card) {
@@ -103,7 +115,7 @@ export function getTemplateTagParametersFromCard(card: Card) {
 // when navigating from dashboard --> saved native question,
 // we are given dashboard parameters and a map of dashboard parameter ids to parameter values
 // we need to transform this into a map of template tag ids to parameter values
-// so that we popoulate the template tags in the native editor
+// so that we populate the template tags in the native editor
 export function remapParameterValuesToTemplateTags(
   templateTags: TemplateTag[],
   dashboardParameters: ParameterWithTarget[],

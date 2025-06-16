@@ -252,6 +252,9 @@
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason]})
+   (prometheus/counter :metabase-query-processor/query
+                       {:description "Did a query run by a specific driver succeed or fail"
+                        :labels [:driver :status]})
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})

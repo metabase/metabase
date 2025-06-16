@@ -131,7 +131,7 @@ export const EditApiKeyModal = ({
         padding="xl"
         opened
         onClose={onClose}
-        title={t`Edit API Key`}
+        title={t`Edit API key`}
       >
         <FormProvider
           initialValues={{ ...apiKey, group_id: apiKey.group.id }}
@@ -169,7 +169,7 @@ export const EditApiKeyModal = ({
                 <Group justify="space-between" mt="lg">
                   <Button
                     onClick={() => setModal("regenerate")}
-                  >{t`Regenerate API Key`}</Button>
+                  >{t`Regenerate API key`}</Button>
                   <Group justify="flex-end">
                     <Button onClick={onClose}>{t`Cancel`}</Button>
                     <FormSubmitButton

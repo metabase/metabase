@@ -22,6 +22,7 @@ export const OptionsList = styled.ul<OptionListProps>`
   list-style: none;
   max-height: ${(props) => (props.isDashboardFilter ? "300px" : "none")};
   padding: ${(props) => (props.isDashboardFilter ? "0.5rem" : "0")};
+  padding-bottom: 0;
 `;
 
 export const OptionContainer = styled.li`

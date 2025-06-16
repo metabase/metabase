@@ -59,7 +59,7 @@
                   (lib/breakout (meta/field-metadata :venues :category-id))
                   (lib/limit 100)
                   (lib/append-stage))
-        card-id (:id ((lib.tu/mock-cards) :orders))]
+        card-id (:id (:orders (lib.tu/mock-cards)))]
     (is (= [{:lib/type :mbql.stage/mbql :source-table (meta/id :orders)}]
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]

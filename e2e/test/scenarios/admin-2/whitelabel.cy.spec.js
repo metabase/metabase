@@ -32,16 +32,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       .should("have.text", "Appearance")
       .and("not.have.descendants", ".Icon-gem");
 
-    cy.log("By default shows the branding tab");
-    cy.findByRole("tab", { name: "Branding" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByRole("tab", { name: "Conceal Metabase" })
-      .should("be.visible")
-      .and("have.attr", "aria-selected", "false");
-
     cy.log("Should show the upsell if the feature is missing");
     H.deleteToken();
     cy.visit("/admin/settings/appearance");
@@ -72,7 +62,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
     beforeEach(() => {
       cy.visit("/admin/settings/whitelabel/conceal-metabase");
-      cy.findByLabelText("Application Name")
+      cy.findByLabelText("Application name")
         .clear()
         .type(NEW_COMPANY_NAME)
         .blur();
@@ -775,7 +765,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
 function changeLoadingMessage(message) {
   cy.visit("/admin/settings/whitelabel");
-  cy.findByLabelText("Loading Message").click();
+  cy.findByLabelText("Loading message").click();
   H.selectDropdown().findByText(message).click();
   cy.wait("@putLoadingMessage");
 }

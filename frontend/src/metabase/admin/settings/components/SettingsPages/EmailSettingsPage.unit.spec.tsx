@@ -31,6 +31,7 @@ const setup = async (props: {
       hosting: !!props.hosted,
     }),
     "is-hosted?": !!props.hosted,
+    "email-configured?": true,
   } as const;
 
   const settings = createMockSettings(emailSettings);
@@ -56,6 +57,10 @@ const setup = async (props: {
   );
 
   await screen.findByText(/From Name|SMTP/);
+  await waitFor(async () => {
+    const gets = await findRequests("GET");
+    expect(gets).toHaveLength(2); // 2 settings fetches
+  });
 };
 
 describe("EmailSettingsPage", () => {
@@ -69,7 +74,7 @@ describe("EmailSettingsPage", () => {
       "Add Recipients as CC or BCC",
       "Approved domains for notifications",
       "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach((text) => {
+    ].forEach(async (text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
   });

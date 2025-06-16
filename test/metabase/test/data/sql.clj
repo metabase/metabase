@@ -335,6 +335,44 @@
            query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
        {:query query}))))
 
+(defmethod tx/arbitrary-select-query :sql/test-extensions
+  ([driver table to-insert]
+   (driver/with-driver driver
+     (let [mbql-query      (data/mbql-query nil
+                             {:source-table (data/id table)
+                              :expressions  {:custom [:value 1337 {:base_type :type/Integer}]}
+                              :fields       [[:expression :custom]]
+                              :order-by     [[:asc [:field (data/id table :id)]]]
+                              :limit        2})
+           {:keys [query]} (qp.compile/compile mbql-query)
+           query           (str/replace query (re-pattern #"(.*)(?:1337)(.*)") (format "$1%s$2" to-insert))]
+       {:query query}))))
+
+(defmethod tx/field-reference :sql/test-extensions
+  ([driver field-id]
+   (->> [:field field-id {}]
+        (sql.qp/->honeysql driver)
+        (sql.qp/format-honeysql driver)
+        first)))
+
+;; With sparksql, ->honeysql returns a fully qualified name (eg `test_data`.`orders`.`created_at`), but sparksql
+;; expects you to use the relevant alias instead (eg `t1`.`created_at`).
+(defmethod tx/field-reference :sparksql
+  ([driver field-id]
+   (let [parent-method (get-method tx/field-reference :sql/test-extensions)
+         full-reference (parent-method driver field-id)
+         [_ _ field-name] (str/split full-reference #"\.")]
+     (format "`t1`.%s" field-name))))
+
+;; With bigquery, ->honeysql returns `db`.`orders`.`created_at`, but for whatever reason, the query actually wants
+;; `db.orders`.`created_at`.
+(defmethod tx/field-reference :bigquery-cloud-sdk
+  ([driver field-id]
+   (let [parent-method (get-method tx/field-reference :sql/test-extensions)
+         full-reference (parent-method driver field-id)
+         [db-name table-name field-name] (str/split full-reference #"\.")]
+     (format "%s.%s.%s" (subs db-name 0 (dec (count db-name))) (subs table-name 1) field-name))))
+
 (defmulti session-schema
   "Return the unquoted schema name for the current test session, if any. This can be used in test code that needs
   to use the schema to create tables outside the regular test data setup. Test code that uses this should assume that

@@ -15,7 +15,7 @@ export const SlackSetup = () => {
   const botToken = useSetting("slack-token");
   const isValid = useSetting("slack-token-valid?");
   return (
-    <Stack maw="40rem">
+    <Stack>
       <SetupHeader isBot={!!botToken} isValid={isValid} />
       <SetupSection
         title={t`1. Click the button below and create your Slack App`}
@@ -28,7 +28,7 @@ export const SlackSetup = () => {
         <SlackAppsLink />
       </SetupSection>
       <SetupSection
-        title={t`2. Activate the OAuth Token and create a new slack channel`}
+        title={t`2. Activate the OAuth token and create a new slack channel`}
       >
         <Text mb="md">
           <Markdown>
@@ -50,7 +50,6 @@ const SetupHeader = ({
 }) => {
   return (
     <Box>
-      <Title order={2}>{t`Metabase on Slack`}</Title>
       {isBot ? (
         <Text>
           <SlackBadge isBot={isBot} isValid={isValid} />{" "}

@@ -821,6 +821,9 @@
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-translation
+    :available (premium-features/enable-content-translation?)
+    :enabled   (premium-features/enable-content-translation?)}
    {:name      :content-verification
     :available (premium-features/enable-content-verification?)
     :enabled   (t2/exists? :model/ModerationReview)}
@@ -845,6 +848,9 @@
    {:name      :metabot-v3
     :available (premium-features/enable-metabot-v3?)
     :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-entity-analysis
+    :available (premium-features/enable-ai-entity-analysis?)
+    :enabled   (premium-features/enable-ai-entity-analysis?)}
    {:name      :ai-sql-fixer
     :available (premium-features/enable-ai-sql-fixer?)
     :enabled   (premium-features/enable-ai-sql-fixer?)}

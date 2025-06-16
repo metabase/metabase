@@ -1,14 +1,18 @@
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
-import type { ComponentProps } from "react";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux/custom-context";
 import { getUnsavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
+import {
+  MockDashboardContext,
+  type MockDashboardContextProps,
+} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -34,10 +38,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import {
-  PublicOrEmbeddedDashboardView,
-  type PublicOrEmbeddedDashboardViewProps,
-} from "./PublicOrEmbeddedDashboardView";
+import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(Table);
@@ -112,7 +113,7 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
     },
   });
 
-  const store = getStore(publicReducers, initialState);
+  const store = getStore(publicReducers, initialState, [Api.middleware]);
   return (
     <MetabaseReduxProvider store={store}>
       <Story />
@@ -222,7 +223,7 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
+const Template: StoryFn<MockDashboardContextProps> = (args) => {
   // @ts-expect-error -- custom prop to support non JSON-serializable value as args
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
@@ -375,15 +376,17 @@ const Template: StoryFn<PublicOrEmbeddedDashboardViewProps> = (args) => {
       {},
     ),
   };
+
   return (
-    <PublicOrEmbeddedDashboardView
+    <MockDashboardContext
       {...args}
+      dashboardId={dashboard.id}
       parameters={PARAMETER_MAPPING[parameterType]}
-    />
+    >
+      <PublicOrEmbeddedDashboardView />
+    </MockDashboardContext>
   );
 };
-
-type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
 type ParameterType =
   | "text"
@@ -399,12 +402,20 @@ type ParameterType =
   | "date_relative"
   | "temporal_unit";
 
+type DefaultArgs = MockDashboardContextProps & {
+  parameterType?: ParameterType;
+};
 const createDefaultArgs = (
-  args: ArgType & { parameterType?: ParameterType } = {},
-): ArgType & { parameterType: ParameterType } => {
+  args: Omit<
+    DefaultArgs,
+    "dashboardId" | "navigateToNewCardFromDashboard"
+  > = {},
+): DefaultArgs => {
   const dashboard = createDashboard();
   return {
     dashboard,
+    dashboardId: dashboard.id,
+    navigateToNewCardFromDashboard: null,
     titled: true,
     bordered: true,
     background: true,

@@ -60,7 +60,7 @@ export type SdkDashboardDisplayProps = {
 } & CommonStylingProps;
 
 export const useSdkDashboardParams = ({
-  dashboardId: initialDashboardId,
+  dashboardId: dashboardIdProp,
   withDownloads,
   withTitle,
   hiddenParameters,
@@ -68,7 +68,7 @@ export const useSdkDashboardParams = ({
 }: SdkDashboardDisplayProps) => {
   const { id: dashboardId, isLoading = false } = useValidatedEntityId({
     type: "dashboard",
-    id: initialDashboardId,
+    id: dashboardIdProp,
   });
 
   // temporary name until we change `hideDownloadButton` to `downloads`

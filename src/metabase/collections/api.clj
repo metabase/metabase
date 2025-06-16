@@ -519,19 +519,29 @@
   (-> (t2/instance :model/Card row)
       (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
-      (update :archived_directly api/bit->boolean)
-      (t2/hydrate :can_write :can_restore :can_delete :dashboard_count [:dashboard :moderation_status])
-      (dissoc :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
+      (update :archived_directly api/bit->boolean)))
+
+(defn- post-process-card-row-after-hydrate [row]
+  (-> (dissoc row :authority_level :icon :personal_owner_id :dataset_query :table_id :query_type :is_upload)
       (update :dashboard #(when % (select-keys % [:id :name :moderation_status])))
       (assoc :fully_parameterized (fully-parameterized-query? row))))
 
+(defn- post-process-card-like [rows]
+  (map post-process-card-row-after-hydrate
+       (t2/hydrate (map post-process-card-row rows)
+                   :can_write
+                   :can_restore
+                   :can_delete
+                   :dashboard_count
+                   [:dashboard :moderation_status])))
+
 (defmethod post-process-collection-children :card
   [_ _options _ rows]
-  (map post-process-card-row rows))
+  (post-process-card-like rows))
 
 (defmethod post-process-collection-children :metric
   [_ _options _ rows]
-  (map post-process-card-row rows))
+  (post-process-card-like rows))
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
@@ -623,6 +633,7 @@
   (-> (assoc
        (collection/effective-children-query
         collection
+        {:cte-name :visible_collection_ids}
         (if archived?
           [:or
            [:= :archived true]
@@ -833,14 +844,10 @@
 
 (defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
   (when official-collections-first?
-    [[[:case [:= :authority_level "official"] 0 :else 1]] :asc]))
+    [:authority_level :asc :nulls-last]))
 
 (def ^:private normal-collections-first-sort-clause
-  [[[:case
-     [:= :collection_type nil] 0
-     [:= :collection_type collection/trash-collection-type] 1
-     :else 2]]
-   :asc])
+  [:collection_type :asc :nulls-first])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
@@ -908,7 +915,8 @@
                           (update select-clause-type add-model-ranking model)))
         viz-config  {:include-archived-items :all
                      :archive-operation-id nil
-                     :permission-level (if archived? :write :read)}
+                     :permission-level (if archived? :write :read)
+                     :include-trash-collection? archived?}
         rows-query  {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                      :select   [:* [[:over [[:count :*] {} :total_count]]]]
                      :from     [[{:union-all queries} :dummy_alias]]

@@ -45,9 +45,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     it("should display the embedding page correctly", () => {
       cy.visit("/admin/settings/setup");
-      sidebar().within(() => {
-        cy.findByRole("link", { name: "Embedding" }).click();
-      });
+
+      sidebar().findByText("Embedding").click(); // open section
+      sidebar()
+        .findAllByText("Overview") // the second "overview" page is for embedding
+        .should("have.length", 2)
+        .last()
+        .click();
 
       cy.location("pathname").should("eq", embeddingPage);
       mainPage().findByText(embeddingDescription).should("be.visible");
@@ -75,7 +79,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         value: true,
       });
       mainPage().within(() => {
-        cy.findByLabelText("Enable Static embedding")
+        cy.findByLabelText("Enable static embedding")
           .click({ force: true })
           .should("be.checked");
         cy.findByTestId("embedding-secret-key-setting").within(() => {
