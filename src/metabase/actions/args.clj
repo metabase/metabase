@@ -146,6 +146,7 @@
 (derive :table.row/create :table.row/common)
 (derive :table.row/update :table.row/common)
 (derive :table.row/delete :table.row/common)
+(derive :table.row/create-or-update :table.row/common)
 
 (defmethod action-arg-map-schema :table.row/common
   [_action]
@@ -174,7 +175,7 @@
 
 (defmethod normalize-action-arg-map :table.row/create-or-update
   [_action {:keys [database table-id row row-key] :as _arg-map}]
-  {:database database
+  {:database (or database (when table-id (t2/select-one-fn :db_id :model/Table table-id)))
    :table-id table-id
    :row      (update-keys row u/qualified-name)
    :row-key  (update-keys row-key u/qualified-name)})

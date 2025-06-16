@@ -935,7 +935,10 @@
                            :xform    (map (fn [{:keys [database row-key row table-id] :as input}]
                                             ;; HACK to avoid the fact that FE don't provide row-key for now
                                             (if (empty? row-key)
-                                              (assoc input :row-key (select-keys row (keys (table-id->pk-field-name->id database table-id))))
+                                              (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
+                                                (-> input
+                                                    (assoc :row-key (select-keys row pk-cols))
+                                                    (update :row (fn [row] (apply dissoc row pk-cols)))))
                                               input)))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) creating or updating rows.")
