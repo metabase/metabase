@@ -25,7 +25,7 @@ type Options = {
   metadata: Metadata;
   reportTimezone?: string;
   extensions?: Extension[];
-  formatExpression: () => void;
+  formatExpression?: () => void;
 };
 
 function getTooltipParent() {
@@ -95,7 +95,7 @@ export function useExtensions(options: Options): Extension[] {
           {
             key: "Shift-Mod-f",
             run: () => {
-              formatExpression();
+              formatExpression?.();
               return true;
             },
           },

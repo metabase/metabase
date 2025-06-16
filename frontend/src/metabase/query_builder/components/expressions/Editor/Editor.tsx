@@ -121,7 +121,8 @@ export function Editor(props: EditorProps) {
     reportTimezone,
     metadata,
     extensions: [customTooltip],
-    formatExpression,
+    formatExpression:
+      error === null && isValidated ? formatExpression : undefined,
   });
 
   const handleFunctionBrowserClauseClick = useCallback((name: string) => {
