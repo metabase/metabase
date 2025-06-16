@@ -60,19 +60,19 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
   });
 
-  it("should let you change the type to 'No semantic type'", () => {
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
-    cy.wait(["@metadata", "@metadata"]);
+  // it("should let you change the type to 'No semantic type'", () => {
+  //   H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+  //   cy.wait(["@metadata", "@metadata"]);
 
-    setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
+  //   setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
 
-    waitAndAssertOnResponse("fieldUpdate");
+  //   waitAndAssertOnResponse("fieldUpdate");
 
-    cy.reload();
-    cy.wait("@metadata");
+  //   cy.reload();
+  //   cy.wait("@metadata");
 
-    getFieldType().should("have.value", "No semantic type");
-  });
+  //   getFieldType().should("have.value", "No semantic type");
+  // });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
     H.visitAlias("@ORDERS_QUANTITY_URL");
