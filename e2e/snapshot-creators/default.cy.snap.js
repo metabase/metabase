@@ -361,6 +361,9 @@ describe("snapshots", () => {
 });
 
 function getDefaultInstanceData() {
+  cy.request("PUT", "/api/setting", {
+    "use-tenants": true,
+  });
   const instanceData = {};
 
   instanceData.loginCache = loginCache;
@@ -398,6 +401,10 @@ function getDefaultInstanceData() {
         }
       });
     }
+  });
+
+  cy.request("PUT", "/api/setting", {
+    "use-tenants": false,
   });
 
   return instanceData;
