@@ -1,6 +1,7 @@
 import Fuse from "fuse.js";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
+import { memoize } from "underscore";
 
 import type { Item, Section } from "./types";
 
@@ -176,7 +177,7 @@ export function isReactNode(x: unknown): x is ReactNode {
   );
 }
 
-export function getSearchIndex<
+export const getSearchIndex = memoize(function <
   TItem extends Item,
   TSection extends Section<TItem>,
 >({
@@ -194,4 +195,4 @@ export function getSearchIndex<
     includeScore: true,
     isCaseSensitive: false,
   });
-}
+});

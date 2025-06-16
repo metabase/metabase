@@ -107,7 +107,10 @@ export class AccordionList<
       searchText: "",
       cursor: null,
       scrollToAlignment: "start",
-      searchIndex: getSearchIndex(props),
+      searchIndex: getSearchIndex({
+        sections: props.sections,
+        searchProp: props.searchProp,
+      }),
     };
 
     this._cache = new CellMeasurerCache({
@@ -167,7 +170,10 @@ export class AccordionList<
   ) {
     return {
       ...state,
-      searchIndex: getSearchIndex(props),
+      searchIndex: getSearchIndex({
+        sections: props.sections,
+        searchProp: props.searchProp,
+      }),
     };
   }
 
