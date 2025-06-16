@@ -28,6 +28,15 @@
       background-color: var(--mb-color-brand-lighter);
     }
   }
+
+  .active & {
+    textarea {
+      &:focus,
+      &:hover {
+        background-color: var(--mb-color-bg-white);
+      }
+    }
+  }
 }
 
 .name {
