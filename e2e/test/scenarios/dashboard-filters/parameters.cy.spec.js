@@ -958,8 +958,11 @@ describe("scenarios > dashboard > parameters", () => {
       H.saveDashboard();
 
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Count").should("exist");
-        cy.findByText("4,000").should("exist");
+        cy.findByLabelText("Count").within(() => {
+          // exact: false so that it matches "Count\u00a0" (with a non-breaking space)
+          cy.findByText("Count", { exact: false }).should("exist");
+          cy.findByText("4,000").should("exist");
+        });
         cy.findByText("Category").should("not.exist");
       });
 
