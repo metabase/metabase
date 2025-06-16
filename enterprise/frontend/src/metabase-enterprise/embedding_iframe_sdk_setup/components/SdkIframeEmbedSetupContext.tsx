@@ -16,6 +16,8 @@ interface SdkIframeEmbedSetupContextType {
   // State
   currentStep: Step;
   options: EmbedPreviewOptions;
+  selectedType: EmbedPreviewOptions["selectedType"];
+  settings: SdkIframeEmbedSettings;
 
   // Actions
   setCurrentStep: (step: Step) => void;
@@ -181,6 +183,8 @@ export const SdkIframeEmbedSetupProvider = ({
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
     options,
+    selectedType: options.selectedType,
+    settings: options.settings,
     setCurrentStep,
     updateOptions,
     updateSettings,

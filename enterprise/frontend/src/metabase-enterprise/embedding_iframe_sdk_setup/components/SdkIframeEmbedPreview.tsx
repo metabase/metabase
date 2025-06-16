@@ -13,8 +13,7 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const context = useSdkIframeEmbedSetupContext();
-  const { settings } = context.options;
+  const { settings } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
 

@@ -22,7 +22,7 @@ import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const GetCodeStep = () => {
   const snippet = useSdkIframeEmbedSnippet();
-  const { options, updateSettings } = useSdkIframeEmbedSetupContext();
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const [
     isCreateApiKeyModalOpen,
@@ -53,7 +53,7 @@ export const GetCodeStep = () => {
 
           <TextInput
             label={t`API Key`}
-            value={options.settings.apiKey}
+            value={settings.apiKey}
             placeholder={API_KEY_PLACEHOLDER}
             onChange={(e) => updateSettings({ apiKey: e.target.value })}
             rightSection={

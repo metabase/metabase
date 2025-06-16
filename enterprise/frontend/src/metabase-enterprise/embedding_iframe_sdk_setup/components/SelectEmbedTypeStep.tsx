@@ -10,7 +10,8 @@ import type { EmbedType } from "../types";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const SelectEmbedTypeStep = () => {
-  const { options, updateOptions } = useSdkIframeEmbedSetupContext();
+  const { selectedType, settings, updateOptions } =
+    useSdkIframeEmbedSetupContext();
 
   const handleTypeChange = (type: EmbedType) => {
     const nextSettings: Partial<SdkIframeEmbedSettings> = match(type)
@@ -43,7 +44,7 @@ export const SelectEmbedTypeStep = () => {
         isDrillThroughEnabled: false,
         withDownloads: false,
         withTitle: true,
-        ...options.settings,
+        ...settings,
         ...nextSettings,
       } as SdkIframeEmbedSettings,
     });
@@ -56,7 +57,7 @@ export const SelectEmbedTypeStep = () => {
       </Text>
 
       <Radio.Group
-        value={options.selectedType}
+        value={selectedType}
         onChange={(value) => handleTypeChange(value as EmbedType)}
       >
         <Stack gap="md">

@@ -13,7 +13,8 @@ import S from "./SelectEntityStep.module.css";
 
 export const SelectEntityStep = () => {
   const {
-    options,
+    selectedType,
+    settings,
     updateSettings,
     recentDashboards,
     recentQuestions,
@@ -28,7 +29,7 @@ export const SelectEntityStep = () => {
   ) => {
     if (type === "dashboard") {
       updateSettings({
-        ...options.settings,
+        ...settings,
         dashboardId: entityId,
 
         // Clear the parameters
@@ -41,7 +42,7 @@ export const SelectEntityStep = () => {
       });
     } else if (type === "chart") {
       updateSettings({
-        ...options.settings,
+        ...settings,
         questionId: entityId,
 
         // Clear the parameters
@@ -63,7 +64,7 @@ export const SelectEntityStep = () => {
     const entityId =
       typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
 
-    if (options.selectedType === "dashboard") {
+    if (selectedType === "dashboard") {
       updateEntitySettings("dashboard", entityId);
 
       addRecentDashboard({
@@ -71,7 +72,7 @@ export const SelectEntityStep = () => {
         name: item.name || `Dashboard ${entityId}`,
         description: item.description || null,
       });
-    } else if (options.selectedType === "chart") {
+    } else if (selectedType === "chart") {
       updateEntitySettings("chart", entityId);
 
       addRecentQuestion({
@@ -89,13 +90,13 @@ export const SelectEntityStep = () => {
       return null;
     }
 
-    if (options.selectedType === "dashboard") {
+    if (selectedType === "dashboard") {
       return (
         <DashboardPickerModal
           title={t`Select a dashboard`}
           value={
-            options.settings.dashboardId
-              ? { id: options.settings.dashboardId, model: "dashboard" }
+            settings.dashboardId
+              ? { id: settings.dashboardId, model: "dashboard" }
               : undefined
           }
           onChange={handleEntitySelect}
@@ -109,13 +110,13 @@ export const SelectEntityStep = () => {
       );
     }
 
-    if (options.selectedType === "chart") {
+    if (selectedType === "chart") {
       return (
         <QuestionPickerModal
           title={t`Select a question`}
           value={
-            options.settings.questionId
-              ? { id: options.settings.questionId, model: "card" }
+            settings.questionId
+              ? { id: settings.questionId, model: "card" }
               : undefined
           }
           onChange={handleEntitySelect}
@@ -137,14 +138,14 @@ export const SelectEntityStep = () => {
       <Card p="md" mb="md">
         <Group justify="space-between" mb="md">
           <Text size="lg" fw="bold">
-            {getEmbedTitle(options.selectedType)}
+            {getEmbedTitle(selectedType)}
           </Text>
-          {options.selectedType !== "exploration" && (
+          {selectedType !== "exploration" && (
             <ActionIcon
               variant="outline"
               size="lg"
               title={
-                options.selectedType === "dashboard"
+                selectedType === "dashboard"
                   ? t`Browse dashboards`
                   : t`Browse questions`
               }
@@ -156,12 +157,12 @@ export const SelectEntityStep = () => {
         </Group>
 
         <Text c="text-medium" mb="md">
-          {getEmbedDescription(options.selectedType)}
+          {getEmbedDescription(selectedType)}
         </Text>
 
-        {options.selectedType !== "exploration" && (
+        {selectedType !== "exploration" && (
           <Stack gap="md">
-            {options.selectedType === "dashboard" &&
+            {selectedType === "dashboard" &&
               recentDashboards.length > 0 &&
               recentDashboards.map((dashboard) => (
                 <Card
@@ -169,7 +170,7 @@ export const SelectEntityStep = () => {
                   p="md"
                   className={cx(S.EntityCard, {
                     [S.EntityCardSelected]:
-                      options.settings.dashboardId === dashboard.id,
+                      settings.dashboardId === dashboard.id,
                   })}
                   onClick={() =>
                     updateEntitySettings("dashboard", dashboard.id)
@@ -190,15 +191,14 @@ export const SelectEntityStep = () => {
                 </Card>
               ))}
 
-            {options.selectedType === "chart" &&
+            {selectedType === "chart" &&
               recentQuestions.length > 0 &&
               recentQuestions.map((question) => (
                 <Card
                   key={question.id}
                   p="md"
                   className={cx(S.EntityCard, {
-                    [S.EntityCardSelected]:
-                      options.settings.questionId === question.id,
+                    [S.EntityCardSelected]: settings.questionId === question.id,
                   })}
                   onClick={() => updateEntitySettings("chart", question.id)}
                 >

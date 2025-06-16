@@ -39,15 +39,14 @@ const getConfigurableColors = () =>
 
 export const ConfigureStep = () => {
   const {
-    options,
+    selectedType,
+    settings,
     updateSettings,
     availableParameters,
     isLoadingParameters,
     toggleParameterVisibility,
     isParameterHidden,
   } = useSdkIframeEmbedSetupContext();
-
-  const { settings } = options;
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
@@ -162,7 +161,7 @@ export const ConfigureStep = () => {
                   rightSection={
                     <ParameterVisibilityToggle
                       parameterName={param.slug}
-                      embedType={options.selectedType}
+                      embedType={selectedType}
                       isHidden={isParameterHidden(param.slug)}
                       onToggle={toggleParameterVisibility}
                     />
@@ -171,7 +170,7 @@ export const ConfigureStep = () => {
               ))
             ) : (
               <Text size="sm" c="text-light">
-                {t`Parameters are not available for this ${options.selectedType}.`}
+                {t`Parameters are not available for this ${selectedType}.`}
               </Text>
             )}
           </Stack>
@@ -204,7 +203,7 @@ export const ConfigureStep = () => {
             <Divider mb="md" />
 
             <Checkbox
-              label={t`Show ${options.selectedType} title`}
+              label={t`Show ${selectedType} title`}
               checked={settings.withTitle ?? true}
               onChange={(e) => updateSettings({ withTitle: e.target.checked })}
             />

@@ -6,8 +6,7 @@ import { useSdkIframeEmbedSetupContext } from "../components/SdkIframeEmbedSetup
 import { API_KEY_PLACEHOLDER } from "../constants";
 
 export function useSdkIframeEmbedSnippet() {
-  const { options } = useSdkIframeEmbedSetupContext();
-  const { settings } = options;
+  const { settings } = useSdkIframeEmbedSetupContext();
 
   // Generate dynamic snippet based on context settings
   return useMemo(() => {
