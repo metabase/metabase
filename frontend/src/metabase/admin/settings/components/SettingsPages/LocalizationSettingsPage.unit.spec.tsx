@@ -53,14 +53,14 @@ const setup = async () => {
   );
 };
 
-describe("PublicSharingSettingsPage", () => {
+describe("LocalizationSettingsPage", () => {
   it("should render a LocalizationSettingsPage", async () => {
     await act(() => setup());
     [
       "Instance language",
-      "Report Timezone",
+      "Report timezone",
       "First day of the week",
-      "Localization options",
+      "Instance settings",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
@@ -69,10 +69,10 @@ describe("PublicSharingSettingsPage", () => {
   it("should update multiple settings", async () => {
     setup();
     const blur = async () => {
-      const elementOutside = screen.getByText("Dates and Times");
+      const elementOutside = screen.getByText("Dates and times");
       await userEvent.click(elementOutside); // blur
     };
-    const timezoneInput = await screen.findByLabelText("Report Timezone");
+    const timezoneInput = await screen.findByLabelText("Report timezone");
     await userEvent.clear(timezoneInput);
     await userEvent.type(timezoneInput, "Mount");
     await userEvent.click(await screen.findByText("US/Mountain"));

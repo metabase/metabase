@@ -36,7 +36,7 @@
     display: flex;
     /* A large value for animation */
     max-height: 1000px;
-    overflow: hidden;
+    flex-direction: column;
   }
 
   &.collapsing {

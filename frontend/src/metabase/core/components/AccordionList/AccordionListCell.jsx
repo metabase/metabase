@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import cx from "classnames";
+import { forwardRef } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -19,36 +20,39 @@ import {
   ListCellItem,
 } from "./AccordionListCell.styled";
 
-export const AccordionListCell = ({
-  style,
-  sections,
-  row,
-  onChange,
-  itemIsSelected,
-  itemIsClickable,
-  sectionIsExpanded,
-  canToggleSections,
-  alwaysExpanded,
-  toggleSection,
-  renderSectionIcon,
-  renderItemLabel,
-  renderItemName,
-  renderItemDescription,
-  renderItemIcon,
-  renderItemExtra,
-  renderItemWrapper,
-  showSpinner,
-  searchText,
-  onChangeSearchText,
-  searchPlaceholder = t`Find...`,
-  showItemArrows,
-  itemTestId,
-  getItemClassName,
-  getItemStyles,
-  searchInputProps,
-  hasCursor,
-  withBorders,
-}) => {
+export const AccordionListCell = forwardRef(function AccordionListCell(
+  {
+    style,
+    sections,
+    row,
+    onChange,
+    itemIsSelected,
+    itemIsClickable,
+    sectionIsExpanded,
+    canToggleSections,
+    alwaysExpanded,
+    toggleSection,
+    renderSectionIcon,
+    renderItemLabel,
+    renderItemName,
+    renderItemDescription,
+    renderItemIcon,
+    renderItemExtra,
+    renderItemWrapper,
+    showSpinner,
+    searchText,
+    onChangeSearchText,
+    searchPlaceholder = t`Find...`,
+    showItemArrows,
+    itemTestId,
+    getItemClassName,
+    getItemStyles,
+    searchInputProps,
+    hasCursor,
+    withBorders,
+  },
+  ref,
+) {
   const {
     type,
     section,
@@ -326,6 +330,7 @@ export const AccordionListCell = ({
 
   return (
     <div
+      ref={ref}
       style={style}
       aria-expanded={sectionIsExpanded}
       data-element-id="list-section"
@@ -339,4 +344,4 @@ export const AccordionListCell = ({
       {content}
     </div>
   );
-};
+});

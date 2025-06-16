@@ -338,32 +338,34 @@
 
 (deftest clickhouse-native-query-with-uuid-filter-test
   (mt/test-driver :clickhouse
-    (mt/dataset
-      (mt/dataset-definition "uuid_filter_db"
-                             ["uuid_filter_table"
-                              [{:field-name "uuid"
-                                :base-type {:native "UUID"}
-                                :semantic-type :type/PK}
-                               {:field-name "value"
-                                :base-type :type/Integer}]
-                              [[#uuid "89c77143-0c9a-4686-b241-5b21b9ab44f1" 10]
-                               [#uuid "89c77143-0c9a-4686-b241-5b21b9ab44f2" 20]]])
-      (let [query {:database   (mt/id)
-                   :type       :native
-                   :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"
-                                :template-tags {"uuid" {:type         :dimension
-                                                        :dimension    ["field" (mt/id :uuid_filter_table :uuid) nil]
-                                                        :default      ["89c77143-0c9a-4686-b241-5b21b9ab44f2"]
-                                                        :name         "uuid"
-                                                        :display-name "UUID"
-                                                        :widget-type  "id"}}}
-                   :parameters [{:type   "id"
-                                 :target [:dimension [:template-tag "uuid"]]
-                                 :value  ["89c77143-0c9a-4686-b241-5b21b9ab44f2"]}]}]
-        (is (= [[20]]
-               (mt/formatted-rows [int]
-                                  (qp/process-query query))))
-        (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
-                    "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('89c77143-0c9a-4686-b241-5b21b9ab44f2' AS UUID))")
-               (:query (qp.compile/compile-with-inline-parameters query))))))))
+    (let [uuid-1 (random-uuid)
+          uuid-2 (random-uuid)]
+      (mt/dataset
+        (mt/dataset-definition "uuid_filter_db"
+                               ["uuid_filter_table"
+                                [{:field-name "uuid"
+                                  :base-type {:native "UUID"}
+                                  :semantic-type :type/PK}
+                                 {:field-name "value"
+                                  :base-type :type/Integer}]
+                                [[uuid-1 10]
+                                 [uuid-2 20]]])
+        (let [query {:database   (mt/id)
+                     :type       :native
+                     :native     {:query         "select sum(value) from `uuid_filter_db`.`uuid_filter_table` where {{uuid}}"
+                                  :template-tags {"uuid" {:type         :dimension
+                                                          :dimension    ["field" (mt/id :uuid_filter_table :uuid) nil]
+                                                          :default      [(str uuid-2)]
+                                                          :name         "uuid"
+                                                          :display-name "UUID"
+                                                          :widget-type  "id"}}}
+                     :parameters [{:type   "id"
+                                   :target [:dimension [:template-tag "uuid"]]
+                                   :value  [(str uuid-2)]}]}]
+          (is (= [[20]]
+                 (mt/formatted-rows [int]
+                                    (qp/process-query query))))
+          (is (= (str "select sum(value) from `uuid_filter_db`.`uuid_filter_table` "
+                      (format "where `uuid_filter_db`.`uuid_filter_table`.`uuid` IN (CAST('%s' AS UUID))" uuid-2))
+                 (:query (qp.compile/compile-with-inline-parameters query)))))))))
 
