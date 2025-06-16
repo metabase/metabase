@@ -121,7 +121,7 @@
                 ["JARS=~/my-stuff ./bin/mage jar-download 1.45.2" "Download metabase_1.45.2.jar to ~/my-stuff"]]
    :requires   [[mage.jar-download :as jar-download]]
    :options    [["-r" "--run" "run the new jar after downloading it"]
-                ["-e" "--env FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
+                ["-e" "--env-file FILE" "you can optionally provide a lein-env file to specify the environment to use when running the jar."]
                 ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]
                 ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]]
    :arg-schema [:or

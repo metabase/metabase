@@ -228,10 +228,7 @@
                      (remove #(re-matches #"^\s*;.*" %))
                      (clojure.string/join "\n"))
         edn-map (edn/read-string cleaned)]
-    (into {}
-          (map (fn [[k v]]
-                 [(-> k name (clojure.string/upper-case) (clojure.string/replace "-" "_")) v])
-               edn-map))))
+    (update-keys edn-map #(-> % name (clojure.string/upper-case) (clojure.string/replace "-" "_")))))
 
 (defn- parse-env [env-file]
   (when (and env-file (not (fs/exists? env-file)))
@@ -261,7 +258,7 @@
       (let [port        (try (parse-long (:port (:options parsed)))
                              (catch Exception _
                                (port-for-version latest-version)))
-            env-file (:env (:options parsed))
+            env-file (:env-file (:options parsed))
             socket-port (+ 3000 port)
             db-file (str u/project-root-directory "/metabase_" version ".db")
             extra-env (merge {"MB_DB_TYPE"          "h2"
