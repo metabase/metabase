@@ -2,11 +2,11 @@ import { t } from "ttag";
 
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
-import type { EmbedType } from "../types";
+import type { SdkIframeEmbedSetupType } from "../types";
 
 interface ParameterVisibilityToggleProps {
   parameterName: string;
-  embedType: EmbedType;
+  embedType: SdkIframeEmbedSetupType;
   isHidden: boolean;
   onToggle: (parameterName: string) => void;
 }

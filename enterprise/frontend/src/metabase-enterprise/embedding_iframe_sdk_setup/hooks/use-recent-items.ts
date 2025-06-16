@@ -3,52 +3,31 @@ import { useMemo, useState } from "react";
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
 
-export type RecentDashboard = {
-  id: number;
-  name: string;
-  description?: string | null;
-  updatedAt?: string;
-};
-
-export type RecentQuestion = {
-  id: number;
-  name: string;
-  description?: string | null;
-  updatedAt?: string;
-};
+import type { SdkIframeEmbedSetupRecentItem } from "../types";
 
 const MAX_RECENTS = 6;
 
 export const useRecentItems = () => {
   const { data: recentItems } = useListRecentsQuery(
     { context: ["views", "selections"] },
-    {
-      refetchOnMountOrArgChange: true,
-    },
+    { refetchOnMountOrArgChange: true },
   );
 
   const [localRecentDashboards, setLocalRecentDashboards] = useState<
-    RecentDashboard[]
+    SdkIframeEmbedSetupRecentItem[]
   >([]);
+
   const [localRecentQuestions, setLocalRecentQuestions] = useState<
-    RecentQuestion[]
+    SdkIframeEmbedSetupRecentItem[]
   >([]);
 
   // Filter and merge API recent items with local selections
   const recentDashboards = useMemo(() => {
     const apiDashboards = (recentItems || [])
       .filter((item): item is RecentItem => item.model === "dashboard")
-      .map(
-        (item): RecentDashboard => ({
-          id: item.id,
-          name: item.name,
-          description: item.description ?? null,
-          updatedAt: item.timestamp,
-        }),
-      )
       .slice(0, MAX_RECENTS);
 
-    // Merge local selections with API items, prioritizing local (more recent)
+    // Merge local selections with API items, prioritizing local
     const localIds = new Set(localRecentDashboards.map((d) => d.id));
 
     const mergedItems = [
@@ -62,17 +41,9 @@ export const useRecentItems = () => {
   const recentQuestions = useMemo(() => {
     const apiQuestions = (recentItems || [])
       .filter((item): item is RecentItem => item.model === "card")
-      .map(
-        (item): RecentQuestion => ({
-          id: item.id,
-          name: item.name,
-          description: item.description ?? null,
-          updatedAt: item.timestamp,
-        }),
-      )
       .slice(0, 5);
 
-    // Merge local selections with API items, prioritizing local (more recent)
+    // Merge local selections with API items, prioritizing local
     const localIds = new Set(localRecentQuestions.map((q) => q.id));
 
     const mergedItems = [
@@ -83,26 +54,30 @@ export const useRecentItems = () => {
     return mergedItems;
   }, [recentItems, localRecentQuestions]);
 
-  const addRecentDashboard = (dashboard: RecentDashboard) => {
-    setLocalRecentDashboards((prev) => {
-      const filtered = prev.filter((d) => d.id !== dashboard.id);
+  const addRecentItem = (
+    type: "dashboard" | "question",
+    item: SdkIframeEmbedSetupRecentItem,
+  ) => {
+    if (type === "dashboard") {
+      setLocalRecentDashboards((prev) => {
+        const filtered = prev.filter((d) => d.id !== item.id);
 
-      return [dashboard, ...filtered].slice(0, MAX_RECENTS);
-    });
-  };
+        return [item, ...filtered].slice(0, MAX_RECENTS);
+      });
+    }
 
-  const addRecentQuestion = (question: RecentQuestion) => {
-    setLocalRecentQuestions((prev) => {
-      const filtered = prev.filter((q) => q.id !== question.id);
+    if (type === "question") {
+      setLocalRecentQuestions((prev) => {
+        const filtered = prev.filter((q) => q.id !== item.id);
 
-      return [question, ...filtered].slice(0, MAX_RECENTS);
-    });
+        return [item, ...filtered].slice(0, MAX_RECENTS);
+      });
+    }
   };
 
   return {
     recentDashboards,
     recentQuestions,
-    addRecentDashboard,
-    addRecentQuestion,
+    addRecentItem,
   };
 };

@@ -7,16 +7,16 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card, Parameter } from "metabase-types/api";
 
-import type { EmbedType } from "../types";
+import type { SdkIframeEmbedSetupType } from "../types";
 
 interface UseParameterListProps {
-  selectedType: EmbedType;
+  embedType: SdkIframeEmbedSetupType;
   dashboardId?: number;
   questionId?: number;
 }
 
 export const useParameterList = ({
-  selectedType,
+  embedType,
   dashboardId,
   questionId,
 }: UseParameterListProps) => {
@@ -33,14 +33,14 @@ export const useParameterList = ({
 
   // Extract parameters from the loaded dashboard/card
   const availableParameters = useMemo((): Parameter[] => {
-    if (selectedType === "dashboard" && dashboard) {
+    if (embedType === "dashboard" && dashboard) {
       return dashboard.parameters || [];
-    } else if (selectedType === "chart" && card) {
+    } else if (embedType === "chart" && card) {
       return getCardUiParameters(card as Card, metadataRef.current) || [];
     }
 
     return [];
-  }, [selectedType, dashboard, card, metadataRef]);
+  }, [embedType, dashboard, card, metadataRef]);
 
   const isLoadingParameters = isDashboardLoading || isCardLoading;
 

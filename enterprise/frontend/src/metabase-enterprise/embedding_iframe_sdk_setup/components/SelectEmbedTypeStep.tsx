@@ -1,53 +1,48 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Card, Radio, Stack, Text } from "metabase/ui";
-import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { EMBED_TYPES } from "../constants";
-import type { EmbedType } from "../types";
+import type { SdkIframeEmbedSetupType } from "../types";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const SelectEmbedTypeStep = () => {
   const {
-    embedType: selectedType,
+    embedType,
     settings,
-    updateSettings,
+    setSettings,
+    recentDashboards,
+    recentQuestions,
   } = useSdkIframeEmbedSetupContext();
 
-  const handleTypeChange = (type: EmbedType) => {
-    const nextSettings: Partial<SdkIframeEmbedSettings> = match(type)
-      .with("dashboard", () => ({
-        dashboardId: 1,
+  const handleEmbedTypeChange = (type: SdkIframeEmbedSetupType) => {
+    const persistedSettings = _.pick(settings, [
+      "theme",
+      "instanceUrl",
+      "apiKey",
+    ]);
 
-        // Clear question/exploration specific properties
-        questionId: undefined,
-        template: undefined,
-      }))
-      .with("chart", () => ({
-        questionId: 1,
+    const defaultEntityId = match(type)
+      .with("dashboard", () => recentDashboards[0]?.id ?? 1)
+      .with("chart", () => recentQuestions[0]?.id ?? 1)
+      .otherwise(() => 1);
 
-        // Clear dashboard/exploration specific properties
-        dashboardId: undefined,
-        template: undefined,
-      }))
-      .with("exploration", () => ({
-        template: "exploration" as const,
+    setSettings({
+      // clear other entity types
+      template: undefined,
+      questionId: undefined,
+      dashboardId: undefined,
 
-        // Clear dashboard/question specific properties
-        dashboardId: undefined,
-        questionId: undefined,
-      }))
-      .exhaustive();
+      // these settings do not change when the embed type changes
+      ...persistedSettings,
 
-    updateSettings({
-      isDrillThroughEnabled: false,
-      withDownloads: false,
-      withTitle: true,
-      ...settings,
-      ...nextSettings,
-    } as SdkIframeEmbedSettings);
+      // these settings are overridden when the embed type changes
+      ...getDefaultSdkIframeEmbedSettings(type, defaultEntityId),
+    });
   };
 
   return (
@@ -57,8 +52,10 @@ export const SelectEmbedTypeStep = () => {
       </Text>
 
       <Radio.Group
-        value={selectedType}
-        onChange={(value) => handleTypeChange(value as EmbedType)}
+        value={embedType}
+        onChange={(value) =>
+          handleEmbedTypeChange(value as SdkIframeEmbedSetupType)
+        }
       >
         <Stack gap="md">
           {EMBED_TYPES.map((type) => (

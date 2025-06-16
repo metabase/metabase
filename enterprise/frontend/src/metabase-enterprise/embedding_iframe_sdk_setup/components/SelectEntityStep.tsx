@@ -8,81 +8,80 @@ import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import { colors } from "metabase/lib/colors";
 import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 
+import type {
+  SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupType,
+} from "../types";
+
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 import S from "./SelectEntityStep.module.css";
 
 export const SelectEntityStep = () => {
   const {
-    embedType: selectedType,
+    embedType,
     settings,
     updateSettings,
     recentDashboards,
     recentQuestions,
-    addRecentDashboard,
-    addRecentQuestion,
+    addRecentItem,
   } = useSdkIframeEmbedSetupContext();
+
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const updateEntitySettings = (
-    type: "dashboard" | "chart",
-    entityId: number,
+  const isDashboard = embedType === "dashboard";
+  const recentItems = isDashboard ? recentDashboards : recentQuestions;
+  const embedIcon = isDashboard ? "dashboard" : "bar";
+
+  const selectedItemId = isDashboard
+    ? settings.dashboardId
+    : settings.questionId;
+
+  const updateEmbedSettings = (
+    type: SdkIframeEmbedSetupType,
+    id: string | number,
   ) => {
     if (type === "dashboard") {
       updateSettings({
         ...settings,
-        dashboardId: entityId,
+        dashboardId: id,
 
-        // Clear the parameters
+        // Clear parameters
         initialParameters: {},
         hiddenParameters: [],
 
         // Clear other entity types
-        questionId: undefined,
         template: undefined,
+        questionId: undefined,
       });
     } else if (type === "chart") {
       updateSettings({
         ...settings,
-        questionId: entityId,
+        questionId: id,
 
-        // Clear the parameters
+        // Clear parameters
         initialSqlParameters: {},
 
         // Clear other entity types
-        dashboardId: undefined,
         template: undefined,
+        dashboardId: undefined,
       });
     }
   };
 
-  const handleEntitySelect = (item: {
-    id: number | string;
-    model: string;
-    name?: string;
-    description?: string | null;
-  }) => {
+  const handleEntitySelect = (item: SdkIframeEmbedSetupRecentItem) => {
     const entityId =
       typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
 
-    if (selectedType === "dashboard") {
-      updateEntitySettings("dashboard", entityId);
-
-      addRecentDashboard({
-        id: entityId,
-        name: item.name || `Dashboard ${entityId}`,
-        description: item.description || null,
-      });
-    } else if (selectedType === "chart") {
-      updateEntitySettings("chart", entityId);
-
-      addRecentQuestion({
-        id: entityId,
-        name: item.name || `Question ${entityId}`,
-        description: item.description,
-      });
-    }
-
     setIsPickerOpen(false);
+    updateEmbedSettings(embedType, entityId);
+
+    // add the current entity to the top of the recent items list
+    const type = embedType === "dashboard" ? "dashboard" : "question";
+    addRecentItem(type, {
+      id: entityId,
+      name: item.name,
+      description: item.description,
+    });
   };
 
   const renderPickerModal = () => {
@@ -90,7 +89,7 @@ export const SelectEntityStep = () => {
       return null;
     }
 
-    if (selectedType === "dashboard") {
+    if (embedType === "dashboard") {
       return (
         <DashboardPickerModal
           title={t`Select a dashboard`}
@@ -110,7 +109,7 @@ export const SelectEntityStep = () => {
       );
     }
 
-    if (selectedType === "chart") {
+    if (embedType === "chart") {
       return (
         <QuestionPickerModal
           title={t`Select a question`}
@@ -138,14 +137,15 @@ export const SelectEntityStep = () => {
       <Card p="md" mb="md">
         <Group justify="space-between" mb="md">
           <Text size="lg" fw="bold">
-            {getEmbedTitle(selectedType)}
+            {getEmbedTitle(embedType)}
           </Text>
-          {selectedType !== "exploration" && (
+
+          {embedType !== "exploration" && (
             <ActionIcon
               variant="outline"
               size="lg"
               title={
-                selectedType === "dashboard"
+                embedType === "dashboard"
                   ? t`Browse dashboards`
                   : t`Browse questions`
               }
@@ -157,65 +157,35 @@ export const SelectEntityStep = () => {
         </Group>
 
         <Text c="text-medium" mb="md">
-          {getEmbedDescription(selectedType)}
+          {getEmbedDescription(embedType)}
         </Text>
 
-        {selectedType !== "exploration" && (
+        {embedType !== "exploration" && (
           <Stack gap="md">
-            {selectedType === "dashboard" &&
-              recentDashboards.length > 0 &&
-              recentDashboards.map((dashboard) => (
-                <Card
-                  key={dashboard.id}
-                  p="md"
-                  className={cx(S.EntityCard, {
-                    [S.EntityCardSelected]:
-                      settings.dashboardId === dashboard.id,
-                  })}
-                  onClick={() =>
-                    updateEntitySettings("dashboard", dashboard.id)
-                  }
-                >
-                  <Group align="start" gap="sm">
-                    <Icon name="dashboard" size={20} color={colors.brand} />
-                    <Stack gap="xs" flex={1}>
-                      <Text fw="bold">{dashboard.name}</Text>
+            {recentItems.map((recentItem) => (
+              <Card
+                p="md"
+                key={recentItem.id}
+                onClick={() => updateEmbedSettings(embedType, recentItem.id)}
+                className={cx(S.EntityCard, {
+                  [S.EntityCardSelected]: selectedItemId === recentItem.id,
+                })}
+              >
+                <Group align="start" gap="sm">
+                  <Icon name={embedIcon} size={20} color={colors.brand} />
 
-                      {dashboard.description && (
-                        <Text size="sm" c="text-medium">
-                          {dashboard.description}
-                        </Text>
-                      )}
-                    </Stack>
-                  </Group>
-                </Card>
-              ))}
+                  <Stack gap="xs" flex={1}>
+                    <Text fw="bold">{recentItem.name}</Text>
 
-            {selectedType === "chart" &&
-              recentQuestions.length > 0 &&
-              recentQuestions.map((question) => (
-                <Card
-                  key={question.id}
-                  p="md"
-                  className={cx(S.EntityCard, {
-                    [S.EntityCardSelected]: settings.questionId === question.id,
-                  })}
-                  onClick={() => updateEntitySettings("chart", question.id)}
-                >
-                  <Group align="start" gap="sm">
-                    <Icon name="bar" size={20} color={colors.brand} />
-                    <Stack gap="xs" flex={1}>
-                      <Text fw="bold">{question.name}</Text>
-
-                      {question.description && (
-                        <Text size="sm" c="text-medium">
-                          {question.description}
-                        </Text>
-                      )}
-                    </Stack>
-                  </Group>
-                </Card>
-              ))}
+                    {recentItem.description && (
+                      <Text size="sm" c="text-medium">
+                        {recentItem.description}
+                      </Text>
+                    )}
+                  </Stack>
+                </Group>
+              </Card>
+            ))}
           </Stack>
         )}
       </Card>
@@ -225,15 +195,15 @@ export const SelectEntityStep = () => {
   );
 };
 
-const getEmbedTitle = (selectedType: string) =>
-  match(selectedType)
+const getEmbedTitle = (embedType: string) =>
+  match(embedType)
     .with("dashboard", () => t`Select a dashboard to embed`)
     .with("chart", () => t`Select a chart to embed`)
     .with("exploration", () => t`Exploration embed setup`)
     .otherwise(() => t`Select content to embed`);
 
-const getEmbedDescription = (selectedType: string) =>
-  match(selectedType)
+const getEmbedDescription = (embedType: string) =>
+  match(embedType)
     .with("dashboard", () => t`Choose from your recently visited dashboards`)
     .with("chart", () => t`Choose from your recently visited questions`)
     .with("exploration", () => null)

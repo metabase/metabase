@@ -1,12 +1,14 @@
-export type EmbedType = "dashboard" | "chart" | "exploration";
+import type { BaseRecentItem } from "metabase-types/api";
 
-export type Step =
+export type SdkIframeEmbedSetupType = "dashboard" | "chart" | "exploration";
+
+export type SdkIframeEmbedSetupStep =
   | "select-embed-type"
   | "select-entity"
   | "configure"
   | "get-code";
 
-export interface StepProps {
-  onNext: () => void;
-  onBack: () => void;
-}
+export type SdkIframeEmbedSetupRecentItem = Pick<
+  BaseRecentItem,
+  "name" | "description"
+> & { id: string | number };

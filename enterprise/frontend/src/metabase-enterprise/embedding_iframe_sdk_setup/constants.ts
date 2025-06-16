@@ -1,18 +1,18 @@
-import type { EmbedType } from "./types";
+import type { SdkIframeEmbedSetupType } from "./types";
 
 export const EMBED_TYPES = [
   {
-    value: "dashboard" as EmbedType,
+    value: "dashboard" as SdkIframeEmbedSetupType,
     title: "Dashboard",
     description: "Embed an entire dashboard with multiple charts and filters",
   },
   {
-    value: "chart" as EmbedType,
+    value: "chart" as SdkIframeEmbedSetupType,
     title: "Chart",
     description: "Embed a single chart or visualization",
   },
   {
-    value: "exploration" as EmbedType,
+    value: "exploration" as SdkIframeEmbedSetupType,
     title: "Exploration",
     description: "Embed an interactive data exploration experience",
   },

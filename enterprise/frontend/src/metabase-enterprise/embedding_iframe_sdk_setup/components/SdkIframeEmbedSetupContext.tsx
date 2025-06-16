@@ -5,41 +5,47 @@ import {
   useMemo,
   useState,
 } from "react";
+import { P, match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { Parameter } from "metabase-types/api";
 
 import { useParameterList } from "../hooks/use-parameter-list";
-import {
-  type RecentDashboard,
-  type RecentQuestion,
-  useRecentItems,
-} from "../hooks/use-recent-items";
+import { useRecentItems } from "../hooks/use-recent-items";
 import { useValidateApiKey } from "../hooks/use-validate-api-key";
-import type { EmbedType, Step } from "../types";
+import type {
+  SdkIframeEmbedSetupRecentItem,
+  SdkIframeEmbedSetupStep,
+  SdkIframeEmbedSetupType,
+} from "../types";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupContextType {
-  // Setup steps
-  currentStep: Step;
-  setCurrentStep: (step: Step) => void;
+  // Setup step navigation
+  currentStep: SdkIframeEmbedSetupStep;
+  setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
   // Embed settings
-  embedType: EmbedType;
+  embedType: SdkIframeEmbedSetupType;
   settings: SdkIframeEmbedSettings;
+  setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
 
   // API key validation
   isValidatingApiKey: boolean;
   apiKeyValidationError: string | null;
 
-  // Recent entities
-  recentDashboards: RecentDashboard[];
-  recentQuestions: RecentQuestion[];
-  addRecentDashboard: (dashboard: RecentDashboard) => void;
-  addRecentQuestion: (question: RecentQuestion) => void;
+  // Recent dashboards and questions
+  recentDashboards: SdkIframeEmbedSetupRecentItem[];
+  recentQuestions: SdkIframeEmbedSetupRecentItem[];
 
-  // Dashboard and question parameters
+  addRecentItem: (
+    type: "dashboard" | "question",
+    recentItem: SdkIframeEmbedSetupRecentItem,
+  ) => void;
+
+  // Parameters for dashboards and questions
   availableParameters: Parameter[];
   isLoadingParameters: boolean;
   toggleParameterVisibility: (parameterName: string) => void;
@@ -57,43 +63,32 @@ export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
   const instanceUrl = useSetting("site-url");
-  const {
-    recentDashboards,
-    recentQuestions,
-    addRecentDashboard,
-    addRecentQuestion,
-  } = useRecentItems();
 
-  const [currentStep, setCurrentStep] = useState<Step>("select-embed-type");
+  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
+
+  const [currentStep, setCurrentStep] =
+    useState<SdkIframeEmbedSetupStep>("select-embed-type");
+
+  const defaultEntityId = recentDashboards[0]?.id ?? 1;
 
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
     apiKey: "",
     instanceUrl,
-
-    // Default to dashboard with common settings
-    dashboardId: 1,
-    isDrillThroughEnabled: true,
-    withDownloads: false,
-    withTitle: true,
-    initialParameters: {},
-    hiddenParameters: [],
+    ...getDefaultSdkIframeEmbedSettings("dashboard", defaultEntityId),
   });
 
-  const selectedType = useMemo(() => {
-    if (settings.questionId) {
-      return "chart";
-    }
-
-    if (settings.template === "exploration") {
-      return "exploration";
-    }
-
-    return "dashboard";
-  }, [settings]);
+  const embedType = useMemo(
+    () =>
+      match<SdkIframeEmbedSettings, SdkIframeEmbedSetupType>(settings)
+        .with({ questionId: P.nonNullable }, () => "chart")
+        .with({ template: "exploration" }, () => "exploration")
+        .otherwise(() => "dashboard"),
+    [settings],
+  );
 
   // Use parameter list hook for dynamic parameter loading
   const { availableParameters, isLoadingParameters } = useParameterList({
-    selectedType,
+    embedType,
 
     // We're always using numeric IDs for previews.
     ...(settings.dashboardId && { dashboardId: Number(settings.dashboardId) }),
@@ -110,10 +105,10 @@ export const SdkIframeEmbedSetupProvider = ({
         ({ ...prevSettings, ...nextSettings }) as SdkIframeEmbedSettings,
     );
 
-  // Parameter visibility management (only for dashboards)
   const toggleParameterVisibility = (parameterName: string) => {
-    if (selectedType !== "dashboard" || !("hiddenParameters" in settings)) {
-      return; // Only dashboards support hidden parameters
+    // Only dashboards support hidden parameters
+    if (embedType !== "dashboard" || !("hiddenParameters" in settings)) {
+      return;
     }
 
     const currentHidden = settings.hiddenParameters || [];
@@ -128,7 +123,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const isParameterHidden = (parameterName: string) => {
     // only dashboards support hidden parameters
-    if (selectedType !== "dashboard" || !("hiddenParameters" in settings)) {
+    if (embedType !== "dashboard" || !("hiddenParameters" in settings)) {
       return false;
     }
 
@@ -137,16 +132,20 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
-    embedType: selectedType,
+    setCurrentStep,
+
+    embedType,
     settings,
+    setSettings,
+    updateSettings,
+
     isValidatingApiKey,
     apiKeyValidationError,
-    setCurrentStep,
-    updateSettings,
+
     recentDashboards,
     recentQuestions,
-    addRecentDashboard,
-    addRecentQuestion,
+    addRecentItem,
+
     availableParameters,
     isLoadingParameters,
     toggleParameterVisibility,
@@ -165,7 +164,7 @@ export const useSdkIframeEmbedSetupContext = () => {
 
   if (!context) {
     throw new Error(
-      "useSdkIframeEmbedSetup must be used within SdkIframeEmbedSetupProvider",
+      "useSdkIframeEmbedSetupContext must be used within a SdkIframeEmbedSetupProvider",
     );
   }
 
