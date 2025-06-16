@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -397,7 +398,10 @@
                                     :h2       "BYTEA"
                                     :mysql    "VARBINARY(100)"
                                     :redshift "VARBYTE"
-                                    :presto-jdbc "VARBINARY"}}
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :clickhouse "string"
+                                    :databricks "BINARY"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -424,7 +428,7 @@
   [_driver]
   [])
 
-(doseq [driver [:h2 :postgres]]
+(doseq [driver [:h2 :postgres :databricks]]
   (defmethod yyyymmddhhmmss-binary-dates-expected-rows driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
@@ -441,6 +445,9 @@
 (deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
     (mt/dataset yyyymmddhhss-binary-times
+      (clojure.pprint/pprint (qp.compile/compile
+                              (assoc (mt/mbql-query times)
+                                     :middleware {:format-rows? false})))
       (is (= (yyyymmddhhmmss-binary-dates-expected-rows driver/*driver*)
              (sort-by
               first
@@ -486,7 +493,7 @@
    [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z[UTC]")]
    [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z[UTC]")]])
 
-(doseq [driver [:h2 :postgres]]
+(doseq [driver [:h2 :postgres :clickhouse :databricks]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
