@@ -868,7 +868,7 @@
                     results)}))
 
 (defn- create-or-update!*
-  [action database {:keys [table-id row row-key] :as x}]
+  [action database {:keys [table-id row row-key]}]
   (with-jdbc-transaction [conn (u/the-id database)]
     (let [driver    (:engine database)
           table-name        (:name (driver-api/cached-table (:id database) table-id))
