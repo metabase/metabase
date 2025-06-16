@@ -35,7 +35,7 @@ type Props<
   globalSearch?: boolean;
   hasInitialFocus?: boolean;
   hideSingleSectionTitle?: boolean;
-  initiallyOpenSection?: number;
+  initiallyOpenSection?: number | null;
   id?: string;
   onChange?: (item: TItem) => void;
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
