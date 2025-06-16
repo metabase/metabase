@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
@@ -87,8 +86,8 @@
                  :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database (meta/id)
                  :stages [{:lib/type :mbql.stage/mbql
-                           :source-card (:id ((lib.tu/mock-cards) :orders))}]}
-          product-card ((lib.tu/mock-cards) :products)
+                           :source-card (:id (:orders (lib.tu/mock-cards)))}]}
+          product-card (:products (lib.tu/mock-cards))
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
@@ -98,7 +97,7 @@
                  :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                  :database (meta/id)
                  :stages [{:lib/type :mbql.stage/mbql
-                           :source-card (:id ((lib.tu/mock-cards) :orders))}]}
+                           :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-table (meta/table-metadata :products)
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-table orders-product-id nil)]
@@ -1442,21 +1441,16 @@
 
 (deftest ^:parallel join-source-card-with-in-previous-stage-with-joins-test
   (testing "Make sure we generate correct join conditions when joining source cards with joins (#31769)"
-    (doseq [broken-refs? [true false]]
-      (testing (str "\nbroken-refs? = " (pr-str broken-refs?))
-        (binding [lib.card/*force-broken-card-refs* broken-refs?]
-          (is (=? {:stages [{:source-card 1}
-                            {:joins [{:stages     [{:source-card 2}]
-                                      :fields     :all
-                                      :conditions [[:=
-                                                    {}
-                                                    (if broken-refs?
-                                                      [:field {} (meta/id :products :category)]
-                                                      [:field {:base-type :type/Text} "Products__CATEGORY"])
-                                                    [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]]]
-                                      :alias      "Card 2 - Category"}]
-                             :limit 2}]}
-                  (lib.tu.mocks-31769/query))))))))
+    (is (=? {:stages [{:source-card 1}
+                      {:joins [{:stages     [{:source-card 2}]
+                                :fields     :all
+                                :conditions [[:=
+                                              {}
+                                              [:field {:base-type :type/Text} "Products__CATEGORY"]
+                                              [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]]]
+                                :alias      "Card 2 - Category"}]
+                       :limit 2}]}
+            (lib.tu.mocks-31769/query)))))
 
 (deftest ^:parallel suggested-name-include-joins-test
   (testing "Include the names of joined tables in suggested query names (#24703)"

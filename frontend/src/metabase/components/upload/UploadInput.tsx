@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { type ChangeEventHandler, forwardRef } from "react";
+import { type InputHTMLAttributes, forwardRef } from "react";
 
 import { DEFAULT_UPLOAD_INPUT_ID } from "./constants";
 
@@ -8,14 +8,13 @@ const StyledUploadInput = styled.input`
   display: none;
 `;
 
-interface IUploadInputProps {
+interface IUploadInputProps extends InputHTMLAttributes<HTMLInputElement> {
   id?: string;
-  onChange: ChangeEventHandler<HTMLInputElement>;
 }
 
 export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
   function UploadInputRef(
-    { id = DEFAULT_UPLOAD_INPUT_ID, onChange }: IUploadInputProps,
+    { id = DEFAULT_UPLOAD_INPUT_ID, ...props }: IUploadInputProps,
     ref,
   ) {
     return (
@@ -25,7 +24,7 @@ export const UploadInput = forwardRef<HTMLInputElement, IUploadInputProps>(
         ref={ref}
         type="file"
         accept="text/csv,text/tab-separated-values"
-        onChange={onChange}
+        {...props}
       />
     );
   },

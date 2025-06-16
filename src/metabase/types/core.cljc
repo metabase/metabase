@@ -190,15 +190,25 @@
 (derive :type/Temporal :type/*)
 (derive :type/Temporal :type/field-values-unsupported)
 
-(derive :type/Date :type/Temporal)
+;;; Note that we cannot just make `:type/DateTime` inherit from `:type/Date` and/or `:type/Time` because these are
+;;; effectively distinct types in many databases, for example you must use different functions for
+;;; extracting/truncating a `DATE` versus a `DATETIME` column in BigQuery. See
+;;; https://metaboat.slack.com/archives/C0645JP1W81/p1749678607860649?thread_ts=1749678551.101819&cid=C0645JP1W81 for
+;;; more discussion.
+
+(derive :type/HasDate :type/Temporal) ; common ancestor of types with a date component
+(derive :type/HasTime :type/Temporal) ; common ancestor of types with a time component
+
+(derive :type/Date :type/HasDate)
 ;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
 
-(derive :type/Time :type/Temporal)
+(derive :type/Time :type/HasTime)
 (derive :type/TimeWithTZ :type/Time)
 (derive :type/TimeWithLocalTZ :type/TimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
 (derive :type/TimeWithZoneOffset :type/TimeWithTZ) ; a column that stores its timezone offset
 
-(derive :type/DateTime :type/Temporal)
+(derive :type/DateTime :type/HasDate)
+(derive :type/DateTime :type/HasTime)
 (derive :type/DateTimeWithTZ :type/DateTime)
 (derive :type/DateTimeWithLocalTZ :type/DateTimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
 (derive :type/DateTimeWithZoneOffset :type/DateTimeWithTZ) ; a column that stores its timezone offset, e.g. `-08:00`
@@ -415,14 +425,10 @@
     (= y :type/*)     nil
     (assignable? x y) y
     (assignable? y x) x
-    ;; if we haven't had a match yet, recursively try using parent types.
+    ;; if we haven't had a match yet, pick the common ancestor that itself has the most ancestors.
     :else
-    (some (fn [x']
-            (some (fn [y']
-                    (when-not (= [x' y'] [x y])
-                      (most-specific-common-ancestor* x' y')))
-                  (cons y (parents y))))
-          (cons x (parents x)))))
+    (let [common-ancestors (set/intersection (ancestors x) (ancestors y))]
+      (first (sort-by #(- (count (ancestors %))) common-ancestors)))))
 
 (defn most-specific-common-ancestor
   "Return the most-specific type that is an ancestor of both `x` and `y`.

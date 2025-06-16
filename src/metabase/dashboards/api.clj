@@ -8,7 +8,6 @@
    [metabase.actions.core :as actions]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.channel.email.messages :as messages]
@@ -18,6 +17,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.settings :as dashboards.settings]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -26,12 +26,14 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.models.query.permissions :as query-perms]
+   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -95,33 +97,35 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
-      (t2/hydrate dashboard [:dashcards
-                             ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                             [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                             [:series :can_write #_:can_run_adhoc_query]
-                             :dashcard/action
-                             :dashcard/linkcard-info]
-                  :can_restore
-                  :can_delete
-                  :last_used_param_values
-                  :tabs
-                  :collection_authority_level
-                  :can_write
-                  :param_fields
-                  [:moderation_reviews :moderator_details]
-                  [:collection :is_personal :effective_location]))))
+      (cond->>  [[:dashcards
+                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                  [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                  [:series :can_write #_:can_run_adhoc_query]
+                  :dashcard/action
+                  :dashcard/linkcard-info]
+                 :can_restore
+                 :can_delete
+                 :tabs
+                 :collection_authority_level
+                 :can_write
+                 :param_fields
+                 [:moderation_reviews :moderator_details]
+                 [:collection :is_personal :effective_location]]
+        (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
+        true (apply t2/hydrate dashboard)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
   [_route-params
    _query-params
-   {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :- [:map
-                                                                                                         [:name                ms/NonBlankString]
-                                                                                                         [:parameters          {:optional true} [:maybe [:sequential ms/Parameter]]]
-                                                                                                         [:description         {:optional true} [:maybe :string]]
-                                                                                                         [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
-                                                                                                         [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
-                                                                                                         [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
+   {:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard}
+   :- [:map
+       [:name                ms/NonBlankString]
+       [:parameters          {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
+       [:description         {:optional true} [:maybe :string]]
+       [:cache_ttl           {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
+       [:collection_position {:optional true} [:maybe ms/PositiveInt]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (collection/check-write-perms-for-collection collection_id)
   (let [dashboard-data {:name                name
@@ -132,10 +136,10 @@
                         :collection_id       collection_id
                         :collection_position collection_position}
         dash           (t2/with-transaction [_conn]
-                        ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-                        ;; position, check that and fix up if needed
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
                          (api/maybe-reconcile-collection-position! dashboard-data)
-                        ;; Ok, now save the Dashboard
+                         ;; Ok, now save the Dashboard
                          (first (t2/insert-returning-instances! :model/Dashboard dashboard-data)))]
     (events/publish-event! :event/dashboard-create {:object dash :user-id api/*current-user-id*})
     (analytics/track-event! :snowplow/dashboard
@@ -972,7 +976,7 @@
    [:show_in_getting_started {:optional true} [:maybe :boolean]]
    [:enable_embedding        {:optional true} [:maybe :boolean]]
    [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
-   [:parameters              {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:parameters              {:optional true} [:maybe [:sequential ::parameters.schema/parameter]]]
    [:position                {:optional true} [:maybe ms/PositiveInt]]
    [:width                   {:optional true} [:enum "fixed" "full"]]
    [:archived                {:optional true} [:maybe :boolean]]
@@ -1117,7 +1121,7 @@
   [{:keys [id param-key]}      :- [:map
                                    [:id ms/PositiveInt]]
    constraint-param-key->value :- [:map-of string? any?]]
-  (let [dashboard (api/read-check :model/Dashboard id)]
+  (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
       (parameters.dashboard/param-values dashboard param-key constraint-param-key->value))))

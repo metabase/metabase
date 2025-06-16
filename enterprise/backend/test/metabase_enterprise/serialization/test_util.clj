@@ -64,7 +64,7 @@
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
      (with-open [conn# (.getConnection mdb.connection/*application-db*)]
        (binding [t2.conn/*current-connectable* conn#]
-         ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
+         ;; TODO mt/with-empty-h2-app-db! also rebinds some perms-group/* - do we want to do that too?
          ;;   redefs not great for parallelism
          (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
            ~@body)))))
@@ -276,7 +276,8 @@
                                                                                                             (mb.viz/with-entity-click-action
                                                                                                               name-field-id
                                                                                                               ::mb.viz/dashboard
-                                                                                                              root-dashboard-id)
+                                                                                                              root-dashboard-id
+                                                                                                              nil)
                                                                                                             (mb.viz/with-click-action
                                                                                                               (mb.viz/column-name->column-ref "Price Known")
                                                                                                               (mb.viz/url-click-action "/price-info"))

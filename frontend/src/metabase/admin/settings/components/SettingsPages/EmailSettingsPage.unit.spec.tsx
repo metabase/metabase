@@ -1,5 +1,4 @@
 import userEvent from "@testing-library/user-event";
-import { act } from "react-dom/test-utils";
 
 import {
   findRequests,
@@ -19,14 +18,20 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { EmailSettingsPage } from "./EmailSettingsPage";
 
-const setup = async (props: { disablePremiumFeatures?: boolean }) => {
+const setup = async (props: {
+  disablePremiumFeatures?: boolean;
+  hosted?: boolean;
+}) => {
   const emailSettings = {
     "email-from-name": "Metatest",
     "email-from-address": "replies@metatest.com",
     "token-features": createMockTokenFeatures({
       email_allow_list: !props.disablePremiumFeatures,
       email_restrict_recipients: !props.disablePremiumFeatures,
+      hosting: !!props.hosted,
     }),
+    "is-hosted?": !!props.hosted,
+    "email-configured?": true,
   } as const;
 
   const settings = createMockSettings(emailSettings);
@@ -50,11 +55,18 @@ const setup = async (props: { disablePremiumFeatures?: boolean }) => {
       },
     },
   );
+
+  await screen.findByText(/From Name|SMTP/);
+  await waitFor(async () => {
+    const gets = await findRequests("GET");
+    expect(gets).toHaveLength(2); // 2 settings fetches
+  });
 };
 
 describe("EmailSettingsPage", () => {
   it("should render an EmailSettingsPage", async () => {
-    await act(() => setup({}));
+    await setup({});
+
     [
       "From Name",
       "From Address",
@@ -62,27 +74,30 @@ describe("EmailSettingsPage", () => {
       "Add Recipients as CC or BCC",
       "Approved domains for notifications",
       "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach((text) => {
+    ].forEach(async (text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
     });
   });
 
+  it("should not show SMTP connection card for hosted instances", async () => {
+    await setup({ hosted: true });
+
+    expect(screen.getByText("From Name")).toBeInTheDocument();
+    expect(screen.queryByText(/SMTP/)).not.toBeInTheDocument();
+  });
+
   it("should not render premium features missing from token", async () => {
-    await act(() =>
-      setup({
-        disablePremiumFeatures: true,
-      }),
-    );
-    [
-      "Approved domains for notifications",
-      "Suggest recipients on dashboard subscriptions and alerts",
-    ].forEach((text) => {
-      expect(screen.queryByText(text)).not.toBeInTheDocument();
-    });
+    await setup({ disablePremiumFeatures: true }),
+      [
+        "Approved domains for notifications",
+        "Suggest recipients on dashboard subscriptions and alerts",
+      ].forEach((text) => {
+        expect(screen.queryByText(text)).not.toBeInTheDocument();
+      });
   });
 
   it("should update multiple settings", async () => {
-    setup({});
+    await setup({});
 
     const blur = async () => {
       const elementOutside = screen.getByText("Add Recipients as CC or BCC");
@@ -92,13 +107,13 @@ describe("EmailSettingsPage", () => {
     const nameInput = await screen.findByDisplayValue("Metatest");
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "Meta Best");
-    blur();
+    await blur();
     await screen.findByDisplayValue("Meta Best");
 
     const emailInput = await screen.findByDisplayValue("replies@metatest.com");
     await userEvent.clear(emailInput);
     await userEvent.type(emailInput, "support@metatest.com");
-    blur();
+    await blur();
     await screen.findByDisplayValue("support@metatest.com");
 
     await waitFor(async () => {

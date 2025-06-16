@@ -8,6 +8,7 @@ import type {
   CollectionId,
   Database,
   Field,
+  FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
@@ -189,6 +190,7 @@ export type VirtualDashboardCard = BaseDashboardCard & {
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
     virtual_card: VirtualCard;
     link?: LinkCardSettings;
+    text?: string;
   };
 };
 
@@ -336,4 +338,9 @@ export type GetRemappedDashboardParameterValueRequest = {
   dashboard_id: DashboardId;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
+};
+
+export type GetValidDashboardFilterFieldsRequest = {
+  filtered: FieldId[];
+  filtering: FieldId[];
 };

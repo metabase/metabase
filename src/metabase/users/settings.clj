@@ -38,15 +38,6 @@
   :default    false
   :audit      :never)
 
-(defsetting dismissed-onboarding-sidebar-link
-  (deferred-tru "Whether the user has dismissed the onboarding link from the main sidebar.")
-  :user-local :only
-  :export?    false
-  :visibility :authenticated
-  :type       :boolean
-  :default    false
-  :audit      :never)
-
 (defsetting dismissed-browse-models-banner
   (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
   :user-local :only
@@ -109,6 +100,14 @@
   :export?    false
   :visibility :authenticated
   :type       :string)
+
+(defsetting license-token-missing-banner-dismissal-timestamp
+  (deferred-tru "The array of last two ISO8601 dates when an admin dismissed the license token missing banner.")
+  :encryption :no
+  :export?    false
+  :visibility :admin
+  :type       :csv
+  :default    [])
 
 (defsetting user-visibility
   (deferred-tru "Note: Sandboxed users will never see suggestions.")

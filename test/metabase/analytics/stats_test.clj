@@ -543,11 +543,11 @@
     :development-mode
     :embedding
     :embedding-sdk
+    :embedding-iframe-sdk
     :enhancements
     :llm-autodescription
     :query-reference-validation
-    :session-timeout-config
-    :table-data-editing})
+    :session-timeout-config})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

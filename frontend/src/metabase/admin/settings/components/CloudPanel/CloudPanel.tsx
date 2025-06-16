@@ -25,8 +25,8 @@ import {
 } from "./utils";
 
 interface CloudPanelProps {
-  getPollingInterval: (migration: CloudMigration) => number | undefined;
-  onMigrationStart: (storeUrl: string, migration: CloudMigration) => void;
+  getPollingInterval?: (migration: CloudMigration) => number | undefined;
+  onMigrationStart?: (storeUrl: string, migration: CloudMigration) => void;
 }
 
 export const CloudPanel = ({
@@ -93,7 +93,7 @@ export const CloudPanel = ({
           isStarting={createCloudMigrationResult.isLoading}
         />
       )}
-      <Box maw="36rem">
+      <Box>
         {migration && isInProgressMigration(migration) && (
           <MigrationInProgress
             migration={migration}

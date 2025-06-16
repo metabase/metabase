@@ -15,7 +15,10 @@ import {
 import { MetabotIcon } from "metabase-enterprise/metabot/components/MetabotIcon";
 import { METABOT_RESULTS_MESSAGE } from "metabase-enterprise/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-import { resetConversationId } from "metabase-enterprise/metabot/state";
+import {
+  cancelInflightAgentRequests,
+  resetConversationId,
+} from "metabase-enterprise/metabot/state";
 
 import Styles from "./MetabotChatEmbedding.module.css";
 
@@ -43,8 +46,6 @@ export const MetabotChatEmbedding = ({
     setInputExpanded(false);
   }, []);
 
-  const metabotRequestPromiseRef = useRef<{ abort: () => void } | null>(null);
-
   const handleSend = () => {
     const trimmedInput = input.trim();
     if (!trimmedInput.length || metabot.isDoingScience) {
@@ -55,7 +56,6 @@ export const MetabotChatEmbedding = ({
       trimmedInput,
       EMBEDDING_METABOT_ID,
     );
-    metabotRequestPromiseRef.current = metabotRequestPromise;
 
     metabotRequestPromise
       .then((result) => {
@@ -98,7 +98,7 @@ export const MetabotChatEmbedding = ({
     : inputPlaceholder;
 
   function cancelRequest() {
-    metabotRequestPromiseRef.current?.abort();
+    dispatch(cancelInflightAgentRequests());
   }
 
   const dispatch = useSdkDispatch();

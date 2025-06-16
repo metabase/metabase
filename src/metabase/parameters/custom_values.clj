@@ -11,6 +11,7 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -114,7 +115,7 @@
    (values-from-card card value-field nil))
 
   ([card            :- (ms/InstanceOf :model/Card)
-    value-field-ref :- ms/LegacyFieldOrExpressionReference
+    value-field-ref :- ::parameters.schema/legacy-field-or-expression-reference
     opts            :- [:maybe :map]]
    (let [mbql-query   (values-from-card-query card value-field-ref opts)
          result       (qp/process-query mbql-query)

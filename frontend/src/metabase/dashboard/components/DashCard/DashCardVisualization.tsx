@@ -15,12 +15,18 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Title } from "metabase/ui";
+import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type {
+  ClickActionModeGetter,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -32,6 +38,7 @@ import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualiza
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
+  CardId,
   DashCardId,
   Dashboard,
   DashboardCard,
@@ -99,7 +106,7 @@ interface DashCardVisualizationProps {
   onChangeLocation: (location: LocationDescriptor) => void;
   onTogglePreviewing: () => void;
 
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 
   onEditVisualization?: () => void;
 }
@@ -110,7 +117,7 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   dashboard,
-  series: rawSeries,
+  series: untranslatedRawSeries,
   getClickActionMode,
   getHref,
   gridSize,
@@ -149,6 +156,10 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
+    untranslatedRawSeries,
+  );
 
   const series = useMemo(() => {
     if (
@@ -230,9 +241,16 @@ export function DashCardVisualization({
     if (
       display &&
       isCartesianChart(display) &&
-      shouldSplitVisualizerSeries(columnValuesMapping, settings)
+      shouldSplitVisualizerSeries(columnValuesMapping)
     ) {
-      return splitVisualizerSeries(series, columnValuesMapping);
+      const dataSourceNameMap = Object.fromEntries(
+        dataSources.map((dataSource) => [dataSource.id, dataSource.name]),
+      );
+      return splitVisualizerSeries(
+        series,
+        columnValuesMapping,
+        dataSourceNameMap,
+      );
     }
 
     return series;
@@ -306,8 +324,50 @@ export function DashCardVisualization({
     [dashcard],
   );
   const uuid = useMemo(
-    () => (isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined),
+    () =>
+      isUuid(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
     [dashcard],
+  );
+
+  const findCardById = useCallback(
+    (cardId?: CardId | null) => {
+      const lookupSeries = isVisualizerDashboardCard(dashcard)
+        ? rawSeries
+        : series;
+      return (
+        lookupSeries.find((series) => series.card.id === cardId)?.card ??
+        lookupSeries[0].card
+      );
+    },
+    [rawSeries, dashcard, series],
+  );
+
+  const onOpenQuestion = useCallback(
+    (cardId: CardId | null) => {
+      const card = findCardById(cardId);
+      onChangeCardAndRun?.({
+        previousCard: findCardById(card?.id),
+        nextCard: card,
+      });
+    },
+    [findCardById, onChangeCardAndRun],
+  );
+
+  const titleMenuItems = useMemo(
+    () =>
+      !isEditing && isVisualizerDashboardCard(dashcard) && rawSeries
+        ? rawSeries.map((series, index) => (
+            <Menu.Item
+              key={index}
+              onClick={() => {
+                onOpenQuestion(series.card.id);
+              }}
+            >
+              {series.card.name}
+            </Menu.Item>
+          ))
+        : undefined,
+    [dashcard, rawSeries, onOpenQuestion, isEditing],
   );
 
   const actionButtons = useMemo(() => {
@@ -329,14 +389,6 @@ export function DashCardVisualization({
       return null;
     }
 
-    const token = isJWT(dashcard.dashboard_id)
-      ? String(dashcard.dashboard_id)
-      : undefined;
-
-    const uuid = isUuid(dashcard.dashboard_id)
-      ? dashcard.dashboard_id
-      : undefined;
-
     // Only show the download button if the dashboard is public or embedded.
     if (isPublicOrEmbedded && downloadsEnabled) {
       return (
@@ -351,6 +403,12 @@ export function DashCardVisualization({
       );
     }
 
+    // We only show the titleMenuItems if the card has no title.
+    const settings = getComputedSettingsForSeries(
+      series,
+    ) as ComputedVisualizationSettings;
+    const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+
     return (
       <DashCardMenu
         downloadsEnabled={downloadsEnabled}
@@ -361,6 +419,7 @@ export function DashCardVisualization({
         token={token}
         uuid={uuid}
         onEditVisualization={onEditVisualization}
+        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
       />
     );
   }, [
@@ -369,11 +428,13 @@ export function DashCardVisualization({
     isXray,
     isPublicOrEmbedded,
     isEditing,
-    dashcard.id,
-    dashcard.dashboard_id,
-    dashboard.id,
     downloadsEnabled,
+    dashcard.id,
+    dashboard.id,
+    token,
+    uuid,
     onEditVisualization,
+    titleMenuItems,
   ]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
@@ -422,6 +483,7 @@ export function DashCardVisualization({
       onChangeLocation={onChangeLocation}
       token={token}
       uuid={uuid}
+      titleMenuItems={titleMenuItems}
     />
   );
 }

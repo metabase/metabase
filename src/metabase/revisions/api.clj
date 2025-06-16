@@ -2,7 +2,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.revisions.models.revision :as revision]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
@@ -49,7 +49,7 @@
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
-      (perms/check-run-permissions-for-query (get-in revision [:object :dataset_query])))
+      (query-perms/check-run-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
      {:entity      model

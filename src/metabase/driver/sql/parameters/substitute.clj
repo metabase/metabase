@@ -2,10 +2,10 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.sql.parameters.substitution
     :as sql.params.substitution]
-   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -50,6 +50,26 @@
               (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
+(defn- substitute-time-grouping
+  [[sql args missing] {[k column] :args} v]
+  (if (and (params/TemporalUnit? v) (string? k) (string? column))
+    (let [{:keys [replacement-snippet prepared-statement-args]}
+          (sql.params.substitution/time-grouping->replacement-snippet-info driver/*driver* column v)]
+      [(str sql replacement-snippet) (concat args prepared-statement-args) missing])
+    [sql args (conj missing k)]))
+
+(defn- substitute-function-param [param->value [sql args missing] {[k] :args :keys [function-name] :as param}]
+  (if-not (contains? param->value k)
+    [sql args (conj missing k)]
+    (let [v (get param->value k)]
+      (case function-name
+        "mb.time_grouping"
+        (substitute-time-grouping [sql args missing] param v)
+
+        (throw (ex-info (tru "Unrecognized function: {0}" function-name)
+                        {:type    driver-api/qp.error-type.invalid-query
+                         :missing missing}))))))
+
 (declare substitute*)
 
 (defn- substitute-optional [param->value [sql args missing] {subclauses :args}]
@@ -70,6 +90,9 @@
        (params/Param? x)
        (substitute-param param->value [sql args missing] in-optional? x)
 
+       (params/FunctionParam? x)
+       (substitute-function-param param->value [sql args missing] x)
+
        (params/Optional? x)
        (substitute-optional param->value [sql args missing] x)))
    nil
@@ -89,13 +112,13 @@
                              (substitute* param->value parsed-query false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
-                                               {:type         (or (:type (ex-data e)) qp.error-type/qp)
+                                               {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)
                                                 :params       param->value
                                                 :parsed-query parsed-query}
                                                e))))]
     (log/tracef "=>%s\n%s" sql (pr-str args))
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-                      {:type    qp.error-type/missing-required-parameter
+                      {:type    driver-api/qp.error-type.missing-required-parameter
                        :missing missing})))
     [(str/trim sql) args]))

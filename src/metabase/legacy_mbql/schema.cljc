@@ -270,6 +270,14 @@
   If both `:source-field` and `:join-alias` are supplied, `:join-alias` should be used to perform the join;
   `:source-field` should be for information purposes only."} ::lib.schema.id/field]
 
+    [:source-field-name
+     {:optional true :description "The name or desired alias of the field used for an implicit join."}
+     ::lib.schema.common/non-blank-string]
+
+    [:source-field-join-alias
+     {:optional true :description "The join alias of the source field used for an implicit join."}
+     ::lib.schema.common/non-blank-string]
+
     [:temporal-unit
      {:optional true
       :description
@@ -1214,6 +1222,18 @@
 
 ;; Example:
 ;;
+;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
+;;    :type "temporal-unit",
+;;    :name "unit",
+;;    :display-name "Unit"}
+(mr/def ::TemplateTag:TemporalUnit
+  "Schema for a temporal unit template tag."
+  [:merge
+   TemplateTag:Value:Common
+   [:map [:type [:= :temporal-unit]]]])
+
+;; Example:
+;;
 ;;    {:id           "35f1ecd4-d622-6d14-54be-750c498043cb"
 ;;     :name         "id"
 ;;     :display-name "Id"
@@ -1266,10 +1286,11 @@
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
    {:dispatch :type}
-   [:dimension   [:ref ::TemplateTag:FieldFilter]]
-   [:snippet     [:ref ::TemplateTag:Snippet]]
-   [:card        [:ref ::TemplateTag:SourceQuery]]
-   [::mc/default [:ref ::TemplateTag:RawValue]]])
+   [:dimension     [:ref ::TemplateTag:FieldFilter]]
+   [:snippet       [:ref ::TemplateTag:Snippet]]
+   [:card          [:ref ::TemplateTag:SourceQuery]]
+   [:temporal-unit [:ref ::TemplateTag:TemporalUnit]]
+   [::mc/default   [:ref ::TemplateTag:RawValue]]])
 
 (def TemplateTag
   "Alias for ::TemplateTag; prefer that going forward."

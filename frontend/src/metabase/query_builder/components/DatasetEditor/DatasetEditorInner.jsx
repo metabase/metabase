@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
@@ -9,8 +10,7 @@ import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import EditBar from "metabase/components/EditBar";
-import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
+import { LeaveConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Button from "metabase/core/components/Button";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
@@ -209,7 +209,7 @@ const _DatasetEditorInner = (props) => {
 
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const isDirty = isModelQueryDirty || isMetadataDirty;
-  const [showCancelEditWarning, setShowCancelEditWarning] = useState(false);
+  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const fields = useMemo(
     () =>
       getSortedModelFields(
@@ -243,9 +243,7 @@ const _DatasetEditorInner = (props) => {
     });
   }, [question, height]);
 
-  const [editorHeight, setEditorHeight] = useState(
-    isEditingQuery ? initialEditorHeight : 0,
-  );
+  const [editorHeight, setEditorHeight] = useState(initialEditorHeight);
 
   const [focusedFieldName, setFocusedFieldName] = useState();
 
@@ -320,20 +318,16 @@ const _DatasetEditorInner = (props) => {
   );
 
   const handleCancelEdit = () => {
-    setShowCancelEditWarning(false);
+    closeModal();
     cancelQuestionChanges();
     runDirtyQuestionQuery();
     setQueryBuilderMode("view");
   };
 
-  const handleCancelEditWarningClose = () => {
-    setShowCancelEditWarning(false);
-  };
-
   const handleCancelClick = () => {
     if (question.isSaved()) {
       if (isDirty) {
-        setShowCancelEditWarning(true);
+        openModal();
       } else {
         handleCancelEdit();
       }
@@ -583,12 +577,11 @@ const _DatasetEditorInner = (props) => {
         </ViewSidebar>
       </Flex>
 
-      <Modal isOpen={showCancelEditWarning}>
-        <LeaveConfirmationModalContent
-          onAction={handleCancelEdit}
-          onClose={handleCancelEditWarningClose}
-        />
-      </Modal>
+      <LeaveConfirmModal
+        opened={modalOpened}
+        onConfirm={handleCancelEdit}
+        onClose={closeModal}
+      />
     </>
   );
 };

@@ -4,21 +4,20 @@ import type { LoadQuestionHookResult } from "embedding-sdk/hooks/private/use-loa
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type {
-  EntityTypeFilterKeys,
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
   SqlParameterValues,
 } from "embedding-sdk/types/question";
-import type { NotebookProps as QBNotebookProps } from "metabase/querying/notebook/components/Notebook";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type Question from "metabase-lib/v1/Question";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 type InteractiveQuestionConfig = {
   /**
    * An array that specifies which entity types are available in the data picker
    */
-  entityTypeFilter?: EntityTypeFilterKeys[];
+  entityTypes?: EmbeddingEntityType[];
 
   /**
    * Whether to show the save button.
@@ -62,6 +61,11 @@ type InteractiveQuestionConfig = {
   ) => void;
 
   /**
+   * A callback function that triggers when a question is updated, including when a user clicks the `Visualize` button in the question editor
+   */
+  onRun?: (question: MetabaseQuestion | undefined) => void;
+
+  /**
    * A callback function that triggers when a user clicks the back button.
    */
   onNavigateBack?: () => void;
@@ -86,16 +90,18 @@ export type InteractiveQuestionContextType = Omit<
 > &
   Pick<
     InteractiveQuestionConfig,
-    "onNavigateBack" | "isSaveEnabled" | "targetCollection" | "withDownloads"
+    | "onRun"
+    | "onNavigateBack"
+    | "isSaveEnabled"
+    | "targetCollection"
+    | "withDownloads"
   > &
-  Pick<InteractiveQuestionProviderProps, "variant"> &
-  Pick<QBNotebookProps, "modelsFilterList"> & {
+  Pick<InteractiveQuestionProviderProps, "variant"> & {
     plugins: InteractiveQuestionConfig["componentPlugins"] | null;
     mode: Mode | null | undefined;
+    originalId: SdkQuestionId | null;
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;
     onSave: (question: Question) => Promise<void>;
-  } & {
-    originalId: SdkQuestionId | null;
   };

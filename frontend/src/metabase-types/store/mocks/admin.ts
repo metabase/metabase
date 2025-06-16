@@ -5,7 +5,7 @@ export const createMockAdminState = (
 ): AdminState => ({
   app: createMockAdminAppState(),
   permissions: createMockPermissionsState(),
-  settings: { settings: [], warnings: {} },
+  settings: { settings: [] },
   databases: {
     deletionError: null,
     deletes: [],
@@ -16,7 +16,6 @@ export const createMockAdminState = (
 export const createMockAdminAppState = (
   opts?: Partial<AdminAppState>,
 ): AdminAppState => ({
-  isNoticeEnabled: false,
   paths: [],
   ...opts,
 });

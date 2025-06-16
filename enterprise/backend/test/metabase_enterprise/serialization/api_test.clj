@@ -28,6 +28,7 @@
   [#"([^/]+)?/$"                               :dir
    #"/settings.yaml$"                          :settings
    #"/export.log$"                             :log
+   #"/collections/metabots/(.*)\.yaml$"        :metabot
    #"/collections/.*/cards/(.*)\.yaml$"        :card
    #"/collections/.*/dashboards/(.*)\.yaml$"   :dashboard
    #"/collections/.*collection/([^/]*)\.yaml$" :collection
@@ -85,7 +86,7 @@
                                                (mt/user-http-request :rasta :post 402 "ee/serialization/export"))))
       (mt/with-premium-features #{:serialization}
         (testing "POST /api/ee/serialization/export"
-          (mt/with-empty-h2-app-db
+          (mt/with-empty-h2-app-db!
             (mt/with-temp [:model/Collection    coll  {:name "API Collection"}
                            :model/Dashboard     _     {:collection_id (:id coll)}
                            :model/Card          card  {:collection_id (:id coll)}

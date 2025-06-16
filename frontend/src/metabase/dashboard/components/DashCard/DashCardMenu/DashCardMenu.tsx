@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { isValidElement, useState } from "react";
+import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import type { MetabasePluginsConfig } from "embedding-sdk";
@@ -17,6 +18,7 @@ import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
@@ -47,8 +49,9 @@ interface DashCardMenuProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
   onEditVisualization?: () => void;
+  openUnderlyingQuestionItems?: React.ReactNode;
 }
 
 export type DashCardMenuItem = {
@@ -80,6 +83,7 @@ export const DashCardMenu = ({
   uuid,
   token,
   onEditVisualization,
+  openUnderlyingQuestionItems,
 }: DashCardMenuProps) => {
   const store = useStore();
   const { plugins } = useInteractiveDashboardContext();
@@ -146,14 +150,44 @@ export const DashCardMenu = ({
     }
 
     return (
-      <DashCardMenuItems
-        dashcardId={dashcardId}
-        question={question}
-        result={result}
-        isDownloadingData={isDownloadingData}
-        onDownload={() => setMenuView("download")}
-        onEditVisualization={onEditVisualization}
-      />
+      <>
+        <DashCardMenuItems
+          dashcardId={dashcardId}
+          question={question}
+          result={result}
+          isDownloadingData={isDownloadingData}
+          onDownload={() => setMenuView("download")}
+          onEditVisualization={onEditVisualization}
+        />
+        {openUnderlyingQuestionItems && (
+          <Menu trigger="click-hover" shadow="md" position="right" width={200}>
+            <Menu.Target>
+              <Menu.Item
+                fw="bold"
+                styles={{
+                  // styles needed to override the hover styles
+                  // as hovering is bugged for submenus
+                  // this'll be much better in v8
+                  item: {
+                    backgroundColor: "transparent",
+                    color: "var(--mb-color-text-primary)",
+                  },
+                  itemSection: {
+                    color: "var(--mb-color-text-primary)",
+                  },
+                }}
+                leftSection={<Icon name="external" aria-hidden />}
+                rightSection={<Icon name="chevronright" aria-hidden />}
+              >
+                {t`View question(s)`}
+              </Menu.Item>
+            </Menu.Target>
+            <Menu.Dropdown data-testid="dashcard-menu-open-underlying-question">
+              {openUnderlyingQuestionItems}
+            </Menu.Dropdown>
+          </Menu>
+        )}
+      </>
     );
   };
 
@@ -185,7 +219,7 @@ interface ShouldRenderDashcardMenuProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 DashCardMenu.shouldRender = ({
@@ -203,7 +237,7 @@ DashCardMenu.shouldRender = ({
   );
 
   if (isPublicOrEmbedded) {
-    return downloadsEnabled && !!result?.data && !result?.error;
+    return downloadsEnabled.results && !!result?.data && !result?.error;
   }
   return (
     !isInternalQuery &&
