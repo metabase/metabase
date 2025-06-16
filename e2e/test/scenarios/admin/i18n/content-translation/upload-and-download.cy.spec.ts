@@ -183,6 +183,7 @@ describe("scenarios > admin > localization > content translation", () => {
           .should("be.visible");
         cy.findAllByRole("alert")
           .contains(/Row 5: Invalid locale/)
+          .scrollIntoView()
           .should("be.visible");
       });
 
