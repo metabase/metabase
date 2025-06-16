@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   Code,
+  CopyButton,
   Icon,
   Stack,
   Text,
@@ -71,14 +72,20 @@ export const GetCodeStep = () => {
         <Text size="lg" fw="bold" mb="md">
           {t`Embed Code`}
         </Text>
+
         <Stack gap="sm">
           <Code block>{snippet}</Code>
-          <Button
-            leftSection={<Icon name="copy" size={16} />}
-            onClick={() => navigator.clipboard.writeText(snippet)}
-          >
-            {t`Copy Code`}
-          </Button>
+
+          <CopyButton value={snippet}>
+            {({ copied, copy }) => (
+              <Button
+                leftSection={<Icon name="copy" size={16} />}
+                onClick={copy}
+              >
+                {copied ? t`Copied!` : t`Copy Code`}
+              </Button>
+            )}
+          </CopyButton>
         </Stack>
       </Card>
 
