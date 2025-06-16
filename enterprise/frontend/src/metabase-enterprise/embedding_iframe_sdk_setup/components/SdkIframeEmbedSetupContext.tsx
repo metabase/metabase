@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { P, match } from "ts-pattern";
+import _ from "underscore";
 
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { Parameter } from "metabase-types/api";
@@ -106,7 +107,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const setAndPersistSettings = (settings: SdkIframeEmbedSettings) => {
     setSettings(settings);
-    storeSetting(settings);
+    storeSetting(_.omit(settings, ["apiKey"]));
   };
 
   const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) =>
