@@ -11888,7 +11888,7 @@ databaseChangeLog:
       rollback:
         - sql:
             sql: >-
-              update databasechangelog
+              update ${databasechangelog.name}
               set md5sum=null
               where id in (
                            'v46.00-080',
