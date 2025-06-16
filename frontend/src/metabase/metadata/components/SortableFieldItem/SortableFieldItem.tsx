@@ -51,10 +51,10 @@ export const SortableFieldItem = ({ active, disabled, field }: Props) => {
         w="100%"
         wrap="nowrap"
       >
-        <Group flex="0 0 auto" gap="sm" wrap="nowrap">
+        <Group flex="0 0 auto" gap="sm" w="100%" wrap="nowrap">
           <Icon className={S.icon} name={icon} />
 
-          <Text flex="1" fw="bold" lh="normal">
+          <Text flex="1" fw="bold" lh="normal" lineClamp={1}>
             {label}
           </Text>
         </Group>

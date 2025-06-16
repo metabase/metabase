@@ -23,6 +23,7 @@ export const Textarea = ({
     <TextareaBlurChange
       normalize={normalize}
       required={required}
+      resetOnEsc
       value={value}
       onBlurChange={(event) => {
         const newValue = event.target.value;
