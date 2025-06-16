@@ -1,6 +1,6 @@
 import type { TextInputProps } from "@mantine/core";
 import { TextInput } from "@mantine/core";
-import type { ChangeEvent, FocusEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
@@ -59,6 +59,21 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
     [normalize, onBlur, onBlurChange, value],
   );
 
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Escape") {
+        setInternalValue(value);
+
+        // setTimeout to allow internalValue to update before dispatching blur event
+        // so that blur event's target will have proper value
+        setTimeout(() => {
+          ref.current?.blur();
+        }, 0);
+      }
+    },
+    [ref, value],
+  );
+
   useUnmountLayout(() => {
     const lastPropsValue = value || "";
     const currentValue = ref.current?.value || "";
@@ -77,6 +92,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
     />
   );
 }

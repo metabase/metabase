@@ -13,8 +13,11 @@
   color: var(--mb-color-brand);
 }
 
-.input {
+.name {
+  line-clamp: 1;
+  -webkit-line-clamp: 1;
   overflow: hidden;
+  line-height: var(--mantine-line-height) !important;
 
   &:focus-within {
     border-color: var(--mb-color-brand) !important;
@@ -22,6 +25,7 @@
 
   textarea {
     cursor: text;
+    white-space: nowrap;
 
     &:focus {
       color: var(--mb-color-text-secondary);
@@ -39,11 +43,27 @@
   }
 }
 
-.name {
-  line-clamp: 1;
-  -webkit-line-clamp: 1;
+.descriptionInput {
+  background-color: transparent;
+  border-color: transparent !important;
+  border-radius: 4px;
+  padding: 2px 1px !important;
+  min-height: 0;
 
-  textarea {
-    white-space: nowrap;
+  &:hover {
+    border-color: var(--mb-color-border) !important;
+  }
+
+  &:focus {
+    background-color: var(--mb-color-brand-lighter);
+    border-color: var(--mb-color-brand) !important;
+    color: var(--mb-color-text-secondary);
+  }
+
+  .active & {
+    &:focus,
+    &:hover {
+      background-color: var(--mb-color-bg-white);
+    }
   }
 }

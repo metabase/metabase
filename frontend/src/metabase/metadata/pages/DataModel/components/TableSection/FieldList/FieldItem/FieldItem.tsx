@@ -11,7 +11,7 @@ import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Flex, Group, Icon, rem } from "metabase/ui";
+import { Box, Flex, Group, Icon, TextareaBlurChange, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
@@ -44,7 +44,10 @@ export const FieldItem = ({ active, field, href }: Props) => {
     }
   };
 
-  const handleDescriptionChange = async (description: string) => {
+  const handleDescriptionChange = async (event: {
+    target: HTMLTextAreaElement;
+  }) => {
+    const description = event.target.value;
     const newDescription = description.trim();
 
     if ((field.description ?? "") === newDescription) {
@@ -113,7 +116,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
         <Icon className={S.icon} flex="0 0 auto" name={icon} />
 
         <Box
-          className={cx(S.input, S.name)}
+          className={S.name}
           component={EditableText}
           fw="bold"
           initialValue={field.display_name}
@@ -121,9 +124,9 @@ export const FieldItem = ({ active, field, href }: Props) => {
           miw={0}
           mb={rem(-4)}
           mt={rem(-3)}
-          mx={rem(-2)}
+          ml={rem(-2)}
           px={rem(1)}
-          py={0}
+          py={rem(2)}
           placeholder={t`Give this field a name`}
           tabIndex={undefined} // override the default 0 which breaks a11y
           onChange={handleNameChange}
@@ -131,20 +134,26 @@ export const FieldItem = ({ active, field, href }: Props) => {
         />
       </Group>
 
-      <Box
-        className={S.input}
-        component={EditableText}
-        initialValue={field.description ?? ""}
-        isOptional
-        maw="100%"
-        mb={rem(-4)}
-        mt={rem(-3)}
-        mx={rem(-2)}
-        px={rem(1)}
-        py={0}
+      {/**
+       * The description input does not use EditableText component because we want to make it
+       * multiline, with max of 4 lines of text, showing a scrollbar when there's more text.
+       *
+       * EditableText component breaks when scrollbar is shown. This is especially problematic
+       * when you're starting with an empty input, and then type 1-4 characters - scrollbar would
+       * immediately be shown and text rendered with "content: attr(data-value)" would wrap.
+       */}
+      <TextareaBlurChange
+        autosize
+        classNames={{
+          input: S.descriptionInput,
+        }}
+        maxRows={4}
+        minRows={1}
         placeholder={t`No description yet`}
-        tabIndex={undefined} // override the default 0 which breaks a11y
-        onChange={handleDescriptionChange}
+        resetOnEsc
+        value={field.description ?? ""}
+        w="100%"
+        onBlurChange={handleDescriptionChange}
         onClick={handleInputClick}
       />
     </Flex>
