@@ -4,6 +4,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type {
   DisplayTheme,
@@ -80,6 +81,11 @@ export function PublicOrEmbeddedQuestionView({
       />
     ) : null;
 
+  const untranslatedRawSeries = [{ card, data: result?.data }] as RawSeries;
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
+    untranslatedRawSeries,
+  );
+
   return (
     <EmbedFrame
       name={card && card.name}
@@ -110,7 +116,7 @@ export function PublicOrEmbeddedQuestionView({
           <Visualization
             isNightMode={theme === "night"}
             error={result?.error?.toString()}
-            rawSeries={[{ card, data: result?.data }] as RawSeries}
+            rawSeries={rawSeries}
             className={cx(CS.full, CS.flexFull, CS.z1)}
             onUpdateVisualizationSettings={(
               settings: VisualizationSettings,

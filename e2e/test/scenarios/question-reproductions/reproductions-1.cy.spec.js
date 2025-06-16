@@ -548,7 +548,10 @@ describe("issue 17514", () => {
         .findByText("Showing first 2,000 rows")
         .should("be.visible");
 
-      cy.findByTestId("query-builder-main").findByText("76.83").click();
+      cy.findByTestId("query-builder-main")
+        .findAllByText("76.83")
+        .eq(0)
+        .click();
 
       cy.findByTestId("click-actions-view").findByText("Filter by this value");
     });
