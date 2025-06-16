@@ -17,7 +17,7 @@ import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import resizeObserver from "metabase/lib/resize-observer";
 import { isEmpty } from "metabase/lib/validate";
-import { Flex, Menu } from "metabase/ui";
+import { Flex, Icon, Menu } from "metabase/ui";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
@@ -227,6 +227,10 @@ function ParametersList(props: ParametersListProps) {
   const { isNarrow, ...rest } = props;
 
   const editingParameter = useSelector(getEditingParameter);
+  const parametersWithValues = useMemo(
+    () => rest.parameters.filter((p) => p.value != null),
+    [rest.parameters],
+  );
 
   if (isNarrow) {
     if (editingParameter) {
@@ -247,14 +251,20 @@ function ParametersList(props: ParametersListProps) {
       <Menu>
         <Menu.Target data-testid="show-filter-parameter-button">
           <ToolbarButton
-            icon="filter"
             aria-label={t`Show filters`}
             tooltipLabel={t`Show filters`}
             onClick={(e) => {
               // To avoid focusing the input when clicking the button
               e.stopPropagation();
             }}
-          />
+          >
+            <Icon name="filter" />
+            {parametersWithValues.length > 0 && (
+              <span data-testid="show-filter-parameter-count">
+                &nbsp;{parametersWithValues.length}
+              </span>
+            )}
+          </ToolbarButton>
         </Menu.Target>
         <Menu.Dropdown
           data-testid="show-filter-parameter-dropdown"
