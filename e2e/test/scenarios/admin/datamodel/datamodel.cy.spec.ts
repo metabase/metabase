@@ -80,4 +80,23 @@ describe("scenarios > admin > datamodel > field > field type", () => {
 
     getFieldType().should("have.value", "No semantic type");
   });
+
+  it("should let you change the type to 'Foreign Key' and choose the target field", () => {
+    H.visitAlias("@ORDERS_QUANTITY_URL");
+    cy.wait("@metadata");
+
+    setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
+
+    waitAndAssertOnResponse("fieldUpdate");
+
+    setFKTargetField("Products → ID");
+
+    waitAndAssertOnResponse("fieldUpdate");
+
+    cy.reload();
+    cy.wait(["@metadata", "@metadata"]);
+
+    getFieldType();
+    cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
+  });
 });

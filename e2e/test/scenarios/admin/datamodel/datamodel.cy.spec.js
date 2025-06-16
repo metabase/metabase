@@ -74,24 +74,24 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   //   getFieldType().should("have.value", "No semantic type");
   // });
 
-  it("should let you change the type to 'Foreign Key' and choose the target field", () => {
-    H.visitAlias("@ORDERS_QUANTITY_URL");
-    cy.wait("@metadata");
+  // it("should let you change the type to 'Foreign Key' and choose the target field", () => {
+  //   H.visitAlias("@ORDERS_QUANTITY_URL");
+  //   cy.wait("@metadata");
 
-    setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
+  //   setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
 
-    waitAndAssertOnResponse("fieldUpdate");
+  //   waitAndAssertOnResponse("fieldUpdate");
 
-    setFKTargetField("Products → ID");
+  //   setFKTargetField("Products → ID");
 
-    waitAndAssertOnResponse("fieldUpdate");
+  //   waitAndAssertOnResponse("fieldUpdate");
 
-    cy.reload();
-    cy.wait(["@metadata", "@metadata"]);
+  //   cy.reload();
+  //   cy.wait(["@metadata", "@metadata"]);
 
-    getFieldType("Foreign Key");
-    cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
-  });
+  //   getFieldType("Foreign Key");
+  //   cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
+  // });
 
   it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
     H.visitAlias("@ORDERS_PRODUCT_ID_URL");
