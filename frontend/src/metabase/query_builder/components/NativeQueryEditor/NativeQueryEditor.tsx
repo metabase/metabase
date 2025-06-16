@@ -54,7 +54,6 @@ import {
   calcInitialEditorHeight,
   canFormatForEngine,
   formatQuery,
-  getEditorLineHeight,
 } from "./utils";
 
 type OwnProps = {
