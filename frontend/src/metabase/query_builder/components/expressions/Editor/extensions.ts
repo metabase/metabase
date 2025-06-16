@@ -25,6 +25,7 @@ type Options = {
   metadata: Metadata;
   reportTimezone?: string;
   extensions?: Extension[];
+  formatExpression: () => void;
 };
 
 function getTooltipParent() {
@@ -49,6 +50,7 @@ export function useExtensions(options: Options): Extension[] {
     reportTimezone,
     metadata,
     extensions: extra = [],
+    formatExpression,
   } = options;
 
   return useMemo(() => {
@@ -90,6 +92,13 @@ export function useExtensions(options: Options): Extension[] {
             key: "Tab",
             run: insertIndent,
           },
+          {
+            key: "Shift-Mod-f",
+            run: () => {
+              formatExpression();
+              return true;
+            },
+          },
         ]),
       ),
       suggestions({
@@ -116,6 +125,7 @@ export function useExtensions(options: Options): Extension[] {
     expressionIndex,
     metadata,
     reportTimezone,
+    formatExpression,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);
