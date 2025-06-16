@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { groupBy } from "underscore";
 
-import { databaseApi, useListDatabasesQuery } from "metabase/api";
+import { databaseApi } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import {
@@ -25,16 +25,12 @@ import type { Table } from "metabase-types/api";
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
-const MAX_RETRIES = 30;
-const RETRY_DELAY = 1000;
-
 export const TableSelectionStep = () => {
   useForceLocaleRefresh();
 
   const [tables, setTables] = useState<Table[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
   const [search, setSearch] = useState("");
   const dispatch = useDispatch();
   const {
@@ -44,7 +40,6 @@ export const TableSelectionStep = () => {
     setProcessingStatus,
     goToNextStep,
   } = useEmbeddingSetup();
-  const shouldFetchTables = useShouldFetchTables(setLoading);
 
   const getDatabaseTables = useCallback(async () => {
     const data = await dispatch(
@@ -64,30 +59,57 @@ export const TableSelectionStep = () => {
   }, [database, dispatch]);
 
   const fetchTables = useCallback(async () => {
-    setLoading(true);
     const tables = await retry({
       fn: getDatabaseTables,
-      maxTries: MAX_RETRIES,
-      retryDelay: RETRY_DELAY,
-      onRetry: ({ retryCount }) => {
-        setRetryCount(retryCount);
-      },
-      onMaxTries: () => {
-        setError(t`Failed to fetch tables after ${MAX_RETRIES} attempts`);
+      maxTries: 10,
+      retryDelay: 1000,
+      onMaxTries: ({ maxTries }) => {
+        setError(t`Failed to fetch tables after ${maxTries} attempts`);
       },
     });
-    setLoading(false);
     setTables(tables || []);
   }, [getDatabaseTables]);
+
+  const waitForDbSync = useCallback(async () => {
+    await retry({
+      fn: async () => {
+        const { data: databases } = await dispatch(
+          databaseApi.endpoints.listDatabases.initiate(
+            {},
+            { forceRefetch: true },
+          ),
+        ).unwrap();
+
+        const userDatabases =
+          databases?.filter((database) => !database.is_sample) || [];
+
+        if (userDatabases.length === 0) {
+          throw new Error("No databases found");
+        }
+
+        if (userDatabases.some((database) => isSyncInProgress(database))) {
+          throw new Error("Databases are syncing");
+        }
+      },
+      maxTries: 60,
+      retryDelay: 1000,
+      onMaxTries: ({ maxTries }) => {
+        setError(t`Failed to sync database after ${maxTries} attempts`);
+      },
+    });
+  }, [dispatch]);
+
   useEffect(() => {
-    // initial loading
-    if (shouldFetchTables) {
-      fetchTables();
-    }
-  }, [fetchTables, shouldFetchTables]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      await waitForDbSync();
+      await fetchTables();
+      setIsLoading(false);
+    };
+    fetchData();
+  }, [fetchTables, waitForDbSync]);
 
   const handleManualRefresh = () => {
-    setRetryCount(0);
     fetchTables();
     setError(null);
   };
@@ -120,23 +142,14 @@ export const TableSelectionStep = () => {
     [filteredTables],
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <FullHeightContainer ta="center" py="xl">
         <Center>
           <Loader size="lg" />
         </Center>
         <Stack gap="md" mt="md">
-          <Text>
-            {retryCount > 0
-              ? t`Waiting for tables to be available... (Attempt ${retryCount + 1} of ${MAX_RETRIES})`
-              : t`Loading tables...`}
-          </Text>
-          {retryCount > 0 && (
-            <Text size="sm" c="dimmed">
-              {t`This may take a few minutes as we wait for the database to sync.`}
-            </Text>
-          )}
+          <Text>{t`Waiting for tables to be available. This may take a few minutes as we wait for the database to sync.`}</Text>
         </Stack>
       </FullHeightContainer>
     );
@@ -242,7 +255,7 @@ const retry = async <T,>({
   fn: () => Promise<T>;
   maxTries: number;
   retryDelay: number;
-  onRetry: ({
+  onRetry?: ({
     error,
     retryCount,
     maxTries,
@@ -251,7 +264,7 @@ const retry = async <T,>({
     retryCount: number;
     maxTries: number;
   }) => void;
-  onMaxTries: () => void;
+  onMaxTries?: ({ maxTries }: { maxTries: number }) => void;
 }) => {
   for (let i = 0; i < maxTries; i++) {
     try {
@@ -261,40 +274,5 @@ const retry = async <T,>({
       await new Promise((resolve) => setTimeout(resolve, retryDelay));
     }
   }
-  onMaxTries?.();
+  onMaxTries?.({ maxTries });
 };
-
-function useShouldFetchTables(setLoading: (loading: boolean) => void) {
-  const [shouldFetchTables, setShouldFetchTables] = useState(false);
-
-  const {
-    data: databases,
-    isLoading,
-    isFetching,
-    refetch: refetchDatabases,
-  } = useListDatabasesQuery();
-
-  // Checks if databases are synced
-  useEffect(() => {
-    setLoading(true);
-    const userDatabases =
-      databases?.data.filter((database) => !database.is_sample) || [];
-    if (
-      userDatabases.length > 0 &&
-      userDatabases.every((database) => !isSyncInProgress(database))
-    ) {
-      setLoading(false);
-      setShouldFetchTables(true);
-    } else {
-      // Same value as in `frontend/src/metabase/status/containers/DatabaseStatus/DatabaseStatus.tsx`
-      const DATABASES_RELOAD_INTERVAL = 2000;
-      if (!isLoading && !isFetching) {
-        setTimeout(() => {
-          refetchDatabases();
-        }, DATABASES_RELOAD_INTERVAL);
-      }
-    }
-  }, [databases?.data, isFetching, isLoading, refetchDatabases, setLoading]);
-
-  return shouldFetchTables;
-}
