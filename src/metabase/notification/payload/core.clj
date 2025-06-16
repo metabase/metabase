@@ -40,7 +40,10 @@
         [:event_name [:fn #(= "event" (-> % keyword namespace))]]
         [:action     {:optional true} [:maybe :keyword]]
         [:table_id   {:optional true} [:maybe pos-int?]]]]
-      [:event_info  [:maybe :map]]]]
+      [:event_info {:optional true} [:maybe :map]]
+      ;; used to shortcut creating the payload from the event_info and using this payload as-is
+      ;; this is useful for send-now functionality.
+      [:notification/custom-payload {:optional true} [:maybe :map]]]]
     [:notification/card
      [:map
       [:payload    {:optional true} ::models.notification/NotificationCard]
