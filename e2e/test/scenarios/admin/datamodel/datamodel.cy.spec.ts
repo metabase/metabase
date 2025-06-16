@@ -72,7 +72,6 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.wait(["@metadata", "@metadata"]);
 
     setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
-
     waitAndAssertOnResponse("fieldUpdate");
 
     cy.reload();
@@ -81,15 +80,14 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     getFieldType().should("have.value", "No semantic type");
   });
 
-  it.only("should let you change the type to 'Foreign Key' and choose the target field", () => {
+  it("should let you change the type to 'Foreign Key' and choose the target field", () => {
     H.visitAlias("@ORDERS_QUANTITY_URL");
+    cy.wait("@metadata");
 
     setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
-
     waitAndAssertOnResponse("fieldUpdate");
 
     setFKTargetField("Products → ID");
-
     waitAndAssertOnResponse("fieldUpdate");
 
     cy.reload();

@@ -45,7 +45,7 @@ export const FieldSection = ({
   const [isFieldValuesModalOpen, setIsFieldValuesModalOpen] = useState(false);
 
   return (
-    <Stack gap={0} p="xl" pt={0}>
+    <Stack data-testid="field-section" gap={0} p="xl" pt={0}>
       <Box
         bg="bg-white"
         className={S.header}
