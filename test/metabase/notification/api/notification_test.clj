@@ -437,6 +437,29 @@
                                          :subscriptions [{:type          :notification-subscription/cron
                                                           :cron_schedule "0 0 0 * * ?"}]}))))))))
 
+(deftest send-unsaved-notification-with-custom-payload-api-test
+  (mt/with-temp-test-data
+    [["test_table"
+      [{:field-name "test_field" :base-type :type/Text}]
+      []]]
+    (notification.tu/with-channel-fixtures [:channel/slack]
+      (let [table-id (t2/select-one-fn :id :model/Table :name "test_table")
+            notification {:payload_type   :notification/system-event
+                          :payload        {:event_name :event/row.created
+                                           :table_id table-id}}
+            handlers     [{:channel_type :channel/slack
+                           :template     {:channel_type :channel/slack
+                                          :details      {:type :slack/handlebars-text
+                                                         :body "Hello! Find me at {{creator.email}}"}}
+                           :recipients   [{:type    :notification-recipient/raw-value
+                                           :details {:value "#general"}}]}]
+            send-body    (assoc notification :handlers handlers :use_sample_payload true)]
+        (is (=? {:channel/slack [{:channel "#general",
+                                  :blocks [{:type "section",
+                                            :text {:type "mrkdwn", :text "Hello! Find me at bot@metabase.com"}}]}]}
+                (notification.tu/with-captured-channel-send!
+                  (mt/user-http-request :crowberto :post 204 "notification/send" send-body))))))))
+
 (deftest get-notification-permissions-test
   (mt/with-temp
     [:model/User {third-user-id :id} {:is_superuser false}]
