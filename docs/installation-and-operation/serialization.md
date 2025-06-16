@@ -1,5 +1,6 @@
 ---
 title: "Serialization"
+summary: How to export and import Metabase content between instances using serialization. Useful for version control, staging environments, and duplicating assets.
 redirect_from:
   - /docs/latest/enterprise-guide/serialization
 ---
@@ -725,9 +726,11 @@ If your collections contains dashboards, models, and other items that can add de
 
 ### Using serialization to swap the data source for questions within one instance
 
-If you want to change the data source for some of the questions in your Metabase — for example, just for questions in a single collection - you can serialize the questions manually, then edit the exported YAML files.
+> We've since built an official solution for situations where you want to build one dashboard and change the database it queries based on who's viewing it. Check out [Database routing](../permissions/database-routing.md).
 
-> If you want to switch _every_ question built on database A to use database B instead, and database B has exactly the same schema as database A, you don't need to use serialization: you can just swap the connection string in **Admin > Databases**
+Read the blockquote above before proceeding, as that's probably what you're looking for. We're leaving the docs below as a backup in case [database routing](../permissions/database-routing.md) doesn't solve your problem.
+
+If you want to change the data source for some of the questions in your Metabase — for example, just for questions in a single collection - you can serialize the questions manually, then edit the exported YAML files.
 
 Your databases must have the same engine, and ideally they should have the same schema.
 
