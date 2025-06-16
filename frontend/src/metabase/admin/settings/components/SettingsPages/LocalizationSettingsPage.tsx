@@ -35,9 +35,6 @@ export function LocalizationSettingsPage() {
             </Stack>
           }
         />
-        <ErrorBoundary>
-          <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-        </ErrorBoundary>
         <AdminSettingInput
           name="report-timezone"
           searchable
@@ -72,6 +69,9 @@ export function LocalizationSettingsPage() {
           inputType="select"
         />
       </SettingsSection>
+      <ErrorBoundary>
+        <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+      </ErrorBoundary>
       <FormattingWidget />
     </SettingsPageWrapper>
   );
