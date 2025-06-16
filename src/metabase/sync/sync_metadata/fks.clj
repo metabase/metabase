@@ -190,6 +190,14 @@
                                                                   :schema (:fk-table-schema metadata))
                                 (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
+(defmacro ^:private try-with-err-count
+  [& body]
+  `(try
+     [(do ~@body) 0]
+     (catch Exception e#
+       (log/error e#)
+       [0 1])))
+
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
   ([table :- i/TableInstance]
@@ -204,22 +212,15 @@
                               (map normalize-fk-metadata)
                               (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))
            stats (transduce (map (fn [fk-meta]
-                                   (let [[updated failed]
-                                         (try [(mark-fk! database fk-meta) 0]
-                                              (catch Exception e
-                                                (log/error e)
-                                                [0 1]))]
+                                   (let [[updated failed] (try-with-err-count (mark-fk! database fk-meta))]
                                      {:total-fks    1
                                       :updated-fks  updated
                                       :total-failed failed})))
-                            (partial merge-with (fnil + 0 0))
+                            (partial merge-with +)
                             {:total-fks 0 :updated-fks 0 :total-failed 0}
                             fk-metadata)
 
-           [retired failed] (try [(retire-obsolete-fks-for-table database (:id table) fk-metadata) 0]
-                                 (catch Exception e
-                                   (log/error e)
-                                   [0 1]))]
+           [retired failed] (try-with-err-count (retire-obsolete-fks-for-table database (:id table) fk-metadata))]
        (-> stats
            (assoc :retired-fks retired)
            (update :total-failed + failed))))))
@@ -234,7 +235,7 @@
   [database :- i/DatabaseInstance]
   (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
              (transduce (map #(sync-fks-for-table! database %))
-                        (partial merge-with (fnil + 0 0))
+                        (partial merge-with +)
                         {:total-fks 0 :updated-fks 0 :total-failed 0 :retired-fks 0}
                         (sync-util/reducible-sync-tables database)))
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
