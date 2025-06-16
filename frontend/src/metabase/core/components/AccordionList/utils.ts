@@ -1,4 +1,5 @@
 import Fuse from "fuse.js";
+import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 import { memoize } from "underscore";
@@ -182,7 +183,7 @@ export const getSearchIndex = memoize(function <
   TSection extends Section<TItem>,
 >({
   sections,
-  searchProp = [],
+  searchProp = ["name", "displayName"],
 }: {
   sections: TSection[];
   searchProp?: string | string[];
