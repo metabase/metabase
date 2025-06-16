@@ -58,5 +58,5 @@ jobs:
                 }
               });
             } else {
-              console.log("Branch name is not to be published: ", process.env.SOURCE_BRANCH);
+              console.log("Branch name is not to be published: ", process.env.TARGET_BRANCH);
             }
