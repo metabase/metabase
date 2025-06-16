@@ -1378,14 +1378,13 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.get("aside").button("Done").click();
         H.saveDashboard({ waitMs: 250 });
 
-        cy.wait(1000);
-
         (function testDashboardDestinationClick() {
           cy.log("it handles 'Count' column click");
 
           getTableCell(COLUMN_INDEX.COUNT)
             .should("have.text", `Count: ${POINT_COUNT}`)
-            .scrollIntoView()
+            // wait for javascript to execute
+            .wait(200)
             .click();
 
           cy.get("@targetDashboardId").then((targetDashboardId) => {
