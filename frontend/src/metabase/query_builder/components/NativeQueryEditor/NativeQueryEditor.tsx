@@ -305,7 +305,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               }
             }}
           >
-            <Flex w="100%" flex="1">
+            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
               <CodeMirrorEditor
                 ref={this.editor}
                 query={question.query()}

@@ -23,14 +23,12 @@
 
 .editorWrapper {
   width: 100%;
-  overflow: hidden;
 }
 
 .resizableBox {
   display: none;
   border-top: 1px solid var(--mb-color-border);
   max-height: 0;
-  /* overflow: hidden; */
 
   &.open {
     display: flex;
@@ -42,6 +40,10 @@
     transition: max-height 0.3s ease-out;
     display: flex;
   }
+}
+
+.resizableBoxContent {
+  overflow: hidden;
 }
 
 .actionButtons {
