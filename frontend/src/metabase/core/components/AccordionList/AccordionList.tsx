@@ -49,6 +49,7 @@ type Props<
   role?: string;
   searchProp?: string | string[];
   searchable?: boolean | ((section: Section) => boolean | undefined);
+  fuzzySearch?: boolean;
   sections: TSection[];
   style?: CSSProperties;
 
@@ -386,11 +387,18 @@ export class AccordionList<
   };
 
   searchFilter = (item: TItem) => {
-    const { searchProp = ["name", "displayName"] } = this.props;
+    const { searchProp = ["name", "displayName"], fuzzySearch } = this.props;
     const { searchText } = this.state;
 
     if (!searchText || searchText.length === 0) {
       return true;
+    }
+
+    if (fuzzySearch) {
+      const results = this.state.searchIndex.search(searchText, {
+        limit: 50,
+      });
+      return results.some((result) => result.item === item);
     }
 
     const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
