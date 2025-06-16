@@ -6,7 +6,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > field > field type", () => {
-  const ordersColumns = ["PRODUCT_ID", "QUANTITY"];
+  const ordersColumns: (keyof typeof ORDERS)[] = ["PRODUCT_ID", "QUANTITY"];
 
   function waitAndAssertOnResponse(alias: string) {
     cy.wait("@" + alias).then((request) => {
