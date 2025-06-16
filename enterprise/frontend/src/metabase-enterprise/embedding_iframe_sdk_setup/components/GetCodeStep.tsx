@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
 
 import { CreateApiKeyModal } from "metabase/admin/settings/components/ApiKeys/CreateApiKeyModal";
+import { CodeEditor } from "metabase/components/CodeEditor";
 import {
   ActionIcon,
   Anchor,
   Button,
   Card,
-  Code,
   CopyButton,
   Icon,
   Stack,
@@ -83,7 +83,12 @@ export const GetCodeStep = () => {
         </Text>
 
         <Stack gap="sm">
-          <Code block>{snippet}</Code>
+          <CodeEditor
+            language="html"
+            value={snippet}
+            readOnly
+            lineNumbers={false}
+          />
 
           <CopyButton value={snippet}>
             {({ copied, copy }) => (
