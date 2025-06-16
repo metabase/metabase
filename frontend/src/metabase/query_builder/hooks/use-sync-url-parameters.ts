@@ -1,12 +1,19 @@
 import querystring from "querystring";
 import { useEffect, useMemo } from "react";
 
-import { isEmbeddingSdk } from "metabase/env";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { Parameter } from "metabase-types/api";
 
-export function useSyncUrlParameters(parameters?: Parameter[]) {
+interface UseSyncUrlParametersProps {
+  parameters?: Parameter[];
+  disabled?: boolean;
+}
+
+export function useSyncUrlParameters({
+  parameters,
+  disabled = false,
+}: UseSyncUrlParametersProps) {
   const queryParams = useMemo(
     () => getParameterValuesBySlug(parameters),
     [parameters],
@@ -18,10 +25,8 @@ export function useSyncUrlParameters(parameters?: Parameter[]) {
      * this changes the URL of the iframe by appending the query string to the src.
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
-     *
-     * Also, when using the SDK, we don't want to change parent's URL either.
      */
-    if (IS_EMBED_PREVIEW || isEmbeddingSdk) {
+    if (IS_EMBED_PREVIEW || disabled) {
       return;
     }
 
@@ -33,7 +38,7 @@ export function useSyncUrlParameters(parameters?: Parameter[]) {
         window.location.pathname + searchString + window.location.hash,
       );
     }
-  }, [queryParams]);
+  }, [disabled, queryParams]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId"];

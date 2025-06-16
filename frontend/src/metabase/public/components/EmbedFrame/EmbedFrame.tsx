@@ -117,9 +117,9 @@ export const EmbedFrame = ({
     dashboard && getDashboardType(dashboard.id) === "public",
   );
 
+  const isDashboard = !!dashboard;
   const ParametersListComponent = getParametersListComponent({
-    isEmbeddingSdk,
-    isDashboard: !!dashboard,
+    isDashboard,
   });
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
@@ -163,7 +163,10 @@ export const EmbedFrame = ({
       : draftParameterValues,
   });
 
-  useSyncUrlParameters(valuePopulatedParameters);
+  useSyncUrlParameters({
+    parameters: valuePopulatedParameters,
+    disabled: !shouldSyncUrlParameters(isDashboard),
+  });
 
   return (
     <Root
@@ -326,16 +329,16 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   return parameterCount <= 5;
 }
 
-function getParametersListComponent({
-  isEmbeddingSdk,
-  isDashboard,
-}: {
-  isEmbeddingSdk: boolean;
-  isDashboard: boolean;
-}) {
+function getParametersListComponent({ isDashboard }: { isDashboard: boolean }) {
+  return shouldSyncUrlParameters(isDashboard)
+    ? SyncedParametersList
+    : ParametersList;
+}
+
+function shouldSyncUrlParameters(isDashboard: boolean) {
   if (isDashboard) {
-    // Dashboards manage parameters themselves
-    return ParametersList;
+    return false;
   }
-  return isEmbeddingSdk ? ParametersList : SyncedParametersList;
+
+  return !isEmbeddingSdk;
 }

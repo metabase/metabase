@@ -31,7 +31,7 @@ export const SyncedParametersList = ({
 }: ParametersListProps) => {
   const dispatch = useDispatch();
 
-  useSyncUrlParameters(parameters);
+  useSyncUrlParameters({ parameters });
 
   const dispatchSetParameterValueToDefault = useCallback(
     (parameterId: ParameterId) => {
