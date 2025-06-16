@@ -273,15 +273,15 @@
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
         (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))))))
@@ -299,15 +299,15 @@
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :checkins :user_id)) {:semantic_type :type/Name})
         (testing "after"
-          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/Name
                   :fk-target-exists? false}
                  (state))))))))
