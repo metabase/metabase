@@ -1,5 +1,9 @@
 import type { SdkIframeEmbedSetupType } from "./types";
 
+export const PERSIST_EMBED_SETTINGS_DEBOUNCE_MS = 3000;
+
+export const API_KEY_PLACEHOLDER = "mb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+
 export const EMBED_TYPES = [
   {
     value: "dashboard" as SdkIframeEmbedSetupType,
@@ -17,5 +21,3 @@ export const EMBED_TYPES = [
     description: "Embed an interactive data exploration experience",
   },
 ];
-
-export const API_KEY_PLACEHOLDER = "mb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";

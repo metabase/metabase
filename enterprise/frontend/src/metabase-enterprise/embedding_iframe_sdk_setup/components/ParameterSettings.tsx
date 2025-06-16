@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { Stack, Text, TextInput } from "metabase/ui";
 
-import { useHideParameter } from "../hooks/use-hide-parameter";
+import { useHideParameter } from "../hooks";
 
 import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";

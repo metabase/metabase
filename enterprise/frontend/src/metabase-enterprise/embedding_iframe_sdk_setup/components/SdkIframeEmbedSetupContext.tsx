@@ -7,13 +7,16 @@ import {
 } from "react";
 import { P, match } from "ts-pattern";
 
-import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { Parameter } from "metabase-types/api";
 
-import { useParameterList } from "../hooks/use-parameter-list";
-import { useRecentItems } from "../hooks/use-recent-items";
-import { useValidateApiKey } from "../hooks/use-validate-api-key";
+import { PERSIST_EMBED_SETTINGS_DEBOUNCE_MS } from "../constants";
+import {
+  useParameterList,
+  usePersistByUserSetting,
+  useRecentItems,
+  useValidateApiKey,
+} from "../hooks";
 import type {
   SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupStep,
@@ -60,8 +63,6 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
-  const instanceUrl = useSetting("site-url");
-
   const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
 
   const [currentStep, setCurrentStep] =
@@ -71,7 +72,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
     apiKey: "",
-    instanceUrl,
+    instanceUrl: "",
     ...getDefaultSdkIframeEmbedSettings("dashboard", defaultEntityId),
   });
 
@@ -97,11 +98,22 @@ export const SdkIframeEmbedSetupProvider = ({
   const { error: apiKeyValidationError, isValidating: isValidatingApiKey } =
     useValidateApiKey(settings.apiKey);
 
+  const { storeSetting } = usePersistByUserSetting({
+    onLoad: setSettings,
+    settingKey: "sdk-iframe-embed-setup-settings",
+    debounceMs: PERSIST_EMBED_SETTINGS_DEBOUNCE_MS,
+  });
+
+  const setAndPersistSettings = (settings: SdkIframeEmbedSettings) => {
+    setSettings(settings);
+    storeSetting(settings);
+  };
+
   const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) =>
-    setSettings(
-      (prevSettings) =>
-        ({ ...prevSettings, ...nextSettings }) as SdkIframeEmbedSettings,
-    );
+    setAndPersistSettings({
+      ...settings,
+      ...nextSettings,
+    } as SdkIframeEmbedSettings);
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
@@ -109,7 +121,7 @@ export const SdkIframeEmbedSetupProvider = ({
 
     embedType,
     settings,
-    setSettings,
+    setSettings: setAndPersistSettings,
     updateSettings,
 
     recentDashboards,

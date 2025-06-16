@@ -140,3 +140,15 @@ export type SdkIframeEmbedSettingKey =
   | keyof ExplorationEmbedOptions
   | keyof CurateContentEmbedOptions
   | keyof ViewContentEmbedOptions;
+
+// --- Event Handler Types ---
+
+export interface SdkIframeEmbedReadyEvent {
+  type: "ready";
+}
+
+export type SdkIframeEmbedEvent = SdkIframeEmbedReadyEvent;
+
+export type SdkIframeEmbedEventHandler<
+  T extends SdkIframeEmbedEvent = SdkIframeEmbedEvent,
+> = (event: T) => void;
