@@ -97,7 +97,7 @@
                       (map second pred-expr-pairs)
                       (when (some? default)
                         [default]))
-               types (expression/type-of exprs)
+               types (map expression/type-of exprs)
                return-type (case-coalesce-return-type types)]
            (or
             (not= return-type :type/*)
