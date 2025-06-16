@@ -134,8 +134,8 @@
   (let [qualifier (if fk-field-id
                     ;; strip off trailing ` id` from FK display name
                     (str/replace (:display-name (lib.metadata/field (qp.store/metadata-provider) fk-field-id))
-                      #"(?i)\sid$"
-                      "")
+                                 #"(?i)\sid$"
+                                 "")
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
