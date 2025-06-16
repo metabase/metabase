@@ -1,7 +1,7 @@
 import type { DetailedHTMLProps, HTMLAttributes } from "react";
 
 type WebComponentElement = HTMLElement & {
-  container: ShadowRoot | null;
+  container?: ShadowRoot | null;
   connectedCallback?(): void;
 };
 

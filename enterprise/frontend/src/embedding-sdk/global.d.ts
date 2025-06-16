@@ -3,7 +3,7 @@ import type {
   InteractiveQuestionWebComponentAttributes,
   MetabaseProviderWebComponentAttributes,
   WebComponentAttributes,
-} from "embedding-sdk";
+} from "./index";
 
 declare global {
   interface HTMLElementTagNameMap {

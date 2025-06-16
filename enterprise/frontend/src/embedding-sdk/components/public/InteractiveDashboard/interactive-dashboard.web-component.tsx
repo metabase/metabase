@@ -1,8 +1,10 @@
-import { createWebComponent } from "embedding-sdk/lib/web-components/create-web-component";
+import {
+  createWebComponent,
+  registerWebComponent,
+} from "embedding-sdk/lib/web-components";
 
 import {
-  EditableDashboard,
-  type EditableDashboardProps,
+  InteractiveDashboard,
   type InteractiveDashboardProps,
 } from "../InteractiveDashboard";
 
@@ -11,14 +13,11 @@ export type InteractiveDashboardWebComponentAttributes = {
 };
 
 const InteractiveDashboardWebComponent = createWebComponent<
-  Pick<EditableDashboardProps, "dashboardId">
->(({ dashboardId }) => <EditableDashboard dashboardId={dashboardId} />, {
+  Pick<InteractiveDashboardProps, "dashboardId">
+>(({ dashboardId }) => <InteractiveDashboard dashboardId={dashboardId} />, {
   props: {
     dashboardId: "number",
   },
 });
 
-customElements.define(
-  "interactive-dashboard",
-  InteractiveDashboardWebComponent,
-);
+registerWebComponent("interactive-dashboard", InteractiveDashboardWebComponent);

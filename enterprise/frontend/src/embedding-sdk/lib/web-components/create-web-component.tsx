@@ -6,7 +6,7 @@ import {
   type MetabaseAuthConfigWithJwt,
   MetabaseProvider,
 } from "embedding-sdk";
-import { withInjectedStyles } from "embedding-sdk/lib/web-components/with-injected-styles";
+import { withInjectedStyles } from "embedding-sdk/lib/web-components";
 import type { WebComponentElementConstructor } from "embedding-sdk/types";
 import { ShadowRootProvider } from "metabase/embedding-sdk/components";
 

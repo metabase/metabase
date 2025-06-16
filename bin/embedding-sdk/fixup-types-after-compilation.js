@@ -194,11 +194,7 @@ const appendGlobalDtsDeclarations = () => {
     encoding: "utf8",
   });
 
-  // We have to extract the `declare global` block without import statements above it
-  const extractedGlobalDeclarations =
-    content.match(/declare global\s*\{[\s\S]*}/)[0] ?? "";
-
-  fs.appendFileSync(DTS_ROLLUP_OUTPUT_FILE_PATH, extractedGlobalDeclarations);
+  fs.appendFileSync(DTS_ROLLUP_OUTPUT_FILE_PATH, content);
 };
 
 const watchFilesAndFixThem = () => {

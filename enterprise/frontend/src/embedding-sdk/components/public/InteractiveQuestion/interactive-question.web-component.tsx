@@ -1,4 +1,7 @@
-import { createWebComponent } from "embedding-sdk/lib/web-components/create-web-component";
+import {
+  createWebComponent,
+  registerWebComponent,
+} from "embedding-sdk/lib/web-components";
 
 import {
   InteractiveQuestion,
@@ -17,4 +20,4 @@ const InteractiveQuestionWebComponent = createWebComponent<
   },
 });
 
-customElements.define("interactive-question", InteractiveQuestionWebComponent);
+registerWebComponent("interactive-question", InteractiveQuestionWebComponent);

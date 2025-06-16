@@ -76,3 +76,8 @@ export { defineMetabaseTheme };
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
 
 export { MetabotQuestion } from "./MetabotQuestion";
+
+// web components
+export * from "./metabase-provider.web-component";
+export * from "./InteractiveDashboard/interactive-dashboard.web-component";
+export * from "./InteractiveQuestion/interactive-question.web-component";

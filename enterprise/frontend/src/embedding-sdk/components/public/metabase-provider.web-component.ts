@@ -1,6 +1,8 @@
+import {
+  createMetabaseProviderWebComponent,
+  registerWebComponent,
+} from "embedding-sdk/lib/web-components";
 import type { MetabaseAuthConfigWithJwt } from "embedding-sdk/types/auth-config";
-
-import { createMetabaseProviderWebComponent } from "../../lib/web-components/create-metabase-provider-web-component";
 
 export type MetabaseProviderWebComponentAttributes = {
   "metabase-instance-url"?: MetabaseAuthConfigWithJwt["metabaseInstanceUrl"];
@@ -9,4 +11,4 @@ export type MetabaseProviderWebComponentAttributes = {
 };
 
 const MetabaseProviderWebComponent = createMetabaseProviderWebComponent();
-customElements.define("metabase-provider", MetabaseProviderWebComponent);
+registerWebComponent("metabase-provider", MetabaseProviderWebComponent);
