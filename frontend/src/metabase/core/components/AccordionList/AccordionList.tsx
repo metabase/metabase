@@ -256,11 +256,8 @@ export class AccordionList<
     return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
   };
 
-  checkSectionHasItemsMatchingSearch = (
-    section: TSection,
-    searchFilter: (item: TItem) => boolean,
-  ) => {
-    return (section.items?.filter(searchFilter).length ?? 0) > 0;
+  checkSectionHasItemsMatchingSearch = (section: TSection) => {
+    return (section.items?.filter(this.searchFilter).length ?? 0) > 0;
   };
 
   getFirstSelectedItemCursor = () => {
@@ -414,7 +411,7 @@ export class AccordionList<
         if (
           !searchable ||
           !globalSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, this.searchFilter) ||
+          this.checkSectionHasItemsMatchingSearch(section) ||
           section.type === "action"
         ) {
           if (section.type === "action") {
