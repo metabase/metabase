@@ -14,8 +14,10 @@
 }
 
 .input {
+  overflow: hidden;
+
   &:focus-within {
-    border-color: #789cbc !important;
+    border-color: var(--mb-color-brand) !important;
   }
 
   textarea {
@@ -24,7 +26,7 @@
 
     &:focus {
       color: var(--mb-color-text-secondary);
-      background-color: #a0c9ed;
+      background-color: var(--mb-color-brand-lighter);
     }
   }
 }
