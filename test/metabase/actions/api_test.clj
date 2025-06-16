@@ -723,7 +723,14 @@
                                                     :display_name "Leather Sofa Table"
                                                     :description  "Premium leather side table"
                                                     :schema       "public"
-                                                    :db_id        db-id-2}]
+                                                    :db_id        db-id-2}
+                     :model/Table _                {:name         "inactive_table"
+                                                    :display_name "Inactive Table"
+                                                    :description  "inactive"
+                                                    :schema       "public"
+                                                    :db_id        db-id-1
+                                                    :active       false}]
+
         (testing "Returns only tables from the specified database, in alphabetical order"
           (is (=? {:tables [{:id table-id-2 :name "mahogany_coffee_table" :display_name "Mahogany Coffee Table"
                              :description "Luxurious mahogany coffee table" :schema "public"}
