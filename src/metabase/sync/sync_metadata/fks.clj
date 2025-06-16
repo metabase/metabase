@@ -132,9 +132,6 @@
 (defn- retire-obsolete-fks-conds
   [tmp-table-name db-id]
   [:and
-   [:= :fk_f.table_id :fk_t.id]
-   [:= :fk_f.fk_target_field_id :pk_f.id]
-   [:= :pk_f.table_id :pk_t.id]
    [:= :fk_t.db_id db-id]
    [:not= :fk_f.fk_target_field_id nil]
    [:= :fk_f.semantic_type "type/FK"]
@@ -166,16 +163,49 @@
                           [:= :t.pk_column [:lower :pk_f.name]]]}]])
 
 (defn- retire-obsolete-fks-query
-  [tmp-table-name db-id & {:keys [table-id]}]
-  (-> {:update [:metabase_field :fk_f]
-       :set    {:fk_target_field_id nil
-                :semantic_type      nil}
-       :from   [[:metabase_table :fk_t]
-                [:metabase_field :pk_f]
-                [:metabase_table :pk_t]]
-       :where  (retire-obsolete-fks-conds (keyword tmp-table-name) db-id)}
-      (cond-> table-id
-        (update :where conj [:= :fk_t.id table-id]))))
+  [tmp-table-name db-id  & {:keys [table-id]}]
+  (case (mdb/db-type)
+    :mysql
+    {:update [:metabase_field :fk_f]
+     :join   [[:metabase_table :fk_t] [:= :fk_f.table_id :fk_t.id]
+              [:metabase_field :pk_f] [:= :fk_f.fk_target_field_id :pk_f.id]
+              [:metabase_table :pk_t] [:= :pk_f.table_id :pk_t.id]]
+     :set    {:fk_target_field_id nil
+              :semantic_type      nil}
+     :where  (cond-> [:and (retire-obsolete-fks-conds (keyword tmp-table-name) db-id)]
+               table-id (conj [:= :fk_t.id table-id]))}
+
+    :postgres
+    {:update [:metabase_field :fk_f]
+     :from   [[:metabase_table :fk_t]
+              [:metabase_field :pk_f]
+              [:metabase_table :pk_t]]
+     :set    {:fk_target_field_id nil
+              :semantic_type      nil}
+     :where  (cond->
+              [:and
+               [:= :fk_f.table_id :fk_t.id]
+               [:= :fk_f.fk_target_field_id :pk_f.id]
+               [:= :pk_f.table_id :pk_t.id]
+               (retire-obsolete-fks-conds (keyword tmp-table-name) db-id)]
+               table-id (conj [:= :fk_t.id table-id]))}
+
+    :h2
+    {:update [:metabase_field :fk_f]
+     :set    {:fk_target_field_id nil
+              :semantic_type      nil}
+     :where  [:and
+              [:exists {:select [1]
+                        :from   [[:metabase_table :fk_t]
+                                 [:metabase_field :pk_f]
+                                 [:metabase_table :pk_t]]
+                        :where  (cond->
+                                 [:and
+                                  [:= :fk_f.table_id :fk_t.id]
+                                  [:= :fk_f.fk_target_field_id :pk_f.id]
+                                  [:= :pk_f.table_id :pk_t.id]
+                                  (retire-obsolete-fks-conds (keyword tmp-table-name) db-id)]
+                                  table-id (conj [:= :fk_t.id table-id]))}]]}))
 
 (mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
