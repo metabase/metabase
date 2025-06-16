@@ -2,11 +2,11 @@
   "`/api/ee/ai-sql-fixer/` routes"
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.ai-sql-fixer.query-analyzer :as query-analyzer]
    [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
-   [metabase.query-analysis.core :as query-analyzer]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]

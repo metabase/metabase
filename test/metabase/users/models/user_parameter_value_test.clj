@@ -10,7 +10,8 @@
 
 (deftest user-parameter-value-store-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters true]
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
         (let [store!      (fn [parameters]
                             (upv/store! (mt/user->id :rasta) dashboard-id parameters))
@@ -54,40 +55,94 @@
                     "param4" nil}
                    (retrieve-fn)))))))))
 
+(deftest user-parameter-value-store-disabled-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters false]
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}]
+        (let [store!      (fn [parameters]
+                            (upv/store! (mt/user->id :rasta) dashboard-id parameters))
+              retrieve-fn (fn []
+                            (t2/select-fn->fn :parameter_id :value
+                                              :model/UserParameterValue
+                                              :user_id (mt/user->id :rasta) :dashboard_id dashboard-id))]
+          (testing "do not insert anything when disabled"
+            (store! [{:id "param1" :value 1}
+                     {:id "param2" :value "string"}
+                     {:id "param3" :value ["A" "B" "C"]}])
+            (is (= {}
+                   (retrieve-fn)))))))))
+
 (deftest hydrate-last-used-param-values-test
-  (let [rasta-id (mt/user->id :rasta)
-        crowberto (mt/user->id :crowberto)]
-    (mt/with-temp
-      [:model/Dashboard          dash-1 {:parameters [{:id "param" :type :text} {:id "dash1-param" :type :text}]}
-       :model/Dashboard          dash-2 {:parameters [{:id "param" :type :text} {:id "dash2-param" :type :text}]}
-       :model/UserParameterValue _      {:user_id      rasta-id
-                                         :dashboard_id (:id dash-1)
-                                         :parameter_id "param"
-                                         :value        "dash1-param-value"}
-       :model/UserParameterValue _      {:user_id      rasta-id
-                                         :dashboard_id (:id dash-1)
-                                         :parameter_id "dash1-param"
-                                         :value        "dash1-param-value"}
-       :model/UserParameterValue _      {:user_id      rasta-id
-                                         :dashboard_id (:id dash-2)
-                                         :parameter_id "param"
-                                         :value        "dash2-param-value"}
-       :model/UserParameterValue _      {:user_id      rasta-id
-                                         :dashboard_id (:id dash-2)
-                                         :parameter_id "dash1-param"
-                                         :value        "dash1-param-value"}
-       ;; crowberto value
-       :model/UserParameterValue _      {:user_id      crowberto
-                                         :dashboard_id (:id dash-1)
-                                         :parameter_id "param2"
-                                         :value        "dash1-param-value"}]
-      (testing "return only user param values for the current user"
-        (is (= [{:id (:id dash-1)
-                 :last_used_param_values {"param" "dash1-param-value"
-                                          "dash1-param" "dash1-param-value"}}
-                {:id (:id dash-2)
-                 :last_used_param_values {"param" "dash2-param-value"
-                                          "dash1-param" "dash1-param-value"}}]
-               (binding [api/*current-user-id*  rasta-id]
-                 (map #(select-keys % [:id :last_used_param_values])
-                      (t2/hydrate [dash-1 dash-2] :last_used_param_values)))))))))
+  (mt/with-temporary-setting-values [dashboards-save-last-used-parameters true]
+    (let [rasta-id (mt/user->id :rasta)
+          crowberto (mt/user->id :crowberto)]
+      (mt/with-temp
+        [:model/Dashboard          dash-1 {:parameters [{:id "param" :type :text} {:id "dash1-param" :type :text}]}
+         :model/Dashboard          dash-2 {:parameters [{:id "param" :type :text} {:id "dash2-param" :type :text}]}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-1)
+                                           :parameter_id "param"
+                                           :value        "dash1-param-value"}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-1)
+                                           :parameter_id "dash1-param"
+                                           :value        "dash1-param-value"}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-2)
+                                           :parameter_id "param"
+                                           :value        "dash2-param-value"}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-2)
+                                           :parameter_id "dash1-param"
+                                           :value        "dash1-param-value"}
+         ;; crowberto value
+         :model/UserParameterValue _      {:user_id      crowberto
+                                           :dashboard_id (:id dash-1)
+                                           :parameter_id "param2"
+                                           :value        "dash1-param-value"}]
+        (testing "return only user param values for the current user"
+          (is (= [{:id (:id dash-1)
+                   :last_used_param_values {"param" "dash1-param-value"
+                                            "dash1-param" "dash1-param-value"}}
+                  {:id (:id dash-2)
+                   :last_used_param_values {"param" "dash2-param-value"
+                                            "dash1-param" "dash1-param-value"}}]
+                 (binding [api/*current-user-id*  rasta-id]
+                   (map #(select-keys % [:id :last_used_param_values])
+                        (t2/hydrate [dash-1 dash-2] :last_used_param_values))))))))))
+
+(deftest hydrate-last-used-param-values-disabled-test
+  (mt/with-temporary-setting-values [dashboards-save-last-used-parameters false]
+    (let [rasta-id (mt/user->id :rasta)
+          crowberto (mt/user->id :crowberto)]
+      (mt/with-temp
+        [:model/Dashboard          dash-1 {:parameters [{:id "param" :type :text} {:id "dash1-param" :type :text}]}
+         :model/Dashboard          dash-2 {:parameters [{:id "param" :type :text} {:id "dash2-param" :type :text}]}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-1)
+                                           :parameter_id "param"
+                                           :value        "dash1-param-value"}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-1)
+                                           :parameter_id "dash1-param"
+                                           :value        "dash1-param-value"}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-2)
+                                           :parameter_id "param"
+                                           :value        "dash2-param-value"}
+         :model/UserParameterValue _      {:user_id      rasta-id
+                                           :dashboard_id (:id dash-2)
+                                           :parameter_id "dash1-param"
+                                           :value        "dash1-param-value"}
+         ;; crowberto value
+         :model/UserParameterValue _      {:user_id      crowberto
+                                           :dashboard_id (:id dash-1)
+                                           :parameter_id "param2"
+                                           :value        "dash1-param-value"}]
+        (testing "do not hydrate parameters when disabled"
+          (is (= [{:id (:id dash-1)}
+                  {:id (:id dash-2)}]
+                 (binding [api/*current-user-id*  rasta-id]
+                   (map #(select-keys % [:id :last_used_param_values])
+                        (t2/hydrate [dash-1 dash-2] :last_used_param_values))))))))))

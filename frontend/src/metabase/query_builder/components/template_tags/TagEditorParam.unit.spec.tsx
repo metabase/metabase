@@ -63,7 +63,6 @@ const setup = ({
   });
 
   const setTemplateTag = jest.fn();
-  const setTemplateTagConfig = jest.fn();
   const setParameterValue = jest.fn();
 
   renderWithProviders(
@@ -73,13 +72,12 @@ const setup = ({
       databases={metadata.databasesList()}
       parameter={createMockParameter()}
       setTemplateTag={setTemplateTag}
-      setTemplateTagConfig={setTemplateTagConfig}
       setParameterValue={setParameterValue}
     />,
     { storeInitialState: state },
   );
 
-  return { setTemplateTag, setTemplateTagConfig, setParameterValue };
+  return { setTemplateTag, setParameterValue };
 };
 
 describe("TagEditorParam", () => {
