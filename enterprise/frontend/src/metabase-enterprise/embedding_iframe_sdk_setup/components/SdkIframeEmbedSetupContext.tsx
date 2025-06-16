@@ -32,10 +32,6 @@ interface SdkIframeEmbedSetupContextType {
   setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
 
-  // API key validation
-  isValidatingApiKey: boolean;
-  apiKeyValidationError: string | null;
-
   // Recent dashboards and questions
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   recentQuestions: SdkIframeEmbedSetupRecentItem[];
@@ -48,6 +44,10 @@ interface SdkIframeEmbedSetupContextType {
   // Parameters for dashboards and questions
   availableParameters: Parameter[];
   isLoadingParameters: boolean;
+
+  // API key validation
+  isValidatingApiKey: boolean;
+  apiKeyValidationError: string | null;
 }
 
 const SdkIframeEmbedSetupContext =
@@ -112,15 +112,15 @@ export const SdkIframeEmbedSetupProvider = ({
     setSettings,
     updateSettings,
 
-    isValidatingApiKey,
-    apiKeyValidationError,
-
     recentDashboards,
     recentQuestions,
     addRecentItem,
 
     availableParameters,
     isLoadingParameters,
+
+    isValidatingApiKey,
+    apiKeyValidationError,
   };
 
   return (

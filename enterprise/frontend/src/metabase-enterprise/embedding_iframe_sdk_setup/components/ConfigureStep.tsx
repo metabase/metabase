@@ -1,23 +1,12 @@
-import { useDebouncedCallback } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
 import type { MetabaseColors } from "metabase/embedding-sdk/theme";
 import { colors as defaultMetabaseColors } from "metabase/lib/colors";
-import {
-  Card,
-  Checkbox,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  TextInput,
-} from "metabase/ui";
-
-import { useHideParameter } from "../hooks/use-hide-parameter";
+import { Card, Checkbox, Divider, Group, Stack, Text } from "metabase/ui";
 
 import { DebouncedColorPillPicker } from "./DebouncedColorPillPicker";
-import { ParameterVisibilityToggle } from "./ParameterVisibilityToggle";
+import { ParameterSettings } from "./ParameterSettings";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 const getConfigurableColors = () =>
@@ -40,15 +29,8 @@ const getConfigurableColors = () =>
   ] as const;
 
 export const ConfigureStep = () => {
-  const {
-    embedType,
-    settings,
-    updateSettings,
-    availableParameters,
-    isLoadingParameters,
-  } = useSdkIframeEmbedSetupContext();
-
-  const { isParameterHidden, toggleParameterVisibility } = useHideParameter();
+  const { embedType, settings, updateSettings } =
+    useSdkIframeEmbedSetupContext();
 
   const { theme } = settings;
 
@@ -69,68 +51,6 @@ export const ConfigureStep = () => {
   const showTitleOption =
     !!settings.dashboardId ||
     (!!settings.questionId && settings.isDrillThroughEnabled);
-
-  const updateInitialParameterValue = useDebouncedCallback(
-    (paramId: string, value: string) => {
-      if (settings.dashboardId) {
-        updateSettings({
-          initialParameters: {
-            ...settings.initialParameters,
-            [paramId]: value,
-          },
-        });
-      }
-
-      if (settings.questionId) {
-        updateSettings({
-          initialSqlParameters: {
-            ...settings.initialSqlParameters,
-            [paramId]: value,
-          },
-        });
-      }
-    },
-    500,
-  );
-
-  const renderParameterList = () => {
-    if (isLoadingParameters) {
-      return (
-        <Text size="sm" c="text-medium">
-          {t`Loading parameters...`}
-        </Text>
-      );
-    }
-
-    if (availableParameters.length > 0) {
-      return availableParameters.map((param) => (
-        <TextInput
-          key={param.id}
-          label={param.name}
-          placeholder={
-            param.default?.toString() || `Enter ${param.name.toLowerCase()}`
-          }
-          onChange={(e) =>
-            updateInitialParameterValue(param.slug, e.target.value)
-          }
-          rightSection={
-            <ParameterVisibilityToggle
-              parameterName={param.slug}
-              embedType={embedType}
-              isHidden={isParameterHidden(param.slug)}
-              onToggle={toggleParameterVisibility}
-            />
-          }
-        />
-      ));
-    }
-
-    return (
-      <Text size="sm" c="text-light">
-        {t`Parameters are not available for this ${embedType}.`}
-      </Text>
-    );
-  };
 
   return (
     <Stack gap="md">
@@ -183,7 +103,7 @@ export const ConfigureStep = () => {
             {t`Set default values and control visibility`}
           </Text>
 
-          <Stack gap="md">{renderParameterList()}</Stack>
+          <ParameterSettings />
         </Card>
       )}
 
