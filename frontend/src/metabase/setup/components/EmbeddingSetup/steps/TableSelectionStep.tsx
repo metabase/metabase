@@ -267,8 +267,12 @@ const retry = async <T,>({
 function useShouldFetchTables(setLoading: (loading: boolean) => void) {
   const [shouldFetchTables, setShouldFetchTables] = useState(false);
 
-  const { data: databases, refetch: refetchDatabases } =
-    useListDatabasesQuery();
+  const {
+    data: databases,
+    isLoading,
+    isFetching,
+    refetch: refetchDatabases,
+  } = useListDatabasesQuery();
 
   // Checks if databases are synced
   useEffect(() => {
@@ -284,11 +288,13 @@ function useShouldFetchTables(setLoading: (loading: boolean) => void) {
     } else {
       // Same value as in `frontend/src/metabase/status/containers/DatabaseStatus/DatabaseStatus.tsx`
       const DATABASES_RELOAD_INTERVAL = 2000;
-      setTimeout(() => {
-        refetchDatabases();
-      }, DATABASES_RELOAD_INTERVAL);
+      if (!isLoading && !isFetching) {
+        setTimeout(() => {
+          refetchDatabases();
+        }, DATABASES_RELOAD_INTERVAL);
+      }
     }
-  }, [databases, refetchDatabases, setLoading]);
+  }, [databases?.data, isFetching, isLoading, refetchDatabases, setLoading]);
 
   return shouldFetchTables;
 }
