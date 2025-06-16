@@ -173,6 +173,7 @@ export type ActionDashboardCard = Omit<
 export type QuestionDashboardCard = BaseDashboardCard & {
   card_id: CardId | null; // will be null for virtual card
   card: Card;
+  inline_parameters: ParameterId[] | null;
   parameter_mappings?: DashboardParameterMapping[] | null;
   series?: Card[];
 };
