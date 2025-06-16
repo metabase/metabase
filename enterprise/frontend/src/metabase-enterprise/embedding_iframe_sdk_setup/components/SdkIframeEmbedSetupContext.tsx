@@ -106,28 +106,27 @@ export const SdkIframeEmbedSetupProvider = ({
     );
 
   const toggleParameterVisibility = (parameterName: string) => {
-    // Only dashboards support hidden parameters
-    if (embedType !== "dashboard" || !("hiddenParameters" in settings)) {
+    // Only dashboards supports hiding parameters
+    if (!settings.dashboardId) {
       return;
     }
 
-    const currentHidden = settings.hiddenParameters || [];
-    const isCurrentlyHidden = currentHidden.includes(parameterName);
+    const hiddenParameters = settings?.hiddenParameters ?? [];
 
-    const hiddenParameters = isCurrentlyHidden
-      ? currentHidden.filter((name) => name !== parameterName)
-      : [...currentHidden, parameterName];
+    const nextHiddenParameters = hiddenParameters.includes(parameterName)
+      ? hiddenParameters.filter((name) => name !== parameterName)
+      : [...hiddenParameters, parameterName];
 
-    updateSettings({ hiddenParameters });
+    updateSettings({ hiddenParameters: nextHiddenParameters });
   };
 
   const isParameterHidden = (parameterName: string) => {
-    // only dashboards support hidden parameters
-    if (embedType !== "dashboard" || !("hiddenParameters" in settings)) {
+    // Only dashboards support hiding parameters
+    if (!settings.dashboardId) {
       return false;
     }
 
-    return (settings.hiddenParameters || []).includes(parameterName);
+    return (settings.hiddenParameters ?? []).includes(parameterName);
   };
 
   const value: SdkIframeEmbedSetupContextType = {

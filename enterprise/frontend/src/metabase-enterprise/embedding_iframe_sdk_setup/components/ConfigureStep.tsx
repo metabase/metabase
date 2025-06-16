@@ -39,7 +39,7 @@ const getConfigurableColors = () =>
 
 export const ConfigureStep = () => {
   const {
-    embedType: selectedType,
+    embedType,
     settings,
     updateSettings,
     availableParameters,
@@ -47,6 +47,7 @@ export const ConfigureStep = () => {
     toggleParameterVisibility,
     isParameterHidden,
   } = useSdkIframeEmbedSetupContext();
+
   const { theme } = settings;
 
   const isQuestionOrDashboardEmbed =
@@ -89,6 +90,45 @@ export const ConfigureStep = () => {
     },
     500,
   );
+
+  const renderParameterList = () => {
+    if (isLoadingParameters) {
+      return (
+        <Text size="sm" c="text-medium">
+          {t`Loading parameters...`}
+        </Text>
+      );
+    }
+
+    if (availableParameters.length > 0) {
+      return availableParameters.map((param) => (
+        <TextInput
+          key={param.id}
+          label={param.name}
+          placeholder={
+            param.default?.toString() || `Enter ${param.name.toLowerCase()}`
+          }
+          onChange={(e) =>
+            updateInitialParameterValue(param.slug, e.target.value)
+          }
+          rightSection={
+            <ParameterVisibilityToggle
+              parameterName={param.slug}
+              embedType={embedType}
+              isHidden={isParameterHidden(param.slug)}
+              onToggle={toggleParameterVisibility}
+            />
+          }
+        />
+      ));
+    }
+
+    return (
+      <Text size="sm" c="text-light">
+        {t`Parameters are not available for this ${embedType}.`}
+      </Text>
+    );
+  };
 
   return (
     <Stack gap="md">
@@ -141,39 +181,7 @@ export const ConfigureStep = () => {
             {t`Set default values and control visibility`}
           </Text>
 
-          <Stack gap="md">
-            {isLoadingParameters ? (
-              <Text size="sm" c="text-medium">
-                {t`Loading parameters...`}
-              </Text>
-            ) : availableParameters.length > 0 ? (
-              availableParameters.map((param) => (
-                <TextInput
-                  key={param.id}
-                  label={param.name}
-                  placeholder={
-                    param.default?.toString() ||
-                    `Enter ${param.name.toLowerCase()}`
-                  }
-                  onChange={(e) =>
-                    updateInitialParameterValue(param.slug, e.target.value)
-                  }
-                  rightSection={
-                    <ParameterVisibilityToggle
-                      parameterName={param.slug}
-                      embedType={selectedType}
-                      isHidden={isParameterHidden(param.slug)}
-                      onToggle={toggleParameterVisibility}
-                    />
-                  }
-                />
-              ))
-            ) : (
-              <Text size="sm" c="text-light">
-                {t`Parameters are not available for this ${selectedType}.`}
-              </Text>
-            )}
-          </Stack>
+          <Stack gap="md">{renderParameterList()}</Stack>
         </Card>
       )}
 
@@ -203,7 +211,7 @@ export const ConfigureStep = () => {
             <Divider mb="md" />
 
             <Checkbox
-              label={t`Show ${selectedType} title`}
+              label={t`Show ${embedType} title`}
               checked={settings.withTitle ?? true}
               onChange={(e) => updateSettings({ withTitle: e.target.checked })}
             />
