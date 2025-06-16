@@ -2,16 +2,20 @@
   display: flex;
   width: 100%;
   height: 100%;
-  font-weight: 700;
-  align-items: flex-start;
-  padding-top: 9px;
-  padding-bottom: 9px;
+  font-weight: normal;
+  font-size: 14px;
+  color: var(--mb-color-text-primary);
+  align-items: center;
+  padding: 0 12px;
   cursor: pointer;
 }
 
 .content {
   line-height: 17px;
   overflow: visible;
+  font-weight: normal;
+  font-size: 14px;
+  /* color: var(--mb-color-text-primary); */
 }
 
 .noWrap {
