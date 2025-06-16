@@ -13,6 +13,8 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn- normalize-fk-metadata
   [{:keys [fk-table-schema fk-table-name fk-column-name
            pk-table-schema pk-table-name pk-column-name] :as metadata}]
@@ -102,23 +104,23 @@
 
 (defn ^:private create-temp-fk-table-sql
   "Creates a temporary table to track current FK relationships during sync."
-  []
+  [tmp-table-name]
   (format
-   "CREATE %s TEMPORARY TABLE temp_current_fks (
-     fk_schema VARCHAR(256),
-     fk_table VARCHAR(256) NOT NULL,
-     fk_column VARCHAR(256) NOT NULL,
-     pk_schema VARCHAR(256),
-     pk_table VARCHAR(256) NOT NULL,
-     pk_column VARCHAR(256) NOT NULL,
+   "CREATE %s TEMPORARY TABLE %s (
+     fk_schema VARCHAR(64),
+     fk_table VARCHAR(64) NOT NULL,
+     fk_column VARCHAR(64) NOT NULL,
+     pk_schema VARCHAR(64),
+     pk_table VARCHAR(64) NOT NULL,
+     pk_column VARCHAR(64) NOT NULL,
      PRIMARY KEY (fk_schema, fk_table, fk_column, pk_schema, pk_table, pk_column))"
-   (if (= (mdb/db-type) :h2) "LOCAL" "")))
+   (if (= (mdb/db-type) :h2) "LOCAL" "") tmp-table-name))
 
 (defn- insert-current-fk-sql
-  [{:keys [fk-table-schema fk-table-name fk-column-name
-           pk-table-schema pk-table-name pk-column-name]}]
+  [tmp-table-name {:keys [fk-table-schema fk-table-name fk-column-name
+                          pk-table-schema pk-table-name pk-column-name]}]
   (sql/format
-   {:insert-into :temp_current_fks
+   {:insert-into tmp-table-name
     :values [{:fk_schema fk-table-schema
               :fk_table fk-table-name
               :fk_column fk-column-name
@@ -128,7 +130,7 @@
    :dialect (mdb/quoting-style (mdb/db-type))))
 
 (defn- retire-obsolete-fks-conds
-  [db-id]
+  [tmp-table-name db-id]
   [:and
    [:= :fk_f.table_id :fk_t.id]
    [:= :fk_f.fk_target_field_id :pk_f.id]
@@ -154,7 +156,7 @@
                            [:not= :u.semantic_type nil]]]}]
    ;; FK doesn't exist in current temp table
    [:not-exists {:select [1]
-                 :from   [[:temp_current_fks :t]]
+                 :from   [[tmp-table-name :t]]
                  :where  [:and
                           [:= :t.fk_schema [:lower :fk_t.schema]]
                           [:= :t.fk_table [:lower :fk_t.name]]
@@ -164,14 +166,14 @@
                           [:= :t.pk_column [:lower :pk_f.name]]]}]])
 
 (defn- retire-obsolete-fks-query
-  [db-id & {:keys [table-id]}]
+  [tmp-table-name db-id & {:keys [table-id]}]
   (-> {:update [:metabase_field :fk_f]
        :set    {:fk_target_field_id nil
                 :semantic_type      nil}
        :from   [[:metabase_table :fk_t]
                 [:metabase_field :pk_f]
                 [:metabase_table :pk_t]]
-       :where  (retire-obsolete-fks-conds db-id)}
+       :where  (retire-obsolete-fks-conds (keyword tmp-table-name) db-id)}
       (cond-> table-id
         (update :where conj [:= :fk_t.id table-id]))))
 
@@ -190,7 +192,7 @@
                                 (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
 
 (defn- process-fk
-  [database fk-metadata]
+  [tmp-table-name database fk-metadata]
   (transduce (comp (map normalize-fk-metadata)
                    (map (fn [fk-meta]
                           (let [[updated failed] (try [(mark-fk! database fk-meta) 0]
@@ -198,7 +200,7 @@
                                                         (log/error e)
                                                         [0 1]))]
                             (try
-                              (t2/query (insert-current-fk-sql fk-meta))
+                              (t2/query (insert-current-fk-sql (keyword tmp-table-name) fk-meta))
                               (catch Exception e
                                 (log/warn e "Failed to insert FK into temp table")))
 
@@ -211,11 +213,11 @@
 
 (defn- retire-obsolete-fks
   "Retire FK relationships that don't exist in the temp table."
-  [database & {:keys [table-id]}]
+  [tmp-table-name database & {:keys [table-id]}]
   (try
     (let [retire-query (if table-id
-                         (retire-obsolete-fks-query (:id database) :table-id table-id)
-                         (retire-obsolete-fks-query (:id database)))]
+                         (retire-obsolete-fks-query tmp-table-name (:id database) :table-id table-id)
+                         (retire-obsolete-fks-query tmp-table-name  (:id database)))]
       (t2/query-one (sql/format retire-query :dialect (mdb/quoting-style (mdb/db-type)))))
     (catch Exception e
       (log/error e "Error retiring obsolete FK relationships")
@@ -224,14 +226,15 @@
 (defn- sync-fks-with-temp-table
   [database fk-metadata & {:keys [table-id]}]
   (t2/with-connection [_conn]
-    (t2/query (create-temp-fk-table-sql))
-    (try
-      (let [stats (process-fk database fk-metadata)
-            retired-count (retire-obsolete-fks database :table-id table-id)]
-        (assoc stats :retired-fks retired-count))
-      (finally
-        (try (t2/query "DROP TABLE IF EXISTS temp_current_fks")
-             (catch Exception _))))))
+    (let [tmp-table-name (str "tmp_fks_" (System/currentTimeMillis))]
+      (t2/query (create-temp-fk-table-sql tmp-table-name))
+      (try
+        (let [stats (process-fk tmp-table-name database fk-metadata)
+              retired-count (retire-obsolete-fks tmp-table-name database :table-id table-id)]
+          (assoc stats :retired-fks retired-count))
+        (finally
+          (try (t2/query (str "DROP TABLE IF EXISTS " tmp-table-name))
+               (catch Exception _)))))))
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
