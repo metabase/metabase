@@ -22,7 +22,6 @@ import type {
   DatabaseId,
   NativeDatasetQuery,
   NativeQuerySnippet,
-  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -51,15 +50,10 @@ interface NativeQueryRightSidebarProps {
   isShowingQuestionInfoSidebar: boolean;
   isShowingQuestionSettingsSidebar: boolean;
   isShowingAIQuestionAnalysisSidebar: boolean;
-
   databases: Database[];
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: (
     slug: string,
@@ -138,7 +132,6 @@ export const NativeQueryRightSidebar = (
           sampleDatabaseId={props.sampleDatabaseId}
           setDatasetQuery={props.setDatasetQuery}
           setTemplateTag={props.setTemplateTag}
-          setTemplateTagConfig={props.setTemplateTagConfig}
           setParameterValue={props.setParameterValue}
           databases={props.databases}
           onClose={toggleTemplateTagsEditor}

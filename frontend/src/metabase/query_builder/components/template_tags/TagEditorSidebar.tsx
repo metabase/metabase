@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { Component } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -15,7 +15,6 @@ import type {
   NativeDatasetQuery,
   Parameter,
   ParameterId,
-  ParameterValuesConfig,
   RowValue,
   TemplateTag,
   TemplateTagId,
@@ -35,115 +34,84 @@ interface TagEditorSidebarProps {
   sampleDatabaseId: DatabaseId;
   setDatasetQuery: (query: NativeDatasetQuery) => void;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   onClose: () => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
 
-interface TagEditorSidebarState {
-  section: "settings" | "help";
-}
-
-export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
-  state: TagEditorSidebarState = {
-    section: "settings",
-  };
-
-  setSection(section: "settings" | "help") {
-    this.setState({ section });
-  }
-
-  render() {
-    const {
-      databases,
-      sampleDatabaseId,
-      setDatasetQuery,
-      query,
-      question,
-      setTemplateTag,
-      setTemplateTagConfig,
-      setParameterValue,
-      onClose,
-      getEmbeddedParameterVisibility,
-    } = this.props;
+export function TagEditorSidebar({
+  query,
+  databases,
+  question,
+  sampleDatabaseId,
+  setDatasetQuery,
+  setTemplateTag,
+  setParameterValue,
+  onClose,
+  getEmbeddedParameterVisibility,
+}: TagEditorSidebarProps) {
+  const [section, setSection] = useState<"settings" | "help">(() => {
     const tags = query.variableTemplateTags();
-    const database = question.database();
-    const parameters = question.parameters();
-    const parametersById = _.indexBy(parameters, "id");
+    return tags.length === 0 ? "help" : "settings";
+  });
 
-    let section;
-    if (tags.length === 0) {
-      section = "help";
-    } else {
-      section = this.state.section;
-    }
+  const tags = query.variableTemplateTags();
+  const database = question.database();
+  const parameters = question.parameters();
+  const parametersById = _.indexBy(parameters, "id");
 
-    return (
-      <SidebarContent title={t`Variables`} onClose={onClose}>
-        <div data-testid="tag-editor-sidebar">
-          <div
-            className={cx(
-              CS.mx3,
-              CS.textCentered,
-              ButtonsS.ButtonGroup,
-              ButtonsS.ButtonGroupBrand,
-              CS.textUppercase,
-              CS.mb2,
-              CS.flex,
-              CS.flexFull,
-            )}
-          >
-            <a
-              className={cx(
-                ButtonsS.Button,
-                CS.flexFull,
-                ButtonsS.ButtonSmall,
-                {
-                  [ButtonsS.ButtonActive]: section === "settings",
-                  [CS.disabled]: tags.length === 0,
-                },
-              )}
-              onClick={() => this.setSection("settings")}
-            >{t`Settings`}</a>
-            <a
-              className={cx(
-                ButtonsS.Button,
-                CS.flexFull,
-                ButtonsS.ButtonSmall,
-                {
-                  [ButtonsS.ButtonActive]: section === "help",
-                },
-              )}
-              onClick={() => this.setSection("help")}
-            >{t`Help`}</a>
-          </div>
-          {section === "settings" ? (
-            <SettingsPane
-              tags={tags}
-              parametersById={parametersById}
-              database={database}
-              databases={databases}
-              setTemplateTag={setTemplateTag}
-              setTemplateTagConfig={setTemplateTagConfig}
-              setParameterValue={setParameterValue}
-              getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
-            />
-          ) : (
-            <TagEditorHelp
-              database={database}
-              sampleDatabaseId={sampleDatabaseId}
-              setDatasetQuery={setDatasetQuery}
-              switchToSettings={() => this.setSection("settings")}
-            />
+  const effectiveSection = tags.length === 0 ? "help" : section;
+
+  return (
+    <SidebarContent title={t`Variables and parameters`} onClose={onClose}>
+      <div data-testid="tag-editor-sidebar">
+        <div
+          className={cx(
+            CS.mx3,
+            CS.textCentered,
+            ButtonsS.ButtonGroup,
+            ButtonsS.ButtonGroupBrand,
+            CS.textUppercase,
+            CS.mb2,
+            CS.flex,
+            CS.flexFull,
           )}
+        >
+          <a
+            className={cx(ButtonsS.Button, CS.flexFull, ButtonsS.ButtonSmall, {
+              [ButtonsS.ButtonActive]: effectiveSection === "settings",
+              [CS.disabled]: tags.length === 0,
+            })}
+            onClick={() => setSection("settings")}
+          >{t`Settings`}</a>
+          <a
+            className={cx(ButtonsS.Button, CS.flexFull, ButtonsS.ButtonSmall, {
+              [ButtonsS.ButtonActive]: effectiveSection === "help",
+            })}
+            onClick={() => setSection("help")}
+          >{t`Help`}</a>
         </div>
-      </SidebarContent>
-    );
-  }
+        {effectiveSection === "settings" ? (
+          <SettingsPane
+            tags={tags}
+            parametersById={parametersById}
+            database={database}
+            databases={databases}
+            setTemplateTag={setTemplateTag}
+            setParameterValue={setParameterValue}
+            getEmbeddedParameterVisibility={getEmbeddedParameterVisibility}
+          />
+        ) : (
+          <TagEditorHelp
+            database={database}
+            sampleDatabaseId={sampleDatabaseId}
+            setDatasetQuery={setDatasetQuery}
+            switchToSettings={() => setSection("settings")}
+          />
+        )}
+      </div>
+    </SidebarContent>
+  );
 }
 
 interface SettingsPaneProps {
@@ -152,10 +120,6 @@ interface SettingsPaneProps {
   databases: Database[];
   parametersById: Record<ParameterId, Parameter>;
   setTemplateTag: (tag: TemplateTag) => void;
-  setTemplateTagConfig: (
-    tag: TemplateTag,
-    config: ParameterValuesConfig,
-  ) => void;
   setParameterValue: (tagId: TemplateTagId, value: RowValue) => void;
   getEmbeddedParameterVisibility: GetEmbeddedParamVisibility;
 }
@@ -166,29 +130,25 @@ const SettingsPane = ({
   database,
   databases,
   setTemplateTag,
-  setTemplateTagConfig,
   setParameterValue,
   getEmbeddedParameterVisibility,
-}: SettingsPaneProps) => (
-  <div>
-    {tags.map((tag) => (
-      <div key={tag.id}>
-        <TagEditorParam
-          tag={tag}
-          key={tag.name}
-          parameter={parametersById[tag.id]}
-          embeddedParameterVisibility={
-            parametersById[tag.id]
-              ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
-              : null
-          }
-          database={database}
-          databases={databases}
-          setTemplateTag={setTemplateTag}
-          setTemplateTagConfig={setTemplateTagConfig}
-          setParameterValue={setParameterValue}
-        />
-      </div>
-    ))}
-  </div>
-);
+}: SettingsPaneProps) => {
+  return tags.map((tag) => (
+    <div key={tag.id}>
+      <TagEditorParam
+        tag={tag}
+        key={tag.name}
+        parameter={parametersById[tag.id]}
+        embeddedParameterVisibility={
+          parametersById[tag.id]
+            ? getEmbeddedParameterVisibility(parametersById[tag.id].slug)
+            : null
+        }
+        database={database}
+        databases={databases}
+        setTemplateTag={setTemplateTag}
+        setParameterValue={setParameterValue}
+      />
+    </div>
+  ));
+};

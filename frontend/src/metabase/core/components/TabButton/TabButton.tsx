@@ -21,6 +21,7 @@ import {
 import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { lighten } from "metabase/lib/colors";
 
 import type { TabContextType } from "../Tab";
@@ -218,17 +219,23 @@ export function RenameableTabButton({
   tabIndex,
   ...props
 }: RenameableTabButtonProps) {
+  const tc = useTranslateContent();
+
   const { value: selectedValue } = useContext(TabContext);
   const isSelected = props.value === selectedValue;
 
+  // Only translate the label if it is not editable
+  const maybeTranslatedLabelProp = canRename ? labelProp : tc(labelProp);
+
   const [label, setLabel] = useState(labelProp);
+
   const [prevLabel, setPrevLabel] = useState(label);
   const [isRenaming, setIsRenaming] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setLabel(labelProp);
-  }, [labelProp]);
+    setLabel(maybeTranslatedLabelProp);
+  }, [maybeTranslatedLabelProp]);
 
   useEffect(() => {
     if (isRenaming) {

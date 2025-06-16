@@ -49,7 +49,6 @@ export interface DatasetColumn {
   nfc_path?: string[] | null;
   parent_id?: number | null;
   position?: number;
-  source_alias?: string;
 
   aggregation_type?: AggregationType;
 
@@ -187,6 +186,7 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
+  | "temporal-unit" // e.g. for mb.time_grouping()
   | "dimension"
   | "snippet";
 

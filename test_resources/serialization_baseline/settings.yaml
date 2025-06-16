@@ -10,7 +10,6 @@ available-fonts: null
 available-locales: null
 available-timezones: null
 breakout-bins-num: null
-non-table-chart-generated: null
 custom-formatting: null
 custom-geojson: null
 custom-geojson-enabled: null
@@ -32,12 +31,13 @@ landing-page-illustration-custom: null
 loading-message: null
 login-page-illustration: null
 login-page-illustration-custom: null
-metabot-ai-service-token-ttl: nil
+metabot-ai-service-token-ttl: null
 native-query-autocomplete-match-style: null
 no-data-illustration: null
 no-data-illustration-custom: null
 no-object-illustration: null
 no-object-illustration-custom: null
+non-table-chart-generated: null
 persisted-models-enabled: null
 report-timezone: null
 report-timezone-long: null
