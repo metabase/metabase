@@ -51,6 +51,7 @@ export const DisplayValuesPicker = ({
         ...comboboxProps,
       }}
       data={data}
+      placeholder={t`Select display values`}
       renderOption={(item) => {
         const disabledReason = hasDisabledReason(item.option)
           ? item.option.disabledReason

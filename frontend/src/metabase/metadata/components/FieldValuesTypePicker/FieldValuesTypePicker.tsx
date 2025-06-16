@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { HAS_FIELD_VALUES_OPTIONS } from "metabase/lib/core";
 import { Select, type SelectProps } from "metabase/ui";
@@ -38,6 +39,7 @@ export const FieldValuesTypePicker = ({
         ...comboboxProps,
       }}
       data={data}
+      placeholder={t`Select field filtering`}
       value={value}
       onChange={handleChange}
       {...props}

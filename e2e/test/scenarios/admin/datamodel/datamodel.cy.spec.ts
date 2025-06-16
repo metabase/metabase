@@ -132,3 +132,155 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     checkNoFieldType({ oldValue: "Foreign Key", newValue: "Number" });
   });
 });
+
+describe("scenarios > admin > datamodel > field", () => {
+  const ordersColumns: (keyof typeof ORDERS)[] = [
+    "CREATED_AT",
+    "PRODUCT_ID",
+    "QUANTITY",
+  ];
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    ordersColumns.forEach((name) => {
+      cy.wrap(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
+      ).as(`ORDERS_${name}_URL`);
+    });
+
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
+  });
+
+  it("lets you change field name and description", () => {
+    H.visitAlias("@ORDERS_CREATED_AT_URL");
+
+    // update the name
+    cy.findByTestId("field-section")
+      .findByPlaceholderText("Give this field a name")
+      .should("have.value", "Created At")
+      .clear()
+      .type("new display_name")
+      .blur();
+    cy.wait("@fieldUpdate");
+
+    // update the description
+    cy.findByTestId("field-section")
+      .findByPlaceholderText("Give this field a description")
+      .should("have.value", "The date and time an order was submitted.")
+      .clear()
+      .type("new description")
+      .blur();
+    cy.wait("@fieldUpdate");
+
+    // reload and verify they have been updated
+    cy.reload();
+    cy.findByTestId("field-section")
+      .findByPlaceholderText("Give this field a name")
+      .should("have.value", "new display_name");
+    cy.findByTestId("field-section")
+      .findByPlaceholderText("Give this field a description")
+      .should("have.value", "new description");
+  });
+
+  it("should allow you to change field formatting", () => {
+    H.visitAlias("@ORDERS_QUANTITY_URL");
+
+    cy.findByLabelText("Style").click();
+    H.popover().findByText("Percent").click();
+    cy.wait("@fieldUpdate");
+
+    H.undoToast()
+      .findByText("Field formatting for Quantity updated")
+      .should("be.visible");
+  });
+
+  it("lets you change field visibility", () => {
+    H.visitAlias("@ORDERS_CREATED_AT_URL");
+
+    cy.findByPlaceholderText("Select a field visibility").click();
+    H.popover().findByText("Do not include").click();
+    cy.wait("@fieldUpdate");
+
+    cy.reload();
+    cy.findByPlaceholderText("Select a field visibility")
+      .should("have.value", "Do not include")
+      .and("be.visible");
+  });
+
+  it("lets you change to 'Search box'", () => {
+    H.visitAlias("@ORDERS_QUANTITY_URL");
+
+    cy.findByPlaceholderText("Select field filtering").click();
+    H.popover().findByText("Search box").click();
+    cy.wait("@fieldUpdate");
+
+    cy.reload();
+    cy.findByPlaceholderText("Select field filtering")
+      .scrollIntoView()
+      .should("have.value", "Search box")
+      .and("be.visible");
+  });
+
+  it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
+    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+
+    cy.findByPlaceholderText("Select display values").click();
+    H.popover().findByText("Use foreign key").click();
+    H.popover().findByText("Title").click();
+    cy.wait("@fieldDimensionUpdate");
+
+    cy.reload();
+    cy.findByPlaceholderText("Select display values")
+      .scrollIntoView()
+      .should("have.value", "Use foreign key")
+      .and("be.visible");
+    cy.findByPlaceholderText("Choose a field")
+      .should("have.value", "Title")
+      .and("be.visible");
+  });
+
+  it("allows 'Custom mapping' null values", () => {
+    const dbId = 2;
+    const remappedNullValue = "nothin";
+
+    H.restore("withSqlite");
+    cy.signInAsAdmin();
+
+    H.withDatabase(
+      dbId,
+      ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
+        cy.request("GET", `/api/database/${dbId}/schemas`).then(({ body }) => {
+          const [schema] = body;
+
+          cy.visit(
+            `/admin/datamodel/database/${dbId}/schema/${dbId}:${schema}/table/${NUMBER_WITH_NULLS_ID}/field/${NUM}/general`,
+          );
+        });
+
+        cy.log("Change `null` to custom mapping");
+        cy.findByPlaceholderText("Select display values")
+          .scrollIntoView()
+          .click();
+        H.popover().findByText("Custom mapping").click();
+
+        H.modal()
+          .should("be.visible")
+          .within(() => {
+            cy.findAllByPlaceholderText("Enter value")
+              .filter("[value='null']")
+              .clear()
+              .type(remappedNullValue);
+            cy.button("Save").click();
+          });
+        // cy.button("Saved!").should("be.visible"); // TODO: add toast
+
+        cy.log("Make sure custom mapping appears in QB");
+        H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
+        cy.findAllByRole("gridcell").should("contain", remappedNullValue);
+      },
+    );
+  });
+});

@@ -194,9 +194,10 @@ export const RemappingPicker = ({
                   ]}
                   dropdownOpened={false}
                   error={isFkTargetTouched && !fkRemappingField}
-                  onClick={(event) => event.preventDefault()}
+                  placeholder={t`Choose a field`}
                   value="choose-a-field"
                   w="100%"
+                  onClick={(event) => event.preventDefault()}
                 />
               }
               onClose={() => {
@@ -224,7 +225,6 @@ export const RemappingPicker = ({
                 value={mapping}
                 onChange={(remappings) => {
                   updateFieldValues({ id, values: Array.from(remappings) });
-                  setIsCustomMappingOpen(false);
                 }}
                 onClose={() => setIsCustomMappingOpen(false)}
               />
