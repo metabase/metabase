@@ -598,7 +598,7 @@ const buildEChartsLineAreaSeries = (
       },
     },
     blur: {
-      label: getBlurLabelStyle(settings, hasMultipleSeries),
+      // label: getBlurLabelStyle(settings, hasMultipleSeries),
       itemStyle: {
         opacity: isSymbolVisible ? blurOpacity : 0,
       },
