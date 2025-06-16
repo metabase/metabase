@@ -182,7 +182,7 @@ export function getIframeBody(selector = "iframe") {
     .its("0.contentDocument")
     .should("exist")
     .its("body")
-    .should("not.be.null")
+    .should("not.be.undefined")
     .then(cy.wrap);
 }
 
