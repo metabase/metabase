@@ -1,4 +1,10 @@
-import { type ReactNode, createContext, useContext, useState } from "react";
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
@@ -10,18 +16,16 @@ import {
   type RecentQuestion,
   useRecentItems,
 } from "../hooks/use-recent-items";
-import type { EmbedPreviewOptions, Step } from "../types";
+import type { EmbedType, Step } from "../types";
 
 interface SdkIframeEmbedSetupContextType {
   // State
   currentStep: Step;
-  options: EmbedPreviewOptions;
-  selectedType: EmbedPreviewOptions["selectedType"];
+  selectedType: EmbedType;
   settings: SdkIframeEmbedSettings;
 
   // Actions
   setCurrentStep: (step: Step) => void;
-  updateOptions: (nextOptions: Partial<EmbedPreviewOptions>) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
 
   // Navigation helpers
@@ -63,41 +67,44 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [currentStep, setCurrentStep] = useState<Step>("select-embed-type");
 
-  const [options, setOptions] = useState<EmbedPreviewOptions>({
-    selectedType: "dashboard",
-    settings: {
-      apiKey: "",
-      instanceUrl,
+  const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
+    apiKey: "",
+    instanceUrl,
 
-      // Default to dashboard with common settings
-      dashboardId: 1,
-      isDrillThroughEnabled: true,
-      withDownloads: false,
-      withTitle: true,
-      initialParameters: {},
-      hiddenParameters: [],
-    },
+    // Default to dashboard with common settings
+    dashboardId: 1,
+    isDrillThroughEnabled: true,
+    withDownloads: false,
+    withTitle: true,
+    initialParameters: {},
+    hiddenParameters: [],
   });
 
-  const { settings } = options;
+  const selectedType = useMemo(() => {
+    if (settings.questionId) {
+      return "chart";
+    }
+
+    if (settings.template === "exploration") {
+      return "exploration";
+    }
+
+    return "dashboard";
+  }, [settings]);
 
   // Use parameter list hook for dynamic parameter loading
   const { availableParameters, isLoadingParameters } = useParameterList({
-    selectedType: options.selectedType,
+    selectedType,
 
     // We're always using numeric IDs for previews.
     ...(settings.dashboardId && { dashboardId: Number(settings.dashboardId) }),
     ...(settings.questionId && { questionId: Number(settings.questionId) }),
   });
 
-  const updateOptions = (newOptions: Partial<EmbedPreviewOptions>) => {
-    setOptions((prev) => ({ ...prev, ...newOptions }));
-  };
-
   const handleNext = () => {
     if (currentStep === "select-embed-type") {
       // Skip select-entity for exploration
-      if (options.selectedType === "exploration") {
+      if (selectedType === "exploration") {
         setCurrentStep("configure");
       } else {
         setCurrentStep("select-entity");
@@ -114,7 +121,7 @@ export const SdkIframeEmbedSetupProvider = ({
       setCurrentStep("select-embed-type");
     } else if (currentStep === "configure") {
       // Skip select-entity for exploration
-      if (options.selectedType === "exploration") {
+      if (selectedType === "exploration") {
         setCurrentStep("select-embed-type");
       } else {
         setCurrentStep("select-entity");
@@ -124,69 +131,51 @@ export const SdkIframeEmbedSetupProvider = ({
     }
   };
 
-  const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) => {
-    updateOptions({
-      ...options,
-      settings: {
-        ...options.settings,
-        ...nextSettings,
-      } as SdkIframeEmbedSettings,
-    });
-  };
+  const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) =>
+    setSettings(
+      (prevSettings) =>
+        ({ ...prevSettings, ...nextSettings }) as SdkIframeEmbedSettings,
+    );
 
   // Parameter visibility management (only for dashboards)
   const toggleParameterVisibility = (parameterName: string) => {
-    if (
-      options.selectedType !== "dashboard" ||
-      !("hiddenParameters" in settings)
-    ) {
+    if (selectedType !== "dashboard" || !("hiddenParameters" in settings)) {
       return; // Only dashboards support hidden parameters
     }
 
     const currentHidden = settings.hiddenParameters || [];
     const isCurrentlyHidden = currentHidden.includes(parameterName);
 
-    if (isCurrentlyHidden) {
-      // Remove from hidden list (show parameter)
-      updateSettings({
-        hiddenParameters: currentHidden.filter(
-          (name) => name !== parameterName,
-        ),
-      });
-    } else {
-      // Add to hidden list (hide parameter)
-      updateSettings({
-        hiddenParameters: [...currentHidden, parameterName],
-      });
-    }
+    const hiddenParameters = isCurrentlyHidden
+      ? currentHidden.filter((name) => name !== parameterName)
+      : [...currentHidden, parameterName];
+
+    updateSettings({ hiddenParameters });
   };
 
   const isParameterHidden = (parameterName: string) => {
-    if (
-      options.selectedType !== "dashboard" ||
-      !("hiddenParameters" in settings)
-    ) {
-      return false; // Questions don't support hidden parameters
+    // only dashboards support hidden parameters
+    if (selectedType !== "dashboard" || !("hiddenParameters" in settings)) {
+      return false;
     }
+
     return (settings.hiddenParameters || []).includes(parameterName);
   };
 
   const canGoNext = !(
     currentStep === "select-entity" &&
-    !options.settings.dashboardId &&
-    !options.settings.questionId &&
-    options.settings.template !== "exploration"
+    !settings.dashboardId &&
+    !settings.questionId &&
+    settings.template !== "exploration"
   );
 
   const canGoBack = currentStep !== "select-embed-type";
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
-    options,
-    selectedType: options.selectedType,
-    settings: options.settings,
+    selectedType,
+    settings,
     setCurrentStep,
-    updateOptions,
     updateSettings,
     handleNext,
     handleBack,
@@ -211,10 +200,12 @@ export const SdkIframeEmbedSetupProvider = ({
 
 export const useSdkIframeEmbedSetupContext = () => {
   const context = useContext(SdkIframeEmbedSetupContext);
+
   if (!context) {
     throw new Error(
       "useSdkIframeEmbedSetup must be used within SdkIframeEmbedSetupProvider",
     );
   }
+
   return context;
 };

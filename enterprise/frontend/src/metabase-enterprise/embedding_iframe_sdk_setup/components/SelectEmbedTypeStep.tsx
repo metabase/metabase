@@ -10,7 +10,7 @@ import type { EmbedType } from "../types";
 import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const SelectEmbedTypeStep = () => {
-  const { selectedType, settings, updateOptions } =
+  const { selectedType, settings, updateSettings } =
     useSdkIframeEmbedSetupContext();
 
   const handleTypeChange = (type: EmbedType) => {
@@ -38,16 +38,13 @@ export const SelectEmbedTypeStep = () => {
       }))
       .exhaustive();
 
-    updateOptions({
-      selectedType: type,
-      settings: {
-        isDrillThroughEnabled: false,
-        withDownloads: false,
-        withTitle: true,
-        ...settings,
-        ...nextSettings,
-      } as SdkIframeEmbedSettings,
-    });
+    updateSettings({
+      isDrillThroughEnabled: false,
+      withDownloads: false,
+      withTitle: true,
+      ...settings,
+      ...nextSettings,
+    } as SdkIframeEmbedSettings);
   };
 
   return (
