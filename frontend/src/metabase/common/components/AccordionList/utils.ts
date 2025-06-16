@@ -1,7 +1,8 @@
+import Fuse from "fuse.js";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 
-import type { Section } from "./types";
+import type { Item, Section } from "./types";
 
 export type Cursor = {
   sectionIndex: number;
@@ -173,4 +174,24 @@ export function isReactNode(x: unknown): x is ReactNode {
     x === null ||
     x === undefined
   );
+}
+
+export function getSearchIndex<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>({
+  sections,
+  searchProp = [],
+}: {
+  sections: TSection[];
+  searchProp?: string | string[];
+}) {
+  const items = sections.flatMap((section) => section.items ?? []);
+  const keys = Array.isArray(searchProp) ? searchProp : [searchProp];
+
+  return new Fuse<TItem>(items, {
+    keys,
+    includeScore: true,
+    isCaseSensitive: false,
+  });
 }

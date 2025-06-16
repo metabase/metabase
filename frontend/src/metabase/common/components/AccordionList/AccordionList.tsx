@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type Fuse from "fuse.js";
 import { getIn } from "icepick";
 import {
   type CSSProperties,
@@ -23,7 +24,12 @@ import {
   type SharedAccordionProps,
 } from "./AccordionListCell";
 import type { Item, Row, Section } from "./types";
-import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
+import {
+  type Cursor,
+  getNextCursor,
+  getPrevCursor,
+  getSearchIndex,
+} from "./utils";
 
 type Props<
   TItem extends Item,
@@ -52,17 +58,18 @@ type Props<
   maxHeight?: number;
 };
 
-type State = {
+type State<TItem extends Item> = {
   openSection: number | null;
   searchText: string;
   cursor: Cursor | null;
   scrollToAlignment: Alignment;
+  searchIndex: Fuse<TItem>;
 };
 
 export class AccordionList<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
-> extends Component<Props<TItem, TSection>, State> {
+> extends Component<Props<TItem, TSection>, State<TItem>> {
   _cache: CellMeasurerCache;
 
   listRef: RefObject<List>;
@@ -100,6 +107,7 @@ export class AccordionList<
       searchText: "",
       cursor: null,
       scrollToAlignment: "start",
+      searchIndex: getSearchIndex(props),
     };
 
     this._cache = new CellMeasurerCache({
@@ -140,7 +148,10 @@ export class AccordionList<
     }, 0);
   }
 
-  componentDidUpdate(_prevProps: Props<TItem, TSection>, prevState: State) {
+  componentDidUpdate(
+    _prevProps: Props<TItem, TSection>,
+    prevState: State<TItem>,
+  ) {
     // if anything changes that affects the selected rows we need to clear the row height cache
     if (
       this.state.openSection !== prevState.openSection ||
@@ -148,6 +159,16 @@ export class AccordionList<
     ) {
       this._clearRowHeightCache();
     }
+  }
+
+  static getDerivedStateFromProps<TItem extends Item>(
+    props: Props<TItem>,
+    state: State<TItem>,
+  ) {
+    return {
+      ...state,
+      searchIndex: getSearchIndex(props),
+    };
   }
 
   componentWillUnmount() {
