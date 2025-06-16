@@ -116,13 +116,15 @@ export function Heading({
 
   const content = useMemo(
     () =>
-      fillParametersInText({
-        dashcard,
-        dashboard,
-        parameterValues,
-        text: translatedText,
-      }),
-    [dashcard, dashboard, parameterValues, translatedText],
+      isEditing
+        ? translatedText
+        : fillParametersInText({
+            dashcard,
+            dashboard,
+            parameterValues,
+            text: translatedText,
+          }),
+    [dashcard, dashboard, parameterValues, translatedText, isEditing],
   );
 
   const hasContent = !isEmpty(settings.text);

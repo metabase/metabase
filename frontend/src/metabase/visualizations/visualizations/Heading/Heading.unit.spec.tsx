@@ -45,6 +45,7 @@ const defaultProps = {
   },
   settings: { text: "" },
   parameterValues: {},
+  gridSize: { x: 0, y: 0, width: 0, height: 0 },
 };
 
 const setup = ({ parameterValues, isEditingParameter, ...props }: Options) => {
