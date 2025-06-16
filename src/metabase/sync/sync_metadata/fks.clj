@@ -89,6 +89,79 @@
                       (valid-condition pk-field-id-query)]})]
     (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))))
 
+(defn ^:private retire-obsolete-fks-sql
+  "Returns [sql & params] for [[retire-obsolete-fks!]] to retire FK relationships that no longer exist in the database."
+  [db-id current-fk-metadata]
+  (let [current-fks (set (map (fn [{:keys [fk-table-schema fk-table-name fk-column-name
+                                           pk-table-schema pk-table-name pk-column-name]}]
+                                [(u/lower-case-en (or fk-table-schema ""))
+                                 (u/lower-case-en fk-table-name)
+                                 (u/lower-case-en fk-column-name)
+                                 (u/lower-case-en (or pk-table-schema ""))
+                                 (u/lower-case-en pk-table-name)
+                                 (u/lower-case-en pk-column-name)])
+                              current-fk-metadata))
+
+        exclude-conditions
+        (when (seq current-fks)
+          (mapv (fn [[fk-schema fk-table fk-column pk-schema pk-table pk-column]]
+                  [:and
+                   [:= [:lower :fk_t.schema] fk-schema]
+                   [:= [:lower :fk_t.name] fk-table]
+                   [:= [:lower :fk_f.name] fk-column]
+                   [:= [:lower :pk_t.schema] pk-schema]
+                   [:= [:lower :pk_t.name] pk-table]
+                   [:= [:lower :pk_f.name] pk-column]])
+                current-fks))
+
+        base-where [:and
+                    [:= :fk_t.db_id db-id]
+                    [:not= :fk_f.fk_target_field_id nil]
+                    [:= :fk_f.semantic_type "type/FK"]
+                    [:= :fk_f.active true]
+                    [:not= :fk_f.visibility_type "retired"]
+                    [:= :fk_t.active true]
+                    [:= :fk_t.visibility_type nil]
+                    [:= :pk_f.active true]
+                    [:not= :pk_f.visibility_type "retired"]
+                    [:= :pk_t.active true]
+                    [:= :pk_t.visibility_type nil]
+                    ;; Only retire system-managed FKs, not user-set ones
+                    [:not-exists {:select [1]
+                                  :from   [[:metabase_field_user_settings :u]]
+                                  :where  [:and
+                                           [:= :u.field_id :fk_f.id]
+                                           [:or
+                                            [:not= :u.fk_target_field_id nil]
+                                            [:not= :u.semantic_type nil]]]}]]
+
+        where-clause (if (seq exclude-conditions)
+                       (conj base-where [:not [:or (vec exclude-conditions)]])
+                       base-where)
+
+        q {:update [:metabase_field :fk_f]
+           :set    {:fk_target_field_id nil
+                    :semantic_type      nil}
+           :from   [[:metabase_table :fk_t]
+                    [:metabase_field :pk_f]
+                    [:metabase_table :pk_t]]
+           :where  [:and
+                    [:= :fk_f.table_id :fk_t.id]
+                    [:= :fk_f.fk_target_field_id :pk_f.id]
+                    [:= :pk_f.table_id :pk_t.id]
+                    where-clause]}]
+
+    (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))))
+
+(mu/defn- retire-obsolete-fks!
+  "Retires FK relationships that no longer exist in the database metadata.
+   Returns the number of FK relationships that were retired."
+  [database :- i/DatabaseInstance
+   current-fk-metadata :- [:sequential i/FKMetadataEntry]]
+  (u/prog1 (t2/query-one (retire-obsolete-fks-sql (:id database) current-fk-metadata))
+    (when (pos? <>)
+      (log/info (u/format-color 'yellow "Retired %d obsolete foreign key relationships" <>)))))
+
 (mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
@@ -113,9 +186,12 @@
    (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging table))
      (let [schema-names (when (driver.u/supports? (driver.u/database->driver database) :schemas database)
                           [(:schema table)])
-           fk-metadata  (into [] (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))]
+           fk-metadata  (into [] (fetch-metadata/fk-metadata database :schema-names schema-names :table-names [(:name table)]))
+           updated-fks (sync-util/sum-numbers #(mark-fk! database %) fk-metadata)
+           retired-fks (retire-obsolete-fks! database fk-metadata)]
        {:total-fks   (count fk-metadata)
-        :updated-fks (sync-util/sum-numbers #(mark-fk! database %) fk-metadata)}))))
+        :updated-fks updated-fks
+        :retired-fks retired-fks}))))
 
 (mu/defn sync-fks!
   "Sync the foreign keys in a `database`. This sets appropriate values for relevant Fields in the Metabase application
@@ -129,20 +205,25 @@
              (let [driver       (driver.u/database->driver database)
                    schema-names (when (driver.u/supports? driver :schemas database)
                                   (sync-util/sync-schemas database))
-                   fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
-               (transduce (map (fn [x]
-                                 (let [[updated failed] (try [(mark-fk! database x) 0]
-                                                             (catch Exception e
-                                                               (log/error e)
-                                                               [0 1]))]
-                                   {:total-fks    1
-                                    :updated-fks  updated
-                                    :total-failed failed})))
-                          (partial merge-with +)
-                          {:total-fks    0
-                           :updated-fks  0
-                           :total-failed 0}
-                          fk-metadata)))
+                   fk-metadata  (into [] (fetch-metadata/fk-metadata database :schema-names schema-names))
+                   upd-result (transduce (map (fn [x]
+                                                (let [[updated failed] (try [(mark-fk! database x) 0]
+                                                                            (catch Exception e
+                                                                              (log/error e)
+                                                                              [0 1]))]
+                                                  {:total-fks    1
+                                                   :updated-fks  updated
+                                                   :total-failed failed})))
+                                         (partial merge-with +)
+                                         {:total-fks    0
+                                          :updated-fks  0
+                                          :total-failed 0}
+                                         fk-metadata)
+                   retired-count (try (retire-obsolete-fks! database fk-metadata)
+                                      (catch Exception e
+                                        (log/error e "Error retiring obsolete FK relationships")
+                                        0))]
+               (assoc upd-result :retired-fks retired-count)))
     ;; Mark the table as done with its initial sync once this step is done even if it failed, because only
     ;; sync-aborting errors should be surfaced to the UI (see
     ;; `:metabase.sync.util/exception-classes-not-to-retry`).
