@@ -157,7 +157,7 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
     <td>{/* api keys don't have real emails */}</td>
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
-        <Tooltip label={t`Manage API keys`} position="left">
+        <Tooltip label={t`API keys`} position="left">
           <Icon name="link" c="text-light" size={16} />
         </Tooltip>
       </Link>

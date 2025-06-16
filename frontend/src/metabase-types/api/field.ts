@@ -50,8 +50,8 @@ export type FieldVisibilityType =
   | "sensitive";
 
 type HumanReadableFieldValue = string;
-type RemappedFieldValue = [RowValue, HumanReadableFieldValue];
-type NotRemappedFieldValue = [RowValue];
+export type RemappedFieldValue = [RowValue, HumanReadableFieldValue];
+export type NotRemappedFieldValue = [RowValue];
 export type FieldValue = NotRemappedFieldValue | RemappedFieldValue;
 
 export type FieldValuesType = "list" | "search" | "none";

@@ -276,7 +276,7 @@ export default class NativeQuery {
 
   variableTemplateTags(): TemplateTag[] {
     return this.templateTags().filter((t) =>
-      ["dimension", "text", "number", "date"].includes(t.type),
+      ["dimension", "text", "number", "date", "temporal-unit"].includes(t.type),
     );
   }
 
@@ -350,6 +350,7 @@ export default class NativeQuery {
       .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
       .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter((dimension) => dimensionFilter(dimension));
+
     return new DimensionOptions({
       dimensions: dimensions,
       count: dimensions.length,

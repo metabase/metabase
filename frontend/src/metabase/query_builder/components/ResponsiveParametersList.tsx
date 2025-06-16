@@ -6,7 +6,7 @@ import Button from "metabase/core/components/Button";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
 import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type { Parameter, ParameterId } from "metabase-types/api";
+import type { Parameter } from "metabase-types/api";
 
 import ResponsiveParametersListS from "./ResponsiveParametersList.module.css";
 import { SyncedParametersList } from "./SyncedParametersList";
@@ -15,7 +15,6 @@ interface ResponsiveParametersListProps {
   question: Question;
   parameters: Parameter[];
   setParameterValue: (parameterId: string, value: string) => void;
-  setParameterValueToDefault: (parameterId: ParameterId) => void;
   setParameterIndex: (parameterId: string, parameterIndex: number) => void;
   enableParameterRequiredBehavior: boolean;
 }
@@ -25,7 +24,6 @@ export const ResponsiveParametersList = ({
   parameters,
   setParameterValue,
   setParameterIndex,
-  setParameterValueToDefault,
   enableParameterRequiredBehavior,
 }: ResponsiveParametersListProps) => {
   const [mobileShowParameterList, setShowMobileParameterList] = useState(false);
@@ -81,7 +79,6 @@ export const ResponsiveParametersList = ({
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
-          setParameterValueToDefault={setParameterValueToDefault}
           enableParameterRequiredBehavior={enableParameterRequiredBehavior}
           isEditing
           commitImmediately
