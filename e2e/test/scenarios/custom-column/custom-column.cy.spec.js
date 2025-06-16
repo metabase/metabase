@@ -699,6 +699,8 @@ describe("scenarios > question > custom column", () => {
     const isMac = Cypress.platform === "darwin";
     const metaKey = isMac ? "Meta" : "Control";
 
+    H.CustomExpressionEditor.formatButton().should("be.visible");
+
     cy.realPress(["Shift", metaKey, "f"]);
     H.CustomExpressionEditor.value().should("equal", "1 + 1");
 
