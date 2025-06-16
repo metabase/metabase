@@ -67,8 +67,9 @@
   [:timestamp {:gen/fmap (fn [_x] (u.date/format (t/zoned-date-time)))} :any])
 
 (def ^:private scope-schema
-  [:scope [:map {:gen/return {:type       "dashboard"
-                              :origin_url (urls/dashboard-url 1337)}}
+  [:scope [:map {:gen/fmap (fn [_]
+                             {:type       "dashboard"
+                              :origin_url (urls/dashboard-url 1337)})}
            [:type :keyword]
            [:origin_url :string]]])
 
