@@ -1279,68 +1279,60 @@
                             (sort-by first))))))))))))
 
 (deftest tmp-modal-saved-action-test
-  (let [req
-        #(mt/user-http-request-full-response
-          (:user % :crowberto)
-          :post
-          "action/v2/tmp-modal"
-          (select-keys % [:action_id
-                          :scope
-                          :input]))]
-    (mt/with-premium-features #{:table-data-editing}
-      (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
-        (testing "saved actions"
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (mt/with-temp [:model/Table         table    {}
-                           :model/Card          model    {:type         :model
-                                                          :table_id     (:id table)}
-                           :model/Action        action   {:type         :query
-                                                          :name "Do cool thing"
-                                                          :model_id     (:id model)
-                                                          :parameters   [{:id "a"
-                                                                          :name "A"
-                                                                          :type "number/="}
-                                                                         {:id "b"
-                                                                          :name "B"
-                                                                          :type "date/single"}
-                                                                         {:id "c"
-                                                                          :name "C"
-                                                                          :type "string/="}
-                                                                         {:id "d"
-                                                                          :name "D"
-                                                                          :type "string/="}
-                                                                         {:id "e"
-                                                                          :name "E"
-                                                                          :type "string/="}]
-                                                          :visualization_settings
-                                                          {:fields {"c" {:inputType "text"}
-                                                                    "e" {:valueOptions ["a" "b"]}}}}]
-              (let [{:keys [status, body]} (req {:scope {:model-id (:id model)
-                                                         :table-id (:id table)}
-                                                 :action_id (:id action)})]
-                (is (= 200 status))
-                (is (= "Do cool thing" (:title body)))
-                (is (= [{:id "a"
-                         :display_name "A"
-                         :input_type "text"}
-                        {:id "b"
-                         :display_name "B"
-                         :input_type "date"}
-                        {:id "c"
-                         :display_name "C"
-                         :input_type "textarea"}
-                        {:id "d"
-                         :display_name "D"
-                         :input_type "text"}
-                        {:id "e"
-                         :display_name "E"
-                         :input_type "dropdown"
-                         :value_options ["a" "b"]}]
-                       (->> (:parameters body)
-                            (map #(select-keys % [:id :display_name :input_type :value_options])))))))))))))
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (testing "saved actions"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Table         table    {}
+                         :model/Card          model    {:type         :model
+                                                        :table_id     (:id table)}
+                         :model/Action        action   {:type         :query
+                                                        :name "Do cool thing"
+                                                        :model_id     (:id model)
+                                                        :parameters   [{:id "a"
+                                                                        :name "A"
+                                                                        :type "number/="}
+                                                                       {:id "b"
+                                                                        :name "B"
+                                                                        :type "date/single"}
+                                                                       {:id "c"
+                                                                        :name "C"
+                                                                        :type "string/="}
+                                                                       {:id "d"
+                                                                        :name "D"
+                                                                        :type "string/="}
+                                                                       {:id "e"
+                                                                        :name "E"
+                                                                        :type "string/="}]
+                                                        :visualization_settings
+                                                        {:fields {"c" {:inputType "text"}
+                                                                  "e" {:valueOptions ["a" "b"]}}}}]
+            (is (=? {:title      "Do cool thing"
+                     :parameters [{:id "a"
+                                   :display_name "A"
+                                   :input_type "text"}
+                                  {:id "b"
+                                   :display_name "B"
+                                   :input_type "date"}
+                                  {:id "c"
+                                   :display_name "C"
+                                   :input_type "textarea"}
+                                  {:id "d"
+                                   :display_name "D"
+                                   :input_type "text"}
+                                  {:id "e"
+                                   :display_name "E"
+                                   :input_type "dropdown"
+                                   :value_options ["a" "b"]}]}
+                    (mt/user-http-request :crowberto :post 200
+                                          "/action/v2/tmp-modal"
+                                          {:scope {:model-id (:id model)
+                                                   :table-id (:id table)}
+                                           :action_id (:id action)})))))))))
 
-(deftest tmp-modal-table-action-test
+;; I don't think we'll end up using this - we'll configure these actions first, which will unpack them.
+(deftest tmp-modal-packed-table-action-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/toggle-data-editing-enabled! true)
@@ -1352,44 +1344,49 @@
                                                                {:primary-key [:id]})]
 
         (testing "table actions"
-          (let [{create-id "table.row/create"
-                 upsert-id "table.row/create-or-update"
-                 update-id "table.row/update"
-                 delete-id "table.row/delete"} (->> (list-actions @test-table)
-                                                    (u/index-by :kind :id))
-                scope                          {:table-id @test-table}]
+          (let [{create-id           "table.row/create"
+                 create-or-update-id "table.row/create-or-update"
+                 update-id           "table.row/update"
+                 delete-id           "table.row/delete"}            (->> (mt/user-http-request :crowberto :get 200 "action/v2/tmp-action")
+                                                                         :actions
+                                                                         (filter #(= @test-table (:table_id %)))
+                                                                         (u/index-by :kind :id))
+                scope                                               {:table-id @test-table}]
+
             (testing "create"
-              (is (=? [{:id "text"      :display_name "Text"      :input_type "text"}
-                       {:id "int"       :display_name "Int"       :input_type "text"}
-                       {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
-                       {:id "date"      :display_name "Date"      :input_type "date"}]
-                      (:parameters (execute-action! {:scope    scope
-                                                     :action_id create-id})))))
+              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text"}
+                                    {:id "int"       :display_name "Int"       :input_type "text"}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id create-id}))))
 
             (testing "update"
-              (is (=? [{:id "id"        :display_name "ID"        :input_type "text"}
-                       {:id "text"      :display_name "Text"      :input_type "text"}
-                       {:id "int"       :display_name "Int"       :input_type "text"}
-                       {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
-                       {:id "date"      :display_name "Date"      :input_type "date"}]
-                      (:parameters (execute-action! {:scope    scope
-                                                     :action_id update-id})))))
+              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
+                                    {:id "text"      :display_name "Text"      :input_type "text"}
+                                    {:id "int"       :display_name "Int"       :input_type "text"}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id update-id}))))
 
             (testing "create-or-update"
-              (is (=? [{:id "id"        :display_name "ID"        :input_type "text"}
-                       {:id "text"      :display_name "Text"      :input_type "text"}
-                       {:id "int"       :display_name "Int"       :input_type "text"}
-                       {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
-                       {:id "date"      :display_name "Date"      :input_type "date"}]
-                      (:parameters (execute-action! {:scope     scope
-                                                     :action_id upsert-id})))))
+              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
+                                    {:id "text"      :display_name "Text"      :input_type "text"}
+                                    {:id "int"       :display_name "Int"       :input_type "text"}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id create-or-update-id}))))
 
             (testing "delete"
-              (is (=? [{:id "id"
-                        :display_name "ID"
-                        :input_type "text"}]
-                      (:parameters (execute-action! {:scope     scope
-                                                     :action_id delete-id})))))
+              (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id delete-id}))))
 
             ;; insert a row for the row action
             (mt/user-http-request :crowberto :post 200
@@ -1404,30 +1401,32 @@
               (testing "using table-id from scope"
                 (let [scope {:table-id @test-table}]
                   (testing "create"
+                    (is (=? {:parameters [{:id "text" :readonly false}
+                                          {:id "int" :readonly false}
+                                          {:id "timestamp" :readonly false}
+                                          {:id "date" :readonly false}]}
+                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                  {:scope     scope
+                                                   :action_id create-id
+                                                   :input     {:id 1}}))))
 
-                    (is (=? [{:id "text" :readonly false}
-                             {:id "int" :readonly false}
-                             {:id "timestamp" :readonly false}
-                             {:id "date" :readonly false}]
-                            (:parameters (execute-action! {:scope     scope
-                                                           :action_id create-id
-                                                           :input     {:id 1}}))))
+                  (testing "update"
+                    (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}
+                                          {:id "text" :readonly false}
+                                          {:id "int" :readonly false}
+                                          {:id "timestamp" :readonly false}
+                                          {:id "date" :readonly false}]}
+                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                  {:scope     scope
+                                                   :action_id update-id
+                                                   :input     {:id 1}}))))
 
-                    (testing "update"
-                      (is (=? [{:id "id"        :display_name "ID"        :input_type "text"}
-                               {:id "text"      :display_name "Text"      :input_type "text"}
-                               {:id "int"       :display_name "Int"       :input_type "text"}
-                               {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
-                               {:id "date"      :display_name "Date"      :input_type "date"}]
-                              (:parameters (execute-action! {:scope     scope
-                                                             :action_id update-id
-                                                             :input     {:id 1}})))))
-
-                    (testing "delete"
-                      (is (=? [{:id "id" :display_name "ID" :input_type "text"}]
-                              (:parameters (execute-action! {:scope     scope
-                                                             :action_id delete-id
-                                                             :input     {:id 1}})))))))))))))))
+                  (testing "delete"
+                    (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
+                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                  {:scope     scope
+                                                   :action_id delete-id
+                                                   :input     {:id 1}})))))))))))))
 
 ;; Important missing tests
 (comment
@@ -1437,95 +1436,179 @@
   tmp-modal-table-action-on-question-on-dashboard-test)
 
 (deftest tmp-modal-table-action-on-editable-on-dashboard-test
-  (let [req
-        #(mt/user-http-request-full-response
-          (:user % :crowberto)
-          :post
-          "action/v2/tmp-modal"
-          (select-keys % [:action_id
-                          :scope
-                          :input]))]
-    (mt/with-premium-features #{:table-data-editing}
-      (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
-        (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
-                                                                  :text      [:text]
-                                                                  :int       [:int]
-                                                                  :timestamp [:timestamp]
-                                                                  :date      [:date]}
-                                                                 {:primary-key [:id]})]
-          (mt/with-temp
-            [:model/Dashboard     dashboard {}
-             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
-                                             :visualization_settings
-                                             {:table_id @test-table
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                :text      [:text]
+                                                                :int       [:int]
+                                                                :timestamp [:timestamp]
+                                                                :date      [:date]}
+                                                               {:primary-key [:id]})]
+        (mt/with-temp
+          [:model/Dashboard     dashboard {}
+           :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                           :visualization_settings
+                                           {:table_id @test-table
 
-                                              :table.columns
-                                              [{:name "int",      :enabled true}
-                                               {:name "text",     :enabled true}
-                                               {:name "timetamp", :enabled true}
-                                               ;; this signals date should not be shown in the grid
-                                               {:name "date",     :enabled false}]
+                                            :table.columns
+                                            [{:name "int",      :enabled true}
+                                             {:name "text",     :enabled true}
+                                             {:name "timetamp", :enabled true}
+                                             ;; this signals date should not be shown in the grid
+                                             {:name "date",     :enabled false}]
 
-                                              :editableTable.columns
-                                              ["int"
-                                               ;; this signals text is not editable
-                                               #_"text"
-                                               "timestamp"
-                                               "date"]
+                                            :editableTable.columns
+                                            ["int"
+                                             ;; this signals text is not editable
+                                             #_"text"
+                                             "timestamp"
+                                             "date"]
 
-                                              :editableTable.enabledActions
-                                              ;; WTF this is not the right shape
-                                              [{#_:id #_"dashcard:unknown:uuid"
-                                                :id                "table.row/create" ;; should be actionId
-                                                :parameterMappings [{:parameterId "int"
-                                                                     :sourceType  "const"
-                                                                     :value       42}
-                                                                    {:parameterId       "text"
-                                                                     :sourceType        "row-data"
-                                                                     :sourceValueTarget "text"
-                                                                     :visibility        "readonly"}
-                                                                    {:parameterId "timestamp"
-                                                                     :visibility  "hidden"}]}]}}]
+                                            :editableTable.enabledActions
+                                            [{:id                "dashcard:unknown:built-in-create"
+                                              :actionId          "data-grid.row/create"
+                                              :actionType        "data-grid/built-in"}
+                                             {:id                "dashcard:unknown:custom-create"
+                                              :actionId          "table.row/create"
+                                              :actionType        "data-grid/row-action"
+                                              :mapping           {:table-id @test-table
+                                                                  :row      "::root"}
+                                              :parameterMappings [{:parameterId "int"
+                                                                   :sourceType  "const"
+                                                                   :value       42}
+                                                                  {:parameterId       "text"
+                                                                   :sourceType        "row-data"
+                                                                   :sourceValueTarget "text"
+                                                                   :visibility        "readonly"}
+                                                                  {:parameterId       "timestamp"
+                                                                   :visibility        "hidden"}]}]}}]
 
-            ;; insert a row for the row action
-            (mt/user-http-request :crowberto :post 200
-                                  (data-editing.tu/table-url @test-table)
-                                  {:rows [{:text "a very important string"}]})
+          ;; insert a row for the row action
+          (mt/user-http-request :crowberto :post 200
+                                (data-editing.tu/table-url @test-table)
+                                {:rows [{:text "a very important string"}]})
 
-            (testing "table actions on a dashcard"
-              (let [create-id "table.row/create"
-                    update-id "table.row/update"
-                    delete-id "table.row/delete"
-                    ;; magic scope detection, deprecated
-                    scope {:dashcard-id (:id dashcard)}]
+          (testing "table actions on a dashcard"
+            (let [built-in-action-id "dashcard:unknown:built-in-create"
+                  custom-action-id   "dashcard:unknown:custom-create"
+                  scope              {:dashcard-id (:id dashcard)}]
+              (testing "built-in"
+                (is (=? {:title      (format "%s: Create" (t2/select-one-fn :name :model/Table @test-table))
+                         :parameters [;; params are reordered by editable
+                                      ;; column listing (int first)
+                                      {:id "int" :readonly false}
+                                      {:id "text" :readonly false #_:value #_"a very important string"}
+                                      ;; date is hidden from the editable
+                                      #_{:id "date"}
+                                      {:id "timestamp"}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id built-in-action-id
+                                               :input     {:id 1}}))))
 
-                (testing "without a table-id"
-                  (let [scope {:dashboard-id (:dashboard_id dashcard)}]
-                    (doseq [action-id [create-id update-id delete-id]]
-                      (testing action-id
-                        (is (=? {:status 400} (req {:action_id action-id, :scope scope})))))))
+              (testing "custom"
+                (is (=? {:parameters
+                         ;; params are reordered by editable
+                         ;; column listing (int first)
+                         [{:id "int" :readonly false}
+                          {:id "text" :readonly true :value "a very important string"}
+                          ;; date is hidden from the editable
+                          #_{:id "date"}
+                          ;; timestamp is hidden in the row action
+                          #_{:id "timestamp"}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id custom-action-id
+                                               :input     {:id 1}})))))))))))
 
-                (testing "create"
-                  (is (=? {:status 200
-                           :body   {:parameters
-                                        ;; params are reordered by editable
-                                        ;; column listing (int first)
-                                    [{:id "int" :readonly false}
-                                     {:id "text" :readonly true :value "a very important string"}
-                                         ;; date is hidden from the editable
-                                     #_{:id "date"}
-                                         ;; timestamp is hidden in the row action
-                                     #_{:id "timestamp"}]}}
-                          (req {:scope     scope
-                                :action_id create-id
-                                :input     {:id 1}}))))
+(deftest tmp-modal-table-action-on-question-on-dashboard-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                :text      [:text]
+                                                                :int       [:int]
+                                                                :timestamp [:timestamp]
+                                                                :date      [:date]}
+                                                               {:primary-key [:id]})]
+        (mt/with-temp
+          [:model/Dashboard     dashboard {}
+           :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                           :visualization_settings
+                                           {:table_id @test-table
+                                            :table.columns
+                                            [{:name "int",      :enabled true}
+                                             {:name "text",     :enabled true}
+                                             {:name "timetamp", :enabled true}
+                                             ;; this signals date should not be shown in the grid
+                                             {:name "date",     :enabled false}]
 
-                (testing "update"
-                  (is (=? {:status 200} (req {:scope scope, :action_id update-id}))))
+                                            :editableTable.columns
+                                            ["int"
+                                             ;; this signals text is not editable
+                                             #_"text"
+                                             "timestamp"
+                                             "date"]
 
-                (testing "delete"
-                  (is (=? {:status 200} (req {:scope scope, :action_id delete-id}))))))))))))
+                                            ;;; I think this is the only difference from an Editable dashcard's config
+                                            :table.enabled_actions
+                                            [{:id                "dashcard:unknown:built-in-create"
+                                              :actionId          "data-grid.row/create"
+                                              :actionType        "data-grid/built-in"}
+                                             {:id                "dashcard:unknown:custom-create"
+                                              :actionId          "table.row/create"
+                                              :actionType        "data-grid/row-action"
+                                              :mapping           {:table-id @test-table
+                                                                  :row      "::root"}
+                                              :parameterMappings [{:parameterId "int"
+                                                                   :sourceType  "const"
+                                                                   :value       42}
+                                                                  {:parameterId       "text"
+                                                                   :sourceType        "row-data"
+                                                                   :sourceValueTarget "text"
+                                                                   :visibility        "readonly"}
+                                                                  {:parameterId "timestamp"
+                                                                   :visibility  "hidden"}]}]}}]
+
+          ;; insert a row for the row action
+          (mt/user-http-request :crowberto :post 200
+                                (data-editing.tu/table-url @test-table)
+                                {:rows [{:text "a very important string"}]})
+
+          (testing "table actions on a dashcard"
+            (let [built-in-action-id "dashcard:unknown:built-in-create"
+                  custom-action-id   "dashcard:unknown:custom-create"
+                  scope              {:dashcard-id (:id dashcard)}]
+
+              (testing "built-in"
+                (is (=? {:parameters
+                         ;; params are reordered by editable
+                         ;; column listing (int first)
+                         [{:id "int" :readonly false}
+                          {:id "text" :readonly false #_:value #_"a very important string"}
+                          ;; date is hidden from the editable
+                          #_{:id "date"}
+                          {:id "timestamp"}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id built-in-action-id
+                                               :input     {:id 1}}))))
+
+              (testing "custom"
+                (is (=? {:parameters
+                         ;; params are reordered by editable
+                         ;; column listing (int first)
+                         [{:id "int" :readonly false}
+                          {:id "text" :readonly true :value "a very important string"}
+                          ;; date is hidden from the editable
+                          #_{:id "date"}
+                          ;; timestamp is hidden in the row action
+                          #_{:id "timestamp"}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id custom-action-id
+                                               :input     {:id 1}})))))))))))
 
 ;; Taken from metabase-enterprise.data-editing.api-test.
 ;; When we deprecate that API, we should move all the sibling tests here as well.
