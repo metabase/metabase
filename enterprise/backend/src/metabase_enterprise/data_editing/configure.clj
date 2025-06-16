@@ -1,5 +1,7 @@
 (ns metabase-enterprise.data-editing.configure
   (:require
+   [malli.core :as mc]
+   [medley.core :as m]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.util :as u]
@@ -9,21 +11,57 @@
    [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
+(defn- merge-option
+  [entry-schema new-options]
+  (if (= 2 (count entry-schema))
+    (let [[k s] entry-schema]
+      [k new-options s])
+    (let [[k o s] entry-schema]
+      [k (merge o new-options) s])))
+
 (mr/def ::param-configuration
   ;; TODO Yeah, gross. This is currently just mirroring the config in the FE.
   ;; They at least have defined it using a nicer dependently typed way! See ConstantRowActionFieldSettings.
   ;; We could do something like that with malli... but once this stuff is opaque to the frontend, we can go wild and
   ;; make the shape more idiomatically Clojure, and maybe we should just wait until we've finalized the shape.
   [:map {:closed true}
-   [:id                                :string]
+   [:id :string]
+   ;; omiited if we have visibility != null
+   [:configure-details {:optional true} [:map-of :keyword :map]]
+   [:target {:optional true} :string]
+   (merge-option [:source-type [:enum "ask-user" "row-data" "constant"]]
+                 {:optional true
+                  ::display-name "Source Type"
+                  ::default  "ask-user"
+                  ::input-type :dropdown
+                  ::options    ["ask-user" "row-data" "constant"]})
    ;; omitted if we have visibility != null
-   [:sourceType       {:optional true} [:enum "ask-user" "row-data" "constant"]]
-   ;; omitted if we have visibility != null
-   [:sourceValueTarget {:optional true} :string]
+   (merge-option [:source-value :string]
+                 {:optional true
+                  ::display-name "Pick column"
+                  ::default      nil
+                  ::input-type   :column-picker
+                  ::visible-if   [[:source-type :row-value]]})
+   (merge-option [:value [:or :string :int :boolean]]
+                 {:optional true
+                  ::display-name "Value"
+                  ::input-type   :field-filter
+                  ::default      nil
+                  ::visible-if   [[:source-type :constant]]})
    ;; would be much nicer if we have a "visible" option rather than this being optional, but just tracking FE
-   [:visibility       {:optional true} [:enum "readonly" "hidden"]]
-   ;; should be present if and only if "sourceType" is "constant"
-   [:value            {:optional true} [:or :string :int :boolean]]])
+   (merge-option [:visibility [:enum  "visible" "readonly" "hidden"]]
+                 {:optional      true
+                  ::display-name nil
+                  ::default      "visible"
+                  ::input-type   :select
+                  ::visible-if   [[:source-type :row-value]
+                                  [:source-type :constant]]})])
+
+(def ^:private default-configuration-detais
+  (for [[k p _s] (mc/children (mr/resolve-schema ::param-configuration))
+        :let    [namespaced-opts (m/filter-keys namespace p)]
+        :when   (seq namespaced-opts)]
+    {k (update-keys namespaced-opts (comp keyword name))}))
 
 (mr/def ::action-configuration
   [:map {:closed true}
@@ -39,11 +77,12 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id               (:id param)
-                    :sourceType       "ask-user"
-                    :sourceValueTarget (case (:type action)
+                   {:id                (:id param)
+                    :source-type       "ask-user"
+                    :target            (case (:type action)
                                          :query (:slug param)
-                                         :implicit (:id param))})}))
+                                         :implicit (:id param))
+                    :configure-details default-configuration-detais})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
 (defn- configuration-for-pending-action [{:keys [param-map] :as _action}]
@@ -62,9 +101,10 @@
                                :table.row/create (not (:database_is_auto_increment field))
                                :table.row/update true
                                :table.row/delete (isa? (:semantic_type field) :type/PK))]
-                   {:id               (format "field-%s" (:name field))
-                    :sourceType       "ask-user"
-                    :sourceValueTarget (:name field)})}))
+                   {:id                (format "field-%s" (:name field))
+                    :source            "ask-user"
+                    :target            (:name field)
+                    :configure-details default-configuration-detais})}))
 
 (mu/defn configuration :- [:or ::action-configuration [:map [:status ms/PositiveInt]]]
   "Returns configuration needed for a given action."
