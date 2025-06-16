@@ -261,6 +261,7 @@
                                              {:status-code 400})))
         tables             (t2/select [:model/Table :id :display_name :name :description :schema]
                                       :db_id database-id
+                                      :active true
                                       {:order-by :name})]
     {:tables tables}))
 
