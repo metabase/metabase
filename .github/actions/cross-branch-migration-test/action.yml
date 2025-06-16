@@ -65,3 +65,32 @@ runs:
     - name: Stop Metabase on pull request branch
       run: kill $(cat metabase_pid)
       shell: bash
+
+    - name: Migrate down a version to test going back to the previous state
+      run: |
+        clojure -M:migrate down > metabase.log 2>&1 & echo $! > metabase_pid
+        tail -F metabase.log &
+      shell: bash
+
+    - name: (Re)Check out base branch
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.base-ref }}
+
+    - name: Run backend on base branch
+      run: |
+        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+        tail -F metabase.log &
+      shell: bash
+
+    - name: Wait for Metabase to start
+      run: |
+        while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
+          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            cat metabase.log
+            echo "Metabase process has exited."
+            exit 1
+          fi
+          sleep 1
+        done
+      shell: bash
