@@ -90,6 +90,7 @@ export const GetCodeStep = () => {
               <Button
                 leftSection={<Icon name="copy" size={16} />}
                 onClick={copy}
+                disabled={apiKeyValidationError !== null}
               >
                 {copied ? t`Copied!` : t`Copy Code`}
               </Button>
