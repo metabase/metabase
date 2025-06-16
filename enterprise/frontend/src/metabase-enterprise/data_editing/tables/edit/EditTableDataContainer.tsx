@@ -24,10 +24,10 @@ import S from "./EditTableData.module.css";
 import { EditTableDataGrid } from "./EditTableDataGrid";
 import { EditTableDataHeader } from "./EditTableDataHeader";
 import { EditTableDataOverlay } from "./EditTableDataOverlay";
+import { ActionBulkUpdateRowFormModal } from "./modals/ActionBulkUpdateRowFormModal";
 import { ActionCreateRowFormModal } from "./modals/ActionCreateRowFormModal";
 import { ActionUpdateRowFormModal } from "./modals/ActionUpdateRowFormModal";
 import { DeleteBulkRowConfirmationModal } from "./modals/DeleteBulkRowConfirmationModal";
-import { EditBulkRowsModal } from "./modals/EditBulkRowsModal";
 import { ForeignKeyConstraintModal } from "./modals/ForeignKeyConstraintModal";
 import { UnsavedLeaveConfirmationModal } from "./modals/UnsavedLeaveConfirmationModal";
 import { useActionUpdateRowModalFromDatasetWithObjectId } from "./modals/use-action-update-row-modal-with-object-id";
@@ -298,17 +298,15 @@ export const EditTableDataContainer = ({
         isInserting={isInserting}
         onRowCreate={handleRowCreate}
       />
-      <EditBulkRowsModal
+      <ActionBulkUpdateRowFormModal
         opened={isBulkEditingRequested}
-        datasetColumns={datasetData.cols}
-        fieldMetadataMap={tableFieldMetadataMap}
-        onClose={closeBulkEditing}
-        onEdit={handleRowUpdateBulk}
-        onDelete={handleRowDeleteBulk}
-        isDeleting={isDeleting}
         selectedRowIndices={selectedRowIndices}
         setRowSelection={setRowSelection}
-        hasDeleteAction
+        description={updateActionFormDescription}
+        onClose={closeBulkEditing}
+        onRowsUpdate={handleRowUpdateBulk}
+        onRowsDelete={handleRowDeleteBulk}
+        withDelete
       />
       <DeleteBulkRowConfirmationModal
         opened={isDeleteBulkRequested}

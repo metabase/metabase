@@ -20,7 +20,7 @@ import type {
   DescribeActionFormResponse,
   RowCellsWithPkValue,
 } from "../../types";
-import { ParameterActionInput } from "../inputs_v2/ParameterActionInput";
+import { ModalParameterActionInput } from "../inputs_v2/ModalParameterActionInput";
 
 import S from "./ActionFormModal.css";
 import { ActionFormModalParameter } from "./ActionFormModalParameter";
@@ -154,5 +154,7 @@ export function CreateRowFormInput({
     [parameter.id, onChange],
   );
 
-  return <ParameterActionInput parameter={parameter} onChange={handleChange} />;
+  return (
+    <ModalParameterActionInput parameter={parameter} onChange={handleChange} />
+  );
 }

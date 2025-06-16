@@ -10,7 +10,7 @@ import type {
   DescribeActionFormResponse,
   UpdatedRowHandlerParams,
 } from "../../types";
-import { ParameterActionInput } from "../inputs_v2/ParameterActionInput";
+import { ModalParameterActionInput } from "../inputs_v2/ModalParameterActionInput";
 
 import S from "./ActionFormModal.css";
 import { ActionFormModalParameter } from "./ActionFormModalParameter";
@@ -148,7 +148,7 @@ export function UpdateRowFormInput({
   );
 
   return (
-    <ParameterActionInput
+    <ModalParameterActionInput
       initialValue={initialValue?.toString()}
       parameter={parameter}
       onBlur={handleValueUpdated}
