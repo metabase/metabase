@@ -2,10 +2,10 @@ import { Global } from "@emotion/react";
 import { useMemo } from "react";
 
 import type { MetabaseTheme } from "embedding-sdk";
-import { useShadowRoot } from "embedding-sdk/components/public/InteractiveQuestion/shadow-root-provider";
 import { DEFAULT_FONT } from "embedding-sdk/config";
 import { getEmbeddingThemeOverride } from "embedding-sdk/lib/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
 import { getFont } from "metabase/styled-components/selectors";
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
-  const { rootElement } = useShadowRoot();
+  const rootElement = useRootElement();
 
   const font = useSelector(getFont);
   const appColors = useSelector((state) =>

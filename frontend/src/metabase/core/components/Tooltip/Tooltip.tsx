@@ -4,9 +4,9 @@ import * as React from "react";
 import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
-import { useShadowRoot } from "embedding-sdk/components/public/InteractiveQuestion/shadow-root-provider";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 
@@ -50,11 +50,10 @@ function getTargetProps(
   }
 }
 
-function appendTo(rootElement: HTMLDivElement) {
+function appendTo(rootElement: HTMLElement) {
   return () =>
-    (rootElement ?? document).querySelector(
-      `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-    ) || document.body;
+    rootElement.querySelector(`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`) ??
+    rootElement;
 }
 
 /**
@@ -74,7 +73,7 @@ function Tooltip({
   maxWidth = 300,
   className,
 }: TooltipProps) {
-  const { rootElement } = useShadowRoot();
+  const rootElement = useRootElement();
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const disabled = isEnabled === false;

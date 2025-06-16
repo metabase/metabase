@@ -137,18 +137,16 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
 // If you change any of the default props please verify that the types are correct
 
 export function getEmbeddingComponentOverrides(
-  rootElement: HTMLElement | undefined,
+  rootElement: HTMLElement,
 ): MantineThemeOverride["components"] {
   return {
     HoverCard: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: !rootElement
-            ? `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`
-            : rootElement.querySelector(
-                `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-              ),
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       },
     },
@@ -156,11 +154,9 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: !rootElement
-            ? `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`
-            : rootElement.querySelector(
-                `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
-              ),
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       }, // satisfies Partial<ModalRootProps>,
     },
@@ -168,11 +164,9 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: !rootElement
-            ? `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`
-            : rootElement.querySelector(
-                `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
-              ),
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       }, // satisfies Partial<ModalProps>,
     },
@@ -180,11 +174,9 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: !rootElement
-            ? `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`
-            : rootElement.querySelector(
-                `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-              ),
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       }, // satisfies Partial<PopoverProps>,
     },
@@ -193,11 +185,9 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: !rootElement
-            ? `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`
-            : rootElement.querySelector(
-                `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-              ),
+          target: rootElement.querySelector(
+            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+          ),
         },
       }, // satisfies Partial<TooltipProps>,
     },

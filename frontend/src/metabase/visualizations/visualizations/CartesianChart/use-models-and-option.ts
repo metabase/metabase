@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-import { useShadowRoot } from "embedding-sdk/components/public/InteractiveQuestion/shadow-root-provider";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { extractRemappings } from "metabase/visualizations";
 import { getChartMeasurements } from "metabase/visualizations/echarts/cartesian/chart-measurements";
@@ -38,7 +38,7 @@ export function useModelsAndOption(
   }: VisualizationProps,
   containerRef: React.RefObject<HTMLDivElement>,
 ) {
-  const { rootElement } = useShadowRoot();
+  const rootElement = useRootElement();
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({ fontFamily });
@@ -136,13 +136,13 @@ export function useModelsAndOption(
   }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
   const tooltipOption = useMemo(() => {
-    return getTooltipOption(
+    return getTooltipOption({
       chartModel,
       settings,
-      card.display as CardDisplayType,
+      display: card.display as CardDisplayType,
       containerRef,
       rootElement,
-    );
+    });
   }, [rootElement, chartModel, settings, card.display, containerRef]);
 
   const option = useMemo(() => {

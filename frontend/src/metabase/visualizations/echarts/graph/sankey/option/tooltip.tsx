@@ -88,13 +88,20 @@ const ChartItemTooltip = ({ chartModel, params }: ChartItemTooltipProps) => {
   return <EChartsTooltip header={header} rows={rows} footer={footer} />;
 };
 
-export const getTooltipOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
-  chartModel: SankeyChartModel,
-  rootElement: HTMLDivElement,
-): TooltipOption => {
+export const getTooltipOption = ({
+  containerRef,
+  chartModel,
+  rootElement,
+}: {
+  containerRef: React.RefObject<HTMLDivElement>;
+  chartModel: SankeyChartModel;
+  rootElement: HTMLElement;
+}): TooltipOption => {
   return {
-    ...getTooltipBaseOption(containerRef, rootElement),
+    ...getTooltipBaseOption({
+      containerRef,
+      rootElement,
+    }),
     trigger: "item",
     triggerOn: "mousemove",
     formatter: (params) => {

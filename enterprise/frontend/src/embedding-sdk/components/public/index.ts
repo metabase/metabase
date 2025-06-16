@@ -76,5 +76,3 @@ export { defineMetabaseTheme };
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
 
 export { MetabotQuestion } from "./MetabotQuestion";
-
-import "./InteractiveQuestion/web";

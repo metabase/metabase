@@ -63,10 +63,13 @@ export const getTooltipPositionFn =
     return [tooltipRelativeX, tooltipRelativeY];
   };
 
-export const getTooltipBaseOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
-  rootElement: HTMLDivElement,
-) => {
+export const getTooltipBaseOption = ({
+  containerRef,
+  rootElement,
+}: {
+  containerRef: React.RefObject<HTMLDivElement>;
+  rootElement: HTMLElement;
+}) => {
   return {
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,

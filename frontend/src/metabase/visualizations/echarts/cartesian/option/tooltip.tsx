@@ -47,15 +47,24 @@ const ChartItemTooltip = ({
   return <EChartsTooltip {...tooltipModel} />;
 };
 
-export const getTooltipOption = (
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  display: CardDisplayType,
-  containerRef: React.RefObject<HTMLDivElement>,
-  rootElement: HTMLDivElement,
-): TooltipOption => {
+export const getTooltipOption = ({
+  chartModel,
+  settings,
+  display,
+  containerRef,
+  rootElement,
+}: {
+  chartModel: BaseCartesianChartModel;
+  settings: ComputedVisualizationSettings;
+  display: CardDisplayType;
+  containerRef: React.RefObject<HTMLDivElement>;
+  rootElement: HTMLElement;
+}): TooltipOption => {
   return {
-    ...getTooltipBaseOption(containerRef, rootElement),
+    ...getTooltipBaseOption({
+      containerRef,
+      rootElement,
+    }),
     trigger: "item",
     formatter: (params) => {
       if (Array.isArray(params)) {

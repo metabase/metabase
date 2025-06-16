@@ -2,17 +2,12 @@ import {
   type Context,
   type PropsWithChildren,
   createContext,
-  useContext,
   useState,
 } from "react";
 
-const ShadowRootContext = createContext({}) as unknown as Context<{
+export const ShadowRootContext = createContext({}) as unknown as Context<{
   rootElement: HTMLDivElement | null;
 }>;
-
-export function useShadowRoot() {
-  return useContext(ShadowRootContext);
-}
 
 export const ShadowRootProvider = ({ children }: PropsWithChildren) => {
   const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);

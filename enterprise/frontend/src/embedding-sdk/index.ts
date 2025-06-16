@@ -14,6 +14,10 @@ import "sdk-specific-imports";
 export * from "./hooks/public";
 export * from "./components/public";
 
+export * from "./components/public/metabase-provider.web-component";
+export * from "./components/public/InteractiveDashboard/interactive-dashboard.web-component";
+export * from "./components/public/InteractiveQuestion/interactive-question.web-component";
+
 export type {
   ButtonProps,
   ChartColor,
@@ -53,6 +57,7 @@ export type {
   SdkQuestionTitleProps,
   SdkUserId,
   SqlParameterValues,
+  WebComponentAttributes,
 } from "./types";
 
 export type {
