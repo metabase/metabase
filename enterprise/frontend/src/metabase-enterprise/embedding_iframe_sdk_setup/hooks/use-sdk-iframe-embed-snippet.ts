@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedTagSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../components/SdkIframeEmbedSetupContext";
@@ -7,15 +8,17 @@ import { API_KEY_PLACEHOLDER } from "../constants";
 
 export function useSdkIframeEmbedSnippet() {
   const { settings } = useSdkIframeEmbedSetupContext();
+  const instanceUrl = useSetting("site-url");
 
   // Generate dynamic snippet based on context settings
   return useMemo(() => {
     return getSnippet({
       target: "#metabase-embed",
       ...settings,
+      instanceUrl,
       apiKey: settings.apiKey || API_KEY_PLACEHOLDER,
     });
-  }, [settings]);
+  }, [settings, instanceUrl]);
 }
 
 function getSnippet(settings: SdkIframeEmbedTagSettings): string {
