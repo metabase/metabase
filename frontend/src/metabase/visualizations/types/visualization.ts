@@ -258,6 +258,10 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   title?: string;
   group?: string;
   widget?: string | React.ComponentType<TProps>;
+  /**
+   * Returns whether the setting is valid for the given series and settings.
+   * When it returns false, we use the value from getDefault.
+   */
   isValid?: (series: Series, settings: VisualizationSettings) => boolean;
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   getDefault?: (series: Series, settings: VisualizationSettings) => TValue;

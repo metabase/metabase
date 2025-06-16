@@ -103,7 +103,11 @@ export const isStackingValueValid = (
   const stackableDisplays = seriesDisplays.filter((display) =>
     STACKABLE_SERIES_DISPLAY_TYPES.has(display),
   );
-  return stackableDisplays.length > 1;
+
+  const hasSeveralEnabledSeries =
+    (settings["graph.series_order"] ?? []).filter((s) => s.enabled).length > 1;
+
+  return stackableDisplays.length > 1 && hasSeveralEnabledSeries;
 };
 
 export const isShowStackValuesValid = (

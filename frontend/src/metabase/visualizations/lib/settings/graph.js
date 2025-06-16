@@ -315,13 +315,6 @@ export const STACKABLE_SETTINGS = {
 
       return isStackingValueValid(settings, seriesDisplays);
     },
-    getValue: (_series, settings) => {
-      if (settings["graph.series_order"].filter((s) => s.enabled).length <= 1) {
-        return null;
-      }
-
-      return settings["stackable.stack_type"];
-    },
     getDefault: ([{ card, data }], settings) => {
       return getDefaultStackingValue(settings, card);
     },
@@ -337,7 +330,12 @@ export const STACKABLE_SETTINGS = {
 
       return stackableDisplays.length <= 1;
     },
-    readDependencies: ["graph.metrics", "graph.dimensions", "series"],
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "series",
+      "graph.series_order",
+    ],
   },
 };
 
