@@ -14,19 +14,34 @@ export function useSdkIframeEmbedSnippet() {
     return getSnippet({
       target: "#metabase-embed",
       ...settings,
-      apiKey: settings.apiKey ?? API_KEY_PLACEHOLDER,
+      apiKey: settings.apiKey || API_KEY_PLACEHOLDER,
     });
   }, [settings]);
 }
 
 function getSnippet(settings: SdkIframeEmbedTagSettings): string {
-  const nextSettings = { ...settings };
+  // filter out empty arrays, strings, objects, null and undefined.
+  // this keeps the embed settings readable.
+  const filteredSettings = Object.fromEntries(
+    Object.entries(settings).filter(([, value]) => {
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
 
-  const stringifiedSettings = JSON.stringify(nextSettings, null, 2)
+      if (typeof value === "object" && value !== null) {
+        return Object.keys(value).length > 0;
+      }
+
+      return value !== undefined && value !== null && value !== "";
+    }),
+  );
+
+  // format the json settings with proper indentation
+  const formattedSettings = JSON.stringify(filteredSettings, null, 2)
     .replace(/^{/, "")
     .replace(/}$/, "")
     .split("\n")
-    .map((line, index) => (index === 0 ? `  ${line}` : `  ${line}`))
+    .map((line) => `  ${line}`)
     .join("\n")
     .trim();
 
@@ -38,7 +53,7 @@ function getSnippet(settings: SdkIframeEmbedTagSettings): string {
   const { MetabaseEmbed } = window["metabase.embed"];
 
   const embed = new MetabaseEmbed({
-    ${stringifiedSettings}
+    ${formattedSettings}
   });
 </script>`;
 }
