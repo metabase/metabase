@@ -34,6 +34,8 @@
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset
+                 :distinct-where
+                 :native-temporal-units
                  :expressions/datetime
                  :expressions/date
                  :expressions/text

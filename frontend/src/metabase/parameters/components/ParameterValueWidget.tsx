@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
@@ -16,6 +17,7 @@ import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source"
 import {
   isDateParameter,
   isStringParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -68,6 +70,8 @@ export const ParameterValueWidget = ({
   value,
   ...popoverProps
 }: ParameterValueWidgetProps) => {
+  const tc = useTranslateContent();
+
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
@@ -229,11 +233,13 @@ export const ParameterValueWidget = ({
     );
   }
 
+  const translatedPlaceholder = tc(placeholder);
+
   const placeholderText = isEditing
     ? isDateParameter(parameter)
       ? t`Select a default value…`
       : t`Enter a default value…`
-    : placeholder || t`Select…`;
+    : translatedPlaceholder || t`Select…`;
 
   return (
     <Popover
@@ -320,7 +326,7 @@ export const ParameterValueWidget = ({
 function hasNoPopover(parameter: UiParameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter)) {
+  if (isDateParameter(parameter) || isTemporalUnitParameter(parameter)) {
     return false;
   }
   return isTextWidget(parameter);

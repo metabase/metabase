@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { toggleAutoApplyFilters } from "metabase/dashboard/actions";
+import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch } from "metabase/lib/redux";
