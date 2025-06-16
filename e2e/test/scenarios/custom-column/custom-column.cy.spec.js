@@ -688,7 +688,7 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "1 + 12");
   });
 
-  it("should format expression when pressing the format keyboard shortcut", () => {
+  it("should format the expression when pressing the format keyboard shortcut", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.findByLabelText("Custom column").click();
 
@@ -705,6 +705,24 @@ describe("scenarios > question > custom column", () => {
     // Make sure the cursor is at the end of the expression
     H.CustomExpressionEditor.type("2");
     H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should not try formatting the expression when it's invalid using the keyboard shortcut", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+" });
+
+    H.CustomExpressionEditor.focus();
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    cy.realPress(["Shift", metaKey, "f"]);
+    H.CustomExpressionEditor.value().should("equal", "1+");
+
+    // Make sure the cursor is at the end of the expression
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1+2");
   });
 
   it("should format long expressions on multiple lines", () => {
