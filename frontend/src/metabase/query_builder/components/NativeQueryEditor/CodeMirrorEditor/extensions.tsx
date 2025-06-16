@@ -50,9 +50,14 @@ import { getReferencedCardIds } from "./util";
 type Options = {
   query: Lib.Query;
   onRunQuery?: () => void;
+  onFormatQuery?: () => void;
 };
 
-export function useExtensions({ query, onRunQuery }: Options): Extension[] {
+export function useExtensions({
+  query,
+  onRunQuery,
+  onFormatQuery,
+}: Options): Extension[] {
   const { databaseId, engine, referencedCardIds } = useMemo(
     () => ({
       databaseId: Lib.databaseID(query),
@@ -99,7 +104,7 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
       highlightTags(),
       highlightLines(),
       folds(),
-      keyboardShortcuts({ onRunQuery }),
+      keyboardShortcuts({ onRunQuery, onFormatQuery }),
     ]
       .flat()
       .filter(isNotNull);
@@ -112,14 +117,19 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
     localsCompletion,
     keywordsCompletion,
     onRunQuery,
+    onFormatQuery,
   ]);
 }
 
 type KeyboardShortcutOptions = {
   onRunQuery?: () => void;
+  onFormatQuery?: () => void;
 };
 
-function keyboardShortcuts({ onRunQuery }: KeyboardShortcutOptions) {
+function keyboardShortcuts({
+  onRunQuery,
+  onFormatQuery,
+}: KeyboardShortcutOptions) {
   // Stop Cmd+Enter in CodeMirror from inserting a newline
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
   return Prec.highest(
@@ -146,6 +156,13 @@ function keyboardShortcuts({ onRunQuery }: KeyboardShortcutOptions) {
       {
         key: "Mod-k",
         run: moveCompletionSelection(false),
+      },
+      {
+        key: "Shift-Mod-f",
+        run: () => {
+          onFormatQuery?.();
+          return true;
+        },
       },
     ]),
   );

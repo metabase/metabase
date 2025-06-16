@@ -22,6 +22,7 @@ export type CodeMirrorEditorProps = {
   highlightedLineNumbers?: number[];
   readOnly?: boolean;
   onChange?: (queryText: string) => void;
+  onFormatQuery?: () => void;
   onRunQuery?: () => void;
   onCursorMoveOverCardTag?: (id: CardId) => void;
   onRightClickSelection?: () => void;
@@ -54,11 +55,12 @@ export const CodeMirrorEditor = forwardRef<
     onSelectionChange,
     onRightClickSelection,
     onCursorMoveOverCardTag,
+    onFormatQuery,
   },
   ref,
 ) {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
-  const extensions = useExtensions({ query, onRunQuery });
+  const extensions = useExtensions({ query, onRunQuery, onFormatQuery });
   useHighlightLines(editorRef, highlightedLineNumbers);
 
   const engine = Lib.engine(query);

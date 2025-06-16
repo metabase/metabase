@@ -336,6 +336,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 onSelectionChange={setNativeEditorSelectedRange}
                 onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                 onRightClickSelection={this.handleRightClickSelection}
+                onFormatQuery={this.handleFormatQuery}
               />
 
               {hasEditingSidebar && !readOnly && (
