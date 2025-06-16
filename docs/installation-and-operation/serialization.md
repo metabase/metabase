@@ -35,8 +35,6 @@ Check out our guides for:
 - [Running multiple environments](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/multi-env)
 - [Setting up git-based workflow](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/git-based-workflow)
 
-> Serialization isn't intended for use cases like duplicating assets or swapping data sources _within_ the same Metabase instance. If you're using serialization for duplicating assets within the same instance, check out [How export works](#how-export-works), [How import works](#how-import-works), and the directions for your use case in [Other uses of serialization](#other-uses-of-serialization)
-
 ## How export works
 
 - [What gets exported](#what-gets-exported)
@@ -731,8 +729,6 @@ If your collections contains dashboards, models, and other items that can add de
 > We've since built an official solution for situations where you want to build one dashboard and change the database it queries based on who's viewing it. Check out [Database routing](../permissions/database-routing.md).
 
 Read the blockquote above before proceeding, as that's probably what you're looking for. We're leaving the docs below as a backup in case [database routing](../permissions/database-routing.md) doesn't solve your problem.
-
-metabase/metabase-enterprise-head
 
 If you want to switch _every_ question built on database A to use database B instead, and database B has exactly the same schema as database A, you don't need to use serialization: you can just swap the connection string in **Admin > Databases**.
 
