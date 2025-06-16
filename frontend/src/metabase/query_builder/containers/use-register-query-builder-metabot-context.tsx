@@ -1,8 +1,11 @@
 import dayjs from "dayjs";
+import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import {
+  getChartImagePngDataUri,
+  getChartSelector,
   getChartSvgSelector,
   getVisualizationSvgDataUri,
 } from "metabase/visualizations/lib/image-exports";
@@ -152,7 +155,24 @@ function processTimelineEvents(timelines: Timeline[]) {
     .slice(0, 20);
 }
 
-const getChartConfigs = ({
+function getVisualizationDataUri(question: Question) {
+  const cardId = question.id();
+  const display = question.card().display;
+
+  const format =
+    PLUGIN_AI_ENTITY_ANALYSIS.chartAnalysisRenderFormats[display] ??
+    ("none" as const);
+
+  return match(format)
+    .with("none", () => undefined)
+    .with("svg", () =>
+      getVisualizationSvgDataUri(getChartSvgSelector({ cardId })),
+    )
+    .with("png", () => getChartImagePngDataUri(getChartSelector({ cardId })))
+    .exhaustive();
+}
+
+const getChartConfigs = async ({
   question,
   series,
   visualizationSettings,
@@ -162,16 +182,14 @@ const getChartConfigs = ({
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelines: Timeline[];
-}): MetabotChartConfig[] => {
+}): Promise<MetabotChartConfig[]> => {
   if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
     return [];
   }
 
   return [
     {
-      image_base_64: getVisualizationSvgDataUri(
-        getChartSvgSelector({ cardId: question.id() }),
-      ),
+      image_base_64: await getVisualizationDataUri(question),
       title: question.displayName(),
       description: question.description(),
       series: processSeriesData(series, visualizationSettings),
@@ -195,6 +213,16 @@ export const registerQueryBuilderMetabotContextFn = async ({
     return {};
   }
 
+  const chart_configs = await getChartConfigs({
+    question,
+    series,
+    visualizationSettings,
+    timelines,
+  }).catch((err) => {
+    console.error(err);
+    return [];
+  });
+
   return {
     user_is_viewing: [
       {
@@ -203,12 +231,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
           : { type: "adhoc" as const }),
         query: question.datasetQuery(),
         display_type: question.display(),
-        chart_configs: getChartConfigs({
-          question,
-          series,
-          visualizationSettings,
-          timelines,
-        }),
+        chart_configs,
       },
     ],
   };

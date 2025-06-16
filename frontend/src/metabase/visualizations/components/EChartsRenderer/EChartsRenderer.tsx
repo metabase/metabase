@@ -48,10 +48,6 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
       });
 
       chartRef.current?.setOption(option, notMerge);
-      const chartSvg = chartRef.current?.getDom().querySelector("svg");
-      if (chartSvg) {
-        chartSvg.setAttribute("data-type", "chart");
-      }
 
       onInit?.(chartRef.current);
     });

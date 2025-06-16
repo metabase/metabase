@@ -185,15 +185,14 @@ export const getVisualizationSvgDataUri = (
   if (backgroundColor && element instanceof SVGElement) {
     element.style.backgroundColor = backgroundColor;
   }
+  if (!element) {
+    return undefined;
+  }
 
-  const svgString = element
-    ? new XMLSerializer().serializeToString(element)
-    : undefined;
-  const image_base_64 = svgString
-    ? `data:image/svg+xml;base64,${window.btoa(svgString)}`
-    : undefined;
-
-  return image_base_64;
+  const svgString = new XMLSerializer().serializeToString(element);
+  const utf8Bytes = new TextEncoder().encode(svgString);
+  const binaryString = String.fromCharCode(...utf8Bytes);
+  return `data:image/svg+xml;base64,${window.btoa(binaryString)}`;
 };
 
 export const getChartSelector = (
@@ -209,7 +208,9 @@ export const getChartSelector = (
 export const getChartSvgSelector = (
   input: { dashcardId: number | undefined } | { cardId: number | undefined },
 ) => {
-  return `${getChartSelector(input)} svg[data-type="chart"]`;
+  // :not selector shouldn't be needed, but just an extra check to make sure
+  // we don't accidently get some kind of svg icon
+  return `${getChartSelector(input)} svg:not([role="img"])`;
 };
 
 export const getChartImagePngDataUri = async (
