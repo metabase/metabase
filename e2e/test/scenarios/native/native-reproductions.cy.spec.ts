@@ -686,3 +686,53 @@ describe("issue 51679", () => {
       .should("have.value", "Number");
   });
 });
+
+describe("issue 59110", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow dragging border to completely hide native query editor (metabase#59110)", () => {
+    H.startNewNativeQuestion();
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("not.exist");
+
+    H.NativeEditor.get().then((editor) => {
+      const { height } = editor[0].getBoundingClientRect();
+      const SLOPPY_CLICK_THRESHOLD = 30;
+      const diff = height - SLOPPY_CLICK_THRESHOLD;
+
+      cy.log("drag the border to hide the editor");
+
+      cy.findByTestId("drag-handle").then((handle) => {
+        const coordsDrag = handle[0].getBoundingClientRect();
+
+        cy.wrap(handle)
+          .trigger("mousedown", {
+            clientX: coordsDrag.x,
+            clientY: coordsDrag.y,
+          })
+          .trigger("mousemove", {
+            clientX: coordsDrag.x,
+            clientY: coordsDrag.y - diff,
+          })
+          .trigger("mouseup");
+      });
+    });
+
+    H.NativeEditor.get().should("not.be.visible");
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("be.visible")
+      .click();
+
+    cy.log("verify that editor height is restored");
+    H.NativeEditor.get().then((editor) => {
+      const { height } = editor[0].getBoundingClientRect();
+      expect(height).to.be.greaterThan(100);
+    });
+  });
+});
