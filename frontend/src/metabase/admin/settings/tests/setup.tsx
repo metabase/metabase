@@ -29,70 +29,72 @@ import { createMockState } from "metabase-types/store/mocks";
 export const ossRoutes = {
   root: { path: "", testPattern: /site name/i },
   general: { path: "/general", testPattern: /site name/i },
-  email: { path: "/email", testPattern: /SMTP Host/ },
-  notifications: { path: "/notifications", testPattern: /Connect to Slack/ },
-  slack: { path: "/notifications/slack", testPattern: /Metabase on Slack/ },
+  email: { path: "/email", testPattern: /SMTP/i },
+  notifications: { path: "/notifications", testPattern: /Connect to Slack/i },
   authentication: {
     path: "/authentication",
-    testPattern: /Sign in with Google/,
+    testPattern: /Sign in with Google/i,
   },
   google: {
     path: "/authentication/google",
-    testPattern: /Sign in with Google/,
+    testPattern: /application client ID/i,
   },
-  ldap: { path: "/authentication/ldap", testPattern: /Server Settings/ },
-  apiKeys: { path: "/authentication/api-keys", testPattern: /Manage API Keys/ },
-  maps: { path: "/maps", testPattern: /Map tile server URL/ },
-  localization: { path: "/localization", testPattern: /Instance language/ },
+  ldap: { path: "/authentication/ldap", testPattern: /Server Settings/i },
+  apiKeys: {
+    path: "/authentication/api-keys",
+    testPattern: /Allow users to use API keys/i,
+  },
+  maps: { path: "/maps", testPattern: /Map tile server URL/i },
+  localization: { path: "/localization", testPattern: /Instance language/i },
   uploads: {
     path: "/uploads",
-    testPattern: /Allow people to upload data to Collections/,
+    testPattern: /Allow people to upload data to Collections/i,
   },
   publicSharing: {
     path: "/public-sharing",
-    testPattern: /Enable Public Sharing/,
+    testPattern: /Enable Public Sharing/i,
   },
   embedding: {
     path: "/embedding-in-other-applications",
-    testPattern: /Embed dashboards, questions, or the entire Metabase app/,
+    testPattern: /Embed dashboards, questions, or the entire Metabase app/i,
   },
   staticEmbedding: {
     path: "/embedding-in-other-applications/standalone",
-    testPattern: /Embedding secret key/,
+    testPattern: /Embedding secret key/i,
   },
   embeddingSdk: {
     path: "/embedding-in-other-applications/sdk",
-    testPattern: /Enable Embedded analytics SDK/,
+    testPattern: /Enable Embedded analytics SDK/i,
   },
-  license: { path: "/license", testPattern: /Looking for more/ },
+  license: { path: "/license", testPattern: /Looking for more/i },
   appearance: {
     path: "/appearance",
-    testPattern: /Make Metabase look like you/,
+    testPattern: /Make Metabase look like you/i,
   },
-  cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/ },
+  cloud: { path: "/cloud", testPattern: /Migrate to Metabase Cloud/i },
 };
 
 type RouteMap = Record<string, { path: string; testPattern: RegExp }>;
 
 export const enterpriseRoutes: RouteMap = {
-  license: { path: "/license", testPattern: /License/ },
+  license: { path: "/license", testPattern: /License/i },
 };
 
 export const premiumRoutes: RouteMap = {
-  saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/ },
-  jwt: { path: "/authentication/jwt", testPattern: /Server Settings/ },
+  saml: { path: "/authentication/saml", testPattern: /Set up SAML-based SSO/i },
+  jwt: { path: "/authentication/jwt", testPattern: /Server Settings/i },
   interactiveEmbedding: {
     path: "/embedding-in-other-applications/full-app",
-    testPattern: /Enable Interactive embedding/,
+    testPattern: /Enable Interactive embedding/i,
   },
 };
 
 export const upsellRoutes: RouteMap = {
-  appearance: { path: "/whitelabel", testPattern: /Color Palette/ },
-  branding: { path: "/whitelabel/branding", testPattern: /Color Palette/ },
+  appearance: { path: "/whitelabel", testPattern: /Color palette/i },
+  branding: { path: "/whitelabel/branding", testPattern: /Color palette/i },
   concealMetabase: {
     path: "/whitelabel/conceal-metabase",
-    testPattern: /Application Name/,
+    testPattern: /Application Name/i,
   },
 };
 

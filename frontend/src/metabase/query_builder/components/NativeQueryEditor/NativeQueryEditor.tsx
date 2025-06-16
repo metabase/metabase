@@ -23,6 +23,7 @@ import {
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
@@ -41,10 +42,14 @@ import {
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
+import { NativeQueryValidationError } from "./NativeQueryValidationError/NativeQueryValidationError";
 import { RightClickPopover } from "./RightClickPopover";
-import { MIN_HEIGHT_LINES } from "./constants";
+import {
+  MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
+  THRESHOLD_FOR_AUTO_CLOSE,
+} from "./constants";
 import type { SelectionRange, SidebarFeatures } from "./types";
-import { calcInitialEditorHeight, getEditorLineHeight } from "./utils";
+import { calcInitialEditorHeight } from "./utils";
 
 type OwnProps = {
   question: Question;
@@ -119,6 +124,7 @@ type Props = OwnProps &
 interface NativeQueryEditorState {
   initialHeight: number;
   isSelectedTextPopoverOpen: boolean;
+  isCollapsing: boolean;
 }
 
 class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
@@ -132,6 +138,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     this.state = {
       initialHeight: calcInitialEditorHeight({ query, viewHeight }),
       isSelectedTextPopoverOpen: false,
+      isCollapsing: false,
     };
   }
 
@@ -155,16 +162,22 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       // close selected text popover if text is deselected
       this.setState({ isSelectedTextPopoverOpen: false });
     }
+
+    if (this.props.isNativeEditorOpen && !prevProps.isNativeEditorOpen) {
+      const { query, viewHeight } = this.props;
+      const newHeight = calcInitialEditorHeight({ query, viewHeight });
+      this.setState({ initialHeight: newHeight });
+    }
   }
 
   onChange = (queryText: string) => {
     const { query, setDatasetQuery } = this.props;
     if (query.queryText() !== queryText) {
-      setDatasetQuery(
-        query
-          .setQueryText(queryText)
-          .updateSnippetsWithIds(this.props.snippets),
-      );
+      const updatedQuery = query
+        .setQueryText(queryText)
+        .updateSnippetsWithIds(this.props.snippets);
+
+      setDatasetQuery(updatedQuery);
     }
   };
 
@@ -177,6 +190,15 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
   handleRightClickSelection = () => {
     this.setState({ isSelectedTextPopoverOpen: true });
+  };
+
+  handleTransitionEnd = () => {
+    if (this.state.isCollapsing) {
+      this.setState({
+        isCollapsing: false,
+        initialHeight: MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
+      });
+    }
   };
 
   render() {
@@ -207,7 +229,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
     } = this.props;
 
     const dragHandle = resizable ? (
-      <div className={S.dragHandleContainer}>
+      <div className={S.dragHandleContainer} data-testid="drag-handle">
         <div className={S.dragHandle} />
       </div>
     ) : null;
@@ -250,47 +272,65 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             setDatasetQuery={this.props.setDatasetQuery}
           />
         )}
-        <ResizableBox
-          ref={this.resizeBox}
-          height={this.state.initialHeight}
-          className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
-          minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
-          axis="y"
-          handle={dragHandle}
-          resizeHandles={["s"]}
-          {...resizableBoxProps}
-          onResizeStop={(e, data) => {
-            this.props.handleResize();
-            if (typeof resizableBoxProps?.onResizeStop === "function") {
-              resizableBoxProps.onResizeStop(e, data);
-            }
-          }}
+        <div
+          className={S.editorWrapper}
+          onTransitionEnd={this.handleTransitionEnd}
         >
-          <>
-            <CodeMirrorEditor
-              ref={this.editor}
-              query={question.query()}
-              readOnly={readOnly}
-              highlightedLineNumbers={highlightedLineNumbers}
-              onChange={this.onChange}
-              onRunQuery={runQuery}
-              onSelectionChange={setNativeEditorSelectedRange}
-              onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-              onRightClickSelection={this.handleRightClickSelection}
-            />
-
-            {hasEditingSidebar && !readOnly && (
-              <NativeQueryEditorRunButton
-                cancelQuery={this.props.cancelQuery}
-                isResultDirty={this.props.isResultDirty}
-                isRunnable={this.props.isRunnable}
-                isRunning={this.props.isRunning}
-                nativeEditorSelectedText={this.props.nativeEditorSelectedText}
-                runQuery={this.props.runQuery}
-              />
+          <ResizableBox
+            ref={this.resizeBox}
+            height={this.state.initialHeight}
+            className={cx(
+              S.resizableBox,
+              isNativeEditorOpen && S.open,
+              this.state.isCollapsing && S.collapsing,
             )}
-          </>
-        </ResizableBox>
+            minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
+            axis="y"
+            handle={dragHandle}
+            resizeHandles={["s"]}
+            {...resizableBoxProps}
+            onResizeStop={(e, data) => {
+              this.props.handleResize();
+              if (typeof resizableBoxProps?.onResizeStop === "function") {
+                resizableBoxProps.onResizeStop(e, data);
+              }
+              const size = data.size;
+
+              if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
+                // Start animation to collapse
+                this.setState({ isCollapsing: true });
+                this.props.setIsNativeEditorOpen?.(false);
+              }
+            }}
+          >
+            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
+              <CodeMirrorEditor
+                ref={this.editor}
+                query={question.query()}
+                readOnly={readOnly}
+                highlightedLineNumbers={highlightedLineNumbers}
+                onChange={this.onChange}
+                onRunQuery={runQuery}
+                onSelectionChange={setNativeEditorSelectedRange}
+                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                onRightClickSelection={this.handleRightClickSelection}
+              />
+
+              {hasEditingSidebar && !readOnly && (
+                <NativeQueryEditorRunButton
+                  cancelQuery={this.props.cancelQuery}
+                  isResultDirty={this.props.isResultDirty}
+                  isRunnable={this.props.isRunnable}
+                  isRunning={this.props.isRunning}
+                  nativeEditorSelectedText={this.props.nativeEditorSelectedText}
+                  runQuery={this.props.runQuery}
+                />
+              )}
+            </Flex>
+
+            <NativeQueryValidationError query={query.question().query()} />
+          </ResizableBox>
+        </div>
 
         <RightClickPopover
           isOpen={this.state.isSelectedTextPopoverOpen}

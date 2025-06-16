@@ -2,6 +2,7 @@
   "`/api/ee/ai-sql-generation/` routes"
   (:require
    [metabase-enterprise.metabot-v3.core :as metabot-v3]
+   [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver.util :as driver.u]
@@ -24,9 +25,14 @@
                            :db_id database-id
                            :active true
                            :visibility_type nil
-                           {:order-by [[:view_count :desc]]
+                           {:where    (mi/visible-filter-clause :model/Table
+                                                                :id
+                                                                {:user-id       api/*current-user-id*
+                                                                 :is-superuser? api/*is-superuser?*}
+                                                                {:perms/view-data      :unrestricted
+                                                                 :perms/create-queries :query-builder-and-native})
+                            :order-by [[:view_count :desc]]
                             :limit    all-tables-limit})
-         tables (filter mi/can-read? tables)
          tables (t2/hydrate tables :fields)]
      (mapv (fn [{:keys [fields] :as table}]
              (merge (select-keys table [:name :schema :description])
