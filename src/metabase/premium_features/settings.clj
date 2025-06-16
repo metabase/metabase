@@ -182,6 +182,10 @@
   "Should we enable extra knobs around permissions (block access, connection impersonation, etc.)?"
   :advanced-permissions)
 
+(define-premium-feature ^{:added "0.56.0"} enable-content-translation?
+  "Should we enable translation of user-generated content, like question names?"
+  :content-translation)
+
 (define-premium-feature ^{:added "0.41.0"} enable-content-verification?
   "Should we enable verified content, like verified questions and models (and more in the future, like actions)?"
   :content-verification)
@@ -265,6 +269,7 @@
    :cache_preemptive               (enable-preemptive-caching?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)

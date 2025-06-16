@@ -33,14 +33,12 @@ const setup = async ({
 
   renderWithProviders(<SlackSetup />);
 
-  await screen.findByText("Metabase on Slack");
+  await screen.findByText(/Activate the OAuth token/i);
 };
 
 describe("SlackSetup", () => {
   it("should fetch the slack manifest", async () => {
     await setup({ bugReporting: false });
-
-    expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
 
     await waitFor(async () => {
       const gets = await findRequests("GET");
@@ -53,7 +51,6 @@ describe("SlackSetup", () => {
 
   it("should show notice about legacy bot tokens", async () => {
     await setup({ bugReporting: false, botToken: true });
-    expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
     expect(
       await screen.findByText(/upgrade to Slack Apps/),
     ).toBeInTheDocument();
@@ -62,7 +59,6 @@ describe("SlackSetup", () => {
   it("should show instructions to set up a slack app", async () => {
     await setup({ bugReporting: false });
 
-    expect(screen.getByText("Metabase on Slack")).toBeInTheDocument();
     expect(
       await screen.findByText(
         "1. Click the button below and create your Slack App",
@@ -74,7 +70,7 @@ describe("SlackSetup", () => {
   it("should show token input", async () => {
     await setup({ bugReporting: false });
 
-    const input = await screen.findByLabelText("Slack Bot User OAuth Token");
+    const input = await screen.findByLabelText("Slack bot user OAuth token");
     expect(input).toBeInTheDocument();
   });
 
@@ -89,7 +85,7 @@ describe("SlackSetup", () => {
   it("should not show bug reporting channel if bug reporting is disabled", async () => {
     await setup({ bugReporting: false });
 
-    await screen.findByLabelText("Slack Bot User OAuth Token");
+    await screen.findByLabelText("Slack bot user OAuth token");
     expect(
       screen.queryByText("Public channel for bug reports"),
     ).not.toBeInTheDocument();
@@ -99,7 +95,7 @@ describe("SlackSetup", () => {
     setup({ bugReporting: true });
 
     const tokenInput = await screen.findByLabelText(
-      "Slack Bot User OAuth Token",
+      "Slack bot user OAuth token",
     );
     await userEvent.type(tokenInput, "new-bot-token");
 

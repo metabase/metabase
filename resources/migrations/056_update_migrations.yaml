@@ -9,9 +9,9 @@ databaseChangeLog:
       author: edpaget
       comment: Placeholder migration that makes sure the downgrade check doesn't fail
       changes:
-        -  output:
-            message:  Placeholder until other changesets
-            target:  STDOUT
+        - output:
+            message: Placeholder until other changesets
+            target: STDOUT
       rollback:
 
   - changeSet:
@@ -129,7 +129,46 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: running, failed, or completed
 
-
+  - changeSet:
+      id: v56.2025-06-13T15:00:00
+      author: rafpaf
+      comment: Create content translation table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_translation
+      changes:
+        - createTable:
+            tableName: content_translation
+            remarks: Content translations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  remarks: Locale
+                  type: varchar(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgid
+                  remarks: The raw string
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgstr
+                  remarks: The translation
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

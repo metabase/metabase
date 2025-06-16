@@ -9,6 +9,7 @@ import {
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
@@ -94,7 +95,7 @@ export function UploadManagementTable() {
   }
 
   return (
-    <Box p="md" pb="xl">
+    <Box>
       <DeleteConfirmModal
         opened={showDeleteConfirmModal}
         tables={selectedItems}
@@ -140,9 +141,9 @@ export function UploadManagementTable() {
           </BulkActionButton>
         </BulkActionBar>
       )}
-      <SettingHeader id="upload-tables-list" title={t`Manage Uploads`} />
-      <Text fw="bold" color="text-medium">
-        {t`Uploaded Tables`}
+      <SettingHeader id="upload-tables-list" title={t`Manage uploads`} />
+      <Text fw="bold" c="text-medium">
+        {t`Uploaded tables`}
       </Text>
       <ClientSortableTable
         data-testid="upload-tables-table"
@@ -180,7 +181,7 @@ const UploadTableRow = ({
           }
         />
       </td>
-      <td>
+      <td style={{ maxWidth: 300 }}>
         <Link
           to={
             Urls.modelToUrl({
@@ -192,7 +193,7 @@ const UploadTableRow = ({
           }
           variant="brand"
         >
-          {item.name}
+          <Ellipsified>{item.name}</Ellipsified>
         </Link>
       </td>
       <td>{createdAtString}</td>
