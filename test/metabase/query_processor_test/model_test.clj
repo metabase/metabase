@@ -12,6 +12,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
+;;; see also [[metabase.query-processor.util.add-alias-info-test/model-duplicate-joins-test]]
 (deftest ^:parallel model-self-join-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -73,8 +74,11 @@
                                                                                         "Reviews → Created At: Month")
                                                                :month))])
                                           (lib/with-join-fields :all))))))]
-      (is (=? ["CREATED_AT" "avg" "CREATED_AT_2" "sum"]
-              (map :name (lib.metadata.result-metadata/expected-cols question))))
+      (is (=? [{:name "CREATED_AT"}
+               {:name "avg"}
+               {:name "CREATED_AT_2"}
+               {:name "sum"}]
+              (lib.metadata.result-metadata/expected-cols question)))
       (is (= ["Reviews → Created At: Month"
               "Average of Rating"
               "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"

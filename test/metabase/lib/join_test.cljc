@@ -1617,3 +1617,110 @@
               {:id (meta/id :products :vendor) :display-name "Vendor"}]
              (map #(select-keys % [:id :display-name])
                   (lib.metadata.calculation/returned-columns query -1 join)))))))
+
+(deftest ^:parallel visible-columns-test
+  (testing "Inside a join you can see columns from parent stage and previous joins (#59586)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:joins        [{:strategy     :left-join
+                                    :source-table $$venues
+                                    :alias        "V"
+                                    :condition    [:= $venues.id &V.venues.id]
+                                    :fields       [&V.venues.id]}
+                                   {:strategy     :left-join
+                                    :source-table $$categories
+                                    :alias        "C"
+                                    :condition    [:= $category-id &C.categories.id]
+                                    :fields       [&C.categories.id]}
+                                   {:strategy     :left-join
+                                    :source-table $$categories
+                                    :alias        "C2"
+                                    :condition    [:= $category-id &C2.categories.id]
+                                    :fields       [&C2.categories.id]}]
+                    :expressions  {"price" [:+ $venues.price 1]}
+                    :fields       [$id
+                                   &C.categories.name
+                                   [:expression "price"]]}))
+          join (lib.join/resolve-join query -1 "C")]
+      (testing `lib.join/visible-columns-from-join
+        (is (=? [{:id (meta/id :categories :id)
+                  :name "ID"
+                  :lib/source :source/joins
+                  :metabase.lib.join/join-alias "C"
+                  :lib/source-column-alias "ID"
+                  :lib/desired-column-alias "C__ID"}
+                 {:id (meta/id :categories :name)
+                  :name "NAME"
+                  :lib/source :source/joins
+                  :metabase.lib.join/join-alias "C"
+                  :lib/source-column-alias "NAME"
+                  :lib/desired-column-alias "C__NAME"}]
+                (#'lib.join/visible-columns-from-join query -1 join nil))))
+      (is (=? [ ;; everything from the parent stage NOT added by the stage (i.e., things returned by the parent stage's source)
+               {:id (meta/id :venues :id)
+                :name "ID"
+                :lib/source :source/table-defaults
+                :lib/source-column-alias "ID"
+                :lib/desired-column-alias "ID"}
+               {:id (meta/id :venues :name)
+                :name "NAME"
+                :lib/source :source/table-defaults
+                :lib/source-column-alias "NAME"
+                :lib/desired-column-alias "NAME"}
+               {:id (meta/id :venues :category-id)
+                :name "CATEGORY_ID"
+                :lib/source :source/table-defaults
+                :lib/source-column-alias "CATEGORY_ID"
+                :lib/desired-column-alias "CATEGORY_ID"}
+               {:id (meta/id :venues :latitude)
+                :name "LATITUDE"
+                :lib/source :source/table-defaults
+                :lib/source-column-alias "LATITUDE"
+                :lib/desired-column-alias "LATITUDE"}
+               {:id (meta/id :venues :longitude)
+                :name "LONGITUDE"
+                :lib/source :source/table-defaults
+                :lib/source-column-alias "LONGITUDE"
+                :lib/desired-column-alias "LONGITUDE"}
+               {:id (meta/id :venues :price)
+                :name "PRICE"
+                :lib/source :source/table-defaults
+                :lib/source-column-alias "PRICE"
+                :lib/desired-column-alias "PRICE"}
+               ;; {:id (meta/id :venues :id)
+               ;;  :name "ID"
+               ;;  :lib/source :source/implicitly-joinable
+               ;;  :lib/source-column-alias "ID"
+               ;;  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__ID"}
+               ;; {:id (meta/id :venues :name)
+               ;;  :name "NAME"
+               ;;  :lib/source :source/implicitly-joinable
+               ;;  :lib/source-column-alias "NAME"
+               ;;  :lib/desired-column-alias "CATEGORIES__via__CATEGORY_ID__NAME"}
+               ;; everything RETURNED by joins before this one
+               {:id (meta/id :venues :id)
+                :name "ID"
+                :lib/source :source/joins
+                :metabase.lib.join/join-alias "V"
+                :lib/source-column-alias "ID"
+                :lib/desired-column-alias "V__ID"}
+               ;; everything VISIBLE in the join's last stage (not just the things RETURNED by the join) -- both
+               ;; C__ID (returned) and C__NAME (not returned, but visible within the join). These should include join
+               ;; alias.
+               {:id (meta/id :categories :id)
+                :name "ID"
+                :lib/source :source/joins
+                :metabase.lib.join/join-alias "C"
+                :lib/source-column-alias "ID"
+                :lib/desired-column-alias "C__ID"}
+               {:id (meta/id :categories :name)
+                :name "NAME"
+                :lib/source :source/joins
+                :metabase.lib.join/join-alias "C"
+                :lib/source-column-alias "NAME"
+                :lib/desired-column-alias "C__NAME"}
+               ;; should NOT include anything from `C2` since that join comes after `C` and is thus NOT VISIBLE.
+               ]
+              (map #(select-keys % [:id :name :lib/source :metabase.lib.join/join-alias :lib/source-column-alias :lib/desired-column-alias])
+                   (lib.metadata.calculation/visible-columns query -1 join)))))))

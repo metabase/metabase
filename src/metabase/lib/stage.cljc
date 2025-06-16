@@ -282,7 +282,7 @@
      (lib.metadata.calculation/remapped-columns query stage-number source-columns options)
      ;; 4: columns added by joins at this stage
      (when include-joined?
-       (lib.join/all-joins-visible-columns query stage-number options)))))
+       (lib.join/visible-columns-from-all-joins query stage-number options)))))
 
 (defmethod lib.metadata.calculation/visible-columns-method ::stage
   [query stage-number _stage {:keys [unique-name-fn include-implicitly-joinable?], :as options}]
@@ -349,7 +349,7 @@
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
-(mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- [:sequential ::lib.schema.metadata/column]
+(mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query stage-number _stage {:keys [include-remaps? unique-name-fn], :as options}]
   (or
    (existing-stage-metadata query stage-number unique-name-fn)

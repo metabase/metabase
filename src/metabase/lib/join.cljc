@@ -274,12 +274,11 @@
    col  :- :map]
   (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
 
-(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [query
-   stage-number
-   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
-   {:keys [unique-name-fn], :as options} :- [:map
-                                             [:unique-name-fn ::lib.metadata.calculation/unique-name-fn]]]
+(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  [query                                                                    :- ::lib.schema/query
+   stage-number                                                             :- :int
+   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
+   {:keys [unique-name-fn], :as options}                                    :- [:maybe lib.metadata.calculation/VisibleColumnsOptions]]
   (when-not (= fields :none)
     (let [;; TODO (Cam 6/12/25) -- this seems to serve no purpose. Commenting out for now.
           ;;
@@ -316,18 +315,57 @@
                       field-metadatas)]
       (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))
 
-(defmethod lib.metadata.calculation/visible-columns-method :mbql/join
-  [query stage-number join options]
+(mu/defn- visible-columns-from-join :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  "Visible columns that come from this join specifically (as opposed to all the columns visible within a join). Note
+  this is not the same as calling [[lib.metadata.calculation/visible-columns]] on a join -- `visible-columns`
+  returns columns that are visible WITHIN the join itself, including ones that originate outside of the join."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join         :- ::lib.schema.join/join
+   options      :- [:maybe lib.metadata.calculation/VisibleColumnsOptions]]
   (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
 
-(mu/defn all-joins-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
-  "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
-  [query          :- ::lib.schema/query
-   stage-number   :- :int
-   options        :- lib.metadata.calculation/VisibleColumnsOptions]
+(mu/defmethod lib.metadata.calculation/visible-columns-method :mbql/join :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join         :- ::lib.schema.join/join
+   options      :- [:maybe lib.metadata.calculation/VisibleColumnsOptions]]
+  ;; a join can "see" columns visible within the parent stage, things RETURNED by any previous joins, and anything
+  ;; VISIBLE in this join's stages; it cannot see any columns added by the parent stage (aggregations, expressions,
+  ;; etc.) or any added by subsequent joins
+  (let [stage-number  (lib.util/canonical-stage-index query stage-number)
+        stage         (lib.util/query-stage query stage-number)
+        ;; find the index of this join in the parent stage
+        join-index    (some (fn [[i a-join]]
+                              (when (= (:alias a-join) (:alias join))
+                                i))
+                            (m/indexed (:joins stage)))
+        stage'        (assoc-in stage [:joins join-index :fields] :all)
+        query'        (assoc-in query [:stages stage-number] stage')
+        visible-joins (into #{}
+                            (comp (take (inc join-index))
+                                  (map :alias))
+                            (:joins stage))
+        cols          (lib.metadata.calculation/visible-columns query' stage-number stage' options)]
+    (remove (fn [col]
+              (or
+               ;; remove things added in this stage.
+               (#{:source/expressions :source/aggregations} (:lib/source col))
+               ;; remove things from joins that come AFTER this join.
+               (when-let [join-alias (lib.join.util/current-join-alias col)]
+                 (not (contains? visible-joins join-alias)))))
+            cols)))
+
+(mu/defn visible-columns-from-all-joins :- lib.metadata.calculation/ColumnsWithUniqueAliases
+  "All the visible columns that specifically come from the joins in a given query stage. Note this is not the same as
+  calling [[lib.metadata.calculation/visible-columns]] on each join -- `visible-columns` returns columns that are
+  visible WITHIN the join itself, including ones that originate outside of the join."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   options      :- lib.metadata.calculation/VisibleColumnsOptions]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/visible-columns
+                  (lib.metadata.calculation/returned-columns
                    query stage-number join
                    (-> options
                        (select-keys [:unique-name-fn :include-remaps?])

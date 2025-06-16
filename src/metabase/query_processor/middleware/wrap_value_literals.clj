@@ -319,7 +319,7 @@
   datetime strings, etc.) clauses which include info about the Field they are being compared to. This is done mostly
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
-  [{query-type :type, :as query}]
+  [{query-type :type, :as query} :- mbql.s/Query]
   (if-not (= query-type :query)
     query
     (update query :query wrap-value-literals-in-mbql-query nil)))

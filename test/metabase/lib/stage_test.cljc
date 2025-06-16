@@ -570,3 +570,40 @@
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
                   (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn identity}))))))))
+
+(deftest ^:parallel visible-columns-test
+  (testing "Visible columns for a stage SHOULD NOT include columns not returned by joins (#59588)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:joins [{:strategy     :left-join
+                             :source-table $$categories
+                             :alias        "C"
+                             :condition    [:= $venues.id &C.categories.id]
+                             :fields       [&C.categories.id]}]}))]
+      ;; should NOT include `C__NAME` since that is not returned by join `C` and is thus NOT VISIBLE
+      (is (= [{:name "ID", :lib/source :source/table-defaults, :lib/source-column-alias "ID", :lib/desired-column-alias "ID"}
+              {:name "NAME", :lib/source :source/table-defaults, :lib/source-column-alias "NAME", :lib/desired-column-alias "NAME"}
+              {:name "CATEGORY_ID"
+               :lib/source :source/table-defaults
+               :lib/source-column-alias "CATEGORY_ID"
+               :lib/desired-column-alias "CATEGORY_ID"}
+              {:name "LATITUDE"
+               :lib/source :source/table-defaults
+               :lib/source-column-alias "LATITUDE"
+               :lib/desired-column-alias "LATITUDE"}
+              {:name "LONGITUDE"
+               :lib/source :source/table-defaults
+               :lib/source-column-alias "LONGITUDE"
+               :lib/desired-column-alias "LONGITUDE"}
+              {:name "PRICE"
+               :lib/source :source/table-defaults
+               :lib/source-column-alias "PRICE"
+               :lib/desired-column-alias "PRICE"}
+              {:name "ID"
+               :lib/source :source/joins
+               :metabase.lib.join/join-alias "C"
+               :lib/source-column-alias "ID"
+               :lib/desired-column-alias "C__ID"}]
+             (map #(select-keys % [:name :lib/source :metabase.lib.join/join-alias :lib/source-column-alias :lib/desired-column-alias])
+                  (lib/visible-columns query -1 (lib.util/query-stage query -1) {:include-implicitly-joinable? false})))))))
