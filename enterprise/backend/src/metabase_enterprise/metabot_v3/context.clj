@@ -1,13 +1,11 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
-   [metabase.api.common :as api]
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.config.core :as config]
-   [metabase.models.interface :as mi]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2])
+   [metabase.util.malli.registry :as mr])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -47,34 +45,19 @@
   100)
 
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context, similar to ai-sql-generation but optimized for the Metabot context.
-  Returns tables in the format expected by metabot context."
-  ([database-id]
-   (database-tables-for-context database-id nil))
-  ([database-id {:keys [all-tables-limit] :or {all-tables-limit max-database-tables}}]
+  "Get database tables formatted for metabot context, prioritizing tables used in the query (if provided), then filling up to the limit with most viewed tables. If a query is provided, you must also provide a `tables-for-native-fn` argument that extracts tables from the query. This avoids a direct dependency on ai-sql-fixer."
+  ([database-id] (database-tables-for-context database-id nil))
+  ([database-id {:keys [all-tables-limit query tables-for-native-fn] :or {all-tables-limit max-database-tables}}]
    (when database-id
      (try
-       (let [tables (t2/select [:model/Table :id :db_id :name :schema :description]
-                               :db_id database-id
-                               :active true
-                               :visibility_type nil
-                               {:where    (mi/visible-filter-clause :model/Table
-                                                                    :id
-                                                                    {:user-id       api/*current-user-id*
-                                                                     :is-superuser? api/*is-superuser?*}
-                                                                    {:perms/view-data      :unrestricted
-                                                                     :perms/create-queries :query-builder-and-native})
-                                :order-by [[:view_count :desc]]
-                                :limit    all-tables-limit})
-             tables (filter mi/can-read? tables)
-             tables (t2/hydrate tables :fields)]
-         (mapv (fn [{:keys [fields] :as table}]
-                 (merge (select-keys table [:name :schema :description])
-                        {:columns (mapv (fn [{:keys [database_type] :as field}]
-                                          (merge (select-keys field [:name :description])
-                                                 {:data_type database_type}))
-                                        fields)}))
-               tables))
+       (let [used-tables (if (and query tables-for-native-fn)
+                           (table-utils/used-tables query tables-for-native-fn)
+                           [])
+             used-table-ids (set (map :id used-tables))]
+         (table-utils/database-tables database-id
+                                      {:all-tables-limit all-tables-limit
+                                       :priority-tables used-tables
+                                       :exclude-table-ids used-table-ids}))
        (catch Exception _e
          ;; If we can't get table info, just return empty - don't break the context
          [])))))

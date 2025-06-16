@@ -3,6 +3,7 @@
   (:require
    [metabase-enterprise.metabot-v3.api]
    [metabase-enterprise.metabot-v3.client]
+   [metabase-enterprise.metabot-v3.table-utils]
    [potemkin :as p]))
 
 (p/import-vars
@@ -12,4 +13,7 @@
   analyze-chart
   analyze-dashboard
   fix-sql
-  generate-sql])
+  generate-sql]
+ [metabase-enterprise.metabot-v3.table-utils
+  database-tables
+  used-tables])
