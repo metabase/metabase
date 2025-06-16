@@ -5,8 +5,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(deftest basic-create-or-update-test)
-
 ;; TODO High level stuff we should do:
 ;; 0. Make sure we have tests to cover every single step taken in our core user journeys.
 ;; 1. Cover :create-or-update as well.
