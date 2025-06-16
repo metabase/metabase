@@ -7,12 +7,12 @@ import type { Parameter } from "metabase-types/api";
 
 interface UseSyncUrlParametersProps {
   parameters?: Parameter[];
-  disabled?: boolean;
+  enabled?: boolean;
 }
 
 export function useSyncUrlParameters({
   parameters,
-  disabled = false,
+  enabled = true,
 }: UseSyncUrlParametersProps) {
   const queryParams = useMemo(
     () => getParameterValuesBySlug(parameters),
@@ -26,7 +26,7 @@ export function useSyncUrlParameters({
      * This causes the iframe to reload when changing the preview hash from appearance
      * settings because now the base URL (including the query string) is different.
      */
-    if (IS_EMBED_PREVIEW || disabled) {
+    if (IS_EMBED_PREVIEW || !enabled) {
       return;
     }
 
@@ -38,7 +38,7 @@ export function useSyncUrlParameters({
         window.location.pathname + searchString + window.location.hash,
       );
     }
-  }, [disabled, queryParams]);
+  }, [enabled, queryParams]);
 }
 
 const QUERY_PARAMS_ALLOW_LIST = ["objectId"];

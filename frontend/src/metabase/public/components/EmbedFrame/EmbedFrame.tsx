@@ -165,7 +165,7 @@ export const EmbedFrame = ({
 
   useSyncUrlParameters({
     parameters: valuePopulatedParameters,
-    disabled: !shouldSyncUrlParameters(isDashboard),
+    enabled: shouldSyncUrlParameters(isDashboard),
   });
 
   return (
