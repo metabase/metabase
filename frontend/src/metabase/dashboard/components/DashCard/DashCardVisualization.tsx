@@ -404,13 +404,11 @@ export function DashCardVisualization({
       return (
         <Flex align="center" justify="flex-end">
           {inlineParameters.length > 0 && (
-            <div style={{ transform: "scale(0.7)" }}>
-              <DashboardParameterList
-                parameters={inlineParameters}
-                isSortable={false}
-                isFullscreen={isFullscreen}
-              />
-            </div>
+            <DashboardParameterList
+              parameters={inlineParameters}
+              isSortable={false}
+              isFullscreen={isFullscreen}
+            />
           )}
           <DashCardQuestionDownloadButton
             question={question}
@@ -433,13 +431,11 @@ export function DashCardVisualization({
     return (
       <Flex align="center" justify="flex-end">
         {inlineParameters.length > 0 && (
-          <div style={{ transform: "scale(0.7)" }}>
-            <DashboardParameterList
-              parameters={inlineParameters}
-              isSortable={false}
-              isFullscreen={isFullscreen}
-            />
-          </div>
+          <DashboardParameterList
+            parameters={inlineParameters}
+            isSortable={false}
+            isFullscreen={isFullscreen}
+          />
         )}
         {!isEditing && (
           <DashCardMenu
