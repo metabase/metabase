@@ -23,9 +23,14 @@ import { createAdHocCard } from "metabase-types/api/mocks/presets";
 
 import { registerQueryBuilderMetabotContextFn } from "./use-register-query-builder-metabot-context";
 
+const MOCK_PNG = "data:image/png;base64,test-base64";
+const MOCK_SVG = "data:image/svg+xml;base64,test-base64";
+
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
-  getVisualizationSvgDataUri: () => "test-base64",
+  getChartSelector: () => "#chart",
+  getChartImagePngDataUri: () => MOCK_PNG,
   getChartSvgSelector: () => "#chart svg",
+  getVisualizationSvgDataUri: () => MOCK_SVG,
 }));
 
 const getUserIsViewing = (
@@ -136,7 +141,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     expect(chartConfig).not.toBe(undefined);
 
     chartConfig = chartConfig!;
-    expect(chartConfig.image_base_64).toEqual("test-base64");
+    expect(chartConfig.image_base_64).toEqual(MOCK_SVG);
   });
 
   it("should produce valid results for line charts", async () => {
@@ -226,6 +231,7 @@ describe("registerQueryBuilderMetabotContextFn", () => {
     const result = await registerQueryBuilderMetabotContextFn(data);
 
     const chartConfig = getChartConfig(result)!;
+    expect(chartConfig.image_base_64).toEqual(MOCK_PNG);
     expect(chartConfig.series).toEqual({
       "Count by name": {
         chart_type: "funnel",

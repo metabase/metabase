@@ -35,6 +35,11 @@ type EnabledChartTypes = {
     : never;
 }[keyof typeof CHART_ANALYSIS_ENABLED];
 
+// SVG renderer is faster + preferred, since it clones the existing SVG DOM node. However, in the
+// following cases we need to fallback to the slower PNG approach:
+// - the chart isn't an SVG (progress)
+// - the chart is composed of more than one svg (funnel)
+// - the chart contain important info outside of the svg (pie + map)
 export const CHART_ANALYSIS_RENDER_FORMATS = {
   area: "svg",
   bar: "svg",
