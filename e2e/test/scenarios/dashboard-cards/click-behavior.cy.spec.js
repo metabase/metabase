@@ -1383,7 +1383,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
           getTableCell(COLUMN_INDEX.COUNT)
             .should("have.text", `Count: ${POINT_COUNT}`)
-            .click();
+            .as("cell");
+
+          cy.get("@cell").click();
+
           cy.findAllByTestId("field-set")
             .should("have.length", 2)
             .should("contain.text", POINT_COUNT)
