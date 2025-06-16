@@ -157,6 +157,26 @@ const multiStageQuestion = {
   },
 };
 
+const multiStageQuestionWithImplicitJoinBreakoutAndCustomColumn = {
+  query: {
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          PRODUCTS.ID,
+          { "base-type": "type/Integer", "source-field": ORDERS.PRODUCT_ID },
+        ],
+      ],
+    },
+    expressions: {
+      CC: ["*", 2, ["field", "count", { "base-type": "type/Integer" }]],
+    },
+    limit: 5,
+  },
+};
+
 const nativeQuestion = {
   display: "table",
   native: {
@@ -585,6 +605,49 @@ describe("scenarios > visualizations > table column settings", () => {
       _showColumn(testData);
       _hideColumn(testData2);
       _showColumn(testData2);
+    });
+
+    it("should be able to show and hide columns in a multi-stage query with custom columns (metabase#35067)", () => {
+      H.createQuestion(
+        multiStageQuestionWithImplicitJoinBreakoutAndCustomColumn,
+        { visitQuestion: true },
+      );
+      openSettings();
+
+      const countColumn = {
+        column: "Count",
+        columnName: "Count",
+        table: "summaries",
+        sanityCheck: "CC",
+        needsScroll: false,
+      };
+
+      const productIdColumn = {
+        column: "ID",
+        columnName: "Product → ID",
+        table: "summaries",
+        sanityCheck: "Count",
+        needsScroll: false,
+      };
+
+      const customColumn = {
+        column: "CC",
+        columnName: "CC",
+        table: "summaries",
+        sanityCheck: "Count",
+        needsScroll: false,
+      };
+
+      _hideColumn(countColumn);
+      _showColumn(countColumn);
+      _removeColumn(countColumn);
+      _addColumn(countColumn);
+      _hideColumn(productIdColumn);
+      _showColumn(productIdColumn);
+      _removeColumn(productIdColumn);
+      _addColumn(productIdColumn);
+      _hideColumn(customColumn);
+      _showColumn(customColumn);
     });
   });
 
