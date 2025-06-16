@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Report changed docs files exist
         run: |
-          echo "A change in the docs directory was detected on merge."
+          echo "A change in the docs directory was MERGED."
 
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
