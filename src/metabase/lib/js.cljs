@@ -2585,3 +2585,8 @@
   "Set the current content-translation dictionary."
   [m]
   (lib.core/set-content-translations m))
+
+(defn ^:export set-locale
+  "Set the current locale"
+  [locale]
+  (lib.core/set-locale locale))

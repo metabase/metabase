@@ -3,8 +3,8 @@
    #?(:clj [metabase.config.core :as config])
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.content-translation.utils :as ct.utils]
    [metabase.lib.cache :as lib.cache]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -69,14 +69,12 @@
     stage-number :- :int
     x
     style        :- DisplayNameStyle]
+   (log/info "options/options x" (lib.options/options x))
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))
     (try
-      (let [display-name (display-name-method query stage-number x style)]
-        (if (string? display-name)
-          (ct.utils/translate-content-string display-name)
-          display-name))
+      (display-name-method query stage-number x style)
       (catch #?(:clj Throwable :cljs js/Error) e
         (throw (ex-info (i18n/tru "Error calculating display name for {0}: {1}" (pr-str x) (ex-message e))
                         {:query query, :x x}

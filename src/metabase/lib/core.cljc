@@ -127,7 +127,8 @@
  [lib.common
   external-op]
  [lib.content-translation
-  set-content-translations]
+  set-content-translations
+  set-locale]
  [lib.convert
   ->legacy-MBQL
   ->pMBQL

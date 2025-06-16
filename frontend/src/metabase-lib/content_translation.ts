@@ -9,3 +9,9 @@ export const setContentTranslations = (
   );
   ML.set_content_translations(translations);
 };
+
+/** Make the locale available in Metabase Lib */
+export const setLocale = (newLocale: string) => {
+  console.log("@mbwr72ko", "newLocale", newLocale);
+  ML.set_locale(newLocale);
+};

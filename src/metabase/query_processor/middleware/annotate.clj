@@ -6,7 +6,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.config.core :as config]
-   [metabase.content-translation.utils :as content-translation.utils]
+   [metabase.content-translation.dictionary :as content-translation.dictionary]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -673,7 +673,7 @@
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
        (deduplicate-cols-names)
-       (map content-translation.utils/translate-column-display-name)
+       (map content-translation.dictionary/translate-column-display-name)
        (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
        (map lib.binning/ensure-binning-in-display-name)))
 

@@ -51,12 +51,7 @@ export const useListContentTranslations = () => {
     dictionary?.map(({ msgid, msgstr }) => [msgid, msgstr]) || [],
   );
 
-  console.log(
-    "@mbueofuo",
-    "localeSpecificDictionary",
-    localeSpecificDictionary,
-  );
-
   Lib.setContentTranslations(localeSpecificDictionary);
+  Lib.setLocale(locale);
   return dictionary;
 };
