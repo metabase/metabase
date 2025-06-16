@@ -146,6 +146,7 @@
 (derive :table.row/create :table.row/common)
 (derive :table.row/update :table.row/common)
 (derive :table.row/delete :table.row/common)
+(derive :table.row/create-or-update :table.row/common)
 
 (defmethod action-arg-map-schema :table.row/common
   [_action]

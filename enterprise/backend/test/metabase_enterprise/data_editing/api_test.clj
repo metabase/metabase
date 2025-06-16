@@ -1338,8 +1338,9 @@
                                     {:id "int"       :display_name "Int"       :input_type "text"}
                                     {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
                                     {:id "date"      :display_name "Date"      :input_type "date"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                        :action_id create-id}))))
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id create-id}))))
 
             (testing "update"
               (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
@@ -1347,8 +1348,9 @@
                                     {:id "int"       :display_name "Int"       :input_type "text"}
                                     {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
                                     {:id "date"      :display_name "Date"      :input_type "date"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                        :action_id update-id}))))
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id update-id}))))
 
             (testing "create-or-update"
               (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
@@ -1356,13 +1358,15 @@
                                     {:id "int"       :display_name "Int"       :input_type "text"}
                                     {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
                                     {:id "date"      :display_name "Date"      :input_type "date"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                        :action_id create-or-update-id}))))
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id create-or-update-id}))))
 
             (testing "delete"
               (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
-                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                        :action_id delete-id}))))
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id delete-id}))))
 
             ;; insert a row for the row action
             (mt/user-http-request :crowberto :post 200
@@ -1381,9 +1385,10 @@
                                           {:id "int" :readonly false}
                                           {:id "timestamp" :readonly false}
                                           {:id "date" :readonly false}]}
-                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                              :action_id create-id
-                                                                                              :input     {:id 1}}))))
+                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                  {:scope     scope
+                                                   :action_id create-id
+                                                   :input     {:id 1}}))))
 
                   (testing "update"
                     (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}
@@ -1391,15 +1396,17 @@
                                           {:id "int" :readonly false}
                                           {:id "timestamp" :readonly false}
                                           {:id "date" :readonly false}]}
-                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                              :action_id update-id
-                                                                                              :input     {:id 1}}))))
+                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                  {:scope     scope
+                                                   :action_id update-id
+                                                   :input     {:id 1}}))))
 
                   (testing "delete"
                     (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
-                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" {:scope     scope
-                                                                                              :action_id delete-id
-                                                                                              :input     {:id 1}})))))))))))))
+                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                  {:scope     scope
+                                                   :action_id delete-id
+                                                   :input     {:id 1}})))))))))))))
 
 ;; Important missing tests
 (comment
@@ -1454,8 +1461,8 @@
                                                                    :sourceType        "row-data"
                                                                    :sourceValueTarget "text"
                                                                    :visibility        "readonly"}
-                                                                  {:parameterId "timestamp"
-                                                                   :visibility  "hidden"}]}]}}]
+                                                                  {:parameterId       "timestamp"
+                                                                   :visibility        "hidden"}]}]}}]
 
           ;; insert a row for the row action
           (mt/user-http-request :crowberto :post 200
@@ -1466,17 +1473,15 @@
             (let [built-in-action-id "dashcard:unknown:built-in-create"
                   custom-action-id   "dashcard:unknown:custom-create"
                   scope              {:dashcard-id (:id dashcard)}]
-
               (testing "built-in"
-                (is (=? {:parameters
-                         ;; params are reordered by editable
-                         ;; column listing (int first)
-                         [{:id "int" :readonly false}
-                          {:id "text" :readonly true :value "a very important string"}
-                          ;; date is hidden from the editable
-                          #_{:id "date"}
-                          ;; timestamp is hidden in the row action
-                          #_{:id "timestamp"}]}
+                (is (=? {:title      (format "%s: Create" (t2/select-one-fn :name :model/Table @test-table))
+                         :parameters [;; params are reordered by editable
+                                      ;; column listing (int first)
+                                      {:id "int" :readonly false}
+                                      {:id "text" :readonly false #_:value #_"a very important string"}
+                                      ;; date is hidden from the editable
+                                      #_{:id "date"}
+                                      {:id "timestamp"}]}
                         (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
                                               {:scope     scope
                                                :action_id built-in-action-id
@@ -1512,7 +1517,6 @@
            :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
                                            :visualization_settings
                                            {:table_id @test-table
-
                                             :table.columns
                                             [{:name "int",      :enabled true}
                                              {:name "text",     :enabled true}
@@ -1562,11 +1566,10 @@
                          ;; params are reordered by editable
                          ;; column listing (int first)
                          [{:id "int" :readonly false}
-                          {:id "text" :readonly true :value "a very important string"}
+                          {:id "text" :readonly false #_:value #_"a very important string"}
                           ;; date is hidden from the editable
                           #_{:id "date"}
-                          ;; timestamp is hidden in the row action
-                          #_{:id "timestamp"}]}
+                          {:id "timestamp"}]}
                         (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
                                               {:scope     scope
                                                :action_id built-in-action-id
