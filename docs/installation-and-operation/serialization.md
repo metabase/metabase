@@ -688,7 +688,9 @@ We're providing some directions on how to approach these unsupported use cases, 
 
 ### Using serialization for duplicating content within the same Metabase
 
-Using serialization to duplicate content is not trivial, because you'll need to wrangle [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for all the items you want to duplicate — and the IDs for all the items that are related to those items — to avoid overwriting existing data.
+> Duplicating assets via serialization, while technically possible, isn't officially supported, so do so at your own risk. The risk here being that you may have to manage long chains of dependencies, which can make it more likely you'll forget to edit an entity ID, or overwrite an entity ID that already exists. So make sure you're doing backups and checking your changes into version control.
+
+Using serialization to duplicate content is not trivial, because you'll need to wrangle [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for all the items you want to duplicate — _and_ the IDs for all the items that are related to those items — to avoid overwriting existing data.
 
 Before starting this perilous journey, review [how export works](#how-export-works) and [how import works](#how-import-works), and contact [help@metabase.com](mailto:help@metabase.com) if you have any questions.
 
