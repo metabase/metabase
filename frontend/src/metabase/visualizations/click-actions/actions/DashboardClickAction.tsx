@@ -1,8 +1,8 @@
 import {
-  selectTab,
   setOrUnsetParameterValues,
   setParameterValue,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/parameters";
+import { selectTab } from "metabase/dashboard/actions/tabs";
 import type {
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,

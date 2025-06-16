@@ -4,7 +4,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
-   [metabase.driver.h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
@@ -41,7 +41,7 @@
 
 (deftest destination-databases-get-used
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
@@ -76,7 +76,7 @@
 
 (deftest an-error-is-thrown-if-user-attribute-is-missing-or-no-match
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "nonexistent_database_name"}
@@ -105,7 +105,7 @@
 
 (deftest caching-works
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}
@@ -162,7 +162,7 @@
 
 (deftest get-field-values-endpoint-works
   (mt/with-premium-features #{:database-routing}
-    (binding [metabase.driver.h2/*allow-testing-h2-connections* true]
+    (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes!
         :crowberto
         {"db_name" "__METABASE_ROUTER__"}

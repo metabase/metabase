@@ -1,12 +1,16 @@
 import querystring from "querystring";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
+import { useDispatch } from "metabase/lib/redux";
 import {
   ParametersList,
   type ParametersListProps,
 } from "metabase/parameters/components/ParametersList";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import type { ParameterId } from "metabase-types/api";
+
+import { setParameterValueToDefault } from "../actions";
 
 export const SyncedParametersList = ({
   parameters,
@@ -25,9 +29,9 @@ export const SyncedParametersList = ({
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
-  setParameterValueToDefault,
   enableParameterRequiredBehavior,
 }: ParametersListProps) => {
+  const dispatch = useDispatch();
   const queryParams = useMemo(
     () => getParameterValuesBySlug(parameters),
     [parameters],
@@ -53,6 +57,13 @@ export const SyncedParametersList = ({
     }
   }, [queryParams]);
 
+  const dispatchSetParameterValueToDefault = useCallback(
+    (parameterId: ParameterId) => {
+      dispatch(setParameterValueToDefault(parameterId));
+    },
+    [dispatch],
+  );
+
   return (
     <ParametersList
       className={className}
@@ -68,7 +79,7 @@ export const SyncedParametersList = ({
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
-      setParameterValueToDefault={setParameterValueToDefault}
+      setParameterValueToDefault={dispatchSetParameterValueToDefault}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
     />
   );

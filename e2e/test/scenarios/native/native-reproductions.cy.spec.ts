@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
@@ -644,6 +645,94 @@ describe("issue 57644", () => {
         .should("be.visible")
         .and("contain", "Sample Database")
         .and("contain", "QA Postgres12");
+    });
+  });
+});
+
+describe("issue 51679", () => {
+  const questionDetails: NativeQuestionDetails = {
+    native: {
+      query: "SELECT {{var}}",
+      "template-tags": {
+        var: {
+          id: "754ae827-661c-4fc9-b511-c0fb7b6bae2b",
+          name: "var",
+          type: "text",
+          "display-name": "Var",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow to change the template tag type when the required field for a field filter is not set (metabase#51679)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+    H.queryBuilderMain().within(() => {
+      cy.findByTestId("visibility-toggler").click();
+      cy.icon("variable").click();
+    });
+    H.rightSidebar().findByTestId("variable-type-select").click();
+    H.popover().findByText("Field Filter").click();
+
+    cy.log("without selecting the field, try to change the type again");
+    H.rightSidebar().findByTestId("variable-type-select").click();
+    H.popover().findByText("Number").click();
+    H.rightSidebar()
+      .findByTestId("variable-type-select")
+      .should("have.value", "Number");
+  });
+});
+
+describe("issue 59110", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow dragging border to completely hide native query editor (metabase#59110)", () => {
+    H.startNewNativeQuestion();
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("not.exist");
+
+    H.NativeEditor.get().then((editor) => {
+      const { height } = editor[0].getBoundingClientRect();
+      const SLOPPY_CLICK_THRESHOLD = 30;
+      const diff = height - SLOPPY_CLICK_THRESHOLD;
+
+      cy.log("drag the border to hide the editor");
+
+      cy.findByTestId("drag-handle").then((handle) => {
+        const coordsDrag = handle[0].getBoundingClientRect();
+
+        cy.wrap(handle)
+          .trigger("mousedown", {
+            clientX: coordsDrag.x,
+            clientY: coordsDrag.y,
+          })
+          .trigger("mousemove", {
+            clientX: coordsDrag.x,
+            clientY: coordsDrag.y - diff,
+          })
+          .trigger("mouseup");
+      });
+    });
+
+    H.NativeEditor.get().should("not.be.visible");
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .should("be.visible")
+      .click();
+
+    cy.log("verify that editor height is restored");
+    H.NativeEditor.get().then((editor) => {
+      const { height } = editor[0].getBoundingClientRect();
+      expect(height).to.be.greaterThan(100);
     });
   });
 });

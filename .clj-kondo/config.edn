@@ -234,6 +234,10 @@
     (metabase.lib.util.match/match-one)
     (metabase.lib.util.match/replace)
     (metabase.lib.util.match/replace-in)
+    (metabase.driver-api.core/match)
+    (metabase.driver-api.core/match-one)
+    (metabase.driver-api.core/replace)
+    (metabase.driver-api.core/replace-in)
     (metabase.query-processor.middleware.cache-backend.interface/with-cached-results)
     (metabase.util.regex/rx [opt])
     (metabase.util/prog1 [<>])
@@ -396,8 +400,10 @@
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
+  instaparse.core/defparser                                                             clojure.core/def
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
+metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -415,6 +421,7 @@
   metabase.driver.sql-jdbc.connection.ssh-tunnel/with-ssh-tunnel                        clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
+  metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
   metabase.models.json-migration/def-json-migration                                     clj-kondo.lint-as/def-catch-all
   metabase.models.util.spec-update/define-spec                                          clojure.core/def
   metabase.notification.test-util/with-card-notification                                clojure.core/let
@@ -513,6 +520,7 @@
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
+   metabase.driver-api/defenterprise                                                                                         hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.embedding.api.embed-test/do-response-formats                                                                     hooks.common/with-two-bindings
    metabase.embedding.api.embed-test/with-chain-filter-fixtures!                                                             hooks.common/let-one-with-optional-value
    metabase.embedding.api.embed-test/with-temp-card                                                                          hooks.common/let-one-with-optional-value
