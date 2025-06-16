@@ -107,8 +107,9 @@ export type MetabotChartConfig = {
 export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
-  query: DatasetQuery;
   chart_configs?: Array<MetabotChartConfig>;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotDashboardInfo = {
@@ -118,8 +119,9 @@ export type MetabotDashboardInfo = {
 
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
-  query: DatasetQuery;
   chart_configs?: Array<MetabotChartConfig>;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotEntityInfo =

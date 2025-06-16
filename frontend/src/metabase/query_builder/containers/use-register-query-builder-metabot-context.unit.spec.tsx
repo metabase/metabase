@@ -82,6 +82,7 @@ function createMockData(opts: {
     ],
     visualizationSettings: question?.settings() ?? {},
     timelines: [],
+    queryResult: undefined,
     ...opts,
   };
 }

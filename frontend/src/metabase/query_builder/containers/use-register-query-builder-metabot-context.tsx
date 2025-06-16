@@ -10,6 +10,7 @@ import {
   getVisualizationSvgDataUri,
 } from "metabase/visualizations/lib/image-exports";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type {
   MetabotChartConfig,
@@ -20,6 +21,7 @@ import type {
 } from "metabase-types/api";
 
 import {
+  getFirstQueryResult,
   getIsLoadingComplete,
   getQuestion,
   getTransformedSeries,
@@ -203,15 +205,30 @@ export const registerQueryBuilderMetabotContextFn = async ({
   series,
   visualizationSettings,
   timelines,
+  queryResult,
 }: {
   question: Question | undefined;
   series: RawSeries;
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelines: Timeline[];
+  queryResult: any;
 }) => {
   if (!question) {
     return {};
   }
+
+  const questionCtx = question.isSaved()
+    ? { id: question.id(), type: question.type() }
+    : { type: "adhoc" as const };
+
+  const query = question.query();
+  const { isNative } = Lib.queryDisplayInfo(query);
+  const queryCtx = {
+    query: question.datasetQuery(),
+    sql_engine: isNative ? Lib.engine(query) : undefined,
+    is_native: isNative,
+    error: queryResult?.error,
+  };
 
   const chart_configs = await getChartConfigs({
     question,
@@ -226,9 +243,8 @@ export const registerQueryBuilderMetabotContextFn = async ({
   return {
     user_is_viewing: [
       {
-        ...(question.isSaved()
-          ? { id: question.id(), type: question.type() }
-          : { type: "adhoc" as const }),
+        ...questionCtx,
+        ...queryCtx,
         query: question.datasetQuery(),
         display_type: question.display(),
         chart_configs,
@@ -245,12 +261,14 @@ export const useRegisterQueryBuilderMetabotContext = () => {
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);
     const timelines = getTransformedTimelines(state);
+    const queryResult = getFirstQueryResult(state);
 
     return registerQueryBuilderMetabotContextFn({
       question,
       series,
       visualizationSettings,
       timelines,
+      queryResult,
     });
   }, []);
 };

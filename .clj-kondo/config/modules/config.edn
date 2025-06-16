@@ -350,6 +350,14 @@
    :api  #{metabase.connection-pool}
    :uses #{}}
 
+  content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase.content-translation.api
+           metabase.content-translation.models}
+   :uses #{api
+           premium-features
+           util}}
+
   content-verification
   {:team "Admin Webapp"
    :api  #{metabase.content-verification.core
@@ -477,6 +485,7 @@
   {:team "Embedding"
    :api  #{metabase.embedding.api
            metabase.embedding.init
+           metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.validation}
    :uses #{analytics
@@ -1473,8 +1482,7 @@
            driver
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
@@ -1542,6 +1550,17 @@
            query-processor
            task
            util}}
+
+  enterprise/content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.content-translation.dictionary
+           metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           embedding
+           premium-features
+           util
+           enterprise/api}}
 
   enterprise/content-verification
   {:team "Admin Webapp"
