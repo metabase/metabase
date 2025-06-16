@@ -2,13 +2,18 @@
 import { renderWithProviders, screen } from "__support__/ui";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
+import type { Series } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 registerVisualizations();
 
-function getSeries(metrics) {
+function getSeries(metrics: string[]): Series {
   return [
     {
-      card: {
+      card: createMockCard({
         dataset_query: {
           type: "native",
           native: {
@@ -19,14 +24,18 @@ function getSeries(metrics) {
           database: 1,
         },
         display: "bar",
-        displayIsLocked: true,
         parameters: [],
         visualization_settings: {
           "graph.dimensions": ["PETS"],
           "graph.metrics": metrics,
+          "graph.series_order": metrics.map((metric) => ({
+            name: metric,
+            key: metric,
+            enabled: true,
+          })),
         },
-      },
-      data: {
+      }),
+      data: createMockDatasetData({
         rows: [
           ["dogs", 50, 45],
           ["cats", 45, 20],
@@ -75,12 +84,12 @@ function getSeries(metrics) {
             effective_type: "type/Integer",
           },
         ],
-      },
+      }),
     },
   ];
 }
 
-const setup = (seriesMetrics) => {
+const setup = (seriesMetrics: string[]) => {
   return renderWithProviders(
     <QuestionChartSettings
       series={getSeries(seriesMetrics)}

@@ -320,7 +320,10 @@ export const STACKABLE_SETTINGS = {
     },
     getHidden: (series, settings) => {
       if (settings["graph.series_order"].filter((s) => s.enabled).length <= 1) {
-        return true;
+        // "graph.series_order" is empty for bar series, so we make sure we're not looking at a bar chart
+        if (!series.every((s) => s.card.display === "bar")) {
+          return true;
+        }
       }
 
       const displays = series.map((single) => settings.series(single).display);
@@ -334,7 +337,7 @@ export const STACKABLE_SETTINGS = {
       "graph.metrics",
       "graph.dimensions",
       "series",
-      "graph.series_order",
+      // "graph.series_order",
     ],
   },
 };
