@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
 import { c, t } from "ttag";
 
 import { CreateApiKeyModal } from "metabase/admin/settings/components/ApiKeys/CreateApiKeyModal";
@@ -17,32 +16,18 @@ import {
 } from "metabase/ui";
 
 import { API_KEY_PLACEHOLDER } from "../constants";
+import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet";
+
+import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const GetCodeStep = () => {
-  const [apiKey, setApiKey] = useState("");
+  const snippet = useSdkIframeEmbedSnippet();
+  const { options, updateSettings } = useSdkIframeEmbedSetupContext();
+
   const [
     isCreateApiKeyModalOpen,
     { open: openCreateApiKeyModal, close: closeCreateApiKeyModal },
   ] = useDisclosure(false);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  // eslint-disable-next-line no-literal-metabase-strings -- code snippet
-  const snippet = `<script src="http://localhost:3000/app/embed.js"></script>
-<div id="metabase-embed"></div>
-
-<script>
-  const { MetabaseEmbed } = window["metabase.embed"];
-
-  const embed = new MetabaseEmbed({
-    target: "#metabase-embed",
-    instanceUrl: "http://localhost:3000",
-    apiKey: "${API_KEY_PLACEHOLDER}",
-    dashboardId: 1,
-  });
-</script>`;
 
   return (
     <Stack gap="md">
@@ -68,9 +53,9 @@ export const GetCodeStep = () => {
 
           <TextInput
             label={t`API Key`}
-            value={apiKey}
+            value={options.settings.apiKey}
             placeholder={API_KEY_PLACEHOLDER}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => updateSettings({ apiKey: e.target.value })}
             rightSection={
               <Tooltip label={t`Create API key`}>
                 <ActionIcon onClick={openCreateApiKeyModal} variant="subtle">
@@ -90,7 +75,7 @@ export const GetCodeStep = () => {
           <Code block>{snippet}</Code>
           <Button
             leftSection={<Icon name="copy" size={16} />}
-            onClick={() => copyToClipboard(snippet)}
+            onClick={() => navigator.clipboard.writeText(snippet)}
           >
             {t`Copy Code`}
           </Button>
@@ -100,7 +85,7 @@ export const GetCodeStep = () => {
       {isCreateApiKeyModalOpen && (
         <CreateApiKeyModal
           onClose={closeCreateApiKeyModal}
-          onCreate={(key) => setApiKey(key)}
+          onCreate={(key) => updateSettings({ apiKey: key })}
         />
       )}
     </Stack>

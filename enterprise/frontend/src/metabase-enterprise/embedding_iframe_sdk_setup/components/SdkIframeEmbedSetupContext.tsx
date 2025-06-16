@@ -4,12 +4,12 @@ import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 import type { Parameter } from "metabase-types/api";
 
-import { useParameterList } from "../hooks/useParameterList";
+import { useParameterList } from "../hooks/use-parameter-list";
 import {
   type RecentDashboard,
   type RecentQuestion,
   useRecentItems,
-} from "../hooks/useRecentItems";
+} from "../hooks/use-recent-items";
 import type { EmbedPreviewOptions, Step } from "../types";
 
 interface SdkIframeEmbedSetupContextType {

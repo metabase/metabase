@@ -12,7 +12,7 @@ import {
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
-import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
+import { useParamRerenderKey } from "../../embedding_iframe_sdk_setup/hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 

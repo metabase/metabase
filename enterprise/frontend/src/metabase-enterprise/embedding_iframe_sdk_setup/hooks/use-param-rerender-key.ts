@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
-import type { SdkIframeEmbedSettings } from "../types/embed";
+import type { SdkIframeEmbedSettings } from "../../embedding_iframe_sdk/types/embed";
 
 /**
  * Forces a re-render when the initial parameter changes.
