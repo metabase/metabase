@@ -1,4 +1,7 @@
-import type { EmailSMTPSettings } from "metabase-types/api";
+import type {
+  CloudEmailSMTPSettings,
+  EmailSMTPSettings,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import { invalidateTags, tag } from "./tags";
@@ -20,6 +23,18 @@ export const settingsApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
     }),
+    updateCloudEmailSMTPSettings: builder.mutation<
+      void,
+      CloudEmailSMTPSettings
+    >({
+      query: (cloudEmailSettings) => ({
+        method: "PUT",
+        url: `/api/email/cloud`,
+        body: cloudEmailSettings,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("session-properties")]),
+    }),
     deleteEmailSMTPSettings: builder.mutation<void, void>({
       query: () => ({
         method: "DELETE",
@@ -34,5 +49,6 @@ export const settingsApi = Api.injectEndpoints({
 export const {
   useDeleteEmailSMTPSettingsMutation,
   useSendTestEmailMutation,
+  useUpdateCloudEmailSMTPSettingsMutation,
   useUpdateEmailSMTPSettingsMutation,
 } = settingsApi;

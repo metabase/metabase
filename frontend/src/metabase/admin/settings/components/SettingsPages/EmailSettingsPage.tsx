@@ -7,6 +7,8 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Center } from "metabase/ui";
 
+import { CloudSMTPConnectionCard } from "../Email/CloudSMTPConnectionCard";
+import { CloudSMTPConnectionForm } from "../Email/CloudSMTPConnectionForm";
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { SMTPConnectionForm } from "../Email/SMTPConnectionForm";
 import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
@@ -17,8 +19,12 @@ export function EmailSettingsPage() {
   const [showModal, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
+  const [showCloudModal, { open: openCloudModal, close: closeCloudModal }] =
+    useDisclosure(false);
+
   const { data: settingValues, isLoading } = useGetSettingsQuery();
   const isHosted = settingValues?.["is-hosted?"];
+  const hasCloudSMTPFeature = true;
   const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
@@ -33,6 +39,9 @@ export function EmailSettingsPage() {
     <>
       <SettingsPageWrapper title={t`Email`}>
         {!isHosted && <SMTPConnectionCard onOpenSMTPModal={openModal} />}
+        {hasCloudSMTPFeature && (
+          <CloudSMTPConnectionCard onOpenCloudSMTPModal={openCloudModal} />
+        )}
         {isEmailConfigured && (
           <SettingsSection>
             <AdminSettingInput
@@ -87,6 +96,7 @@ export function EmailSettingsPage() {
         </Center>
       </SettingsPageWrapper>
       {showModal && <SMTPConnectionForm onClose={closeModal} />}
+      {showCloudModal && <CloudSMTPConnectionForm onClose={closeCloudModal} />}
     </>
   );
 }
