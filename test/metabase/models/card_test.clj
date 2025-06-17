@@ -139,8 +139,9 @@
                 (is (= 0 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
                 ;; call it twice to make we don't get delete error if no actions are found
-                ;; Returns zero because there are no actual changes happening here
-                (is (= 0 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
+                ;; on 54 this either returns 0 or 1 due to how after-select callbacks mutate the dataset_query.
+                ;; so just check that it returns any int as a proxy for this not throwing
+                (is (int? (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled

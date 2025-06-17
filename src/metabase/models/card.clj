@@ -645,7 +645,7 @@
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
-                 (not (model-supports-implicit-actions? card)))
+                 (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
       ;; Changing from a Question to a Model: archive associated actions
       (when (and (= (:type changes) :question)
