@@ -250,10 +250,15 @@
   "Should we allow users to embed the SDK in iframes?"
   :embedding-iframe-sdk)
 
+(define-premium-feature ^{:added "0.55.0"} enable-ai-entity-analysis?
+  "Should Metabase do AI analysis on entities?"
+  :ai-entity-analysis)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
    :ai_sql_generation              (enable-ai-sql-generation?)
+   :ai_entity_analysis             (enable-ai-entity-analysis?)
    :attached_dwh                   (has-attached-dwh?)
    :audit_app                      (enable-audit-app?)
    :cache_granular_controls        (enable-cache-granular-controls?)

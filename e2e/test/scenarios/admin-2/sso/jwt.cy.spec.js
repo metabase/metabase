@@ -31,17 +31,6 @@ describe("scenarios > admin > settings > SSO > JWT", () => {
     getJwtCard().findByText("Active").should("exist");
   });
 
-  it("should allow to save jwt settings without a JWT URI", () => {
-    cy.visit("/admin/settings/authentication/jwt");
-
-    cy.button("Generate key").click();
-    cy.button("Save and enable").click();
-    cy.wait("@updateSettings");
-    cy.findAllByRole("link", { name: "Authentication" }).first().click();
-
-    getJwtCard().findByText("Active").should("exist");
-  });
-
   it("should allow to disable and enable jwt", () => {
     enableJwtAuth();
     cy.visit("/admin/settings/authentication");

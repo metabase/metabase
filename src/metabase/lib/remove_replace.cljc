@@ -92,7 +92,7 @@
               new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
           (assoc &match 2 new-name))))))
 
-(defn- update-stale-references
+(defn update-stale-references
   "Update stale refs in query after clause removal.
 
   ## Gist

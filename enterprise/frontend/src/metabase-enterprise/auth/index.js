@@ -141,7 +141,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push((sections) => ({
         display_name: t`JWT Identity Provider URI`,
         placeholder: "https://jwt.yourdomain.org",
         type: "string",
-        required: false,
+        required: true,
         autoFocus: true,
         getHidden: (_, derivedSettings) => !derivedSettings["jwt-enabled"],
       },

@@ -101,6 +101,11 @@
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
       "members": ["nemanjaglumac", "chodorowicz"]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": []
     }
   ]
 }

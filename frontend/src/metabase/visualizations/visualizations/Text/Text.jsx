@@ -84,6 +84,7 @@ export function Text({
         onClick={toggleFocusOn}
         isSingleRow={isSingleRow}
         isMobile={isMobile}
+        isFixedWidth={dashboard?.width === "fixed"}
       >
         {isPreviewing ? (
           <ReactMarkdownStyleWrapper
@@ -136,6 +137,7 @@ export function Text({
       className={cx(className)}
       isSingleRow={isSingleRow}
       isMobile={isMobile}
+      isFixedWidth={dashboard?.width === "fixed"}
     >
       <ReactMarkdownStyleWrapper>
         <ReactMarkdown

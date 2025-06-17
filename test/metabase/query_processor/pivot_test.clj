@@ -29,7 +29,10 @@
                               [0 1 2] 0
                               []      7}]
     (is (= expected
-           (#'qp.pivot/group-bitmask 3 indices)))))
+           (#'qp.pivot/group-bitmask 3 indices))))
+
+  (testing "Should work for more than 31 breakouts"
+    (is (= 4294967295 (#'qp.pivot/group-bitmask 32 [])))))
 
 (deftest ^:parallel powerset-test
   (is (= [[]]

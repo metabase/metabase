@@ -1548,6 +1548,11 @@
   [x]
   (and (mbql.u/mbql-clause? x)
        (isa? (or (:effective-type (get x 2))
+                 (let [field-id (second x)]
+                   (when (pos-int? field-id)
+                     (let [{:keys [base-type effective-type]}
+                           (lib.metadata/field (qp.store/metadata-provider) field-id)]
+                       (or effective-type base-type))))
                  (:base-type (get x 2)))
              :type/UUID)))
 

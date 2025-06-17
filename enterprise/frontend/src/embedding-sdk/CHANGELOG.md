@@ -1,3 +1,18 @@
+## [0.55.3](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2...embedding-sdk-0.55.3) (2025-06-16)
+
+
+### Bug Fixes
+
+* **sdk:** omit jwt token response from error messages ([#59108](https://github.com/metabase/metabase/issues/59108)) ([#59114](https://github.com/metabase/metabase/issues/59114)) ([d3ee5d0](https://github.com/metabase/metabase/commit/d3ee5d04e023d6ebc22ca80e52c602b49ed5434d))
+* **sdk:** Remove unhelpful error `Error: null` ([#59168](https://github.com/metabase/metabase/issues/59168)) ([#59376](https://github.com/metabase/metabase/issues/59376)) ([3f60bb4](https://github.com/metabase/metabase/commit/3f60bb4166d23ad30bdd800675a98830830e76b5))
+
+
+### Features
+
+* **sdk:** Add Visualization Button, hook, and onRun event ([#58080](https://github.com/metabase/metabase/issues/58080)) ([#59234](https://github.com/metabase/metabase/issues/59234)) ([1fa9ae4](https://github.com/metabase/metabase/commit/1fa9ae4e887a3670db8d6d772548c9e65b061abb))
+
+
+
 ## [0.55.2](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2-nightly...embedding-sdk-0.55.2) (2025-06-06)
 
 
