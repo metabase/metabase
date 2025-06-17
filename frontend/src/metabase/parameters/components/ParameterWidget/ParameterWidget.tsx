@@ -108,6 +108,7 @@ export const ParameterWidget = ({
   if (variant === "subtle") {
     return (
       <Flex
+        data-testid="parameter-widget"
         fz={isFullscreen ? "md" : undefined}
         align="center"
         className={cx(className, S.SubtleParameterWidget, {
@@ -145,6 +146,7 @@ export const ParameterWidget = ({
   return (
     <Box fz={isFullscreen ? "md" : undefined}>
       <FieldSet
+        data-testid="parameter-widget"
         className={cx(
           className,
           DashboardS.ParameterFieldSet,
