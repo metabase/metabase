@@ -68,7 +68,7 @@ runs:
 
     - name: Migrate down a version to test going back to the previous state
       run: |
-        clojure -M:migrate down > metabase.log 2>&1 & echo $! > metabase_pid
+        clojure -M:run:ee migrate down > metabase.log 2>&1 & echo $! > metabase_pid
         tail -F metabase.log &
       shell: bash
 
