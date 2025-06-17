@@ -37,8 +37,8 @@
                           engine-cookie-name
                           engine
                           {:http-only true
-                           :path "/"
-                           :expires (cookie-expiry)}))))
+                           :path      "/"
+                           :expires   (cookie-expiry)}))))
 
 (defn- +engine-cookie [handler]
   (open-api/handler-with-open-api-spec
@@ -79,13 +79,13 @@
   (when (= context :all)
     (throw (ex-info "Cannot set weights for all context"
                     {:status-code 400})))
-  (let [known-ranker? (set (keys (:default @#'search.config/static-weights)))
-        rankers (into #{}
-                      (map (fn [k]
-                             (if (namespace k)
-                               (keyword (namespace k))
-                               k)))
-                      (keys overrides))
+  (let [known-ranker?   (set (keys (:default @#'search.config/static-weights)))
+        rankers         (into #{}
+                              (map (fn [k]
+                                     (if (namespace k)
+                                       (keyword (namespace k))
+                                       k)))
+                              (keys overrides))
         unknown-rankers (not-empty (remove known-ranker? rankers))]
     (when unknown-rankers
       (throw (ex-info (str "Unknown rankers: " (str/join ", " (map name (sort unknown-rankers))))
@@ -184,19 +184,19 @@
   Test endpoint for visualization-specific search filtering."
   [_route-params
    _query-params
-   {:keys [q limit models display exclude_display include_dashboard_questions visualization_context include_metadata has_temporal_dimensions required_non_temporal_dimension_ids]}
+   {:keys                       [q limit models display exclude_display include_dashboard_questions visualization_context include_metadata has_temporal_dimensions required_non_temporal_dimension_ids]}
    :- [:map
-       [:q {:optional true} [:maybe ms/NonBlankString]]
-       [:limit {:default 10} ms/PositiveInt]
-       [:models {:default ["card" "dataset" "metric"]}
+       [:q                            {:optional true} [:maybe ms/NonBlankString]]
+       [:limit                        {:default 10} ms/PositiveInt]
+       [:models                       {:default ["card" "dataset" "metric"]}
         [:vector [:enum "card" "dataset" "metric"]]]
-       [:display {:optional true} [:maybe [:vector ms/NonBlankString]]]
-       [:exclude_display {:optional true} [:maybe ms/NonBlankString]]
-       [:include_dashboard_questions {:default true} :boolean]
-       [:include_metadata {:default true} :boolean]
-       [:has_temporal_dimensions {:optional true} [:maybe :boolean]]
+       [:display                      {:optional true} [:maybe [:vector ms/NonBlankString]]]
+       [:exclude_display              {:optional true} [:maybe ms/NonBlankString]]
+       [:include_dashboard_questions  {:default true} :boolean]
+       [:include_metadata             {:default true} :boolean]
+       [:has_temporal_dimensions      {:optional true} [:maybe :boolean]]
        [:required_non_temporal_dimension_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-       [:visualization_context {:optional true}
+       [:visualization_context        {:optional true}
         [:map
          [:display string?]
          [:dimensions [:map
@@ -204,22 +204,21 @@
                        [:non_temporal [:sequential ms/PositiveInt]]]]]]]]
   ;; Build search context
   (let [search-ctx (search/search-context
-                    (cond-> {:current-user-id api/*current-user-id*
-                             :is-impersonated-user? (perms/impersonated-user?)
-                             :is-sandboxed-user? (perms/sandboxed-user?)
-                             :is-superuser? api/*is-superuser?*
-                             :current-user-perms @api/*current-user-permissions-set*
-                             :limit limit
-                             :models (set models)
-                             :offset 0
-                             :search-string q
-                             :display (set display)
-                             :exclude-display exclude_display
-                             :has-temporal-dimensions? has_temporal_dimensions
-                             :include-dashboard-questions? include_dashboard_questions
-                             :include-metadata? include_metadata}
-                      ;; Only include required-non-temporal-dimension-ids for PostgreSQL app db
-                      (= (app-db/db-type) :postgres) (assoc :required-non-temporal-dimension-ids required_non_temporal_dimension_ids)))]
+                    {:current-user-id              api/*current-user-id*
+                     :is-impersonated-user?        (perms/impersonated-user?)
+                     :is-sandboxed-user?           (perms/sandboxed-user?)
+                     :is-superuser?                api/*is-superuser?*
+                     :current-user-perms           @api/*current-user-permissions-set*
+                     :limit                        limit
+                     :models                       (set models)
+                     :offset                       0
+                     :search-string                q
+                     :display                      (set display)
+                     :exclude-display              exclude_display
+                     :has-temporal-dimensions?     has_temporal_dimensions
+                     :required-non-temporal-dimension-ids required_non_temporal_dimension_ids
+                     :include-dashboard-questions? include_dashboard_questions
+                     :include-metadata?            include_metadata})]
     (log/info " ~$~$~$~ BUILT SEARCH CONTEXT")
 
     ;; Run search
@@ -266,74 +265,74 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys [q context archived models verified ids display]
-    calculate-available-models :calculate_available_models
-    created-at :created_at
-    created-by :created_by
-    exclude-display :exclude_display
+   {:keys                               [q context archived models verified ids display]
+    calculate-available-models          :calculate_available_models
+    created-at                          :created_at
+    created-by                          :created_by
+    exclude-display                     :exclude_display
     filter-items-in-personal-collection :filter_items_in_personal_collection
-    has-temporal-dimensions :has_temporal_dimensions
-    include-dashboard-questions :include_dashboard_questions
-    last-edited-at :last_edited_at
-    last-edited-by :last_edited_by
-    model-ancestors :model_ancestors
-    search-engine :search_engine
-    search-native-query :search_native_query
-    table-db-id :table_db_id
-    include-metadata :include_metadata}
+    has-temporal-dimensions             :has_temporal_dimensions
+    include-dashboard-questions         :include_dashboard_questions
+    last-edited-at                      :last_edited_at
+    last-edited-by                      :last_edited_by
+    model-ancestors                     :model_ancestors
+    search-engine                       :search_engine
+    search-native-query                 :search_native_query
+    table-db-id                         :table_db_id
+    include-metadata                    :include_metadata}
    :- [:map
-       [:q {:optional true} [:maybe ms/NonBlankString]]
-       [:context {:optional true} [:maybe :keyword]]
-       [:archived {:default false} [:maybe :boolean]]
-       [:table_db_id {:optional true} [:maybe ms/PositiveInt]]
-       [:models {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
+       [:q                                   {:optional true} [:maybe ms/NonBlankString]]
+       [:context                             {:optional true} [:maybe :keyword]]
+       [:archived                            {:default false} [:maybe :boolean]]
+       [:table_db_id                         {:optional true} [:maybe ms/PositiveInt]]
+       [:models                              {:optional true} [:maybe (ms/QueryVectorOf search/SearchableModel)]]
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
-       [:created_at {:optional true} [:maybe ms/NonBlankString]]
-       [:created_by {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:display {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
-       [:exclude_display {:optional true} [:maybe ms/NonBlankString]]
-       [:has_temporal_dimensions {:optional true} [:maybe :boolean]]
-       [:last_edited_at {:optional true} [:maybe ms/NonBlankString]]
-       [:last_edited_by {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:model_ancestors {:default false} [:maybe :boolean]]
-       [:search_engine {:optional true} [:maybe string?]]
-       [:search_native_query {:optional true} [:maybe true?]]
-       [:verified {:optional true} [:maybe true?]]
-       [:ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:calculate_available_models {:optional true} [:maybe true?]]
-       [:include_dashboard_questions {:default false} [:maybe :boolean]]
-       [:include_metadata {:default false} [:maybe :boolean]]]]
+       [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
+       [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+       [:exclude_display                     {:optional true} [:maybe ms/NonBlankString]]
+       [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
+       [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
+       [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:model_ancestors                     {:default false} [:maybe :boolean]]
+       [:search_engine                       {:optional true} [:maybe string?]]
+       [:search_native_query                 {:optional true} [:maybe true?]]
+       [:verified                            {:optional true} [:maybe true?]]
+       [:ids                                 {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
+       [:calculate_available_models          {:optional true} [:maybe true?]]
+       [:include_dashboard_questions         {:default false} [:maybe :boolean]]
+       [:include_metadata                    {:default false} [:maybe :boolean]]]]
   (api/check-valid-page-params (request/limit) (request/offset))
   (try
     (u/prog1 (search/search
               (search/search-context
-               {:archived archived
-                :context context
-                :created-at created-at
-                :created-by (set created-by)
-                :current-user-id api/*current-user-id*
-                :display (set display)
-                :exclude-display exclude-display
-                :is-impersonated-user? (perms/impersonated-user?)
-                :is-sandboxed-user? (perms/sandboxed-user?)
-                :is-superuser? api/*is-superuser?*
-                :current-user-perms @api/*current-user-permissions-set*
+               {:archived                            archived
+                :context                             context
+                :created-at                          created-at
+                :created-by                          (set created-by)
+                :current-user-id                     api/*current-user-id*
+                :display                             (set display)
+                :exclude-display                     exclude-display
+                :is-impersonated-user?               (perms/impersonated-user?)
+                :is-sandboxed-user?                  (perms/sandboxed-user?)
+                :is-superuser?                       api/*is-superuser?*
+                :current-user-perms                  @api/*current-user-permissions-set*
                 :filter-items-in-personal-collection filter-items-in-personal-collection
-                :last-edited-at last-edited-at
-                :last-edited-by (set last-edited-by)
-                :limit (request/limit)
-                :model-ancestors? model-ancestors
-                :models (not-empty (set models))
-                :offset (request/offset)
-                :search-engine search-engine
-                :search-native-query search-native-query
-                :search-string q
-                :table-db-id table-db-id
-                :verified verified
-                :ids (set ids)
-                :calculate-available-models? calculate-available-models
-                :include-dashboard-questions? include-dashboard-questions
-                :include-metadata? include-metadata}))
+                :last-edited-at                      last-edited-at
+                :last-edited-by                      (set last-edited-by)
+                :limit                               (request/limit)
+                :model-ancestors?                    model-ancestors
+                :models                              (not-empty (set models))
+                :offset                              (request/offset)
+                :search-engine                       search-engine
+                :search-native-query                 search-native-query
+                :search-string                       q
+                :table-db-id                         table-db-id
+                :verified                            verified
+                :ids                                 (set ids)
+                :calculate-available-models?         calculate-available-models
+                :include-dashboard-questions?        include-dashboard-questions
+                :include-metadata?                   include-metadata}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
