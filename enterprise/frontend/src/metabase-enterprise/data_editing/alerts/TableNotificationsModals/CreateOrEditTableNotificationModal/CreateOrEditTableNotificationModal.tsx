@@ -9,6 +9,7 @@ import {
   useGetChannelInfoQuery,
   useGetDefaultNotificationTemplateQuery,
   useGetNotificationPayloadExampleQuery,
+  useLazyPreviewNotificationTemplateQuery,
   useListChannelsQuery,
   usePreviewNotificationTemplateQuery,
   useUpdateNotificationMutation,
@@ -18,6 +19,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { AutoWidthSelect } from "metabase/components/Schedule/AutoWidthSelect";
 import CS from "metabase/css/core/index.css";
+import { openInBlankWindow } from "metabase/lib/dom";
 import { alertIsValid } from "metabase/lib/notifications";
 import {
   getHasConfiguredAnyChannel,
@@ -306,25 +308,48 @@ const useNotificationTemplatePreview = (
   } = usePreviewNotificationTemplateQuery(previewRequest ?? skipToken, {
     skip: !previewRequest,
   });
+  const [lazyPreviewRequest] = useLazyPreviewNotificationTemplateQuery();
+
   const handlePreviewClick = useCallback(
     (channelType: NotificationChannelType) => {
       if (previewOpen) {
         setPreviewOpen(false);
         return;
       }
-      const handler = requestBody?.handlers.find(
-        (h) => h.channel_type === channelType && h.template,
-      );
-      const currentTemplate =
-        handler?.template || defaultTemplates?.[channelType];
 
-      if (currentTemplate) {
-        setPreviewOpen(true);
-        setChannelType(channelType);
+      setChannelType(channelType);
+
+      if (channelType === "channel/email") {
+        const handler = requestBody?.handlers.find(
+          (h) => h.channel_type === channelType && h.template,
+        );
+        const currentTemplate =
+          handler?.template || defaultTemplates?.[channelType];
+
+        if (currentTemplate) {
+          setPreviewOpen(true);
+        }
       }
     },
     [requestBody, defaultTemplates, previewOpen],
   );
+
+  /*
+    For Slack channel, we don't render a preview but rather redirect user to another URL where
+    the template is displayed properly rendered with Slack's Build Kit.
+  */
+  useEffect(() => {
+    async function openSlackPreview() {
+      if (previewRequest && channelType === "channel/slack") {
+        const { data } = await lazyPreviewRequest(previewRequest);
+        if (data?.preview_url) {
+          openInBlankWindow(data.preview_url);
+          setChannelType(null);
+        }
+      }
+    }
+    openSlackPreview();
+  }, [previewRequest, channelType, lazyPreviewRequest]);
 
   const handlePreviewClose = useCallback(() => {
     setPreviewOpen(false);
