@@ -6956,12 +6956,10 @@ databaseChangeLog:
       runInTransaction: false
       changes:
         - sql:
-            sql: select * from permissions limit 1;
-        - sql:
-            sql: ANALYZE permissions;
+            sql: ANALYZE permissions;ANALYZE permissions;
             dbms: postgresql
         - sql:
-            sql: ANALYZE TABLE permissions;
+            sql: ANALYZE TABLE permissions;ANALYZE TABLE permissions;
             dbms: mysql,mariadb
       rollback: # not needed
 
