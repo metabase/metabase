@@ -242,7 +242,7 @@ export function AccordionListCell<
           CS.hoverParent,
           styles.action,
           {
-            "List-section-header--cursor": hasCursor,
+            [ListS.ListSectionHeaderCursor]: hasCursor,
             [CS.cursorPointer]: canToggleSections,
             [CS.textBrand]: sectionIsExpanded(sectionIndex),
           },
