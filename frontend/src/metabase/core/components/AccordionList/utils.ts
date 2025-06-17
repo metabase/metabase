@@ -1,4 +1,5 @@
-import { getIn } from "icepick";
+import { type ReactNode, isValidElement } from "react";
+import { isFragment } from "react-is";
 
 import type { Section } from "./types";
 
@@ -163,6 +164,13 @@ export const getPrevCursor = (
   return cursor;
 };
 
-export function get<T = unknown>(object: unknown, path: string): T | undefined {
-  return getIn(object, path.split("."));
+export function isReactNode(x: unknown): x is ReactNode {
+  return (
+    isValidElement(x) ||
+    isFragment(x) ||
+    typeof x === "string" ||
+    typeof x === "number" ||
+    x === null ||
+    x === undefined
+  );
 }

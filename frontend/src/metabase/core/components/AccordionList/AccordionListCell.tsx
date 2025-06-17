@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName, TextInputProps } from "metabase/ui";
-import { Box, Icon, Text } from "metabase/ui";
+import { Box, Icon, Text, isValidIconName } from "metabase/ui";
 
 import styles from "./AccordionListCell.module.css";
 import {
@@ -20,7 +20,7 @@ import {
   ListCellItem,
 } from "./AccordionListCell.styled";
 import type { Item, Row, Section } from "./types";
-import { get } from "./utils";
+import { isReactNode } from "./utils";
 
 export type SharedAccordionProps<
   TItem extends Item,
@@ -71,8 +71,9 @@ export function AccordionListCell<
   canToggleSections,
   color: colorProp = "brand",
   getItemClassName = (item: TItem) => {
-    const className = get(item, "className");
-    return typeof className === "string" ? className : undefined;
+    if ("className" in item && typeof item.className === "string") {
+      return item.className;
+    }
   },
   getItemStyles = () => ({}),
   hasCursor,
@@ -84,12 +85,22 @@ export function AccordionListCell<
   renderSectionIcon = (section: TSection) =>
     section.icon && <Icon name={section.icon as IconName} />,
   renderItemLabel,
-  renderItemName = (item: TItem) => get<string>(item, "name"),
-  renderItemDescription = (item: TItem) => get<string>(item, "description"),
+  renderItemName = (item: TItem) => {
+    if ("name" in item && typeof item.name === "string") {
+      return item.name;
+    }
+  },
+  renderItemDescription = (item: TItem) => {
+    if ("description" in item && isReactNode(item.description)) {
+      return item.description;
+    }
+  },
   renderItemExtra = () => null,
   renderItemIcon = (item: TItem) => {
-    const icon = get<IconName>(item, "icon");
-    return icon ? <Icon name={icon} /> : null;
+    if ("icon" in item && isValidIconName(item.icon)) {
+      return <Icon name={item.icon} />;
+    }
+    return null;
   },
   renderItemWrapper = (content: ReactNode) => content,
   row,
