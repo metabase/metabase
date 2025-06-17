@@ -34,10 +34,6 @@
   ([table-id]
    (filter #(= table-id (:table_id %)) (list-actions))))
 
-(defn- execute-action!
-  [body]
-  (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" body))
-
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
 

@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { uuid } from "metabase/lib/uuid";
-import { Button, Modal, Stack } from "metabase/ui";
+import { Button, Modal, Stack, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
   RowActionFieldSettings,
@@ -51,6 +51,7 @@ export const ConfigureTableActions = ({
         actionId: action.id,
         actionType: "data-grid/row-action",
         parameterMappings,
+        enabled: true,
       };
 
       if (name && name !== action.name) {
@@ -58,6 +59,21 @@ export const ConfigureTableActions = ({
       }
 
       const newArray = tableActions ? [...tableActions, newItem] : [newItem];
+
+      onChange(newArray);
+    },
+    [onChange, tableActions],
+  );
+
+  const updateAction = useCallback(
+    (action: TableActionDisplaySettings) => {
+      if (!tableActions) {
+        return;
+      }
+
+      const newArray = tableActions.map((tableAction) => {
+        return tableAction.id !== action.id ? tableAction : action;
+      });
 
       onChange(newArray);
     },
@@ -82,19 +98,16 @@ export const ConfigureTableActions = ({
         actionId: action.id,
         actionType: "data-grid/row-action",
         parameterMappings,
+        enabled: editingAction?.enabled ?? true,
       };
 
       if (name && name !== action.name) {
         newItem.name = name;
       }
 
-      const newArray = (tableActions || []).map((action) => {
-        return action.actionId !== newItem.actionId ? action : newItem;
-      });
-
-      onChange(newArray);
+      updateAction(newItem);
     },
-    [onChange, tableActions],
+    [updateAction, editingAction],
   );
 
   const handleRemoveAction = useCallback(
@@ -109,25 +122,30 @@ export const ConfigureTableActions = ({
   );
 
   return (
-    <>
-      <Stack gap="xs">
-        {tableActions?.map((action) => {
-          return (
-            <RowActionItem
-              key={action.id}
-              action={action}
-              onRemove={handleRemoveAction}
-              onEdit={setEditingAction}
-            />
-          );
-        })}
+    <Stack gap="sm">
+      <Text fw={700}>{t`Connected actions`}</Text>
+      <Stack gap="sm" mb="lg">
+        {tableActions?.length ? (
+          tableActions?.map((action) => {
+            return (
+              <RowActionItem
+                key={action.id}
+                action={action}
+                onRemove={handleRemoveAction}
+                onEdit={setEditingAction}
+                onEnable={updateAction}
+              />
+            );
+          })
+        ) : (
+          <Text>{t`Create, connect, pass data around`}</Text>
+        )}
       </Stack>
 
       <Button
-        variant="subtle"
-        p={0}
+        variant="active"
         onClick={openEditingModal}
-      >{t`Add a new row action`}</Button>
+      >{t`Add new connected action`}</Button>
 
       {isEditingModalOpen && (
         <Modal.Root
@@ -148,6 +166,6 @@ export const ConfigureTableActions = ({
           />
         </Modal.Root>
       )}
-    </>
+    </Stack>
   );
 };
