@@ -76,6 +76,11 @@ runs:
       with:
         ref: ${{ inputs.base-ref }}
 
+    - name: Check migrate runs
+      run: |
+        clojure -M:dev:ee:migrate up
+      shell: bash
+
     - name: Run backend on base branch
       run: |
         clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
