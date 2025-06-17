@@ -250,6 +250,7 @@ type RenderedEmailPayload = {
 export type PreviewNotificationTemplateResponse = {
   context: unknown;
   rendered: RenderedEmailPayload;
+  preview_url?: string;
 };
 
 // Initial schema for conditional expression.

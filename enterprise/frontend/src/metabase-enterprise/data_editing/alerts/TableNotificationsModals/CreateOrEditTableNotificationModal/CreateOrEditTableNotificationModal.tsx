@@ -9,6 +9,7 @@ import {
   useGetChannelInfoQuery,
   useGetDefaultNotificationTemplateQuery,
   useGetNotificationPayloadExampleQuery,
+  useLazyPreviewNotificationTemplateQuery,
   useListChannelsQuery,
   usePreviewNotificationTemplateQuery,
   useUpdateNotificationMutation,
@@ -18,6 +19,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { AutoWidthSelect } from "metabase/components/Schedule/AutoWidthSelect";
 import CS from "metabase/css/core/index.css";
+import { openInBlankWindow } from "metabase/lib/dom";
 import { alertIsValid } from "metabase/lib/notifications";
 import {
   getHasConfiguredAnyChannel,
@@ -279,25 +281,12 @@ const useNotificationTemplatePreview = (
     | undefined,
 ) => {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [channelType, setChannelType] =
-    useState<NotificationChannelType | null>(null);
-  const previewRequest = useMemo(() => {
-    if (!requestBody || !channelType) {
-      return null;
-    }
-    const handler = requestBody.handlers.find(
-      (h) => h.channel_type === channelType && h.template,
-    );
-    const currentTemplate =
-      handler?.template || defaultTemplates?.[channelType];
-    if (!currentTemplate) {
-      return null;
-    }
-    return {
-      notification: requestBody,
-      template: currentTemplate,
-    };
-  }, [requestBody, defaultTemplates, channelType]);
+  const [previewRequest, setPreviewRequest] = useState<{
+    notification:
+      | CreateTableNotificationRequest
+      | UpdateTableNotificationRequest;
+    template: ChannelTemplate;
+  } | null>(null);
 
   const {
     data: previewData,
@@ -306,29 +295,49 @@ const useNotificationTemplatePreview = (
   } = usePreviewNotificationTemplateQuery(previewRequest ?? skipToken, {
     skip: !previewRequest,
   });
+  const [fetchPreview] = useLazyPreviewNotificationTemplateQuery();
+
   const handlePreviewClick = useCallback(
-    (channelType: NotificationChannelType) => {
-      if (previewOpen) {
+    async (channelType: NotificationChannelType) => {
+      if (previewOpen && channelType === "channel/email") {
         setPreviewOpen(false);
+        setPreviewRequest(null);
         return;
       }
-      const handler = requestBody?.handlers.find(
-        (h) => h.channel_type === channelType && h.template,
-      );
-      const currentTemplate =
-        handler?.template || defaultTemplates?.[channelType];
 
-      if (currentTemplate) {
+      let previewRequest = null;
+      if (requestBody && channelType) {
+        const handler = requestBody.handlers.find(
+          (h) => h.channel_type === channelType && h.template,
+        );
+        const currentTemplate =
+          handler?.template || defaultTemplates?.[channelType];
+
+        if (currentTemplate) {
+          previewRequest = {
+            notification: requestBody,
+            template: currentTemplate,
+          };
+        }
+      }
+
+      if (channelType === "channel/email") {
         setPreviewOpen(true);
-        setChannelType(channelType);
+        setPreviewRequest(previewRequest);
+      }
+
+      if (channelType === "channel/slack" && previewRequest) {
+        const { data } = await fetchPreview(previewRequest);
+        if (data?.preview_url) {
+          openInBlankWindow(data.preview_url);
+        }
       }
     },
-    [requestBody, defaultTemplates, previewOpen],
+    [defaultTemplates, fetchPreview, previewOpen, requestBody],
   );
 
   const handlePreviewClose = useCallback(() => {
     setPreviewOpen(false);
-    setChannelType(null);
   }, []);
 
   return {
