@@ -1049,102 +1049,102 @@
 
 (deftest unified-execute-server-side-mapping-test
   (mt/with-premium-features #{:table-data-editing}
-    (data-editing.tu/with-data-editing-enabled! false
-      (mt/test-drivers #{:h2 :postgres}
-        (with-open [table-1-ref (data-editing.tu/open-test-table!
-                                 {:id  'auto-inc-type
-                                  :col [:text]}
-                                 {:primary-key [:id]})
-                    table-2-ref (data-editing.tu/open-test-table!
-                                 {:id 'auto-inc-type
-                                  :a  [:text]
-                                  :b  [:text]
-                                  :c  [:text]
-                                  :d  [:text]}
-                                 {:primary-key [:id]})]
-          (data-editing.tu/toggle-data-editing-enabled! true)
-          (mt/with-temp [:model/Card          model    {:type           :model
-                                                        :table_id       @table-1-ref
-                                                        :database_id    (mt/id)
-                                                        :dataset_query  {:database (mt/id)
-                                                                         :type :query
-                                                                         :query {:source-table @table-1-ref}}}
-                         :model/Dashboard     dash     {}
-                         :model/DashboardCard dashcard {:dashboard_id   (:id dash)
-                                                        :card_id        (:id model)
-                                                        :visualization_settings
-                                                        {:table_id @table-1-ref
-                                                         :editableTable.enabledActions
-                                                         [{:id         "dashcard:unknown:my-row-action"
-                                                           :actionId   "table.row/create"
-                                                           :actionType "data-grid/row-action"
-                                                           :mapping    {:table-id @table-2-ref
-                                                                        :row      {:a ["::key" "aa"]
-                                                                                   :b ["::key" "bb"]
-                                                                                   :c ["::key" "cc"]
-                                                                                   :d ["::key" "dd"]}}
-                                                           :parameterMappings
-                                                           [{:parameterId "aa" :sourceType "row-data" :sourceValueTarget "col"}
-                                                            {:parameterId "bb" :sourceType "ask-user"}
-                                                            {:parameterId "cc" :sourceType "ask-user" :value "default"}
-                                                            {:parameterId "dd" :sourceType "constant" :value "hard-coded"}]
-                                                           :enabled    true}]}}]
-            (testing "dashcard row action modifying a row - primitive action"
-              (let [action-id "dashcard:unknown:my-row-action"]
-                (testing "underlying row does not exist, action not executed"
-                  (mt/user-http-request :crowberto :post 404 execute-v2-url {:action_id action-id
-                                                                             :scope     {:dashcard-id (:id dashcard)}
-                                                                             :input     {:id 1}
-                                                                             :params    {:status "approved"}}))
-                (testing "underlying row exists, action executed\n"
-                  (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @table-1-ref)
-                                        {:rows [{:col "database-value"}]})
-                  (let [base-req {:action_id action-id
-                                  :scope     {:dashcard-id (:id dashcard)}
-                                  :input     {:id 1 :col "stale-value"}
-                                  :params    {:bb nil}}]
-                    ;; TODO don't have a way to make params required for non-legacy actions yet, d'oh
-                    ;;      oh well, let nil spill through
-                    (testing "missing required param"
-                      (is (=? {:outputs [{:table-id @table-2-ref
-                                          :op       "created"
-                                          :row      {:id 1
-                                                     :a  "database-value"
-                                                     :b  nil
-                                                     :c  "default"
-                                                     :d  "hard-coded"}}]}
-                              (mt/user-http-request :crowberto :post 200 execute-v2-url base-req))))
-                    (testing "missing optional param"
-                      (is (=? {:outputs [{:table-id @table-2-ref
-                                          :op       "created"
-                                          :row      {:id 2
-                                                     :a  "database-value"
-                                                     :b  "necessary"
-                                                     :c  "default"
-                                                     :d  "hard-coded"}}]}
-                              (mt/user-http-request :crowberto :post 200 execute-v2-url (assoc-in base-req [:params :bb] "necessary")))))
-                    (testing "null optional param"
-                      (is (= {:outputs [{:table-id @table-2-ref
-                                         :op       "created"
-                                         :row      {:id 3
-                                                    :a  "database-value"
-                                                    :b  "necessary"
-                                                    :c  nil
-                                                    :d  "hard-coded"}}]}
-                             (mt/user-http-request :crowberto :post 200 execute-v2-url (-> base-req
-                                                                                           (assoc-in [:params :bb] "necessary")
-                                                                                           (assoc-in [:params :cc] nil))))))
-                    (testing "provided optional param"
-                      (is (= {:outputs [{:table-id @table-2-ref
-                                         :op       "created"
-                                         :row      {:id 4
-                                                    :a  "database-value"
-                                                    :b  "necessary"
-                                                    :c  "optional"
-                                                    :d  "hard-coded"}}]}
-                             (mt/user-http-request :crowberto :post 200 execute-v2-url (-> base-req
-                                                                                           (assoc-in [:params :bb] "necessary")
-                                                                                           (assoc-in [:params :cc] "optional"))))))))))))))))
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (with-open [table-1-ref (data-editing.tu/open-test-table!
+                               {:id  'auto-inc-type
+                                :col [:text]}
+                               {:primary-key [:id]})
+                  table-2-ref (data-editing.tu/open-test-table!
+                               {:id 'auto-inc-type
+                                :a  [:text]
+                                :b  [:text]
+                                :c  [:text]
+                                :d  [:text]}
+                               {:primary-key [:id]})]
+
+        (mt/with-temp [:model/Card          model    {:type           :model
+                                                      :table_id       @table-1-ref
+                                                      :database_id    (mt/id)
+                                                      :dataset_query  {:database (mt/id)
+                                                                       :type     :query
+                                                                       :query    {:source-table @table-1-ref}}}
+                       :model/Dashboard     dash     {}
+                       :model/DashboardCard dashcard {:dashboard_id   (:id dash)
+                                                      :card_id        (:id model)
+                                                      :visualization_settings
+                                                      {:table_id @table-1-ref
+                                                       :editableTable.enabledActions
+                                                       [{:id         "dashcard:unknown:my-row-action"
+                                                         :actionId   "table.row/create"
+                                                         :actionType "data-grid/row-action"
+                                                         :mapping    {:table-id @table-2-ref
+                                                                      :row      {:a ["::key" "aa"]
+                                                                                 :b ["::key" "bb"]
+                                                                                 :c ["::key" "cc"]
+                                                                                 :d ["::key" "dd"]}}
+                                                         :parameterMappings
+                                                         [{:parameterId "aa" :sourceType "row-data" :sourceValueTarget "col"}
+                                                          {:parameterId "bb" :sourceType "ask-user"}
+                                                          {:parameterId "cc" :sourceType "ask-user" :value "default"}
+                                                          {:parameterId "dd" :sourceType "constant" :value "hard-coded"}]
+                                                         :enabled    true}]}}]
+          (testing "dashcard row action modifying a row - primitive action"
+            (let [action-id "dashcard:unknown:my-row-action"]
+              (testing "underlying row does not exist, action not executed"
+                (mt/user-http-request :crowberto :post 404 execute-v2-url {:action_id action-id
+                                                                           :scope     {:dashcard-id (:id dashcard)}
+                                                                           :input     {:id 1}
+                                                                           :params    {:status "approved"}}))
+              (testing "underlying row exists, action executed\n"
+                (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @table-1-ref)
+                                      {:rows [{:col "database-value"}]})
+                (let [base-req {:action_id action-id
+                                :scope     {:dashcard-id (:id dashcard)}
+                                :input     {:id 1 :col "stale-value"}
+                                :params    {:bb nil}}]
+                  ;; TODO don't have a way to make params required for non-legacy actions yet, d'oh
+                  ;;      oh well, let nil spill through
+                  (testing "missing required param"
+                    (is (=? {:outputs [{:table-id @table-2-ref
+                                        :op       "created"
+                                        :row      {:id 1
+                                                   :a  "database-value"
+                                                   :b  nil
+                                                   :c  "default"
+                                                   :d  "hard-coded"}}]}
+                            (mt/user-http-request :crowberto :post 200 execute-v2-url base-req))))
+                  (testing "missing optional param"
+                    (is (=? {:outputs [{:table-id @table-2-ref
+                                        :op       "created"
+                                        :row      {:id 2
+                                                   :a  "database-value"
+                                                   :b  "necessary"
+                                                   :c  "default"
+                                                   :d  "hard-coded"}}]}
+                            (mt/user-http-request :crowberto :post 200 execute-v2-url (assoc-in base-req [:params :bb] "necessary")))))
+                  (testing "null optional param"
+                    (is (= {:outputs [{:table-id @table-2-ref
+                                       :op       "created"
+                                       :row      {:id 3
+                                                  :a  "database-value"
+                                                  :b  "necessary"
+                                                  :c  nil
+                                                  :d  "hard-coded"}}]}
+                           (mt/user-http-request :crowberto :post 200 execute-v2-url (-> base-req
+                                                                                         (assoc-in [:params :bb] "necessary")
+                                                                                         (assoc-in [:params :cc] nil))))))
+                  (testing "provided optional param"
+                    (is (= {:outputs [{:table-id @table-2-ref
+                                       :op       "created"
+                                       :row      {:id 4
+                                                  :a  "database-value"
+                                                  :b  "necessary"
+                                                  :c  "optional"
+                                                  :d  "hard-coded"}}]}
+                           (mt/user-http-request :crowberto :post 200 execute-v2-url (-> base-req
+                                                                                         (assoc-in [:params :bb] "necessary")
+                                                                                         (assoc-in [:params :cc] "optional")))))))))))))))
 
 (deftest list-and-add-to-dashcard-test
   (mt/with-premium-features #{:table-data-editing}

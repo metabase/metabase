@@ -356,8 +356,9 @@
     "::param"  ::param}
    mapping))
 
-(defn- augment-params [{:keys [dashcard-id param-map] :as _action} input params]
-  ;; TODO cool optimization where we don't fetch the row-data from the db if we only need the pk (or a subset of the pk)
+(defn- augment-params
+  [{:keys [dashcard-id param-map] :as _action} input params]
+  ;; TODO cool optimization where we don'l fetch the row-data from the db if we only need the pk (or a subset of the pk)
   (let [row (delay (let [{:keys [table_id]} (actions/cached-value
                                              [:dashcard-viz dashcard-id]
                                              #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]
