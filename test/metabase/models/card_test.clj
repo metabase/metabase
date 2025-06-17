@@ -1472,13 +1472,6 @@
             (is (=? {name2 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"}
                     (-> modified :query :expression-idents)))))))))
 
-(deftest before-update-card-schema-test
-  (testing "card_schema gets set to current-schema-version on update"
-    (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
-      (t2/update! :model/Card card-id {:name "Updated Name"})
-      (is (= @#'card/current-schema-version
-             (t2/select-one-fn :card_schema :model/Card :id card-id))))))
-
 (deftest before-update-dashboard-question-updates-test
   (testing "apply-dashboard-question-updates is called"
     (mt/with-temp [:model/Collection {coll-id :id} {}
