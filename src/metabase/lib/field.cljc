@@ -161,7 +161,7 @@
                                                join-alias)))
                                      cols)
                        (resolve-column-name-in-metadata id-or-name cols))]
-        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])
+        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type :converted-timezone])
               ;; if we're using a string name e.g. `Categories__NAME` then try to switch it out with one appropriate
               ;; to the stage before it e.g. `NAME` before recursing.
               ;;

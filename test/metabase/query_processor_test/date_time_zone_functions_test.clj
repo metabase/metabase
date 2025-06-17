@@ -5,7 +5,14 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -831,40 +838,45 @@
     (mt/with-report-timezone-id! "UTC"
       (mt/dataset times-mixed
         (testing "nested custom expression should works"
-          (mt/with-temp [:model/Card
-                         card
-                         {:dataset_query
-                          (mt/mbql-query
-                            times
-                            {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
-                                           "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul"
-                                                          "Asia/Saigon"]}
-                             :filter      [:= $times.index 1]
-                             :fields      [$times.dt
-                                           [:expression "to-07"]
-                                           [:expression "to-07-to-09"]]})}]
+          (qp.store/with-metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                                            (mt/application-database-metadata-provider (mt/id))
+                                            [(mt/mbql-query
+                                               times
+                                               {:expressions {"to-07"       [:convert-timezone $times.dt "Asia/Saigon" "UTC"]
+                                                              "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "Asia/Saigon"]}
+                                                :filter      [:= $times.index 1]
+                                                :fields      [$times.dt
+                                                              [:expression "to-07"]
+                                                              [:expression "to-07-to-09"]]})])
+            (testing "sanity check: make sure metadata is correct"
+              (let [query (lib/query
+                           (qp.store/metadata-provider)
+                           (lib.metadata/card (qp.store/metadata-provider) 1))]
+                (testing `lib.metadata.result-metadata/expected-cols
+                  (is (=? [{:name "dt"}
+                           {:name "to-07", :converted-timezone "Asia/Saigon"}
+                           {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
+                          (map #(select-keys % [:name :converted-timezone])
+                               (lib.metadata.result-metadata/expected-cols query)))))
+                (testing `annotate/expected-cols
+                  (is (=? [{:name "dt"}
+                           {:name "to-07", :converted_timezone "Asia/Saigon"}
+                           {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
+                          (map #(select-keys % [:name :converted_timezone])
+                               (annotate/expected-cols query)))))
+                (testing `qp.preprocess/query->expected-cols
+                  (is (=? [{:name "dt"}
+                           {:name "to-07", :converted_timezone "Asia/Saigon"}
+                           {:name "to-07-to-09", :converted_timezone "Asia/Seoul"}]
+                          (map #(select-keys % [:name :converted_timezone])
+                               (qp.preprocess/query->expected-cols query)))))))
             (testing "mbql query"
               (is (= [["2004-03-19T09:19:09Z"
                        "2004-03-19T16:19:09+07:00"
                        "2004-03-19T18:19:09+09:00"]]
-                     (->> (mt/mbql-query nil {:source-table (format "card__%d" (:id card))})
+                     (->> (mt/mbql-query nil {:source-table "card__1"})
                           mt/process-query
-                          mt/rows))))
-            ;; TIMEZONE FIXME: technically these values should have offset timezone(different than 'Z')
-            ;; like the mbql query test above
-            ;; but we haven't figured out a way to pass the convert_timezone metadata if you use a native query.
-            (testing "native query"
-              (let [card-tag (format "#%d" (:id card))]
-                (is (= [["2004-03-19T09:19:09Z"
-                         "2004-03-19T16:19:09Z"
-                         "2004-03-19T18:19:09Z"]]
-                       (->> (mt/native-query {:query         (nested-convert-timezone-test-6-native-query driver/*driver* card-tag)
-                                              :template-tags {card-tag {:card-id      (:id card)
-                                                                        :type         :card
-                                                                        :display-name "CARD ID"
-                                                                        :id           "_CARD_ID_"}}})
-                            mt/process-query
-                            mt/rows)))))))))))
+                          mt/rows))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Datetime diff tests                                                 |

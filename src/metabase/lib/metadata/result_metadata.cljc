@@ -130,11 +130,11 @@
      :base-type      base-type
      :effective-type base-type}))
 
+;;; TODO (Cam 6/17/25) -- move this into [[metabase.lib.expression]] or something and have it be part of the mainline
+;;; methods for metadata calculation
 (mu/defn- add-converted-timezone :- [:sequential ::kebab-cased-map]
   "Add `:converted-timezone` to columns that are from `:convert-timezone` expressions (or expressions wrapping them) --
-  this is used by [[metabase.query-processor.middleware.format-rows/format-rows-xform]].
-
-  TODO -- we should move this into mainline lib metadata calculation -- Cam"
+  this is used by [[metabase.query-processor.middleware.format-rows/format-rows-xform]]."
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
@@ -142,7 +142,8 @@
                                      (when-let [expr (try
                                                        (lib.expression/resolve-expression query expression-name)
                                                        (catch #?(:clj Throwable :cljs :default) e
-                                                         (log/error e "Warning: column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
+                                                         (log/error e "Column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
+                                                         (log/debugf "In query:\n%s" (u/pprint-to-str query))
                                                          nil))]
                                        (lib.util.match/match-one expr
                                          :convert-timezone

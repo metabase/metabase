@@ -3,11 +3,13 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -65,6 +67,16 @@
          (u/prog1 (resolve-expression query previous-stage-number expression-name)
            (when <>
              (log/warnf "Found expression %s in previous stage" (pr-str expression-name)))))
+       (when (lib.util/first-stage? query stage-number)
+         (when-let [source-card-id (lib.util/source-card-id query)]
+           (when-let [source-card (lib.metadata/card query source-card-id)]
+             (u/prog1 (resolve-expression (lib.query/query
+                                           (lib.metadata/->metadata-provider query)
+                                           (:dataset-query source-card))
+                                          expression-name)
+               (when <>
+                 (log/warnf "Found expression %s in source card %d. Next time, use a :field name ref!"
+                            (pr-str expression-name) source-card-id))))))
        (throw (ex-info (i18n/tru "No expression named {0}" (pr-str expression-name))
                        {:expression-name expression-name
                         :query           query

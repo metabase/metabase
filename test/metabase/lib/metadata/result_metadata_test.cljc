@@ -277,7 +277,7 @@
         (is (=? {:base-type :type/Boolean}
                 (expression-metadata :people "expression" (lib.convert/->pMBQL expression))))))))
 
-(deftest ^:parallel col-info-expressions-test-2
+(deftest ^:parallel converted-timezone-test
   (testing "col-info for convert-timezone should have a `converted-timezone` property"
     (is (=? {:converted-timezone "Asia/Ho_Chi_Minh"
              :base-type          :type/DateTime
@@ -289,7 +289,7 @@
                                                                 "Asia/Ho_Chi_Minh"
                                                                 "UTC"))))))
 
-(deftest ^:parallel col-info-expressions-test-2b
+(deftest ^:parallel converted-timezone-test-2
   (testing "col-info for convert-timezone should have a `converted-timezone` property (convert-timezone nested inside another expression)"
     (is (=? {:converted-timezone "Asia/Ho_Chi_Minh"
              :base-type          :type/DateTime
@@ -304,7 +304,7 @@
                                                                 2
                                                                 :hour))))))
 
-(deftest ^:parallel col-info-expressions-test-3
+(deftest ^:parallel converted-timezone-test-3
   (testing "converted-timezone should come back for expression refs"
     (let [query (lib/query
                  meta/metadata-provider
@@ -314,6 +314,22 @@
       (is (=? [{:name               "expr"
                 :converted-timezone "Asia/Seoul"}]
               (result-metadata/expected-cols query))))))
+
+(deftest ^:parallel converted-timezone-test-4
+  (testing "We should be able to reach back into the source card to resolve and expression to populate :converted-timezone"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query users
+                 {:expressions {"to-07"       [:convert-timezone $last-login "Asia/Saigon" "UTC"]
+                                "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "America/Los_Angeles"]}
+                  :fields      [$last-login
+                                [:expression "to-07"]
+                                [:expression "to-07-to-09"]]})])]
+      (is (=? [{:name "LAST_LOGIN"}
+               {:name "to-07", :converted-timezone "Asia/Saigon"}
+               {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
+              (map #(select-keys % [:name :converted-timezone])
+                   (result-metadata/expected-cols (lib/query mp (lib.metadata/card mp 1)))))))))
 
 (defn- col-info-for-aggregation-clause
   ([ag-clause]

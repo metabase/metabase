@@ -63,10 +63,13 @@
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
 
+(defn- ->mbql-5 [query]
+  (cond->> query
+    (not (:lib/type query)) (lib/query (qp.store/metadata-provider))))
+
 (defn- ensure-pmbql [middleware-fn]
   (-> (fn [query]
-        (let [query (cond->> query
-                      (not (:lib/type query)) (lib/query (qp.store/metadata-provider)))]
+        (let [query (->mbql-5 query)]
           (vary-meta (middleware-fn query)
                      assoc :converted-form query)))
       (with-meta (meta middleware-fn))))
@@ -194,6 +197,4 @@
                         {:type qp.error-type/qp})))
       ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
       ;; check where this is used.
-      (->> (annotate/expected-cols
-            (lib/query (qp.store/metadata-provider) preprocessed))
-           not-empty))))
+      (not-empty (annotate/expected-cols (->mbql-5 preprocessed))))))
