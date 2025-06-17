@@ -11,6 +11,7 @@ export type TextInputBlurChangeProps<
   T extends TextInputRestProps = TextInputRestProps,
 > = T & {
   normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
+  resetOnEsc?: boolean;
   value: T["value"] | undefined;
   onBlurChange: (event: { target: HTMLInputElement }) => void;
 };
@@ -24,6 +25,7 @@ export type TextInputBlurChangeProps<
  */
 export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
   normalize = (value) => value,
+  resetOnEsc,
   value,
   onBlur,
   onBlurChange,
@@ -61,7 +63,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Escape") {
+      if (resetOnEsc && event.key === "Escape") {
         setInternalValue(value);
 
         // setTimeout to allow internalValue to update before dispatching blur event
@@ -71,7 +73,7 @@ export function TextInputBlurChange<T extends TextInputProps = TextInputProps>({
         }, 0);
       }
     },
-    [ref, value],
+    [ref, resetOnEsc, value],
   );
 
   useUnmountLayout(() => {
