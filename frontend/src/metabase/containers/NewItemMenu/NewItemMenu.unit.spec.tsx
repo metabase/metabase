@@ -54,9 +54,32 @@ describe("NewItemMenu", () => {
     expect(screen.queryByText("Action")).not.toBeInTheDocument();
   });
 
+  it("should support keyboard navigation", async () => {
+    await setup();
+
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Question/ }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowDown}");
+
+    expect(
+      await screen.findByRole("menuitem", { name: /Dashboard/ }),
+    ).toHaveFocus();
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("dialog", { name: /New dashboard/ }),
+    ).toBeInTheDocument();
+  });
+
   describe("New Dashboard", () => {
     it("should open new dashboard modal on click", async () => {
-      setup();
+      await setup();
       await userEvent.click(await screen.findByText("Dashboard"));
       const modal = await screen.findByRole("dialog");
       expect(modal).toHaveTextContent("New dashboard");
