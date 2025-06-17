@@ -1700,6 +1700,17 @@
            query-processor
            util}}
 
+  enterprise/pg-replication
+  {:team "Cloud"
+   :api  #{metabase-enterprise.pg-replication.api
+           metabase-enterprise.pg-replication.init}
+   :uses #{analytics
+           api
+           premium-features
+           settings
+           util
+           enterprise/harbormaster}}
+
   enterprise/premium-features
   {:team "Admin Webapp"
    :api  #{}
