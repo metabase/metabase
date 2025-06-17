@@ -196,7 +196,8 @@
                            (t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))
           saved-id    (:action-id inner)
           action-kw   (:action-kw inner)
-          table-id    (:table-id partial-input)
+          table-id    (or (:table-id partial-input)
+                          (:table_id dashcard-viz))
           _           (when-not table-id
                         (throw (ex-info "Must provide table-id" {:status-code 400})))]
       (cond
