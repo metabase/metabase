@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
+   [metabase.sync.analyze.fingerprint :as fingerprint]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
@@ -94,12 +95,12 @@
                                            :fingerprint_version 0}))
         (let [fingerprints (atom [])
               fingerprint-query (atom nil)
-              orig-table-rows-sample-query @#'table-rows-sample/table-rows-sample-query]
+              orig-table-rows-sample-query @#'metadata-queries/table-rows-sample-query]
           (with-redefs [fingerprint/save-fingerprint! (fn [_field fingerprint]
                                                         (swap! fingerprints conj fingerprint))
-                        table-rows-sample/table-rows-sample-query (fn [& args]
-                                                                    (reset! fingerprint-query
-                                                                            (apply orig-table-rows-sample-query args)))]
+                        metadata-queries/table-rows-sample-query (fn [& args]
+                                                                   (reset! fingerprint-query
+                                                                           (apply orig-table-rows-sample-query args)))]
             (fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :string_nums)))
             (testing "empty expressions = no substring optimization in sample query = use of effective type"
               (is (empty? (-> @fingerprint-query :query :expressions)))
