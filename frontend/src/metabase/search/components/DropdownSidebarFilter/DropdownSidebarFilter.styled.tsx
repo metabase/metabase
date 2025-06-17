@@ -10,7 +10,6 @@ export const DropdownFieldSet = styled(FieldSet)<{
 }>`
   min-width: 0;
   text-overflow: ellipsis;
-  overflow: hidden;
   border: 2px solid
     ${({ fieldHasValueOrFocus }) =>
       fieldHasValueOrFocus
