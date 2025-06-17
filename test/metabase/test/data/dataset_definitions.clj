@@ -272,6 +272,26 @@
      ["3" "3.5" "2.7587"]
      ["4" "4.5" "3"]]]])
 
+(tx/defdataset coerced-string-nums-db
+  [["string_nums"
+    [{:field-name        "int_col"
+      :base-type         :type/Text
+      :effective-type    :type/Integer
+      :coercion-strategy :Coercion/String->Integer}
+     {:field-name        "float_col"
+      :base-type         :type/Text
+      :effective-type    :type/Float
+      :coercion-strategy :Coercion/String->Float}
+     {:field-name        "mix_col"
+      :base-type         :type/Text
+      :effective-type    :type/Float
+      :coercion-strategy :Coercion/String->Float}]
+    [["0" "0.5" "0"]
+     ["1" "1.5" "0.5"]
+     ["2" "2.5" "1"]
+     ["3" "3.5" "2.7587"]
+     ["4" "4.5" "3"]]]])
+
 (tx/defdataset rounding-nums-db
   [["nums"
     [{:field-name "int_col"        :base-type :type/Integer}
