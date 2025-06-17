@@ -24,7 +24,7 @@ export function EmailSettingsPage() {
     useDisclosure(false);
 
   const { data: settingValues, isLoading } = useGetSettingsQuery();
-  const isHosted = settingValues?.["is-hosted?"];
+  // const isHosted = settingValues?.["is-hosted?"] || true;
   const hasCloudSMTPFeature = true;
   const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
@@ -39,7 +39,7 @@ export function EmailSettingsPage() {
   return (
     <>
       <SettingsPageWrapper title={t`Email`}>
-        {!isHosted && <SMTPConnectionCard onOpenSMTPModal={openModal} />}
+        {<SMTPConnectionCard onOpenSMTPModal={openModal} />}
         {hasCloudSMTPFeature && (
           <CloudSMTPConnectionCard onOpenCloudSMTPModal={openCloudModal} />
         )}
