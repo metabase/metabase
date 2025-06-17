@@ -314,24 +314,17 @@ const useNotificationTemplatePreview = (
     (channelType: NotificationChannelType) => {
       if (previewOpen) {
         setPreviewOpen(false);
+        setChannelType(null);
         return;
       }
 
       setChannelType(channelType);
 
       if (channelType === "channel/email") {
-        const handler = requestBody?.handlers.find(
-          (h) => h.channel_type === channelType && h.template,
-        );
-        const currentTemplate =
-          handler?.template || defaultTemplates?.[channelType];
-
-        if (currentTemplate) {
-          setPreviewOpen(true);
-        }
+        setPreviewOpen(true);
       }
     },
-    [requestBody, defaultTemplates, previewOpen],
+    [previewOpen],
   );
 
   /*
