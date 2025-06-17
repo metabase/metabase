@@ -5,6 +5,7 @@
   "Schema model types"
   ["Database"
    "Field"
+   "FieldUserSettings"
    "Segment"
    "Table"
    "Channel"])

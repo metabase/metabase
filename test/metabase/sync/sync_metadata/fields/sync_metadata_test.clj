@@ -245,7 +245,12 @@
 (deftest base-type-change-will-trigger-fingerprint-and-analyze-test
   (testing "A base type of a field changes only when the field is dropped then a new field with the name is created (#37047).
            In this case, we should make sure effective type is set to base type"
-    (is (= [["Field"
+    (is (= [["FieldUserSettings"
+             1
+             {:effective_type      :type/Text
+              :coercion_strategy   nil
+              :semantic_type       nil}]
+            ["Field"
              1
              {:base_type           :type/Text
               :effective_type      :type/Text
