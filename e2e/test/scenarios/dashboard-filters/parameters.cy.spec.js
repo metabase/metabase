@@ -1342,6 +1342,427 @@ describe("scenarios > dashboard > parameters", () => {
       });
     });
   });
+
+  describe("parameters in question dashcards", () => {
+    const categoryParameter = createMockParameter({
+      id: "1b9cd9f1",
+      name: "Category",
+      type: "string/=",
+      slug: "category",
+      sectionId: "string",
+    });
+
+    const countParameter = createMockParameter({
+      id: "88a1257c",
+      name: "Count",
+      type: "number/<=",
+      slug: "count",
+      sectionId: "number",
+    });
+
+    const categoryFieldRef = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "source-field": ORDERS.PRODUCT_ID },
+    ];
+
+    const ordersCountByCategory = {
+      display: "bar",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [categoryFieldRef],
+      },
+    };
+
+    it("should be able to add and use filters", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+      });
+
+      H.setDashCardFilter(0, "Text or Category", null, "Category");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.saveDashboard();
+
+      // Verify the filter doesn't appear in the dashboard header
+      H.dashboardParametersContainer().should("not.exist");
+
+      // Verify filtering works
+      H.getDashboardCard(0).within(() => {
+        H.filterWidget().contains("Category").click();
+      });
+      H.dashboardParametersPopover().within(() => {
+        cy.findByLabelText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+    });
+
+    it("should prefer more granular filter", () => {
+      const headerCategoryParameter = createMockParameter({
+        ...categoryParameter,
+        id: "header-category",
+        name: "Header Category",
+        slug: "header-category",
+      });
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [headerCategoryParameter, categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+                {
+                  parameter_id: headerCategoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Doohickey").should("exist");
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Gadget").should("exist");
+        cy.findByText("Widget").should("exist");
+      });
+
+      // Update header filter (Doohickey + Gizmo)
+      H.dashboardParametersContainer().findByText("Header Category").click();
+      H.popover().within(() => {
+        cy.findByLabelText("Doohickey").click();
+        cy.findByLabelText("Gizmo").click();
+        cy.button("Add filter").click();
+      });
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Doohickey").should("exist");
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      // Update card filter (Gadget) and verify no results
+      H.getDashboardCard(0).findByText("Category").click();
+      H.popover().within(() => {
+        cy.findByLabelText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+      H.getDashboardCard(0)
+        .findByText(/No results/)
+        .should("exist");
+
+      // Update card filter (Gizmo) and verify 1 result
+      H.getDashboardCard(0).within(() => H.filterWidget().click());
+      H.popover().within(() => {
+        cy.findByLabelText("Gadget").click(); // unselect
+        cy.findByLabelText("Gizmo").click();
+        cy.button("Update filter").click();
+      });
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      // Update header filter, verify no changes
+      H.dashboardParametersContainer().within(() => H.filterWidget().click());
+      H.popover().within(() => {
+        cy.findByLabelText("Gadget").click();
+        cy.button("Update filter").click();
+      });
+      H.dashboardParametersContainer()
+        .findByText("3 selections")
+        .should("exist");
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Gizmo").should("exist");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+    });
+
+    it("should be able to edit filters", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+
+      H.setDashboardParameterName("Count");
+      H.setDashboardParameterType("Number");
+      H.setDashboardParameterOperator("Less than or equal to");
+
+      // Set default value
+      H.dashboardParameterSidebar().findByLabelText("Default value").click();
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("4000");
+        cy.button("Add filter").click();
+      });
+
+      // Connect to the card
+      H.selectDashboardFilter(H.getDashboardCard(0), "Count");
+
+      H.dashboardParameterSidebar().button("Done").click();
+      H.saveDashboard();
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Count").should("exist");
+        cy.findByText("4,000").should("exist");
+        cy.findByText("Category").should("not.exist");
+
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?count=4000");
+      });
+    });
+
+    it("should remove filters correctly", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id, countParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Category").should("exist");
+
+        // Verify we're hiding filters that are not linked to any cards
+        cy.findByText("Count").should("not.exist");
+      });
+
+      H.editDashboard();
+
+      H.getDashboardCard(0).findAllByText("Count").first().click();
+      H.dashboardParameterSidebar().button("Remove").click();
+
+      H.getDashboardCard(0).within(() => {
+        cy.findAllByText("Count").should("have.length", 1); // y-axis label
+        cy.findByText("Category").click();
+      });
+
+      H.dashboardParameterSidebar().button("Remove").click();
+
+      H.saveDashboard();
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Category").should("not.exist");
+        cy.findAllByText("Count").should("have.length", 1); // y-axis label
+      });
+    });
+
+    it("should remove filters when removing a dashcard", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      H.getDashboardCard(0).findByText("Doohickey").should("exist");
+      H.removeDashboardCard(0);
+      H.saveDashboard();
+
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(0);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(0);
+          expect(dashcard.parameter_mappings).to.have.length(0);
+        });
+      });
+    });
+
+    it("should not use inline filters for auto-wiring", () => {
+      H.createQuestion({
+        name: "Average total by category",
+        display: "bar",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["avg", ["field", ORDERS.TOTAL, null]]],
+          breakout: [categoryFieldRef],
+        },
+      });
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter, countParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id, countParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      // Add a second card with category dimension
+      H.openQuestionsSidebar();
+      H.sidebar().findByText("Average total by category").click();
+      H.getDashboardCard(1).findByText("Average of Total").should("exist");
+
+      // Verify filter isn't auto-wired and there's no auto-wiring toast
+      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("not.exist");
+      H.undoToast().should("not.exist");
+
+      // Verify filter isn't auto-wired after mapping it to a card
+      H.getDashboardCard(0).click(); // click to stop dragging a card
+      H.disconnectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("not.exist");
+      H.undoToast().should("not.exist");
+    });
+  });
 });
 
 function isFilterSelected(filter, bool) {

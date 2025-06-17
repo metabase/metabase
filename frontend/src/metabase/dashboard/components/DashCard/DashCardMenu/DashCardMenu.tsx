@@ -27,6 +27,7 @@ import {
   type IconName,
   Menu,
   type MenuItemProps,
+  type MenuProps,
 } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
@@ -50,6 +51,7 @@ interface DashCardMenuProps {
   token?: string;
   visualizationSettings?: VisualizationSettings;
   downloadsEnabled: EmbedResourceDownloadOptions;
+  position?: MenuProps["position"];
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
 }
@@ -82,6 +84,7 @@ export const DashCardMenu = ({
   dashcardId,
   uuid,
   token,
+  position = "bottom-end",
   onEditVisualization,
   openUnderlyingQuestionItems,
 }: DashCardMenuProps) => {
@@ -192,7 +195,7 @@ export const DashCardMenu = ({
   };
 
   return (
-    <Menu offset={4} position="bottom-end" opened={isOpen} onClose={close}>
+    <Menu offset={4} position={position} opened={isOpen} onClose={close}>
       <Menu.Target>
         <ActionIcon
           size="xs"
@@ -218,7 +221,6 @@ interface ShouldRenderDashcardMenuProps {
   isXray?: boolean;
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
-  isEditing: boolean;
   downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
@@ -227,7 +229,6 @@ DashCardMenu.shouldRender = ({
   result,
   isXray,
   isPublicOrEmbedded,
-  isEditing,
   downloadsEnabled,
 }: ShouldRenderDashcardMenuProps) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
@@ -241,7 +242,6 @@ DashCardMenu.shouldRender = ({
   }
   return (
     !isInternalQuery &&
-    !isEditing &&
     !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))
   );

@@ -133,8 +133,8 @@ export function isIFrameDashCard(
 
 export function supportsInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCard {
-  return isHeadingDashCard(dashcard);
+): dashcard is QuestionDashboardCard | VirtualDashboardCard {
+  return isQuestionDashCard(dashcard) || isHeadingDashCard(dashcard);
 }
 
 type VirtualDashboardCardWithInlineFilters = VirtualDashboardCard & {
@@ -153,7 +153,7 @@ export function hasInlineParameters(
 
 export function findDashCardForInlineParameter(
   parameterId: ParameterId,
-  dashcards: DashboardCard[],
+  dashcards: BaseDashboardCard[],
 ): VirtualDashboardCardWithInlineFilters | undefined {
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
