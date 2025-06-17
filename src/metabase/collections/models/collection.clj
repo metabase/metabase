@@ -23,7 +23,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -110,7 +110,7 @@
   query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))))
+    (is-trash? collection) (assoc :name (deferred-tru "Trash"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-trash-name collection))
