@@ -22,7 +22,6 @@ import type {
 
 import {
   getFirstQueryResult,
-  getIsLoadingComplete,
   getQuestion,
   getTransformedSeries,
   getTransformedTimelines,
@@ -185,19 +184,24 @@ const getChartConfigs = async ({
   visualizationSettings: ComputedVisualizationSettings | undefined;
   timelines: Timeline[];
 }): Promise<MetabotChartConfig[]> => {
-  if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
+  try {
+    if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
+      return [];
+    }
+
+    return [
+      {
+        image_base_64: await getVisualizationDataUri(question),
+        title: question.displayName(),
+        description: question.description(),
+        series: processSeriesData(series, visualizationSettings),
+        timeline_events: processTimelineEvents(timelines),
+      },
+    ];
+  } catch (err) {
+    console.error(err);
     return [];
   }
-
-  return [
-    {
-      image_base_64: await getVisualizationDataUri(question),
-      title: question.displayName(),
-      description: question.description(),
-      series: processSeriesData(series, visualizationSettings),
-      timeline_events: processTimelineEvents(timelines),
-    },
-  ];
 };
 
 export const registerQueryBuilderMetabotContextFn = async ({
@@ -235,9 +239,6 @@ export const registerQueryBuilderMetabotContextFn = async ({
     series,
     visualizationSettings,
     timelines,
-  }).catch((err) => {
-    console.error(err);
-    return [];
   });
 
   return {
@@ -255,9 +256,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 
 export const useRegisterQueryBuilderMetabotContext = () => {
   useRegisterMetabotContextProvider((state) => {
-    const isLoadingComplete = getIsLoadingComplete(state);
-
-    const question = isLoadingComplete ? getQuestion(state) : undefined;
+    const question = getQuestion(state);
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);
     const timelines = getTransformedTimelines(state);
