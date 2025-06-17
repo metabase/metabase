@@ -39,7 +39,7 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
       (is (mr/validate ::lib.schema/query query))
-      (is (=? [(merge (meta/field-metadata :venues :price)
+      (is (=? [(merge (m/filter-vals some? (meta/field-metadata :venues :price))
                       {:lib/source :source/fields})]
               (lib/returned-columns query))))))
 
@@ -493,7 +493,7 @@
                               [:field "VENDOR" {:join-alias "Card"
                                                 :base-type :type/Text}]]}]}))]
       ;; should include ID as well.
-      (is (=? [{:id (meta/id :products :id),    :display-name "ID 2"} ; not 100% sure about this display name
+      (is (=? [{:id (meta/id :products :id),    :display-name "ID"}
                {:id (meta/id :orders :total),   :display-name "Total"}
                {:id (meta/id :orders :tax),     :display-name "Tax"}
                {:id (meta/id :products :vendor) :display-name "Vendor"}]

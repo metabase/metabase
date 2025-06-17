@@ -649,7 +649,6 @@
                 :id                       4
                 :name                     "Field 4"
                 :ident                    "ybTElkkGoYYBAyDRTIiUe"
-                :fk-target-field-id       nil
                 :lib/source               :source/card
                 :lib/card-id              3
                 :lib/source-column-alias  "Field 4"
@@ -661,7 +660,6 @@
                :id                      4
                :name                    "Field 4"
                :ident                   "ybTElkkGoYYBAyDRTIiUe"
-               :fk-target-field-id      nil
                :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
@@ -702,7 +700,6 @@
                 :id                       4
                 :name                     "Field 4"
                 :ident                    "ybTElkkGoYYBAyDRTIiUe"
-                :fk-target-field-id       nil
                 :lib/source               :source/card
                 :lib/card-id              3
                 :lib/source-column-alias  "Field 4"
@@ -715,7 +712,6 @@
                :id                      4
                :name                    "Field 4"
                :ident                   "ybTElkkGoYYBAyDRTIiUe"
-               :fk-target-field-id      nil
                :display-name            "Field 4"
                :lib/card-id             3
                :lib/source              :source/card
@@ -1463,7 +1459,6 @@
                         :display-name  "ID"}
           exp-src-tax  {:lib/type      :metadata/column
                         :name          "TAX"
-                        :semantic-type nil
                         :table-id      (meta/id :orders)
                         :id            (meta/id :orders :tax)
                         :lib/source    :source/fields
@@ -1480,7 +1475,6 @@
                         :display-name  "ID"}
           exp-join-tax {:lib/type      :metadata/column
                         :name          "TAX"
-                        :semantic-type nil
                         :table-id      (meta/id :orders)
                         :id            (meta/id :orders :tax)
                         :lib/source    :source/joins
@@ -1490,7 +1484,6 @@
           columns      (lib.metadata.calculation/returned-columns query)]
       (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
               (lib.metadata.calculation/returned-columns query)))
-
       (doseq [[label column-alias] [["original ID column"  "ID"]
                                     ["original TAX column" "TAX"]
                                     ["joined ID column"    "Orders__ID"]
@@ -1540,13 +1533,14 @@
                  :lib/card-id (get-in base [:stages 0 :source-card])
                  :lib/source  :source/card}
                 vis-price))
-
         (testing "can have that dropped field added back"
           (let [added (lib/add-field query -1 vis-price)]
             (is (=? columns #_(map #(assoc % :lib/source :source/fields) columns)
                     (lib.metadata.calculation/returned-columns added)))
             (testing "and removed again"
-              (is (=? (map #(assoc % :lib/source :source/fields) no-price)
+              (is (=? (map #(-> (m/filter-vals some? %)
+                                (assoc :lib/source :source/fields))
+                           no-price)
                       (-> added
                           (lib/remove-field -1 vis-price)
                           lib.metadata.calculation/returned-columns))))))))))
@@ -1660,7 +1654,7 @@
         (is (=? {:lib/type        :metadata/column
                  :lib/source-uuid string?
                  :name            "12345"
-                 :display-name    "Unknown Field"}
+                 :display-name    "12345"}
                 (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
                                                    [:field {:lib/uuid (str (random-uuid))} 12345])))))))
 

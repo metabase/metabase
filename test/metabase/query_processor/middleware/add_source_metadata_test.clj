@@ -102,7 +102,6 @@
                                   :display_name  "Average of ID"
                                   :base_type     :type/Float
                                   :semantic_type :type/PK
-                                  :settings      nil
                                   :field_ref     [:aggregation 0]}]})
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
@@ -128,7 +127,6 @@
                                     :display_name  "My Cool Ag"
                                     :base_type     :type/Float
                                     :semantic_type :type/PK
-                                    :settings      nil
                                     :field_ref     [:aggregation 0]}]})
               (add-source-metadata
                (lib.tu.macros/mbql-query venues
@@ -144,7 +142,6 @@
               :display_name  "Average of ID"
               :base_type     :type/Float
               :semantic_type :type/PK
-              :settings      nil
               :field_ref     [:aggregation 0]}]
             (source-metadata
              (add-source-metadata
@@ -158,7 +155,6 @@
               :display_name  "My Cool Ag"
               :base_type     :type/Float
               :semantic_type :type/PK
-              :settings      nil
               :field_ref     [:aggregation 0]}]
             (source-metadata
              (add-source-metadata
@@ -351,7 +347,6 @@
                        {:name         "EAN"
                         :display_name "Products → Ean"
                         :base_type    :type/Text
-                        :semantic_type nil
                         :id           %ean
                         :field_ref    &Products.ean})
                      (ean-metadata (add-source-metadata query)))))))))))

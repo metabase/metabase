@@ -59,7 +59,9 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (defn- prefix-field-alias
@@ -183,7 +185,7 @@
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond
-      join-is-this-level?                      join-alias
+      join-is-this-level?                      (get-in inner-query [::join-alias->escaped join-alias] join-alias)
       (and table-id (= table-id source-table)) table-id
       source-query                             ::source
       :else
@@ -269,7 +271,16 @@
         (when-let [field-names (let [[_ id-or-name] field-clause]
                                  (when (string? id-or-name)
                                    [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
-          (some #(field-name-match % all-exports source-metadata field-exports) field-names)))))
+          (some #(field-name-match % all-exports source-metadata field-exports) field-names))
+        ;; otherwise we failed to find a match!
+        (log/errorf "Failed to find matching field for\n\n%s\n\nin source query, query may not work! Found:\n\n%s"
+                    (pr-str field-clause)
+                    (u/pprint-to-str (into #{}
+                                           (map (fn [a-ref]
+                                                  (lib.util.match/match-one a-ref
+                                                    (m :guard (every-pred map? ::desired-alias))
+                                                    (:metabase.query-processor.util.add-alias-info/desired-alias m))))
+                                           (exports source-query)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause
@@ -347,19 +358,20 @@
   [field-clause]
   (boolean (field-nfc-path field-clause)))
 
-(defn- field-name
+(mu/defn- field-name :- [:maybe :string]
   "*Actual* name of a `:field` from the database or source query (for Field literals)."
-  [_inner-query [_ id-or-name :as field-clause]]
+  [_inner-query [_ id-or-name :as field-clause] :- mbql.s/field]
   (or (some->> field-clause
                field-instance
                (field-reference-mlv2 driver/*driver*))
       (when (string? id-or-name)
         id-or-name)))
 
-(defn- expensive-field-info
+(mu/defn- expensive-field-info
   "Calculate extra stuff about `field-clause` that's a little expensive to calculate. This is done once so we can pass
   it around instead of recalculating it a bunch of times."
-  [inner-query field-clause]
+  [inner-query  :- :map
+   field-clause :- mbql.s/field]
   (merge
    {:field-name              (field-name inner-query field-clause)
     :override-alias?         (field-requires-original-field-name field-clause)
@@ -411,8 +423,10 @@
   (fn [_ _ [clause-type]]
     clause-type))
 
-(defmethod clause-alias-info :field
-  [inner-query unique-alias-fn field-clause]
+(mu/defmethod clause-alias-info :field
+  [inner-query     :- :map
+   unique-alias-fn :- fn?
+   field-clause    :- mbql.s/field]
   (let [expensive-info (expensive-field-info inner-query field-clause)]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
@@ -542,11 +556,28 @@
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
   [query-or-inner-query]
-  (walk/postwalk
-   (fn [form]
-     (if (and (map? form)
-              ((some-fn :source-query :source-table) form)
-              (not (:strategy form)))
-       (vary-meta (add-alias-info* form) assoc ::transformed true)
-       form))
-   query-or-inner-query))
+  (as-> query-or-inner-query $q
+    ;; first escape all the join aliases
+    (walk/postwalk
+     (fn [form]
+       (if (and (map? form)
+                (seq (:joins form)))
+         (as-> form form
+           (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+                                                  (lib.util/unique-name-generator))]
+                                 (fn [joins]
+                                   (mapv (fn [join]
+                                           (assoc join ::alias (unique (:alias join))))
+                                         joins))))
+           (assoc form ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins form))))
+         form))
+     $q)
+    ;; then add alias info
+    (walk/postwalk
+     (fn [form]
+       (if (and (map? form)
+                ((some-fn :source-query :source-table) form)
+                (not (:strategy form)))
+         (vary-meta (add-alias-info* form) assoc ::transformed true)
+         form))
+     $q)))

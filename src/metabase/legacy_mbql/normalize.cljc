@@ -443,10 +443,8 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
-                     ;; don't try to normalize the keys in viz-settings or `:alias/escaped->original` passed in as
-                     ;; part of `:info`.
+                     ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
                      :visualization-settings  identity
-                     :alias/escaped->original identity
                      :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??

@@ -20,6 +20,7 @@
               {:cards [{:id 1
                         :dataset-query
                         (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                            ;; I guess this join is named `Reviews`
                             (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
                                                            [(lib/=
                                                              (lib.metadata/field mp (mt/id :products :id))
@@ -77,7 +78,7 @@
               (map :name (lib.metadata.result-metadata/expected-cols question))))
       (is (= ["Reviews → Created At: Month"
               "Average of Rating"
-              "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
+              "Products+Reviews Summary - Reviews → Created At: Month → Created At"
               "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
              (->> (qp/process-query question)
                   mt/cols

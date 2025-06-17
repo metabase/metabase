@@ -4,7 +4,6 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -37,15 +36,18 @@
   "Find the column with `column-name` in a sequence of `column-metadatas`."
   [column-name      :- ::lib.schema.common/non-blank-string
    column-metadatas :- [:sequential ::lib.schema.metadata/column]]
-  (let [resolution-keys [:lib/desired-column-alias :lib/deduplicated-name :name :lib/original-name]]
+  (let [resolution-keys [:lib/source-column-alias :lib/deduplicated-name :lib/desired-column-alias :name :lib/original-name]]
     (or (some (fn [k]
                 (m/find-first #(= (get % k) column-name)
                               column-metadatas))
               resolution-keys)
         (do
-          (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
-                     (pr-str column-name)
-                     (pr-str (mapv #(select-keys % resolution-keys) column-metadatas)))
+          ;; ideally we shouldn't hit this but if we do it's not the end of the world.
+          (log/infof "Couldn't resolve column name %s."
+                    (pr-str column-name))
+          (log/debugf "Found:\n%s"
+                      (u/pprint-to-str (mapv #(select-keys % (list* :lib/source :metabase.lib.join/join-alias resolution-keys))
+                                             column-metadatas)))
           nil))))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
@@ -64,18 +66,10 @@
             stage                 (if previous-stage-number
                                     (lib.util/query-stage query previous-stage-number)
                                     (lib.util/query-stage query stage-number))
-            ;; TODO -- it seems a little icky that the existence of `:metabase.lib.stage/cached-metadata` is leaking
-            ;; here, we should look in to fixing this if we can.
-            stage-columns         (or (:metabase.lib.stage/cached-metadata stage)
-                                      (get-in stage [:lib/stage-metadata :columns])
-                                      (when (or (:source-card  stage)
-                                                (:source-table stage)
-                                                (:expressions  stage)
-                                                (:fields       stage)
-                                                (pos-int? previous-stage-number))
-                                        (lib.metadata.calculation/visible-columns query stage-number stage))
-                                      (log/warnf "Cannot resolve column %s: stage has no metadata"
-                                                 (pr-str column-name)))]
+            stage-columns         (concat
+                                   (lib.metadata.calculation/visible-columns query stage-number stage)
+                                   ;; work around visible columns not including aggregations (#59657)
+                                   (lib.aggregation/aggregations-metadata query stage-number))]
         (when-let [column (and (seq stage-columns)
                                (resolve-column-name-in-metadata column-name stage-columns))]
           (if-not previous-stage-number
@@ -196,7 +190,7 @@
                                             id-or-name
                                             (:id resolved-by-name))]
                      (merge-non-nil
-                      {:lib/type :metadata/column, :name (str id-or-name), :display-name (i18n/tru "Unknown Field")}
+                      {:lib/type :metadata/column, :name (str id-or-name)}
                       (field-ref-options-metadata field-ref)
                       ;; metadata about the field from the metadata provider
                       (when field-id
@@ -219,8 +213,12 @@
                           ;; CRITICAL THAT WE INCLUDE ID!
                           (select-keys resolved-by-name [:id :semantic-type])
                           resolved-by-name))))]
-    (cond-> metadata
-      join-alias (lib.join/with-join-alias join-alias))))
+    (as-> metadata metadata
+      (cond-> metadata
+        join-alias (lib.join/with-join-alias join-alias))
+      ;; If we were unable to resolve basically ANYTHING then just calculate a display name with the info we have.
+      (cond-> metadata
+        (not (:display-name metadata)) (assoc :display-name (lib.metadata.calculation/display-name query stage-number metadata))))))
 
 (mu/defn- add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."

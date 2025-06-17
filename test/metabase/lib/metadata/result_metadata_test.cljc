@@ -130,7 +130,7 @@
   (testing "when binning strategy is used, include `:binning-info`"
     (is (=? [{:name         "price"
               :base-type    :type/Number
-              :display-name "Price: Month"
+              :display-name "Price: 10 bins: Month"
               :unit         :month
               :source       :fields
               :binning-info {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
@@ -179,16 +179,12 @@
     (let [metadata-provider child-parent-grandparent-metadata-provider
           query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
                                 (lib/with-fields [(lib.metadata/field metadata-provider 2)]))]
-      (is (=? {:description       nil
-               :table-id          (meta/id :venues)
+      (is (=? {:table-id          (meta/id :venues)
                ;; these two are a gross symptom. there's some tension. sometimes it makes sense to have an effective
                ;; type: the db type is different and we have a way to convert. Othertimes, it doesn't make sense:
                ;; when the info is inferred. the solution to this might be quite extensive renaming
-               :coercion-strategy nil
                :name              "grandparent.parent"
-               :settings          nil
                :field-ref         [:field 2 nil]
-               :nfc-path          nil
                :parent-id         1
                :visibility-type   :normal
                ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
@@ -201,13 +197,9 @@
     (let [metadata-provider child-parent-grandparent-metadata-provider
           query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
-      (is (=? {:description       nil
-               :table-id          (meta/id :venues)
-               :coercion-strategy nil
+      (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               :settings          nil
                :field-ref         [:field 3 {:base-type :type/Text}]
-               :nfc-path          nil
                :parent-id         2
                :id                3
                :visibility-type   :normal
@@ -707,107 +699,6 @@
                   :source          :fields
                   :field-ref       [:expression "prev_month"]}]
                 (column-info query {:cols [{}]})))))))
-
-(deftest ^:parallel rename-join-with-long-alias-test
-  (let [old-alias   "Products with a very long name - Product ID with a _598bd25b"
-        new-alias   "Products with a very long name - Product ID with a very long name"
-        query       (lib/query
-                     meta/metadata-provider
-                     {:lib/type :mbql/query
-                      :database (meta/id)
-                      :stages [{:lib/type :mbql.stage/mbql
-                                :source-table (meta/id :orders)
-                                :joins [{:lib/type :mbql/join
-                                         :stages [{:lib/type :mbql.stage/mbql
-                                                   :source-table (meta/id :products)}]
-                                         :alias old-alias
-                                         :strategy :left-join
-                                         :fields [[:field {:join-alias old-alias, :base-type :type/BigInteger} (meta/id :products :id)]
-                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :ean)]
-                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :title)]
-                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]
-                                                  [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :vendor)]
-                                                  [:field {:join-alias old-alias, :base-type :type/Float} (meta/id :products :price)]
-                                                  [:field {:join-alias old-alias, :base-type :type/Float} (meta/id :products :rating)]
-                                                  [:field {:join-alias old-alias, :base-type :type/DateTimeWithLocalTZ} (meta/id :products :created-at)]]
-                                         :conditions [[:=
-                                                       {}
-                                                       [:field {:base-type :type/Integer} (meta/id :orders :product-id)]
-                                                       [:field {:join-alias old-alias, :base-type :type/BigInteger} (meta/id :products :id)]]]}]
-                                :aggregation [[:count {:name "count"}]]
-                                :breakout [[:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]]
-                                :order-by [[:asc
-                                            {}
-                                            [:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]]]}
-                               {:lib/type :mbql.stage/mbql
-                                :fields [[:field {:join-alias old-alias, :base-type :type/Text} (meta/id :products :category)]
-                                         [:field {:base-type :type/Integer} "count"]]
-                                :filters [[:=
-                                           {}
-                                           [:field {:base-type :type/Integer} "count"]
-                                           [:value {:base-type :type/Integer, :effective-type :type/Integer} 1337]]]}]
-                      :info {:alias/escaped->original {old-alias new-alias}}})]
-    (is (=? {:stages [{:joins [{:alias new-alias
-                                :strategy :left-join
-                                :fields [[:field {:join-alias new-alias} (meta/id :products :id)]
-                                         [:field {:join-alias new-alias} (meta/id :products :ean)]
-                                         [:field {:join-alias new-alias} (meta/id :products :title)]
-                                         [:field {:join-alias new-alias} (meta/id :products :category)]
-                                         [:field {:join-alias new-alias} (meta/id :products :vendor)]
-                                         [:field {:join-alias new-alias} (meta/id :products :price)]
-                                         [:field {:join-alias new-alias} (meta/id :products :rating)]
-                                         [:field {:join-alias new-alias} (meta/id :products :created-at)]]
-                                :conditions [[:=
-                                              {}
-                                              [:field {} (meta/id :orders :product-id)]
-                                              [:field {:join-alias new-alias} (meta/id :products :id)]]]}]
-                       :breakout [[:field {:join-alias new-alias} (meta/id :products :category)]]
-                       :order-by [[:asc
-                                   {}
-                                   [:field {:join-alias new-alias} (meta/id :products :category)]]]}
-                      {:lib/type :mbql.stage/mbql
-                       :fields [[:field {:join-alias new-alias} (meta/id :products :category)]
-                                [:field {} "count"]]
-                       :filters [[:=
-                                  {}
-                                  [:field {} "count"]
-                                  [:value {:effective-type :type/Integer} 1337]]]}]
-             :info {:alias/escaped->original {old-alias new-alias}}}
-            (#'result-metadata/rename-join query old-alias new-alias)))))
-
-;;; TODO -- more tests that make sure queries work with additional stages or nested joins
-(deftest ^:parallel restore-original-join-aliases-test
-  (let [query (-> (lib/query
-                   meta/metadata-provider
-                   (lib.tu.macros/mbql-query orders
-                     {:joins  [{:source-table $$products
-                                :condition    [:= $product-id [:field %products.id {:join-alias "*ESCAPED*"}]]
-                                :alias        "*ESCAPED*"
-                                :fields       [[:field %products.title {:join-alias "*ESCAPED*"}]]}]
-                      :fields [$orders.id
-                               [:field %products.title {:join-alias "*ESCAPED*"}]]
-                      :limit  4}))
-                  (assoc-in [:info :alias/escaped->original "*ESCAPED*"] "*ORIGINAL*"))]
-    (is (=? {:stages [{:joins [{:alias "*ESCAPED*"
-                                :fields [[:field {:join-alias "*ESCAPED*"} pos-int?]]
-                                :conditions [[:=
-                                              {}
-                                              [:field {} pos-int?]
-                                              [:field {:join-alias "*ESCAPED*"} pos-int?]]]}]
-                       :fields [[:field {} pos-int?]
-                                [:field {:join-alias "*ESCAPED*"} pos-int?]]}]
-             :info {:alias/escaped->original {"*ESCAPED*" "*ORIGINAL*"}}}
-            query))
-    (is (=? {:stages [{:joins [{:alias "*ORIGINAL*"
-                                :fields [[:field {:join-alias "*ORIGINAL*"} pos-int?]]
-                                :conditions [[:=
-                                              {}
-                                              [:field {} pos-int?]
-                                              [:field {:join-alias "*ORIGINAL*"} pos-int?]]]}]
-                       :fields [[:field {} pos-int?]
-                                [:field {:join-alias "*ORIGINAL*"} pos-int?]]}]
-             :info {:alias/escaped->original {"*ESCAPED*" "*ORIGINAL*"}}}
-            (#'result-metadata/restore-original-join-aliases query)))))
 
 ;;; adapted from [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test

@@ -64,7 +64,6 @@
    [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
-   [:alias/escaped->original {:optional true} [:maybe [:map-of ::lib.schema.join/alias ::lib.schema.join/alias]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.

@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.56.0
+
+- Join alias escaping has been reworked; when compiling MBQL for a join please use
+  `metabase.driver-api.core/qp.add.alias` instead of `:join-alias`. (This is mostly relevant if you have a custom
+  `metabase.driver.sql.query-processor/join->honeysql` implementation.)
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.

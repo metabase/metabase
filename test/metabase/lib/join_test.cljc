@@ -217,11 +217,9 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}
           metadata (lib/returned-columns query)]
-      (is (=? [(merge (meta/field-metadata :categories :name)
+      (is (=? [(merge (-> (m/filter-vals some? (meta/field-metadata :categories :name))
+                          (dissoc :ident))
                       {:display-name         "Name"
-                       :ident                (lib.metadata.ident/explicitly-joined-ident
-                                              #_col-ident  "RDOjlMfV-Fg8UwZMPWiq3"
-                                              #_join-ident "dJbULfDmVAyTENMCo7q1q")
                        :lib/source           :source/fields
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))

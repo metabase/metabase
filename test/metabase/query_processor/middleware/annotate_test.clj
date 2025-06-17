@@ -209,7 +209,6 @@
                              {:name          "EAN"
                               :display_name  "Products → Ean"
                               :base_type     :type/Text
-                              :semantic_type nil
                               :id            %ean
                               :field_ref     &Products.ean})
                            (ean-metadata (add-column-info nested-query {:cols []}))))))))))))))

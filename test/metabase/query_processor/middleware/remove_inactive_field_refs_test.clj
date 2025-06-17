@@ -94,7 +94,7 @@
                       mt/cols
                       (map :display_name))))
           (is (= ["ID" "Ean" "Title" "Category" "Vendor" "Price" "Rating" "Created At"
-                  "Card → ID 2" "Card → Total" "Card → Tax" "Card → Vendor"]
+                  "Card → ID" "Card → Total" "Card → Tax" "Card → Vendor"]
                  (->> (mt/process-query join-query)
                       mt/cols
                       (map :display_name)))))
@@ -147,7 +147,7 @@
                                 (map :display_name))))
                     (testing "in joins too"
                       (is (= ["ID" "Title" "Category" "Price" "Rating" "Created At"
-                              "Card → ID 2" "Card → Total"]
+                              "Card → ID" "Card → Total"]
                              (->> (qp/process-query join-query)
                                   mt/cols
                                   (map :display_name)))))))))

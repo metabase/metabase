@@ -1746,12 +1746,13 @@
    [:sequential :any]])
 
 (mu/defmethod join->honeysql :sql :- HoneySQLJoin
-  [driver {:keys [condition], join-alias :alias, :as join} :- driver-api/Join]
-  {:pre [(string? join-alias)]}
-  [[(join-source driver join)
-    (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
-      [table-alias])]
-   (->honeysql driver condition)])
+  [driver {:keys [condition], :as join} :- driver-api/Join]
+  (let [join-alias ((some-fn driver-api/qp.add.alias :alias) join)]
+    (assert (string? join-alias))
+    [[(join-source driver join)
+      (let [table-alias (->honeysql driver (h2x/identifier :table-alias join-alias))]
+        [table-alias])]
+     (->honeysql driver condition)]))
 
 (defn- apply-joins-honey-sql-2
   "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).

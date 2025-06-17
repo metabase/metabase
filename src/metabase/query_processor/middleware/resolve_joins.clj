@@ -17,7 +17,7 @@
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
-  aliases be unique; that is handled by the [[metabase.query-processor.middleware.escape-join-aliases]] middleware."
+  aliases be unique."
   [:sequential {:min 1} mbql.s/Join])
 
 (def ^:private UnresolvedMBQLQuery

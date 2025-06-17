@@ -21,11 +21,9 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -55,48 +53,6 @@
 (mr/def ::cols
   [:maybe [:sequential ::col]])
 
-;;; TODO -- deduplicate with [[metabase.lib.remove-replace/rename-join]]
-(mu/defn- rename-join :- ::lib.schema/query
-  "Rename all joins with `old-alias` in a query to `new-alias`. Does not currently different between multiple join
-  with the same name appearing in multiple locations. Surgically updates only things that are actual join aliases and
-  not other occurrences of the string.
-
-  This is meant to use to reverse the join renaming done
-  by [[metabase.query-processor.middleware.escape-join-aliases]]."
-  [query     :- ::lib.schema/query
-   old-alias :- ::lib.schema.join/alias
-   new-alias :- ::lib.schema.join/alias]
-  (lib.walk/walk
-   query
-   (letfn [(update-field-refs [x]
-             (if (keyword? x)
-               x
-               (lib.util.match/replace x
-                 [:field (opts :guard #(= (:join-alias %) old-alias)) id-or-name]
-                 [:field (assoc opts :join-alias new-alias) id-or-name])))]
-     (fn [_query path-type _path stage-or-join]
-       (case path-type
-         :lib.walk/join
-         (let [join stage-or-join]
-           (-> join
-               (update :alias (fn [current-alias]
-                                (if (= current-alias old-alias)
-                                  new-alias
-                                  current-alias)))
-               (m/update-existing :fields update-field-refs)
-               (update :conditions update-field-refs)))
-
-         :lib.walk/stage
-         (let [stage stage-or-join]
-           (update-field-refs stage)))))))
-
-(mu/defn- restore-original-join-aliases :- ::lib.schema/query
-  [query :- ::lib.schema/query]
-  (reduce
-   (fn [query [old-alias new-alias]]
-     (rename-join query old-alias new-alias))
-   query
-   (get-in query [:info :alias/escaped->original])))
 
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from MLv2. We'll generally prefer the values
@@ -433,7 +389,6 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (let [query' (restore-original-join-aliases query)]
-     (->> initial-cols
-          (add-extra-metadata query')
-          cols->legacy-metadata))))
+   (->> initial-cols
+        (add-extra-metadata query)
+        cols->legacy-metadata)))

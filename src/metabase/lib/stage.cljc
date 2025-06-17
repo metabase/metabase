@@ -297,6 +297,8 @@
 
 ;;; TODO (Cam 6/12/25) -- we should just make sure [[fields-columns]] and `returned-columns` for a join comes back
 ;;; with IDs (and does name resolution) in those methods instead of doing it here
+;;;
+;;; TODO (Cam 6/17/25) -- 80% sure this doesn't do anything useful and we can remove it
 (defn- resolve-id
   "Try to make sure we can have an ID for this column so we can use that for deduplication purposes."
   [query stage-number col]

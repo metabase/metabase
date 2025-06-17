@@ -19,7 +19,6 @@
    [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
    [metabase.query-processor.middleware.desugar :as desugar]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
    [metabase.query-processor.middleware.expand-macros :as expand-macros]
    [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
@@ -131,7 +130,6 @@
    (ensure-legacy #'resolve-joins/resolve-joins)
    (ensure-legacy #'resolve-joined-fields/resolve-joined-fields)
    (ensure-legacy #'fix-bad-refs/fix-bad-references)
-   (ensure-legacy #'escape-join-aliases/escape-join-aliases)
    (ensure-pmbql-for-unclean-query #'qp.remove-inactive-field-refs/remove-inactive-field-refs)
    ;; yes, this is called a second time, because we need to handle any joins that got added
    (ensure-legacy #'qp.middleware.enterprise/apply-sandboxing)
@@ -184,18 +182,13 @@
      query
      middleware)))
 
-(mu/defn- restore-join-aliases :- :map
-  [preprocessed-query :- :map]
-  (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
-    (escape-join-aliases/restore-aliases preprocessed-query replacement)))
-
 (mu/defn query->expected-cols :- [:maybe [:sequential :map]]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."
   [query :- :map]
   (qp.setup/with-qp-setup [query query]
-    (let [preprocessed (-> query preprocess restore-join-aliases)]
+    (let [preprocessed (-> query preprocess)]
       (when-not (= (:type preprocessed) :query)
         (throw (ex-info (i18n/tru "Can only determine expected columns for MBQL queries.")
                         {:type qp.error-type/qp})))
