@@ -5,7 +5,8 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.liquibase :as liquibase]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.honeysql2 :as t2.honeysql])
   (:import
    (liquibase Contexts Liquibase RuntimeEnvironment)
    (liquibase.change Change)
@@ -13,7 +14,7 @@
    (liquibase.changelog.filter ChangeSetFilter)
    (liquibase.changelog.visitor ListVisitor)
    (liquibase.database Database)
-   (liquibase.database.core H2Database MySQLDatabase PostgresDatabase MariaDBDatabase)
+   (liquibase.database.core H2Database MariaDBDatabase MySQLDatabase PostgresDatabase)
    (liquibase.exception RollbackImpossibleException)
    (liquibase.sql Sql)
    (liquibase.sqlgenerator SqlGeneratorFactory)
@@ -68,15 +69,19 @@
 
 (defn- last-deployment
   []
-  (:count (t2/query-one {:select [[:%count.* :count]]
-                         :from   [:databasechangelog]
-                         :where  [:and
-                                  [:= :deployment_id {:select   [:deployment_id]
-                                                      :from     [:databasechangelog]
-                                                      :order-by [[:orderexecuted :desc]]
-                                                      :limit    1}]
-                                  [:not [:= :id "v00.00-000"]]] ;; Can't rollback the initial migration
-                         :limit 1})))
+  (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
+                                         :quoted false)]
+    (if (= 1 (:count (t2/query-one {:select [[[:count [:distinct :deployment_id]] :count]]
+                                    :from   [:databasechangelog]
+                                    :limit  1})))
+      {} ;; don't rollback if there was just one deployment of everything
+      (:count (t2/query-one {:select [[:%count.* :count]]
+                             :from   [:databasechangelog]
+                             :where  [:= :deployment_id {:select   [:deployment_id]
+                                                         :from     [:databasechangelog]
+                                                         :order-by [[:orderexecuted :desc]]
+                                                         :limit    1}]
+                             :limit  1})))))
 
 (mu/defn rollback!
   "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
@@ -91,7 +96,7 @@
     (rollback! :id \"v50.2024-03-18T16:00:00\")"
   ([k :- [:enum :last-deployment "last-deployment"]]
    (let [n (case (keyword k)
-             :last-deployment  (last-deployment))]
+             :last-deployment (last-deployment))]
      (rollback-n-migrations! n)
      #_{:clj-kondo/ignore [:discouraged-var]}
      (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
