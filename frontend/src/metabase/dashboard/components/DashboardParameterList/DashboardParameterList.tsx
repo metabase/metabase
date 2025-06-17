@@ -4,6 +4,7 @@ import {
   setParameterValue,
   setParameterValueToDefault,
 } from "metabase/dashboard/actions";
+import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
 import {
   getDashboardComplete,
   getEditingParameter,
@@ -37,6 +38,7 @@ export function DashboardParameterList({
 
   return (
     <ParametersList
+      className={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME}
       parameters={parameters}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}

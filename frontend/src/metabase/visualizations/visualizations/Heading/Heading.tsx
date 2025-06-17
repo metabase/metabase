@@ -11,6 +11,7 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { Flex } from "metabase/ui";
@@ -58,6 +59,8 @@ export function Heading({
 
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
+  const tc = useTranslateContent();
+
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =
     useToggle(justAdded);
   const isPreviewing = !isFocused;
@@ -65,6 +68,8 @@ export function Heading({
   const [textValue, setTextValue] = useState(settings.text);
   const preventDragging = (e: MouseEvent<HTMLInputElement>) =>
     e.stopPropagation();
+
+  const translatedText = useMemo(() => tc(settings.text), [settings.text, tc]);
 
   // handles a case when settings are updated externally
   useEffect(() => {
@@ -77,9 +82,9 @@ export function Heading({
         dashcard,
         dashboard,
         parameterValues,
-        text: settings.text,
+        text: translatedText,
       }),
-    [dashcard, dashboard, parameterValues, settings.text],
+    [dashcard, dashboard, parameterValues, translatedText],
   );
 
   const hasContent = !isEmpty(settings.text);
