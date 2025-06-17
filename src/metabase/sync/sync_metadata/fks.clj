@@ -152,6 +152,16 @@
                                         [:metabase_table :pk_t] [:= :pk_f.table_id :pk_t.id]]
                                :where  where-clause}]}
 
+            :mysql
+            {:update [:metabase_field :fk_f]
+             :join   [[:metabase_table :fk_t] [:= :fk_f.table_id :fk_t.id]
+                      [:metabase_field :pk_f] [:= :fk_f.fk_target_field_id :pk_f.id]
+                      [:metabase_table :pk_t] [:= :pk_f.table_id :pk_t.id]]
+             :set {:fk_f.fk_target_field_id nil
+                   :fk_f.semantic_type      nil}
+             :where  where-clause}
+
+            :postgres
             {:update [:metabase_field :fk_f]
              :set    {:fk_target_field_id nil
                       :semantic_type      nil}
