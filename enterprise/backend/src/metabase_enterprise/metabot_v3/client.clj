@@ -1,6 +1,8 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
    [clj-http.client :as http]
+   [clojure.core.async :as a]
+   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
@@ -12,6 +14,7 @@
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
+   [metabase.server.streaming-response :as sr]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -63,6 +66,9 @@
 
 (defn- agent-v2-endpoint-url []
   (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent"))
+
+defn- agent-v2-streaming-endpoint-url []
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent/stream"))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-proxy-base-url) "/v1/select-metric"))
@@ -126,6 +132,57 @@
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
+
+(mu/defn streaming-request :- :any
+  "Make a V2 request to the AI Proxy."
+  [{:keys [context messages profile-id conversation-id session-id state]}
+   :- [:map
+       [:context :map]
+       [:messages ::metabot-v3.client.schema/messages]
+       [:profile-id :string]
+       [:conversation-id :string]
+       [:session-id :string]
+       [:state :map]]]
+  (premium-features/assert-has-feature :metabot-v3 "MetaBot")
+  (try
+    (let [url      (agent-v2-streaming-endpoint-url)
+          body     (-> {:messages        messages
+                        :context         context
+                        :conversation_id conversation-id
+                        :profile_id      profile-id
+                        :state           state
+                        :user_id         api/*current-user-id*}
+                       (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
+          _        (metabot-v3.context/log body :llm.log/be->llm)
+          _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
+          options  (cond-> {:headers          {"Accept"                    "text/event-stream"
+                                               "Content-Type"              "application/json;charset=UTF-8"
+                                               "x-metabase-instance-token" (premium-features/premium-embedding-token)
+                                               "x-metabase-session-token"  session-id
+                                               "x-metabase-url"            (system/site-url)}
+                            :body             (->json-bytes body)
+                            :throw-exceptions false
+                            :as :stream}
+                     *debug* (assoc :debug true))
+          response (post! url options)
+          _ (log/info response)
+          response-lines (-> response :body io/reader)]
+      (metabot-v3.context/log (:body response) :llm.log/llm->be)
+      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers}))) keys response #{:body :status :headers})))
+      (if (= (:status response) 200)
+        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                               (loop []
+                                 (when-let [line (.readLine response-lines)]
+                                   (println "LINE" line)
+                                   (.write os (.getBytes (str line "\n") "UTF-8"))
+                                   (.flush os)
+                                   (Thread/sleep 10)
+                                   (recur))))
+        (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
+                        {:request (assoc options :body body)
+                          :response response}))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 
