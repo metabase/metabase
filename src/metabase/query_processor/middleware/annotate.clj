@@ -7,7 +7,6 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
@@ -22,16 +21,10 @@
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
-(mr/def ::legacy-source
-  [:enum :aggregation :fields :breakout :native])
-
-(mr/def ::super-broken-legacy-field-ref
-  mbql.s/Reference)
-
 (mr/def ::col
   [:map
-   [:source    {:optional true} ::legacy-source]
-   [:field-ref {:optional true} ::super-broken-legacy-field-ref]])
+   [:source    {:optional true} ::lib.metadata.result-metadata/legacy-source]
+   [:field_ref {:optional true} ::lib.metadata.result-metadata/super-broken-legacy-field-ref]])
 
 (mr/def ::snake_cased-col
   [:and

@@ -317,19 +317,19 @@
         lib-cols (if (empty? lib-cols)
                    (mapv basic-native-col initial-cols)
                    lib-cols)]
-    (as-> initial-cols cols
-      (map (fn [col]
-             (update-keys col u/->kebab-case-en))
-           cols)
-      (cond-> cols
-        (seq lib-cols) (merge-cols lib-cols))
-      (add-converted-timezone query cols)
-      (add-source-alias cols)
-      (add-legacy-source cols)
-      (add-traditional-display-names query cols)
-      (add-legacy-field-refs query cols)
-      (deduplicate-names cols)
-      (merge-model-metadata query cols))))
+    (->> initial-cols
+         (map (fn [col]
+                (update-keys col u/->kebab-case-en)))
+         ((fn [cols]
+            (cond-> cols
+              (seq lib-cols) (merge-cols lib-cols))))
+         (add-converted-timezone query)
+         add-source-alias
+         add-legacy-source
+         (add-traditional-display-names query)
+         (add-legacy-field-refs query)
+         deduplicate-names
+         (merge-model-metadata query))))
 
 (defn- add-unit [col]
   (merge

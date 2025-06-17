@@ -19,7 +19,7 @@
   (result-metadata/expected-cols query initial-columns))
 
 (deftest ^:parallel col-info-field-ids-test
-  (testing {:base-type "make sure columns are comming back the way we'd expect for :field clauses"}
+  (testing "make sure columns are comming back the way we'd expect for :field clauses"
     (lib.tu.macros/$ids venues
       (is (=? [{:source    :fields
                 :field-ref $price}]

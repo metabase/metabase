@@ -138,7 +138,10 @@
   [{breakouts :breakout, aggregations :aggregation}]
   (every? empty? [aggregations breakouts]))
 
-(defn- append-join-fields [fields join-fields]
+(defn- append-join-fields
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
+  to Lib we can maybe use that."
+  [fields join-fields]
   (into []
         (comp cat
               (m/distinct-by (fn [clause]

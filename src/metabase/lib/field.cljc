@@ -110,7 +110,7 @@
    ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
    ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
    ;; the original column (eg. in breakout) would not.
-   (let [inherited-temporal-unit-keys (cond-> [:inherited-temporal-unit]
+   (let [inherited-temporal-unit-keys (cond-> '(:inherited-temporal-unit)
                                         lib.metadata.calculation/*propagate-binning-and-bucketing*
                                         (conj :temporal-unit))]
      (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
@@ -132,12 +132,11 @@
    ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
    ;; keys to track which Fields it adds or needs to remap, and then the post-processing middleware
    ;; does the actual remapping based on that info)
-   (when-let [external-namespaced-options (not-empty (into {}
-                                                           (filter (fn [[k _v]]
-                                                                     (and (qualified-keyword? k)
-                                                                          (not= (namespace k) "lib")
-                                                                          (not (str/starts-with? (namespace k) "metabase.lib")))))
-                                                           opts))]
+   (when-let [external-namespaced-options (not-empty (m/filter-keys (fn [k]
+                                                                      (and (qualified-keyword? k)
+                                                                           (not= (namespace k) "lib")
+                                                                           (not (str/starts-with? (namespace k) "metabase.lib"))))
+                                                                    opts))]
      {:options external-namespaced-options})))
 
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
