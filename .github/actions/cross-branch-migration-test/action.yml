@@ -80,7 +80,7 @@ runs:
     - name: Run backend on base branch
       run: |
         clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
-        tail -F metabase.log &
+        cat metabase.log
       shell: bash
 
     - name: Wait for Metabase to start
