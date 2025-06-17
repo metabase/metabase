@@ -16,6 +16,7 @@ import { Sortable } from "metabase/core/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
+import { getRootElement } from "metabase/lib/get-root-element";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -129,13 +130,17 @@ const BookmarkList = ({
   });
 
   const handleSortStart = useCallback(() => {
-    document.body.classList.add(GrabberS.grabbing);
+    const rootElement = getRootElement();
+
+    rootElement.classList.add(GrabberS.grabbing);
     setIsSorting(true);
   }, []);
 
   const handleSortEnd = useCallback(
     async (input: DragEndEvent) => {
-      document.body.classList.remove(GrabberS.grabbing);
+      const rootElement = getRootElement();
+
+      rootElement.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
       const newIndex = bookmarks.findIndex((b) => b.id === input.over?.id);
       const oldIndex = bookmarks.findIndex((b) => b.id === input.active.id);

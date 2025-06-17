@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
+import { getRootElement } from "metabase/lib/get-root-element";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -50,6 +51,7 @@ if (hasPremiumFeature("metabot_v3")) {
     const { startNewConversation } = useMetabotAgent();
 
     return useMemo(() => {
+      const rootElement = getRootElement();
       const ret: PaletteAction[] = [
         {
           id: "initialize_metabot",

@@ -8,6 +8,7 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
+import { getRootElement } from "metabase/lib/get-root-element";
 
 import PopoverS from "./Popover.module.css";
 
@@ -92,6 +93,7 @@ export default class Popover extends Component {
   };
 
   _getPopoverElement(isOpen) {
+    const rootElement = getRootElement();
     // 3s is an overkill for Cypress, but let's start with it and dial it down
     // if we see that the flakes don't appear anymore
     const resizeTimer = isCypressActive ? 3000 : 100;
@@ -104,7 +106,7 @@ export default class Popover extends Component {
         this.props.containerClassName,
       );
       this._popoverElement.dataset.testid = "popover";
-      document.body.appendChild(this._popoverElement);
+      rootElement.appendChild(this._popoverElement);
 
       this._timer = setInterval(() => {
         const { width, height } = this._popoverElement.getBoundingClientRect();
@@ -363,13 +365,14 @@ export default class Popover extends Component {
     let target;
 
     if (this.props.targetEvent) {
+      const rootElement = getRootElement();
       // create a fake element at the event coordinates
-      target = document.getElementById("popover-event-target");
+      target = rootElement.querySelector("#popover-event-target");
 
       if (!target) {
         target = document.createElement("div");
         target.id = "popover-event-target";
-        document.body.appendChild(target);
+        rootElement.appendChild(target);
       }
 
       target.style.left = this.props.targetEvent.clientX - 3 + "px";

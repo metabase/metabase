@@ -6,6 +6,7 @@ import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
+import { getRootElement } from "metabase/lib/get-root-element";
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import type * as Lib from "metabase-lib";
@@ -28,7 +29,8 @@ type Options = {
 };
 
 function getTooltipParent() {
-  let el = document.getElementById("query-builder-tooltip-parent");
+  const rootElement = getRootElement();
+  let el = rootElement.querySelector("#query-builder-tooltip-parent");
   if (el) {
     return el;
   }
@@ -36,7 +38,7 @@ function getTooltipParent() {
   el = document.createElement("div");
   el.id = "query-builder-tooltip-parent";
   el.className = S.tooltips;
-  document.body.append(el);
+  rootElement.append(el);
   return el;
 }
 

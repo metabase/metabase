@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
+import { getRootElement } from "metabase/lib/get-root-element";
 import { PreventEagerPortal } from "metabase/ui";
 
 // hack to prevent parent TippyPopover from closing when selecting a Menu.Item
@@ -27,7 +28,8 @@ function MenuDropdownContent({ children }: MenuDropdownContentProps) {
     useSequencedContentCloseHandler();
 
   useEffect(() => {
-    setupCloseHandler(document.body, () => undefined);
+    const rootElement = getRootElement();
+    setupCloseHandler(rootElement, () => undefined);
     return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler]);
 

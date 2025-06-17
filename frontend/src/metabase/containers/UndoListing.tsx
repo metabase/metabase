@@ -17,6 +17,7 @@ import { t } from "ttag";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { capitalize, inflect } from "metabase/lib/formatting";
+import { getRootElement } from "metabase/lib/get-root-element";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   dismissUndo,
@@ -200,6 +201,7 @@ export function UndoListOverlay({
   >({});
 
   useEffect(() => {
+    const rootElement = getRootElement();
     // When a new undo is added, we move the Portals' target to the
     // end of the body so that its renders on top of the z-index stack, and
     // thus on top of any other overlays.
@@ -218,7 +220,7 @@ export function UndoListOverlay({
       if (prev.length < undos.length) {
         // Avoid moving the portal if we're not adding new undos.
         // Undos transitioning out do not need to be rendered on top.
-        document.body.appendChild(target);
+        rootElement.appendChild(target);
       }
 
       // Allow new items to transition

@@ -1,6 +1,7 @@
 import Bowser from "bowser";
 
 import { b64url_to_utf8 } from "metabase/lib/encoding";
+import { getRootElement } from "metabase/lib/get-root-element";
 import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 
 import type { ReportableEntityName } from "./types";
@@ -9,6 +10,7 @@ export function downloadObjectAsJson(
   exportObj: Record<string, any>,
   exportName: string,
 ) {
+  const rootElement = getRootElement();
   const dataStr =
     "data:text/json;charset=utf-8," +
     encodeURIComponent(JSON.stringify(exportObj, null, 2));
@@ -16,7 +18,7 @@ export function downloadObjectAsJson(
   downloadAnchorNode.setAttribute("href", dataStr);
   downloadAnchorNode.setAttribute("aria-label", "download diagnostic info");
   downloadAnchorNode.setAttribute("download", exportName + ".json");
-  document.body.appendChild(downloadAnchorNode);
+  rootElement.appendChild(downloadAnchorNode);
   downloadAnchorNode.click();
   downloadAnchorNode.remove();
 }

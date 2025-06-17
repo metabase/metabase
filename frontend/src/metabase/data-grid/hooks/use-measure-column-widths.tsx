@@ -8,6 +8,7 @@ import type { Root } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
+import { getRootElement } from "metabase/lib/get-root-element";
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -45,6 +46,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       onMeasured: (columnSizingState: ColumnSizingState) => void,
       skipColumnIds: string[] = [],
     ) => {
+      const rootElement = getRootElement();
       // Create hidden container for measurement rendering
       const measureRoot = document.createElement("div");
       let measureRootTree: Root | undefined = undefined;
@@ -55,7 +57,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
       measureRoot.style.pointerEvents = "none";
       measureRoot.style.zIndex = "-999";
       measureRoot.style.fontSize = DEFAULT_FONT_SIZE;
-      document.body.appendChild(measureRoot);
+      rootElement.appendChild(measureRoot);
 
       const skipColumnIdsSet = new Set(skipColumnIds);
 
@@ -108,7 +110,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         // Asynchronously unmount the root after the current render has completed to avoid race conditions.
         setTimeout(() => {
           measureRootTree?.unmount();
-          document.body.removeChild(measureRoot);
+          rootElement.removeChild(measureRoot);
         }, 0);
       };
 

@@ -17,6 +17,7 @@ export const ShadowRootProvider = ({ children }: PropsWithChildren) => {
       <div
         ref={(el) => {
           if (el) {
+            window["mb_root_element"] = el;
             setRootElement(el);
           }
         }}
