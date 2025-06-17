@@ -5,10 +5,7 @@ import { useUpdateFieldMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { NameDescriptionInput } from "metabase/metadata/components";
-import {
-  getFieldDisplayName,
-  getRawTableFieldId,
-} from "metabase/metadata/utils/field";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
@@ -80,7 +77,7 @@ export const FieldSection = ({
 
             sendToast({
               icon: "check",
-              message: t`Description for ${getFieldDisplayName(field)} updated`,
+              message: t`Description for ${field.display_name} updated`,
             });
           }}
         />

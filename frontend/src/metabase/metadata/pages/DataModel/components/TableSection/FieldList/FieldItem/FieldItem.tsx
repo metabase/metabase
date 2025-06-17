@@ -7,10 +7,7 @@ import { useUpdateFieldMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import EditableText from "metabase/core/components/EditableText";
-import {
-  getFieldDisplayName,
-  getRawTableFieldId,
-} from "metabase/metadata/utils/field";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Group, Icon, TextareaBlurChange, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
@@ -65,7 +62,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
     if (!error) {
       sendToast({
         icon: "check",
-        message: t`Description for ${getFieldDisplayName(field)} updated`,
+        message: t`Description for ${field.display_name} updated`,
       });
     }
   };
