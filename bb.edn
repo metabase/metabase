@@ -3,7 +3,8 @@
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage" "test" "bin/lint-migrations-file/src"]
  :deps           {metosin/malli {:mvn/version "0.17.0"}
-                  table/table   {:mvn/version "0.5.0"}}
+                  table/table   {:mvn/version "0.5.0"}
+                  mvxcvi/puget  {:mvn/version "1.3.4"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -13,6 +14,16 @@
               (list 'let
                     (vector 'parsed (list 'cli/parse! (list 'current-task)))
                     (cons 'do body))))
+
+  alias
+  {:doc        "Installs 'mage' alias and autocomplete"
+   :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
+                ["./bin/mage alias zsh" "Prints shell script to put into .zshrc for zsh users"]]
+   :requires   [[mage.alias :as alias]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum "bash" "zsh" "fish"]]]
+   :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
   {:doc      "Runs cljfmt on staged files"
@@ -141,15 +152,6 @@
    :requires [[mage.stats-repl :as stats-repl]]
    :task     (stats-repl/connect (cli/parse! (current-task)))}
 
-  setup-autocomplete
-  {:doc      "Prints instructions to setup autocomplete"
-   :examples [["./bin/mage setup-autocomplete" "Shows a link to instructions to make autocomplete work."]]
-   :requires [[mage.autotab :as autotab]]
-   :arg-schema [:or
-                [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
-   :task     (task! (autotab/instructions parsed))}
-
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; - hidden from `./bin/mage` listing and `bb tasks`
@@ -193,33 +195,35 @@
                (apply readability/check arguments))}
 
   -example-calculator
-  {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info
-   :doc        "The sample task docstring"
+  {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
+   ;; Keep these short, they need to fit on one line in the output from `./bin/mage -h`.
+   :doc        "The example calculator's task docstring"
    ;; examples get printed out when you pass -h or --help.
    :examples   [["./bin/mage -example-calculator 1 + 99" "evaluates to 100"]
                 ["./bin/mage -example-calculator 100 - 99" "evaluates to 1"]]
    ;; The task is the actual code that runs when you run the task.
    :task       (task!
-                (println "Parsed input:") (prn parsed)
-                (let [{:keys [arguments data]} (cli/parse! (current-task))
+                (println "Parsed input:") (u/pp parsed)
+                (let [{:keys [arguments data]} parsed
                       [a op b]                 arguments]
                   (println a (name op) b "=" (c/blue (({:+ + :- -} op) a b)))))
    ;; (optional) `:require` lazily libraries for just your task:
-   :requires   [[mage.color :as c]]
+   :requires   [[mage.color :as c]
+                [mage.util :as u]]
    ;; (optional) `:options` are passed to [[clojure.tools.cli/parse-opts]].
    ;; See: https://clojure.github.io/tools.cli/index.html#clojure.tools.cli/parse-opts
-   :options    [["-a" "--a-cli-flag" "Check staged files (not actually used)"]
-                ["-p" "--port PORT" "Some port we care about in -example (not actually used)"]]
+   :options    [["-n" "--negate" "Negate the result of the calculation"]
+                ["-a" "--also-add N" "Add N to the result of the calculation"]]
    ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
    :arg-schema [:tuple :int [:enum :+ :-] :int]
-   ;; (optional) `:usage-fn` is a function called with the current-task map
-   ;; and returns a string containing extra-detailed usage information.
-   :usage-fn   (fn [{:keys [doc]}]
-                 (println "Optional extra usage information, if you want.")
-                 (println "Reversed docstring:" (apply str (reverse doc))))
+   ;; (optional) `:usage-fn` is a function called with the current-task map.
+   ;; Returns a string containing extra-detailed usage information.
+   :usage-fn   (fn [{:keys [doc] :as _task}]
+                 (str "Optional extra usage information, for explicit callouts.\n"
+                      "Reversed docstring: '" (c/green (apply str (reverse doc))) "'"))
    ;; (optional) Any other keys are completely allowed. Put things to lookup or that you want to be easy to change
    ;; here. These will be returned from `(current-task)`. See: start-db for an example of using `:ports` to define a
-   ;; map of ports.
+   ;; top-level map of ports. If something should be easily accessible in the task, put it here.
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
