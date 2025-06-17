@@ -13,6 +13,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Tooltip,
 } from "metabase/ui";
 
 import { API_KEY_PLACEHOLDER } from "../constants";
@@ -65,13 +66,15 @@ export const GetCodeStep = () => {
             onChange={(e) => updateSettings({ apiKey: e.target.value })}
             error={apiKeyValidationError}
             rightSection={
-              <ActionIcon
-                onClick={openCreateApiKeyModal}
-                variant="subtle"
-                loading={isValidatingApiKey}
-              >
-                <Icon name="key" size={16} />
-              </ActionIcon>
+              <Tooltip label={t`Create API Key`}>
+                <ActionIcon
+                  onClick={openCreateApiKeyModal}
+                  variant="subtle"
+                  loading={isValidatingApiKey}
+                >
+                  <Icon name="key" size={16} />
+                </ActionIcon>
+              </Tooltip>
             }
           />
         </Stack>
