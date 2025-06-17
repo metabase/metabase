@@ -32,7 +32,7 @@ export function getRowSelectColumn() {
       </Flex>
     ),
     cell: ({ row }: { row: Row<RowValues> }) => (
-      <Flex px=".5rem" h="100%" align="center">
+      <Flex p=".5rem" h="100%" align="start">
         <Checkbox
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
