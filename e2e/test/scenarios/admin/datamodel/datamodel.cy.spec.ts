@@ -151,6 +151,7 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("POST", "/api/field/*/values").as("fieldValuesUpdate");
     cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
   });
 
@@ -275,7 +276,7 @@ describe("scenarios > admin > datamodel > field", () => {
               .type(remappedNullValue);
             cy.button("Save").click();
           });
-        // cy.button("Saved!").should("be.visible"); // TODO: add toast
+        cy.wait("@fieldValuesUpdate");
 
         cy.log("Make sure custom mapping appears in QB");
         H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
