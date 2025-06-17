@@ -4,7 +4,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 interface TabButtonProps {
   isSelected?: boolean;
@@ -51,8 +50,6 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
 
 export const TabButtonRoot = styled.div<TabButtonProps>`
   display: flex;
-  border-top-left-radius: var(--mantine-radius-default);
-  border-top-right-radius: var(--mantine-radius-default);
   padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px);
   color: ${(props) =>
     props.isSelected && !props.disabled
@@ -65,15 +62,14 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
   border-bottom: 0.125rem solid
     ${(props) =>
       props.isSelected && !props.disabled
-        ? color("brand")
+        ? "var(--mb-color-brand)"
         : "var(--mb-color-border)"};
 
   :hover {
     ${(props) =>
-      props.isSelected &&
       !props.disabled &&
       css`
-        border-bottom-color: ${color("brand")};
+        color: var(--mb-color-brand);
       `}
   }
 `;
