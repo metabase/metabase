@@ -1052,6 +1052,29 @@ describe("scenarios > question > filter", () => {
       cy.findByLabelText("Filter value").should("be.visible");
     });
   });
+
+  it("should render the selected item in view", () => {
+    cy.viewport(1280, 320);
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+    cy.realPress("ArrowDown");
+
+    H.popover()
+      .findByRole("tree")
+      .parent()
+      .then((el) => {
+        cy.wrap(el[0].scrollTop).should("be.greaterThan", 0);
+      });
+
+    H.popover().findByText("Created At").should("be.visible");
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {
