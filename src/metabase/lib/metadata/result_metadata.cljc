@@ -190,8 +190,9 @@
                                                          (log/error e "Warning: column metadata has invalid :lib/expression-name (this was probably incorrectly propagated from a previous stage) (QUE-1342)")
                                                          nil))]
                                        (lib.util.match/match-one expr
-                                         [:convert-timezone _opts _expr source-tz _dest-tz]
-                                         source-tz)))]
+                                         :convert-timezone
+                                         (let [[_convert-timezone _opts _expr source-tz] &match]
+                                           source-tz))))]
             (cond-> col
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))

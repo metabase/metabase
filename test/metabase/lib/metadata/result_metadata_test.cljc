@@ -298,7 +298,7 @@
                                                                 "UTC"))))))
 
 (deftest ^:parallel col-info-expressions-test-2b
-  (testing "col-info for convert-timezone should have a `converted-timezone` property"
+  (testing "col-info for convert-timezone should have a `converted-timezone` property (convert-timezone nested inside another expression)"
     (is (=? {:converted-timezone "Asia/Ho_Chi_Minh"
              :base-type          :type/DateTime
              :name               "last-login-converted"
@@ -311,6 +311,17 @@
                                                                  "UTC")
                                                                 2
                                                                 :hour))))))
+
+(deftest ^:parallel col-info-expressions-test-3
+  (testing "converted-timezone should come back for expression refs"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query users
+                   {:expressions {"expr" [:convert-timezone [:field (meta/id :users :last-login) nil] "Asia/Seoul"]}
+                    :fields      [[:expression "expr"]]}))]
+      (is (=? [{:name               "expr"
+                :converted-timezone "Asia/Seoul"}]
+              (result-metadata/expected-cols query))))))
 
 (defn- col-info-for-aggregation-clause
   ([ag-clause]
