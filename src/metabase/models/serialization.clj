@@ -71,7 +71,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize]))
+   [toucan2.realize :as t2.realize])
+  (:import [com.google.common.base Utf8]))
 
 (set! *warn-on-reflection* true)
 
@@ -843,11 +844,16 @@
     (find-by-identity-hash model id-str)))
 
 (def ^:private max-label-length 100)
+(def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
 
-(defn- truncate-label [s]
-  (if (> (count s) max-label-length)
-    (subs s 0 max-label-length)
-    s))
+(defn- truncate-label [^String s]
+  (let [char-count (count s)
+        byte-count (Utf8/encodedLength s)]
+    (cond
+      (> byte-count max-label-bytes)  (let [target-count (int (* char-count (/ max-label-bytes byte-count)))]
+                                        (subs s 0 target-count))
+      (> char-count max-label-length) (subs s 0 max-label-length)
+      :else                           s)))
 
 (defn- lower-plural [s]
   (-> s u/lower-case-en (str "s")))
