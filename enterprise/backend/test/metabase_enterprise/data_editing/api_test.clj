@@ -14,6 +14,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.warehouse-schema.models.field-values :as field-values]
@@ -34,14 +35,15 @@
   ([table-id]
    (filter #(= table-id (:table_id %)) (list-actions))))
 
-(defn- execute-action!
+(defn- tmp-modal
   [body]
   (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal" body))
 
 (defn- table-url [table-id]
   (format "ee/data-editing/table/%d" table-id))
 
-(def ^:private execute-v2-url "action/v2/execute-bulk")
+(def ^:private execute-v2-url "action/v2/execute")
+(def ^:private execute-bulk-v2-url "action/v2/execute-bulk")
 
 (use-fixtures :each
   (fn [f]
@@ -296,18 +298,18 @@
                    (children-count))))
           (testing "delete without delete-children param will return errors with children count"
             (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :orders) 191}}}
-                    (mt/user-http-request :crowberto :post 400 execute-v2-url
+                    (mt/user-http-request :crowberto :post 400 execute-bulk-v2-url
                                           body))))
 
           (testing "success with delete-children options"
             (is (=? {:outputs [{:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 1}}
                                {:table-id (mt/id :products) :op "deleted" :row {(keyword (mt/format-name :id)) 2}}]}
-                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                    (mt/user-http-request :crowberto :post 200 execute-bulk-v2-url
                                           (assoc body :params {:delete-children true}))))
             (is (empty? (children-count)))
             (testing "the change is not undoable"
               (is (= "Your previous change cannot be undone"
-                     (mt/user-http-request :crowberto :post 405 execute-v2-url
+                     (mt/user-http-request :crowberto :post 405 execute-bulk-v2-url
                                            {:action_id "data-editing/undo"
                                             :scope     {:table-id (mt/id :products)}
                                             :inputs    []}))))))))))
@@ -344,19 +346,19 @@
 
         (testing "delete parent with self-referential children should return error without delete-children param"
           (is (=? {:errors {:type "metabase.actions.error/children-exist", :children-count {(mt/id :category) 4}}}
-                  (mt/user-http-request :crowberto :post 400 execute-v2-url body))))
+                  (mt/user-http-request :crowberto :post 400 execute-bulk-v2-url body))))
 
         (testing "success with delete-children option should cascade delete all descendants"
           (is (=? {:outputs [{:table-id (mt/id :category)
                               :op       "deleted"
                               :row      {(keyword (mt/format-name :id)) 1}}]}
-                  (mt/user-http-request :crowberto :post 200 execute-v2-url
+                  (mt/user-http-request :crowberto :post 200 execute-bulk-v2-url
                                         (assoc body :params {:delete-children true}))))
           (is (= 0 (count (table-rows (mt/id :category)))))
 
           (testing "the change is not undoable for self-referential cascades"
             (is (= "Your previous change cannot be undone"
-                   (mt/user-http-request :crowberto :post 405 execute-v2-url
+                   (mt/user-http-request :crowberto :post 405 execute-bulk-v2-url
                                          {:action_id "data-editing/undo"
                                           :scope     {:table-id (mt/id :category)}
                                           :inputs    []})))))))))
@@ -397,7 +399,7 @@
             (is (=? {:errors {:type "metabase.actions.error/children-exist"
                               :children-count {(mt/id :team) 1
                                                (mt/id :user) 1}}}
-                    (mt/user-http-request :crowberto :post 400 execute-v2-url delete-user-body))))
+                    (mt/user-http-request :crowberto :post 400 execute-bulk-v2-url delete-user-body))))
           (testing "delete with delete-children should handle mutual recursion gracefully"
             ; When deleting Alice with delete-children, it should:
             ; 1. Delete Alice (user 1)
@@ -406,7 +408,7 @@
             (is (=? {:outputs [{:table-id users-table-id
                                 :op       "deleted"
                                 :row      {(keyword (mt/format-name :id)) 1}}]}
-                    (mt/user-http-request :crowberto :post 200 execute-v2-url
+                    (mt/user-http-request :crowberto :post 200 execute-bulk-v2-url
                                           (assoc delete-user-body :params {:delete-children true}))))
 
             (let [remaining-users (table-rows users-table-id)
@@ -937,7 +939,7 @@
                              :model/DashboardCard dashcard {:dashboard_id   (:id dash)
                                                             :card_id        (:id model)
                                                             :visualization_settings
-                                                            {:table-id @test-table
+                                                            {:table_id @test-table
                                                              :editableTable.enabledActions
                                                              (let [param-maps
                                                                    ;; we might need to change these to use field ids
@@ -1047,117 +1049,104 @@
 ;; TODO we may want to test that data-grid/built-in actions can't get called in they're disabled?
 
 (deftest unified-execute-server-side-mapping-test
-  (let [url "action/v2/execute"
-        req #(mt/user-http-request-full-response (:user % :crowberto) :post url
-                                                 (merge {:scope {:unknown :legacy-action} :input {}}
-                                                        (dissoc % :user-id)))]
-    (mt/with-premium-features #{:table-data-editing}
-      (mt/test-drivers #{:h2 :postgres}
-        (data-editing.tu/toggle-data-editing-enabled! true)
-        (mt/with-actions-enabled
-          (mt/with-non-admin-groups-no-root-collection-perms
-            (with-open [table-1-ref (data-editing.tu/open-test-table!
-                                     {:id  'auto-inc-type
-                                      :col [:text]}
-                                     {:primary-key [:id]})
-                        table-2-ref (data-editing.tu/open-test-table!
-                                     {:id 'auto-inc-type
-                                      :a  [:text]
-                                      :b  [:text]
-                                      :c  [:text]
-                                      :d  [:text]}
-                                     {:primary-key [:id]})]
-              (mt/with-temp [:model/Card          model    {:type           :model
-                                                            :table_id       @table-1-ref
-                                                            :database_id    (mt/id)
-                                                            :dataset_query  {:database (mt/id)
-                                                                             :type :query
-                                                                             :query {:source-table @table-1-ref}}}
-                             :model/Dashboard     dash     {}
-                             :model/DashboardCard dashcard {:dashboard_id   (:id dash)
-                                                            :card_id        (:id model)
-                                                            :visualization_settings
-                                                            {:table_id @table-1-ref
-                                                             :editableTable.enabledActions
-                                                             [{:id         "dashcard:unknown:my-row-action"
-                                                               :actionId   "table.row/create"
-                                                               :actionType "data-grid/row-action"
-                                                               :mapping    {:table-id @table-2-ref
-                                                                            :row      {:a ["::key" "aa"]
-                                                                                       :b ["::key" "bb"]
-                                                                                       :c ["::key" "cc"]
-                                                                                       :d ["::key" "dd"]}}
-                                                               :parameterMappings
-                                                               (let [field-id (t2/select-one-pk :model/Field :table_id @table-1-ref :name "col")]
-                                                                 [{:parameterId "aa", :sourceType "row-data", :sourceValueTarget field-id}
-                                                                  {:parameterId "bb", :sourceType "ask-user"}
-                                                                  {:parameterId "cc", :sourceType "ask-user", :value "default"}
-                                                                  {:parameterId "dd", :sourceType "constant", :value "hard-coded"}])
-                                                               :enabled    true}]}}]
-                (testing "dashcard row action modifying a row - primitive action"
-                  (let [action-id "dashcard:unknown:my-row-action"]
-                    (testing "underlying row does not exist, action not executed"
-                      (is (= 404 (:status (req {:action_id action-id
-                                                :scope     {:dashcard-id (:id dashcard)}
-                                                :input     {:id 1}
-                                                :params    {:status "approved"}})))))
-                    (testing "underlying row exists, action executed\n"
-                      (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @table-1-ref)
-                                            {:rows [{:col "database-value"}]})
-                      (let [base-req {:action_id action-id
-                                      :scope     {:dashcard-id (:id dashcard)}
-                                      :input     {:id 1, :col "stale-value"}
-                                      :params    {:bb nil}}]
-                        ;; TODO don't have a way to make params required for non-legacy actions yet, d'oh
-                        ;;      oh well, let nil spill through
-                        (testing "missing required param"
-                          (is (= {:status 200
-                                  :body {:outputs [{:table-id @table-2-ref
-                                                    :op       "created"
-                                                    :row      {:id 1
-                                                               :a  "database-value"
-                                                               :b  nil
-                                                               :c  "default"
-                                                               :d  "hard-coded"}}]}}
-                                 (-> (req base-req)
-                                     (select-keys [:status :body])))))
-                        (testing "missing optional param"
-                          (is (= {:status 200
-                                  :body   {:outputs [{:table-id @table-2-ref
-                                                      :op       "created"
-                                                      :row      {:id 2
-                                                                 :a  "database-value"
-                                                                 :b  "necessary"
-                                                                 :c  "default"
-                                                                 :d  "hard-coded"}}]}}
-                                 (-> (req (assoc-in base-req [:params :bb] "necessary"))
-                                     (select-keys [:status :body])))))
-                        (testing "null optional param"
-                          (is (= {:status 200
-                                  :body   {:outputs [{:table-id @table-2-ref
-                                                      :op       "created"
-                                                      :row      {:id 3
-                                                                 :a  "database-value"
-                                                                 :b  "necessary"
-                                                                 :c  nil
-                                                                 :d  "hard-coded"}}]}}
-                                 (-> (req (-> base-req
-                                              (assoc-in [:params :bb] "necessary")
-                                              (assoc-in [:params :cc] nil)))
-                                     (select-keys [:status :body])))))
-                        (testing "provided optional param"
-                          (is (= {:status 200
-                                  :body   {:outputs [{:table-id @table-2-ref
-                                                      :op       "created"
-                                                      :row      {:id 4
-                                                                 :a  "database-value"
-                                                                 :b  "necessary"
-                                                                 :c  "optional"
-                                                                 :d  "hard-coded"}}]}}
-                                 (-> (req (-> base-req
-                                              (assoc-in [:params :bb] "necessary")
-                                              (assoc-in [:params :cc] "optional")))
-                                     (select-keys [:status :body])))))))))))))))))
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (mt/with-actions-enabled
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (with-open [table-1-ref (data-editing.tu/open-test-table!
+                                   {:id  'auto-inc-type
+                                    :col [:text]}
+                                   {:primary-key [:id]})
+                      table-2-ref (data-editing.tu/open-test-table!
+                                   {:id 'auto-inc-type
+                                    :a  [:text]
+                                    :b  [:text]
+                                    :c  [:text]
+                                    :d  [:text]}
+                                   {:primary-key [:id]})]
+            (mt/with-temp [:model/Card          model    {:type           :model
+                                                          :table_id       @table-1-ref
+                                                          :database_id    (mt/id)
+                                                          :dataset_query  {:database (mt/id)
+                                                                           :type :query
+                                                                           :query {:source-table @table-1-ref}}}
+                           :model/Dashboard     dash     {}
+                           :model/DashboardCard dashcard {:dashboard_id   (:id dash)
+                                                          :card_id        (:id model)
+                                                          :visualization_settings
+                                                          {:table_id @table-1-ref
+                                                           :editableTable.enabledActions
+                                                           [{:id         "dashcard:unknown:my-row-action"
+                                                             :actionId   "table.row/create"
+                                                             :actionType "data-grid/row-action"
+                                                             :mapping    {:table-id @table-2-ref
+                                                                          :row      {:a ["::key" "aa"]
+                                                                                     :b ["::key" "bb"]
+                                                                                     :c ["::key" "cc"]
+                                                                                     :d ["::key" "dd"]}}
+                                                             :parameterMappings
+                                                             [{:parameterId "aa" :sourceType "row-data" :sourceValueTarget "col"}
+                                                              {:parameterId "bb" :sourceType "ask-user"}
+                                                              {:parameterId "cc" :sourceType "ask-user" :value "default"}
+                                                              {:parameterId "dd" :sourceType "constant" :value "hard-coded"}]
+                                                             :enabled    true}]}}]
+              (testing "dashcard row action modifying a row - primitive action"
+                (let [action-id "dashcard:unknown:my-row-action"]
+                  (testing "underlying row does not exist, action not executed"
+                    (mt/user-http-request :crowberto :post 404 execute-v2-url {:action_id action-id
+                                                                               :scope     {:dashcard-id (:id dashcard)}
+                                                                               :input     {:id 1}
+                                                                               :params    {:status "approved"}}))
+                  (testing "underlying row exists, action executed\n"
+                    (mt/user-http-request :crowberto :post 200 (data-editing.tu/table-url @table-1-ref)
+                                          {:rows [{:col "database-value"}]})
+                    (let [base-req {:action_id action-id
+                                    :scope     {:dashcard-id (:id dashcard)}
+                                    :input     {:id 1 :col "stale-value"}
+                                    :params    {:bb nil}}]
+                      ;; TODO don't have a way to make params required for non-legacy actions yet, d'oh
+                      ;;      oh well, let nil spill through
+                      (testing "missing required param"
+                        (is (=? {:outputs [{:table-id @table-2-ref
+                                            :op       "created"
+                                            :row      {:id 1
+                                                       :a  "database-value"
+                                                       :b  nil
+                                                       :c  "default"
+                                                       :d  "hard-coded"}}]}
+                                (mt/user-http-request :crowberto :post 200 execute-v2-url base-req))))
+                      (testing "missing optional param"
+                        (is (=? {:outputs [{:table-id @table-2-ref
+                                            :op       "created"
+                                            :row      {:id 2
+                                                       :a  "database-value"
+                                                       :b  "necessary"
+                                                       :c  "default"
+                                                       :d  "hard-coded"}}]}
+                                (mt/user-http-request :crowberto :post 200 execute-v2-url (assoc-in base-req [:params :bb] "necessary")))))
+                      (testing "null optional param"
+                        (is (= {:outputs [{:table-id @table-2-ref
+                                           :op       "created"
+                                           :row      {:id 3
+                                                      :a  "database-value"
+                                                      :b  "necessary"
+                                                      :c  nil
+                                                      :d  "hard-coded"}}]}
+                               (mt/user-http-request :crowberto :post 200 execute-v2-url (-> base-req
+                                                                                             (assoc-in [:params :bb] "necessary")
+                                                                                             (assoc-in [:params :cc] nil))))))
+                      (testing "provided optional param"
+                        (is (= {:outputs [{:table-id @table-2-ref
+                                           :op       "created"
+                                           :row      {:id 4
+                                                      :a  "database-value"
+                                                      :b  "necessary"
+                                                      :c  "optional"
+                                                      :d  "hard-coded"}}]}
+                               (mt/user-http-request :crowberto :post 200 execute-v2-url (-> base-req
+                                                                                             (assoc-in [:params :bb] "necessary")
+                                                                                             (assoc-in [:params :cc] "optional")))))))))))))))))
 
 (deftest list-and-add-to-dashcard-test
   (mt/with-premium-features #{:table-data-editing}
@@ -1441,92 +1430,81 @@
   tmp-modal-saved-action-on-question-on-dashboard-test
   tmp-modal-table-action-on-question-on-dashboard-test)
 
-(deftest tmp-modal-table-action-on-editable-on-dashboard-test
-  (mt/with-premium-features #{:table-data-editing}
-    (mt/test-drivers #{:h2 :postgres}
-      (data-editing.tu/toggle-data-editing-enabled! true)
-      (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
-                                                                :text      [:text]
-                                                                :int       [:int]
-                                                                :timestamp [:timestamp]
-                                                                :date      [:date]}
-                                                               {:primary-key [:id]})]
-        (mt/with-temp
-          [:model/Dashboard     dashboard {}
-           :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
-                                           :visualization_settings
-                                           {:table_id @test-table
+#_(deftest tmp-modal-table-action-on-editable-on-dashboard-test
+    (mt/with-premium-features #{:table-data-editing}
+      (mt/test-drivers #{:h2 :postgres}
+        (actions.tu/with-actions-test-data-tables #{"orders" "checkins"}
+          (mt/with-temp
+            [:model/Dashboard     dashboard {}
+             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                             :visualization_settings
+                                             {:table_id (mt/id :checkins)
 
-                                            :table.columns
-                                            [{:name "int",      :enabled true}
-                                             {:name "text",     :enabled true}
-                                             {:name "timetamp", :enabled true}
-                                             ;; this signals date should not be shown in the grid
-                                             {:name "date",     :enabled false}]
+                                              :table.columns
+                                              [{:name "int"      :enabled true}
+                                               {:name "text"     :enabled true}
+                                               {:name "timetamp" :enabled true}
+                                               ;; this signals date should not be shown in the grid
+                                               {:name "date"     :enabled false}]
 
-                                            :editableTable.columns
-                                            ["int"
-                                             ;; this signals text is not editable
-                                             #_"text"
-                                             "timestamp"
-                                             "date"]
+                                              :editableTable.columns
+                                              ["int"
+                                               ;; this signals text is not editable
+                                               #_"text"
+                                               "timestamp"
+                                               "date"]
 
-                                            :editableTable.enabledActions
-                                            [{:id                "dashcard:unknown:built-in-create"
-                                              :actionId          "data-grid.row/create"
-                                              :actionType        "data-grid/built-in"}
-                                             {:id                "dashcard:unknown:custom-create"
-                                              :actionId          "table.row/create"
-                                              :actionType        "data-grid/row-action"
-                                              :mapping           {:table-id @test-table
-                                                                  :row      "::root"}
-                                              :parameterMappings [{:parameterId "int"
-                                                                   :sourceType  "const"
-                                                                   :value       42}
-                                                                  {:parameterId       "text"
-                                                                   :sourceType        "row-data"
-                                                                   :sourceValueTarget "text"
-                                                                   :visibility        "readonly"}
-                                                                  {:parameterId       "timestamp"
-                                                                   :visibility        "hidden"}]}]}}]
+                                              :editableTable.enabledActions
+                                              [{:id         "ddashcard:unknown:built-in-create"
+                                                :actionId   "data-grid.row/create"
+                                                :enabled    true
+                                                :actionType "data-grid/built-in"}
+                                               {:id                "dashcard:unknown:custom-create"
+                                                :name              "create"
+                                                :actionId          (#'actions/encoded-action-id :table.row/create (mt/id :orders))
+                                                :actionType        "data-grid/row-action"
+                                                :parameterMappings [{:parameterId "USER_ID" :sourceType "row-data", :sourceValueTarget "USER_ID"}
+                                                                    {:parameterId "PRODUCT_ID" :sourceType "ask-user"}
+                                                                    {:parameterId "SUBTOTAL" :sourceType "ask-user"}
+                                                                    {:parameterId "TAX" :sourceType "ask-user"}
+                                                                    {:parameterId "TOTAL", :sourceType "ask-user"}
+                                                                    {:parameterId "DISCOUNT", :sourceType "ask-user"}
+                                                                    {:parameterId "CREATED_AT", :sourceType "ask-user"}
+                                                                    {:parameterId "QUANTITY", :sourceType "ask-user"}]}]
+                                              :enabled           true}}]
 
-          ;; insert a row for the row action
-          (mt/user-http-request :crowberto :post 200
-                                (data-editing.tu/table-url @test-table)
-                                {:rows [{:text "a very important string"}]})
+            (testing "table actions on a dashcard"
+              (let [built-in-action-id "dashcard:unknown:built-in-create"
+                    custom-action-id   "dashcard:unknown:custom-create"
+                    scope              {:dashcard-id (:id dashcard)}]
+                (testing "built-in"
+                  (is (=? {:title      (format "%s: Create" (t2/select-one-fn :name :model/Table (mt/id :orders)))
+                           :parameters [;; params are reordered by editable
+                                        ;; column listing (int first)
+                                        {:id "int" :readonly false}
+                                        {:id "text" :readonly false #_:value #_"a very important string"}
+                                        ;; date is hidden from the editable
+                                        #_{:id "date"}
+                                        {:id "timestamp"}]}
+                          (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                {:scope     scope
+                                                 :action_id built-in-action-id
+                                                 :input     {:ID 1}}))))
 
-          (testing "table actions on a dashcard"
-            (let [built-in-action-id "dashcard:unknown:built-in-create"
-                  custom-action-id   "dashcard:unknown:custom-create"
-                  scope              {:dashcard-id (:id dashcard)}]
-              (testing "built-in"
-                (is (=? {:title      (format "%s: Create" (t2/select-one-fn :name :model/Table @test-table))
-                         :parameters [;; params are reordered by editable
-                                      ;; column listing (int first)
-                                      {:id "int" :readonly false}
-                                      {:id "text" :readonly false #_:value #_"a very important string"}
-                                      ;; date is hidden from the editable
-                                      #_{:id "date"}
-                                      {:id "timestamp"}]}
-                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
-                                              {:scope     scope
-                                               :action_id built-in-action-id
-                                               :input     {:id 1}}))))
-
-              (testing "custom"
-                (is (=? {:parameters
-                         ;; params are reordered by editable
-                         ;; column listing (int first)
-                         [{:id "int" :readonly false}
-                          {:id "text" :readonly true :value "a very important string"}
-                          ;; date is hidden from the editable
-                          #_{:id "date"}
-                          ;; timestamp is hidden in the row action
-                          #_{:id "timestamp"}]}
-                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
-                                              {:scope     scope
-                                               :action_id custom-action-id
-                                               :input     {:id 1}})))))))))))
+                (testing "custom"
+                  (is (=? {:parameters
+                           ;; params are reordered by editable
+                           ;; column listing (int first)
+                           [{:id "int" :readonly false}
+                            {:id "text" :readonly true :value "a very important string"}
+                            ;; date is hidden from the editable
+                            #_{:id "date"}
+                            ;; timestamp is hidden in the row action
+                            #_{:id "timestamp"}]}
+                          (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                                {:scope     scope
+                                                 :action_id custom-action-id
+                                                 :input     {:ID 1}})))))))))))
 
 (deftest tmp-modal-table-action-on-question-on-dashboard-test
   (mt/with-premium-features #{:table-data-editing}

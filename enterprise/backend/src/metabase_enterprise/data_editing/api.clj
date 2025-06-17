@@ -370,10 +370,8 @@
                              ;; TODO we could restrict which fields we fetch in future
                              [row]     (data-editing/query-db-rows table_id pk-fields [input])
                              _         (api/check-404 row)]
-                         (merge
-                          ;; TODO i would much prefer if we used field-ids and not names in the configuration
-                          #_(update-keys row (comp (u/index-by :name :id fields) name))
-                          (update-keys row name))))))]
+                         ;; TODO i would much prefer if we used field-ids and not names in the configuration
+                         (update-keys row name)))))]
     (reduce-kv
      (fn [acc k v]
        (case (:sourceType v)
@@ -497,7 +495,7 @@
 (defn- get-row-data
   "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
   [action input]
-  (not-empty (first (apply-mapping-nested (row-data-mapping action) nil [input]))))
+  (-> (row-data-mapping action) (apply-mapping-nested  nil [input]) first not-empty))
 
 ;; test case
 
@@ -520,7 +518,7 @@
      {:keys [action_id scope input]}]
     (let [scope         (actions/hydrate-scope scope)
           unified       (fetch-unified-action scope action_id)
-          row-data      (get-row-data unified nil input)
+          row-data      (get-row-data unified input)
           partial-input (first (apply-mapping-nested unified nil [input]))]
       (data-editing.describe/describe-unified-action unified scope row-data partial-input))))
 

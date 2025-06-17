@@ -152,7 +152,7 @@
      :parameters (->> (for [param (:parameters action)
                             ;; query type actions store most stuff in viz settings rather than the
                             ;; parameter
-                            :let [viz-field     (param-id->viz-field (:id param))
+                            :let [viz-field (param-id->viz-field (:id param))
                                   param-map (param-id->mapping (:id param))]
                             :when (and (not (:hidden viz-field))
                                        (not= "hidden" (:visibility param-map)))]
