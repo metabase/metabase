@@ -657,8 +657,8 @@
              (delay))]
     (into #{}
           (comp
-           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
            (filter #(isa? (:base-type %) :type/JSON))
+           (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
            (describe-table-fields-xf driver table))
           (describe-table-fields driver conn table nil))))
 
