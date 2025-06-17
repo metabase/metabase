@@ -5,6 +5,7 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
@@ -428,7 +429,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     // edit "Product ID" column in "Orders" table
     getTable("Orders").click();
-    getField("Product ID").click();
+    clickField("Product ID");
 
     // remap its original value to use foreign key
     cy.findByPlaceholderText("Select display values").click();
@@ -459,7 +460,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     // edit "Rating" values in "Reviews" table
     getTable("Reviews").click();
-    getField("Rating").click();
+    clickField("Rating");
 
     // apply custom remapping for "Rating" values 1-5
     cy.findByPlaceholderText("Select display values").click();
@@ -490,7 +491,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     cy.viewport(1280, viewportHeight);
     cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
     getTable("Reviews").scrollIntoView().click();
-    getField("ID").scrollIntoView().click();
+    clickField("ID");
     cy.findByPlaceholderText("Select a semantic type").click();
 
     H.popover().scrollTo("top");
@@ -932,10 +933,177 @@ describe("scenarios > admin > datamodel > segments", () => {
   });
 });
 
+describe("scenarios > admin > databases > table", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should see 8 tables in sample database", () => {
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+
+    cy.findAllByTestId("tree-item")
+      .filter('[data-type="table"]')
+      .should("have.length", 8);
+  });
+
+  it("should be able to see details of each table", () => {
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+
+    cy.get("main")
+      .findByText("Start by selecting data to model")
+      .should("be.visible");
+
+    // Orders
+    getTable("Orders").click();
+    cy.get("main").findByText("Edit the table and fields").should("be.visible");
+
+    cy.findByPlaceholderText("Give this table a description").should(
+      "have.value",
+      "Confirmed Sample Company orders for a product, from a user.",
+    );
+  });
+
+  // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
+  it.skip("should show 404 if database does not exist (metabase#14652)", () => {
+    cy.visit("/admin/datamodel/database/54321");
+
+    cy.findAllByTestId("tree-item")
+      .filter('[data-type="table"]')
+      .should("have.length", 0);
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Not found.");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Select a database");
+  });
+
+  describe("in orders table", () => {
+    beforeEach(() => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+      );
+    });
+
+    it("should see multiple fields", () => {
+      clickField("ID");
+      cy.findByLabelText("Data type")
+        .should("be.visible")
+        .and("have.value", "BIGINT");
+      cy.findByPlaceholderText("Select a semantic type").should(
+        "have.value",
+        "Entity Key",
+      );
+
+      clickField("User ID");
+      cy.findByLabelText("Data type")
+        .should("be.visible")
+        .and("have.value", "INTEGER");
+      cy.findByPlaceholderText("Select a semantic type").should(
+        "have.value",
+        "Foreign Key",
+      );
+      cy.findByPlaceholderText("Select a target").should(
+        "have.value",
+        "People → ID",
+      );
+
+      clickField("Tax");
+      cy.findByLabelText("Data type")
+        .should("be.visible")
+        .and("have.value", "DOUBLE PRECISION");
+      cy.findByPlaceholderText("Select a semantic type").should(
+        "have.value",
+        "No semantic type",
+      );
+
+      clickField("Discount");
+      cy.findByLabelText("Data type")
+        .should("be.visible")
+        .and("have.value", "DOUBLE PRECISION");
+      cy.findByPlaceholderText("Select a semantic type").should(
+        "have.value",
+        "Discount",
+      );
+
+      clickField("Created At");
+      cy.findByLabelText("Data type")
+        .should("be.visible")
+        .and("have.value", "TIMESTAMP");
+      cy.findByPlaceholderText("Select a semantic type").should(
+        "have.value",
+        "Creation timestamp",
+      );
+    });
+  });
+
+  describe("turning table visibility off shouldn't prevent editing related question (metabase#15947)", () => {
+    it("simple question (metabase#15947-1)", () => {
+      turnTableVisibilityOff(ORDERS_ID);
+      H.visitQuestion(ORDERS_QUESTION_ID);
+
+      H.queryBuilderHeader().findByText("View-only").should("be.visible");
+    });
+
+    it.skip("question with joins (metabase#15947-2)", () => {
+      H.createQuestion({
+        name: "15947",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": PRODUCTS_ID,
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Products" }],
+              ],
+              alias: "Products",
+            },
+          ],
+          filter: [
+            "and",
+            ["=", ["field", ORDERS.QUANTITY, null], 1],
+            [">", ["field", PRODUCTS.RATING, { "join-alias": "Products" }], 3],
+          ],
+          aggregation: [
+            ["sum", ["field", ORDERS.TOTAL, null]],
+            ["sum", ["field", PRODUCTS.RATING, { "join-alias": "Products" }]],
+          ],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ["field", PRODUCTS.CATEGORY, { "join-alias": "Products" }],
+          ],
+        },
+      }).then(({ body: { id: QUESTION_ID } }) => {
+        turnTableVisibilityOff(PRODUCTS_ID);
+        cy.visit(`/question/${QUESTION_ID}/notebook`);
+        cy.findByText("Products");
+        cy.findByText("Quantity is equal to 1");
+        cy.findByText("Rating is greater than 3");
+        H.queryBuilderHeader().findByText("View-only").should("be.visible");
+      });
+    });
+  });
+});
+
 function getTable(name: string) {
   return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
 }
 
 function getField(name: string) {
   return cy.findByTestId("table-section").get(`a[aria-label="${name}"]`);
+}
+
+function clickField(name: string) {
+  // clicks the icon specifically to avoid issues with clicking the name or description inputs
+  return getField(name).findByRole("img").scrollIntoView().click();
+}
+
+function turnTableVisibilityOff(tableId: TableId) {
+  cy.request("PUT", "/api/table", {
+    ids: [tableId],
+    visibility_type: "hidden",
+  });
 }
