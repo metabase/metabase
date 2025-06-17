@@ -660,7 +660,7 @@
       ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
       ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
       (when (contains? changes :dataset_query)
-        (query-analysis/analyze! changes))
+        (query-analysis/analyze! card))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
