@@ -224,7 +224,7 @@
                       ;; TODO (Cam 6/17/25) -- I do not understand this logic at all and it seems REALLY wonky. What
                       ;; happens if we just remove this stuff?
                       (when col-for-name
-                        ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
+                        ;; for joins we only forward semantic type. Why? Because we need it to fix  #59664... should we
                         ;; forward anything else? No idea. Waiting for an answer in
                         ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
                         (if join-alias

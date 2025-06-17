@@ -500,7 +500,7 @@
               (lib.metadata.calculation/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-field-from-join-test
-  (testing "We should correctly deduplicate columns in :fields and [:join :fields] (QUE-1330)"
+  (testing "We should correctly deduplicate columns in :fields and [:join :fields] (#59664)"
     (let [query (lib/query meta/metadata-provider
                            (lib.tu.macros/mbql-query orders
                              {:joins [{:alias        "Q"
