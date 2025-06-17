@@ -66,22 +66,45 @@
     (string? x)
     parse-long))
 
+(defn- last-deployment
+  []
+  (->> (t2/query-one {:select [[:%count.* :count]]
+                      :from   [:databasechangelog]
+                      :where  [:= :deployment_id {:select   [:deployment_id]
+                                                  :from     [:databasechangelog]
+                                                  :order-by [[:orderexecuted :desc]]
+                                                  :limit    1}]
+                      :limit 1})
+       :count
+    ;; includes the selected id
+       inc))
+
 (mu/defn rollback!
-  "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive).
+  "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
 
     ;; Rollback 2 migrations:
     (rollback! :count 2)
 
+    ;; Rollback last migration run:
+    ;; (rollback! :last-deployment)
+
     ;; rollback to \"v50.2024-03-18T16:00:00\" (inclusive)
     (rollback! :id \"v50.2024-03-18T16:00:00\")"
-  [k :- [:enum :id :count "id" "count"]
-   target]
-  (let [n (case (keyword k)
-            :id    (migration-since target)
-            :count (maybe-parse-long target))]
-    (rollback-n-migrations! n)
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
+  ([k :- [:enum :last-deployment "last-deployment"]]
+   (let [n (case (keyword k)
+             :last-deployment  (last-deployment))]
+     (rollback-n-migrations! n)
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
+
+  ([k :- [:enum :id :count "id" "count"]
+    target]
+   (let [n (case (keyword k)
+             :id               (migration-since target)
+             :count            (maybe-parse-long target))]
+     (rollback-n-migrations! n)
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration))))))
 
 (defn migration-status
   "Print the latest migration ID."
@@ -96,6 +119,7 @@
     clojure -M:migrate up                         ;; migrate up to the latest
     clojure -M:migrate rollback count 2           ;; rollback 2 migrations
     clojure -M:migrate rollback id \"v40.00.001\" ;; rollback to a specific migration with id
+    clojure -M:migrate rollback last-deployment   ;; rollback the last deployment
     clojure -M:migrate status                     ;; print the latest migration id"
 
   [& args]

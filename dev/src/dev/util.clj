@@ -11,11 +11,11 @@
   (condp
    #(<= 0 (.indexOf ^String %2 ^String %1))
    (.toLowerCase (System/getProperty "os.name"))
-   "win" :win
-   "mac" :mac
-   "nix" :unix
-   "nux" :unix
-   nil))
+    "win" :win
+    "mac" :mac
+    "nix" :unix
+    "nux" :unix
+    nil))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn os-open
