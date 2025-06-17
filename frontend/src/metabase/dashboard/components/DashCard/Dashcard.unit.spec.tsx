@@ -432,8 +432,21 @@ describe("DashCard", () => {
         expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
       });
 
+      it("should be visible for question cards", () => {
+        const dashcard = createMockDashboardCard();
+        setup({
+          dashboard: {
+            ...testDashboard,
+            dashcards: [dashcard],
+          },
+          dashcard,
+          dashcardData: {},
+          isEditing: true,
+        });
+        expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
+      });
+
       it.each([
-        ["question", createMockDashboardCard()],
         ["action", createMockActionDashboardCard()],
         ["text", createMockTextDashboardCard()],
         ["link", createMockLinkDashboardCard()],

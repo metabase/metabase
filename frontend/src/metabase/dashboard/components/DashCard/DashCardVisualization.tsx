@@ -6,12 +6,15 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
-import { getDashcardData } from "metabase/dashboard/selectors";
+import {
+  getDashCardInlineValuePopulatedParameters,
+  getDashcardData,
+} from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
-  isHeadingDashCard,
   isQuestionCard,
   isVirtualDashCard,
+  supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
@@ -44,6 +47,8 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+
+import { DashboardParameterList } from "../DashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -141,6 +146,10 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const inlineParameters = useSelector((state) =>
+    getDashCardInlineValuePopulatedParameters(state, dashcard.id),
+  );
 
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
@@ -379,7 +388,6 @@ export function DashCardVisualization({
         dashboard,
         dashcardMenu,
         result,
-        isEditing,
       })
     ) {
       return null;
@@ -392,21 +400,29 @@ export function DashCardVisualization({
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
-      <DashCardMenu
-        question={question}
-        result={result}
-        dashcard={dashcard}
-        onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={
-          onChangeCardAndRun && (title ? undefined : titleMenuItems)
-        }
-      />
+      <Flex align="center" justify="flex-end">
+        {inlineParameters.length > 0 && (
+          <DashboardParameterList
+            parameters={inlineParameters}
+            isSortable={false}
+          />
+        )}
+        <DashCardMenu
+          question={question}
+          result={result}
+          dashcard={dashcard}
+          onEditVisualization={onEditVisualization}
+          openUnderlyingQuestionItems={
+            onChangeCardAndRun && (title ? undefined : titleMenuItems)
+          }
+        />
+      </Flex>
     );
   }, [
     dashboard,
     dashcard,
     dashcardMenu,
-    isEditing,
+    inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
     question,
@@ -427,7 +443,7 @@ export function DashCardVisualization({
         // Heading dashcards configure pointer events on their own
         // to make the inner input and inline filters interactive.
         [CS.pointerEventsNone]:
-          isEditingDashboardLayout && !isHeadingDashCard(dashcard),
+          isEditingDashboardLayout && !supportsInlineParameters(dashcard),
       })}
       dashboard={dashboard ?? undefined}
       dashcard={dashcard}
