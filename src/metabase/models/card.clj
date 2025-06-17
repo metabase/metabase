@@ -373,7 +373,7 @@
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
   Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
   forth.)"
-  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
+  [{query :dataset_query, id :id}] ; don't use `u/the-id` here so that we can use this with `pre-insert` too
   (loop [query query, ids-already-seen #{id}]
     (let [source-card-id (qp.util/query->source-card-id query)]
       (cond
@@ -553,7 +553,7 @@
 (defenterprise pre-update-check-sandbox-constraints
   "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.group-table-access-policy
-  [_])
+  [_ _])
 
 (defn- update-parameters-using-card-as-values-source
   "Update the config of parameter on any Dashboard/Card use this `card` as values source .
@@ -561,7 +561,7 @@
   Remove parameter.values_source_type and set parameter.values_source_type to nil ( the default type ) when:
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
-  [{id :id, :as changes}]
+  [{:keys [id]} changes]
   (when (some #{:archived :result_metadata} (keys changes))
     (let [parameter-cards (t2/select :model/ParameterCard :card_id id)]
       (doseq [[[po-type po-id] param-cards]
@@ -617,10 +617,10 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
-(defn- pre-update [{id :id, :as changes}]
+(defn- pre-update [{id :id :as card} changes]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
-  (u/prog1 changes
+  (u/prog1 card
     (let [;; Fetch old card data if necessary, and share the data between multiple checks.
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
@@ -641,7 +641,7 @@
               (field-values/update-field-values-for-on-demand-dbs! newly-added-param-field-ids)))))
       ;; make sure this Card doesn't have circular source query references if we're updating the query
       (when (:dataset_query changes)
-        (check-for-circular-source-query-references changes))
+        (check-for-circular-source-query-references card))
       ;; updating a model dataset query to not support implicit actions will disable implicit actions if they exist
       (when (and (:dataset_query changes)
                  (= (:type old-card-info) :model)
@@ -659,7 +659,7 @@
       (collection/check-collection-namespace :model/Card (:collection_id changes))
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
-      (update-parameters-using-card-as-values-source changes)
+      (update-parameters-using-card-as-values-source card changes)
       ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
       ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
       (when (contains? changes :dataset_query)
@@ -722,10 +722,10 @@
                                     ensure-clause-idents-list (:aggregation query) "aggregation" stage-number ctx)
        (:expressions query) (update :expression-idents
                                     ensure-clause-idents-expressions (:expressions query) stage-number ctx)
-       (:breakout query)    (update :breakout-idents
-                                    ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
-       (:joins query)       (update :joins
-                                    ensure-clause-idents-joins stage-number ctx)))
+       (:breakout query) (update :breakout-idents
+                                 ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
+       (:joins query) (update :joins
+                              ensure-clause-idents-joins stage-number ctx)))
    inner-query))
 
 (defn- ensure-clause-idents-outer [{:keys [query type] :as outer-query} ctx]
@@ -792,33 +792,33 @@
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
     (query-analysis/analyze! card)))
 
-(defn- apply-dashboard-question-updates [changes]
+(defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
-    (assoc changes :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
-    changes))
+    (assoc card :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
+    card))
+
+(defn- populate-result-metadata
+  "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
+  change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
+  verified-result-metadata? flag (see #37009)."
+  [card changes verified-result-metadata?]
+  (cond-> card
+    (or (empty? (:result_metadata card))
+        (not verified-result-metadata?)
+        (contains? (t2/changes card) :type))
+    (card.metadata/populate-result-metadata changes)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
-  ;; remove all the unchanged keys from the map, except for `:id`, so the functions below can do the right thing since
-  ;; they were written pre-Toucan 2 and don't know about [[t2/changes]]...
-  ;;
-  ;; We have to convert this to a plain map rather than a Toucan 2 instance at this point to work around upstream bug
-  ;; https://github.com/camsaul/toucan2/issues/145 .
-  ;; TODO: ^ that's been fixed, this could be refactored
-  (-> (into {:id (:id card)} (t2/changes (dissoc card :verified-result-metadata?)))
-      (apply-dashboard-question-updates)
-
-      maybe-normalize-query
-      ;; If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
-      ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
-      ;; verified-result-metadata? flag (see #37009).
-      (cond-> #_changes
-       (or (empty? (:result_metadata card))
-           (not verified-result-metadata?))
-        card.metadata/populate-result-metadata)
-      pre-update
-      populate-query-fields
-      maybe-populate-initially-published-at))
+  (let [changes (t2/changes card)]
+    (-> card
+        (dissoc :verified-result-metadata?)
+        (apply-dashboard-question-updates changes)
+        maybe-normalize-query
+        (populate-result-metadata changes verified-result-metadata?)
+        (pre-update changes)
+        populate-query-fields
+        maybe-populate-initially-published-at)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card

@@ -152,8 +152,8 @@
   "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
   on sandboxes (the Card cannot add fields or change types vs. the original Table)."
   :feature :sandboxes
-  [{new-result-metadata :result_metadata, card-id :id}]
-  (when new-result-metadata
+  [{new-result-metadata :result_metadata, card-id :id} changes]
+  (when (contains? changes :result_metadata)
     (when-let [gtaps-using-this-card (not-empty (t2/select [:model/GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
