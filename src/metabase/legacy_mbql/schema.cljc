@@ -277,7 +277,7 @@
 
     [:source-field-join-alias
      {:optional true :description "The join alias of the source field used for an implicit join."}
-     ::lib.schema.common/non-blank-string]
+     ::lib.schema.join/alias]
 
     [:temporal-unit
      {:optional true

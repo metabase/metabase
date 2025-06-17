@@ -45,10 +45,10 @@
     [:cum-count field] [:count field]
     [:cum-sum field]   [:sum field]))
 
-(defn rewrite-cumulative-aggregations
+(mu/defn rewrite-cumulative-aggregations :- ::mbql.s/Query
   "Pre-processing middleware. Rewrite `:cum-count` and `:cum-sum` aggregations as `:count` and `:sum` respectively. Add
   information about the indecies of the replaced aggregations under the `::replaced-indexes` key."
-  [{{breakouts :breakout, aggregations :aggregation} :query, :as query}]
+  [{{breakouts :breakout, aggregations :aggregation} :query, :as query} :- ::mbql.s/Query]
   (cond
     ;; no need to rewrite `:cum-sum` and `:cum-count` functions, this driver supports native window function versions
     (driver.u/supports? driver/*driver*

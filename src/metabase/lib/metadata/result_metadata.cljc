@@ -34,8 +34,36 @@
 (mr/def ::legacy-source
   [:enum :aggregation :fields :breakout :native])
 
+(mr/def ::super-broken-legacy-field-ref.options
+  [:and
+   [:map
+    {:closed? true}
+    [:base-type     {:optional true} keyword?]
+    [:temporal-unit {:optional true} keyword?]
+    [:binning       {:optional true} map?]
+    [:join-alias    {:optional true} string?]
+    [:source-field  {:optional true} pos-int?]]
+   [:fn
+    {:error/message "options map cannot be empty"}
+    seq]])
+
 (mr/def ::super-broken-legacy-field-ref
-  mbql.s/Reference)
+  [:and
+   mbql.s/Reference
+   [:multi
+    {:dispatch first}
+    [:field [:tuple
+             [:= :field]
+             [:or pos-int? string?]
+             [:maybe ::super-broken-legacy-field-ref.options]]]
+    [:expression [:cat
+                  [:= :expression]
+                  string?
+                  [:? ::super-broken-legacy-field-ref.options]]]
+    [:aggregation [:cat
+                   [:= :aggregation]
+                   int?
+                   [:? ::super-broken-legacy-field-ref.options]]]]])
 
 (mr/def ::col
   [:map
@@ -55,8 +83,33 @@
 (mr/def ::cols
   [:maybe [:sequential ::col]])
 
+(defn- distinct-by-schema [k]
+  [:fn
+   (let [message (str k " should be distinct")]
+     {:error/message message
+      :error/fn      (fn [{:keys [value]} _]
+                       (str message ", got: " (pr-str (map k value))))})
+   (fn [xs]
+     (or (empty? xs)
+         (apply distinct? (map k xs))))])
+
+(mr/def ::distinct-names (distinct-by-schema :name))
+(mr/def ::distinct-field-refs (distinct-by-schema :field-ref))
+
+(mr/def ::expected-cols
+  [:and
+   [:sequential ::kebab-cased-map]
+   ;; ensures this is a `:metabase.lib.schema.metadata/column` with a `:lib/desired-column-alias` that is present and
+   ;; unique
+   lib.metadata.calculation/ColumnsWithUniqueAliases
+   ;; make sure `:name` and `:field-ref` are present and unique as well.
+   ::distinct-names
+   ::distinct-field-refs])
+
+;;; NOCOMMIT
+;;;
 ;;; TODO -- deduplicate with [[metabase.lib.remove-replace/rename-join]]
-(mu/defn- rename-join :- ::lib.schema/query
+#_(mu/defn- rename-join :- ::lib.schema/query
   "Rename all joins with `old-alias` in a query to `new-alias`. Does not currently different between multiple join
   with the same name appearing in multiple locations. Surgically updates only things that are actual join aliases and
   not other occurrences of the string.
@@ -90,7 +143,8 @@
          (let [stage stage-or-join]
            (update-field-refs stage)))))))
 
-(mu/defn- restore-original-join-aliases :- ::lib.schema/query
+;;; NOCOMMIT
+#_(mu/defn- restore-original-join-aliases :- ::lib.schema/query
   [query :- ::lib.schema/query]
   (reduce
    (fn [query [old-alias new-alias]]
@@ -243,7 +297,7 @@
   don't believe me remove this and run `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` and you
   will see."
   [col   :- ::kebab-cased-map
-   a-ref :- ::super-broken-legacy-field-ref]
+   a-ref :- mbql.s/Reference]
   (let [a-ref (mbql.u/remove-namespaced-options a-ref)]
     (lib.util.match/replace a-ref
       [:field (id :guard pos-int?) opts]
@@ -284,30 +338,39 @@
    col   :- ::kebab-cased-map]
   (when (= (:lib/type col) :metadata/column)
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
-      (->> (if-let [original-ref (:lib/original-ref col)]
-             (cond-> original-ref
-               remove-join-alias? (lib.join/with-join-alias nil))
-             (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
-               (let [col (cond-> col
-                           remove-join-alias? (lib.join/with-join-alias nil)
-                           remove-join-alias? (assoc ::remove-join-alias? true))]
-
-                 (->> (merge
-                       col
-                       (when-not remove-join-alias?
-                         (when-let [previous-join-alias (:lib/previous-stage-join-alias col)]
-                           {:metabase.lib.join/join-alias previous-join-alias}))
-                       (when-let [original-name (:lib/original-name col)]
-                         {:name original-name}))
-                      lib.ref/ref))))
+      (->> (lib.ref/ref col)
+           #_(if-let [original-ref (:lib/original-ref col)]
+               (cond-> original-ref
+                 remove-join-alias? (lib.join/with-join-alias nil))
+               (binding [lib.ref/*ref-style* :ref.style/default #_:ref.style/broken-legacy-qp-results] ; NOCOMMIT
+                 (let [col (cond-> col
+                             remove-join-alias? (lib.join/with-join-alias nil)
+                             remove-join-alias? (assoc ::remove-join-alias? true))]
+                   (->> (merge
+                         col
+                         (when-not remove-join-alias?
+                           (when-let [previous-join-alias (:lib/previous-stage-join-alias col)]
+                             {:metabase.lib.join/join-alias previous-join-alias}))
+                         #_(when-let [original-name (:lib/original-name col)]
+                             {:name original-name}))
+                        lib.ref/ref))))
+           #_((fn [a-ref]
+              (println "(u/pprint-to-str a-ref):" (u/pprint-to-str a-ref)) ; NOCOMMIT
+              a-ref
+              ))
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
 
-(mu/defn- add-legacy-field-refs :- [:sequential ::kebab-cased-map]
+(mu/defn- add-legacy-field-refs :- [:and
+                                    [:sequential ::kebab-cased-map]
+                                    ::distinct-field-refs]
   "Add legacy `:field_ref` to QP results metadata which is still used in a single place in the FE -- see
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
-   cols  :- [:sequential ::kebab-cased-map]]
+   cols  :- [:and
+             [:sequential ::kebab-cased-map]
+             lib.metadata.calculation/ColumnsWithUniqueAliases]]
+  #_(println "(map :lib/desired-column-alias cols):" (pr-str (map :lib/desired-column-alias cols))) ; NOCOMMIT
   (lib.convert/do-with-aggregation-list
    (lib.aggregation/aggregations query)
    (fn []
@@ -395,7 +458,9 @@
 
 ;;; TODO (Cam 6/12/25) -- remove `:lib/uuid` because it causes way to many test failures. Probably would be better to
 ;;; keep it around but I don't have time to update a million tests.
-(defn- remove-lib-uuids [col]
+;;;
+;;; NOCOMMIT
+#_(defn- remove-lib-uuids [col]
   (dissoc col :lib/uuid :lib/source-uuid :lib/original-ref))
 
 (mu/defn- col->legacy-metadata :- ::kebab-cased-map
@@ -404,8 +469,7 @@
   [col :- ::kebab-cased-map]
   (-> col
       add-unit
-      add-binning-info
-      remove-lib-uuids))
+      add-binning-info))
 
 (mu/defn- cols->legacy-metadata :- [:sequential ::kebab-cased-map]
   "Convert MLv2-style `kebab-case` metadata to legacy QP metadata results `snake_case`-style metadata. Keys are slightly
@@ -414,13 +478,7 @@
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv col->legacy-metadata cols))
 
-(mu/defn expected-cols :- [:and
-                           [:sequential ::kebab-cased-map]
-                           [:fn
-                            {:error/message "columns should have unique :name(s)"}
-                            (fn [cols]
-                              (or (empty? cols)
-                                  (apply distinct? (map :name cols))))]]
+(mu/defn expected-cols :- ::expected-cols
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
@@ -432,7 +490,7 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (let [query' (restore-original-join-aliases query)]
+   (let [query' query #_(restore-original-join-aliases query)] ; NOCOMMIT
      (->> initial-cols
           (add-extra-metadata query')
           cols->legacy-metadata))))

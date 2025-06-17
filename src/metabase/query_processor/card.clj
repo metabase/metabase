@@ -235,9 +235,10 @@
    rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
-(defn process-query-for-card-default-run-fn
+(mu/defn process-query-for-card-default-run-fn
   "Create the default `:make-run` function for [[process-query-for-card]]."
-  [qp export-format]
+  [qp            :- ::qp.schema/qp
+   export-format :- ::qp.schema/export-format]
   (mu/fn [query :- :map
           info  :- [:maybe ::lib.schema.info/info]]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]

@@ -80,7 +80,7 @@
             fk-field-name (or fk-field-name (:name (lib.metadata/field metadata-providerable fk-field-id)))]
         (format-implicit-join-name table-name fk-field-name fk-join-alias)))))
 
-(mu/defn desired-alias :- :string
+(mu/defn desired-alias :- ::lib.schema.metadata/desired-column-alias
   "Desired alias for a Field e.g.
 
     my_field
@@ -92,7 +92,7 @@
   You should pass the results thru a unique name function."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    col                   :- ::lib.schema.metadata/column]
-  (let [source-alias ((some-fn :lib/source-column-alias :name) col)]
+  (let [source-alias ((some-fn :lib/source-column-alias :lib/original-name :name) col)]
     (if-let [join-alias (or (current-join-alias col)
                             (implicit-join-name metadata-providerable col))]
       (joined-field-desired-alias join-alias source-alias)

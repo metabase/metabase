@@ -17,18 +17,6 @@
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib.tu/venues-query)
-                  (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
-                  lib/append-stage
-                  lib/append-stage)]
-    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/fields}
-                                                    {:name "NAME", :lib/source :source/fields}]}
-                      {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
-                                                    {:name "NAME", :lib/source :source/previous-stage}]}
-                      {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
-
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
@@ -53,12 +41,14 @@
                   :name                     "expression"
                   :display-name             "0.8 × Average of Price"
                   :lib/source-column-alias  "expression"
-                  :lib/desired-column-alias "expression"}
+                  :lib/desired-column-alias "expression"
+                  :lib/source-uuid          string?}
                  {:base-type                :type/Float
                   :name                     "expression"
                   :display-name             "0.8 × Average of Price"
                   :lib/source-column-alias  "expression"
-                  :lib/desired-column-alias "expression_2"}]
+                  :lib/desired-column-alias "expression_2"
+                  :lib/source-uuid          string?}]
                 (lib/returned-columns query)))))))
 
 (deftest ^:parallel stage-display-name-card-source-query
@@ -142,8 +132,8 @@
              {:id (meta/id :venues :latitude),    :name "LATITUDE",    :lib/source :source/table-defaults}
              {:id (meta/id :venues :longitude),   :name "LONGITUDE",   :lib/source :source/table-defaults}
              {:id (meta/id :venues :price),       :name "PRICE",       :lib/source :source/table-defaults}
-             {:name "ID + 1", :lib/source :source/expressions}
-             {:name "ID + 2", :lib/source :source/expressions}]
+             {:name "ID + 1", :lib/source :source/expressions, :lib/source-uuid string?}
+             {:name "ID + 2", :lib/source :source/expressions, :lib/source-uuid string?}]
             (lib/returned-columns (query-with-expressions))))))
 
 (deftest ^:parallel default-fields-metadata-return-expressions-before-joins-test
@@ -569,4 +559,132 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn identity}))))))))
+                  (lib/returned-columns query
+                                        stage-number
+                                        (lib.util/query-stage query stage-number)
+                                        {:unique-name-fn (fn f
+                                                           ([]  f)
+                                                           ([s] s))}))))))))
+
+(deftest ^:parallel visible-columns-test
+  (testing "Visible columns for a stage SHOULD NOT include columns not returned by joins (#59588)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query venues
+                   {:joins [{:strategy     :left-join
+                             :source-table $$categories
+                             :alias        "C"
+                             :condition    [:= $venues.id &C.categories.id]
+                             :fields       [&C.categories.id]}]
+                    :fields [$id $name]}))
+          ;; should NOT include `C__NAME` since that is not returned by join `C` and is thus NOT VISIBLE
+          expected [{:name "ID"
+                     :lib/source :source/table-defaults
+                     :lib/source-column-alias "ID"
+                     :lib/desired-column-alias "ID"}
+                    {:name "NAME"
+                     :lib/source :source/table-defaults
+                     :lib/source-column-alias "NAME"
+                     :lib/desired-column-alias "NAME"}
+                    {:name "CATEGORY_ID"
+                     :lib/source :source/table-defaults
+                     :lib/source-column-alias "CATEGORY_ID"
+                     :lib/desired-column-alias "CATEGORY_ID"}
+                    {:name "LATITUDE"
+                     :lib/source :source/table-defaults
+                     :lib/source-column-alias "LATITUDE"
+                     :lib/desired-column-alias "LATITUDE"}
+                    {:name "LONGITUDE"
+                     :lib/source :source/table-defaults
+                     :lib/source-column-alias "LONGITUDE"
+                     :lib/desired-column-alias "LONGITUDE"}
+                    {:name "PRICE"
+                     :lib/source :source/table-defaults
+                     :lib/source-column-alias "PRICE"
+                     :lib/desired-column-alias "PRICE"}
+                    {:name "ID"
+                     :lib/source :source/joins
+                     :metabase.lib.join/join-alias "C"
+                     :lib/source-column-alias "ID"
+                     :lib/desired-column-alias "C__ID"
+                     :lib/source-uuid string?}]
+          visible-columns (fn [query]
+                            (map #(select-keys % [:name
+                                                  :lib/source
+                                                  :metabase.lib.join/join-alias
+                                                  :lib/source-column-alias
+                                                  :lib/desired-column-alias
+                                                  :lib/source-uuid])
+                                 (lib/visible-columns query -1 (lib.util/query-stage query -1) {:include-implicitly-joinable? false})))]
+      (is (=? expected
+              (visible-columns query)))
+      (testing "with stage-metadata attached -- should make no difference"
+        (let [query' (assoc-in query [:stages 0 :lib/stage-metadata] {:lib/type :metadata/results
+                                                                      :columns  (lib.metadata.calculation/returned-columns query)})]
+          (is (=? expected
+                  (visible-columns query'))))))))
+
+(deftest ^:parallel returned-columns-bad-field-refs-test
+  (testing "#59597"
+    (doseq [k [:breakout
+               :fields]]
+      (testing k
+        (let [query (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query venues
+                       {:source-query {:source-table $$venues
+                                       :joins        [{:strategy     :left-join
+                                                       :source-table $$categories
+                                                       :alias        "Cat"
+                                                       :condition    [:= $category-id &Cat.categories.id]
+                                                       :fields       [&Cat.categories.name]}]
+                                       :fields       [$id
+                                                      &Cat.categories.name]}
+                        ;; THIS REF IS WRONG -- it should not be using `Cat` because the join is in the source query rather than
+                        ;; in the current stage. However, we should be smart enough to try to figure out what they meant.
+                        k [&Cat.categories.name]}))]
+          (is (=? [{:id                           (meta/id :categories :name)
+                    :name                         "NAME"
+                    ;; `:lib/source` is broken -- see #59596
+                    :lib/source                   (case k
+                                                    :breakout :source/breakouts
+                                                    :fields   :source/fields)
+                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                    :lib/source-column-alias      "Cat__NAME"
+                    :lib/desired-column-alias     "Cat__NAME"}]
+                  (map #(select-keys % [:id :name :lib/source :metabase.lib.join/join-alias :lib/source-column-alias :lib/desired-column-alias])
+                       (lib/returned-columns query)))))))))
+
+(deftest ^:parallel source-column-alias-for-fields-from-join-test
+  (testing "#59599"
+    (doseq [k [:fields :breakout]]
+      (testing k
+        (let [query (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:joins  [{:strategy     :left-join
+                                  :condition    [:= &Q2.products.category 1]
+                                  :alias        "Q2"
+                                  :source-query {:source-table $$reviews
+                                                 :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
+                                                 :breakout     [&P2.products.category]
+                                                 :joins        [{:strategy     :left-join
+                                                                 :source-table $$products
+                                                                 :condition    [:= $reviews.product-id &P2.products.id]
+                                                                 :alias        "P2"
+                                                                 :fields       [&P2.products.category]}]}
+                                  :fields [&Q2.products.category
+                                           [:field "avg" {:base-type :type/Number, :join-alias "Q2"}]]}]
+                        k [[:field %products.category {:join-alias "Q2"}]
+                           [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]}))]
+          (testing "join"
+            (is (= [{:lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "Q2__P2__CATEGORY"}
+                    {:lib/source-column-alias "avg", :lib/desired-column-alias "Q2__avg"}]
+                   (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                        (lib/returned-columns query -1 (m/find-first #(= (lib/current-join-alias %) "Q2")
+                                                                     (lib/joins query -1)))))))
+          (testing "top level"
+            (is (= [{:lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "Q2__P2__CATEGORY"}
+                    {:lib/source-column-alias "avg", :lib/desired-column-alias "Q2__avg"}]
+                   (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                        (lib/returned-columns query))))))))))

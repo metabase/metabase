@@ -14,6 +14,17 @@
     (qp.store/with-metadata-provider (mt/id)
       (resolve-joins/resolve-joins query))))
 
+(deftest ^:parallel normalize-clause-test
+  (is (= [:expression "wow"]
+         (#'resolve-joins/normalize-clause [:expression "wow"])
+         (#'resolve-joins/normalize-clause [:expression "wow" nil])
+         (#'resolve-joins/normalize-clause [:expression "wow" {}])
+         (#'resolve-joins/normalize-clause [:expression "wow" {::amazing true}])))
+  (is (= [:field 1 nil]
+         (#'resolve-joins/normalize-clause [:field 1 nil])
+         (#'resolve-joins/normalize-clause [:field 1 {}])
+         (#'resolve-joins/normalize-clause [:field 1 {::amazing true}]))))
+
 (deftest ^:parallel joins->fields-test
   (is (= [1 2 3 4]
          (#'resolve-joins/joins->fields [{:fields :all}

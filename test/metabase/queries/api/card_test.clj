@@ -2086,6 +2086,67 @@
               (is (= #{"IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"}
                      (col-names question-card-id))))))))))
 
+(deftest renamed-column-names-are-applied-to-json-test-2
+  (testing "JSON downloads should have the same columns as displayed in Metabase (#18572)"
+    (mt/with-temporary-setting-values [custom-formatting nil]
+      (let [query        {:source-table (mt/id :orders)
+                          :fields       [[:field (mt/id :orders :id) {:base-type :type/BigInteger}]
+                                         [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :total) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :discount) {:base-type :type/Float}]
+                                         [:field (mt/id :orders :quantity) {:base-type :type/Integer}]
+                                         [:expression "Tax Rate"]],
+                          :expressions  {"Tax Rate" [:/
+                                                     [:field (mt/id :orders :tax) {:base-type :type/Float}]
+                                                     [:field (mt/id :orders :total) {:base-type :type/Float}]]},
+                          :limit        10}]
+        (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query {:database (mt/id)
+                                                                       :type     :query
+                                                                       :query    query}}
+                       :model/Card {model-card-id  :id
+                                    model-metadata :result_metadata} {:type          :model
+                                    :dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table
+                                                               (format "card__%s" base-card-id)}}}
+                       :model/Card {meta-model-card-id :id} {:type            :model
+                                                             :dataset_query   {:database (mt/id)
+                                                                               :type     :query
+                                                                               :query    {:source-table
+                                                                                          (format "card__%s" model-card-id)}}
+                                                             :result_metadata (mapv
+                                                                               (fn [{column-name :name :as col}]
+                                                                                 (cond-> col
+                                                                                   (= "DISCOUNT" column-name)
+                                                                                   (assoc :display_name "Amount of Discount")
+                                                                                   (= "TOTAL" column-name)
+                                                                                   (assoc :display_name "Grand Total")
+                                                                                   (= "QUANTITY" column-name)
+                                                                                   (assoc :display_name "N")))
+                                                                               model-metadata)}
+                       :model/Card {question-card-id :id} {:dataset_query {:database (mt/id)
+                                                                           :type     :query
+                                                                           :query    {:source-table
+                                                                                      (format "card__%s" meta-model-card-id)}}}]
+          (testing "A question based on a model retains the curated metadata column names but overrides these with any existing visualization_settings"
+            (let [mp (mt/application-database-metadata-provider (mt/id))]
+              (println "<HERE>")
+              (is (= ["ID" "Tax" "Grand Total" "Amount of Discount" "N" "Tax Rate"]
+                     #_(map :display-name
+                            (metabase.lib.metadata.result-metadata/expected-cols query))
+                     (->> (mt/user-http-request :crowberto :post 200
+                                                (format "card/%d/query" question-card-id)
+                                                {:format_rows true})
+                          :data
+                          :cols
+                          (map :display_name))
+                     #_(->> (mt/user-http-request :crowberto :post 200
+                                                  (format "card/%d/query/json" question-card-id)
+                                                  {:format_rows true})
+                            first
+                            keys
+                            (map name)))))))))))
+
 (defn- parse-xlsx-results [results]
   (->> results
        ByteArrayInputStream.

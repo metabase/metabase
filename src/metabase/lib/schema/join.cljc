@@ -56,20 +56,26 @@
    :full-join])
 
 (mr/def ::join
-  [:map
-   {:default {}, :decode/normalize (fn [join]
-                                     (let [{:keys [fields], :as join} (common/normalize-map join)]
-                                       (cond-> join
-                                         (and (not (keyword? fields)) (empty? fields))
-                                         (dissoc :fields))))}
-   [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-   [:lib/options ::common/options]
-   [:stages      [:ref :metabase.lib.schema/stages]]
-   [:conditions  ::conditions]
-   [:alias       ::alias]
-   [:ident    {:optional true} ::common/non-blank-string]
-   [:fields   {:optional true} ::fields]
-   [:strategy {:optional true} ::strategy]])
+  [:and
+   [:map
+    {:default {}, :decode/normalize (fn [join]
+                                      (let [{:keys [fields], :as join} (common/normalize-map join)]
+                                        (as-> join join
+                                          (cond-> join
+                                            (and (not (keyword? fields)) (empty? fields))
+                                            (dissoc :fields))
+                                          (dissoc join :source-metadata))))}
+    [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
+    [:lib/options ::common/options]
+    [:stages      [:ref :metabase.lib.schema/stages]]
+    [:conditions  ::conditions]
+    [:alias       ::alias]
+    [:ident    {:optional true} ::common/non-blank-string]
+    [:fields   {:optional true} ::fields]
+    [:strategy {:optional true} ::strategy]]
+   [:fn
+    {:error/message "join should not have :source-metadata (this is an MBQL 4 key)"}
+    (complement :source-metadata)]])
 
 (mr/def ::joins
   [:and

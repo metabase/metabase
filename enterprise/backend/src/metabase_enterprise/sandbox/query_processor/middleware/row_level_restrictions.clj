@@ -376,11 +376,8 @@
 (def ^:private default-recursion-limit 20)
 (def ^:private ^:dynamic *recursion-limit* default-recursion-limit)
 
-(defenterprise apply-sandboxing
-  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
-  restrict the rows returned, based on presence of sandboxes."
-  :feature :sandboxes
-  [query]
+(mu/defn- apply-sandboxing* :- ::mbql.s/Query
+  [query :- ::mbql.s/Query]
   (if-not api/*is-superuser?*
     (or (when-let [table-id->gtap (when *current-user-id*
                                     (query->table-id->gtap query))]
@@ -393,10 +390,17 @@
                                      default-recursion-limit)
                                 query))
                 (binding [*recursion-limit* (dec *recursion-limit*)]
-                  (apply-sandboxing gtapped-query)))
+                  (apply-sandboxing* gtapped-query)))
               gtapped-query)))
         query)
     query))
+
+(defenterprise apply-sandboxing
+  "Pre-processing middleware. Replaces source tables a User was querying against with source queries that (presumably)
+  restrict the rows returned, based on presence of sandboxes."
+  :feature :sandboxes
+  [query]
+  (apply-sandboxing* query))
 
 ;;;; Post-processing
 

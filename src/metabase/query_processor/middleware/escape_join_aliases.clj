@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.escape-join-aliases
+(ns ^:deprecated metabase.query-processor.middleware.escape-join-aliases
   "Deduplicate and escape join aliases. This is done in a series of discrete steps; see the middleware
   function, [[escape-join-aliases]] for more info.
 
@@ -161,12 +161,12 @@
                            (assoc :join-alias (::join-alias options))
                            (dissoc ::join-alias))]))
 
-(defn escape-join-aliases
+(mu/defn escape-join-aliases :- ::mbql.s/Query
   "Pre-processing middleware. Make sure all join aliases are unique, regardless of case (some databases treat table
   aliases as case-insensitive, even if table names themselves are not); escape all join aliases
   with [[metabase.driver/escape-alias]]. If aliases are 'uniquified', will include a map
   at [:info :alias/escaped->original] of the escaped name back to the original, to be restored in post processing."
-  [query]
+  [query :- ::mbql.s/Query]
   ;; add logging around the steps to make this easier to debug.
   (log/debugf "Escaping join aliases\n%s" (u/pprint-to-str query))
   (letfn [(add-escaped-aliases* [query]

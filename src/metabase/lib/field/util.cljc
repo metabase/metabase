@@ -6,6 +6,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
+;;; TODO (Cam 6/16/25) -- `:lib/source` is fundamentally broken -- see #59596
+
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- ::lib.schema.metadata/column]
@@ -16,8 +18,10 @@
   [column :- ::lib.schema.metadata/column]
   (when (inherited-column? column)
     ((some-fn
+      ;; NOCOMMIT
+      :lib/desired-column-alias
       ;; broken field refs never use `:lib/desired-column-alias`.
-      (case lib.ref/*ref-style*
+      #_(case lib.ref/*ref-style*
         :ref.style/default                  :lib/desired-column-alias
         :ref.style/broken-legacy-qp-results (constantly nil))
       :lib/deduplicated-name
