@@ -157,12 +157,14 @@ export const EmbedFrame = ({
   const shouldApplyParameterPanelThemeChangeTransition =
     !isParameterPanelStickyStateChanging && isParameterPanelSticky;
 
-  const valuePopulatedParameters = getValuePopulatedParameters({
-    parameters,
-    values: _.isEmpty(draftParameterValues)
-      ? parameterValues
-      : draftParameterValues,
-  });
+  const valuePopulatedParameters = parameters
+    ? getValuePopulatedParameters({
+        parameters,
+        values: _.isEmpty(draftParameterValues)
+          ? parameterValues
+          : draftParameterValues,
+      })
+    : [];
 
   useSyncUrlParameters({
     parameters: valuePopulatedParameters,
