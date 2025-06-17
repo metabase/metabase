@@ -68,16 +68,15 @@
 
 (defn- last-deployment
   []
-  (->> (t2/query-one {:select [[:%count.* :count]]
-                      :from   [:databasechangelog]
-                      :where  [:= :deployment_id {:select   [:deployment_id]
-                                                  :from     [:databasechangelog]
-                                                  :order-by [[:orderexecuted :desc]]
-                                                  :limit    1}]
-                      :limit 1})
-       :count
-    ;; includes the selected id
-       inc))
+  (:count (t2/query-one {:select [[:%count.* :count]]
+                         :from   [:databasechangelog]
+                         :where  [:and
+                                  [:= :deployment_id {:select   [:deployment_id]
+                                                      :from     [:databasechangelog]
+                                                      :order-by [[:orderexecuted :desc]]
+                                                      :limit    1}]
+                                  [:not [:= :id "v00.00-000"]]] ;; Can't rollback the initial migration
+                         :limit 1})))
 
 (mu/defn rollback!
   "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
