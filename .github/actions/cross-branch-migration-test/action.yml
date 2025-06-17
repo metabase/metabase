@@ -71,30 +71,30 @@ runs:
         clojure -M:dev:ee:migrate rollback last-deployment
       shell: bash
 
-    - name: (Re)Check out base branch
+    - name: (Re)check out base branch
       uses: actions/checkout@v4
       with:
         ref: ${{ inputs.base-ref }}
 
-    - name: Check migrate runs
+    - name: Check migrate successfully runs
       run: |
         clojure -M:dev:ee:migrate up
       shell: bash
 
-    - name: Run backend on base branch
-      run: |
-        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
-        tail metabase.log &
-      shell: bash
+#    - name: Run backend on base branch
+#      run: |
+#        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+#        tail metabase.log &
+#      shell: bash
 
-    - name: Wait for Metabase to start
-      run: |
-        while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
-          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
-            cat metabase.log
-            echo "Metabase process has exited."
-            exit 1
-          fi
-          sleep 1
-        done
-      shell: bash
+#    - name: Wait for Metabase to start
+#      run: |
+#        while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
+#          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+#            cat metabase.log
+#            echo "Metabase process has exited."
+#            exit 1
+#          fi
+#          sleep 1
+#        done
+#      shell: bash

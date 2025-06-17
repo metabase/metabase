@@ -74,14 +74,13 @@
     (if (= 1 (:count (t2/query-one {:select [[[:count [:distinct :deployment_id]] :count]]
                                     :from   [:databasechangelog]
                                     :limit  1})))
-      {} ;; don't rollback if there was just one deployment of everything
+      0 ;; don't rollback if there was just one deployment of everything
       (:count (t2/query-one {:select [[:%count.* :count]]
                              :from   [:databasechangelog]
                              :where  [:= :deployment_id {:select   [:deployment_id]
                                                          :from     [:databasechangelog]
                                                          :order-by [[:orderexecuted :desc]]
-                                                         :limit    1}]
-                             :limit  1})))))
+                                                         :limit    1}]})))))
 
 (mu/defn rollback!
   "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
