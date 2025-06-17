@@ -13,6 +13,7 @@ import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { SMTPConnectionForm } from "../Email/SMTPConnectionForm";
 import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
+import { EmailFromAddressWidget } from "../widgets/EmailFromAddressWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
 export function EmailSettingsPage() {
@@ -50,12 +51,7 @@ export function EmailSettingsPage() {
               placeholder="Metabase"
               inputType="text"
             />
-            <AdminSettingInput
-              name="email-from-address"
-              title={t`From Address`}
-              placeholder="metabase@yourcompany.com"
-              inputType="text"
-            />
+            <EmailFromAddressWidget />
             <EmailReplyToWidget />
             <AdminSettingInput
               name="bcc-enabled?"
