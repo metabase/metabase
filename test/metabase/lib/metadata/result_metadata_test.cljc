@@ -833,3 +833,50 @@
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/expected-cols
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
+
+(deftest ^:parallel flow-semantic-types-test
+  (testing "results should include semantic types from source models"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id            1
+                        :name          "Base"
+                        :database-id   (meta/id)
+                        :dataset-query (lib.tu.macros/mbql-query orders
+                                         {:expressions  {"Tax Rate" [:/
+                                                                     [:field (meta/id :orders :tax) {:base-type :type/Float}]
+                                                                     [:field (meta/id :orders :total) {:base-type :type/Float}]]}
+                                          :fields       [[:field (meta/id :orders :tax) {:base-type :type/Float}]
+                                                         [:field (meta/id :orders :total) {:base-type :type/Float}]
+                                                         [:expression "Tax Rate"]]
+                                          :limit        10})}
+                       {:id              2
+                        :name            "Model"
+                        :type            :model
+                        :database-id     (meta/id)
+                        :dataset-query   {:type     :query
+                                          :database (meta/id)
+                                          :query    {:source-table "card__1"}}
+                        :result-metadata [{:name         "TAX"
+                                           :display_name "Tax"
+                                           :base_type    :type/Float}
+                                          {:name         "TOTAL"
+                                           :display_name "Total"
+                                           :base_type    :type/Float}
+                                          {:name          "Tax Rate"
+                                           :display_name  "Tax Rate"
+                                           :base_type     :type/Float
+                                           :semantic_type :type/Percentage
+                                           :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                       {:id            3
+                        :name          "Q3"
+                        :database-id   (meta/id)
+                        :dataset-query {:type     :query
+                                        :database (meta/id)
+                                        :query    {:source-table "card__2"}}}]})]
+      (is (= [{:name "TAX"}
+              {:name "TOTAL"}
+              {:name "Tax Rate", :semantic-type :type/Percentage}]
+             (map #(select-keys % [:name :semantic-type])
+                  (result-metadata/expected-cols (lib/query mp (:dataset-query (lib.metadata/card mp 3)))))
+             (map #(select-keys % [:name :semantic-type])
+                  (result-metadata/expected-cols (lib/query mp (lib.metadata/card mp 3)))))))))

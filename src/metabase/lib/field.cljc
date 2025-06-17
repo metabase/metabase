@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -88,6 +89,15 @@
              {:lib/original-name ((some-fn :lib/original-name :name) column)
               :lib/source        :source/previous-stage})))))))
 
+;;; TODO (Cam 6/17/25) -- move this into `lib.util` so we can use it elsewhere
+(defn- merge-non-nil
+  [m & more]
+  (into (or m {})
+        (comp cat
+              (filter (fn [[_k v]]
+                        (some? v))))
+        more))
+
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 ;;;
@@ -98,84 +108,117 @@
 ;;; issues when we're running in the QP and the source card stage gets expanded out to the underlying stages however
 (defn- previous-stage-metadata
   "Propagate stuff like display-name from the previous stage metadata if it exists."
-  [query stage-number join-alias field-id]
+  [query stage-number join-alias id-or-name]
   (when-let [previous-stage (lib.util/previous-stage query stage-number)]
-    (when-let [cols (get-in previous-stage [:lib/stage-metadata :columns])]
-      (when-let [col (m/find-first (fn [col]
-                                     (and (= (:id col) field-id)
-                                          (= (lib.join.util/current-join-alias col)
-                                             join-alias)))
-                                   cols)]
-        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])]
-          (merge
+    (when-let [cols (not-empty (get-in previous-stage [:lib/stage-metadata :columns]))
+               #_(or (when-let [source-card-id (:qp/stage-is-from-source-card previous-stage)]
+                       (lib.card/saved-question-metadata query source-card-id)))]
+      (when-let [col (if (integer? id-or-name)
+                       (m/find-first (fn [col]
+                                       (and (= (:id col) id-or-name)
+                                            (= (lib.join.util/current-join-alias col)
+                                               join-alias)))
+                                     cols)
+                       (resolve-column-name-in-metadata id-or-name cols))]
+        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])
+              ;; if we're using a string name e.g. `Categories__NAME` then try to switch it out with one appropriate
+              ;; to the stage before it e.g. `NAME` before recursing.
+              ;;
+              ;; TODO (Cam 6/17/25) -- I'm 50% sure this recursion logic is busted. Shouldn't we also be updating
+              ;; `join-alias`? This whole function seems kinda wonky
+              previous-id-or-name (if (integer? id-or-name)
+                                    id-or-name
+                                    (or (:lib/source-column-alias col)
+                                        id-or-name))]
+          (merge-non-nil
            col
-           (m/filter-keys some? (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias field-id))))))))
+           ;; TODO (Cam 6/17/25) -- we should only look in the previous stage recursively IF this column
+           ;; was "inherited" i.e. if it came from a previous stage.
+           (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias previous-id-or-name)))))))
+
+(mu/defn- field-ref-options-metadata :- :map
+  "Part of [[resolve-field-metadata]] -- calculate metadata based on the field ref itself."
+  [[_field opts _id-or-name, :as _field-clause] :- :mbql.clause/field]
+  (merge
+   (u/select-non-nil-keys opts [:base-type
+                                :metabase.lib.query/transformation-added-base-type
+                                ::original-effective-type
+                                ::original-temporal-unit])
+   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
+     {:effective-type effective-type})
+   ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+   ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound. Intent
+   ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g.
+   ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
+   ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
+   ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
+   ;; the original column (eg. in breakout) would not.
+   (let [inherited-temporal-unit-keys (cond-> [:inherited-temporal-unit]
+                                        lib.metadata.calculation/*propagate-binning-and-bucketing*
+                                        (conj :temporal-unit))]
+     (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
+       {:inherited-temporal-unit (keyword inherited-temporal-unit)}))
+   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
+   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
+   ;; We should probably be taking that into consideration?
+   (when-let [binning (:binning opts)]
+     {::binning binning})
+   (let [binning-keys (cond-> (list :was-binned)
+                        lib.metadata.calculation/*propagate-binning-and-bucketing*
+                        (conj :binning))]
+     (when-some [was-binned (some opts binning-keys)]
+       {:was-binned (boolean was-binned)}))
+   (when-let [unit (:temporal-unit opts)]
+     {::temporal-unit unit})
+   ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
+   ;; middleware needs to add extra info to track things that it did (e.g. the
+   ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
+   ;; keys to track which Fields it adds or needs to remap, and then the post-processing middleware
+   ;; does the actual remapping based on that info)
+   (when-let [external-namespaced-options (not-empty (into {}
+                                                           (filter (fn [[k _v]]
+                                                                     (and (qualified-keyword? k)
+                                                                          (not= (namespace k) "lib")
+                                                                          (not (str/starts-with? (namespace k) "metabase.lib")))))
+                                                           opts))]
+     {:options external-namespaced-options})))
 
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
-  [query                                                                 :- ::lib.schema/query
-   stage-number                                                          :- :int
-   [_field {:keys [join-alias], :as opts} id-or-name, :as _field-clause] :- :mbql.clause/field]
-  (let [metadata (merge
-                  (u/select-non-nil-keys opts [:base-type
-                                               :metabase.lib.query/transformation-added-base-type
-                                               ::original-effective-type
-                                               ::original-temporal-unit])
-                  (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
-                    {:effective-type effective-type})
-                  ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
-                  ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound. Intent
-                  ;; is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g.
-                  ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
-                  ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
-                  ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
-                  ;; the original column (eg. in breakout) would not.
-                  (let [inherited-temporal-unit-keys (cond-> [:inherited-temporal-unit]
-                                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
-                                                       (conj :temporal-unit))]
-                    (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
-                      {:inherited-temporal-unit (keyword inherited-temporal-unit)}))
-                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
-                  ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
-                  ;; We should probably be taking that into consideration?
-                  (when-let [binning (:binning opts)]
-                    {::binning binning})
-                  (let [binning-keys (cond-> (list :was-binned)
-                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
-                                       (conj :binning))]
-                    (when-some [was-binned (some opts binning-keys)]
-                      {:was-binned (boolean was-binned)}))
-                  (when-let [unit (:temporal-unit opts)]
-                    {::temporal-unit unit})
-                  ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
-                  ;; middleware needs to add extra info to track things that it did (e.g. the
-                  ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
-                  ;; keys to track which Fields it adds or needs to remap, and then the post-processing middleware
-                  ;; does the actual remapping based on that info)
-                  (when-let [external-namespaced-options (not-empty (into {}
-                                                                          (filter (fn [[k _v]]
-                                                                                    (and (qualified-keyword? k)
-                                                                                         (not= (namespace k) "lib")
-                                                                                         (not (str/starts-with? (namespace k) "metabase.lib")))))
-                                                                          opts))]
-                    {:options external-namespaced-options})
-                  (when (integer? id-or-name)
-                    (merge
-                     (or (m/filter-keys some? (lib.equality/resolve-field-id query stage-number id-or-name))
-                         {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
-                     (previous-stage-metadata query stage-number join-alias id-or-name)))
-                  (when (string? id-or-name)
-                    (let [resolved (or (resolve-column-name query stage-number id-or-name)
-                                       {:lib/type :metadata/column, :name (str id-or-name)})]
-                      ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
-                      ;; forward anything else? No idea. Waiting for an answer in
-                      ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
-                      (if join-alias
-                        (merge
-                         {:lib/type :metadata/column, :name (str id-or-name)}
-                         (u/select-non-nil-keys resolved [:id :semantic-type])) ; CRITICAL THAT WE INCLUDE ID!
-                        (m/filter-keys some? resolved)))))]
+  [query                                   :- ::lib.schema/query
+   stage-number                            :- :int
+   [_field _opts id-or-name :as field-ref] :- :mbql.clause/field]
+  (let [join-alias (lib.join.util/current-join-alias field-ref)
+        metadata   (let [resolved-by-name (when (string? id-or-name)
+                                            (resolve-column-name query stage-number id-or-name))
+                         field-id         (if (integer? id-or-name)
+                                            id-or-name
+                                            (:id resolved-by-name))]
+                     (merge-non-nil
+                      {:lib/type :metadata/column, :name (str id-or-name), :display-name (i18n/tru "Unknown Field")}
+                      (field-ref-options-metadata field-ref)
+                      ;; metadata about the field from the metadata provider
+                      (when field-id
+                        (lib.metadata/field query field-id))
+                      ;; metadata from the source card IF this is the first stage of the query
+                      (when field-id
+                        (lib.equality/resolve-field-id-in-source-card query stage-number field-id))
+                      ;; metadata we want to 'flow' from previous stage(s) / source models of the query (e.g.
+                      ;; `:semantic-type`)
+                      (previous-stage-metadata query stage-number join-alias (or field-id id-or-name))
+                      ;; if this was resolved from a name then include that stuff as well.
+                      ;;
+                      ;; TODO (Cam 6/17/25) -- I do not understand this logic at all and it seems REALLY wonky. What
+                      ;; happens if we just remove this stuff?
+                      (when resolved-by-name
+                        ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
+                        ;; forward anything else? No idea. Waiting for an answer in
+                        ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
+                        (if join-alias
+                          ;; CRITICAL THAT WE INCLUDE ID!
+                          (select-keys resolved-by-name [:id :semantic-type])
+                          resolved-by-name))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -221,7 +264,9 @@
   [_query _stage-number {field-name :name, :as field-metadata}]
   (assoc field-metadata :name field-name))
 
-(defn extend-column-metadata-from-ref
+;;; TODO (Cam 6/17/25) -- I don't think there are any cases where we use [[resolve-field-metadata]] without passing
+;;; the results into this function; combine the two somehow so we're not duplicating efforts.
+(defn- extend-column-metadata-from-ref
   "Extend column metadata `metadata` with information specific to `field-ref` in `query` at stage `stage-number`.
   `metadata` should be the metadata of a resolved field or a visible column matching `field-ref`."
   [query
