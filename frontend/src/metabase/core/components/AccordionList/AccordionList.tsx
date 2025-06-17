@@ -23,7 +23,7 @@ import {
   AccordionListCell,
   type SharedAccordionProps,
 } from "./AccordionListCell";
-import type { Item, Row, Section } from "./types";
+import type { Item, Row, SearchProps, Section } from "./types";
 import {
   type Cursor,
   getNextCursor,
@@ -47,7 +47,7 @@ type Props<
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
   openSection?: number;
   role?: string;
-  searchProp?: string | string[];
+  searchProp?: SearchProps<TItem>;
   searchable?: boolean | ((section: Section) => boolean | undefined);
   fuzzySearch?: boolean;
   sections: TSection[];

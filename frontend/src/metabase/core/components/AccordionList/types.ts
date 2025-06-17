@@ -50,3 +50,11 @@ export type Row<TItem extends Item, TSection extends Section<TItem>> = {
       isLastItem: boolean;
     }
 );
+
+type SearchProp<TItem extends Item> = TItem extends object
+  ? keyof TItem
+  : string;
+
+export type SearchProps<TItem extends Item> =
+  | Readonly<SearchProp<TItem>[]>
+  | SearchProp<TItem>;
