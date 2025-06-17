@@ -1358,6 +1358,7 @@
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
@@ -1486,8 +1487,7 @@
            query-analysis
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
