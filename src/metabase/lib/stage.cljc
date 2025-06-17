@@ -15,6 +15,7 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -118,6 +119,7 @@
                                              :expression :source/expressions)
                                     metadata (lib.metadata.calculation/metadata query stage-number ref-clause)]]
           (assoc metadata
+                 :lib/source-uuid          (lib.options/uuid ref-clause)
                  :lib/source               source
                  :lib/source-column-alias  (lib.metadata.calculation/column-name query stage-number metadata)
                  :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query metadata))))
@@ -201,6 +203,7 @@
                    (not (lib.util.match/match-one clause :offset)))]
      (let [base-type (:base-type metadata)]
        (-> (assoc metadata
+                  :lib/source-uuid          (lib.options/uuid clause)
                   :lib/source               :source/expressions
                   :lib/source-column-alias  (:name metadata)
                   :lib/desired-column-alias (unique-name-fn (:name metadata)))
@@ -341,16 +344,32 @@
           (remove duplicate-col?)
           join-cols)))
 
-#_(defn- flow-previous-stage-metadata [query stage-number cols options]
-    (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-      (let [previous-stage (lib.util/query-stage query previous-stage-number)]
-        (when-let [cols (lib.metadata.calculation/returned-columns query previous-stage-number previous-stage)]))))
+(defn- HACK-fix-bad-join-aliases
+  "Work around bad metadata incorrectly thinking it comes from a join when no such join exists at this stage of the
+  query (#59597).
+
+  TODO (Cam 6/16/25) -- this is a fundamentally an evil HACK and we shouldn't be calculating the wrong metadata in the
+  first place upstream. The bad metadata comes from bad field refs --
+  see [[metabase.lib.stage-test/returned-columns-bad-field-refs-test]]. We should fix the upstream methods (probably
+  in [[metabase.lib.field]]) and then remove this HACK."
+  [cols stage]
+  (mapv (fn [col]
+          (or (when-let [join-alias (lib.join.util/current-join-alias col)]
+                (let [valid-join-alias? (some #(= (lib.join.util/current-join-alias %) join-alias)
+                                              (:joins stage))]
+                  (when-not valid-join-alias?
+                    (-> col
+                        (lib.join/with-join-alias nil)
+                        (update :lib/source-column-alias (fn [source-column-alias]
+                                                           (lib.join.util/joined-field-desired-alias join-alias source-column-alias)))))))
+              col))
+        cols))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
 ;;; those and the joined columns. Otherwise return the defaults based on the source Table or previous stage + joins.
 (mu/defmethod lib.metadata.calculation/returned-columns-method ::stage :- lib.metadata.calculation/ColumnsWithUniqueAliases
-  [query stage-number _stage {:keys [include-remaps? unique-name-fn], :as options}]
+  [query stage-number stage {:keys [include-remaps? unique-name-fn], :as options}]
   (or
    (existing-stage-metadata query stage-number unique-name-fn)
    (let [query        (ensure-previous-stages-have-metadata query stage-number options)
@@ -384,8 +403,8 @@
               (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
               (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
               (lib.join/all-joins-expected-columns query stage-number options))))
-         #_(as-> cols (flow-previous-stage-metadata query stage-number cols options))
-         lib.field.util/add-deduplicated-names))))
+         lib.field.util/add-deduplicated-names
+         (HACK-fix-bad-join-aliases stage)))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
   [_query _stage-number _stage _style]
