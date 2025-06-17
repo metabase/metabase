@@ -1,7 +1,7 @@
+import { shallowEqual } from "@mantine/hooks";
 import Fuse from "fuse.js";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
-import { memoize } from "underscore";
 
 import type { Item, Section } from "./types";
 
@@ -196,3 +196,23 @@ export const getSearchIndex = memoize(function <
     isCaseSensitive: false,
   });
 });
+
+/**
+ * Memoizes a function based on shallow equality of its argument.
+ */
+function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
+  let lastArgs: T | null = null;
+  let lastResult: R | null = null;
+
+  return function (args: T): R {
+    if (
+      lastArgs == null ||
+      lastResult == null ||
+      !shallowEqual(lastArgs, args)
+    ) {
+      lastArgs = args;
+      lastResult = fn(args);
+    }
+    return lastResult;
+  };
+}
