@@ -68,8 +68,6 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
-  DatasetError,
-  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -628,16 +626,8 @@ const defaultMetabotContextValue: MetabotContext = {
   registerChatContextProvider: () => () => {},
 };
 
-export type FixSqlQueryButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
-  onHighlightLines: (fixedLineNumbers: number[]) => void;
-};
-
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<Record<string, never>>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
