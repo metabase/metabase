@@ -157,26 +157,6 @@ const multiStageQuestion = {
   },
 };
 
-const multiStageQuestionWithImplicitJoinBreakoutAndCustomColumn = {
-  query: {
-    "source-query": {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          PRODUCTS.ID,
-          { "base-type": "type/Integer", "source-field": ORDERS.PRODUCT_ID },
-        ],
-      ],
-    },
-    expressions: {
-      CC: ["*", 2, ["field", "count", { "base-type": "type/Integer" }]],
-    },
-    limit: 5,
-  },
-};
-
 const nativeQuestion = {
   display: "table",
   native: {
@@ -609,7 +589,28 @@ describe("scenarios > visualizations > table column settings", () => {
 
     it("should be able to show and hide columns in a multi-stage query with custom columns (metabase#35067)", () => {
       H.createQuestion(
-        multiStageQuestionWithImplicitJoinBreakoutAndCustomColumn,
+        {
+          query: {
+            "source-query": {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/Integer",
+                    "source-field": ORDERS.PRODUCT_ID,
+                  },
+                ],
+              ],
+            },
+            expressions: {
+              CC: ["*", 2, ["field", "count", { "base-type": "type/Integer" }]],
+            },
+            limit: 5,
+          },
+        },
         { visitQuestion: true },
       );
       openSettings();
