@@ -58,6 +58,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     <Box
       data-testid="upsell-big-card"
       className={S.UpsellBigCardComponent}
+      bg="bg-white"
       {...props}
     >
       <Flex px="xl" py="md">

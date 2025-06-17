@@ -14,7 +14,7 @@ import { AIDashboardAnalysisSidebar } from "./AIDashboardAnalysisSidebar";
 
 jest.mock("metabase/visualizations/lib/image-exports", () => ({
   getDashboardImage: () => Promise.resolve("test-base64"),
-  getBase64ChartImage: () => Promise.resolve("test-base64"),
+  getChartImagePngDataUri: () => "test-base64",
   getChartSelector: () => "#chart",
 }));
 

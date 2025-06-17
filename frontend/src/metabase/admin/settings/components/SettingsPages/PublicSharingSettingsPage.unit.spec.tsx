@@ -77,9 +77,9 @@ describe("PublicSharingSettingsPage", () => {
     expect(screen.getByText("Enable Public Sharing")).toBeInTheDocument();
 
     [
-      "Shared Dashboards",
-      "Shared Questions",
-      "Shared Action Forms",
+      "Shared dashboards",
+      "Shared questions",
+      "Shared action forms",
       "Test Action",
       "Test Dashboard",
       "Test Question",
@@ -92,9 +92,9 @@ describe("PublicSharingSettingsPage", () => {
     await act(() => setup(true));
     [
       "Enable Public Sharing",
-      "Shared Dashboards",
-      "Shared Questions",
-      "Shared Action Forms",
+      "Shared dashboards",
+      "Shared questions",
+      "Shared action forms",
       "Test Action",
       "Test Dashboard",
       "Test Question",

@@ -43,9 +43,9 @@ const setup = async (
 };
 
 const fields = [
-  { label: /SAML Identity Provider URL/, value: "https://example.test" },
-  { label: /SAML Identity Provider Certificate/, value: "abc-123" },
-  { label: /SAML Identity Provider Issuer/, value: "example.test.sso" },
+  { label: /SAML Identity Provider URL/i, value: "https://example.test" },
+  { label: /SAML Identity Provider Certificate/i, value: "abc-123" },
+  { label: /SAML Identity Provider Issuer/i, value: "example.test.sso" },
 ] as { label: RegExp; value: string }[];
 
 describe("SettingsSAMLForm", () => {
