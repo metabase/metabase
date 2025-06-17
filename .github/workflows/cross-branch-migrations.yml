@@ -5,6 +5,14 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "resources/migrations/**"
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: 'Base reference for the migration test'
+        required: true
+        type: string
+env:
+  BASE_REF: ${{ inputs.base_ref || github.base_ref }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
@@ -17,11 +25,12 @@ jobs:
     env:
       CI: 'true'
       MB_DB_TYPE: h2
+
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
 
   migrations-postgres-12-ee:
     runs-on: ubuntu-22.04
@@ -46,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
 
   migrations-postgres-latest-ee:
     runs-on: ubuntu-22.04
@@ -71,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
 
   migrations-mysql-8-0-ee:
     runs-on: ubuntu-22.04
@@ -92,7 +101,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
 
   migrations-mysql-latest-ee:
     runs-on: ubuntu-22.04
@@ -117,7 +126,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
 
   migrations-mariadb-10-2-ee:
     runs-on: ubuntu-22.04
@@ -138,7 +147,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
 
   migrations-mariadb-latest-ee:
     runs-on: ubuntu-22.04
@@ -159,4 +168,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
         with:
-          base-ref: ${{ github.base_ref }}
+          base-ref: ${{ env.BASE_REF }}
