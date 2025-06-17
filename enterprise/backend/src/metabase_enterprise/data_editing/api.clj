@@ -293,6 +293,7 @@
     (pos-int? raw-id) {:action-id raw-id}
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
+                          ;; TODO: why this doesn't use the default-mapping?
                           (isa? op :table.row/common)
                           {:action-kw op
                            :mapping {:table-id param :row ::root}}
@@ -491,38 +492,7 @@
      ;; TODO support for bulk actions
      {:keys [action_id scope input]}]
     (let [scope   (actions/hydrate-scope scope)
-          ;; TODO consolidate this with [[fetch-unified-action]]
-          unified (cond
-                    (not (#{"table.row/create"
-                            "table.row/update"
-                            "table.row/delete"} action_id))
-                    (fetch-unified-action scope action_id)
-
-                    (:dashcard-id scope)
-                    (let [{:keys [dashcard-id]} scope
-                          {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
-                      (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-                      {:dashcard-viz visualization_settings
-                       :inner-action {:action-kw (keyword action_id)
-                                      :mapping   {:table-id (:table_id visualization_settings)
-                                                  :row      ::root}}
-                       ;; TODO: migrate on read this to our own configuration
-                       :param-map    (->> visualization_settings
-                                          :editableTable.enabledActions
-                                          (some (fn [{:keys [id parameterMappings]}]
-                                                  (when (= id action_id)
-                                                    parameterMappings))))})
-
-                    (:table-id scope)
-                    {:action-kw (keyword action_id)
-                     :mapping   {:table-id (:table-id scope)
-                                 :row      ::root}}
-
-                    :else
-                    (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
-                                    {:status-code 400
-                                     :scope       scope
-                                     :action_id   action_id})))]
+          unified (fetch-unified-action scope action_id)]
       (data-editing.describe/describe-unified-action unified scope input))))
 
 (def configure

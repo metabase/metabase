@@ -1119,8 +1119,6 @@
                                                                :b  nil
                                                                :c  "default"
                                                                :d  "hard-coded"}}]}}
-                                 #_{:status 500
-                                    :body "sad"}
                                  (-> (req base-req)
                                      (select-keys [:status :body])))))
                         (testing "missing optional param"
@@ -1386,47 +1384,55 @@
               (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
                       (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
                                             {:scope     scope
-                                             :action_id delete-id}))))
+                                             :action_id delete-id}))))))))))
 
-            ;; insert a row for the row action
-            (mt/user-http-request :crowberto :post 200
-                                  (data-editing.tu/table-url @test-table)
-                                  {:rows [{:text "a very important string"}]})
+(deftest tmp-modal-magic-scope-detection-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/toggle-data-editing-enabled! true)
+      (with-open [test-table (data-editing.tu/open-test-table! {:id 'auto-inc-type
+                                                                :text      [:text]
+                                                                :int       [:int]
+                                                                :timestamp [:timestamp]
+                                                                :date      [:date]}
+                                                               {:primary-key [:id]})]
+        (mt/user-http-request :crowberto :post 200
+                              (data-editing.tu/table-url @test-table)
+                              {:rows [{:text "a very important string"}]})
 
-            (let [create-id "table.row/create"
-                  update-id "table.row/update"
-                  delete-id "table.row/delete"]
+        (let [create-id "table.row/create"
+              update-id "table.row/update"
+              delete-id "table.row/delete"]
 
-              ;; magic scope detection, deprecated
-              (testing "using table-id from scope"
-                (let [scope {:table-id @test-table}]
-                  (testing "create"
-                    (is (=? {:parameters [{:id "text" :readonly false}
-                                          {:id "int" :readonly false}
-                                          {:id "timestamp" :readonly false}
-                                          {:id "date" :readonly false}]}
-                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
-                                                  {:scope     scope
-                                                   :action_id create-id
-                                                   :input     {:id 1}}))))
+          (testing "using table-id from scope"
+            (let [scope {:table-id @test-table}]
+              (testing "create"
+                (is (=? {:parameters [{:id "text" :readonly false}
+                                      {:id "int" :readonly false}
+                                      {:id "timestamp" :readonly false}
+                                      {:id "date" :readonly false}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id create-id
+                                               :input     {:id 1}}))))
 
-                  (testing "update"
-                    (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}
-                                          {:id "text" :readonly false}
-                                          {:id "int" :readonly false}
-                                          {:id "timestamp" :readonly false}
-                                          {:id "date" :readonly false}]}
-                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
-                                                  {:scope     scope
-                                                   :action_id update-id
-                                                   :input     {:id 1}}))))
+              (testing "update"
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}
+                                      {:id "text" :readonly false}
+                                      {:id "int" :readonly false}
+                                      {:id "timestamp" :readonly false}
+                                      {:id "date" :readonly false}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id update-id
+                                               :input     {:id 1}}))))
 
-                  (testing "delete"
-                    (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
-                            (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
-                                                  {:scope     scope
-                                                   :action_id delete-id
-                                                   :input     {:id 1}})))))))))))))
+              (testing "delete"
+                (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
+                        (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                              {:scope     scope
+                                               :action_id delete-id
+                                               :input     {:id 1}})))))))))))
 
 ;; Important missing tests
 (comment
