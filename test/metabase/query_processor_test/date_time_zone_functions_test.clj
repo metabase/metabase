@@ -606,77 +606,101 @@
 ;;; |                                           Convert Timezone tests                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- test-convert-tz [field expression]
+  (->> (mt/run-mbql-query times
+         {:expressions {"expr" expression}
+          :limit       1
+          :fields      [field                  ;; original row for comparison
+                        [:expression "expr"]]}) ;; result
+       mt/rows
+       first))
+
 (deftest convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
     (mt/dataset times-mixed
-      (letfn [(test-convert-tz
-                [field
-                 expression]
-                (->> (mt/run-mbql-query times
-                       {:expressions {"expr" expression}
-                        :limit       1
-                        :fields      [field                   ;; original row for comparision
-                                      [:expression "expr"]]}) ;; result
-                     mt/rows
-                     first))]
-        (testing "timestamp with out timezone columns"
-          (mt/with-report-timezone-id! "UTC"
-            (testing "convert from Asia/Shanghai(+08:00) to Asia/Seoul(+09:00)"
-              (is (= ["2004-03-19T09:19:09Z"
-                      "2004-03-19T10:19:09+09:00"]
-                     (mt/$ids (test-convert-tz
-                               $times.dt
-                               [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"])))))
-            (testing "source-timezone is required"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+      (testing "timestamp with out timezone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "convert from Asia/Shanghai(+08:00) to Asia/Seoul(+09:00)"
+            (is (= ["2004-03-19T09:19:09Z"
+                    "2004-03-19T10:19:09+09:00"]
                    (mt/$ids (test-convert-tz
                              $times.dt
-                             [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))
+                             [:convert-timezone $times.dt "Asia/Seoul" "Asia/Shanghai"]))))))))))
 
-          (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
-            (mt/with-report-timezone-id! "Europe/Rome"
-              (testing "results should be displayed in the converted timezone, not report-tz"
-                (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
-                       (mt/$ids (test-convert-tz
-                                 $times.dt
-                                 [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"]))))))))
+(deftest convert-timezone-test-1b
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with out timezone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "source-timezone is required"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"input column doesn't have a set timezone. Please set the source parameter in convertTimezone to convert it."
+                 (mt/$ids (test-convert-tz
+                           $times.dt
+                           [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul"]))))))))))
 
-        (testing "timestamp with time zone columns"
-          (mt/with-report-timezone-id! "UTC"
-            (testing "convert to +09:00"
-              (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
+(deftest convert-timezone-test-1c
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with out timezone columns"
+        (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
+          (mt/with-report-timezone-id! "Europe/Rome"
+            (testing "results should be displayed in the converted timezone, not report-tz"
+              (is (= ["2004-03-19T09:19:09+01:00" "2004-03-19T17:19:09+09:00"]
                      (mt/$ids (test-convert-tz
-                               $times.dt_tz
-                               [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))
+                               $times.dt
+                               [:convert-timezone [:field (mt/id :times :dt) nil] "Asia/Seoul" "Europe/Rome"])))))))))))
 
-            (testing "timestamp with time zone columns shouldn't have `source-timezone`"
-              (is (thrown-with-msg?
-                   clojure.lang.ExceptionInfo
-                   #"input column already has a set timezone. Please remove the source parameter in convertTimezone."
+(deftest convert-timezone-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with time zone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "convert to +09:00"
+            (is (= ["2004-03-19T02:19:09Z" "2004-03-19T11:19:09+09:00"]
                    (mt/$ids (test-convert-tz
                              $times.dt_tz
-                             [:convert-timezone [:field (mt/id :times :dt_tz) nil]
-                              "Asia/Seoul"
-                              "UTC"]))))))
+                             [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))))
 
-          (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
-            (mt/with-report-timezone-id! "Europe/Rome"
-              (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
-                (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
-                       (mt/$ids (test-convert-tz
-                                 $times.dt_tz
-                                 [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"]))))))))
+(deftest convert-timezone-test-2b
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with time zone columns"
+        (mt/with-report-timezone-id! "UTC"
+          (testing "timestamp with time zone columns shouldn't have `source-timezone`"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"input column already has a set timezone. Please remove the source parameter in convertTimezone."
+                 (mt/$ids (test-convert-tz
+                           $times.dt_tz
+                           [:convert-timezone [:field (mt/id :times :dt_tz) nil]
+                            "Asia/Seoul"
+                            "UTC"]))))))))))
 
-        (testing "with literal datetime"
-          (mt/with-report-timezone-id! "UTC"
-            (is (= "2022-10-03T14:10:20+07:00"
-                   (->> (mt/run-mbql-query times
-                          {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
-                           :fields      [[:expression "expr"]]})
-                        mt/rows
-                        ffirst)))))))))
+(deftest convert-timezone-test-2c
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "timestamp with time zone columns"
+        (when (driver.u/supports? driver/*driver* :set-timezone (mt/db))
+          (mt/with-report-timezone-id! "Europe/Rome"
+            (testing "the base timezone should be the timezone of column (Asia/Ho_Chi_Minh)"
+              (is (= ["2004-03-19T03:19:09+01:00" "2004-03-19T11:19:09+09:00"]
+                     (mt/$ids (test-convert-tz
+                               $times.dt_tz
+                               [:convert-timezone [:field (mt/id :times :dt_tz) nil] "Asia/Seoul"])))))))))))
+
+(deftest convert-timezone-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
+    (mt/dataset times-mixed
+      (testing "with literal datetime"
+        (mt/with-report-timezone-id! "UTC"
+          (is (= "2022-10-03T14:10:20+07:00"
+                 (->> (mt/run-mbql-query times
+                        {:expressions {"expr" [:convert-timezone "2022-10-03T07:10:20" "Asia/Saigon" "UTC"]}
+                         :fields      [[:expression "expr"]]})
+                      mt/rows
+                      ffirst))))))))
 
 (deftest nested-convert-timezone-test
   (mt/test-drivers (mt/normal-drivers-with-feature :convert-timezone)
