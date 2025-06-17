@@ -189,7 +189,7 @@ describe("scenarios > admin > permissions > application", () => {
         cy.findByTestId("admin-layout-content").within(() => {
           cy.findByText("License and Billing").should("not.exist");
           cy.findByLabelText("Updates").should("not.exist");
-          cy.findByLabelText("Site Name")
+          cy.findByLabelText("Site name")
             .should("be.visible")
             .clear()
             .type("NewName")

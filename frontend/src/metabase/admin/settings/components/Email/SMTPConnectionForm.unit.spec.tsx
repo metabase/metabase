@@ -73,7 +73,7 @@ const setup = async ({
   });
   setupPropertiesEndpoints(createMockSettings(settingValues));
 
-  renderWithProviders(<SMTPConnectionForm />, {
+  renderWithProviders(<SMTPConnectionForm onClose={() => {}} />, {
     storeInitialState: createMockState({
       settings: createMockSettingsState({
         ...settingValues,
