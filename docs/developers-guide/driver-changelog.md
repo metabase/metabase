@@ -6,6 +6,12 @@ title: Driver interface changelog
 
 ## Metabase 0.55.0
 
+- Added a feature `:query-resource-usage` for driver that support returning a query's resource usage (e.g. bytes, credits)
+
+- Added a feature `:dry-run-queries` for drivers that support dry running a query
+
+- Add the multi-method `dry-run-query` for drivers to dry run a query to get an estimate of resource usage (e.g. bytes, credits)
+
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
 
 - Add the multi-method `date-dbtype` that allows the driver to control which types dates are cast to.

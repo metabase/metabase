@@ -673,6 +673,13 @@
     ;; Does this driver support sandboxing with saved questions?
     :saved-question-sandboxing
 
+    ;; Does this driver support the concept of "dry running" a query, where we can get an estimate
+    ;; of the query's resource usage (e.g. bytes, credits) without actually running the query?
+    :dry-run-queries
+
+    ;; Does this driver support returning a query's resource usage (e.g. bytes, credits)?
+    :query-resource-usage
+
     ;; Does this driver support casting text and floats to integers? (`integer()` custom expression function)
     :expressions/integer
 
@@ -1094,6 +1101,17 @@
   {:added "0.47.0" :arglists '([driver conn role])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti dry-run-query
+  "Dry run a query to get an estimate of resource usage (e.g. bytes, credits)"
+  {:added "0.55.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod dry-run-query ::driver
+  [_driver query]
+  {:query query
+   :dry-run {}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Upload                                                      |
