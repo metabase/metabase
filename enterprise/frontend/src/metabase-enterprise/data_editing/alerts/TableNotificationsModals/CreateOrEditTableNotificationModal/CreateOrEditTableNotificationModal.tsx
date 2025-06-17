@@ -281,25 +281,12 @@ const useNotificationTemplatePreview = (
     | undefined,
 ) => {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [channelType, setChannelType] =
-    useState<NotificationChannelType | null>(null);
-  const previewRequest = useMemo(() => {
-    if (!requestBody || !channelType) {
-      return null;
-    }
-    const handler = requestBody.handlers.find(
-      (h) => h.channel_type === channelType && h.template,
-    );
-    const currentTemplate =
-      handler?.template || defaultTemplates?.[channelType];
-    if (!currentTemplate) {
-      return null;
-    }
-    return {
-      notification: requestBody,
-      template: currentTemplate,
-    };
-  }, [requestBody, defaultTemplates, channelType]);
+  const [previewRequest, setPreviewRequest] = useState<{
+    notification:
+      | CreateTableNotificationRequest
+      | UpdateTableNotificationRequest;
+    template: ChannelTemplate;
+  } | null>(null);
 
   const {
     data: previewData,
@@ -308,45 +295,49 @@ const useNotificationTemplatePreview = (
   } = usePreviewNotificationTemplateQuery(previewRequest ?? skipToken, {
     skip: !previewRequest,
   });
-  const [lazyPreviewRequest] = useLazyPreviewNotificationTemplateQuery();
+  const [fetchPreview] = useLazyPreviewNotificationTemplateQuery();
 
   const handlePreviewClick = useCallback(
-    (channelType: NotificationChannelType) => {
-      if (previewOpen) {
+    async (channelType: NotificationChannelType) => {
+      if (previewOpen && channelType === "channel/email") {
         setPreviewOpen(false);
-        setChannelType(null);
+        setPreviewRequest(null);
         return;
       }
 
-      setChannelType(channelType);
+      let previewRequest = null;
+      if (requestBody && channelType) {
+        const handler = requestBody.handlers.find(
+          (h) => h.channel_type === channelType && h.template,
+        );
+        const currentTemplate =
+          handler?.template || defaultTemplates?.[channelType];
+
+        if (currentTemplate) {
+          previewRequest = {
+            notification: requestBody,
+            template: currentTemplate,
+          };
+        }
+      }
 
       if (channelType === "channel/email") {
         setPreviewOpen(true);
+        setPreviewRequest(previewRequest);
       }
-    },
-    [previewOpen],
-  );
 
-  /*
-    For Slack channel, we don't render a preview but rather redirect user to another URL where
-    the template is displayed properly rendered with Slack's Build Kit.
-  */
-  useEffect(() => {
-    async function openSlackPreview() {
-      if (previewRequest && channelType === "channel/slack") {
-        const { data } = await lazyPreviewRequest(previewRequest);
+      if (channelType === "channel/slack" && previewRequest) {
+        const { data } = await fetchPreview(previewRequest);
         if (data?.preview_url) {
           openInBlankWindow(data.preview_url);
-          setChannelType(null);
         }
       }
-    }
-    openSlackPreview();
-  }, [previewRequest, channelType, lazyPreviewRequest]);
+    },
+    [defaultTemplates, fetchPreview, previewOpen, requestBody],
+  );
 
   const handlePreviewClose = useCallback(() => {
     setPreviewOpen(false);
-    setChannelType(null);
   }, []);
 
   return {

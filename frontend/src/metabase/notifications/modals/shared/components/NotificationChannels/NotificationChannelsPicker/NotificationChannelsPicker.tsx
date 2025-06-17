@@ -784,9 +784,7 @@ export const NotificationChannelsPicker = ({
                   {onPreviewClick && (
                     <TemplateToolbarButton
                       icon="external"
-                      label={
-                        isPreviewOpen ? t`Close preview` : t`Open Slack preview`
-                      }
+                      label={t`Open message preview`}
                       onClick={() =>
                         onPreviewClick(templateStateKeyMap["slack"])
                       }
