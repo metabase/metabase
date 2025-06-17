@@ -538,7 +538,7 @@
              (map :lib/desired-column-alias (lib/returned-columns query)))))))
 
 (deftest ^:parallel calculate-names-without-truncation-test
-  (testing "Do not truncate column `:name` ever (QUE-1341)"
+  (testing "Do not truncate column `:name` ever (#59665)"
     (let [query {:lib/type     :mbql/query
                  :lib/metadata meta/metadata-provider
                  :stages       [{:lib/type           :mbql.stage/native
