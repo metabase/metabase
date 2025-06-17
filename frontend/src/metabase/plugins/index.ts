@@ -80,6 +80,7 @@ import type {
   Timeline,
   TimelineEvent,
   User,
+  VisualizationDisplay,
 } from "metabase-types/api";
 import type {
   AdminPath,
@@ -671,6 +672,9 @@ export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
   canAnalyzeQuestion: (question: Question) => boolean;
+  chartAnalysisRenderFormats: {
+    [display in VisualizationDisplay]?: "png" | "svg" | "none";
+  };
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
@@ -678,6 +682,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
   canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
 };
 
 export const PLUGIN_METABOT = {
