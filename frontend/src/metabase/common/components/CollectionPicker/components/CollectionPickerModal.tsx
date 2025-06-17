@@ -31,7 +31,7 @@ export interface CollectionPickerModalProps {
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
   models?: CollectionPickerModel[];
-  canSelectItem: (item: CollectionPickerItem) => boolean;
+  canSelectItem?: (item: CollectionPickerItem) => boolean;
 }
 
 const baseCanSelectItem = (
