@@ -140,6 +140,30 @@
                   {:before-sync field-before-sync
                    :after-sync  (get-field-to-update)})))))))
 
+(deftest base-type-change-test
+  (testing "when a column changes base type, coercion_strategy is reset"
+    (mt/with-temp-copy-of-db
+      (let [db (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+        (doseq [statement ["DROP TABLE IF EXISTS \"base_type_change_test\";"
+                           "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
+                           "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
+          (jdbc/execute! db-spec [statement]))
+        (sync/sync-database! db)
+        (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
+
+          (sync/sync-database! db)
+
+          (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
+                  (t2/select-one :model/Field :name "string_tbc_int_col")))
+
+          (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
+          (sync/sync-database! db)
+
+          (is (=? {:coercion_strategy nil}
+                  (t2/select-one :model/Field :name "string_tbc_int_col"))))))))
+
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
     (is (= {:before-sync #{"species" "example_name"}
