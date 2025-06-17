@@ -130,17 +130,6 @@
           (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
                   (:filter @query))))))))
 
-(deftest ^:parallel text-field?-test
-  (testing "recognizes fields suitable for fingerprinting"
-    (doseq [field [{:base_type :type/Text}
-                   {:base_type :type/Text :semantic_type :type/State}
-                   {:base_type :type/Text :semantic_type :type/URL}]]
-      (is (#'metadata-queries/text-field? field)))
-    (doseq [field [{:base_type :type/JSON} ; json fields in pg
-                   {:base_type :type/Text :semantic_type :type/SerializedJSON} ; "legacy" json fields in pg
-                   {:base_type :type/Text :semantic_type :type/XML}]]
-      (is (not (#'metadata-queries/text-field? field))))))
-
 (defn- ordered-filter [query]
   ;; sort by id [:field id option]
   (update query :filter (fn [filter-clause]
