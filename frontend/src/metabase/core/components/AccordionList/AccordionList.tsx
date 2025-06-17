@@ -388,14 +388,14 @@ export class AccordionList<
 
   searchFilter = (item: TItem) => {
     const { searchProp = ["name", "displayName"], fuzzySearch } = this.props;
-    const { searchText } = this.state;
+    const { searchText, searchIndex } = this.state;
 
     if (!searchText || searchText.length === 0) {
       return true;
     }
 
     if (fuzzySearch) {
-      const results = this.state.searchIndex.search(searchText, {
+      const results = searchIndex.search(searchText, {
         limit: 50,
       });
       return results.some((result) => result.item === item);
