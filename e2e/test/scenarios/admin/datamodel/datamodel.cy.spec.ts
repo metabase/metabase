@@ -4,6 +4,7 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
@@ -284,7 +285,9 @@ describe("scenarios > admin > datamodel > field", () => {
 
         cy.log("Make sure custom mapping appears in QB");
         H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
-        cy.findAllByRole("gridcell").should("contain", remappedNullValue);
+        cy.findAllByRole("gridcell", { name: remappedNullValue }).should(
+          "be.visible",
+        );
       },
     );
   });
@@ -378,6 +381,291 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
   });
 });
 
+describe("scenarios > admin > datamodel > metadata", () => {
+  function openOptionsForSection(sectionName) {
+    cy.findByText(sectionName)
+      .closest("section")
+      .findByTestId("select-button")
+      .click();
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
+    cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
+    cy.intercept("POST", "/api/field/*/values").as("fieldValuesUpdate");
+  });
+
+  it("should remap FK display value from field section", () => {
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
+    );
+
+    cy.findByTestId("field-section")
+      .findByPlaceholderText("Give this field a name")
+      .clear()
+      .type("Remapped Product ID")
+      .realPress("Tab");
+    cy.wait("@fieldUpdate");
+
+    H.openOrdersTable({ limit: 5 });
+    cy.findAllByTestId("header-cell").should("contain", "Remapped Product ID");
+  });
+
+  it("should remap FK display value from the table section", () => {
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    );
+
+    cy.findByTestId("table-section")
+      .findByDisplayValue("Product ID")
+      .clear()
+      .type("Remapped Product ID")
+      .realPress("Tab");
+    cy.wait("@fieldUpdate");
+
+    H.openOrdersTable({ limit: 5 });
+    cy.findAllByTestId("header-cell").should("contain", "Remapped Product ID");
+  });
+
+  it("should correctly show remapped column value", () => {
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+
+    // edit "Product ID" column in "Orders" table
+    getTable("Orders").click();
+    getField("Product ID").click();
+
+    // remap its original value to use foreign key
+    cy.findByPlaceholderText("Select display values").click();
+    H.popover().findByText("Use foreign key").click();
+    H.popover().findByText("Title").click();
+
+    cy.findByTestId("field-section").findByText(
+      "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+    );
+
+    cy.log("Name of the product should be displayed instead of its ID");
+    H.openOrdersTable();
+    cy.findByRole("gridcell", { name: "Awesome Concrete Shoes" }).should(
+      "be.visible",
+    );
+  });
+
+  it("should correctly apply and display custom remapping for numeric values", () => {
+    // this test also indirectly reproduces metabase#12771
+    const customMap = {
+      1: "Awful",
+      2: "Unpleasant",
+      3: "Meh",
+      4: "Enjoyable",
+      5: "Perfecto",
+    };
+
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    // edit "Rating" values in "Reviews" table
+    getTable("Reviews").click();
+    getField("Rating").click();
+
+    // apply custom remapping for "Rating" values 1-5
+    cy.findByPlaceholderText("Select display values").click();
+    H.popover().findByText("Custom mapping").click();
+    H.modal().within(() => {
+      cy.findByText(
+        "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+      ).should("be.visible");
+
+      Object.entries(customMap).forEach(([key, value]) => {
+        cy.findByDisplayValue(key).click().clear().type(value);
+      });
+
+      cy.findByText("Save").click();
+    });
+    cy.wait("@fieldValuesUpdate");
+
+    cy.log("Numeric ratings should be remapped to custom strings");
+    H.openReviewsTable();
+    Object.values(customMap).forEach((rating) => {
+      cy.findAllByText(rating).eq(0).scrollIntoView().should("be.visible");
+    });
+  });
+
+  it("semantic picker should not overflow the screen on smaller viewports (metabase#56442)", () => {
+    const viewportHeight = 400;
+
+    cy.viewport(1280, viewportHeight);
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    getTable("Reviews").scrollIntoView().click();
+    getField("ID").scrollIntoView().click();
+    cy.findByPlaceholderText("Select a semantic type").click();
+
+    H.popover().scrollTo("top");
+    H.popover()
+      .findByText("Entity Key")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.top).greaterThan(0);
+      });
+
+    H.popover().scrollTo("bottom");
+    H.popover()
+      .findByText("No semantic type")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.bottom).lessThan(viewportHeight);
+      });
+  });
+
+  it("display value 'Custom mapping' should be available only for 'Search box' filtering type (metabase#16322)", () => {
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`,
+    );
+
+    cy.findByPlaceholderText("Select field filtering").click();
+    H.popover().findByText("Search box").click();
+    cy.wait("@fieldUpdate");
+
+    cy.findByPlaceholderText("Select display values").click();
+    H.popover()
+      .findByRole("option", { name: /Custom mapping/ })
+      .should("have.attr", "data-combobox-disabled", "true");
+    H.popover()
+      .findByRole("option", { name: /Custom mapping/ })
+      .icon("info")
+      .realHover();
+    H.tooltip()
+      .should("be.visible")
+      .and(
+        "have.text",
+        'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
+      );
+
+    cy.findByPlaceholderText("Select field filtering").click();
+    H.popover().findByText("A list of all values").click();
+
+    cy.findByPlaceholderText("Select display values").click();
+    H.popover()
+      .findByRole("option", { name: /Custom mapping/ })
+      .should("not.have.attr", "data-combobox-disabled");
+  });
+
+  it("allows to map FK to date fields (metabase#7108)", () => {
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.USER_ID}/general`,
+    );
+    cy.findByPlaceholderText("Select display values").click();
+    H.popover().findByText("Use foreign key").click();
+    cy.findByPlaceholderText("Choose a field").click();
+
+    H.popover().within(() => {
+      cy.findByText("Birth Date").scrollIntoView().should("be.visible");
+      cy.findByText("Created At").scrollIntoView().should("be.visible").click();
+    });
+    cy.wait("@fieldDimensionUpdate");
+
+    H.visitQuestion(ORDERS_QUESTION_ID);
+    cy.findAllByTestId("cell-data")
+      .eq(10) // 1st data row, 2nd column (User ID)
+      .should("have.text", "2023-10-07T01:34:35.462-07:00");
+  });
+
+  describe("column formatting options", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "/api/field/*", cy.spy().as("updateFieldSpy")).as(
+        "updateField",
+      );
+      cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
+    });
+
+    it("should only show currency formatting options for currency fields", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.DISCOUNT}/formatting`,
+      );
+      cy.wait("@metadata");
+
+      cy.findByTestId("column-settings")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("Unit of currency").should("be.visible");
+          cy.findByText("Currency label style").should("be.visible");
+        });
+
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+      cy.wait("@metadata");
+
+      cy.findByTestId("column-settings")
+        .scrollIntoView()
+        .within(() => {
+          // shouldnt show currency settings by default for quantity field
+          cy.findByText("Unit of currency").should("not.be.visible");
+          cy.findByText("Currency label style").should("not.be.visible");
+
+          cy.get("#number_style").click();
+        });
+
+      // if you change the style to currency, currency settings should appear
+      H.popover().findByText("Currency").click();
+      cy.wait("@updateField");
+
+      cy.findByTestId("column-settings").within(() => {
+        cy.findByText("Unit of currency").should("be.visible");
+        cy.findByText("Currency label style").should("be.visible");
+      });
+    });
+
+    it("should save and obey field prefix formatting settings", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+
+      cy.wait("@metadata");
+
+      cy.findByTestId("column-settings")
+        .scrollIntoView()
+        .findByTestId("prefix")
+        .type("about ")
+        .blur();
+      cy.wait("@updateField");
+
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["sum", ["field", ORDERS.QUANTITY, null]]],
+          },
+          type: "query",
+        },
+      });
+      cy.findByTestId("visualization-root")
+        .findByText("about 69,540")
+        .should("be.visible");
+    });
+
+    it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
+      cy.visit(
+        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
+      );
+      cy.wait("@metadata");
+
+      cy.findByTestId("column-settings").findByTestId("prefix").focus().blur();
+      cy.get("@updateFieldSpy").should("not.have.been.called");
+      H.undoToast().should("not.exist");
+
+      cy.findByTestId("column-settings").findByTestId("suffix").focus().blur();
+      cy.get("@updateFieldSpy").should("not.have.been.called");
+      H.undoToast().should("not.exist");
+    });
+  });
+});
+
 function getTable(name: string) {
   return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
+}
+
+function getField(name: string) {
+  return cy.findByTestId("table-section").get(`a[aria-label="${name}"]`);
 }
