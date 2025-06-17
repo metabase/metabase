@@ -4,10 +4,12 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
+import type { DisplayTheme } from "metabase/public/lib/types";
 
 interface TabButtonProps {
   isSelected?: boolean;
   disabled?: boolean;
+  displayTheme?: DisplayTheme;
 }
 
 // Wrapper and Resizer are needed to auto-grow the input with its content
@@ -63,7 +65,9 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
     ${(props) =>
       props.isSelected && !props.disabled
         ? "var(--mb-color-brand)"
-        : "var(--mb-color-border)"};
+        : props.displayTheme === "night"
+          ? "rgb(255 255 255 / 0.3)"
+          : "rgb(0 0 0 / 0.07)"};
 
   :hover {
     ${(props) =>
