@@ -1,7 +1,6 @@
-import {
-  createMetabaseProviderWebComponent,
-  registerWebComponent,
-} from "embedding-sdk/lib/web-components";
+import { registerWebComponent } from "embedding-sdk/lib/web-components";
+import { withPropForwarding } from "embedding-sdk/lib/web-components/with-prop-forwarding";
+import type { MetabaseProviderInternalProps } from "embedding-sdk/types";
 import type { MetabaseAuthConfigWithJwt } from "embedding-sdk/types/auth-config";
 
 export type MetabaseProviderWebComponentAttributes = {
@@ -10,5 +9,22 @@ export type MetabaseProviderWebComponentAttributes = {
   "api-key"?: MetabaseAuthConfigWithJwt["apiKey"];
 };
 
-const MetabaseProviderWebComponent = createMetabaseProviderWebComponent();
+const MetabaseProviderWebComponent =
+  withPropForwarding<MetabaseProviderInternalProps>(HTMLElement, {
+    childrenComponents: ["interactive-question", "interactive-dashboard"],
+    propertyNames: ["authConfig", "theme"],
+    propMappings: [
+      {
+        attributeName: "metabase-instance-url",
+        key: "metabaseInstanceUrl",
+        parent: "authConfig",
+      },
+      { attributeName: "api-key", key: "apiKey", parent: "authConfig" },
+      {
+        attributeName: "fetch-request-token",
+        key: "fetchRequestToken",
+        parent: "authConfig",
+      },
+    ],
+  });
 registerWebComponent("metabase-provider", MetabaseProviderWebComponent);

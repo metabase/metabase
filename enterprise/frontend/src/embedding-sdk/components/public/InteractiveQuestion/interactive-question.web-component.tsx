@@ -14,7 +14,8 @@ export type InteractiveQuestionWebComponentAttributes = {
 
 const InteractiveQuestionWebComponent = createWebComponent<
   Pick<InteractiveQuestionProps, "questionId">
->(({ questionId }) => <InteractiveQuestion questionId={questionId} />, {
+>((props) => <InteractiveQuestion {...props} />, {
+  propertyNames: ["plugins"],
   props: {
     questionId: "number",
   },

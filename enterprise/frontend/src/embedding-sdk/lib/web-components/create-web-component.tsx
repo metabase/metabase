@@ -1,5 +1,5 @@
 import type { R2WCBaseProps, R2WCOptions } from "@r2wc/core";
-import r2wc from "@r2wc/react-to-web-component";
+import r2wc from "@r2wc/core";
 import type { ReactNode } from "react";
 
 import {
@@ -7,7 +7,11 @@ import {
   MetabaseProvider,
   type MetabaseTheme,
 } from "embedding-sdk";
-import { withInjectedStyles } from "embedding-sdk/lib/web-components";
+import {
+  getR2wcRenderer,
+  withInjectedStyles,
+  withPropForwarding,
+} from "embedding-sdk/lib/web-components";
 import { AttributeSerializer } from "embedding-sdk/lib/web-components/attribute-serializer";
 import type {
   MetabaseProviderInternalProps,
@@ -21,12 +25,18 @@ type MergedProps<TComponentProps> = R2WCBaseProps & {
 
 type CreateWebComponentConfig<TComponentProps> = {
   props: Required<R2WCOptions<TComponentProps>["props"]>;
+  propertyNames?: string[];
 };
 
 export const createWebComponent = <TComponentProps,>(
   component: (props: TComponentProps) => ReactNode,
-  { props }: CreateWebComponentConfig<TComponentProps>,
+  { props, propertyNames }: CreateWebComponentConfig<TComponentProps>,
 ): WebComponentElementConstructor => {
+  const {
+    renderer: { mount, update, unmount },
+    propsStorage,
+  } = getR2wcRenderer();
+
   const Constructor = r2wc(
     ({ container, authConfig, theme, ...componentProps }) => {
       if (!authConfig) {
@@ -51,12 +61,21 @@ export const createWebComponent = <TComponentProps,>(
     {
       shadow: "closed",
       props: {
+        // Provider props
         authConfig: "string",
         theme: "string",
+
+        // Component props
         ...props,
       } as R2WCOptions<MergedProps<TComponentProps>>["props"],
     },
+    { mount, update, unmount },
   );
 
-  return withInjectedStyles(Constructor);
+  return withInjectedStyles(
+    withPropForwarding(Constructor, {
+      propsStorage,
+      propertyNames,
+    }),
+  );
 };

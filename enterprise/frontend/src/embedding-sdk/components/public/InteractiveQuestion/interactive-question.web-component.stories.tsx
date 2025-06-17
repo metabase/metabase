@@ -57,7 +57,25 @@ export const Question = () => (
 );
 Question.decorators = [withDefinedAttributes];
 
-export const QuestionWithDefinedProperties = () => (
-  <interactive-question question-id={QUESTION_ID} />
-);
+export const QuestionWithDefinedProperties = () => {
+  const ref = useRef<any>(null);
+
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+
+    ref.current.plugins = [
+      {
+        name: "test-plugin",
+        load: () => ({
+          name: "test-plugin",
+          render: () => <div>Test plugin</div>,
+        }),
+      },
+    ];
+  });
+
+  return <interactive-question ref={ref} question-id={QUESTION_ID} />;
+};
 QuestionWithDefinedProperties.decorators = [withDefinedProperties];
