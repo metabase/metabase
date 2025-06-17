@@ -660,5 +660,38 @@
                     :lib/source-column-alias      "Cat__NAME"
                     :lib/desired-column-alias     "Cat__NAME"}]
                   (map #(select-keys % [:id :name :lib/source :metabase.lib.join/join-alias :lib/source-column-alias :lib/desired-column-alias])
-                       (lib/returned-columns query))))))))
-  )
+                       (lib/returned-columns query)))))))))
+
+(deftest ^:parallel source-column-alias-for-fields-from-join-test
+  (testing "#59599"
+    (doseq [k [:fields :breakout]]
+      (testing k
+        (let [query (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query orders
+                       {:joins  [{:strategy     :left-join
+                                  :condition    [:= &Q2.products.category 1]
+                                  :alias        "Q2"
+                                  :source-query {:source-table $$reviews
+                                                 :aggregation  [[:aggregation-options [:avg $reviews.rating] {:name "avg"}]]
+                                                 :breakout     [&P2.products.category]
+                                                 :joins        [{:strategy     :left-join
+                                                                 :source-table $$products
+                                                                 :condition    [:= $reviews.product-id &P2.products.id]
+                                                                 :alias        "P2"
+                                                                 :fields       [&P2.products.category]}]}
+                                  :fields [&Q2.products.category
+                                           [:field "avg" {:base-type :type/Number, :join-alias "Q2"}]]}]
+                        k [[:field %products.category {:join-alias "Q2"}]
+                           [:field "avg" {:base-type :type/Integer, :join-alias "Q2"}]]}))]
+          (testing "join"
+            (is (= [{:lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "Q2__P2__CATEGORY"}
+                    {:lib/source-column-alias "avg", :lib/desired-column-alias "Q2__avg"}]
+                   (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                        (lib/returned-columns query -1 (m/find-first #(= (lib/current-join-alias %) "Q2")
+                                                                     (lib/joins query -1)))))))
+          (testing "top level"
+            (is (= [{:lib/source-column-alias "P2__CATEGORY", :lib/desired-column-alias "Q2__P2__CATEGORY"}
+                    {:lib/source-column-alias "avg", :lib/desired-column-alias "Q2__avg"}]
+                   (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                        (lib/returned-columns query))))))))))

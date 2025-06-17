@@ -96,6 +96,8 @@
 ;;; model at SOME prior stage (not necessarily the one IMMEDIATELY prior). The logic
 ;;; in [[metabase.lib.card/source-model-cols]] effectively only looks at the first stage. I guess that runs into
 ;;; issues when we're running in the QP and the source card stage gets expanded out to the underlying stages however
+;;;
+;;; TODO (Cam 6/16/25) -- not sure this even does anything important at all
 (defn- previous-stage-metadata
   "Propagate stuff like display-name from the previous stage metadata if it exists."
   [query stage-number join-alias field-id]
@@ -106,10 +108,20 @@
                                           (= (lib.join.util/current-join-alias col)
                                              join-alias)))
                                    cols)]
-        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])]
-          (merge
+        (let [col (merge
+                   (u/select-non-nil-keys col [:description :display-name :semantic-type])
+                   ;; desired alias in the previous stage becomes source alias in the next stage
+                   (when-let [desired-alias (:lib/desired-column-alias col)]
+                     {:lib/source-column-alias desired-alias}))]
+          (into
            col
-           (m/filter-keys some? (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias field-id))))))))
+           (filter (fn [[k v]]
+                     (and
+                      ;; don't let empty keys stomp on our non-empty keys
+                      (some? v)
+                      ;; don't propagate source/desired aliases from stages prior to the last stage.
+                      (not (#{:lib/source-column-alias :lib/desired-column-alias} v)))))
+           (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias field-id)))))))
 
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
@@ -166,16 +178,31 @@
                          {:lib/type :metadata/column, :name (str id-or-name) :display-name (i18n/tru "Unknown Field")})
                      (previous-stage-metadata query stage-number join-alias id-or-name)))
                   (when (string? id-or-name)
-                    (let [resolved (or (resolve-column-name query stage-number id-or-name)
-                                       {:lib/type :metadata/column, :name (str id-or-name)})]
+                    (let [field-name   id-or-name
+                          resolved     (or (resolve-column-name query stage-number field-name)
+                                           {:lib/type :metadata/column, :name field-name})]
                       ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
                       ;; forward anything else? No idea. Waiting for an answer in
                       ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
                       (if join-alias
                         (merge
-                         {:lib/type :metadata/column, :name (str id-or-name)}
-                         (u/select-non-nil-keys resolved [:id :semantic-type])) ; CRITICAL THAT WE INCLUDE ID!
-                        (m/filter-keys some? resolved)))))]
+                         {:lib/type :metadata/column
+                          :name     field-name}
+                         ;; CRITICAL THAT WE INCLUDE ID!
+                         (u/select-non-nil-keys resolved [:id :semantic-type]))
+                        (m/filter-keys some? resolved))))
+                  ;; keep the source column alias from the join if it exists. Not sure if we should propagate other
+                  ;; info as well??
+                  (when join-alias
+                    (when-let [join (m/find-first #(= (lib.join.util/current-join-alias %) join-alias)
+                                                  (:joins (lib.util/query-stage query stage-number)))]
+                      (let [join-cols (lib.metadata.calculation/returned-columns query stage-number join)]
+                        (when-let [matching-col (m/find-first #(or (when (integer? id-or-name)
+                                                                     (= (:id %) id-or-name))
+                                                                   (when (string? id-or-name)
+                                                                     (= (:lib/source-column-alias %) id-or-name)))
+                                                              join-cols)]
+                          (select-keys matching-col [:lib/source-column-alias :lib/desired-column-alias]))))))]
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
@@ -376,11 +403,9 @@
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
 
-;;; TODO (Cam 6/12/25) -- not sure what the correct name to be using here is but it's probably not `:name`. Either
-;;; `:lib/source-column-alias` or `:lib/original-name` is probably the right one to use here?
 (defmethod lib.metadata.calculation/column-name-method :metadata/column
-  [_query _stage-number {field-name :name}]
-  field-name)
+  [_query _stage-number col]
+  ((some-fn :lib/source-column-alias :lib/original-name :name) col))
 
 (defmethod lib.metadata.calculation/column-name-method :field
   [query stage-number [_tag _id-or-name, :as field-clause]]
@@ -589,7 +614,7 @@
     #_else
     (column-metadata->field-ref metadata)))
 
-(defn- expression-columns
+(mu/defn- expression-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Return the [[::lib.schema.metadata/column]] for all the expressions in a stage of a query."
   [query stage-number]
   (filter #(= (:lib/source %) :source/expressions)

@@ -6,6 +6,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
+;;; TODO (Cam 6/16/25) -- `:lib/source` is fundamentally broken -- see #59596
+
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- ::lib.schema.metadata/column]

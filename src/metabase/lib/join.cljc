@@ -267,10 +267,7 @@
                                                       source-column-alias)))))
 
 (mu/defn- adjust-ident :- :map
-  [join :- [:map
-            [:ident
-             {:error/message "Join must have an ident to determine column idents"}
-             ::lib.schema.common/non-blank-string]]
+  [join :- :map
    col  :- :map]
   (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
 
@@ -372,7 +369,7 @@
                        (assoc :include-implicitly-joinable? false)))))
         (:joins (lib.util/query-stage query stage-number))))
 
-(mu/defn all-joins-expected-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
+(mu/defn all-joins-returned-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
