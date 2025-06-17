@@ -1,71 +1,10 @@
 const { H } = cy;
-import {
-  SAMPLE_DB_ID,
-  SAMPLE_DB_SCHEMA_ID,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
-
-describe("Unfold JSON", { tags: "@external" }, () => {
-  function getUnfoldJsonContent() {
-    return cy
-      .findByText("Unfold JSON")
-      .closest("section")
-      .findByTestId("select-button-content");
-  }
-
-  beforeEach(() => {
-    H.restore("postgres-writable");
-    H.resetTestTable({ type: "postgres", table: "many_data_types" });
-    cy.signInAsAdmin();
-    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
-  });
-
-  it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
-    cy.intercept("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`).as(
-      "sync_schema",
-    );
-    // Go to field settings
-    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Many Data Types/i).click();
-
-    // Check json is unfolded initially
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/json.a/i).should("be.visible");
-    cy.findByTestId("column-json").within(() => {
-      cy.icon("gear").click();
-    });
-
-    getUnfoldJsonContent().findByText(/Yes/i).click();
-    H.popover().within(() => {
-      cy.findByText(/No/i).click();
-    });
-
-    // Check setting has persisted
-    cy.reload();
-    getUnfoldJsonContent().findByText(/No/i);
-
-    // Sync database
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Sync database schema/i).click();
-    cy.wait("@sync_schema");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sync triggered!");
-
-    // Check json field is not unfolded
-    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Many Data Types/i).click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/json.a/i).should("not.exist");
-  });
-});
 
 describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => {
   function hideTable(table) {

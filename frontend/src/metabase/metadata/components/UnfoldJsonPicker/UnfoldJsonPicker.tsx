@@ -33,6 +33,7 @@ export const UnfoldJsonPicker = ({
         ...comboboxProps,
       }}
       data={data}
+      placeholder={t`Select whether to unfold JSON`}
       value={String(value)}
       onChange={handleChange}
       {...props}

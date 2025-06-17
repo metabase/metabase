@@ -1,4 +1,8 @@
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
@@ -283,5 +287,54 @@ describe("scenarios > admin > datamodel > field", () => {
         cy.findAllByRole("gridcell").should("contain", remappedNullValue);
       },
     );
+  });
+});
+
+describe("Unfold JSON", { tags: "@external" }, () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+    cy.intercept("POST", `/api/database/${WRITABLE_DB_ID}/sync_schema`).as(
+      "sync_schema",
+    );
+  });
+
+  it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
+    // Go to field settings
+    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    cy.findAllByTestId("tree-item")
+      .contains(/Many Data Types/)
+      .click();
+
+    // Check json is unfolded initially
+    cy.findByLabelText("Json → A").should("be.visible");
+    cy.findByLabelText("Json").click();
+
+    cy.findByPlaceholderText("Select whether to unfold JSON")
+      .should("have.value", "Yes")
+      .click();
+    H.popover().findByText("No").click();
+
+    // Check setting has persisted
+    cy.reload();
+    cy.findByPlaceholderText("Select whether to unfold JSON").should(
+      "have.value",
+      "No",
+    );
+
+    // Sync database
+    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    cy.button("Sync database schema").click();
+    cy.wait("@sync_schema");
+    cy.button(/Sync triggered!/).should("be.visible");
+
+    // Check json field is not unfolded
+    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
+    cy.findAllByTestId("tree-item")
+      .contains(/Many Data Types/)
+      .click();
+    cy.findByLabelText("Json → A").should("not.exist");
   });
 });
