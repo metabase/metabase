@@ -1,8 +1,9 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { fireEvent, render, screen } from "__support__/ui";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 
 const SECTIONS = [
   {
@@ -88,7 +89,7 @@ describe("AccordionList", () => {
     const sections = ["Widgets", "Doohickeys"];
 
     sections.forEach((name) => {
-      const SECTION = screen.queryByText(name);
+      const SECTION = screen.getByText(name);
       expect(SEARCH_FIELD.compareDocumentPosition(SECTION)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
@@ -126,10 +127,10 @@ describe("AccordionList", () => {
 
   describe("with the `renderItemWrapper` prop", () => {
     it("should be able to wrap the list items in components like popovers", async () => {
-      const renderItemWrapper = (itemContent, item) => {
+      const renderItemWrapper = (itemContent: ReactNode) => {
         return (
           <TippyPopover content={<div>popover</div>}>
-            {itemContent}
+            <div>{itemContent}</div>
           </TippyPopover>
         );
       };
@@ -147,13 +148,13 @@ describe("AccordionList", () => {
   });
 });
 
-function assertAbsence(array) {
+function assertAbsence(array: string[]) {
   array.forEach((item) => {
     expect(screen.queryByText(item)).not.toBeInTheDocument();
   });
 }
 
-function assertPresence(array) {
+function assertPresence(array: string[]) {
   array.forEach((item) => {
     expect(screen.getByText(item)).toBeInTheDocument();
   });

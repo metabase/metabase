@@ -2,7 +2,7 @@
 import { Component } from "react";
 import _ from "underscore";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import { AccordionList } from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 

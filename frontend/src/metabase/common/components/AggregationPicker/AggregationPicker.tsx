@@ -7,7 +7,10 @@ import {
   PopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/components/MetadataInfo/Popover";
-import AccordionList from "metabase/core/components/AccordionList";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/core/components/AccordionList";
 import Markdown from "metabase/core/components/Markdown";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
@@ -50,15 +53,7 @@ type MetricListItem = Lib.MetricDisplayInfo & {
   selected: boolean;
 };
 
-type ListItem = OperatorListItem | MetricListItem;
-
-type Section = {
-  name?: string;
-  key: string;
-  items: ListItem[];
-  icon?: string;
-  type?: string;
-};
+type Item = OperatorListItem | MetricListItem;
 
 export function AggregationPicker({
   className,
@@ -116,7 +111,7 @@ export function AggregationPicker({
   );
 
   const sections = useMemo(() => {
-    const sections: Section[] = [];
+    const sections: Section<Item>[] = [];
 
     const metrics = Lib.availableMetrics(query, stageIndex);
     const databaseId = Lib.databaseID(query);
@@ -169,10 +164,7 @@ export function AggregationPicker({
     allowCustomExpressions,
   ]);
 
-  const checkIsItemSelected = useCallback(
-    (item: ListItem) => item.selected,
-    [],
-  );
+  const checkIsItemSelected = useCallback((item: Item) => item.selected, []);
 
   const handleOperatorSelect = useCallback(
     (item: OperatorListItem) => {
@@ -213,7 +205,7 @@ export function AggregationPicker({
   );
 
   const handleChange = useCallback(
-    (item: ListItem) => {
+    (item: Item) => {
       if (item.type === "operator") {
         handleOperatorSelect(item);
       } else if (item.type === "metric") {
@@ -286,7 +278,7 @@ export function AggregationPicker({
 
   return (
     <Box className={className} c="summarize" data-testid="aggregation-picker">
-      <AccordionList
+      <AccordionList<Item>
         sections={sections}
         onChange={handleChange}
         onChangeSection={handleSectionChange}
@@ -324,7 +316,7 @@ function ColumnPickerHeader({
   );
 }
 
-function renderItemName(item: ListItem) {
+function renderItemName(item: Item) {
   return item.displayName;
 }
 
@@ -332,7 +324,7 @@ function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
 
-function renderItemIcon(item: ListItem) {
+function renderItemIcon(item: Item) {
   if (item.type !== "metric") {
     return null;
   }

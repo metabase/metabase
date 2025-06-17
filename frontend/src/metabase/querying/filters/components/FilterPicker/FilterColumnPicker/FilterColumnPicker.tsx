@@ -7,9 +7,11 @@ import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/core/components/AccordionList";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
-import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -18,11 +20,13 @@ import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
+type Item = ColumnListItem | SegmentListItem;
+
 export interface FilterColumnPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndexes: number[];
-  checkItemIsSelected?: (item: ColumnListItem | SegmentListItem) => boolean;
+  checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
   onExpressionSelect?: () => void;
@@ -32,15 +36,7 @@ export interface FilterColumnPickerProps {
   withColumnItemIcon?: boolean;
 }
 
-type Section = {
-  key?: string;
-  type: string;
-  name: string;
-  items: (Lib.ColumnMetadata | Lib.SegmentMetadata)[];
-  icon?: IconName;
-};
-
-const CUSTOM_EXPRESSION_SECTION: Section = {
+const CUSTOM_EXPRESSION_SECTION: Section<Item> = {
   key: "custom-expression",
   type: "action",
   get name() {
@@ -50,9 +46,7 @@ const CUSTOM_EXPRESSION_SECTION: Section = {
   icon: "filter",
 };
 
-export const isSegmentListItem = (
-  item: ColumnListItem | SegmentListItem,
-): item is SegmentListItem => {
+export const isSegmentListItem = (item: Item): item is SegmentListItem => {
   return (item as SegmentListItem).segment != null;
 };
 
@@ -89,7 +83,7 @@ export function FilterColumnPicker({
     }
   };
 
-  const handleSelect = (item: ColumnListItem | SegmentListItem) => {
+  const handleSelect = (item: Item) => {
     if (isSegmentListItem(item)) {
       onSegmentSelect(item);
     } else {
@@ -99,7 +93,7 @@ export function FilterColumnPicker({
 
   return (
     <DelayGroup>
-      <AccordionList
+      <AccordionList<Item>
         className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
@@ -107,11 +101,15 @@ export function FilterColumnPicker({
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
-        renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
+        renderItemDescription={omitDescription}
+        renderItemIcon={(item) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
         // disable scrollbars inside the list
-        style={{ overflow: "visible", "--accordion-list-width": `${WIDTH}px` }}
+        style={{
+          overflow: "visible",
+          width: WIDTH,
+        }}
         maxHeight={Infinity}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
@@ -129,7 +127,7 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
-) {
+): Section<Item>[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -154,9 +152,7 @@ function getSections(
       const segmentItems = segments.map((segment) => {
         const segmentInfo = Lib.displayInfo(query, stageIndex, segment);
         return {
-          name: segmentInfo.name,
-          displayName: segmentInfo.displayName,
-          filterPositions: segmentInfo.filterPositions,
+          ...segmentInfo,
           segment,
           stageIndex,
         };
@@ -178,14 +174,11 @@ function getSections(
   ];
 }
 
-function renderItemName(item: ColumnListItem) {
+function renderItemName(item: Item) {
   return item.displayName;
 }
 
-function renderItemIcon(
-  query: Lib.Query,
-  item: ColumnListItem | SegmentListItem,
-) {
+function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
     return <Icon name="star" size={18} />;
   }
@@ -206,4 +199,8 @@ function renderItemIcon(
 
 function renderItemWrapper(content: ReactNode) {
   return <HoverParent>{content}</HoverParent>;
+}
+
+function omitDescription() {
+  return undefined;
 }

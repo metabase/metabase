@@ -1,10 +1,11 @@
-type Cursor = {
+import { type ReactNode, isValidElement } from "react";
+import { isFragment } from "react-is";
+
+import type { Section } from "./types";
+
+export type Cursor = {
   sectionIndex: number;
   itemIndex: number | null;
-};
-
-type Section = {
-  items: any;
 };
 
 type SectionPredicate = (sectionIndex: number) => boolean;
@@ -66,10 +67,10 @@ export const getNextCursor = (
     for (
       let itemIndex =
         sectionIndex === cursor.sectionIndex ? (cursor.itemIndex ?? 0) : 0;
-      itemIndex < section.items.length;
+      itemIndex < (section.items?.length ?? 0);
       itemIndex++
     ) {
-      const item = section.items[itemIndex];
+      const item = section.items?.[itemIndex];
       const itemCursor = {
         sectionIndex,
         itemIndex,
@@ -122,11 +123,11 @@ export const getPrevCursor = (
         let itemIndex =
           sectionIndex === cursor.sectionIndex
             ? (cursor.itemIndex ?? 0)
-            : section.items.length - 1;
+            : (section.items?.length ?? 0) - 1;
         itemIndex >= 0;
         itemIndex--
       ) {
-        const item = section.items[itemIndex];
+        const item = section.items?.[itemIndex];
         const itemCursor = {
           sectionIndex,
           itemIndex,
@@ -162,3 +163,14 @@ export const getPrevCursor = (
 
   return cursor;
 };
+
+export function isReactNode(x: unknown): x is ReactNode {
+  return (
+    isValidElement(x) ||
+    isFragment(x) ||
+    typeof x === "string" ||
+    typeof x === "number" ||
+    x === null ||
+    x === undefined
+  );
+}
