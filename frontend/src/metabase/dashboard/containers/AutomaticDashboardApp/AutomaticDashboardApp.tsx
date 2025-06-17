@@ -17,7 +17,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
   DashboardData,
   type DashboardDataReturnedProps,
@@ -191,7 +191,7 @@ const AutomaticDashboardAppInner = ({
           {parameters && parameters.length > 0 && (
             <div className={cx(CS.px1, CS.pt1)}>
               <FixedWidthContainer
-                id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+                id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
                 data-testid="fixed-width-filters"
                 isFixedWidth={dashboard?.width === "fixed"}
               >
