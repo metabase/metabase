@@ -1,11 +1,9 @@
 name: Docs Merge Detected
 
 on:
-  pull_request_target:
+  pull_request:
     types:
-      - opened
-      - synchronize
-      - reopened
+      - closed
     branches:
       - 'master'
       - 'release-x.[0-9]+.x'
@@ -13,7 +11,8 @@ on:
       - 'docs/**'
 
 jobs:
-  push_workflow_to_docs_metabase_github_io_job:
+  push_and_merge_workflow_to_docs_metabase_github_io_job:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Report changed docs files exist
