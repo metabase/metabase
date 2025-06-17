@@ -25,7 +25,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -63,13 +63,15 @@
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
-(def ^{:arglists '([])} trash-collection
-  "Memoized copy of the Trash collection from the DB."
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (trash-collection*)
-       (when-not <>
-         (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
+(let [get-trash (mdb/memoize-for-application-db
+                 (fn []
+                   (u/prog1 (trash-collection*)
+                     (when-not <>
+                       (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
+  (defn trash-collection
+    "Get the (memoized) trash collection"
+    []
+    (assoc (get-trash) :name (deferred-tru "Trash"))))
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
