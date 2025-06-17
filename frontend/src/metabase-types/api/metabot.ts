@@ -66,6 +66,8 @@ export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotDashboardInfo = {
@@ -75,7 +77,8 @@ export type MetabotDashboardInfo = {
 
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
-  query: DatasetQuery;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotEntityInfo =
