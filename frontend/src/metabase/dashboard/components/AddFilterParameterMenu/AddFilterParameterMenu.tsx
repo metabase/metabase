@@ -6,19 +6,19 @@ import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Icon, Menu, type MenuProps, Text } from "metabase/ui";
-import type { ParameterMappingOptions } from "metabase-types/api";
 
 interface AddFilterParameterMenuProps extends MenuProps {
   children: ReactNode; // trigger content
-  onSelectOption: (option: ParameterMappingOptions) => void;
+  onAdd: (options: NewParameterOpts) => void;
 }
 
 export const AddFilterParameterMenu = ({
   opened,
   children,
-  onSelectOption,
+  onAdd,
   ...menuProps
 }: AddFilterParameterMenuProps) => {
   const sections = getDashboardParameterSections();
@@ -28,7 +28,11 @@ export const AddFilterParameterMenu = ({
   const handleItemClick = (section: ParameterSection) => {
     const defaultOption = getDefaultOptionForParameterSectionMap()[section.id];
     if (defaultOption) {
-      onSelectOption(defaultOption);
+      onAdd({
+        name: defaultOption.combinedName || defaultOption.name,
+        type: defaultOption.type,
+        sectionId: defaultOption.sectionId,
+      });
     }
   };
 
