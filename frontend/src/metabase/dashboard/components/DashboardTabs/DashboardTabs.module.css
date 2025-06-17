@@ -1,13 +1,8 @@
-.tabButton:not(:last-child) {
-  /* TODO: Is needed? */
-  /* margin-right: 0.75rem; */
-}
-
 .createTabButton {
   border: none;
   padding: 0.25rem;
   margin-top: auto;
   margin-bottom: auto;
   position: relative;
-  top: -2px; /* TODO: tab border width */
+  top: -2px; /* Matches tab bottom border so this aligns vertically centered with tab labels */
 }
