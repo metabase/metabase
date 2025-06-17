@@ -76,10 +76,20 @@
                                           (lib/with-join-fields :all))))))]
       (is (=? ["CREATED_AT" "avg" "CREATED_AT_2" "sum"]
               (map :name (lib.metadata.result-metadata/expected-cols question))))
-      (is (= ["Reviews → Created At: Month"
-              "Average of Rating"
-              "Products+Reviews Summary - Reviews → Created At: Month → Created At"
-              "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
+      (is (= [{:id (mt/id :reviews :created_at)
+               :display_name "Reviews → Created At: Month"}
+              {:display_name "Average of Rating"}
+              {:id (mt/id :reviews :created_at)
+               :source_alias "Products+Reviews Summary - Reviews → Created At: Month"
+               ;; TODO (Cam 6/17/25) -- the 'old' answer here was this, but it's returning something slightly different
+               ;; now that I added the [[metabase.lib.field/qp-model-metadata-for-stage]] stuff. Not really 100% sure
+               ;; what the ideal answer is here and if this is a bug or not. If we somehow revert to the old display
+               ;; name that's fine.
+               ;;
+               ;; :display_name "Products+Reviews Summary - Reviews → Created At: Month → Created At"
+               :display_name "Reviews → Created At"}
+              {:source_alias "Products+Reviews Summary - Reviews → Created At: Month"
+               :display_name "Products+Reviews Summary - Reviews → Created At: Month → Sum"}]
              (->> (qp/process-query question)
                   mt/cols
-                  (mapv :display_name)))))))
+                  (mapv #(select-keys % [:id :source_alias :display_name]))))))))

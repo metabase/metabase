@@ -93,44 +93,6 @@
                         (some? v))))
         more))
 
-;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
-;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
-;;;
-;;; TODO (Cam 6/13/25) -- not sure if this should ONLY be done if the previous stage was from a model or not/only be
-;;; done for the very first stage. It seems like the only failing tests this fixed were for ones where there was a
-;;; model at SOME prior stage (not necessarily the one IMMEDIATELY prior). The logic
-;;; in [[metabase.lib.card/source-model-cols]] effectively only looks at the first stage. I guess that runs into
-;;; issues when we're running in the QP and the source card stage gets expanded out to the underlying stages however
-(defn- previous-stage-metadata
-  "Propagate stuff like display-name from the previous stage metadata if it exists."
-  [query stage-number join-alias id-or-name]
-  (when-let [previous-stage (lib.util/previous-stage query stage-number)]
-    (when-let [cols (not-empty (get-in previous-stage [:lib/stage-metadata :columns]))
-               #_(or (when-let [source-card-id (:qp/stage-is-from-source-card previous-stage)]
-                       (lib.card/saved-question-metadata query source-card-id)))]
-      (when-let [col (if (integer? id-or-name)
-                       (m/find-first (fn [col]
-                                       (and (= (:id col) id-or-name)
-                                            (= (lib.join.util/current-join-alias col)
-                                               join-alias)))
-                                     cols)
-                       (resolve-column-name-in-metadata id-or-name cols))]
-        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])
-              ;; if we're using a string name e.g. `Categories__NAME` then try to switch it out with one appropriate
-              ;; to the stage before it e.g. `NAME` before recursing.
-              ;;
-              ;; TODO (Cam 6/17/25) -- I'm 50% sure this recursion logic is busted. Shouldn't we also be updating
-              ;; `join-alias`? This whole function seems kinda wonky
-              previous-id-or-name (if (integer? id-or-name)
-                                    id-or-name
-                                    (or (:lib/source-column-alias col)
-                                        id-or-name))]
-          (merge-non-nil
-           col
-           ;; TODO (Cam 6/17/25) -- we should only look in the previous stage recursively IF this column
-           ;; was "inherited" i.e. if it came from a previous stage.
-           (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias previous-id-or-name)))))))
-
 (mu/defn- field-ref-options-metadata :- :map
   "Part of [[resolve-field-metadata]] -- calculate metadata based on the field ref itself."
   [[_field opts _id-or-name, :as _field-clause] :- :mbql.clause/field]
@@ -177,6 +139,44 @@
                                                                           (not (str/starts-with? (namespace k) "metabase.lib")))))
                                                            opts))]
      {:options external-namespaced-options})))
+
+;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
+;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
+;;;
+;;; TODO (Cam 6/13/25) -- not sure if this should ONLY be done if the previous stage was from a model or not/only be
+;;; done for the very first stage. It seems like the only failing tests this fixed were for ones where there was a
+;;; model at SOME prior stage (not necessarily the one IMMEDIATELY prior). The logic
+;;; in [[metabase.lib.card/source-model-cols]] effectively only looks at the first stage. I guess that runs into
+;;; issues when we're running in the QP and the source card stage gets expanded out to the underlying stages however
+(defn- previous-stage-metadata
+  "Propagate stuff like display-name from the previous stage metadata if it exists."
+  [query stage-number join-alias id-or-name]
+  (when-let [previous-stage (lib.util/previous-stage query stage-number)]
+    (when-let [cols (not-empty (get-in previous-stage [:lib/stage-metadata :columns]))
+               #_(or (when-let [source-card-id (:qp/stage-is-from-source-card previous-stage)]
+                       (lib.card/saved-question-metadata query source-card-id)))]
+      (when-let [col (if (integer? id-or-name)
+                       (m/find-first (fn [col]
+                                       (and (= (:id col) id-or-name)
+                                            (= (lib.join.util/current-join-alias col)
+                                               join-alias)))
+                                     cols)
+                       (resolve-column-name-in-metadata id-or-name cols))]
+        (let [col (u/select-non-nil-keys col [:description :display-name :semantic-type])
+              ;; if we're using a string name e.g. `Categories__NAME` then try to switch it out with one appropriate
+              ;; to the stage before it e.g. `NAME` before recursing.
+              ;;
+              ;; TODO (Cam 6/17/25) -- I'm 50% sure this recursion logic is busted. Shouldn't we also be updating
+              ;; `join-alias`? This whole function seems kinda wonky
+              previous-id-or-name (if (integer? id-or-name)
+                                    id-or-name
+                                    (or (:lib/source-column-alias col)
+                                        id-or-name))]
+          (merge-non-nil
+           col
+           ;; TODO (Cam 6/17/25) -- we should only look in the previous stage recursively IF this column
+           ;; was "inherited" i.e. if it came from a previous stage.
+           (previous-stage-metadata query (lib.util/previous-stage-number query stage-number) join-alias previous-id-or-name)))))))
 
 (defn- qp-model-metadata-for-stage [query stage-number field-id]
   (or (when-let [card-id (:qp/stage-is-from-source-card (lib.util/query-stage query stage-number))]
