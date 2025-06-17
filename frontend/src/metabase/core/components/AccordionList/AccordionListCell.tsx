@@ -9,7 +9,7 @@ import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName, TextInputProps } from "metabase/ui";
+import type { TextInputProps } from "metabase/ui";
 import { Box, Icon, Text, isValidIconName } from "metabase/ui";
 
 import styles from "./AccordionListCell.module.css";
@@ -83,7 +83,7 @@ export function AccordionListCell<
   onChange,
   onChangeSearchText,
   renderSectionIcon = (section: TSection) =>
-    section.icon && <Icon name={section.icon as IconName} />,
+    section.icon && <Icon name={section.icon} />,
   renderItemLabel,
   renderItemName = (item: TItem) => {
     if ("name" in item && typeof item.name === "string") {
