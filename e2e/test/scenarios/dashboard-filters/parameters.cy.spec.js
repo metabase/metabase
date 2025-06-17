@@ -1766,6 +1766,190 @@ describe("scenarios > dashboard > parameters", () => {
       H.undoToast().should("not.exist");
     });
 
+    it("should duplicate filters and mappings when duplicating a dashcard", () => {
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
+
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          auto_apply_filters: false,
+          parameters: [categoryParameter, countParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+      });
+
+      // Connect the Count filter in the header to first card
+      H.editingDashboardParametersContainer().findByText("Count").click();
+      H.selectDashboardFilter(H.getDashboardCard(0), "Count");
+      H.dashboardParameterSidebar().button("Done").click();
+
+      H.findDashCardAction(H.getDashboardCard(0), "Duplicate").click();
+
+      H.getDashboardCard(1).within(() => {
+        cy.findByText("Category 1").should("exist").click();
+      });
+
+      // Verify the Count filter is connected to a new card
+      H.editingDashboardParametersContainer().findByText("Count").click();
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Count/)
+        .should("exist");
+
+      // Verify first card's filter isn't connected to a new card
+      H.getDashboardCard(0).findByText("Category").click();
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .within(() => {
+          cy.findByText(/This filter can only connect to its own card/).should(
+            "exist",
+          );
+          cy.findByText(/Select/).should("not.exist");
+        });
+
+      // Verify new card's filter is connected to the new card
+      H.getDashboardCard(1).findByText("Category 1").click();
+      H.getDashboardCard(1)
+        .findByTestId("parameter-mapper-container")
+        .findByText(/Category/)
+        .should("exist");
+
+      H.saveDashboard();
+
+      cy.wait("@updateDashboard").then((xhr) => {
+        const { body: dashboard } = xhr.request;
+        expect(dashboard.parameters).to.have.length(3);
+        dashboard.dashcards.forEach((dashcard) => {
+          expect(dashcard.inline_parameters).to.have.length(1);
+          expect(dashcard.parameter_mappings).to.have.length(2);
+        });
+      });
+
+      // Verify filtering works independently
+      H.dashboardParametersContainer().findByText("Count").click();
+      H.popover().within(() => {
+        cy.findByPlaceholderText("Enter a number").type("5000");
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(0).findByText("Category").click();
+      H.popover().within(() => {
+        cy.findByLabelText("Widget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(1).findByText("Category 1").click();
+      H.popover().within(() => {
+        cy.findByLabelText("Doohickey").click();
+        cy.button("Add filter").click();
+      });
+
+      H.dashboardParametersContainer().button("Apply").click();
+
+      H.getDashboardCard(0)
+        .findByText(/No results/)
+        .should("exist");
+      H.getDashboardCard(1).within(() => {
+        // filter value + x-axis label
+        cy.findAllByText("Doohickey").should("have.length", 2);
+
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Gadget").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq(
+          "?category=Widget&category_1=Doohickey&count=5000",
+        );
+      });
+    });
+
+    it("should duplicate filters when duplicating a dashboard", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+        dashboardDetails: {
+          parameters: [categoryParameter],
+        },
+      }).then(({ body: dashcard }) => {
+        H.updateDashboardCards({
+          dashboard_id: dashcard.dashboard_id,
+          cards: [
+            {
+              id: dashcard.id,
+              inline_parameters: [categoryParameter.id],
+              parameter_mappings: [
+                {
+                  parameter_id: categoryParameter.id,
+                  card_id: dashcard.card_id,
+                  target: [
+                    "dimension",
+                    categoryFieldRef,
+                    { "stage-number": 0 },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+
+        H.visitDashboard(dashcard.dashboard_id);
+      });
+
+      H.openDashboardMenu("Duplicate");
+      H.modal().button("Duplicate").click();
+      H.dashboardHeader()
+        .findByText("Test Dashboard - Duplicate")
+        .should("exist");
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Doohickey").should("be.visible");
+        cy.findByText("Gizmo").should("be.visible");
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Widget").should("be.visible");
+
+        cy.findByText("Category").click();
+      });
+      H.popover().within(() => {
+        cy.findByText("Gadget").click();
+        cy.button("Add filter").click();
+      });
+
+      H.getDashboardCard(0).within(() => {
+        cy.findByText("Gadget").should("be.visible");
+        cy.findByText("Doohickey").should("not.exist");
+        cy.findByText("Gizmo").should("not.exist");
+        cy.findByText("Widget").should("not.exist");
+      });
+
+      cy.location().should(({ search }) => {
+        expect(search).to.eq("?category=Gadget");
+      });
+    });
+
     it("should allow connecting inline parameters only to cards on the same tab", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
