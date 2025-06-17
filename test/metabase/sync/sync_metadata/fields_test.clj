@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
@@ -247,7 +248,7 @@
           ;; 2. drop the FK relationship in the database with SQL
           (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
-          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
+          (is (= [] (into [] (fetch-metadata/fk-metadata db))))
           (testing "after dropping the FK relationship, country's continent_id is targeting nothing"
             (is (=? {:fk_target_field_id nil
                      :semantic_type      nil}
