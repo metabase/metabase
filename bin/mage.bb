@@ -44,13 +44,12 @@
            (zen))))
 
 (defn- print-help []
-  (do
-    (lolcat "./mage/resource.txt")
-    (flush)
-    (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
-    (println "")
-    (println (u/sh "bb tasks"))
-    (println (tip-o-day))))
+  (lolcat "./mage/resources/splash.txt")
+  (flush)
+  (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
+  (println "")
+  (println (u/sh "./bin/bb tasks"))
+  (println (tip-o-day)))
 
 (defn -main [& _]
   (cond

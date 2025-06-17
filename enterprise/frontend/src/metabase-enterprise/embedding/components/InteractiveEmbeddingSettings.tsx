@@ -2,11 +2,14 @@ import { t } from "ttag";
 
 import { EmbeddingToggle } from "metabase/admin/settings/components/EmbeddingSettings/EmbeddingToggle";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useDocsUrl } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { Box, Button, Stack } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 
 import { EmbeddingAppOriginDescription } from "./EmbeddingAppOriginDescription";
 import { SameSiteSelectWidget } from "./EmbeddingAppSameSiteCookieDescription";
@@ -28,23 +31,17 @@ export function InteractiveEmbeddingSettings() {
   );
 
   return (
-    <Box p="0.5rem 1rem 0" maw="40rem">
-      <Stack gap="2.5rem">
-        <Breadcrumbs
-          size="large"
-          crumbs={[
-            [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Interactive embedding`],
-          ]}
-        />
+    <SettingsPageWrapper title={t`Interactive embedding`}>
+      <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-interactive"
-          label={t`Enable Interactive embedding`}
+          label={t`Enable interactive embedding`}
         />
 
         <Box>
           <SettingHeader id="get-started" title={t`Get started`} />
           <Button
+            mt="xs"
             variant="outline"
             component={ExternalLink}
             href={quickStartUrl}
@@ -60,7 +57,7 @@ export function InteractiveEmbeddingSettings() {
         />
 
         <SameSiteSelectWidget />
-      </Stack>
-    </Box>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

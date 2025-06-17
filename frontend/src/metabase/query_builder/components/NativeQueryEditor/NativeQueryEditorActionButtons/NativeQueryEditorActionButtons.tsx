@@ -12,21 +12,16 @@ import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
+import type { SidebarFeatures } from "../types";
+
 import S from "./NativeQueryEditorActionButtons.module.css";
 
 const ICON_SIZE = 18;
 
-export type Features = {
-  dataReference?: boolean;
-  variables?: boolean;
-  snippets?: boolean;
-  promptInput?: boolean;
-};
-
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
   nativeEditorSelectedText?: string;
-  features: Features;
+  features: SidebarFeatures;
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
   isRunnable: boolean;
@@ -38,9 +33,6 @@ interface NativeQueryEditorActionButtonsProps {
   runQuery?: () => void;
   cancelQuery?: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  toggleDataReference: () => void;
-  toggleTemplateTagsEditor: () => void;
-  toggleSnippetSidebar: () => void;
   onFormatQuery: () => void;
   onGenerateQuery: (queryText: string) => void;
 }

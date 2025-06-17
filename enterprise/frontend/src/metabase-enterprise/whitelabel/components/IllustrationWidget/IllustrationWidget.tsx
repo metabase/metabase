@@ -184,7 +184,7 @@ export function IllustrationWidget({
   }
 
   return (
-    <Box maw="36rem" data-testid={`${name}-setting`}>
+    <Box data-testid={`${name}-setting`}>
       <SettingHeader id={name} title={title} description={description} />
       {errorMessage && (
         <Text size="sm" c="error" mb="sm">

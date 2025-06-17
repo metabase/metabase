@@ -400,7 +400,8 @@
 
 (deftest last-used-parameter-value-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters true]
       (mt/dataset test-data
         (mt/with-column-remappings [orders.user_id people.name]
           (mt/as-admin
@@ -454,6 +455,54 @@
                                                  {:parameters [{:id "a" :value nil :default ["default value"]}]})))
                 (is (= {:a nil}
                        (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))))))))))
+
+(deftest last-used-parameter-value-disabled-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-temporary-setting-values [synchronous-batch-updates true
+                                       dashboards-save-last-used-parameters false]
+      (mt/dataset test-data
+        (mt/with-column-remappings [orders.user_id people.name]
+          (mt/as-admin
+            (mt/with-temp
+              [:model/Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
+                                                                    :default ["default_value"]}]}
+               :model/Dashboard {dashboard-b-id :id} {:name       "Test Dashboard"
+                                                      :creator_id (mt/user->id :crowberto)
+                                                      :parameters [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
+               :model/Card {card-id :id} {:database_id   (mt/id)
+                                          :query_type    :native
+                                          :name          "test question"
+                                          :creator_id    (mt/user->id :crowberto)
+                                          :dataset_query {:type     :native
+                                                          :native   {:query "SELECT COUNT(*) FROM people WHERE {{name}}"
+                                                                     :template-tags
+                                                                     {"name" {:name         "Name"
+                                                                              :display-name "name"
+                                                                              :id           "_name_"
+                                                                              :type         :dimension
+                                                                              :dimension    [:field (mt/id :people :name) nil]
+                                                                              :widget-type  :string/contains}}}
+                                                          :database (mt/id)}}
+               :model/DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                         :card_id            card-id
+                                                         :dashboard_id       dashboard-a-id}
+               :model/DashboardCard {dashcard-b-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
+                                                         :card_id            card-id
+                                                         :dashboard_id       dashboard-b-id}]
+              (testing "User's set parameter is not saved when saving is disabled"
+                ;; api request mimicking a user setting a parameter value
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-b-id dashcard-b-id card-id)
+                                                 {:parameters [{:id "a" :value ["initial value"]}]})))
+                (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                                 {:parameters [{:id "a" :value ["new value"]}]})))
+                (is (= {:dashboard-a nil
+                        :dashboard-b nil}
+                       {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
+                        :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))}))))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -3467,6 +3516,39 @@
             (is (= "You don't have permissions to do that."
                    (mt/$ids (mt/user-http-request :rasta :get 403 "dashboard/params/valid-filter-fields"
                                                   :filtered [%venues.price] :filtering [%categories.name]))))))))))
+
+(deftest uuid-id-column-is-not-implicitly-remapped-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :native-parameters :uuid-type
+                                    :test/uuids-in-create-table-statements
+                                    :test/dynamic-dataset-loading)
+    (testing "Values for uuid fields are searched using test pattern (#59020)"
+      (mt/dataset
+        uuid-dogs
+        (mt/with-temp
+          [:model/Card          card      {:dataset_query (let [mp (mt/metadata-provider)]
+                                                            (-> (lib/query mp (lib.metadata/table mp (mt/id :dogs)))
+                                                                (lib.convert/->legacy-MBQL)))}
+           :model/Dashboard     dashboard {:parameters [{:name      "Text"
+                                                         :slug      "text"
+                                                         :id        "_text_"
+                                                         :type      "string/="
+                                                         :sectionId "string"
+                                                         :default   ["Doohickey"]}]}
+           :model/DashboardCard _dashcard {:parameter_mappings     [{:parameter_id "_text_"
+                                                                     :card_id      (:id card)
+                                                                     :target
+                                                                     [:dimension [:field (mt/id :dogs :id) nil]]}]
+                                           :card_id                (:id card)
+                                           :visualization_settings {}
+                                           :dashboard_id           (:id dashboard)}]
+          (is (=? {:values [["27e164bc-54f8-47a0-a85a-9f0e90dd7667"]
+                            ["3a0c0508-6b00-40ff-97f6-549666b2d16b"]]}
+                  (mt/user-http-request :rasta :get 200 (format "/dashboard/%d/params/%s/search/%s"
+                                                                (:id dashboard)
+                                                                "_text_"
+                                                              ;; a0 is part of first 2 rows of queried table
+                                                                "a0")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             POST /api/dashboard/:dashboard-id/card/:card-id/query                              |
