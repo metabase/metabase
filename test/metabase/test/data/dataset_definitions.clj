@@ -276,8 +276,8 @@
   [["string_nums"
     [{:field-name        "int_col"
       :base-type         :type/Text
-      :effective-type    :type/Float
-      :coercion-strategy :Coercion/String->Float}
+      :effective-type    :type/Integer
+      :coercion-strategy :Coercion/String->Integer}
      {:field-name        "float_col"
       :base-type         :type/Text
       :effective-type    :type/Float
