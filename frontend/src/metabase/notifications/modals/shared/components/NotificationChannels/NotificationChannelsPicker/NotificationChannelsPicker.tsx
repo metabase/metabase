@@ -781,6 +781,15 @@ export const NotificationChannelsPicker = ({
                   <TemplateInfoTooltip
                     context={templateContext["channel/slack"]}
                   />
+                  {onPreviewClick && (
+                    <TemplateToolbarButton
+                      icon="external"
+                      label={t`Open message preview`}
+                      onClick={() =>
+                        onPreviewClick(templateStateKeyMap["slack"])
+                      }
+                    />
+                  )}
                 </Flex>
               </Flex>
               <Stack gap="xs">
