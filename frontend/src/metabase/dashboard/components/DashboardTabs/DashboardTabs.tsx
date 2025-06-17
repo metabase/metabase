@@ -6,6 +6,7 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
+import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex, Portal, Tabs } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
@@ -30,6 +31,7 @@ export function DashboardTabs({
 }: DashboardTabsProps) {
   const [debugFlags, setDebugFlags] = useState(FLAG_REAL);
   const [debugDismissed, setDebugDismissed] = useState(false);
+  const { theme } = useEmbedTheme();
 
   const {
     tabs,
@@ -163,6 +165,7 @@ export function DashboardTabs({
               value={null}
               showMenu
               menuItems={menuItems}
+              displayTheme={theme}
             />
           ) : (
             tabs.map((tab) => (
@@ -179,6 +182,7 @@ export function DashboardTabs({
                   canRename={isEditing && hasMultipleTabs}
                   showMenu={isEditing}
                   menuItems={menuItems}
+                  displayTheme={theme}
                 />
               </Sortable>
             ))
