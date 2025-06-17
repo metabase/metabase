@@ -21,6 +21,7 @@ import {
 } from "metabase-enterprise/api";
 import type {
   DataGridWritebackAction,
+  DataGridWritebackActionId,
   ParametersForActionExecution,
   WritebackAction,
   WritebackActionId,
@@ -33,6 +34,10 @@ export interface TableActionExecuteModalProps {
   onClose?: () => void;
   onSuccess?: () => void;
 }
+
+type ActionWithOverrides = Omit<DataGridWritebackAction, "id"> & {
+  id: DataGridWritebackActionId | string;
+};
 
 export const TableActionExecuteModalContent = ({
   actionId,
@@ -50,16 +55,17 @@ export const TableActionExecuteModalContent = ({
     // TODO: Replace with `describe` API.
   } = useGetActionsQuery(actionId != null ? null : skipToken);
 
-  const actionWithOverrides = useMemo(() => {
+  const actionWithOverrides = useMemo<ActionWithOverrides | undefined>(() => {
     const action = actions?.find((action) => action.id === actionId);
     if (action && actionOverrides) {
       return {
         ...action,
+        id: actionOverrides.id || action.id,
         visualization_settings: merge(
           action?.visualization_settings,
           actionOverrides,
         ),
-      } as DataGridWritebackAction;
+      };
     }
     return action;
   }, [actions, actionOverrides, actionId]);
@@ -93,8 +99,13 @@ export const TableActionExecuteModalContent = ({
         }
       });
 
+      const executeActionId = actionWithOverrides?.id || actionId;
+      if (!executeActionId) {
+        return { success: false, error: new Error("Action ID is required") };
+      }
+
       const result = await executeAction({
-        actionId: actionId as number,
+        actionId: executeActionId,
         input: initialValues,
         params: changedFields,
       });
