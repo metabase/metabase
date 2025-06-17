@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { MouseEvent } from "react";
+import { type MouseEvent, memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -16,6 +16,8 @@ import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 
 import S from "./FieldItem.module.css";
+
+const MemoizedTextareaBlurChange = memo(TextareaBlurChange);
 
 interface Props {
   active?: boolean;
@@ -121,13 +123,13 @@ export const FieldItem = ({ active, field, href }: Props) => {
           fw="bold"
           initialValue={field.display_name}
           maxLength={254}
-          miw={0}
           mb={rem(-4)}
-          mt={rem(-3)}
+          miw={0}
           ml={rem(-2)}
+          mt={rem(-3)}
+          placeholder={t`Give this field a name`}
           px={rem(1)}
           py={rem(2)}
-          placeholder={t`Give this field a name`}
           tabIndex={undefined} // override the default 0 which breaks a11y
           onChange={handleNameChange}
           onClick={handleInputClick}
@@ -142,7 +144,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
        * when you're starting with an empty input, and then type 1-4 characters - scrollbar would
        * immediately be shown and text rendered with "content: attr(data-value)" would wrap.
        */}
-      <TextareaBlurChange
+      <MemoizedTextareaBlurChange
         autosize
         classNames={{
           input: S.descriptionInput,
