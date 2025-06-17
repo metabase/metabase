@@ -382,13 +382,6 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
 });
 
 describe("scenarios > admin > datamodel > metadata", () => {
-  function openOptionsForSection(sectionName) {
-    cy.findByText(sectionName)
-      .closest("section")
-      .findByTestId("select-button")
-      .click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
