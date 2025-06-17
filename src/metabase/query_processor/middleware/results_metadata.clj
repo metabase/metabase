@@ -3,7 +3,6 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [clojure.string]
    [clojure.string :as str]
    [metabase.analyze.core :as analyze]
    [metabase.driver :as driver]
@@ -30,7 +29,7 @@
             [m]
             (reduce-kv
              (fn [acc k v]
-               (let [dash-key (when (and (str/includes? (name k) "_"))
+               (let [dash-key (when (str/includes? (name k) "_")
                                 (keyword (str/replace (name k) "_" "-")))]
                  (if (and dash-key
                           (nil? v)
@@ -65,8 +64,8 @@
                  (not (:qp/source-card-id query))
                  ;; Only update changed metadata
                  (not= (comparable-metadata actual-metadata) (comparable-metadata (qp.store/miscellaneous-value [::card-stored-metadata]))))
-        (t2/update! :model/Card card-id  #p {:result_metadata actual-metadata
-                                             :updated_at      :updated_at})))
+        (t2/update! :model/Card card-id {:result_metadata actual-metadata
+                                         :updated_at      :updated_at})))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e

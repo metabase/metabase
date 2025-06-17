@@ -489,9 +489,24 @@
             (mt/process-query query)))))
 
 (deftest ^:parallel comparable-metadata
-  (is (= (#'middleware.results-metadata/comparable-metadata []) []))
+  (is (= [] (#'middleware.results-metadata/comparable-metadata [])))
   (testing "removes ident and converts keywords to strings"
-    (is (= (#'middleware.results-metadata/comparable-metadata [{:base_type      :type/Float,
+    (is (= [{:base_type      "type/Float",
+             :database_type  "DECFLOAT",
+             :display_name   "Sum of Total",
+             :effective_type "type/Float",
+             :field_ref      ["aggregation" 0],
+             :fingerprint    {:global {:distinct-count 1, :nil% 0.0},
+                              :type   #:type
+                                       {:Number {:avg 141761.53790523874,
+                                                 :max 141761.53790523874,
+                                                 :min 141761.53790523874,
+                                                 :q1  141761.53790523874,
+                                                 :q3  141761.53790523874,
+                                                 :sd  nil}}},
+             :name           "sum",
+             :semantic_type  nil}]
+           (#'middleware.results-metadata/comparable-metadata [{:base_type      :type/Float,
                                                                 :database_type  "DECFLOAT",
                                                                 :display_name   "Sum of Total",
                                                                 :effective_type :type/Float,
@@ -506,27 +521,12 @@
                                                                                                     :sd  nil}}},
                                                                 :ident          "aggregation_skXR69-dlhJST5C7Rd9nR@0__0",
                                                                 :name           "sum",
-                                                                :semantic_type  nil}])
-           [{:base_type      "type/Float",
-             :database_type  "DECFLOAT",
-             :display_name   "Sum of Total",
-             :effective_type "type/Float",
-             :field_ref      ["aggregation" 0],
-             :fingerprint    {:global {:distinct-count 1, :nil% 0.0},
-                              :type   #:type
-                                       {:Number {:avg 141761.53790523874,
-                                                 :max 141761.53790523874,
-                                                 :min 141761.53790523874,
-                                                 :q1  141761.53790523874,
-                                                 :q3  141761.53790523874,
-                                                 :sd  nil}}},
-             :name           "sum",
-             :semantic_type  nil}])))
+                                                                :semantic_type  nil}]))))
   (testing "removes duplicate and nil _ keywords"
-    (is (= (#'middleware.results-metadata/comparable-metadata [{:description    "The date and time an order was submitted.",
+    (is (= [{:description    "The date and time an order was submitted.",
+             :display-name   "Created At: Quarter",
+             :effective-type "type/DateTime"}]
+           (#'middleware.results-metadata/comparable-metadata [{:description    "The date and time an order was submitted.",
                                                                 :display-name   "Created At: Quarter",
                                                                 :display_name   nil,
-                                                                :effective-type "type/DateTime"}])
-           [{:description    "The date and time an order was submitted.",
-             :display-name   "Created At: Quarter",
-             :effective-type "type/DateTime"}]))))
+                                                                :effective-type "type/DateTime"}])))))
