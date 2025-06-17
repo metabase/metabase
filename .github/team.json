@@ -63,7 +63,6 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger",
         "iethree",
         "nvoxland",
         "fraserdrops",
@@ -94,7 +93,9 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
-        "somtom"
+        "retro",
+        "sloansparger",
+        "somtom",
       ]
     },
     {
