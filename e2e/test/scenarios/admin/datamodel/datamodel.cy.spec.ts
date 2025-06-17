@@ -32,10 +32,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     newValue: string;
   }) {
     getFieldType().should("have.value", oldValue).click();
-
-    H.popover().within(() => {
-      cy.findByText(newValue).click();
-    });
+    H.popover().findByText(newValue).click();
   }
 
   function checkNoFieldType({
@@ -99,7 +96,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.reload();
     cy.wait(["@metadata", "@metadata"]);
 
-    getFieldType();
+    getFieldType().should("be.visible");
     cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
   });
 
