@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
@@ -44,7 +45,7 @@
         (do
           ;; ideally we shouldn't hit this but if we do it's not the end of the world.
           (log/infof "Couldn't resolve column name %s."
-                    (pr-str column-name))
+                     (pr-str column-name))
           (log/debugf "Found:\n%s"
                       (u/pprint-to-str (mapv #(select-keys % (list* :lib/source :metabase.lib.join/join-alias resolution-keys))
                                              column-metadatas)))
@@ -177,19 +178,29 @@
                                                            opts))]
      {:options external-namespaced-options})))
 
+(defn- qp-model-metadata-for-stage [query stage-number field-id]
+  (or (when-let [card-id (:qp/stage-is-from-source-card (lib.util/query-stage query stage-number))]
+        (when-let [card-cols (not-empty (lib.card/saved-question-metadata query card-id))]
+          (when-let [match (m/find-first (fn [col]
+                                           (= (:id col) field-id))
+                                         card-cols)]
+            (select-keys match [:display-name :semantic-type]))))
+      (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+        (recur query previous-stage-number field-id))))
+
 (mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                   :- ::lib.schema/query
    stage-number                            :- :int
    [_field _opts id-or-name :as field-ref] :- :mbql.clause/field]
-  (let [join-alias (lib.join.util/current-join-alias field-ref)
-        metadata   (let [resolved-by-name (when (string? id-or-name)
-                                            (resolve-column-name query stage-number id-or-name))
-                         field-id         (if (integer? id-or-name)
-                                            id-or-name
-                                            (:id resolved-by-name))]
-                     (merge-non-nil
+  (let [join-alias   (lib.join.util/current-join-alias field-ref)
+        col-for-name (when (string? id-or-name)
+                       (resolve-column-name query stage-number id-or-name))
+        field-id     (if (integer? id-or-name)
+                       id-or-name
+                       (:id col-for-name))
+        metadata     (merge-non-nil
                       {:lib/type :metadata/column, :name (str id-or-name)}
                       (field-ref-options-metadata field-ref)
                       ;; metadata about the field from the metadata provider
@@ -201,18 +212,25 @@
                       ;; metadata we want to 'flow' from previous stage(s) / source models of the query (e.g.
                       ;; `:semantic-type`)
                       (previous-stage-metadata query stage-number join-alias (or field-id id-or-name))
+                      ;; pull in metadata from models if they are used at some point in the parent stages.
+                      ;;
+                      ;; TODO (Cam 6/17/25) -- there seems to be overlapping responsibility between this and the
+                      ;; things above it, I'm not sure they're even all necessary or not -- can we remove or
+                      ;; consolidate some of them?
+                      (when field-id
+                        (qp-model-metadata-for-stage query stage-number field-id))
                       ;; if this was resolved from a name then include that stuff as well.
                       ;;
                       ;; TODO (Cam 6/17/25) -- I do not understand this logic at all and it seems REALLY wonky. What
                       ;; happens if we just remove this stuff?
-                      (when resolved-by-name
+                      (when col-for-name
                         ;; for joins we only forward semantic type. Why? Because we need it to fix QUE-1330... should we
                         ;; forward anything else? No idea. Waiting for an answer in
                         ;; https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589 -- Cam
                         (if join-alias
                           ;; CRITICAL THAT WE INCLUDE ID!
-                          (select-keys resolved-by-name [:id :semantic-type])
-                          resolved-by-name))))]
+                          (select-keys col-for-name [:id :semantic-type])
+                          col-for-name)))]
     (as-> metadata metadata
       (cond-> metadata
         join-alias (lib.join/with-join-alias join-alias))

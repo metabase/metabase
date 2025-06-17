@@ -53,7 +53,6 @@
 (mr/def ::cols
   [:maybe [:sequential ::col]])
 
-
 (mu/defn- merge-col :- ::col
   "Merge a map from `:cols` returned by the driver with the column metadata from MLv2. We'll generally prefer the values
   from the driver to values calculated by MLv2."

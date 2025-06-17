@@ -204,7 +204,9 @@
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
       (let [result-cols (card-cols* metadata-providerable card)
-            model-cols  (source-model-cols metadata-providerable card)]
+            ;; don't pull in metadata from parent model if we ourself are a model
+            model-cols  (when-not (= (:type card) :model)
+                          (source-model-cols metadata-providerable card))]
         (cond-> result-cols
           (seq model-cols) (merge-model-metadata model-cols))))))
 

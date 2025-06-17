@@ -305,11 +305,11 @@
               (f' :y "A")]))
       (let [f'' (f')]
         (is (= ["A" "B" "A" "A_2" "A_2"]
-               [(f' :x "A")
-                (f' :x "B")
-                (f' :x "A")
-                (f' :y "A")
-                (f' :y "A")]))))))
+               [(f'' :x "A")
+                (f'' :x "B")
+                (f'' :x "A")
+                (f'' :y "A")
+                (f'' :y "A")]))))))
 
 (deftest ^:parallel non-truncating-unique-name-generator-test
   (let [f (lib.util/non-truncating-unique-name-generator)]
