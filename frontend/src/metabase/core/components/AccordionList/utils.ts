@@ -1,5 +1,4 @@
 import Fuse from "fuse.js";
-import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 import { memoize } from "underscore";
