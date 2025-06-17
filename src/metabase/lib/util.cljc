@@ -513,17 +513,15 @@
   [options :- :map]
   ;; ok to use here because this is the one designated wrapper for it.
   #_{:clj-kondo/ignore [:discouraged-var]}
-  (let [make-generator (fn []
-                         (mbql.u/unique-name-generator options))
-        f              (make-generator)
-        truncate*      (if (::truncate? options)
-                         truncate-alias
-                         identity)]
+  (let [f         (mbql.u/unique-name-generator options)
+        truncate* (if (::truncate? options)
+                    truncate-alias
+                    identity)]
     ;; I know we could just use `comp` here but it gets really hard to figure out where it's coming from when you're
     ;; debugging things; a named function like this makes it clear where this function came from
     (fn unique-name-generator-fn
       ([]
-       (make-generator))
+       (unique-name-generator-with-options options))
       ([s]
        (->> s truncate* f))
       ([id s]
