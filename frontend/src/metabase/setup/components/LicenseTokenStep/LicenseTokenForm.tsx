@@ -10,8 +10,17 @@ import {
   FormProvider,
   FormTextInput,
 } from "metabase/forms";
-import { STORE_URL } from "metabase/selectors/settings";
-import { Anchor, Box, Divider, Flex, Icon, Popover, Text } from "metabase/ui";
+import { getStoreUrl } from "metabase/selectors/settings";
+import {
+  Anchor,
+  Box,
+  Divider,
+  Flex,
+  Icon,
+  Popover,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
 
 import styles from "./LicenseTokenForm.module.css";
 import { LICENSE_TOKEN_SCHEMA } from "./constants";
@@ -43,7 +52,7 @@ export const LicenseTokenForm = ({
 
   const storeLink = (
     <ExternalLink
-      href={STORE_URL}
+      href={getStoreUrl()}
       key="store-link"
     >{t`Try Metabase for free`}</ExternalLink>
   );
@@ -69,48 +78,50 @@ export const LicenseTokenForm = ({
                 }
               }}
               rightSection={
-                <Popover
-                  opened={opened}
-                  withArrow
-                  position="bottom-end"
-                  offset={{ mainAxis: 5 }}
-                >
-                  <Popover.Target>
-                    <Icon
-                      cursor="pointer"
-                      name="info_filled"
-                      aria-label={t`Token details information`}
-                      aria-expanded={opened}
-                      size={16}
-                      c="var(--mb-color-brand)"
+                <Box>
+                  <Popover
+                    opened={opened}
+                    withArrow
+                    position="bottom-end"
+                    offset={{ mainAxis: 5 }}
+                  >
+                    <Popover.Target>
+                      <UnstyledButton
+                        component={Icon}
+                        size="1rem"
+                        name="info_filled"
+                        aria-label={t`Token details information`}
+                        aria-expanded={opened}
+                        c="brand"
+                        onMouseEnter={() => debouncedMouseMove(true)}
+                        onMouseLeave={() => debouncedMouseMove(false)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            debouncedMouseMove(!opened);
+                          }
+                        }}
+                      />
+                    </Popover.Target>
+                    <Popover.Dropdown
                       onMouseEnter={() => debouncedMouseMove(true)}
                       onMouseLeave={() => debouncedMouseMove(false)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          debouncedMouseMove(!opened);
-                        }
-                      }}
-                    />
-                  </Popover.Target>
-                  <Popover.Dropdown
-                    onMouseEnter={() => debouncedMouseMove(true)}
-                    onMouseLeave={() => debouncedMouseMove(false)}
-                  >
-                    <Flex
-                      className={styles.popoverContent}
-                      direction="column"
-                      gap="md"
                     >
-                      <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
-                      <Text lh="lg">{jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
-                    </Flex>
-                  </Popover.Dropdown>
-                </Popover>
+                      <Flex
+                        className={styles.popoverContent}
+                        direction="column"
+                        gap="md"
+                      >
+                        <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
+                        <Text lh="lg">{jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
+                      </Flex>
+                    </Popover.Dropdown>
+                  </Popover>
+                </Box>
               }
-              rightSectionWidth={16}
+              rightSectionWidth="1rem"
             />
             <FormErrorMessage />
           </Box>
