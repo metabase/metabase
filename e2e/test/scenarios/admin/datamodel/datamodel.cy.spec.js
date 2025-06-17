@@ -6,51 +6,6 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
 
-describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => {
-  function hideTable(table) {
-    const TABLE_URL = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${table}`;
-
-    cy.intercept("PUT", `/api/table/${table}`).as("tableUpdate");
-
-    cy.visit(TABLE_URL);
-    cy.contains(/^Hidden$/).click();
-    cy.wait("@tableUpdate");
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    // Toggle the table to be hidden as admin user
-    hideTable(ORDERS_ID);
-  });
-
-  it("hidden table should not show up in various places in UI", () => {
-    // Visit the main page, we shouldn't be able to see the table
-    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Products");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").should("not.exist");
-
-    // It shouldn't show up for a normal user either
-    cy.signInAsNormalUser();
-    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Products");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders").should("not.exist");
-
-    // It shouldn't show in a new question data picker
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.contains("Products").should("exist");
-      cy.contains("Orders").should("not.exist");
-    });
-  });
-});
-
 describe("scenarios > admin > datamodel > metadata", () => {
   function openOptionsForSection(sectionName) {
     cy.findByText(sectionName)

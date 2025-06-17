@@ -304,9 +304,7 @@ describe("Unfold JSON", { tags: "@external" }, () => {
   it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
     // Go to field settings
     cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
-    cy.findAllByTestId("tree-item")
-      .contains(/Many Data Types/)
-      .click();
+    getTable("Many Data Types").click();
 
     // Check json is unfolded initially
     cy.findByLabelText("Json → A").should("be.visible");
@@ -332,9 +330,54 @@ describe("Unfold JSON", { tags: "@external" }, () => {
 
     // Check json field is not unfolded
     cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
-    cy.findAllByTestId("tree-item")
-      .contains(/Many Data Types/)
-      .click();
+    getTable("Many Data Types").click();
     cy.findByLabelText("Json → A").should("not.exist");
   });
 });
+
+describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.intercept("PUT", `/api/table/${ORDERS_ID}`).as("tableUpdate");
+  });
+
+  it("hidden table should not show up in various places in UI", () => {
+    cy.signInAsAdmin();
+
+    // Toggle the orders table to be hidden as admin user
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
+    );
+    getTable("Orders").button("Hide table").click();
+    cy.wait("@tableUpdate");
+
+    // Visit the main page, we shouldn't be able to see the table
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByTestId("browse-schemas")
+      .findByText("Products")
+      .should("be.visible");
+    cy.findByTestId("browse-schemas").findByText("Orders").should("not.exist");
+
+    // It shouldn't show up for a normal user either
+    cy.signInAsNormalUser();
+    cy.visit(`/browse/databases/${SAMPLE_DB_ID}`);
+
+    cy.findByTestId("browse-schemas")
+      .findByText("Products")
+      .should("be.visible");
+    cy.findByTestId("browse-schemas").findByText("Orders").should("not.exist");
+
+    // It shouldn't show in a new question data picker
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Tables").click();
+      cy.contains("Products").should("exist");
+      cy.contains("Orders").should("not.exist");
+    });
+  });
+});
+
+function getTable(name: string) {
+  return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
+}
