@@ -132,14 +132,24 @@
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
 
+       (testing "The JWT idp uri must also be included for SSO to be configured"
+         (mt/with-temporary-setting-values
+           [jwt-enabled true
+            jwt-identity-provider-uri nil
+            jwt-shared-secret nil]
+           (is
+            (partial=
+             {:cause   "SSO has not been enabled and/or configured",
+              :data    {:status "error-sso-disabled", :status-code 400},
+              :message "SSO has not been enabled and/or configured",
+              :status  "error-sso-disabled"}
+             (client/client :get 400 "/auth/sso")))))
+
        (testing "The JWT Shared Secret must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
-           [jwt-enabled
-            true
-            jwt-identity-provider-uri
-            default-idp-uri
-            jwt-shared-secret
-            nil]
+           [jwt-enabled true
+            jwt-identity-provider-uri default-idp-uri
+            jwt-shared-secret nil]
            (is
             (partial=
              {:cause   "SSO has not been enabled and/or configured",
@@ -582,6 +592,28 @@
              :iat jwt-iat-time
              :exp jwt-exp-time}
             (:body result)))))))
+
+  (testing "should not return a session token when jwt is not configured"
+    (mt/with-temporary-setting-values
+      [jwt-enabled true
+       jwt-identity-provider-uri nil
+       jwt-shared-secret nil]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign
+                            {:email      "rasta@metabase.com"
+                             :first_name "Rasta"
+                             :last_name  "Toucan"
+                             :extra      "keypairs"
+                             :are        "also present"
+                             :iat        jwt-iat-time
+                             :exp        jwt-exp-time}
+                            default-jwt-secret)
+              result       (client/client-real-response :get 400 "/auth/sso"
+                                                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
+                                                        :jwt   jwt-payload)]
+          (is result nil)))))
 
   (testing "should not return a session token when embedding is disabled"
     (with-jwt-default-setup!

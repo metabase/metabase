@@ -185,6 +185,7 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
+  | "temporal-unit" // e.g. for mb.time_grouping()
   | "dimension"
   | "snippet";
 
