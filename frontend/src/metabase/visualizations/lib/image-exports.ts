@@ -2,9 +2,11 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
-import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
+} from "metabase/dashboard/constants";
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -26,7 +28,7 @@ export const saveDomImageStyles = css`
       display: none;
     }
 
-    .${DashboardS.FixedWidthContainer} {
+    .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
       legend {
         top: -9px;
       }
