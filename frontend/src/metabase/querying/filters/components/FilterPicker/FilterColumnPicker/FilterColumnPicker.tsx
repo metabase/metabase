@@ -20,11 +20,13 @@ import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
+type Item = ColumnListItem | SegmentListItem;
+
 export interface FilterColumnPickerProps {
   className?: string;
   query: Lib.Query;
   stageIndexes: number[];
-  checkItemIsSelected?: (item: ColumnListItem | SegmentListItem) => boolean;
+  checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
   onExpressionSelect?: () => void;
@@ -34,7 +36,7 @@ export interface FilterColumnPickerProps {
   withColumnItemIcon?: boolean;
 }
 
-const CUSTOM_EXPRESSION_SECTION: Section<ColumnListItem | SegmentListItem> = {
+const CUSTOM_EXPRESSION_SECTION: Section<Item> = {
   key: "custom-expression",
   type: "action",
   get name() {
@@ -44,9 +46,7 @@ const CUSTOM_EXPRESSION_SECTION: Section<ColumnListItem | SegmentListItem> = {
   icon: "filter",
 };
 
-export const isSegmentListItem = (
-  item: ColumnListItem | SegmentListItem,
-): item is SegmentListItem => {
+export const isSegmentListItem = (item: Item): item is SegmentListItem => {
   return (item as SegmentListItem).segment != null;
 };
 
@@ -83,7 +83,7 @@ export function FilterColumnPicker({
     }
   };
 
-  const handleSelect = (item: ColumnListItem | SegmentListItem) => {
+  const handleSelect = (item: Item) => {
     if (isSegmentListItem(item)) {
       onSegmentSelect(item);
     } else {
@@ -93,7 +93,7 @@ export function FilterColumnPicker({
 
   return (
     <DelayGroup>
-      <AccordionList<ColumnListItem | SegmentListItem>
+      <AccordionList<Item>
         className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
@@ -102,7 +102,7 @@ export function FilterColumnPicker({
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
         renderItemDescription={omitDescription}
-        renderItemIcon={(item: ColumnListItem | SegmentListItem) =>
+        renderItemIcon={(item) =>
           withColumnItemIcon ? renderItemIcon(query, item) : null
         }
         // disable scrollbars inside the list
@@ -127,7 +127,7 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
-): Section<ColumnListItem | SegmentListItem>[] {
+): Section<Item>[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -174,14 +174,11 @@ function getSections(
   ];
 }
 
-function renderItemName(item: ColumnListItem | SegmentListItem) {
+function renderItemName(item: Item) {
   return item.displayName;
 }
 
-function renderItemIcon(
-  query: Lib.Query,
-  item: ColumnListItem | SegmentListItem,
-) {
+function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
     return <Icon name="star" size={18} />;
   }
