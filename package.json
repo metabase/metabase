@@ -80,6 +80,7 @@
     "js-cookie": "^2.1.2",
     "jspdf": "3.0.1",
     "kbar": "^0.1.0-beta.45",
+    "kebab-case": "^2.0.2",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",
     "leaflet.heat": "^0.2.0",

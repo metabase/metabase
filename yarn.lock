@@ -13882,6 +13882,11 @@ kbar@^0.1.0-beta.45:
     react-virtual "^2.8.2"
     tiny-invariant "^1.2.0"
 
+kebab-case@^2.0.2:
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/kebab-case/-/kebab-case-2.0.2.tgz#d12157283733ae2136482a5ac4cb20f42ea79b65"
+  integrity sha512-NhIP7vecGtqJfNZ85ct0yRQfx//gCJHapJCBZP6/BBcBw/U218Jw7YX7rO6TI5/cCp5dJvlIjN3vbcRTqq7nWA==
+
 keyv@^3.0.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/keyv/-/keyv-3.1.0.tgz#ecc228486f69991e49e9476485a5be1e8fc5c4d9"

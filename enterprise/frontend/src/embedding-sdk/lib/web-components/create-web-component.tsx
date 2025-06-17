@@ -3,23 +3,21 @@ import r2wc from "@r2wc/react-to-web-component";
 import type { ReactNode } from "react";
 
 import {
-  type MetabaseAuthConfigWithJwt,
+  type MetabaseAuthConfig,
   MetabaseProvider,
+  type MetabaseTheme,
 } from "embedding-sdk";
 import { withInjectedStyles } from "embedding-sdk/lib/web-components";
-import type { WebComponentElementConstructor } from "embedding-sdk/types";
+import { AttributeSerializer } from "embedding-sdk/lib/web-components/attribute-serializer";
+import type {
+  MetabaseProviderInternalProps,
+  WebComponentElementConstructor,
+} from "embedding-sdk/types/web-components";
 import { ShadowRootProvider } from "metabase/embedding-sdk/components";
 
-type MetabaseProviderInternalProps = Required<
-  Pick<
-    MetabaseAuthConfigWithJwt,
-    "metabaseInstanceUrl" | "apiKey" | "fetchRequestToken"
-  >
->;
-
-type MergedProps<TComponentProps> = R2WCBaseProps &
-  MetabaseProviderInternalProps &
-  TComponentProps;
+type MergedProps<TComponentProps> = R2WCBaseProps & {
+  [key in keyof MetabaseProviderInternalProps]: string;
+} & TComponentProps;
 
 type CreateWebComponentConfig<TComponentProps> = {
   props: Required<R2WCOptions<TComponentProps>["props"]>;
@@ -30,21 +28,20 @@ export const createWebComponent = <TComponentProps,>(
   { props }: CreateWebComponentConfig<TComponentProps>,
 ): WebComponentElementConstructor => {
   const Constructor = r2wc(
-    ({
-      container,
-      metabaseInstanceUrl,
-      apiKey,
-      fetchRequestToken,
-      ...componentProps
-    }) => {
+    ({ container, authConfig, theme, ...componentProps }) => {
+      if (!authConfig) {
+        return;
+      }
+
       return (
         <ShadowRootProvider>
           <MetabaseProvider
-            authConfig={{
-              metabaseInstanceUrl,
-              apiKey,
-              fetchRequestToken,
-            }}
+            authConfig={AttributeSerializer.deserializeAttributeValue<MetabaseAuthConfig>(
+              authConfig,
+            )}
+            theme={AttributeSerializer.deserializeAttributeValue<
+              MetabaseTheme | undefined
+            >(theme)}
           >
             {component(componentProps as TComponentProps)}
           </MetabaseProvider>
@@ -54,9 +51,8 @@ export const createWebComponent = <TComponentProps,>(
     {
       shadow: "closed",
       props: {
-        metabaseInstanceUrl: "string",
-        apiKey: "string",
-        fetchRequestToken: "function",
+        authConfig: "string",
+        theme: "string",
         ...props,
       } as R2WCOptions<MergedProps<TComponentProps>>["props"],
     },

@@ -1,80 +1,102 @@
-import type { WebComponentElementConstructor } from "embedding-sdk/types/web-components";
+import kebabCase from "kebab-case";
 
-const CONFIG = {
-  props: {
-    include: ["metabase-instance-url", "api-key", "fetch-request-token"],
-  },
-  components: ["interactive-question", "interactive-dashboard"],
-};
+import { AttributeSerializer } from "embedding-sdk/lib/web-components/attribute-serializer";
+import type {
+  MetabaseProviderInternalProps,
+  WebComponentElementConstructor,
+} from "embedding-sdk/types/web-components";
 
 export function createMetabaseProviderWebComponent(): WebComponentElementConstructor {
-  const includedProps = CONFIG.props?.include || [];
-  const targetComponents = CONFIG.components || ["mb-question"];
+  const propMappings = [
+    {
+      attributeName: "metabase-instance-url",
+      key: "metabaseInstanceUrl",
+      parent: "authConfig",
+    },
+    { attributeName: "api-key", key: "apiKey", parent: "authConfig" },
+    {
+      attributeName: "fetch-request-token",
+      key: "fetchRequestToken",
+      parent: "authConfig",
+    },
+  ] as const;
 
-  return class extends HTMLElement {
-    private observer: MutationObserver | null = null;
+  const childrenSelector = [
+    "interactive-question",
+    "interactive-dashboard",
+  ].join(",");
+
+  return class MetabaseProvider extends HTMLElement {
+    static observedAttributes = propMappings.map((m) => m.attributeName);
+
+    private props: MetabaseProviderInternalProps = {
+      authConfig: {},
+      theme: {},
+    };
+
+    get authConfig() {
+      return this.props.authConfig;
+    }
+    set authConfig(value) {
+      this.props.authConfig = value;
+      this.updateChildren();
+    }
+
+    get theme() {
+      return this.props.theme;
+    }
+    set theme(value) {
+      this.props.theme = value;
+      this.updateChildren();
+    }
+
+    private observer?: MutationObserver;
 
     connectedCallback() {
-      this.passPropsToChildren();
-
-      this.observer = new MutationObserver(() => {
-        this.passPropsToChildren();
-      });
-
+      this.observer = new MutationObserver(() => this.updateChildren());
       this.observer.observe(this, { childList: true });
-
-      // To properly position elements
-      this.style.position = "relative";
-      this.style.zIndex = "0";
+      this.updateChildren();
     }
 
     disconnectedCallback() {
       this.observer?.disconnect();
     }
 
-    attributeChangedCallback() {
-      this.passPropsToChildren();
+    attributeChangedCallback(
+      attributeName: string,
+      oldValue: string | null,
+      newValue: string | null,
+    ) {
+      const mapping = propMappings.find(
+        (prop) => prop.attributeName === attributeName,
+      );
+
+      if (mapping && newValue !== null) {
+        // @ts-expect-error dynamic key
+        this.props[mapping.parent][mapping.key] = newValue;
+        this.updateChildren();
+      }
     }
 
-    private passPropsToChildren() {
-      const selector = targetComponents.join(",");
-      const targetElements = this.querySelectorAll(selector);
+    private updateChildren() {
+      const children = this.querySelectorAll<HTMLElement>(childrenSelector);
 
-      targetElements.forEach((element) => {
-        Array.from(this.attributes).forEach((attr) => {
-          // Only pass included props if the include list is not empty
-          if (includedProps.length === 0 || includedProps.includes(attr.name)) {
-            element.setAttribute(attr.name, attr.value);
-          }
-        });
+      (
+        Object.keys(this.props) as (keyof MetabaseProviderInternalProps)[]
+      ).forEach((propName) => {
+        const value = this.props[propName];
 
-        for (const key in this) {
-          // Only pass included props if the include list is not empty
-          if (includedProps.length === 0 || includedProps.includes(key)) {
-            // Skip built-in properties and methods
-            if (
-              !key.startsWith("_") &&
-              typeof this[key] !== "function" &&
-              ![
-                "attributes",
-                "children",
-                "classList",
-                "className",
-                "id",
-                "innerHTML",
-                "nodeName",
-                "style",
-              ].includes(key)
-            ) {
-              (element as unknown as Record<string, unknown>)[key] = this[key];
-            }
-          }
+        if (!value || !Object.keys(value).length) {
+          return;
         }
-      });
-    }
 
-    static get observedAttributes() {
-      return includedProps.length > 0 ? includedProps : [];
+        const attributeName = kebabCase(propName, false);
+        const serialized = AttributeSerializer.serializeAttributeValue(value);
+
+        children.forEach((child) => {
+          child.setAttribute(attributeName, serialized);
+        });
+      });
     }
   };
 }

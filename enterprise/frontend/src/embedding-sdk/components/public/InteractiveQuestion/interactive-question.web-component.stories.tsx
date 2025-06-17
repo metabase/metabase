@@ -1,5 +1,7 @@
 import type { StoryFn } from "@storybook/react";
+import { useEffect, useRef } from "react";
 
+import type { MetabaseProviderProps } from "embedding-sdk";
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
 import "../metabase-provider.web-component";
@@ -15,19 +17,47 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [
-    (Story: StoryFn) => (
-      <metabase-provider
-        metabase-instance-url={config.metabaseInstanceUrl}
-        fetch-request-token="fetchRequestToken"
-      >
-        <Story />
-      </metabase-provider>
-    ),
-  ],
+};
+
+const withDefinedAttributes = (Story: StoryFn) => (
+  <metabase-provider
+    metabase-instance-url={config.metabaseInstanceUrl}
+    fetch-request-token="fetchRequestToken"
+  >
+    <Story />
+  </metabase-provider>
+);
+
+const withDefinedProperties = (Story: StoryFn) => {
+  const ref = useRef<
+    (HTMLElement & Pick<MetabaseProviderProps, "authConfig" | "theme">) | null
+  >(null);
+
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+
+    ref.current.authConfig = config;
+    ref.current.theme = {
+      colors: { brand: "blue" },
+      fontFamily: "Impact",
+    };
+  });
+
+  return (
+    <metabase-provider ref={ref}>
+      <Story />
+    </metabase-provider>
+  );
 };
 
 export const Question = () => (
   <interactive-question question-id={QUESTION_ID} />
 );
-Question.args = {};
+Question.decorators = [withDefinedAttributes];
+
+export const QuestionWithDefinedProperties = () => (
+  <interactive-question question-id={QUESTION_ID} />
+);
+QuestionWithDefinedProperties.decorators = [withDefinedProperties];
