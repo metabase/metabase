@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.string :as u.str]))
@@ -134,7 +134,12 @@
   (deferred-tru "The name you want to use for the sender of emails.")
   :encryption :no
   :visibility :settings-manager
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-value]
+                ;; Validate based on chars in https://www.ietf.org/rfc/rfc5322.txt via https://docs.aws.amazon.com/ses/latest/dg/send-email-concepts-email-format.html
+                (when (and new-value (re-matches #".*[()<>\[\]:;@/\\,\.\"].*" new-value))
+                  (throw (ex-info (tru "Invalid special character included.") {:status-code 400})))
+                (setting/set-value-of-type! :string :email-from-name new-value)))
 
 (defsetting bcc-enabled?
   (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")

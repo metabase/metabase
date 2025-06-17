@@ -5,7 +5,7 @@ import {
   addParameter,
   hideAddParameterPopover,
   showAddParameterPopover,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/parameters";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

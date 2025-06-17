@@ -165,7 +165,7 @@ export function UploadSettingsFormView({
     <Box component="form" aria-label={t`Upload Settings Form`} px="md">
       <SettingHeader
         id="upload-settings"
-        title={t`Allow people to upload data to Collections`}
+        title={t`Allow people to upload data to collections`}
         description={jt`People will be able to upload CSV files that will be stored in the ${(
           <Link
             className={CS.link}

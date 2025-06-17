@@ -9,11 +9,166 @@ databaseChangeLog:
       author: edpaget
       comment: Placeholder migration that makes sure the downgrade check doesn't fail
       changes:
-        -  output:
-            message:  Placeholder until other changesets
-            target:  STDOUT
+        - output:
+            message: Placeholder until other changesets
+            target: STDOUT
       rollback:
 
+  - changeSet:
+      id: v56.2025-06-06T20:11:53
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_table
+            constraintName: fk_query_table_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:54
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:55
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropColumn:
+            tableName: query_table
+            columnName: analysis_id
+      rollback:
+        - addColumn:
+            tableName: query_table
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_analysis_id
+                    deleteCascade: true
+  - changeSet:
+      id: v56.2025-06-06T20:11:56
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropColumn:
+            tableName: query_field
+            columnName: analysis_id
+      rollback:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_analysis_id
+                    deleteCascade: true
+                    deleteCascadeForce: true
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:58
+      author: nvoxland
+      comment: Drop now-unused query_analysis table
+      changes:
+        - dropTable:
+            tableName: query_analysis
+      rollback:
+        - createTable:
+            tableName: query_analysis
+            remarks: Parent node for query analysis records
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_analysis_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the analysis was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the analysis was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: ${text.type}
+                  remarks: running, failed, or completed
+
+  - changeSet:
+      id: v56.2025-06-13T15:00:00
+      author: rafpaf
+      comment: Create content translation table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_translation
+      changes:
+        - createTable:
+            tableName: content_translation
+            remarks: Content translations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  remarks: Locale
+                  type: varchar(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgid
+                  remarks: The raw string
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgstr
+                  remarks: The translation
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

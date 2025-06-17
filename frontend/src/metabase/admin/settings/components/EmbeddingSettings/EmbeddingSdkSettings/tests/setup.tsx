@@ -61,5 +61,5 @@ export async function setup({
     expect(gets).toHaveLength(2);
   });
 
-  await screen.findByText("Embedded analytics SDK for React");
+  await screen.findByText("Embedding SDK");
 }
