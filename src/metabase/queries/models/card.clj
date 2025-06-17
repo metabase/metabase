@@ -89,15 +89,15 @@
     target-schema-version))
 
 (t2/deftransforms :model/Card
-  {:dataset_query mi/transform-metabase-query
-   :display mi/transform-keyword
-   :embedding_params mi/transform-json
-   :query_type mi/transform-keyword
-   :result_metadata mi/transform-result-metadata
+  {:dataset_query          mi/transform-metabase-query
+   :display                mi/transform-keyword
+   :embedding_params       mi/transform-json
+   :query_type             mi/transform-keyword
+   :result_metadata        mi/transform-result-metadata
    :visualization_settings mi/transform-visualization-settings
-   :parameters mi/transform-card-parameters-list
-   :parameter_mappings mi/transform-parameters-list
-   :type mi/transform-keyword})
+   :parameters             mi/transform-card-parameters-list
+   :parameter_mappings     mi/transform-parameters-list
+   :type                   mi/transform-keyword})
 
 (doto :model/Card
   (derive :metabase/model)
@@ -138,7 +138,7 @@
   ([{:keys [database_id dataset_query] :as card}]
    (when dataset_query
      (let [db-id (or database_id (:database dataset_query))
-           mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+           mp    (lib.metadata.jvm/application-database-metadata-provider db-id)]
        (lib-query mp card))))
   ([metadata-providerable {:keys [dataset_query] :as _card}]
    (when dataset_query
@@ -151,10 +151,10 @@
   (mi/instances-with-hydrated-data
    cards k
    (fn []
-     (->> (t2/query {:select [[:%count.* :count] :card_id]
-                     :from [:report_dashboardcard]
-                     :where [:in :card_id (map :id cards)]
-                     :group-by [:card_id]})
+     (->> (t2/query {:select    [[:%count.* :count] :card_id]
+                     :from      [:report_dashboardcard]
+                     :where     [:in :card_id (map :id cards)]
+                     :group-by  [:card_id]})
           (map (juxt :card_id :count))
           (into {})))
    :id
@@ -204,7 +204,7 @@
   (when (map? query)
     (let [query-type (lib/normalized-query-type query)]
       (case query-type
-        :query (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
         :mbql/query (-> query lib/normalize lib.util/source-card-id)
         nil))))
 
@@ -222,7 +222,7 @@
                              (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
                                                                   (remove nil?)))))]
     (doseq [[db-id table-ids] db-id->table-ids
-            :let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
             :when (seq table-ids)]
       (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
 
@@ -278,10 +278,10 @@
   [_model k cards]
   (mi/instances-with-hydrated-data
    cards k
-   #(->> (t2/query {:select [[:%count.* :count] :card_id]
-                    :from [:parameter_card]
-                    :where [:in :card_id (map :id cards)]
-                    :group-by [:card_id]})
+   #(->> (t2/query {:select    [[:%count.* :count] :card_id]
+                    :from      [:parameter_card]
+                    :where     [:in :card_id (map :id cards)]
+                    :group-by  [:card_id]})
          (map (juxt :card_id :count))
          (into {}))
    :id
@@ -292,11 +292,11 @@
   (mi/instances-with-hydrated-data
    cards k
    #(->> (t2/query {:select [[:%avg.running_time :running_time] :card_id]
-                    :from [:query_execution]
-                    :where [:and
-                            [:not= :running_time nil]
-                            [:not= :cache_hit true]
-                            [:in :card_id (map :id cards)]]
+                    :from   [:query_execution]
+                    :where  [:and
+                             [:not= :running_time nil]
+                             [:not= :cache_hit true]
+                             [:in :card_id (map :id cards)]]
                     :group-by [:card_id]})
          (map (juxt :card_id :running_time))
          (into {}))
@@ -307,11 +307,11 @@
   (mi/instances-with-hydrated-data
    cards k
    #(->> (t2/query {:select [[:%max.started_at :started_at] :card_id]
-                    :from [:query_execution]
-                    :where [:and
-                            [:not= :running_time nil]
-                            [:not= :cache_hit true]
-                            [:in :card_id (map :id cards)]]
+                    :from   [:query_execution]
+                    :where  [:and
+                             [:not= :running_time nil]
+                             [:not= :cache_hit true]
+                             [:in :card_id (map :id cards)]]
                     :group-by [:card_id]})
          (map (juxt :card_id :started_at))
          (into {}))
@@ -362,7 +362,7 @@
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
   Cards. (e.g. Card A cannot use itself as a source, or if A uses Card B as a source, Card B cannot use Card A, and so
   forth.)"
-  [{query :dataset_query, id :id}] ; don't use `u/the-id` here so that we can use this with `pre-insert` too
+  [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
   (loop [query query, ids-already-seen #{id}]
     (let [source-card-id (qp.util/query->source-card-id query)]
       (cond
@@ -397,20 +397,20 @@
   should always be there. Apparently lots of e2e tests are sloppy about this so this is included as a convenience."
   [card]
   (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
-        :when (and tag-type
-                   (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
-                       (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
-    {:id (:id tag)
-     :type (or widget-type (cond (= tag-type :date) :date/single
-                                 (= tag-type :string) :string/=
-                                 (= tag-type :number) :number/=
-                                 :else :category))
-     :target (if (= tag-type :dimension)
-               [:dimension [:template-tag (:name tag)]]
-               [:variable [:template-tag (:name tag)]])
-     :name (:display-name tag)
-     :slug (:name tag)
-     :default (:default tag)
+        :when                         (and tag-type
+                                           (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+                                               (and (= tag-type :dimension) widget-type (not= widget-type :none))))]
+    {:id       (:id tag)
+     :type     (or widget-type (cond (= tag-type :date)   :date/single
+                                     (= tag-type :string) :string/=
+                                     (= tag-type :number) :number/=
+                                     :else                :category))
+     :target   (if (= tag-type :dimension)
+                 [:dimension [:template-tag (:name tag)]]
+                 [:variable  [:template-tag (:name tag)]])
+     :name     (:display-name tag)
+     :slug     (:name tag)
+     :default  (:default tag)
      :required (boolean (:required tag))}))
 
 (defn- check-field-filter-fields-are-from-correct-database
@@ -426,14 +426,14 @@
   (when query
     (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
       (doseq [{:keys [field-id field-name table-name field-db-id]} (app-db/query
-                                                                    {:select [[:field.id :field-id]
-                                                                              [:field.name :field-name]
-                                                                              [:table.name :table-name]
-                                                                              [:table.db_id :field-db-id]]
-                                                                     :from [[:metabase_field :field]]
+                                                                    {:select    [[:field.id :field-id]
+                                                                                 [:field.name :field-name]
+                                                                                 [:table.name :table-name]
+                                                                                 [:table.db_id :field-db-id]]
+                                                                     :from      [[:metabase_field :field]]
                                                                      :left-join [[:metabase_table :table]
                                                                                  [:= :field.table_id :table.id]]
-                                                                     :where [:in :field.id (set field-ids)]})]
+                                                                     :where     [:in :field.id (set field-ids)]})]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
                                     (format "%d %s" db-id (pr-str (t2/select-one-fn :name 'Database :id db-id))))]
@@ -441,8 +441,8 @@
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
                                  (describe-database query-db-id)))
-                          {:status-code 400
-                           :query-database query-db-id
+                          {:status-code           400
+                           :query-database        query-db-id
                            :field-filter-database field-db-id})))))))
 
 (defn- assert-valid-type
@@ -518,11 +518,11 @@
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it?? (#40013)
 (defn- pre-insert [card]
-  (let [defaults {:parameters []
+  (let [defaults {:parameters         []
                   :parameter_mappings []
-                  :card_schema current-schema-version}
-        card (maybe-check-dashboard-internal-card
-              (merge defaults card))]
+                  :card_schema        current-schema-version}
+        card     (maybe-check-dashboard-internal-card
+                  (merge defaults card))]
     (u/prog1 card
       ;; make sure this Card doesn't have circular source query references
       (check-for-circular-source-query-references card)
@@ -550,8 +550,8 @@
     (let [parameter-cards (t2/select :model/ParameterCard :card_id id)]
       (doseq [[[po-type po-id] param-cards]
               (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-        (let [model (case po-type :card 'Card :dashboard 'Dashboard)
-              {:keys [parameters]} (t2/select-one [model :parameters] :id po-id)
+        (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+              {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
                                       ;; update all parameters that use this card as source
                                        (:archived changes)
@@ -595,10 +595,10 @@
   "Delete all implicit actions of a model if exists."
   [model-id]
   (when-let [action-ids (t2/select-pks-set :model/Action {:select [:action.id]
-                                                          :from [:action]
-                                                          :join [:implicit_action
-                                                                 [:= :action.id :implicit_action.action_id]]
-                                                          :where [:= :action.model_id model-id]})]
+                                                          :from   [:action]
+                                                          :join   [:implicit_action
+                                                                   [:= :action.id :implicit_action.action_id]]
+                                                          :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
 (defn- pre-update [{id :id :as card} changes]
