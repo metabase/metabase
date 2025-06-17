@@ -1,4 +1,5 @@
 /* eslint "react/prop-types": "warn" */
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
@@ -27,14 +28,13 @@ const mapDispatchToProps = {
 
 class DatabaseList extends Component {
   static propTypes = {
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
   };
 
   render() {
-    const { entities, style, loadingError, loading } = this.props;
+    const { entities, loadingError, loading } = this.props;
 
     const databases = Object.values(entities)
       .filter((database) => {
@@ -47,7 +47,7 @@ class DatabaseList extends Component {
       });
 
     return (
-      <div style={style} className={CS.full}>
+      <div>
         <ReferenceHeader name={t`Our data`} />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}
@@ -55,7 +55,7 @@ class DatabaseList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className={CS.wrapper}>
+              <div className={cx(CS.wrapper, CS.wrapperTrim)}>
                 <List>
                   {databases.map((database) => (
                     <ListItem

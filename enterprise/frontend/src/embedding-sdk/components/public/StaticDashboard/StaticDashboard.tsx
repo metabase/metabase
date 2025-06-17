@@ -18,7 +18,7 @@ import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import { setErrorPage } from "metabase/redux/app";
+import { resetErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
 
@@ -112,7 +112,7 @@ const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
     const dispatch = useSdkDispatch();
     useEffect(() => {
       if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
+        dispatch(resetErrorPage());
       }
     }, [dispatch, resolvedDashboardId]);
 

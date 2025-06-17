@@ -2071,8 +2071,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         "Product → Created At",
         // 1st stage - Aggregations & breakouts
         "Created At: Month",
-        "Category",
-        "Created At: Year",
+        "Product → Category",
+        "User → Created At: Year",
         "Count",
         "Sum of Total",
         // 2nd stage - Custom columns
@@ -2085,10 +2085,10 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         "Reviews - Created At: Month → Body",
         "Reviews - Created At: Month → Created At",
         // 2nd stage - Aggregations & breakouts
-        "Category",
-        "Created At",
+        "Product → Category",
+        "Reviews - Created At: Month → Created At",
         "Count",
-        "Sum of Rating",
+        "Sum of Reviews - Created At: Month → Rating",
       ]);
 
       // 1st stage - Orders
@@ -2117,7 +2117,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       H.popover().findByText("Product → Category").click();
 
       // 1st stage - Aggregations & breakouts
-      getClickMapping("Category").first().click();
+      getClickMapping("Product → Category").eq(2).click();
       H.popover().findByText("Product → Category").click();
 
       // 2nd stage - Custom columns

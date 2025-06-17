@@ -5,7 +5,6 @@ import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
@@ -144,7 +143,7 @@ const DatabaseDetail = (props) => {
                 CS.bordered,
               )}
             >
-              <List>
+              <ul>
                 <li className={CS.relative}>
                   <Detail
                     id="description"
@@ -175,7 +174,7 @@ const DatabaseDetail = (props) => {
                     field={getFormField("caveats")}
                   />
                 </li>
-              </List>
+              </ul>
             </div>
           </div>
         )}

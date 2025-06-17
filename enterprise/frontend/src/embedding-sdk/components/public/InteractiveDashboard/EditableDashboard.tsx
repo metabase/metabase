@@ -18,7 +18,7 @@ import {
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
-import { setErrorPage } from "metabase/redux/app";
+import { resetErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
@@ -108,7 +108,7 @@ export const EditableDashboard = ({
   const dispatch = useSdkDispatch();
   useEffect(() => {
     if (dashboardId) {
-      dispatch(setErrorPage(null));
+      dispatch(resetErrorPage());
     }
   }, [dispatch, dashboardId]);
 

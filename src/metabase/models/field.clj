@@ -133,8 +133,8 @@
 
 (t2/define-before-update :model/Field
   [field]
-  (u/prog1 (t2/changes field)
-    (when (false? (:active <>))
+  (u/prog1 field
+    (when (false? (:active (t2/changes <>)))
       (t2/update! :model/Field {:fk_target_field_id (:id field)} {:semantic_type      nil
                                                                   :fk_target_field_id nil}))))
 

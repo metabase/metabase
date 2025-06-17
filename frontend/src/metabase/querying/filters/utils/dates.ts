@@ -72,7 +72,7 @@ export function getDatePickerUnits(
 export function getDatePickerValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): DatePickerValue | undefined {
   return (
     getSpecificDateValue(query, stageIndex, filterClause) ??
@@ -84,7 +84,7 @@ export function getDatePickerValue(
 function getSpecificDateValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): SpecificDatePickerValue | undefined {
   const filterParts = Lib.specificDateFilterParts(
     query,
@@ -106,7 +106,7 @@ function getSpecificDateValue(
 function getRelativeDateValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): RelativeDatePickerValue | undefined {
   const filterParts = Lib.relativeDateFilterParts(
     query,
@@ -130,7 +130,7 @@ function getRelativeDateValue(
 function getExcludeDateValue(
   query: Lib.Query,
   stageIndex: number,
-  filterClause: Lib.FilterClause,
+  filterClause: Lib.Filterable,
 ): ExcludeDatePickerValue | undefined {
   const filterParts = Lib.excludeDateFilterParts(
     query,

@@ -242,6 +242,8 @@
                        parent-id           :parent-id
                        simple-display-name ::simple-display-name
                        hide-bin-bucket?    :lib/hide-bin-bucket?
+                       source              :lib/source
+                       source-uuid         :lib/source-uuid
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or simple-display-name
@@ -250,6 +252,23 @@
                                           (or (nil? field-display-name)
                                               (= field-display-name humanized-name)))
                                  (nest-display-name query field-metadata))
+                               (when-let [[source-index source-clause]
+                                          (and source-uuid
+                                               field-display-name
+                                               (= style :long)
+                                               (= source :source/previous-stage)
+                                               (not (or fk-field-id join-alias))
+                                               (not (str/includes? field-display-name " → "))
+                                               (lib.util/find-stage-index-and-clause-by-uuid
+                                                query
+                                                (dec stage-number)
+                                                source-uuid))]
+                                 ;; The :display-name from the field metadata is probably not a :long display name, so
+                                 ;; if the caller requested a :long name and we can lookup the original clause by the
+                                 ;; source-uuid, use that to get the :long name. This allows display-info to get the
+                                 ;; long display-name with join info included for aggregations over a joined field
+                                 ;; from the previous stage, like "Max of Products -> ID" rather than "Max of ID".
+                                 (lib.metadata.calculation/display-name query source-index source-clause style))
                                field-display-name
                                (if (string? field-name)
                                  humanized-name

@@ -327,8 +327,17 @@
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
           (is (<= @#'sync.fingerprint/max-refingerprint-field-count attempted))
-          ;; but it is bounded.
-          (is (< attempted (+ @#'sync.fingerprint/max-refingerprint-field-count 10))))))))
+          (is (<= attempted
+                  ;; but it is bounded! it's less than the max fingerprint count PLUS the number of fields in the
+                  ;; biggest table in (mt/db).
+                  (+ @#'sync.fingerprint/max-refingerprint-field-count
+                     (:count (t2/query-one {:select [[:%count.* :count]]
+                                            :from :metabase_field
+                                            :join [[:metabase_table :table] [:= :table.id :table_id]]
+                                            :where [:= :table.db_id (:id (mt/db))]
+                                            :group-by [:table_id]
+                                            :order-by [[:count :desc]]
+                                            :limit 1}))))))))))
 
 (deftest abandon-failed-fingerprint-test
   (mt/test-drivers (mt/normal-drivers)

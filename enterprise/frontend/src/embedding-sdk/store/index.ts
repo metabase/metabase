@@ -2,13 +2,13 @@
 import type { AnyAction, Reducer, Store } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/embedding-sdk/store";
 import {
   MetabaseReduxContext,
   useDispatch,
   useStore,
 } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getStore } from "metabase/store";
 
 import { sdk } from "./reducer";

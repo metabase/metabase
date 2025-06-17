@@ -5,7 +5,6 @@ import PropTypes from "prop-types";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import List from "metabase/components/List";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
@@ -185,8 +184,8 @@ const TableDetail = (props) => {
                 CS.bordered,
               )}
             >
-              <List>
-                <li className={CS.relative}>
+              <ul>
+                <li>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -197,7 +196,7 @@ const TableDetail = (props) => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <Detail
                       id="name"
                       name={t`Actual name in database`}
@@ -206,7 +205,7 @@ const TableDetail = (props) => {
                     />
                   </li>
                 )}
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this table is interesting`}
@@ -216,7 +215,7 @@ const TableDetail = (props) => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className={CS.relative}>
+                <li>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this table`}
@@ -227,13 +226,13 @@ const TableDetail = (props) => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className={CS.relative}>
+                  <li>
                     <UsefulQuestions
                       questions={interestingQuestions(table, metadata)}
                     />
                   </li>
                 )}
-              </List>
+              </ul>
             </div>
           </div>
         )}

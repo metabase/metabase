@@ -1350,3 +1350,19 @@ describe("issue 57132", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 55673", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
+  });
+});

@@ -1,4 +1,3 @@
-import type { Query } from "history";
 import type { ComponentType, FC } from "react";
 import type { ConnectedProps } from "react-redux";
 import _ from "underscore";
@@ -36,6 +35,7 @@ import type {
   DashboardLoaderWrapperProps,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { connect } from "metabase/lib/redux";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { closeNavbar, setErrorPage } from "metabase/redux/app";
@@ -87,7 +87,7 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type ConnectedDashboardProps = {
   dashboardId: DashboardId;
   isLoading: boolean;
-  parameterQueryParams: Query;
+  parameterQueryParams: ParameterValues;
 
   downloadsEnabled?: boolean;
   onNavigateToNewCardFromDashboard: (

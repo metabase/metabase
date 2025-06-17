@@ -118,6 +118,11 @@
   (initialize-if-needed! :db)
   (notification/seed-notification!))
 
+(define-initialization :row-lock
+  (initialize-if-needed! :db)
+  (classloader/require 'metabase.test.initialize.row-lock)
+  ((resolve 'metabase.test.initialize.row-lock/init!)))
+
 (defn- all-components
   "Set of all components/initialization steps that are defined."
   []

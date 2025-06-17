@@ -1,21 +1,25 @@
-(ns metabase.pulse.dashboard-subscription
+(ns metabase.pulse.events.dashboard-subscription
   (:require
    [clojure.set :as set]
    [metabase.db.query :as mdb.query]
+   [metabase.events :as events]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-card :as pulse-card]
    [metabase.util :as u]
+   [methodical.core :as m]
    [toucan2.core :as t2]))
 
-;; TODO -- should this be done on `:event/dashboard-update` ??
-(defn update-dashboard-subscription-pulses!
+(derive ::dashboard-update :metabase/event)
+(derive :event/dashboard-update ::dashboard-update)
+
+(m/defmethod events/publish-event! ::dashboard-update
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
-  [dashboard]
+  [_ {dashboard :object}]
   (let [dashboard-id (u/the-id dashboard)
         affected     (mdb.query/query
                       {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
                        :from            [[:pulse :p]]
-                       :join            [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
+                       :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
                        :where           [:= :p.dashboard_id dashboard-id]})]
     (when-let [pulse-ids (seq (distinct (map :pulse-id affected)))]
       (let [correct-card-ids     (->> (mdb.query/query
