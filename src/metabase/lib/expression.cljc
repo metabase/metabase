@@ -60,7 +60,7 @@
     stage-number    :- :int
     expression-name :- ::lib.schema.common/non-blank-string]
    (or (maybe-resolve-expression query stage-number expression-name)
-       (log/warnf "Expression %s does not in stage %d" (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
+       (log/warnf "Expression %s does not exist in stage %d" (pr-str expression-name) (lib.util/canonical-stage-index query stage-number))
        (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
          (u/prog1 (resolve-expression query previous-stage-number expression-name)
            (when <>
