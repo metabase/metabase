@@ -110,8 +110,8 @@ const DataSelectorTablePicker = ({
       <HoverParent>{content}</HoverParent>
     );
 
-    const showSpinner = (x: Item | Section<Item>) =>
-      "table" in x && !isSyncCompleted(x.table);
+    const showSpinner = (itemOrSection: Item | Section<Item>) =>
+      "table" in itemOrSection && !isSyncCompleted(itemOrSection.table);
 
     const handleChange = ({ table }: { table: Table }) => onChangeTable(table);
 
