@@ -95,7 +95,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
             height: "100%",
           }}
         >
-          <TextInput
+          {/* <TextInput
             m="xs"
             variant="filled"
             value={search}
@@ -103,7 +103,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
             placeholder={t`Search for something`}
             leftSection={<Icon name="search" />}
             autoFocus
-          />
+          /> */}
           <Flex
             direction="column"
             pt="sm"

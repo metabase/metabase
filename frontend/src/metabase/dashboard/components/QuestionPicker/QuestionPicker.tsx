@@ -28,12 +28,14 @@ interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
   collectionsById: Record<CollectionId, Collection>;
   getCollectionIcon: (collection: Collection) => IconProps;
+  noButtons?: boolean;
 }
 
 function QuestionPickerInner({
   onSelect,
   collectionsById,
   getCollectionIcon,
+  noButtons,
 }: QuestionPickerInnerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
@@ -84,7 +86,7 @@ function QuestionPickerInner({
         onChange={handleSearchTextChange}
       />
 
-      {(hasDataAccess || hasNativeWrite) && !isEmbeddingSdk && (
+      {(hasDataAccess || hasNativeWrite) && !isEmbeddingSdk && !noButtons && (
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button

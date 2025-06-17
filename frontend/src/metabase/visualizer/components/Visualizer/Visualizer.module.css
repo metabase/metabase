@@ -1,7 +1,7 @@
 .Container {
   display: grid;
 
-  --data-sidebar-width: 320px;
+  --data-sidebar-width: 347px;
   --settings-sidebar-width: 320px;
   --transition-duration: 200ms;
   --left: 0;

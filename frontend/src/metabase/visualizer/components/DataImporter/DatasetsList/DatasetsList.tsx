@@ -1,7 +1,20 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListRecentsQuery, useSearchQuery } from "metabase/api";
+import {
+  datasetApi,
+  skipToken,
+  useListRecentsQuery,
+  useSearchQuery,
+} from "metabase/api";
+import { defaultOptions as defaultEntityPickerOptions } from "metabase/common/components/EntityPicker";
+import {
+  type QuestionPickerItem,
+  type QuestionPickerOptions,
+  type QuestionPickerStatePath,
+  defaultOptions as defaultQuestionPickerOptions,
+} from "metabase/common/components/QuestionPicker";
+import { QuestionPicker } from "metabase/dashboard/components/QuestionPicker";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -20,7 +33,12 @@ import type {
   VisualizerDataSourceId,
 } from "metabase-types/api";
 
-import { DatasetsListItem } from "./DatasetsListItem";
+// import { DatasetsListItem } from "./DatasetsListItem";
+
+const defaultOptions: QuestionPickerOptions = {
+  ...defaultEntityPickerOptions,
+  ...defaultQuestionPickerOptions,
+};
 
 function shouldIncludeDashboardQuestion(
   searchItem: SearchResult,
@@ -48,6 +66,12 @@ export function DatasetsList({
     () => new Set(dataSources.map((s) => s.id)),
     [dataSources],
   );
+
+  const onInitItemSelect = useCallback((item: QuestionPickerItem) => {
+    // console.log("onInitItemSelect", item);
+  }, []);
+
+  const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
@@ -77,6 +101,16 @@ export function DatasetsList({
       setDataSourceCollapsed(source.id, true);
     },
     [dispatch, setDataSourceCollapsed],
+  );
+
+  const onItemSelect = useCallback(
+    (id: number) => {
+      dataSources.forEach((dataSource) => {
+        handleRemoveDataSource(dataSource, true);
+      });
+      dispatch(addDataSource(`card:${id}` as VisualizerDataSourceId));
+    },
+    [dispatch, dataSources, handleRemoveDataSource],
   );
 
   const handleSwapDataSources = useCallback(
@@ -175,17 +209,20 @@ export function DatasetsList({
   }
 
   return (
-    <Flex gap="xs" direction="column" data-testid="datasets-list">
-      {items.map((item, index) => (
-        <DatasetsListItem
-          key={index}
-          item={item}
-          onSwap={handleSwapDataSources}
-          onToggle={handleAddDataSource}
-          onRemove={handleRemoveDataSource}
-          selected={dataSourceIds.has(item.id)}
-        />
-      ))}
-    </Flex>
+    <QuestionPicker onSelect={onItemSelect} noButtons />
+
+    // return (
+    //   <Flex gap="xs" direction="column" data-testid="datasets-list">
+    //     {items.map((item, index) => (
+    //       <DatasetsListItem
+    //         key={index}
+    //         item={item}
+    //         onSwap={handleSwapDataSources}
+    //         onToggle={handleAddDataSource}
+    //         onRemove={handleRemoveDataSource}
+    //         selected={dataSourceIds.has(item.id)}
+    //       />
+    //     ))}
+    //   </Flex>
   );
 }
