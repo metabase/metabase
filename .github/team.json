@@ -106,7 +106,9 @@
     {
       "name": "Cloud",
       "label": "cloud",
-      "members": []
+      "members": [
+        "filipesilva"
+      ]
     }
   ]
 }
