@@ -71,7 +71,11 @@ export function AccordionListCell<
   canToggleSections,
   color: colorProp = "brand",
   getItemClassName = (item: TItem) => {
-    if ("className" in item && typeof item.className === "string") {
+    if (
+      typeof item === "object" &&
+      "className" in item &&
+      typeof item.className === "string"
+    ) {
       return item.className;
     }
   },
@@ -86,18 +90,30 @@ export function AccordionListCell<
     section.icon && <Icon name={section.icon} />,
   renderItemLabel,
   renderItemName = (item: TItem) => {
-    if ("name" in item && typeof item.name === "string") {
+    if (
+      typeof item === "object" &&
+      "name" in item &&
+      typeof item.name === "string"
+    ) {
       return item.name;
     }
   },
   renderItemDescription = (item: TItem) => {
-    if ("description" in item && isReactNode(item.description)) {
+    if (
+      typeof item === "object" &&
+      "description" in item &&
+      isReactNode(item.description)
+    ) {
       return item.description;
     }
   },
   renderItemExtra = () => null,
   renderItemIcon = (item: TItem) => {
-    if ("icon" in item && isValidIconName(item.icon)) {
+    if (
+      typeof item === "object" &&
+      "icon" in item &&
+      isValidIconName(item.icon)
+    ) {
       return <Icon name={item.icon} />;
     }
     return null;
