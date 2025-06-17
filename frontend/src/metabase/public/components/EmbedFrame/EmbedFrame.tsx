@@ -117,7 +117,7 @@ export const EmbedFrame = ({
     dashboard && getDashboardType(dashboard.id) === "public",
   );
 
-  const isDashboard = !!dashboard;
+  const isDashboard = dashboard != null;
   const ParametersListComponent = getParametersListComponent({
     isDashboard,
   });
