@@ -1,8 +1,11 @@
 ---
 title: Database routing
+summary: Route queries to different databases based on who's viewing them. Great for multi-tenant setups where each customer has their own database.
 ---
 
 # Database routing
+
+{% include plans-blockquote.html feature="Database routing" %}
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 

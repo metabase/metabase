@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { PLUGIN_API } from "metabase/plugins";
+import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
@@ -332,11 +332,15 @@ export function setPublicDashboardEndpoints(uuid) {
 }
 
 export function setEmbedQuestionEndpoints(token) {
-  setCardEndpoints(`${embedBase}/card/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setCardEndpoints(`${embedBase}/card/${encodedToken}`);
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
 export function setEmbedDashboardEndpoints(token) {
-  setDashboardEndpoints(`${embedBase}/dashboard/${encodeURIComponent(token)}`);
+  const encodedToken = encodeURIComponent(token);
+  setDashboardEndpoints(`${embedBase}/dashboard/${encodedToken}`);
+  PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(encodedToken);
 }
 
 function GET_with(url, omitKeys) {

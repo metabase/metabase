@@ -8,10 +8,8 @@ import {
 } from "metabase/api";
 import { useDocsUrl } from "metabase/common/hooks";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
-import ExternalLink, {
-  ButtonLink,
-} from "metabase/core/components/ExternalLink";
-import { Box, Button, Flex, Icon, Stack, Text, Title } from "metabase/ui";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 
 import { SlackBadge } from "./SlackBadge";
 
@@ -32,42 +30,31 @@ export const SlackStatus = () => {
   };
 
   return (
-    <Box maw="40rem">
-      <Flex justify="space-between">
-        <Box>
-          <Title order={2} mb="sm">{t`Metabase on Slack`}</Title>
-          <Flex gap="sm">
-            <SlackBadge isValid={isValid} />
-            {!isValid && (
-              <Text ml="sm" inline>
-                {jt`Need help? ${(
-                  <ExternalLink
-                    key="link"
-                    href={docsUrl}
-                  >{t`See our docs`}</ExternalLink>
-                )}.`}
-              </Text>
-            )}
-          </Flex>
-        </Box>
-        <Box>
-          <ButtonLink href={docsUrl}>
-            {t`Create Slack App`}
-            <Icon name="external" opacity={0.5} ml="sm" />
-          </ButtonLink>
-        </Box>
+    <Box>
+      <Flex justify="space-between" align="center">
+        <SlackBadge isValid={isValid} />
+        {!isValid && (
+          <Text ml="sm" inline>
+            {jt`Need help? ${(
+              <ExternalLink
+                key="link"
+                href={docsUrl}
+              >{t`See our docs`}</ExternalLink>
+            )}.`}
+          </Text>
+        )}
       </Flex>
       <Stack my="xl" gap="lg">
         <AdminSettingInput
           name="slack-app-token"
-          title={t`Slack Token`}
+          title={t`Slack token`}
           description={""}
           inputType="text"
           disabled
         />
         <AdminSettingInput
           name="slack-bug-report-channel"
-          title={t`Slack Bug report channel`}
+          title={t`Slack bug report channel`}
           inputType="text"
           hidden={!bugReportingEnabled || !bugReportChannel}
           disabled

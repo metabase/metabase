@@ -1,8 +1,10 @@
 import React, {
   type ComponentType,
+  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  useCallback,
   useMemo,
 } from "react";
 import { t } from "ttag";
@@ -32,6 +34,7 @@ import type {
 import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
@@ -40,9 +43,11 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type { HoveredObject } from "metabase/visualizations/types";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -63,8 +68,6 @@ import type {
   DashboardId,
   Database as DatabaseType,
   Dataset,
-  DatasetError,
-  DatasetErrorType,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -72,15 +75,17 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  Series,
   TableId,
   Timeline,
   TimelineEvent,
   User,
+  VisualizationDisplay,
 } from "metabase-types/api";
 import type {
   AdminPath,
   AdminPathKey,
-  Dispatch,
+  Dispatch as ReduxDispatch,
   State,
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
@@ -110,7 +115,8 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 export const PLUGIN_WHITELABEL = {
-  WhiteLabelSettingsPage: PluginPlaceholder,
+  WhiteLabelBrandingSettingsPage: PluginPlaceholder,
+  WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
 export const PLUGIN_ADMIN_TROUBLESHOOTING = {
@@ -608,7 +614,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+  areDownloadsEnabled: (_args: {
+    downloads?: string | boolean | null;
+  }): EmbedResourceDownloadOptions => ({
     pdf: true,
     results: true,
   }),
@@ -619,16 +627,8 @@ const defaultMetabotContextValue: MetabotContext = {
   registerChatContextProvider: () => () => {},
 };
 
-export type FixSqlQueryButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
-  onHighlightLines: (fixedLineNumbers: number[]) => void;
-};
-
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<Record<string, never>>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
@@ -672,6 +672,9 @@ export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
   canAnalyzeQuestion: (question: Question) => boolean;
+  chartAnalysisRenderFormats: {
+    [display in VisualizationDisplay]?: "png" | "svg" | "none";
+  };
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
@@ -679,6 +682,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
   canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
 };
 
 export const PLUGIN_METABOT = {
@@ -697,6 +701,7 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
@@ -705,7 +710,7 @@ export const PLUGIN_METABOT = {
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
-  dispatch: Dispatch,
+  dispatch: ReduxDispatch,
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {
@@ -714,6 +719,26 @@ export type PluginDashcardMenu = {
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+};
+
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
+  ContentTranslationConfiguration: PluginPlaceholder,
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
+    // In OSS, the input is not translated
+    return useCallback(<U = T>(arg: U) => arg, []);
+  },
+  translateDisplayNames: <T extends object>(
+    obj: T,
+    _tc: ContentTranslationFunction,
+  ) => obj,
+  useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
+  useTranslateSeries: (obj: Series) => obj,
+  useSortByContentTranslation: () => (a: string, b: string) =>
+    a.localeCompare(b),
 };
 
 export const PLUGIN_DB_ROUTING = {

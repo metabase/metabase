@@ -198,6 +198,16 @@
                                    :schema nil
                                    :name "accounts"}
 
+                   ;; Create another table that has both upper and lower case schemas
+                   ;; and table names
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "public"
+                                   :name "friends"}
+
+                   :model/Table _ {:db_id audit-db-id
+                                   :schema "PUBLIC"
+                                   :name "FRIENDS"}
+
                    :model/Table {no-schema-table :id} {:db_id audit-db-id
                                                        :schema nil
                                                        :name "products"}

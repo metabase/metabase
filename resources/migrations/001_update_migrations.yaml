@@ -11064,6 +11064,37 @@ databaseChangeLog:
             columnNames: engine, version, lang_code, status
 
   - changeSet:
+      id: v54.2025-05-26T20:00:00
+      author: qnkhuat
+      comment: Update view v_alerts to correectly classify by the minute and custom schedule
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v3/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v2/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v2/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v2/h2-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
       id: v55.2025-03-24T16:28:41
       author: bshepherdson
       comment: Add report_card.card_schema
@@ -11734,6 +11765,147 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                     unique: true
+
+  - changeSet:
+      id: v55.2025-06-03T16:52:38
+      author: metamben
+      comment: Add metabot prompt table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabot_prompt
+      changes:
+        - createTable:
+            tableName: metabot_prompt
+            remarks: Prompts of a metabot entity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: metabot_entity_id
+                  type: int
+                  remarks: The metabot this entity is associated with
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of the entity this prompt is about
+                  constraints:
+                    nullable: false
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The ID of the model or metric this prompt is about
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The text of the prompt
+                  name: prompt
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the prompt was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the prompt was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-06-03T16:52:48
+      author: metamben
+      comment: Add index on metabot_prompt.metabot_entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_prompt
+                indexName: idx_metabot_prompt_metabot_entity_id
+      changes:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+            columns:
+              - column:
+                  name: metabot_entity_id
+
+  - changeSet:
+      id: v55.2025-06-03T16:52:58
+      author: metamben
+      comment: Add foreign key constraint on metabot_prompt.metabot_entity_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_prompt_metabot_entity_id
+                foreignKeyTableName: metabot_prompt
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_entity_id
+            referencedTableName: metabot_entity
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_entity_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v55.2025-06-03T16:53:08
+      author: metamben
+      comment: Add index on metabot_prompt.card_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabot_prompt
+                indexName: idx_metabot_prompt_card_id
+      changes:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_card_id
+            columns:
+              - column:
+                  name: card_id
+
+  - changeSet:
+      id: v55.2025-06-03T16:53:18
+      author: metamben
+      comment: Add foreign key constraint on metabot_prompt.card_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_metabot_prompt_card_id
+                foreignKeyTableName: metabot_prompt
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_card_id
+            onDelete: CASCADE
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

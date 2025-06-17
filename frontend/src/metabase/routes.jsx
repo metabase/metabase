@@ -28,8 +28,8 @@ import { UserCollectionList } from "metabase/containers/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -37,7 +37,11 @@ import { Onboarding } from "metabase/home/components/Onboarding";
 import { trackPageView } from "metabase/lib/analytics";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { PLUGIN_COLLECTIONS, PLUGIN_LANDING_PAGE } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_LANDING_PAGE,
+  PLUGIN_METABOT,
+} from "metabase/plugins";
 import { QueryBuilder } from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -54,6 +58,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -90,6 +95,20 @@ export const getRoutes = (store) => {
         disableCommandPalette
       />
 
+      {/* EMBEDDING SETUP */}
+      <Route
+        path="/setup/embedding"
+        component={EmbeddingSetup}
+        onEnter={async (nextState, replace, done) => {
+          if (hasUserSetup) {
+            replace("/");
+          }
+          trackPageView(location.pathname);
+          done();
+        }}
+        disableCommandPalette
+      />
+
       {/* APP */}
       <Route
         onEnter={async (nextState, replace, done) => {
@@ -117,6 +136,8 @@ export const getRoutes = (store) => {
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
+          {PLUGIN_METABOT.getMetabotRoutes()}
+
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
             path="/"
@@ -199,7 +220,7 @@ export const getRoutes = (store) => {
           <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
-            component={DashboardAppConnected}
+            component={DashboardApp}
           >
             <ModalRoute
               path="move"
@@ -282,10 +303,7 @@ export const getRoutes = (store) => {
 
           {/* INDIVIDUAL DASHBOARDS */}
 
-          <Route
-            path="/auto/dashboard/*"
-            component={AutomaticDashboardAppConnected}
-          />
+          <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>
