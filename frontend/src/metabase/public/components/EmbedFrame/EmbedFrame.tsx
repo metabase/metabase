@@ -15,7 +15,6 @@ import {
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import { getDashboardType } from "metabase/dashboard/utils";
-import { isEmbeddingSdk } from "metabase/env";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -109,6 +108,7 @@ export const EmbedFrame = ({
   withFooter = true,
 }: EmbedFrameProps) => {
   useGlobalTheme(theme);
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
     (state) => !getSetting(state, "hide-embed-branding?"),
   );
@@ -120,6 +120,7 @@ export const EmbedFrame = ({
   const isDashboard = dashboard != null;
   const ParametersListComponent = getParametersListComponent({
     isDashboard,
+    isEmbeddingSdk,
   });
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
@@ -165,7 +166,7 @@ export const EmbedFrame = ({
 
   useSyncUrlParameters({
     parameters: valuePopulatedParameters,
-    enabled: shouldSyncUrlParameters(isDashboard),
+    enabled: shouldSyncUrlParameters(isDashboard, isEmbeddingSdk),
   });
 
   return (
@@ -329,13 +330,22 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
   return parameterCount <= 5;
 }
 
-function getParametersListComponent({ isDashboard }: { isDashboard: boolean }) {
-  return shouldSyncUrlParameters(isDashboard)
+function getParametersListComponent({
+  isDashboard,
+  isEmbeddingSdk,
+}: {
+  isDashboard: boolean;
+  isEmbeddingSdk: boolean;
+}) {
+  return shouldSyncUrlParameters(isDashboard, isEmbeddingSdk)
     ? SyncedParametersList
     : ParametersList;
 }
 
-function shouldSyncUrlParameters(isDashboard: boolean) {
+function shouldSyncUrlParameters(
+  isDashboard: boolean,
+  isEmbeddingSdk: boolean,
+) {
   if (isDashboard) {
     return false;
   }
