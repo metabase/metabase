@@ -1551,7 +1551,7 @@
                  (let [field-id (second x)]
                    (when (pos-int? field-id)
                      (let [{:keys [base-type effective-type]}
-                           (driver-api/field (driver-api/metadata-provider) field-id)]
+                           (lib.metadata/field (qp.store/metadata-provider) field-id)]
                        (or effective-type base-type))))
                  (:base-type (get x 2)))
              :type/UUID)))
