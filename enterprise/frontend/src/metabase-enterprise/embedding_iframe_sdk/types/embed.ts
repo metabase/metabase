@@ -105,7 +105,7 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
+export type SdkIframeEmbedBaseSettings = {
   apiKey: string;
   instanceUrl: string;
   theme?: MetabaseTheme;

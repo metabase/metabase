@@ -6,38 +6,18 @@ import {
 } from "embedding/auth-common";
 import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 
+import {
+  ALLOWED_EMBED_SETTING_KEYS,
+  type AllowedEmbedSettingKey,
+} from "./constants";
 import type {
   SdkIframeEmbedMessage,
-  SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
   SdkIframeEmbedTagSettings,
 } from "./types/embed";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
-
-const ALLOWED_EMBED_SETTING_KEYS = [
-  "apiKey",
-  "instanceUrl",
-  "dashboardId",
-  "questionId",
-  "template",
-  "theme",
-  "locale",
-  "preferredAuthMethod",
-  "withTitle",
-  "withDownloads",
-  "initialParameters",
-  "initialSqlParameters",
-  "hiddenParameters",
-  "isDrillThroughEnabled",
-  "entityTypes",
-  "initialCollection",
-  "isSaveEnabled",
-  "targetCollection",
-] as const satisfies SdkIframeEmbedSettingKey[];
-
-type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
 
 class MetabaseEmbed {
   static readonly VERSION = "1.1.0";
