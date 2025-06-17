@@ -3,7 +3,7 @@ import Fuse from "fuse.js";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 
-import type { Item, Section } from "./types";
+import type { Item, SearchProps, Section } from "./types";
 
 export type Cursor = {
   sectionIndex: number;
@@ -185,7 +185,7 @@ export const getSearchIndex = memoize(function <
   searchProp = ["name", "displayName"],
 }: {
   sections: TSection[];
-  searchProp?: string | string[];
+  searchProp?: SearchProps<TItem>;
 }) {
   const items = sections.flatMap((section) => section.items ?? []);
   const keys = Array.isArray(searchProp) ? searchProp : [searchProp];
