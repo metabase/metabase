@@ -3292,8 +3292,11 @@
           (with-cards-in-readable-collection! [model card]
             (is (=?
                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
-                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
+                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
 
+(deftest pivot-from-model-test-2
+  (testing "Pivot options should match fields through models (#35319)"
+    (mt/dataset test-data
       (testing "visualization_settings references field by name"
         (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
                                           :type :model}

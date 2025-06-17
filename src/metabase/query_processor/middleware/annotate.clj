@@ -118,7 +118,10 @@
    [(base-type-inferer metadata)]
    (fn combine [result base-types]
      (let [cols' (mapv (fn [col base-type]
-                         (assoc col :base_type base-type, :field_ref [:field (:name col) {:base-type base-type}]))
+                         (assoc col
+                                :base_type      base-type
+                                :effective_type base-type
+                                :field_ref      [:field (:name col) {:base-type base-type}]))
                        (:cols metadata)
                        base-types)]
        (rf (cond-> result

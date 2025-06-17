@@ -46,6 +46,7 @@
 
 (mr/def ::column-source
   [:enum
+   {:decode/normalize lib.schema.common/normalize-keyword}
    ;; these are for things from some sort of source other than the current stage;
    ;; they must be referenced with string names rather than Field IDs
    :source/card

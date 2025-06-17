@@ -396,7 +396,10 @@
             :cljs (implements? cljs.core.IEditableCollection metadata))]}
   (let [m (transient metadata)]
     (-> (reduce #(update-existing! %1 %2 keyword) m
-                [:base_type :effective_type :semantic_type :visibility_type :source :unit])
+                [:base_type :effective_type :semantic_type :visibility_type :source :unit
+                 ;; HACK ! Not even a legacy key, but now that we keep `:lib/` keys around we should normalize it just
+                 ;; so test results don't get kooky
+                 :lib/source])
         (update-existing! :field_ref normalize-field-ref)
         (update-existing! :fingerprint #?(:clj perf/keywordize-keys :cljs walk/keywordize-keys))
         (update-existing! :binning_info #(m/update-existing % :binning_strategy keyword))

@@ -311,3 +311,24 @@
                     (map
                      #(select-keys % [:display_name :field_ref])
                      metadata)))))))))
+
+;;; adapted from [[metabase.driver.postgres-test/pgobject-test]], but does not actually run any queries.
+(deftest ^:parallel native-query-infer-effective-type-test
+  (testing "Inferred base-type should also get propagated to effective-type"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:database (meta/id)
+                  :type     :native
+                  :native   {:query "SELECT pg_sleep(0.01) AS sleep;"}})]
+      (is (=? [{:display_name   "sleep"
+                :base_type      :type/Text
+                :effective_type :type/Text
+                :database_type  "void"
+                :source         :native
+                :field_ref      [:field "sleep" {:base-type :type/Text}]
+                :name           "sleep"}]
+              (-> (add-column-info
+                   query
+                   {:cols [{:name "sleep", :base_type :type/*, :database_type "void"}]}
+                   [[""]])
+                  :cols))))))
