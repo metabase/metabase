@@ -117,8 +117,10 @@ export const EmbedFrame = ({
     dashboard && getDashboardType(dashboard.id) === "public",
   );
 
+  const isQuestion = question != null;
   const isDashboard = dashboard != null;
   const ParametersListComponent = getParametersListComponent({
+    isQuestion,
     isDashboard,
     isEmbeddingSdk,
   });
@@ -168,9 +170,11 @@ export const EmbedFrame = ({
 
   useSyncUrlParameters({
     parameters: valuePopulatedParameters,
-    enabled:
-      hasVisibleParameters &&
-      shouldSyncUrlParameters(isDashboard, isEmbeddingSdk),
+    enabled: shouldSyncUrlParameters({
+      isQuestion,
+      isDashboard,
+      isEmbeddingSdk,
+    }),
   });
 
   return (
@@ -335,24 +339,41 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
 }
 
 function getParametersListComponent({
+  isQuestion,
   isDashboard,
   isEmbeddingSdk,
 }: {
+  isQuestion: boolean;
   isDashboard: boolean;
   isEmbeddingSdk: boolean;
 }) {
-  return shouldSyncUrlParameters(isDashboard, isEmbeddingSdk)
+  return shouldSyncUrlParameters({ isQuestion, isDashboard, isEmbeddingSdk })
     ? SyncedParametersList
     : ParametersList;
 }
 
-function shouldSyncUrlParameters(
-  isDashboard: boolean,
-  isEmbeddingSdk: boolean,
-) {
-  if (isDashboard) {
+function shouldSyncUrlParameters({
+  isQuestion,
+  isDashboard,
+  isEmbeddingSdk,
+}: {
+  isQuestion: boolean;
+  isDashboard: boolean;
+  isEmbeddingSdk: boolean;
+}) {
+  // Couldn't determine if it's a question or a dashboard until one becomes true.
+  if (!isQuestion && !isDashboard) {
     return false;
   }
 
-  return !isEmbeddingSdk;
+  if (isDashboard) {
+    // Dashboards manage parameters themselves
+    return false;
+  } else {
+    /**
+     * We don't want to sync the query string to the URL when using the embedding SDK,
+     * because it would change the URL of users' apps.
+     */
+    return !isEmbeddingSdk;
+  }
 }
