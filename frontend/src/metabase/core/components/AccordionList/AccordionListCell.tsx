@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -135,6 +135,13 @@ export function AccordionListCell<
   let content;
   let borderTop;
   let borderBottom;
+
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (hasCursor) {
+      ref.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [hasCursor]);
 
   if (type === "header") {
     if (alwaysExpanded) {
@@ -401,6 +408,7 @@ export function AccordionListCell<
 
   return (
     <div
+      ref={ref}
       style={style}
       data-element-id="list-section"
       className={cx(section.className, {
