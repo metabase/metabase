@@ -1077,7 +1077,7 @@
                              :model/DashboardCard dashcard {:dashboard_id   (:id dash)
                                                             :card_id        (:id model)
                                                             :visualization_settings
-                                                            {:table-id @table-1-ref
+                                                            {:table_id @table-1-ref
                                                              :editableTable.enabledActions
                                                              [{:id         "dashcard:unknown:my-row-action"
                                                                :actionId   "table.row/create"

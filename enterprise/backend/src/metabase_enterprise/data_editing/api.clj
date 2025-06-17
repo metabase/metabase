@@ -357,22 +357,22 @@
    mapping))
 
 (defn- augment-params [{:keys [dashcard-id param-map] :as _action} input params]
-  (let [row (delay (let [{:keys [table-id]} (actions/cached-value
+  ;; TODO cool optimization where we don't fetch the row-data from the db if we only need the pk (or a subset of the pk)
+  (let [row (delay (let [{:keys [table_id]} (actions/cached-value
                                              [:dashcard-viz dashcard-id]
                                              #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]
-                     (if-not table-id
+                     (if-not table_id
                        ;; this is not an Editable, it must be a question - so we use the client-side row
                        (update-keys input name)
                        ;; TODO batch fetching all these rows, across all inputs
-                       (let [fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+                       (let [fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table_id)
                              pk-fields (filter #(= :type/PK (:semantic_type %)) fields)
                              ;; TODO we could restrict which fields we fetch in future
-                             [row]     (data-editing/query-db-rows table-id pk-fields [input])
+                             [row]     (data-editing/query-db-rows table_id pk-fields [input])
                              _         (api/check-404 row)]
-                         ;; staging uses both field ids and names, not sure which is canonical
-                         ;; we just support both
                          (merge
-                          (update-keys row (comp (u/index-by :name :id fields) name))
+                          ;; TODO i would much prefer if we used field-ids and not names in the configuration
+                          #_(update-keys row (comp (u/index-by :name :id fields) name))
                           (update-keys row name))))))]
     (reduce-kv
      (fn [acc k v]
@@ -482,6 +482,33 @@
          [:params {:optional true} [:map-of :keyword :any]]]]
     {:outputs (execute!* action_id scope params inputs)}))
 
+(defn- row-data-mapping
+  ;; TODO get this working with arbitrary nesting of inner actions
+  "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
+  [{:keys [param-map] :as action}]
+  ;; We create a version of the action that will "map" to an input which is just the row data itself.
+  {:inner-action {:action-kw :placeholder}
+   :dashcard-id  (:dashcard-id action)
+   :param-map param-map
+   :mapping   (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+                          :when (= "row-data" sourceType)]
+                [id [::key (keyword sourceValueTarget)]])})
+
+(defn- get-row-data
+  "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
+  [action input]
+  (not-empty (first (apply-mapping-nested (row-data-mapping action) nil [input]))))
+
+;; test case
+
+(comment
+  (get-row-data {:inner-action {:mapping {:table-id 3, :row ::root}}
+                 :param-map    {:customer_id {:sourceType "row-data", :sourceValueTarget "id"}
+                                :engineer    {:sourceType "ask-user"}}
+                 ;; because we don't have a dashcard with this id to map to a table, our code treats it like a Question instead of an Editable
+                 :dashcard-id  3}
+                {:id 3}))
+
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/tmp-modal"
@@ -491,9 +518,11 @@
      {}
      ;; TODO support for bulk actions
      {:keys [action_id scope input]}]
-    (let [scope   (actions/hydrate-scope scope)
-          unified (fetch-unified-action scope action_id)]
-      (data-editing.describe/describe-unified-action unified scope input))))
+    (let [scope         (actions/hydrate-scope scope)
+          unified       (fetch-unified-action scope action_id)
+          row-data      (get-row-data unified nil input)
+          partial-input (first (apply-mapping-nested unified nil [input]))]
+      (data-editing.describe/describe-unified-action unified scope row-data partial-input))))
 
 (def configure
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
