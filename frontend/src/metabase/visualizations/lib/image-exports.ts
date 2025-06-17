@@ -108,17 +108,18 @@ export const setupDashboardForRendering = (
     return undefined;
   }
 
-  const parametersNode = dashboardRoot
+  const pageHeaderParametersNode = dashboardRoot
     ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
-  if (parametersNode instanceof HTMLElement) {
-    gridNode.append(parametersNode);
-    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
+  if (pageHeaderParametersNode instanceof HTMLElement) {
+    gridNode.append(pageHeaderParametersNode);
+    pageHeaderParametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
     parametersHeight =
-      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
-    gridNode.removeChild(parametersNode);
+      pageHeaderParametersNode.getBoundingClientRect().height +
+      PARAMETERS_MARGIN_BOTTOM;
+    gridNode.removeChild(pageHeaderParametersNode);
   }
 
   const contentWidth = gridNode.offsetWidth;
@@ -133,7 +134,9 @@ export const setupDashboardForRendering = (
     contentWidth,
     contentHeight,
     parametersNode:
-      parametersNode instanceof HTMLElement ? parametersNode : null,
+      pageHeaderParametersNode instanceof HTMLElement
+        ? pageHeaderParametersNode
+        : null,
     parametersHeight,
     backgroundColor,
   };
