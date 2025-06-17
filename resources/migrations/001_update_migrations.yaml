@@ -11964,6 +11964,56 @@ databaseChangeLog:
             target:  STDOUT
       rollback:
 
+
+  - changeSet:
+      id: v55.2025-06-16T17:36:06
+      author: nvoxland
+      comment: |
+        In v55 we renamed the `metabase.app_db` namespace which changed checksums.
+        The validCheckSum=ANY allows forward migration, but a rollback doesn't reset the checksums to the value old versions expect
+      changes:
+        - empty: #no-op on forward migration
+      rollback:
+        - sql:
+            sql: >-
+              update ${databasechangelog.name}
+              set md5sum=null
+              where id in (
+                           'v46.00-080',
+                           'v46.00-086',
+                           'v47.00-016',
+                           'v47.00-027',
+                           'v47.00-028',
+                           'v47.00-029',
+                           'v47.00-033',
+                           'v47.00-034',
+                           'v47.00-043',
+                           'v47.00-044',
+                           'v47.00-045',
+                           'v47.00-046',
+                           'v48.00-001',
+                           'v48.00-022',
+                           'v48.00-023',
+                           'v49.00-059',
+                           'v49.2024-01-22T11:52:00',
+                           'v49.2024-04-09T10:00:03',
+                           'v50.2024-03-28T16:30:35',
+                           'v50.2024-04-25T01:04:05',
+                           'v50.2024-04-25T01:04:06',
+                           'v50.2024-04-25T01:04:07',
+                           'v50.2024-05-15T13:13:13',
+                           'v50.2024-05-17T19:54:26',
+                           'v50.2024-05-27T15:55:22',
+                           'v50.2024-06-12T12:33:07',
+                           'v51.2024-05-13T16:00:00',
+                           'v51.2024-08-07T10:00:00',
+                           'v51.2024-08-07T11:00:00',
+                           'v52.2024-10-26T18:42:42',
+                           'v52.2024-11-12T15:13:18',
+                           'v52.2024-12-03T15:55:22',
+                           'v54.2025-02-14T08:05:00'
+                  );
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
