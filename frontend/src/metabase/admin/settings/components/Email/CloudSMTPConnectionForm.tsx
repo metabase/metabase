@@ -8,7 +8,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import {
-  useDeleteEmailSMTPSettingsMutation,
+  useDeleteCloudEmailSMTPSettingsMutation,
   useSendTestEmailMutation,
   useUpdateCloudEmailSMTPSettingsMutation,
 } from "metabase/api/email";
@@ -49,25 +49,34 @@ const getFormValueSchema = (
   settingsDetails: SettingDefinitionMap | undefined,
 ) => {
   return Yup.object({
-    "email-smtp-host": settingsDetails?.["email-smtp-host"]?.is_env_setting
-      ? anySchema
-      : Yup.string().required(Errors.required).default(""),
-    "email-smtp-port": settingsDetails?.["email-smtp-port"]?.is_env_setting
-      ? anySchema
-      : Yup.number()
-          .positive()
-          .nullable()
-          .required(Errors.required)
-          .default(null),
-    "email-smtp-security": settingsDetails?.["email-smtp-security"]
+    "cloud-email-smtp-host": settingsDetails?.["email-smtp-host"]
       ?.is_env_setting
       ? anySchema
-      : Yup.string().default("none"),
-    "email-smtp-username": settingsDetails?.["email-smtp-username"]
+      : Yup.string().required(Errors.required).default(""),
+    "cloud-email-smtp-port": settingsDetails?.["email-smtp-port"]
+      ?.is_env_setting
+      ? anySchema
+      : Yup.string()
+          .oneOf(["456", "587", "2525"], "Must be either 456, 587 or 2525")
+          .nullable()
+          // .required(Errors.required)
+          .default("456"),
+    "cloud-email-smtp-security": settingsDetails?.["email-smtp-security"]
+      ?.is_env_setting
+      ? anySchema
+      : Yup.string()
+          .oneOf(
+            ["ssl", "tls", "starttls"],
+            "Must be either SSL, TLS or STARTTLS",
+          )
+          .nullable()
+          // .required(Errors.required)
+          .default("ssl"),
+    "cloud-email-smtp-username": settingsDetails?.["email-smtp-username"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
-    "email-smtp-password": settingsDetails?.["email-smtp-password"]
+    "cloud-email-smtp-password": settingsDetails?.["email-smtp-password"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
@@ -82,7 +91,8 @@ export const CloudSMTPConnectionForm = ({
   const [updateCloudEmailSMTPSettings] =
     useUpdateCloudEmailSMTPSettingsMutation();
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
-  const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
+  const [deleteCloudEmailSMTPSettings] =
+    useDeleteCloudEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
@@ -103,7 +113,7 @@ export const CloudSMTPConnectionForm = ({
     [settingValues],
   );
   const handleClearEmailSettings = useCallback(async () => {
-    const result = await deleteEmailSMTPSettings();
+    const result = await deleteCloudEmailSMTPSettings();
     if (result.error) {
       sendToast({
         icon: "warning",
@@ -117,7 +127,7 @@ export const CloudSMTPConnectionForm = ({
         message: t`Email settings cleared`,
       });
     }
-  }, [deleteEmailSMTPSettings, sendToast]);
+  }, [deleteCloudEmailSMTPSettings, sendToast]);
 
   const handleUpdateEmailSettings = useCallback(
     async (formData: FormValues) => {
