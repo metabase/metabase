@@ -1,0 +1,17 @@
+.iconGroup {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease-in-out,
+    visibility 0.2s ease-in-out;
+
+  .actionIcon {
+    height: 1rem;
+    min-height: 0;
+  }
+}
+
+.rowActionItem:hover .iconGroup {
+  visibility: visible;
+  opacity: 1;
+}

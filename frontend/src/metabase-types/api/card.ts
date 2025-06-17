@@ -179,11 +179,15 @@ export type TableRowActionDisplaySettings = {
   name: string;
   actionType: "data-grid/row-action";
   parameterMappings?: RowActionFieldSettings[];
+  enabled: boolean;
 };
 
 export type EditableTableBuiltInActionDisplaySettings = {
   id: string;
-  actionId: "data-grid.row/create" | "data-grid.row/delete";
+  actionId:
+    | "data-grid.row/create"
+    | "data-grid.row/delete"
+    | "data-grid.row/update";
   enabled: boolean;
   actionType: "data-grid/built-in";
 };
