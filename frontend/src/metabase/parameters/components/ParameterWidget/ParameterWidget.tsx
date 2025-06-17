@@ -144,9 +144,8 @@ export const ParameterWidget = ({
   }
 
   return (
-    <Box fz={isFullscreen ? "md" : undefined}>
+    <Box fz={isFullscreen ? "md" : undefined} data-testid="parameter-widget">
       <FieldSet
-        data-testid="parameter-widget"
         className={cx(
           className,
           DashboardS.ParameterFieldSet,
