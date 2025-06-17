@@ -23,7 +23,7 @@ export const UserCreationStep = () => {
 
   const handleSubmit = async (user: UserInfo) => {
     await dispatch(submitUser(user)).unwrap();
-    // We want want to set the embedding homepage visible if the user skips the rest of the flow.
+    // We want to set the embedding homepage visible if the user skips the rest of the flow.
     // This is the first place where we can do this, as we need the initial setup to be done.
     await updateSettings({ "embedding-homepage": "visible" });
     goToNextStep();
