@@ -18,8 +18,10 @@
   [column :- ::lib.schema.metadata/column]
   (when (inherited-column? column)
     ((some-fn
+      ;; NOCOMMIT
+      :lib/desired-column-alias
       ;; broken field refs never use `:lib/desired-column-alias`.
-      (case lib.ref/*ref-style*
+      #_(case lib.ref/*ref-style*
         :ref.style/default                  :lib/desired-column-alias
         :ref.style/broken-legacy-qp-results (constantly nil))
       :lib/deduplicated-name

@@ -2,7 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
@@ -104,3 +111,154 @@
                             :alias        "u"
                             :source-table $$users
                             :condition    [:= $user_id &u.users.id]}]})))))))
+
+;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
+(deftest ^:parallel model-duplicate-joins-test
+  (testing "Field references from model joined a second time can be resolved (#48639)"
+    (let [mp meta/metadata-provider
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id 1
+                        :dataset-query
+                        (-> (lib/query mp (lib.metadata/table mp (meta/id :products)))
+                            (lib/join (-> (lib/join-clause (lib.metadata/table mp (meta/id :reviews))
+                                                           [(lib/=
+                                                             (lib.metadata/field mp (meta/id :products :id))
+                                                             (lib.metadata/field mp (meta/id :reviews :product-id)))])
+                                          (lib/with-join-fields :all)))
+                            lib.convert/->legacy-MBQL)
+                        :database-id (meta/id)
+                        :name "Products+Reviews"
+                        :type :model}]})
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id 2
+                        :dataset-query
+                        (binding [lib.metadata.calculation/*display-name-style* :long]
+                          (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                            (lib/aggregate $q (lib/sum (->> $q
+                                                            lib/available-aggregation-operators
+                                                            (m/find-first (comp #{:sum} :short))
+                                                            :columns
+                                                            (m/find-first (comp #{"Price"} :display-name)))))
+                            (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                               (lib/breakoutable-columns $q))
+                                                 (lib/with-temporal-bucket :month)))
+                            (lib.convert/->legacy-MBQL $q)))
+                        :database-id (meta/id)
+                        :name "Products+Reviews Summary"
+                        :type :model}]})
+          question (binding [lib.metadata.calculation/*display-name-style* :long]
+                     (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                       (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                          (lib/breakoutable-columns $q))
+                                            (lib/with-temporal-bucket :month)))
+                       (lib/aggregate $q (lib/avg (->> $q
+                                                       lib/available-aggregation-operators
+                                                       (m/find-first (comp #{:avg} :short))
+                                                       :columns
+                                                       (m/find-first (comp #{"Rating"} :display-name)))))
+                       (lib/append-stage $q)
+                       (letfn [(find-col [query display-name]
+                                 (or (m/find-first #(= (:display-name %) display-name)
+                                                   (lib/breakoutable-columns query))
+                                     (throw (ex-info "Failed to find column with display name"
+                                                     {:display-name display-name
+                                                      :found       (map :display-name (lib/breakoutable-columns query))}))))]
+                         (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
+                                                           [(lib/=
+                                                             (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")
+                                                               :month)
+                                                             (lib/with-temporal-bucket (find-col
+                                                                                        (lib/query mp (lib.metadata/card mp 2))
+                                                                                        "Reviews → Created At: Month")
+                                                               :month))])
+                                          (lib/with-join-fields :all))))))
+          preprocessed (-> question qp.preprocess/preprocess)]
+      (testing ":query -> :source-query -> :source-query -> :joins"
+        (is (=? [{:alias "Reviews"
+                  :fields [[:field (meta/id :reviews :id) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :product-id) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :reviewer) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :rating) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :body) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :created-at) {:join-alias "Reviews"}]]
+                  :condition [:=
+                              [:field (meta/id :products :id) {}]
+                              [:field (meta/id :reviews :product-id) {:join-alias "Reviews"}]]}]
+                (-> preprocessed :query :source-query :source-query :joins))))
+      (testing ":query -> :source-query -> :source-query"
+        (is (=? {:fields [[:field (meta/id :products :id) nil]
+                          [:field (meta/id :products :ean) nil]
+                          [:field (meta/id :products :title) nil]
+                          [:field (meta/id :products :category) nil]
+                          [:field (meta/id :products :vendor) nil]
+                          [:field (meta/id :products :price) nil]
+                          [:field (meta/id :products :rating) nil]
+                          [:field (meta/id :products :created-at) nil]
+                          [:field (meta/id :reviews :id) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :product-id) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :reviewer) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :rating) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :body) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :created-at) {:join-alias "Reviews"}]]}
+                (-> preprocessed :query :source-query :source-query (assoc :joins '<joins>)))))
+      (testing ":query -> :source-query"
+        ;; source query of this source query uses `Reviews`, so we should be using it here as well.
+        (is (=? {:source-query/model? true
+                 :breakout            [[:field "Reviews__CREATED_AT" {}]]
+                 :order-by            [[:asc [:field "Reviews__CREATED_AT" {}]]]
+                 :aggregation         [[:aggregation-options [:avg [:field "RATING" {}]] {:name "avg"}]]}
+                (-> preprocessed :query :source-query (assoc :source-query '<source-query>)))))
+      (testing ":query -> :joins -> first -> :source-query -> :source-query -> :joins"
+        (is (=? [{:alias "Reviews"
+                  :fields [[:field (meta/id :reviews :id) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :product-id) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :reviewer) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :rating) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :body) {:join-alias "Reviews"}]
+                           [:field (meta/id :reviews :created-at) {:join-alias "Reviews"}]]
+                  :condition [:=
+                              [:field (meta/id :products :id) {}]
+                              [:field (meta/id :reviews :product-id) {:join-alias "Reviews"}]]}]
+                (-> preprocessed :query :joins first :source-query :source-query :joins))))
+      (testing ":query -> :joins -> first -> :source-query -> :source-query"
+        (is (=? {:fields [[:field (meta/id :products :id) nil]
+                          [:field (meta/id :products :ean) nil]
+                          [:field (meta/id :products :title) nil]
+                          [:field (meta/id :products :category) nil]
+                          [:field (meta/id :products :vendor) nil]
+                          [:field (meta/id :products :price) nil]
+                          [:field (meta/id :products :rating) nil]
+                          [:field (meta/id :products :created-at) nil]
+                          [:field (meta/id :reviews :id) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :product-id) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :reviewer) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :rating) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :body) {:join-alias "Reviews"}]
+                          [:field (meta/id :reviews :created-at) {:join-alias "Reviews"}]]}
+                (-> preprocessed :query :joins first :source-query :source-query (assoc :joins '<joins>)))))
+      (testing ":query -> :joins -> first -> :source-query"
+        (is (=? {:source-query/model? true
+                 :breakout            [[:field "Reviews__CREATED_AT" {}]]
+                 :order-by            [[:asc [:field "Reviews__CREATED_AT" {}]]]
+                 :aggregation         [[:aggregation-options [:sum [:field "PRICE" {}]] {:name "sum"}]]}
+                (-> preprocessed :query :joins first :source-query (assoc :source-query '<source-query>)))))
+      (testing ":query -> :joins"
+        (is (=? [{:fields [[:field "CREATED_AT" {:join-alias "Products+Reviews Summary - Reviews → Created At: Month"}]
+                           [:field "sum" {:join-alias "Products+Reviews Summary - Reviews → Created At: Month"}]]
+                  :alias "Products+Reviews Summary - Reviews → Created At: Month"
+                  :condition [:=
+                              [:field "CREATED_AT" {}]
+                              [:field "CREATED_AT" {:join-alias "Products+Reviews Summary - Reviews → Created At: Month"}]]
+                  :source-query/model? true}]
+                (-> preprocessed :query :joins))))
+      (testing ":query"
+        (is (=? {:fields [[:field "Reviews__CREATED_AT" {}]
+                          [:field "avg" {}]
+                          [:field "CREATED_AT" {:join-alias "Products+Reviews Summary - Reviews → Created At: Month"}]
+                          [:field "sum" {:join-alias "Products+Reviews Summary - Reviews → Created At: Month"}]]}
+                (-> preprocessed :query (assoc :source-query '<source-query> :joins '<joins>)))))
+      (testing "outer query"
+        (is (=? {:info {:card-id 1}}
+                (assoc preprocessed :query '<query>)))))))

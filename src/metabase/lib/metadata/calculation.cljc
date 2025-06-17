@@ -45,6 +45,9 @@
     (lib.dispatch/dispatch-value x))
   :hierarchy lib.hierarchy/hierarchy)
 
+;;; TODO (Cam 6/16/25) -- this is too ambiguous, it's not really clear whether this is supposed to be calculating the
+;;; `:lib/source-column-alias`, `:lib/desired-column-alias`, or just a general name for a generated column (e.g. an
+;;; expression) -- consider refactoring
 (defmulti column-name-method
   "Calculate a database-friendly name to use for something."
   {:arglists '([query stage-number x])}
@@ -416,8 +419,8 @@
     [:lib/source ::lib.schema.metadata/column-source]]])
 
 (def ColumnsWithUniqueAliases
-  "Schema for column metadata that should be returned by [[visible-columns]]. This is mostly used
-  to power metadata calculation for stages (see [[metabase.lib.stage]]."
+  "Schema for column metadata that should be returned by [[visible-columns]] or [[returned-columns]]. This is mostly
+  used to power metadata calculation for stages (see [[metabase.lib.stage]]."
   [:and
    [:sequential
     [:merge
@@ -490,6 +493,14 @@
   The value is used in [[metabase.lib.field/resolve-field-metadata]]."
   false)
 
+(def ^:private ^:dynamic *returned-columns-cache* nil)
+(def ^:private ^:dynamic *visible-columns-cache* nil)
+
+(defn do-with-metadata-caching [thunk]
+  (binding [*returned-columns-cache* (or *returned-columns-cache* (atom {}))
+            *visible-columns-cache*  (or *visible-columns-cache* (atom {}))]
+    (thunk)))
+
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]
   "Return a sequence of metadata maps for all the columns expected to be 'returned' at a query, stage of the query, or
   join, and include the `:lib/source` of where they came from. This should only include columns that will be present
@@ -509,20 +520,24 @@
     stage-number   :- :int
     x
     options        :- [:maybe ReturnedColumnsOptions]]
-   (let [options (merge (default-returned-columns-options) options)]
+   (let [options   (merge (default-returned-columns-options) options)
+         cache-key [(hash query) stage-number (hash x) (dissoc options :unique-name-fn)]]
      (binding [*propagate-binning-and-bucketing* true]
-       (returned-columns-method query stage-number x options)))))
+       (do-with-metadata-caching
+        (fn []
+          (or (get @*returned-columns-cache* cache-key)
+              (u/prog1 (returned-columns-method query stage-number x options)
+                (swap! *returned-columns-cache* assoc cache-key <>)))))))))
 
 (def VisibleColumnsOptions
   "Schema for options passed to [[visible-columns]] and [[visible-columns-method]]."
   [:merge
    ReturnedColumnsOptions
    [:map
-    ;; these all default to true
-    [:include-joined?                              {:optional true} :boolean]
-    [:include-expressions?                         {:optional true} :boolean]
-    [:include-implicitly-joinable?                 {:optional true} :boolean]
-    [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
+    [:include-joined?                              {:optional true, :default true} :boolean]
+    [:include-expressions?                         {:optional true, :default true} :boolean]
+    [:include-implicitly-joinable?                 {:optional true, :default true} :boolean]
+    [:include-implicitly-joinable-for-source-card? {:optional true, :default true} :boolean]]])
 
 (mu/defn- default-visible-columns-options :- VisibleColumnsOptions
   []
@@ -583,23 +598,19 @@
    (visible-columns query -1 x))
 
   ([query stage-number x]
-   (if (and (map? x)
-            (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
-     (lib.cache/side-channel-cache
-      (keyword (str stage-number "__visible-columns-no-opts")) query
-      (fn [_] (visible-columns query stage-number x nil)))
-     (visible-columns query stage-number x nil)))
+   (visible-columns query stage-number x nil))
 
   ([query          :- ::lib.schema/query
     stage-number   :- :int
     x
     options        :- [:maybe VisibleColumnsOptions]]
-   (let [options (merge (default-visible-columns-options) options)]
-     (u/prog1 (visible-columns-method query stage-number x options)
-       (lib.metadata.ident/assert-idents-present! <> {:query        query
-                                                      :stage-number stage-number
-                                                      :target       x
-                                                      :options      options})))))
+   (let [options   (merge (default-visible-columns-options) options)
+         cache-key [(hash query) stage-number (hash x) (dissoc options :unique-name-fn)]]
+     (do-with-metadata-caching
+      (fn []
+        (or (get @*visible-columns-cache* cache-key)
+            (u/prog1 (visible-columns-method query stage-number x options)
+              (swap! *visible-columns-cache* assoc cache-key <>))))))))
 
 (defn remapped-columns
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
@@ -658,7 +669,7 @@
                     (let [table-metadata (id->table table-id)
                           options        {:unique-name-fn               unique-name-fn
                                           :include-implicitly-joinable? false}]
-                      (for [field (visible-columns-method query stage-number table-metadata options)
+                      (for [field (visible-columns query stage-number table-metadata options)
                             :let  [ident (lib.metadata.ident/implicitly-joined-ident (:ident field) fk-ident)
                                    field (m/assoc-some field
                                                        :ident                    ident

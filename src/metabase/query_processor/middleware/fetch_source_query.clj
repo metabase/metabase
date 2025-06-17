@@ -61,7 +61,7 @@
                     card-metadata (into [] (remove :remapped-from)
                                         (lib.card/card-metadata-columns metadata-providerable card))
                     last-stage    (cond-> (last stages)
-                                    (seq card-metadata) (assoc-in [:lib/stage-metadata :columns] card-metadata)
+                                    (seq card-metadata) (assoc :lib/stage-metadata {:lib/type :metadata/results, :columns card-metadata})
                                     ;; This will be applied, if still appropriate, by
                                     ;; the [[metabase.query-processor.middleware.persistence]] middleware
                                     ;;

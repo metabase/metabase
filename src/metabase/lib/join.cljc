@@ -277,50 +277,36 @@
    {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
    {:keys [unique-name-fn], :as options}                                    :- [:maybe lib.metadata.calculation/VisibleColumnsOptions]]
   (when-not (= fields :none)
-    (let [;; TODO (Cam 6/12/25) -- this seems to serve no purpose. Commenting out for now.
-          ;;
-          ;; ensure-previous-stages-have-metadata
-          ;; (#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.stage/ensure-previous-stages-have-metadata)
-          ;; join-query (-> (assoc query :stages stages)
-          ;;                (ensure-previous-stages-have-metadata -1 options))
-          join-query      (assoc query :stages stages)
-          join-cols       (lib.metadata.calculation/returned-columns
-                           join-query -1 (lib.util/query-stage join-query -1)
-                           (assoc options
-                                  :include-remaps? false
-                                  ;; make sure we don't 'poison the well' by using our unique name function
-                                  ;; recursively. Calling with zero args creates a 'fresh' generator.
-                                  :unique-name-fn (unique-name-fn)))
-          field-metadatas (if (= fields :all)
-                            join-cols
-                            (for [field-ref fields
-                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)
-                                        match      (or (lib.equality/find-matching-column join-field join-cols)
-                                                       (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
-                                                                  (pr-str join-alias)
-                                                                  (pr-str field-ref)
-                                                                  (u/pprint-to-str join-cols)))]
-                                  :when match]
-                              (assoc match :lib/source-uuid (lib.options/uuid join-field))))
-          ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
-          ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
-          field-metadatas (if (empty? field-metadatas) join-cols field-metadatas)
-          cols  (mapv (fn [field-metadata]
-                        (->> (column-from-join-fields query stage-number field-metadata join-alias)
-                             (adjust-ident join)
-                             (add-source-and-desired-aliases join unique-name-fn)))
-                      field-metadatas)]
-      (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))
-
-(mu/defn- visible-columns-from-join :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
-  "Visible columns that come from this join specifically (as opposed to all the columns visible within a join). Note
-  this is not the same as calling [[lib.metadata.calculation/visible-columns]] on a join -- `visible-columns`
-  returns columns that are visible WITHIN the join itself, including ones that originate outside of the join."
-  [query        :- ::lib.schema/query
-   stage-number :- :int
-   join         :- ::lib.schema.join/join
-   options      :- [:maybe lib.metadata.calculation/VisibleColumnsOptions]]
-  (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
+    (lib.metadata.calculation/do-with-metadata-caching
+     (fn []
+       (let [join-query      (assoc query :stages stages)
+             join-cols       (lib.metadata.calculation/returned-columns
+                              join-query -1 (lib.util/query-stage join-query -1)
+                              (assoc options
+                                     :include-remaps? false
+                                     ;; make sure we don't 'poison the well' by using our unique name function
+                                     ;; recursively. Calling with zero args creates a 'fresh' generator.
+                                     :unique-name-fn (unique-name-fn)))
+             field-metadatas (if (= fields :all)
+                               join-cols
+                               (for [field-ref fields
+                                     :let [join-field (lib.options/update-options field-ref dissoc :join-alias)
+                                           match      (or (lib.equality/find-matching-column join-field join-cols)
+                                                          (log/warnf "Failed to find matching column in join %s for ref %s"
+                                                                     (pr-str join-alias)
+                                                                     (pr-str field-ref)
+                                                                     #_(u/pprint-to-str join-cols)))]
+                                     :when match]
+                                 (assoc match :lib/source-uuid (lib.options/uuid join-field))))
+             ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
+             ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
+             field-metadatas (if (empty? field-metadatas) join-cols field-metadatas)
+             cols  (mapv (fn [field-metadata]
+                           (->> (column-from-join-fields query stage-number field-metadata join-alias)
+                                (adjust-ident join)
+                                (add-source-and-desired-aliases join unique-name-fn)))
+                         field-metadatas)]
+         (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))))
 
 (mu/defmethod lib.metadata.calculation/visible-columns-method :mbql/join :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   [query        :- ::lib.schema/query

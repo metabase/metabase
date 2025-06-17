@@ -17,18 +17,6 @@
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib.tu/venues-query)
-                  (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
-                  lib/append-stage
-                  lib/append-stage)]
-    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/fields}
-                                                    {:name "NAME", :lib/source :source/fields}]}
-                      {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
-                                                    {:name "NAME", :lib/source :source/previous-stage}]}
-                      {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
-
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
@@ -571,7 +559,12 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn identity}))))))))
+                  (lib/returned-columns query
+                                        stage-number
+                                        (lib.util/query-stage query stage-number)
+                                        {:unique-name-fn (fn f
+                                                           ([]  f)
+                                                           ([s] s))}))))))))
 
 (deftest ^:parallel visible-columns-test
   (testing "Visible columns for a stage SHOULD NOT include columns not returned by joins (#59588)"

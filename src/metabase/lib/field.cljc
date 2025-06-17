@@ -34,17 +34,18 @@
 
 (mu/defn- resolve-column-name-in-metadata :- [:maybe ::lib.schema.metadata/column]
   "Find the column with `column-name` in a sequence of `column-metadatas`."
-  [column-name      :- ::lib.schema.common/non-blank-string
-   column-metadatas :- [:sequential ::lib.schema.metadata/column]]
+  [column-name :- ::lib.schema.common/non-blank-string
+   cols        :- [:sequential ::lib.schema.metadata/column]]
   (let [resolution-keys [:lib/desired-column-alias :lib/deduplicated-name :name :lib/original-name]]
     (or (some (fn [k]
                 (m/find-first #(= (get % k) column-name)
-                              column-metadatas))
+                              cols))
               resolution-keys)
         (do
-          (log/warnf "Invalid :field clause: column %s does not exist. Found: %s"
+          (log/warnf "(Possibly) invalid :field clause: failed to resolve column %s."
                      (pr-str column-name)
-                     (pr-str (mapv #(select-keys % resolution-keys) column-metadatas)))
+                     #_(pr-str (mapv #(select-keys % (list* :metabase.lib.join/join-alias :lib/source-column-alias resolution-keys))
+                                   cols)))
           nil))))
 
 (def ^:private ^:dynamic *recursive-column-resolution-by-name*
@@ -63,10 +64,7 @@
             stage                 (if previous-stage-number
                                     (lib.util/query-stage query previous-stage-number)
                                     (lib.util/query-stage query stage-number))
-            ;; TODO -- it seems a little icky that the existence of `:metabase.lib.stage/cached-metadata` is leaking
-            ;; here, we should look in to fixing this if we can.
-            stage-columns         (or (:metabase.lib.stage/cached-metadata stage)
-                                      (get-in stage [:lib/stage-metadata :columns])
+            stage-columns         (or (get-in stage [:lib/stage-metadata :columns])
                                       (when (or (:source-card  stage)
                                                 (:source-table stage)
                                                 (:expressions  stage)
@@ -260,9 +258,9 @@
           :as opts}
     :as field-ref]]
   (let [metadata (merge
-                  {:lib/type        :metadata/column}
+                  {:lib/type :metadata/column}
                   metadata
-                  {:lib/original-ref field-ref
+                  {#_:lib/original-ref #_field-ref ; NOCOMMIT
                    :display-name     (or (:display-name opts)
                                          (lib.metadata.calculation/display-name query stage-number field-ref))})
         default-type (fn [original default]

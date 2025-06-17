@@ -18,6 +18,7 @@
     (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           mp (lib.tu/mock-metadata-provider
               mp
+              ;; card 1 has all columns from products and all columns from reviews
               {:cards [{:id 1
                         :dataset-query
                         (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -32,6 +33,7 @@
                         :type :model}]})
           mp (lib.tu/mock-metadata-provider
               mp
+              ;; card 2 uses card 1 as a source and returns sum(venues.price) and month(reviews.created-at)
               {:cards [{:id 2
                         :dataset-query
                         (binding [lib.metadata.calculation/*display-name-style* :long]
@@ -48,6 +50,8 @@
                         :database-id (mt/id)
                         :name "Products+Reviews Summary"
                         :type :model}]})
+          ;; question uses card 1 as a source and returns sum(venues.price) and month(reviews.created-at), the joins
+          ;; card 2 and includes those same columns from card 2.
           question (binding [lib.metadata.calculation/*display-name-style* :long]
                      (as-> (lib/query mp (lib.metadata/card mp 1)) $q
                        (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
@@ -74,14 +78,29 @@
                                                                                         "Reviews → Created At: Month")
                                                                :month))])
                                           (lib/with-join-fields :all))))))]
-      (is (=? [{:name "CREATED_AT"}
-               {:name "avg"}
-               {:name "CREATED_AT_2"}
-               {:name "sum"}]
+      ;; the first two columns are from Stage 0 => Card 1 => Breakout + Aggregation.
+      ;;
+      ;; the second two columns are from Stage 1 => Joins => Card 2 => Breakout + Aggregation
+      (is (=? [{:name         "CREATED_AT"
+                :field-ref    [:field "Reviews__CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}]
+                :display-name "Reviews → Created At: Month"}
+               {:name         "avg"
+                :field-ref    [:field "avg" {:base-type :type/Float}]
+                :display-name "Average of Rating"}
+               {:name         "CREATED_AT_2"
+                :field-ref    [:field "Reviews__CREATED_AT" {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}]
+                :display-name "Products+Reviews Summary - Reviews → Created At: Month"}
+               {:name         "sum"
+                :field-ref    [:field "sum" {:base-type :type/Float, :join-alias "Products+Reviews Summary - Reviews → Created At: Month"}]
+                :display-name "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"}]
               (lib.metadata.result-metadata/expected-cols question)))
       (is (= ["Reviews → Created At: Month"
               "Average of Rating"
-              "Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
+              ;; TODO (Cam 6/16/25) -- not sure what the actual good display name here should be, but I don't think
+              ;; either one of these looks quite right. The commented out version is old legacy `annotate` behavior, and
+              ;; the new one is the one calculated by [[metabase.lib.metadata.result-metadata]].
+              #_"Products+Reviews Summary - Reviews → Created At: Month → Reviews → Created At: Month"
+              "Products+Reviews Summary - Reviews → Created At: Month → Created At"
               "Products+Reviews Summary - Reviews → Created At: Month → Sum"]
              (->> (qp/process-query question)
                   mt/cols

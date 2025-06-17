@@ -4,6 +4,11 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.56.0
+
+- The method `field-reference-mlv2` method has been deprecated and is no longer used. Please remove your
+  implementations of it.
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.

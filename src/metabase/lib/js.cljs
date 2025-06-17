@@ -367,10 +367,11 @@
 (defn- display-info*
   "Inner implementation of [[display-info]], which caches this function's results. See there for documentation."
   [a-query stage-number x]
-  (-> a-query
-      (lib.stage/ensure-previous-stages-have-metadata stage-number nil)
-      (lib.core/display-info stage-number x)
-      display-info->js))
+  (lib.metadata.calculation/do-with-metadata-caching
+   (fn []
+     (-> a-query
+         (lib.core/display-info stage-number x)
+         display-info->js))))
 
 (defn ^:export display-info
   "Given an opaque CLJS value (in the context of `a-query` and `stage-number`), return a plain JS object with the info

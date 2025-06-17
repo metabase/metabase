@@ -40,35 +40,46 @@
          metabase.lib.schema.expression.window/keep-me
          metabase.lib.schema.filter/keep-me)
 
-(mr/def ::stage.native
+(mr/def ::stage.common
   [:and
    [:map
     {:decode/normalize common/normalize-map}
-    [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
-    ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
-    ;; Only restriction is that, if present, it is non-nil.
-    ;; It is valid to have a blank query like `{:type :native}` in legacy.
-    [:native {:optional true} some?]
-    ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
-    ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
-    ;; nil.
-    ;;
-    ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
-    ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
-    [:args {:optional true} [:sequential ::literal/literal]]
-    ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
-    ;; is required.
-    [:collection {:optional true} ::common/non-blank-string]
-    ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
-    ;; `:native` key), but their definition lives under this key.
-    [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
-    ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
-    ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
-    ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
-    [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]
-    ;;
-    ;; TODO -- parameters??
-    ]
+    [:lib/stage-metadata {:optional true} [:maybe ::lib.schema.metadata/stage]]]
+   [:fn
+    {:error/message "MBQL 5 stages should not have :source-metadata (use :lib/stage-metadata instead)"}
+    (complement :source-metadata)]])
+
+(mr/def ::stage.native
+  [:and
+   [:merge
+    ::stage.common
+    [:map
+     {:decode/normalize common/normalize-map}
+     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
+     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
+     ;; Only restriction is that, if present, it is non-nil.
+     ;; It is valid to have a blank query like `{:type :native}` in legacy.
+     [:native {:optional true} some?]
+     ;; any parameters that should be passed in along with the query to the underlying query engine, e.g. for JDBC these
+     ;; are the parameters we pass in for a `PreparedStatement` for `?` placeholders. These can be anything, including
+     ;; nil.
+     ;;
+     ;; TODO -- pretty sure this is supposed to be `:params`, not `:args`, and this is allowed to be anything rather
+     ;; than just `literal`... I think we're using the `literal` schema tho for either normalization or serialization
+     [:args {:optional true} [:sequential ::literal/literal]]
+     ;; the Table/Collection/etc. that this query should be executed against; currently only used for MongoDB, where it
+     ;; is required.
+     [:collection {:optional true} ::common/non-blank-string]
+     ;; optional template tag declarations. Template tags are things like `{{x}}` in the query (the value of the
+     ;; `:native` key), but their definition lives under this key.
+     [:template-tags {:optional true} [:ref ::template-tag/template-tag-map]]
+     ;; optional, set of Card IDs referenced by this query in `:card` template tags like `{{card}}`. This is added
+     ;; automatically during parameter expansion. To run a native query you must have native query permissions as well
+     ;; as permissions for any Cards' parent Collections used in `:card` template tag parameters.
+     [:query-permissions/referenced-card-ids {:optional true} [:maybe [:set ::id/card]]]
+     ;;
+     ;; TODO -- parameters??
+     ]]
    [:fn
     {:error/message ":source-table is not allowed in a native query stage."}
     #(not (contains? % :source-table))]
@@ -171,19 +182,21 @@
 
 (mr/def ::stage.mbql
   [:and
-   [:map
-    {:decode/normalize common/normalize-map}
-    [:lib/type     [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
-    [:joins        {:optional true} [:ref ::join/joins]]
-    [:expressions  {:optional true} [:ref ::expression/expressions]]
-    [:breakout     {:optional true} [:ref ::breakouts]]
-    [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields       {:optional true} [:ref ::fields]]
-    [:filters      {:optional true} [:ref ::filters]]
-    [:order-by     {:optional true} [:ref ::order-by/order-bys]]
-    [:source-table {:optional true} [:ref ::id/table]]
-    [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+   [:merge
+    ::stage.common
+    [:map
+     {:decode/normalize common/normalize-map}
+     [:lib/type    [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
+     [:joins       {:optional true} [:ref ::join/joins]]
+     [:expressions {:optional true} [:ref ::expression/expressions]]
+     [:breakout    {:optional true} [:ref ::breakouts]]
+     [:aggregation {:optional true} [:ref ::aggregation/aggregations]]
+     [:fields      {:optional true} [:ref ::fields]]
+     [:filters     {:optional true} [:ref ::filters]]
+     [:order-by    {:optional true} [:ref ::order-by/order-bys]]
+     [:source-table{:optional true} [:ref ::id/table]]
+     [:source-card {:optional true} [:ref ::id/card]]
+     [:page        {:optional true} [:ref ::page]]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]

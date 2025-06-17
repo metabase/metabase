@@ -1643,20 +1643,6 @@
                                    &C.categories.name
                                    [:expression "price"]]}))
           join (lib.join/resolve-join query -1 "C")]
-      (testing `lib.join/visible-columns-from-join
-        (is (=? [{:id (meta/id :categories :id)
-                  :name "ID"
-                  :lib/source :source/joins
-                  :metabase.lib.join/join-alias "C"
-                  :lib/source-column-alias "ID"
-                  :lib/desired-column-alias "C__ID"}
-                 {:id (meta/id :categories :name)
-                  :name "NAME"
-                  :lib/source :source/joins
-                  :metabase.lib.join/join-alias "C"
-                  :lib/source-column-alias "NAME"
-                  :lib/desired-column-alias "C__NAME"}]
-                (#'lib.join/visible-columns-from-join query -1 join nil))))
       (is (=? [ ;; everything from the parent stage NOT added by the stage (i.e., things returned by the parent stage's source)
                {:id (meta/id :venues :id)
                 :name "ID"

@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.escape-join-aliases
+(ns ^:deprecated metabase.query-processor.middleware.escape-join-aliases
   "Deduplicate and escape join aliases. This is done in a series of discrete steps; see the middleware
   function, [[escape-join-aliases]] for more info.
 

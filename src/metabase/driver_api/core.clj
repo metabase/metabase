@@ -60,7 +60,6 @@
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  actions/cached-value
  actions/incorrect-value-type
@@ -69,6 +68,7 @@
  actions/violate-not-null-constraint
  actions/violate-unique-constraint
  add/add-alias-info
+ #_{:clj-kondo/ignore [:deprecated-var]}
  add/field-reference-mlv2
  annotate/aggregation-name
  annotate/base-type-inferer
@@ -138,6 +138,7 @@
  qp.reducible/reducible-rows
  qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
  qp.setup/with-qp-setup
+ #_{:clj-kondo/ignore [:deprecated-var]}
  qp.store/->legacy-metadata
  qp.store/cached
  qp.store/initialized?
