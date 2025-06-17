@@ -43,6 +43,7 @@ type ParameterWidgetProps = PropsWithChildren<
 
 const EditParameterWidget = ({
   dragHandle,
+  isSortable,
   isEditing,
   parameter,
   setEditingParameter,
@@ -51,13 +52,17 @@ const EditParameterWidget = ({
   isEditingParameter: boolean;
 } & Pick<
   ParameterWidgetProps,
-  "parameter" | "setEditingParameter" | "isEditing" | "dragHandle"
+  | "parameter"
+  | "setEditingParameter"
+  | "isEditing"
+  | "isSortable"
+  | "dragHandle"
 >) => {
   return (
     <Sortable
       id={parameter.id}
       draggingStyle={{ opacity: 0.5 }}
-      disabled={!isEditing}
+      disabled={!isEditing || !isSortable}
       role="listitem"
     >
       <Flex

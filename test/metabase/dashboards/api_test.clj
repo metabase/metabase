@@ -2332,6 +2332,7 @@
                 :row                        0
                 :series                     []
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :created_at                 true
                 :updated_at                 true}
@@ -2341,6 +2342,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true
@@ -2365,6 +2367,7 @@
                 :col                        0
                 :row                        0
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     [{:name                   "Series Card"
                                               :description            nil
@@ -2380,6 +2383,7 @@
                 :col                        1
                 :row                        3
                 :parameter_mappings         []
+                :inline_parameters          []
                 :visualization_settings     {}
                 :series                     []
                 :created_at                 true

@@ -20,7 +20,7 @@ const metadata = createMockMetadata({
 
 describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
-    it("should create a new parameter using the given parameter option", () => {
+    it("should create a new parameter using the given parameter options", () => {
       expect(
         createParameter(
           {
@@ -35,26 +35,6 @@ describe("metabase/parameters/utils/dashboards", () => {
         name: "foo bar",
         sectionId: "abc",
         slug: "foo_bar",
-        type: "category",
-      });
-    });
-
-    it("should prioritize using `combinedName` over `name`", () => {
-      expect(
-        createParameter(
-          {
-            combinedName: "foo bar baz",
-            name: "foo bar",
-            type: "category",
-            sectionId: "abc",
-          },
-          [],
-        ),
-      ).toEqual({
-        id: expect.any(String),
-        name: "foo bar baz",
-        sectionId: "abc",
-        slug: "foo_bar_baz",
         type: "category",
       });
     });

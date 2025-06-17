@@ -172,14 +172,14 @@ describe("scenarios > dashboard > text and headings", () => {
       });
 
       H.getDashboardCard(1).within(() => {
-        // heading input should
-        //   1. be auto-focused on creation
-        //   2. have no value
-        //   3. have placeholder "Heading"
         cy.get("input")
           .should("have.focus")
           .should("have.value", "")
-          .should("have.attr", "placeholder", "Heading");
+          .should(
+            "have.attr",
+            "placeholder",
+            "You can connect widgets to {{variables}} in heading cards.",
+          );
       });
 
       // should auto-preview on blur (de-focus)
@@ -190,8 +190,11 @@ describe("scenarios > dashboard > text and headings", () => {
         // preview mode should have no input
         cy.get("input").should("not.exist");
 
-        // if no content has been entered, preview should have placeholder "Heading"
-        cy.get("h2").findByText("Heading").should("be.visible");
+        cy.get("h2")
+          .findByText(
+            "You can connect widgets to {{variables}} in heading cards.",
+          )
+          .should("be.visible");
       });
 
       // should focus input editor on click
