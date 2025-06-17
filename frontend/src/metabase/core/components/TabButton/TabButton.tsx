@@ -195,6 +195,7 @@ export interface RenameableTabButtonProps
 
 // These styles need to be here instead of .styled to avoid circular dependency
 const getBorderStyle = (theme: Theme) => css`
+  background: var(--mb-color-background);
   border: 1px solid var(--mb-color-brand);
   box-shadow: 0px 0px 0px 1px ${lighten(theme.fn.themeColor("brand"), 0.28)};
 `;
