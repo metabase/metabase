@@ -29,7 +29,9 @@ describe("scenarios > setup embedding (EMB-477)", () => {
   });
 
   it("should allow users to go through the embedding setup and onboarding flow", () => {
-    cy.visit("/setup/embedding");
+    cy.visit(
+      "/setup/embedding?first_name=Firstname&last_name=Lastname&email=testy@metabase.test&site_name=Epic Team",
+    );
 
     cy.log("0: Welcome step");
     assertEmbeddingOnboardingPageLoaded();
@@ -50,6 +52,14 @@ describe("scenarios > setup embedding (EMB-477)", () => {
     step().within(() => {
       cy.findByRole("heading", { name: "What should we call you?" }).should(
         "be.visible",
+      );
+
+      cy.findByLabelText("First name").should("have.value", "Firstname");
+      cy.findByLabelText("Last name").should("have.value", "Lastname");
+      cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
+      cy.findByLabelText("Company or team name").should(
+        "have.value",
+        "Epic Team",
       );
 
       fillOutUserForm();
@@ -235,10 +245,10 @@ function sidebar() {
 }
 
 function fillOutUserForm() {
-  cy.findByLabelText("First name").type("Testy");
-  cy.findByLabelText("Last name").type("McTestface");
-  cy.findByLabelText("Email").type("testy@metabase.test");
-  cy.findByLabelText("Company or team name").type("Epic Team");
+  cy.findByLabelText("First name").clear().type("Testy");
+  cy.findByLabelText("Last name").clear().type("McTestface");
+  cy.findByLabelText("Email").clear().type("testy@metabase.test");
+  cy.findByLabelText("Company or team name").clear().type("Epic Team");
 
   cy.findByLabelText("Create a password").type("metabase123");
   cy.findByLabelText("Confirm your password").type("metabase123");
