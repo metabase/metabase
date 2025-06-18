@@ -99,22 +99,23 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
-      (t2/hydrate dashboard [:dashcards
-                             ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                             [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                             [:series :can_write #_:can_run_adhoc_query]
-                             :dashcard/action
-                             :dashcard/linkcard-info]
-                  :can_restore
-                  :can_delete
-                  :last_used_param_values
-                  :tabs
-                  :collection_authority_level
-                  :can_write
-                  :param_fields
-                  :param_values
-                  [:moderation_reviews :moderator_details]
-                  [:collection :is_personal :effective_location]))))
+      (cond->>  [[:dashcards
+                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                  [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                  [:series :can_write #_:can_run_adhoc_query]
+                  :dashcard/action
+                  :dashcard/linkcard-info]
+                 :can_restore
+                 :can_delete
+                 :tabs
+                 :collection_authority_level
+                 :can_write
+                 :param_fields
+                 :param_values
+                 [:moderation_reviews :moderator_details]
+                 [:collection :is_personal :effective_location]]
+        (dashboard/dashboards-save-last-used-parameters) (cons :last_used_param_values)
+        true (apply t2/hydrate dashboard)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
