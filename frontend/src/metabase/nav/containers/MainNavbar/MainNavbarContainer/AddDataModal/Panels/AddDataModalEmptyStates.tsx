@@ -18,7 +18,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 
-import IconCSV from "./icons/csv.svg?component";
+import IconCSV from "./illustrations/csv.svg?component";
 
 type ContactReason =
   | "add-database"

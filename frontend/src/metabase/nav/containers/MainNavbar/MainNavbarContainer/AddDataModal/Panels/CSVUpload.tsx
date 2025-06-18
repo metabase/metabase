@@ -28,8 +28,8 @@ import { UploadMode } from "metabase-types/store/upload";
 
 import S from "../AddDataModal.module.css";
 
-import IconCSV from "./icons/csv.svg?component";
-import IconCSVWarning from "./icons/csv_warning.svg?component";
+import IconCSV from "./illustrations/csv.svg?component";
+import IconCSVWarning from "./illustrations/csv_warning.svg?component";
 
 type UploadState = {
   file: File | null;
