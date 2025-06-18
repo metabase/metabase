@@ -58,7 +58,10 @@ class MetabaseEmbed {
     // The value of these fields must be the same as the initial value used to create an embed.
     // This allows users to pass a complete settings object that includes all their settings.
     for (const field of DISABLE_UPDATE_FOR_KEYS) {
-      if (settings[field] && settings[field] !== this._settings[field]) {
+      if (
+        settings[field] !== undefined &&
+        settings[field] !== this._settings[field]
+      ) {
         raiseError(`${field} cannot be updated after the embed is created`);
       }
     }
