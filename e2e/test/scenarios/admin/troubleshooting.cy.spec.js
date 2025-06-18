@@ -10,13 +10,13 @@ describe("scenarios > admin > tools > help", { tags: "@OSS" }, () => {
     cy.signInAsAdmin();
   });
 
-  it("should link `Get Help` to help", () => {
+  it("should link `Get help` to help", () => {
     cy.visit("/admin/tools/help");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Metabase Admin");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Get Help")
+    cy.findByText("Get help")
       .parents("a")
       .should("have.prop", "href")
       .and(
