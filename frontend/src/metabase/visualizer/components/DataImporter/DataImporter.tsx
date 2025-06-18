@@ -65,7 +65,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
       <Title order={4} mb="xs" className={S.Title}>
         {showDatasets ? t`Add data` : t`Manage data`}
       </Title>
-      {dataSources.length > 0 && (
+      {dataSources.length > 0 ? (
         <Button
           size="xs"
           variant="transparent"
@@ -81,10 +81,12 @@ export const DataImporter = ({ className }: { className?: string }) => {
             handlers.toggle();
           }}
           className={S.ToggleButton}
-          aria-label={showDatasets ? t`Done` : t`Add more data`}
+          aria-label={showDatasets ? t`See columns` : t`See datasets`}
         >
-          {showDatasets ? t`Done` : t`Add more data`}
+          {showDatasets ? t`See columns` : t`See datasets`}
         </Button>
+      ) : (
+        <Text size="xs">{t`(most recent questions)`}</Text>
       )}
 
       {showDatasets ? (
@@ -104,20 +106,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
             leftSection={<Icon name="search" />}
             autoFocus
           />
-          <Flex
-            direction="column"
-            pt="sm"
-            px="sm"
-            style={{
-              overflowY: "auto",
-              flex: 1,
-            }}
-          >
-            <DatasetsList
-              search={debouncedSearch}
-              setDataSourceCollapsed={setDataSourceCollapsed}
-            />
-          </Flex>
+          <DatasetsList
+            style={{ flex: 1 }}
+            search={debouncedSearch}
+            setDataSourceCollapsed={setDataSourceCollapsed}
+          />
         </Flex>
       ) : (
         <Flex

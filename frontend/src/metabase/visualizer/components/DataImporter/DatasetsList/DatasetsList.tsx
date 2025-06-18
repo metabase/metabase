@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useVisualizationCompatibleSearchMutation } from "metabase/api";
+import {
+  useListRecentsQuery,
+  useVisualizationCompatibleSearchMutation,
+} from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Flex, Loader } from "metabase/ui";
@@ -44,11 +48,13 @@ interface DatasetsListProps {
     sourceId: VisualizerDataSourceId,
     collapsed: boolean,
   ) => void;
+  style?: React.CSSProperties;
 }
 
 export function DatasetsList({
   search,
   setDataSourceCollapsed,
+  style,
 }: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
@@ -111,6 +117,19 @@ export function DatasetsList({
     [dispatch, setDataSourceCollapsed],
   );
 
+  const { data: allRecents = [], isLoading: isListRecentsLoading } =
+    useListRecentsQuery(
+      { include_metadata: true },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
+
+  const debouncedIsVisualizationSearchLoading = useDebouncedValue(
+    isVisualizationSearchLoading || isListRecentsLoading,
+    300, // Adjust debounce duration as needed
+  );
+
   const handleSwapDataSources = useCallback(
     (item: VisualizerDataSource) => {
       trackSimpleEvent({
@@ -168,8 +187,8 @@ export function DatasetsList({
         // ],
         has_temporal_dimensions: timeDimensions.length > 0,
         required_non_temporal_dimension_ids: otherDimensions
-          .map(dim => dim.id)
-          .filter(id => id != null)
+          .map((dim) => dim.id)
+          .filter((id) => id != null)
           .sort((a, b) => a - b),
         // visualization_context: {
         //   display: visualizationType || null,
@@ -204,7 +223,15 @@ export function DatasetsList({
 
   const items = useMemo(() => {
     if (!visualizationType || !columns || !settings || !computedSettings) {
-      return [];
+      return allRecents
+        .filter((maybeCard) =>
+          ["card", "dataset", "metric"].includes(maybeCard.model),
+        )
+        .map((card) => ({
+          ...createDataSource("card", card.id, card.name),
+          display: card.display,
+          result_metadata: card.result_metadata,
+        }));
     }
 
     return visualizationSearchResult
@@ -236,7 +263,8 @@ export function DatasetsList({
           },
           datasets,
         });
-      });
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [
     visualizationSearchResult,
     dashboardId,
@@ -245,38 +273,28 @@ export function DatasetsList({
     settings,
     computedSettings,
     datasets,
+    allRecents,
   ]);
 
-  if (isVisualizationSearchLoading) {
-    return (
-      <Flex
-        gap="xs"
-        direction="column"
-        align="center"
-        justify="center"
-        style={{ height: "100%" }}
-      >
-        <Loader />
-      </Flex>
-    );
-  }
-
-  if (items.length === 0) {
-    return (
-      <Flex
-        gap="xs"
-        direction="column"
-        align="center"
-        justify="center"
-        style={{ height: "100%" }}
-      >
-        <p>{t`No results`}</p>
-      </Flex>
-    );
-  }
+  const additionalProps =
+    debouncedIsVisualizationSearchLoading || items.length === 0
+      ? {
+          align: "center",
+          justify: "center",
+          style: { height: "100%" },
+        }
+      : {};
 
   return (
-    <Flex gap="xs" direction="column" data-testid="datasets-list">
+    <Flex
+      gap="xs"
+      direction="column"
+      data-testid="datasets-list"
+      {...additionalProps}
+      style={{ overflow: "auto", ...style }}
+    >
+      {debouncedIsVisualizationSearchLoading && <Loader />}
+      {items.length === 0 && <p>{t`No results`}</p>}
       {items.map((item, index) => (
         <DatasetsListItem
           key={index}
