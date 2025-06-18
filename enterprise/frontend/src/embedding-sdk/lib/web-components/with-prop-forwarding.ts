@@ -17,7 +17,7 @@ type PropForwardingConfig<TProps> = {
     }
   | {
       childrenComponents?: never;
-      propsStorage: TProps;
+      propsStorage: Partial<TProps>;
     }
 );
 

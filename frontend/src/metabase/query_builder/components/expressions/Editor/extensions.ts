@@ -6,7 +6,7 @@ import { Prec } from "@uiw/react-codemirror";
 import { getNonce } from "get-nonce";
 import { useMemo } from "react";
 
-import { getRootElement } from "metabase/lib/get-root-element";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { isNotNull } from "metabase/lib/types";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import type * as Lib from "metabase-lib";
@@ -28,9 +28,11 @@ type Options = {
   extensions?: Extension[];
 };
 
-function getTooltipParent() {
-  const rootElement = getRootElement();
-  let el = rootElement.querySelector("#query-builder-tooltip-parent");
+function getTooltipParent(rootElement: HTMLElement) {
+  let el = rootElement.querySelector<HTMLElement>(
+    "#query-builder-tooltip-parent",
+  );
+
   if (el) {
     return el;
   }
@@ -43,6 +45,7 @@ function getTooltipParent() {
 }
 
 export function useExtensions(options: Options): Extension[] {
+  const rootElement = useRootElement();
   const {
     expressionMode,
     query,
@@ -104,7 +107,7 @@ export function useExtensions(options: Options): Extension[] {
       }),
       tooltips({
         position: "fixed",
-        parent: getTooltipParent(),
+        parent: getTooltipParent(rootElement),
       }),
       ...extra,
     ]
@@ -112,6 +115,7 @@ export function useExtensions(options: Options): Extension[] {
       .filter(isNotNull);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    rootElement,
     expressionMode,
     query,
     stageIndex,

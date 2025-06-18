@@ -79,8 +79,6 @@ export const useInitData = ({
       );
     }
 
-    window["mb_root_element"] = rootElement;
-
     const ev = new CustomEvent<{ rootElement: HTMLElement }>("rootElementSet", {
       detail: { rootElement },
       bubbles: true,

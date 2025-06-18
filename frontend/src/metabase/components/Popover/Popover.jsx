@@ -8,7 +8,7 @@ import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import CS from "metabase/css/core/index.css";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
-import { getRootElement } from "metabase/lib/get-root-element";
+import { useRootElement } from "metabase/hooks/use-root-element";
 
 import PopoverS from "./Popover.module.css";
 
@@ -17,10 +17,7 @@ const PAGE_PADDING = 10;
 // Popover padding and border
 const POPOVER_BODY_PADDING = 2;
 
-/**
- * @deprecated prefer Popover from "metabase/ui" instead
- */
-export default class Popover extends Component {
+class PopoverInner extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -33,6 +30,7 @@ export default class Popover extends Component {
   }
 
   static propTypes = {
+    rootElement: PropTypes.any,
     id: PropTypes.string,
     isOpen: PropTypes.bool,
     hasArrow: PropTypes.bool,
@@ -93,12 +91,12 @@ export default class Popover extends Component {
   };
 
   _getPopoverElement(isOpen) {
-    const rootElement = getRootElement();
     // 3s is an overkill for Cypress, but let's start with it and dial it down
     // if we see that the flakes don't appear anymore
     const resizeTimer = isCypressActive ? 3000 : 100;
 
     if (!this._popoverElement && isOpen) {
+      const rootElement = this.props.rootElement;
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = cx(
         PopoverS.PopoverContainer,
@@ -365,7 +363,7 @@ export default class Popover extends Component {
     let target;
 
     if (this.props.targetEvent) {
-      const rootElement = getRootElement();
+      const rootElement = this.props.rootElement;
       // create a fake element at the event coordinates
       target = rootElement.querySelector("#popover-event-target");
 
@@ -436,3 +434,14 @@ export default class Popover extends Component {
     return <span className={CS.hide} />;
   }
 }
+
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
+const Popover = (props) => {
+  const rootElement = useRootElement();
+
+  return <PopoverInner rootElement={rootElement} {...props} />;
+};
+
+export default Popover;

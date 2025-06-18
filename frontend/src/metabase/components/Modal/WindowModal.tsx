@@ -14,6 +14,7 @@ import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { FocusTrap } from "metabase/ui";
 
 export type WindowModalProps = BaseModalProps & {
@@ -31,6 +32,10 @@ export type WindowModalProps = BaseModalProps & {
   [size in ModalSize]?: boolean;
 };
 
+type WindowModalInnerProps = WindowModalProps & {
+  rootElement: HTMLElement;
+};
+
 const MODAL_CLASSES = {
   small: ModalS.ModalSmall,
   medium: ModalS.ModalMedium,
@@ -39,7 +44,7 @@ const MODAL_CLASSES = {
   fit: ModalS.ModalFit,
 } as const;
 
-export class WindowModal extends Component<WindowModalProps> {
+class WindowModalInner extends Component<WindowModalInnerProps> {
   _modalElement: HTMLDivElement;
 
   static defaultProps = {
@@ -48,7 +53,7 @@ export class WindowModal extends Component<WindowModalProps> {
     trapFocus: true,
   };
 
-  constructor(props: WindowModalProps) {
+  constructor(props: WindowModalInnerProps) {
     super(props);
 
     this._modalElement = document.createElement("div");
@@ -59,13 +64,15 @@ export class WindowModal extends Component<WindowModalProps> {
     }
 
     if (props.isOpen) {
-      getPortalRootElement().appendChild(this._modalElement);
+      getPortalRootElement(props.rootElement).appendChild(this._modalElement);
     }
   }
 
-  componentDidUpdate(prevProps: WindowModalProps) {
+  componentDidUpdate(prevProps: WindowModalInnerProps) {
     if (!prevProps.isOpen && this.props.isOpen) {
-      getPortalRootElement().appendChild(this._modalElement);
+      getPortalRootElement(this.props.rootElement).appendChild(
+        this._modalElement,
+      );
     }
   }
 
@@ -189,3 +196,9 @@ export class WindowModal extends Component<WindowModalProps> {
     );
   }
 }
+
+export const WindowModal = (props: WindowModalProps) => {
+  const rootElement = useRootElement();
+
+  return <WindowModalInner rootElement={rootElement} {...props} />;
+};

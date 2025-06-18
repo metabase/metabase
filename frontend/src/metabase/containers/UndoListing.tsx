@@ -16,8 +16,8 @@ import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { capitalize, inflect } from "metabase/lib/formatting";
-import { getRootElement } from "metabase/lib/get-root-element";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   dismissUndo,
@@ -192,6 +192,7 @@ export function UndoListOverlay({
   onUndo: (undo: Undo) => void;
   onDismiss: (undo: Undo) => void;
 }) {
+  const rootElement = useRootElement();
   const ref = useRef<HTMLUListElement>(null);
   const prevUndos = useRef<Undo[]>([]);
 
@@ -201,7 +202,6 @@ export function UndoListOverlay({
   >({});
 
   useEffect(() => {
-    const rootElement = getRootElement();
     // When a new undo is added, we move the Portals' target to the
     // end of the body so that its renders on top of the z-index stack, and
     // thus on top of any other overlays.
@@ -232,7 +232,7 @@ export function UndoListOverlay({
       });
     }, 1);
     return () => clearTimeout(timeout);
-  }, [undos]);
+  }, [rootElement, undos]);
 
   useLayoutEffect(() => {
     // We measure the height of all toasts so we know where to render

@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { Route } from "metabase/hoc/Title";
-import { getRootElement } from "metabase/lib/get-root-element";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import type { PaletteAction } from "metabase/palette/types";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
@@ -48,10 +48,10 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
+    const rootElement = useRootElement();
     const { startNewConversation } = useMetabotAgent();
 
     return useMemo(() => {
-      const rootElement = getRootElement();
       const ret: PaletteAction[] = [
         {
           id: "initialize_metabot",
@@ -65,7 +65,7 @@ if (hasPremiumFeature("metabot_v3")) {
         },
       ];
       return ret;
-    }, [searchText, startNewConversation]);
+    }, [rootElement, searchText, startNewConversation]);
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;

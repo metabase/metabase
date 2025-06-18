@@ -16,7 +16,7 @@ import { Sortable } from "metabase/core/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import CS from "metabase/css/core/index.css";
 import Bookmarks from "metabase/entities/bookmarks";
-import { getRootElement } from "metabase/lib/get-root-element";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -118,6 +118,7 @@ const BookmarkList = ({
   onToggle,
   initialState,
 }: CollectionSidebarBookmarksProps) => {
+  const rootElement = useRootElement();
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
 
@@ -130,23 +131,19 @@ const BookmarkList = ({
   });
 
   const handleSortStart = useCallback(() => {
-    const rootElement = getRootElement();
-
     rootElement.classList.add(GrabberS.grabbing);
     setIsSorting(true);
-  }, []);
+  }, [rootElement]);
 
   const handleSortEnd = useCallback(
     async (input: DragEndEvent) => {
-      const rootElement = getRootElement();
-
       rootElement.classList.remove(GrabberS.grabbing);
       setIsSorting(false);
       const newIndex = bookmarks.findIndex((b) => b.id === input.over?.id);
       const oldIndex = bookmarks.findIndex((b) => b.id === input.active.id);
       await reorderBookmarks({ newIndex, oldIndex });
     },
-    [reorderBookmarks, bookmarks],
+    [rootElement, reorderBookmarks, bookmarks],
   );
 
   const bookmarkIds = bookmarks.map((b) => b.id);

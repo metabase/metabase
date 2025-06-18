@@ -8,6 +8,7 @@ import EventSandbox from "metabase/components/EventSandbox";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
@@ -73,6 +74,7 @@ function TippyPopover({
   ...props
 }: ITippyPopoverProps) {
   delay = isCypressActive ? 0 : delay;
+  const rootElement = useRootElement();
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const [mounted, setMounted] = useState(!lazy);
   const shouldShowContent = mounted && content != null;
@@ -131,7 +133,7 @@ function TippyPopover({
       zIndex={"var(--mb-overlay-z-index)" as unknown as number}
       arrow={false}
       offset={OFFSET}
-      appendTo={getPortalRootElement}
+      appendTo={() => getPortalRootElement(rootElement)}
       plugins={plugins}
       {...props}
       popperOptions={computedPopperOptions}

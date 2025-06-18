@@ -8,7 +8,7 @@ import type { Root } from "react-dom/client";
 
 import type { ColumnOptions, DataGridTheme } from "metabase/data-grid/types";
 import { pickRowsToMeasure } from "metabase/data-grid/utils/column-sizing";
-import { getRootElement } from "metabase/lib/get-root-element";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { renderRoot } from "metabase/lib/react-compat";
 import { isNotNull } from "metabase/lib/types";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -41,12 +41,12 @@ export const useMeasureColumnWidths = <TData, TValue>(
     children: React.ReactElement,
   ) => React.ReactElement,
 ) => {
+  const rootElement = useRootElement();
   const measureColumnWidths = useCallback(
     (
       onMeasured: (columnSizingState: ColumnSizingState) => void,
       skipColumnIds: string[] = [],
     ) => {
-      const rootElement = getRootElement();
       // Create hidden container for measurement rendering
       const measureRoot = document.createElement("div");
       let measureRootTree: Root | undefined = undefined;
@@ -194,7 +194,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
 
       measureRootTree = renderRoot(content, measureRoot);
     },
-    [table, columnsOptions, theme, measurementRenderWrapper],
+    [rootElement, table, columnsOptions, theme, measurementRenderWrapper],
   );
 
   return measureColumnWidths;

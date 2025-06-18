@@ -2,7 +2,6 @@ import querystring from "querystring";
 import _ from "underscore";
 
 import { isCypressActive, isStorybookActive } from "metabase/env";
-import { getRootElement } from "metabase/lib/get-root-element";
 import MetabaseSettings from "metabase/lib/settings";
 
 // IE doesn't support scrollX/scrollY:
@@ -48,7 +47,6 @@ export const IFRAMED_IN_SELF = (function () {
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
 export const getScrollBarSize = _.memoize(() => {
-  const rootElement = getRootElement();
   const scrollableElem = document.createElement("div"),
     innerElem = document.createElement("div");
   scrollableElem.style.width = "30px";
@@ -58,9 +56,9 @@ export const getScrollBarSize = _.memoize(() => {
   innerElem.style.width = "30px";
   innerElem.style.height = "60px";
   scrollableElem.appendChild(innerElem);
-  rootElement.appendChild(scrollableElem); // Elements only have width if they're in the layout
+  document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
-  rootElement.removeChild(scrollableElem);
+  document.body.removeChild(scrollableElem);
   return diff;
 });
 
@@ -339,10 +337,9 @@ export function openInBlankWindow(url) {
 }
 
 function clickLink(url, blank = false) {
-  const rootElement = getRootElement();
   const a = document.createElement("a");
   a.style.display = "none";
-  rootElement.appendChild(a);
+  document.body.appendChild(a);
   try {
     a.href = url;
     a.rel = "noopener";
@@ -519,27 +516,20 @@ export function isReducedMotionPreferred() {
   return mediaQuery && mediaQuery.matches;
 }
 
-/**
- * @returns {HTMLElement | undefined}
- */
-export function getMainElement() {
-  const rootElement = getRootElement();
-  const [main] = rootElement.getElementsByTagName("main");
-  return main;
-}
-
 export function isSmallScreen() {
   const mediaQuery = window.matchMedia("(max-width: 40em)");
   return mediaQuery && mediaQuery.matches;
 }
 
 /**
- * @param {MouseEvent<Element, MouseEvent>} event
+ * @param {object}   options
+ * @param {HTMLElement} options.rootElement
+ * @param {MouseEvent<Element, MouseEvent>} options.event
+ * @returns {HTMLElement}
  */
-export const getEventTarget = (event) => {
-  const rootElement = getRootElement();
-
+export const getEventTarget = ({ rootElement, event }) => {
   let target = rootElement.querySelector("#popover-event-target");
+
   if (!target) {
     target = document.createElement("div");
     target.id = "popover-event-target";
@@ -568,12 +558,11 @@ export function redirect(url) {
 }
 
 export function openSaveDialog(fileName, fileContent) {
-  const rootElement = getRootElement();
   const url = URL.createObjectURL(fileContent);
   const link = document.createElement("a");
   link.href = url;
   link.setAttribute("download", fileName);
-  rootElement.appendChild(link);
+  document.body.appendChild(link);
   link.click();
 
   URL.revokeObjectURL(url);

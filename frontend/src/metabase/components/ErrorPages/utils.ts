@@ -1,16 +1,19 @@
 import Bowser from "bowser";
 
 import { b64url_to_utf8 } from "metabase/lib/encoding";
-import { getRootElement } from "metabase/lib/get-root-element";
 import { CardApi, CollectionsApi, DashboardApi } from "metabase/services";
 
 import type { ReportableEntityName } from "./types";
 
-export function downloadObjectAsJson(
-  exportObj: Record<string, any>,
-  exportName: string,
-) {
-  const rootElement = getRootElement();
+export function downloadObjectAsJson({
+  rootElement,
+  exportObj,
+  exportName,
+}: {
+  rootElement: HTMLElement;
+  exportObj: Record<string, any>;
+  exportName: string;
+}) {
   const dataStr =
     "data:text/json;charset=utf-8," +
     encodeURIComponent(JSON.stringify(exportObj, null, 2));

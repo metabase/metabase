@@ -18,7 +18,7 @@ import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
-import { getRootElement } from "metabase/lib/get-root-element";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
@@ -94,6 +94,8 @@ export function DimensionsWidget({
   onChangeSettings: (newSettings: ComputedVisualizationSettings) => void;
   onShowWidget: (widget: any, ref: any) => void;
 }) {
+  const rootElement = useRootElement();
+
   // Dimension settings
   const [dimensions, setDimensions] = useState<(string | undefined)[]>(() => [
     ...getPieDimensions(settings),
@@ -141,8 +143,6 @@ export function DimensionsWidget({
   const [draggedDimensionIndex, setDraggedDimensionIndex] = useState<number>();
 
   const onDragStart = (event: DragStartEvent) => {
-    const rootElement = getRootElement();
-
     rootElement.classList.add(GrabberS.grabbing);
 
     setDraggedDimensionIndex(
@@ -151,8 +151,6 @@ export function DimensionsWidget({
   };
 
   const onDragEnd = (event: DragEndEvent) => {
-    const rootElement = getRootElement();
-
     rootElement.classList.remove(GrabberS.grabbing);
 
     setDraggedDimensionIndex(undefined);

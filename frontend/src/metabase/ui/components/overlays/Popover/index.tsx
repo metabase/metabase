@@ -4,8 +4,8 @@ import cx from "classnames";
 import { type Ref, forwardRef, useEffect } from "react";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
+import { useRootElement } from "metabase/hooks/use-root-element";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
-import { getRootElement } from "metabase/lib/get-root-element";
 import { PreventEagerPortal } from "metabase/ui";
 
 export type { PopoverProps } from "@mantine/core";
@@ -23,6 +23,7 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const rootElement = useRootElement();
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
 
@@ -31,12 +32,15 @@ const PopoverDropdown = forwardRef(function PopoverDropdown(
       return;
     }
 
-    const rootElement = getRootElement();
-
     setupCloseHandler(rootElement, () => undefined);
 
     return () => removeCloseHandler();
-  }, [setupCloseHandler, removeCloseHandler, props.setupSequencedCloseHandler]);
+  }, [
+    rootElement,
+    setupCloseHandler,
+    removeCloseHandler,
+    props.setupSequencedCloseHandler,
+  ]);
 
   return (
     <PreventEagerPortal {...props}>
