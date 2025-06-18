@@ -150,6 +150,7 @@ const UploadErrorDisplay = ({ upload }: { upload: FileUpload }) => {
         <PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal
           fileName={upload.name}
           onClose={() => setShowErrorModal(false)}
+          opened={showErrorModal}
         >
           {String(upload.error)}
         </PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal>
