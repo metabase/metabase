@@ -1,5 +1,4 @@
 const { H } = cy;
-import _ from "underscore";
 
 import {
   SAMPLE_DB_ID,
@@ -1639,7 +1638,7 @@ describe("issue QUE-1359", () => {
     H.openReviewsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
 
-    _.times(10, () => cy.realPress("ArrowDown"));
+    Cypress._.times(10, () => cy.realPress("ArrowDown"));
 
     H.popover()
       .findByText("Custom Expression")
