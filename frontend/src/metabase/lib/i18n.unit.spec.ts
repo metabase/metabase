@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { loadLazyLocalization, setLocalization } from "./i18n";
 
-function setupSetLocalization(language: string) {
+function setupLocalization(language: string) {
   setLocalization({
     headers: { language, "plural-forms": "nplurals=2; plural=(n != 1);" },
     translations: { "": {} },
@@ -45,21 +45,21 @@ async function setupLoadLazyLocalization(locale: string) {
 describe("i18n", () => {
   describe("setLocalization", () => {
     it("should preserve latin numbers when formatting dates in 'ar' locale", () => {
-      setupSetLocalization("ar");
+      setupLocalization("ar");
       const m = moment.utc("2023-10-12T21:07:33.476Z");
 
       expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
     });
 
     it("should preserve latin numbers when formatting dates in 'ar-sa' locale", () => {
-      setupSetLocalization("ar-sa");
+      setupLocalization("ar-sa");
       const m = moment.utc("2023-10-12T21:07:33.476Z");
 
       expect(m.format("MMMM D, YYYY, h:mm A")).toBe("أكتوبر 12، 2023، 9:07 م");
     });
 
     it("should preserve latin numbers in the 'en' locale", () => {
-      setupSetLocalization("en");
+      setupLocalization("en");
       const m = moment.utc("2023-10-12T21:07:33.476Z");
 
       expect(m.format("MMMM D, YYYY, h:mm A")).toBe(

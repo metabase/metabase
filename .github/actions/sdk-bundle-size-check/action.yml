@@ -24,6 +24,9 @@ outputs:
   size_increased:
     description: "true if bundle size increase is above threshold"
     value: ${{ steps.compare.outputs.size_increased }}
+  size_increase_percent:
+    description: "size increase percent"
+    value: ${{ steps.compare.outputs.size_increase_percent }}
 
 runs:
   using: "composite"
