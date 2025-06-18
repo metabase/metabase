@@ -6,6 +6,10 @@ import TippyPopover from "metabase/common/components/Popover/TippyPopover";
 
 import { AccordionList } from "./AccordionList";
 
+type Item = {
+  name: string;
+};
+
 const SECTIONS = [
   {
     name: "Widgets",
@@ -86,11 +90,11 @@ describe("AccordionList", () => {
 
   it("should filter items when searched with fuzzySearch", () => {
     render(
-      <AccordionList
+      <AccordionList<Item>
         sections={SECTIONS}
         searchable
         fuzzySearch
-        searchProp={["name", "displayName"]}
+        searchProp={["name"]}
       />,
     );
     const SEARCH_FIELD = screen.getByPlaceholderText("Find...");
