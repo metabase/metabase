@@ -45,13 +45,13 @@
   100)
 
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context, prioritizing tables used in the query (if provided), then filling up to the limit with most viewed tables. If a query is provided, you must also provide a `tables-for-native-fn` argument that extracts tables from the query. This avoids a direct dependency on ai-sql-fixer."
+  "Get database tables formatted for metabot context, prioritizing tables used in the query (if provided), then filling up to the limit with most viewed tables."
   ([database-id] (database-tables-for-context database-id nil))
-  ([database-id {:keys [all-tables-limit query tables-for-native-fn] :or {all-tables-limit max-database-tables}}]
+  ([database-id {:keys [all-tables-limit query] :or {all-tables-limit max-database-tables}}]
    (when database-id
      (try
-       (let [used-tables (if (and query tables-for-native-fn)
-                           (table-utils/used-tables query tables-for-native-fn)
+       (let [used-tables (if query
+                           (table-utils/used-tables query)
                            [])
              used-table-ids (set (map :id used-tables))]
          (table-utils/database-tables database-id
@@ -71,7 +71,7 @@
                   (if (and (:is_native item)
                            (get-in item [:query :database]))
                     (let [database-id (get-in item [:query :database])
-                          tables (database-tables-for-context database-id)]
+                          tables (database-tables-for-context database-id {:query (:query item)})]
                       (if (seq tables)
                         (assoc item :database_schema tables)
                         item))

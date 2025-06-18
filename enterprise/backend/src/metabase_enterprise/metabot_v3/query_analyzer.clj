@@ -1,4 +1,4 @@
-(ns metabase-enterprise.ai-sql-fixer.query-analyzer
+(ns metabase-enterprise.metabot-v3.query-analyzer
   "Integration with Macaw, which parses native SQL queries. All SQL-specific logic is in Macaw, the purpose of this
   namespace is to:
 
@@ -7,8 +7,8 @@
   (:require
    [clojure.string :as str]
    [macaw.core :as macaw]
-   [metabase-enterprise.ai-sql-fixer.query-analyzer.impl :as nqa.impl]
-   [metabase-enterprise.ai-sql-fixer.query-analyzer.parameter-substitution :as nqa.sub]
+   [metabase-enterprise.metabot-v3.query-analyzer.impl :as nqa.impl]
+   [metabase-enterprise.metabot-v3.query-analyzer.parameter-substitution :as nqa.sub]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
