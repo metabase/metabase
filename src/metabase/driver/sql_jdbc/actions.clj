@@ -640,36 +640,39 @@
 (defn- lookup-children-in-db
   "Find child rows that reference the given parent rows via FK relationships"
   [relationship parent-rows database-id]
-  (let [{:keys [table-id table-name fk pk]} relationship]
+  (let [{:keys [table-id table-ref fk pk]} relationship]
     (when (seq parent-rows)
       (let [driver       (driver.u/database->driver database-id)
             where-clause (build-fk-filter-clause-hsql fk parent-rows)
             query        {:select (map keyword pk)
-                          :from   [(keyword table-name)]
+                          :from   [table-ref]
                           :where  where-clause
                           :limit  1000}] ; Safety limit
         (with-jdbc-transaction [conn database-id]
           [table-id
            (query-rows-correct-name driver conn table-id query)])))))
 
+(defn- table->ref [{:keys [schema name]}]
+  (if schema (keyword schema name) (keyword name)))
+
 (defn- metadata-lookup
   [table-id]
   (driver-api/cached-value
    [::table-fk-relationship table-id]
    (fn []
-     (let [table-fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
-           table-pks       (filter #(isa? (:semantic_type %) :type/PK) table-fields)
-           pk-names        (map :name table-pks)
-           fk-fields       (when-let [pk-ids (seq (map :id table-pks))]
-                             (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
+     (let [table-fields        (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+           table-pks           (filter #(isa? (:semantic_type %) :type/PK) table-fields)
+           pk-names            (map :name table-pks)
+           fk-fields           (when-let [pk-ids (seq (map :id table-pks))]
+                                 (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
            ;; Pre-fetch table names to avoid repeated queries
-           table-ids       (distinct (map :table_id fk-fields))
-           table-id->-name (when (seq table-ids)
-                             (t2/select-pk->fn :name :model/Table :id [:in table-ids]))
-           field-id->name (u/index-by :id table-fields)]
+           table-ids           (distinct (map :table_id fk-fields))
+           table-id->table-ref (when (seq table-ids)
+                                 (t2/select-pk->fn table->ref :model/Table :id [:in table-ids]))
+           field-id->name      (u/index-by :id table-fields)]
        (for [{:keys [name table_id fk_target_field_id]} fk-fields]
          {:table-id   table_id
-          :table-name (get table-id->-name table_id)
+          :table-ref  (get table-id->table-ref table_id)
           :fk         {name (get-in field-id->name [fk_target_field_id :name])}
           :pk         pk-names})))))
 
@@ -870,28 +873,31 @@
 (defn- create-or-update!*
   [action database {:keys [table-id row row-key]}]
   (with-jdbc-transaction [conn (u/the-id database)]
-    (let [driver    (:engine database)
-          table-name        (:name (driver-api/cached-table (:id database) table-id))
+    (let [driver            (:engine database)
+          table             (driver-api/cached-table (:id database) table-id)
+          table-ref         (table->ref table)
           hsql              (prepare-query {:select [:%count.*]
-                                            :from   [(keyword table-name)]
+                                            :from   [table-ref]
                                             :where  (into [:and] (for [[k v] row-key] [:= (keyword k) v]))}
                                            driver action)
           count-existing    (fn []
                               (-> (query-rows driver conn hsql) first vals first))
           before-count      (count-existing)
-          formatted-row-key (delay (str/join
-                                    ", "
-                                    (for [[k v] row-key]
-                                      (format "%s = %s" (u/qualified-name k) (pr-str v)))))]
+          formatted-row-key (delay (if (empty? row-key)
+                                     "<no row key>"
+                                     (str/join
+                                      ", "
+                                      (for [[k v] row-key]
+                                        (format "%s = %s" (u/qualified-name k) (pr-str v))))))]
       (cond
         (zero? before-count)
         (u/prog1 (assoc (row-create!* action database (row-create-input-fn database table-id row)) :op :created)
           (let [after-count (count-existing)]
             (when (> after-count 1)
-              (throw (ex-info (tru (str "Unintentionally created {0} duplicate rows for key: table {1} with {2}. "
+              (throw (ex-info (tru (str "Unintentionally created {0} duplicate rows for key: table \"{1}\" with {2}. "
                                         "This suggests a concurrent modification. We recommend adding a uniqueness constraint to the table.")
                                    after-count
-                                   table-name
+                                   (u/qualified-name table-ref)
                                    @formatted-row-key)
                               {:row-key    row-key
                                :rows-count after-count
@@ -907,11 +913,11 @@
                :op :updated)
 
         (> before-count 1)
-        (throw (ex-info (tru (str "Found {0} duplicate rows in table {1} with {2}. Unsure which row to update. "
+        (throw (ex-info (tru (str "Found {0} duplicate rows in table \"{1}\" with {2}. Unsure which row to update. "
                                   "Only use this action with key combinations which are meant to be unique. "
                                   "We recommend adding a uniqueness constraint to the table.")
                              before-count
-                             table-name
+                             (u/qualified-name table-ref)
                              @formatted-row-key)
                         {:row-key          row-key
                          :duplicates-count before-count
