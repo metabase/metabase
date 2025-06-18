@@ -261,6 +261,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
               <ClientSortableTable<CacheableItem>
                 className={Styles.CacheableItemTable}
                 columns={tableColumns}
+                data-testid="cache-config-table"
                 rows={cacheableItems}
                 rowRenderer={rowRenderer}
                 defaultSortColumn="name"

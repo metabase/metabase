@@ -18,18 +18,20 @@ export const PerformanceApp = ({ children }: { children: React.ReactNode }) => (
           path="/admin/performance/databases"
           icon="database"
         />
-        <AdminNavItem
-          label={getPerformanceTabName(PerformanceTabId.DashboardsAndQuestions)}
-          path="/admin/performance/dashboards-and-questions"
-          icon="dashboard"
-        />
-        {PLUGIN_CACHING && (
+        {PLUGIN_CACHING.isGranularCachingEnabled() && (
           <AdminNavItem
-            label={getPerformanceTabName(PerformanceTabId.Models)}
-            path="/admin/performance/models"
-            icon="model"
+            label={getPerformanceTabName(
+              PerformanceTabId.DashboardsAndQuestions,
+            )}
+            path="/admin/performance/dashboards-and-questions"
+            icon="dashboard"
           />
         )}
+        <AdminNavItem
+          label={getPerformanceTabName(PerformanceTabId.Models)}
+          path="/admin/performance/models"
+          icon="model"
+        />
       </AdminNavWrapper>
     }
   >
