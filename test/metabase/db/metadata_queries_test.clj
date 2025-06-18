@@ -88,13 +88,13 @@
           (let [table (mi/instance :model/Table {:id 1234})
                 fields [(mi/instance :model/Field {:id 4321, :base_type base-type})]]
             (with-redefs [driver.u/supports? (constantly true)]
-              (let [query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
+              (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
                 (is (empty? (get-in query [:query :expressions]))))))))
       (testing "primary check is on effective_type"
         (with-redefs [driver.u/supports? (constantly true)]
           (let [table (mi/instance :model/Table {:id 1234})
                 fields [(mi/instance :model/Field {:id 4321, :base_type :type/Number :effective_type :type/Text})]
-                query (#'table-rows-sample/table-rows-sample-query table fields {:truncation-size 4})]
+                query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
             (is (seq (get-in query [:query :expressions])))))))))
 
 (deftest mbql-on-table-requires-filter-will-include-the-filter-test
