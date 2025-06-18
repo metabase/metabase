@@ -31,6 +31,12 @@ const ALLOWED_EMBED_SETTING_KEYS = [
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
 
+/** Prevent updating these fields with `embed.updateSettings()` after the embed is created. */
+const DISABLE_UPDATE_FOR_KEYS = [
+  "instanceUrl",
+  "useExistingUserSession",
+] as const satisfies EmbedSettingKey[];
+
 class MetabaseEmbed {
   static readonly VERSION = "1.1.0";
 
@@ -49,13 +55,12 @@ class MetabaseEmbed {
    * Merge these settings with the current settings.
    */
   public updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    // The value of instanceUrl must be the same as the initial value used to create an embed.
+    // The value of these fields must be the same as the initial value used to create an embed.
     // This allows users to pass a complete settings object that includes all their settings.
-    if (
-      settings.instanceUrl &&
-      settings.instanceUrl !== this._settings.instanceUrl
-    ) {
-      raiseError("instanceUrl cannot be updated after the embed is created");
+    for (const field of DISABLE_UPDATE_FOR_KEYS) {
+      if (settings[field] && settings[field] !== this._settings[field]) {
+        raiseError(`${field} cannot be updated after the embed is created`);
+      }
     }
 
     if (!this._isEmbedReady) {

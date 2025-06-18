@@ -22,6 +22,36 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
+  it("can use existing user session when useExistingUserSession is true", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      useExistingUserSession: true,
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("cannot use existing user session when useExistingUserSession is true", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      useExistingUserSession: false,
+    });
+
+    cy.log(
+      "when no auth methods are enabled and the existing user session is not used, it should fail to login",
+    );
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "Backend returned an error when refreshing the token");
+    });
+  });
+
   it("can login via JWT", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
