@@ -46,7 +46,7 @@ export const settingsApi = Api.injectEndpoints({
     deleteCloudEmailSMTPSettings: builder.mutation<void, void>({
       query: () => ({
         method: "DELETE",
-        url: `/api/email`,
+        url: `/api/email/cloud`,
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("session-properties")]),
