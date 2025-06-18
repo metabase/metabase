@@ -92,6 +92,37 @@
                  (value-expr :type/Date "2023-03-08"))
       :type/DateTime)))
 
+(deftest ^:parallel coalesce-schema-test
+  (testing "schema validation for :coalesce expressions"
+    (are [expr] (true?
+                 (mr/validate :mbql.clause/coalesce expr))
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1 2]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1 2 3]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1
+       [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]])
+      (are [expr] (false?
+
+                 (mr/validate :mbql.clause/coalesce expr))
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       1 "A"]
+
+      [:coalesce
+       {:lib/uuid (str (random-uuid))}
+       "A"])))
+
 (deftest ^:parallel coalesce-test
   (is (mr/validate
        :mbql.clause/coalesce

@@ -133,5 +133,5 @@
           (some #{:expression/type.unknown} types))))]]])
 
 (defmethod expression/type-of-method :coalesce
-  [[_coalesce _opts expr null-expr]]
-  (case-coalesce-return-type (map expression/type-of [expr null-expr])))
+  [[_coalesce _opts & exprs]]
+  (case-coalesce-return-type (map expression/type-of exprs)))
