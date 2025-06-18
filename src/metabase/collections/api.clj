@@ -1217,9 +1217,13 @@
 
 (defn create-collection!
   "Create a new collection."
-  [{:keys [name description parent_id namespace authority_level]}]
+  [{:keys [name description parent_id namespace authority_level] ttype :type}]
   ;; To create a new collection, you need write perms for the location you are going to be putting it in...
   (write-check-collection-or-root-collection parent_id namespace)
+  (when (and parent_id (= ttype :shared-tenant-collection))
+    ;; only possible to create shared tenant collections inside other shared tenant collections
+    (api/check-400 (= (t2/select-one-fn :type :model/Collection parent_id)
+                      ttype)))
   (when (some? authority_level)
     ;; make sure only admin and an EE token is present to be able to create an Official token
     (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
@@ -1245,7 +1249,8 @@
             [:description     {:optional true} [:maybe ms/NonBlankString]]
             [:parent_id       {:optional true} [:maybe ms/PositiveInt]]
             [:namespace       {:optional true} [:maybe ms/NonBlankString]]
-            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]]]
+            [:authority_level {:optional true} [:maybe collection/AuthorityLevel]]
+            [:type            {:optional true} [:maybe [:enum :shared-tenant-collection]]]]]
   (create-collection! body))
 
 (defn- maybe-send-archived-notifications!
@@ -1266,7 +1271,7 @@
     (let [orig-location (:location collection-before-update)
           new-parent-id (:parent_id collection-updates)
           new-parent    (if new-parent-id
-                          (t2/select-one [:model/Collection :location :id] :id new-parent-id)
+                          (t2/select-one [:model/Collection :location :id :type] :id new-parent-id)
                           collection/root-collection)
           new-location  (collection/children-location new-parent)]
       ;; check and make sure we're actually supposed to be moving something
@@ -1280,6 +1285,9 @@
         (api/check
          (not (collection/is-trash? new-parent))
          [400 "You cannot modify the Trash Collection."])
+
+        (api/check
+         (not (collection/is-tenant-collection? new-parent)))
 
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))

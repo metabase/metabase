@@ -69,35 +69,21 @@
        (when-not <>
          (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
 
-(def ^:private ^:constant tenant-root-collection-type "all-tenant-collection")
-
-(def ^{:arglists '([])} tenant-root-collection
-  "Memoized copy of the tenant root collection from the DB"
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (t2/select-one :model/Collection :type tenant-root-collection-type)
-       (when-not <>
-         (throw (ex-info "Fatal error: tenant root collection not found." {})))))))
-
-(defn tenant-root-collection-id
-  "The ID representing the Tenant Root collection"
-  []
-  (u/the-id (tenant-root-collection)))
-
-(defn tenant-root-path
-  "The fixed location path for the tenant collection."
-  []
-  (str "/" (tenant-root-collection-id) "/"))
-
-(defn is-tenant-collection?
+(mu/defn is-tenant-collection?
   "Whether or not a collection is a tenant collection. Placeholder for now."
-  [{:keys [location]}]
-  (str/starts-with? location (tenant-root-path)))
+  [{:keys [type]} :- [:map [:type [:maybe keyword?]]]]
+  (= type :shared-tenant-collection))
 
 (defn- tenant-collection-where-clause
   "Returns a clause that will be true if this is a tenant collection, false otherwise."
-  [& [location-column]]
-  [:like (or location-column :location) (str tenant-root-path "%")])
+  [& [type-column]]
+  [:= (or type-column :type) :shared-tenant-collection])
+
+(defn- not-tenant-collection-where-clause
+  [& [type-column]]
+  [:or
+   [:= type-column nil]
+   [:not tenant-collection-where-clause]])
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -668,7 +654,7 @@
     :where [:and
             ;; TODO fix this, should be tenants feature
             (when-not (premium-features/enable-advanced-permissions?)
-              [:not (tenant-collection-where-clause)])
+              (not-tenant-collection-where-clause))
 
             ;; hiding the trash collection when desired...
             (when-not (:include-trash-collection? visibility-config)
