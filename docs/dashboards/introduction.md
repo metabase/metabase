@@ -179,7 +179,7 @@ Duplication only includes the dashboard, its card layout, filters, and (optional
 
 To edit dashboard cards and move them around, click the **pencil** icon in the top right of a dashboard to enter the dashboard's editing interface.
 
-### Editing cards
+### Moving cards around
 
 Once you're in edit mode, you'll see a grid appear. You can move and resize the cards in the dashboard to your liking and they'll snap to the grid.
 
@@ -193,6 +193,8 @@ Once you're in edit mode, you'll see a grid appear. You can move and resize the 
 - **Replace a card**: hover over the card and click the Replace icon in the top right corner. Search for a question to swap in for the existing question on that card. You can only replace a question with another question, not another type of card (like a text card).
 
 Metabase will automatically update a question's display to make sure your data looks great at any size you choose.
+
+To edit the cards themselves, see [Editing dashboard cards](#editing-dashboard-cards).
 
 ### Dashboard sections
 
