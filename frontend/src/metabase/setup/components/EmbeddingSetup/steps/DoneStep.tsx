@@ -22,23 +22,23 @@ export const DoneStep = () => {
           {t`You're on your way!`}
         </Title>
         <Text>
-          {t`Now that you have data and some content added to your app, you're set up to go further.`}
+          {t`Now that you have a toy app with some starter content, you’re set up to go further.`}
         </Text>
       </Box>
       <Stack gap="3rem" mb="4rem">
         <ExternalLinkBlock
           href={authUrl}
-          text={t`Auth and sandboxing`}
-          description={t`Learn more about how to set up the right auth strategy so your users only see the data they're supposed to.`}
+          text={t`Next: Set up SSO`}
+          description={t`Learn more about how to set up the right auth strategy so your users only see the data they’re supposed to.`}
         />
         <ExternalLinkBlock
           href={appearanceUrl}
-          text={t`Theming`}
+          text={t`Later: Explore Theming`}
           description={t`Make your embeds match your apps look and feel.`}
         />
         <ExternalLinkBlock
           href={contentUrl}
-          text={t`Creating content for your embeds`}
+          text={t`Later: Creating content for your embeds`}
           description={t`Evolve these starter dashboards or create new analysis.`}
         />
       </Stack>
