@@ -88,15 +88,10 @@ const DashboardContextProviderInner = ({
 
   children,
 
-  // url params
-  // hasNightModeToggle = false,
-  // onNightModeChange = noop,
-  // isNightMode = false,
   background = true,
   bordered = true,
   titled = true,
   font = null,
-  // theme = "light",
   hideParameters: hide_parameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,

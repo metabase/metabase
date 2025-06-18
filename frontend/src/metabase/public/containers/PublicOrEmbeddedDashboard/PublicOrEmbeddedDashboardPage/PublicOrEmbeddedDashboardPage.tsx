@@ -1,6 +1,6 @@
 import type { WithRouterProps } from "react-router";
 
-import { DashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/DashboardLocationSync";
+import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/DashboardLocationSync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -13,6 +13,15 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
+
+const PublicOrEmbeddedDashboardPageInner = ({ location }: WithRouterProps) => {
+  useDashboardLocationSync({ location });
+  return (
+    <>
+      <PublicOrEmbeddedDashboardView />
+    </>
+  );
+};
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const dispatch = useDispatch();
@@ -58,8 +67,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
           dispatch(setErrorPage(error));
         }}
       >
-        <DashboardLocationSync location={location} />
-        <PublicOrEmbeddedDashboardView />
+        <PublicOrEmbeddedDashboardPageInner {...props} />
       </DashboardContextProvider>
     </LocaleProvider>
   );

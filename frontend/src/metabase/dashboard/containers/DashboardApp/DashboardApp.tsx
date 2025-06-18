@@ -20,7 +20,6 @@ import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
@@ -88,7 +87,6 @@ export const DashboardApp = ({
     }
   };
 
-  useSetEmbedFont({ location });
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
