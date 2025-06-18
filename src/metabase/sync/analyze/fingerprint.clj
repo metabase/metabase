@@ -227,8 +227,14 @@
                     (sync-util/reducible-sync-tables database))]
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-                 (let [new-acc (merge-with + acc (fingerprint-table! table))]
-                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? new-acc)))
+                 (let [ret (fingerprint-table! table)
+                       new-acc (let [ret (if (:throwable ret)
+                                           (-> ret
+                                               (dissoc :throwable)
+                                               (update :failed-fingerprints inc))
+                                           ret)]
+                                 (merge-with + acc ret))]
+                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
                      new-acc
                      (reduced new-acc))))
                (empty-stats-map 0)
