@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type ChangeEvent,
@@ -49,7 +50,10 @@ export const CSVUpload = ({
     error: null,
   });
 
-  const [isCollectionPickerOpen, setIsCollectionPickerOpen] = useState(false);
+  const [
+    isCollectionPickerOpen,
+    { open: openCollectionPicker, close: closeCollectionPicker },
+  ] = useDisclosure(false);
   const [uploadCollectionId, setUploadCollectionId] =
     useState(initialCollectionId);
 
@@ -59,19 +63,22 @@ export const CSVUpload = ({
     [],
   );
 
-  const handleCollectionChange = useCallback((item: CollectionPickerItem) => {
-    // The model should always be a collection since we explicitly set it in the CollectionPickerModal.
-    // In case anything ever changes in the picker, we want to ignore it in this handler.
-    if (item.model !== "collection") {
-      return;
-    }
+  const handleCollectionChange = useCallback(
+    (item: CollectionPickerItem) => {
+      // The model should always be a collection since we explicitly set it in the CollectionPickerModal.
+      // In case anything ever changes in the picker, we want to ignore it in this handler.
+      if (item.model !== "collection") {
+        return;
+      }
 
-    const { id } = item;
-    if (typeof id === "number" || id === "root") {
-      setUploadCollectionId(id);
-      setIsCollectionPickerOpen(false);
-    }
-  }, []);
+      const { id } = item;
+      if (typeof id === "number" || id === "root") {
+        setUploadCollectionId(id);
+        closeCollectionPicker();
+      }
+    },
+    [closeCollectionPicker],
+  );
 
   const handleFileRejections = useCallback((rejected: FileRejection[]) => {
     if (!rejected.length) {
@@ -212,7 +219,7 @@ export const CSVUpload = ({
             )}
 
             <div>
-              <Text fw={700}>{primaryText}</Text>
+              <Text fw="bold">{primaryText}</Text>
               {!uploadState.file && (
                 <Text c="text-light">
                   {c("{0} is the allowed size of a file in MB")
@@ -244,7 +251,7 @@ export const CSVUpload = ({
         <Group>
           <Button
             aria-label={t`Select a collection`}
-            onClick={() => setIsCollectionPickerOpen(true)}
+            onClick={() => openCollectionPicker()}
             rightSection={<Icon name="chevrondown" />}
             styles={{
               inner: {
@@ -279,7 +286,7 @@ export const CSVUpload = ({
           title={t`Select a collection`}
           value={{ id: uploadCollectionId, model: "collection" }}
           onChange={handleCollectionChange}
-          onClose={() => setIsCollectionPickerOpen(false)}
+          onClose={() => closeCollectionPicker()}
           options={{
             showPersonalCollections: true,
             showRootCollection: true,
