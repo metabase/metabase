@@ -426,7 +426,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
 
     H.cartesianChartCircle()
       .eq(3) // Wednesday
-      .click({ force: true });
+      .click();
 
     H.popover().within(() => {
       cy.findByText("Automatic insights…").click();
