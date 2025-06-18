@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FieldPanel } from "metabase/querying/fields/components/FieldPanel";
 import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -10,6 +9,7 @@ import type {
   TableColumnOrderSetting,
 } from "metabase-types/api";
 
+import { FieldPanel } from "./FieldPanel";
 import { TableColumnPanel } from "./TableColumnPanel";
 import type { EditWidgetData } from "./types";
 import { canEditQuery } from "./utils";
