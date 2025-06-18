@@ -448,6 +448,7 @@ export const EditTableDashcardVisualization = memo(
           {selectedTableActionState && (
             <TableActionExecuteModalContent
               actionId={selectedTableActionState.actionId}
+              scope={editingScope}
               initialValues={selectedTableActionState.rowData}
               actionOverrides={selectedTableActionState.actionOverrides}
               onClose={handleExecuteActionModalClose}
