@@ -260,3 +260,14 @@
     [["toucan_cage"]
      ["four_loko"]
      ["ouija_board"]]]])
+
+(tx/defdataset string-nums-db
+  [["string_nums"
+    [{:field-name "int_col"   :base-type :type/Text}
+     {:field-name "float_col" :base-type :type/Text}
+     {:field-name "mix_col"   :base-type :type/Text}]
+    [["0" "0.5" "0"]
+     ["1" "1.5" "0.5"]
+     ["2" "2.5" "1"]
+     ["3" "3.5" "2.7587"]
+     ["4" "4.5" "3"]]]])
