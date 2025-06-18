@@ -7,7 +7,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.query-processor :as qp]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
