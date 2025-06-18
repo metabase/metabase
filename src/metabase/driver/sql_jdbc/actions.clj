@@ -947,7 +947,18 @@
                            :proc     create-or-update!*
                            :rows     inputs
                            :xform    (map (fn [{:keys [database row-key row table-id] :as input}]
-                                            ;; HACK to avoid the fact that FE don't provide row-key for now
+                                            ;; Currently we do not have any UX to configure which columns to use for
+                                            ;; the row key. To compensate for this, we fall back to using the pk for now.
+                                            ;; Ideally, this would be explicitly configured in the future.
+                                            ;; ;;
+                                            ;; Note, this falls down in the Assign Engineer case where we don't have
+                                            ;; a semantic PK. This is because our database PK is customer_id, which is
+                                            ;; also an FK to the customer table. The semantic layer has to choose,
+                                            ;; and we pick FK, so that we get nice tables and dashboard filters.
+                                            ;;
+                                            ;; In the case where we don't have a semantic PK, an idea is to fall back
+                                            ;; to using the database PK (but first we'll need to track which columns
+                                            ;; those are).
                                             (if (empty? row-key)
                                               (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
                                                 (-> input
