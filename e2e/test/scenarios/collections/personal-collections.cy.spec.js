@@ -47,43 +47,39 @@ describe("personal collections", () => {
     });
 
     it("should see a link to other users' personal collections only if there are other users", () => {
-      cy.intercept("GET", "/api/user", {
+      cy.intercept("GET", "/api/user**", {
         statusCode: 200,
         body: {
           data: [],
-          total: 1,
-          limit: 0,
+          total: 1, // only the admin
+          limit: 27,
           offset: 0,
         },
       }).as("getUsers");
 
       cy.visit("/");
-
       cy.wait("@getUsers");
-
-      // Wait for page to re-render after user data is requested, to make the
-      // should("not.exist") test legit
-      cy.wait(200);
 
       H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
         .should("not.exist");
 
-      cy.intercept("GET", "/api/user", {
+      cy.intercept("GET", "/api/user**", {
         statusCode: 200,
         body: {
           data: [],
           total: 2, // Increase the total to 2
-          limit: 0,
+          limit: 27,
           offset: 0,
         },
       }).as("getUsers");
 
+      cy.reload();
       cy.wait("@getUsers");
 
       H.navigationSidebar()
         .findByLabelText("Other users' personal collections")
-        .should("exist");
+        .should("be.visible");
     });
 
     it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
