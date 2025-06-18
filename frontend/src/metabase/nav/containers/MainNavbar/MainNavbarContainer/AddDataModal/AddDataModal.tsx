@@ -48,8 +48,8 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const canManageDatabases = isAdmin;
 
-  const handleTabChange = (v: string | null) => {
-    if (v === activeTab || !isValidTab(v)) {
+  const handleTabChange = (tabValue: string | null) => {
+    if (tabValue === activeTab || !isValidTab(tabValue)) {
       return;
     }
 
@@ -59,8 +59,8 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
       gsheet: "sheets_connection_clicked",
     } as const;
 
-    trackAddDataEvent(eventMapping[v]);
-    setActiveTab(v);
+    trackAddDataEvent(eventMapping[tabValue]);
+    setActiveTab(tabValue);
   };
 
   return (
