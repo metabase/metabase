@@ -60,7 +60,7 @@ export const TableActionExecuteModalContent = ({
     if (action && actionOverrides) {
       return {
         ...action,
-        id: actionOverrides.id || action.id,
+        id: actionOverrides.id,
         visualization_settings: merge(
           action?.visualization_settings,
           actionOverrides,
