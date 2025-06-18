@@ -10,9 +10,9 @@ import MetabaseSettings from "metabase/lib/settings";
 // we need to be sure to set the initial localization before loading any files
 // so load metabase/services only when we need it
 // load and parse the locale
-const loadMetabaseLocalization = async (locale) => {
+const fetchMetabaseLocalization = async (locale) => {
   if (locale === "en") {
-    // We don't serve en.json. Instead, use this object to fall back to theliterals.
+    // We don't serve en.json. Instead, use this object to fall back to the literals.
     return {
       headers: {
         language: "en",
@@ -36,7 +36,7 @@ const loadMetabaseLocalization = async (locale) => {
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {
-  const translationsObject = await loadMetabaseLocalization(locale);
+  const translationsObject = await fetchMetabaseLocalization(locale);
 
   setLocalization(translationsObject);
 
@@ -47,7 +47,7 @@ export async function loadLazyLocalization(locale, lazyLoadDateLocales) {
   const dateLocale = getLocale(locale);
 
   const [translationsObject] = await Promise.all([
-    loadMetabaseLocalization(locale),
+    fetchMetabaseLocalization(locale),
     lazyLoadDateLocales(dateLocale),
   ]);
 
