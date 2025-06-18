@@ -15,15 +15,13 @@ on:
 jobs:
   push_workflow_to_docs_metabase_github_io_job:
     runs-on: ubuntu-latest
+    env:
+      SOURCE_BRANCH: ${{ github.head_ref || github.ref  }}
+      TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
     steps:
       - name: Report changed docs files exist
         run: |
-          echo "A change in the docs directory was detected."
-
-      - name: Put source and target branches into env
-        env:
-          SOURCE_BRANCH: ${{ github.head_ref || github.ref  }}
-          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+          echo "A change to the /docs directory was detected."
 
       - name: Trigger repo dispatch
         uses: actions/github-script@v7
