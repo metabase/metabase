@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -26,7 +26,7 @@ interface Props {
   table: Table;
 }
 
-export const TableSection = ({ params, table }: Props) => {
+const TableSectionBase = ({ params, table }: Props) => {
   const { fieldId, ...parsedParams } = parseRouteParams(params);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
@@ -166,3 +166,5 @@ export const TableSection = ({ params, table }: Props) => {
     </Stack>
   );
 };
+
+export const TableSection = memo(TableSectionBase);

@@ -111,6 +111,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       w="100%"
       wrap="nowrap"
       onClick={handleClick}
+      draggable={false}
     >
       <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
         <Icon className={S.icon} flex="0 0 auto" name={icon} />

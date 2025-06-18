@@ -26,11 +26,6 @@ import { TablePreview } from "./TablePreview";
 import type { PreviewType } from "./types";
 import { getPreviewTypeData } from "./utils";
 
-// memoize components for smooth column resizing experience
-const MemoizedFilteringPreview = memo(FilteringPreview);
-const MemoizedObjectDetailPreview = memo(ObjectDetailPreview);
-const MemoizedTablePreview = memo(TablePreview);
-
 interface Props {
   className?: string;
   databaseId: DatabaseId;
@@ -43,7 +38,7 @@ interface Props {
   onPreviewTypeChange: (value: PreviewType) => void;
 }
 
-export const PreviewSection = ({
+const PreviewSectionBase = ({
   className,
   databaseId,
   field,
@@ -77,7 +72,7 @@ export const PreviewSection = ({
 
       <Box className={S.tabContent} h="100%">
         {previewType === "table" && (
-          <MemoizedTablePreview
+          <TablePreview
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
@@ -86,7 +81,7 @@ export const PreviewSection = ({
         )}
 
         {previewType === "detail" && (
-          <MemoizedObjectDetailPreview
+          <ObjectDetailPreview
             databaseId={databaseId}
             field={field}
             fieldId={fieldId}
@@ -95,7 +90,7 @@ export const PreviewSection = ({
         )}
 
         {previewType === "filtering" && (
-          <MemoizedFilteringPreview
+          <FilteringPreview
             databaseId={databaseId}
             fieldId={fieldId}
             /**
@@ -111,3 +106,5 @@ export const PreviewSection = ({
     </Card>
   );
 };
+
+export const PreviewSection = memo(PreviewSectionBase);

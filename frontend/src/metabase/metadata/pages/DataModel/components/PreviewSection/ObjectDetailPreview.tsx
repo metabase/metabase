@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -26,12 +27,12 @@ interface Props {
   tableId: TableId;
 }
 
-export function ObjectDetailPreview({
+const ObjectDetailPreviewBase = ({
   databaseId,
   field,
   fieldId,
   tableId,
-}: Props) {
+}: Props) => {
   const { error, rawSeries } = useDataSample({
     databaseId,
     field,
@@ -55,7 +56,7 @@ export function ObjectDetailPreview({
   }
 
   return <Visualization rawSeries={rawSeries} />;
-}
+};
 
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const reference: FieldReference = ["field", fieldId, null];
@@ -108,3 +109,5 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     rawSeries,
   };
 }
+
+export const ObjectDetailPreview = memo(ObjectDetailPreviewBase);

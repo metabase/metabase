@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t } from "ttag";
 
 import {
@@ -18,7 +19,7 @@ interface Props {
   field: Field;
 }
 
-export const MetadataSection = ({ databaseId, field }: Props) => {
+const MetadataSectionBase = ({ databaseId, field }: Props) => {
   const id = getRawTableFieldId(field);
   const { data: idFields = [] } = useListDatabaseIdFieldsQuery({
     id: databaseId,
@@ -51,3 +52,5 @@ export const MetadataSection = ({ databaseId, field }: Props) => {
     </Stack>
   );
 };
+
+export const MetadataSection = memo(MetadataSectionBase);
