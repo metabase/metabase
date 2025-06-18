@@ -14,16 +14,16 @@ import {
   createMockVersion,
 } from "metabase-types/api/mocks";
 
-import { getEmbeddingSdkVersion } from "../config";
-
 import { createMockSdkConfig } from "./mocks/config";
 import { setupMockJwtEndpoints } from "./mocks/sso";
 
 const defaultAuthConfig = createMockSdkConfig();
 
-jest.mock("../config", () => ({
-  ...jest.requireActual("../config"),
-  getEmbeddingSdkVersion: jest.fn(),
+const mockEmbeddingSdkVersionGetter = jest.fn();
+jest.mock("../env", () => ({
+  get embeddingSdkVersion() {
+    return mockEmbeddingSdkVersionGetter();
+  },
 }));
 
 const setup = async ({
@@ -33,7 +33,7 @@ const setup = async ({
   sdkVersion: string;
   mbVersion: string;
 }) => {
-  (getEmbeddingSdkVersion as jest.Mock).mockReturnValue(sdkVersion);
+  mockEmbeddingSdkVersionGetter.mockReturnValue(sdkVersion);
 
   setupMockJwtEndpoints();
   setupPropertiesEndpoints(
@@ -64,7 +64,7 @@ describe("SDK auth errors", () => {
     fetchMock.reset();
 
     consoleWarnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    (getEmbeddingSdkVersion as jest.Mock).mockClear();
+    mockEmbeddingSdkVersionGetter.mockClear();
   });
 
   afterEach(() => {
