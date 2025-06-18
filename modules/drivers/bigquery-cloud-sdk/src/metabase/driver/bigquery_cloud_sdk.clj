@@ -310,7 +310,7 @@
      {}
      (sort-by (comp count :nfc-path) nested-columns))))
 
-(defn- describe-dataset-fields
+(defn- describe-dataset-fields-reducible
   [driver database project-id dataset-id table-names]
   (let [named-rows (query-honeysql
                     driver
@@ -338,48 +338,45 @@
                                     accum))
                                 {}
                                 named-rows)]
-    (mapcat (fn [{column-name :column_name
-                  data-type :data_type
-                  database-position :ordinal_position
-                  partitioned? :partitioned
-                  table-name :table_name}]
-              (let [database-position (or (some-> database-position dec)
-                                          (get max-position-per-table table-name 0))
-                    [database-type base-type] (raw-type->database+base-type data-type)]
-                (cond-> [(maybe-add-nested-fields
-                          {:name column-name
-                           :table-name table-name
-                           :table-schema dataset-id
-                           :database-type database-type
-                           :base-type base-type
-                           :database-partitioned partitioned?
-                           :database-position database-position}
-                          nil
-                          database-position)]
-                  ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
-                  (= column-name partitioned-time-field-name)
-                  (conj {:name partitioned-date-field-name
-                         :table-name table-name
-                         :table-schema dataset-id
-                         :database-type "DATE"
-                         :base-type :type/Date
-                         :database-position (inc database-position)
-                         :database-partitioned true}))))
-            named-rows)))
+    (eduction
+     (mapcat (fn [{column-name :column_name
+                   data-type :data_type
+                   database-position :ordinal_position
+                   partitioned? :partitioned
+                   table-name :table_name}]
+               (let [database-position (or (some-> database-position dec)
+                                           (get max-position-per-table table-name 0))
+                     [database-type base-type] (raw-type->database+base-type data-type)]
+                 (cond-> [(maybe-add-nested-fields
+                           {:name column-name
+                            :table-name table-name
+                            :table-schema dataset-id
+                            :database-type database-type
+                            :base-type base-type
+                            :database-partitioned partitioned?
+                            :database-position database-position}
+                           nil
+                           database-position)]
+                   ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
+                   (= column-name partitioned-time-field-name)
+                   (conj {:name partitioned-date-field-name
+                          :table-name table-name
+                          :table-schema dataset-id
+                          :database-type "DATE"
+                          :base-type :type/Date
+                          :database-position (inc database-position)
+                          :database-partitioned true})))))
+     named-rows)))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
   (let [project-id (get-project-id (:details database))
         dataset-ids (or schema-names
                         (list-datasets (:details database)))]
-    (sort-by
-     (juxt :table-schema :table-name :database-position :name)
-     (into
-      []
-      (mapcat
-       (fn [dataset-id]
-         (describe-dataset-fields driver database project-id dataset-id table-names)))
-      dataset-ids))))
+    (eduction
+     (mapcat (fn [dataset-id]
+               (describe-dataset-fields-reducible driver database project-id dataset-id table-names)))
+     dataset-ids)))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
