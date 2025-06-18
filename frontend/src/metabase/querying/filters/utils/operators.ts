@@ -12,7 +12,10 @@ export function getAvailableOperatorOptions<
   const operatorInfoByName = Object.fromEntries(
     Lib.filterableColumnOperators(column)
       .map((operator) => Lib.displayInfo(query, stageIndex, operator))
-      .map((operatorInfo) => [operatorInfo.shortName, operatorInfo]),
+      .map((operatorInfo) => [
+        operatorInfo.shortName,
+        getOperatorInfo(operatorInfo),
+      ]),
   );
 
   return Object.values(options)
@@ -21,6 +24,17 @@ export function getAvailableOperatorOptions<
       name: operatorInfoByName[option.operator].longDisplayName,
       ...option,
     }));
+}
+
+function getOperatorInfo(operatorInfo: Lib.FilterOperatorDisplayInfo) {
+  if (operatorInfo.shortName === "between") {
+    return {
+      ...operatorInfo,
+      longDisplayName: "Range",
+    };
+  }
+
+  return operatorInfo;
 }
 
 export function getDefaultAvailableOperator<T extends Lib.FilterOperatorName>(

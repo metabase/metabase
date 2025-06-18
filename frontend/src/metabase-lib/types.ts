@@ -311,11 +311,7 @@ export type StringFilterOperator =
 export type NumberFilterOperator =
   | "="
   | "!="
-  | ">"
-  | "<"
   | "between"
-  | ">="
-  | "<="
   | "is-null"
   | "not-null";
 
