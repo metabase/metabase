@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useHasEmailSetup } from "metabase/common/hooks";
+import { useHasEmailOrSlackSetup } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
@@ -17,7 +17,7 @@ export function DashboardSubscriptionMenuItem({
   dashboard: Dashboard;
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasEmailSetup = useHasEmailSetup();
+  const hasEmailOrSlackSetup = useHasEmailOrSlackSetup();
 
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
@@ -30,7 +30,7 @@ export function DashboardSubscriptionMenuItem({
     return null;
   }
 
-  if (!isAdmin && !hasEmailSetup) {
+  if (!isAdmin && !hasEmailOrSlackSetup) {
     return (
       <Menu.Item
         data-testid="dashboard-subscription-menu-item"
