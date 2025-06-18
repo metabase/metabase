@@ -23,7 +23,7 @@ export const PanelsHeader = ({
           <Box
             component={Link}
             to={Urls.viewDatabases()}
-            fw={700}
+            fw="bold"
             c="brand"
           >{t`Manage databases`}</Box>
         )}
@@ -31,7 +31,7 @@ export const PanelsHeader = ({
           <Box
             component={Link}
             to={Urls.uploadsSettings()}
-            fw={700}
+            fw="bold"
             c="brand"
           >{t`Manage uploads`}</Box>
         )}
