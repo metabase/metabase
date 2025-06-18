@@ -131,3 +131,9 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+export type SdkIframeEmbedEvent = { type: "ready" };
+
+export type SdkIframeEmbedEventHandler<
+  T extends SdkIframeEmbedEvent = SdkIframeEmbedEvent,
+> = (event: T) => void;
