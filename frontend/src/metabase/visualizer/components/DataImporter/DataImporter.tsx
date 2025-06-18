@@ -65,7 +65,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
       <Title order={4} mb="xs" className={S.Title}>
         {showDatasets ? t`Add data` : t`Manage data`}
       </Title>
-      {dataSources.length > 0 ? (
+      {dataSources.length > 0 && (
         <Button
           size="xs"
           variant="transparent"
@@ -81,12 +81,10 @@ export const DataImporter = ({ className }: { className?: string }) => {
             handlers.toggle();
           }}
           className={S.ToggleButton}
-          aria-label={showDatasets ? t`See columns` : t`See datasets`}
+          aria-label={showDatasets ? t`Done` : t`Add more data`}
         >
-          {showDatasets ? t`See columns` : t`See datasets`}
+          {showDatasets ? t`Done` : t`Add more data`}
         </Button>
-      ) : (
-        <Text size="xs">{t`(most recent questions)`}</Text>
       )}
 
       {showDatasets ? (
