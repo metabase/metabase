@@ -142,6 +142,11 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
+export type EventsClickedEvent = ValidateEvent<{
+  event: "events_clicked";
+  triggered_from: "chart" | "collection";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -160,4 +165,5 @@ export type SimpleEvent =
   | NewButtonClickedEvent
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
-  | VisualizerModalEvent;
+  | VisualizerModalEvent
+  | EventsClickedEvent;

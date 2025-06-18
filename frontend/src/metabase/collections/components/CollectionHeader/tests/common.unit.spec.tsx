@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { screen } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { setup } from "./setup";
@@ -140,10 +141,21 @@ describe("CollectionHeader", () => {
   });
 
   describe("collection timelines", () => {
-    it("should have a link to collection timelines", () => {
+    it("should have a link to collection timelines", async () => {
       setup();
+      const button = screen.getByLabelText("calendar icon");
+      expect(button).toBeInTheDocument();
 
-      expect(screen.getByLabelText("calendar icon")).toBeInTheDocument();
+      userEvent.click(button);
+
+      await waitFor(() => {
+        expect(
+          fetchMock.calls(
+            "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
+            { method: "PUT" },
+          ),
+        ).toHaveLength(1);
+      });
     });
   });
 
@@ -265,9 +277,10 @@ describe("CollectionHeader", () => {
       });
       await userEvent.click(screen.getByLabelText("Upload data"));
 
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Go to setup")).toBeInTheDocument();
-      expect(screen.getByRole("link")).toBeInTheDocument();
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toBeInTheDocument();
+      expect(within(dialog).getByText("Go to setup")).toBeInTheDocument();
+      expect(within(dialog).getByRole("link")).toBeInTheDocument();
     });
 
     it("should show an informational modal without a link for non-admins", async () => {
