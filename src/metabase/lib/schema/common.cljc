@@ -27,7 +27,6 @@
   (cond-> x
     (string? x) (-> u/lower-case-en keyword)))
 
-
 (defn- normalize-map* [m]
   ;; check to make sure we actually need to update anything before we do it. [[update-keys]] always creates new maps
   ;; even if nothing has changed, this way we can avoid creating a bunch of garbage for already-normalized maps
