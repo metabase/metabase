@@ -4,7 +4,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { useListPersistedInfoQuery } from "metabase/api";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
@@ -18,7 +21,7 @@ import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Icon, Stack, Title, Tooltip } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
@@ -189,11 +192,10 @@ const ModelCacheRefreshJobs = connect(
 
 export function ModelCachePage() {
   return (
-    <Stack gap="xl">
-      <Title order={1}>{t`Model cache log`}</Title>
+    <SettingsPageWrapper title={t`Model cache log`}>
       <SettingsSection>
         <ModelCacheRefreshJobs />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

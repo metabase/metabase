@@ -2,10 +2,12 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import CS from "metabase/css/core/index.css";
 import { CardApi } from "metabase/services";
-import { Stack, Title } from "metabase/ui";
 
 import AuditParameters from "../audit_app/components/AuditParameters";
 import AuditTable from "../audit_app/containers/AuditTable";
@@ -72,8 +74,7 @@ export default function ErrorOverview(props) {
   };
 
   return (
-    <Stack gap="xl">
-      <Title order={1}>{t`Questions that errored when last run`}</Title>
+    <SettingsPageWrapper title={t`Questions that errored when last run`}>
       <SettingsSection>
         <AuditParameters
           parameters={[
@@ -119,6 +120,6 @@ export default function ErrorOverview(props) {
           )}
         </AuditParameters>
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 }

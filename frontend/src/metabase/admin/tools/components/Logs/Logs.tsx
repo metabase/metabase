@@ -5,11 +5,14 @@ import reactAnsiStyle from "react-ansi-style";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import Select, { Option } from "metabase/core/components/Select";
 import { openSaveDialog } from "metabase/lib/dom";
-import { Button, Flex, Icon, Stack, TextInput, Title } from "metabase/ui";
+import { Button, Flex, Icon, TextInput } from "metabase/ui";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -70,8 +73,7 @@ const LogsBase = ({
 
   return (
     <>
-      <Stack gap="xl">
-        <Title order={1}>{t`Logs`}</Title>
+      <SettingsPageWrapper title={t`Logs`}>
         <SettingsSection>
           <LogsContainer loading={!loaded} error={error}>
             <Flex align="center" gap="md" justify="space-between" mb="md">
@@ -146,7 +148,7 @@ const LogsBase = ({
             </LogsContent>
           </LogsContainer>
         </SettingsSection>
-      </Stack>
+      </SettingsPageWrapper>
 
       {
         // render 'children' so that the modals show up

@@ -4,7 +4,10 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
 import Code from "metabase/components/Code";
@@ -14,7 +17,7 @@ import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
-import { Box, Group, Stack, Title } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 
 import S from "./help.module.css";
 
@@ -100,8 +103,7 @@ export const Help = () => {
   const compactDetailStringForUrl = encodeURIComponent(JSON.stringify(details));
 
   return (
-    <Stack gap="xl">
-      <Title order={1}>{t`Help`}</Title>
+    <SettingsPageWrapper title={t`Help`}>
       <Group grow>
         <HelpLink
           title={t`Get help`}
@@ -137,6 +139,6 @@ export const Help = () => {
           link={UtilApi.get_connection_pool_details_url()}
         />
       </SettingsSection>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };

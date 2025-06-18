@@ -3,14 +3,17 @@ import cx from "classnames";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { useGetTasksInfoQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
-import { Flex, Stack, Title } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 
 const SchedulerInfo = ({ scheduler }) => {
   return (
@@ -68,8 +71,7 @@ export const JobInfoApp = ({ children }) => {
   const { data, error, isFetching } = useGetTasksInfoQuery();
 
   return (
-    <Stack gap="xl">
-      <Title order={1}>{t`Scheduler Info`}</Title>
+    <SettingsPageWrapper title={t`Scheduler Info`}>
       <LoadingAndErrorWrapper loading={isFetching} error={error}>
         <Stack gap="xl">
           <SettingsSection>
@@ -84,6 +86,6 @@ export const JobInfoApp = ({ children }) => {
           }
         </Stack>
       </LoadingAndErrorWrapper>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };

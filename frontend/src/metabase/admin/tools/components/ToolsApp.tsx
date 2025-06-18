@@ -10,6 +10,7 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
   {
     return (
       <AdminSettingsLayout
+        maw="100rem"
         sidebar={
           <AdminNavWrapper>
             <AdminNavItem

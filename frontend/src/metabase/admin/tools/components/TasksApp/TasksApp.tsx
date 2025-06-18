@@ -3,11 +3,14 @@ import type { ReactNode } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { PaginationControls } from "metabase/components/PaginationControls";
-import { Flex, Icon, Stack, Title, Tooltip } from "metabase/ui";
+import { Flex, Icon, Title, Tooltip } from "metabase/ui";
 
 import { TaskPicker } from "../../components/TaskPicker";
 import { TaskStatusPicker } from "../../components/TaskStatusPicker";
@@ -60,7 +63,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
   const error = tasksError || databasesError;
 
   return (
-    <Stack gap="xl">
+    <SettingsPageWrapper>
       <Flex align="center" gap="sm">
         <Title order={1}>{t`Troubleshooting logs`} </Title>
         <Tooltip
@@ -108,7 +111,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         // render 'children' so that the invididual task modals show up
         children
       }
-    </Stack>
+    </SettingsPageWrapper>
   );
 };
 
