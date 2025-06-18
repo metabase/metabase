@@ -7,7 +7,7 @@ import { PeopleNav } from "../components/PeopleNav";
 
 export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   return (
-    <AdminSettingsLayout sidebar={<PeopleNav />}>
+    <AdminSettingsLayout sidebar={<PeopleNav />} maw="80rem">
       <SettingsSection>{children}</SettingsSection>
     </AdminSettingsLayout>
   );

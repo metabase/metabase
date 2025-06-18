@@ -100,9 +100,7 @@ describe("scenarios > admin > people", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("2 members");
 
-      cy.findByRole("list", { name: "admin-list-items" })
-        .findByRole("link", { name: /people/i })
-        .click();
+      cy.findByTestId("admin-layout-sidebar").findByText("People").click();
 
       showUserOptions(noCollectionUserName);
 
