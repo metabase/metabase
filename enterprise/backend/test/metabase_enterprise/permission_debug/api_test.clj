@@ -28,7 +28,7 @@
                                              :model_id (str (:id card))
                                              :action_type "card/read")]
           (is (= "allow" (:decision response)))
-          (is (= "question" (:model-type response)))
+          (is (= "card" (:model-type response)))
           (is (= (str (:id card)) (:model-id response)))
           (is (= '() (:segment response)))
           (is (seq (:message response)))
@@ -44,7 +44,7 @@
                                                :model_id (str (:id private-card))
                                                :action_type "card/read")]
             (is (= "denied" (:decision response)))
-            (is (= "question" (:model-type response)))
+            (is (= "card" (:model-type response)))
             (is (seq (:message response))))
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) private-collection))))))
 
@@ -60,7 +60,7 @@
                                              :model_id (str (:id card))
                                              :action_type "card/query")]
           (is (= "allow" (:decision response)))
-          (is (= "question" (:model-type response)))
+          (is (= "card" (:model-type response)))
           (is (= '() (:segment response)))
           (is (= {} (:data response)))))
 
@@ -86,7 +86,7 @@
                                              :model_id (str (:id card))
                                              :action_type "card/download-data")]
           (is (= "allow" (:decision response)))
-          (is (= "question" (:model-type response)))
+          (is (= "card" (:model-type response)))
           (is (= '() (:segment response)))
           (is (seq (:message response)))))
 
@@ -98,7 +98,7 @@
                                              :model_id (str (:id card))
                                              :action_type "card/download-data")]
           (is (contains? #{"allow" "limited" "denied"} (:decision response)))
-          (is (= "question" (:model-type response))))))))
+          (is (= "card" (:model-type response))))))))
 
 (deftest permission-debug-invalid-scenarios-test
   (testing "GET /api/ee/permission_debug for invalid scenarios"

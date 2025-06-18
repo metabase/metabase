@@ -105,7 +105,7 @@
           (is (= #{} (:segment result)))
           (is (= #{(tru "User does not have permission to query this card")}
                  (into #{} (:message result))))
-          (is (= {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}} (:data result)))
+          (is (= {:blocked-tables {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}} (:data result)))
           (is (= {} (:suggestions result))))))))
 
 (deftest debug-permissions-card-query-mixed-permissions-test
@@ -197,7 +197,7 @@
           (is (= #{} (:segment result)))
           (is (= [(tru "User does not have permission to query this card")]
                  (:message result)))
-          (is (= {"test-data (h2).PUBLIC.VENUES" #{"All Users"}}
+          (is (= {:blocked-tables {"test-data (h2).PUBLIC.VENUES" #{"All Users"}}}
                  (:data result)))
           (is (= {} (:suggestions result))))))))
 
@@ -216,14 +216,14 @@
           (is (= #{} (:segment result)))
           (is (= [(tru "User does not have permission to query this card")]
                  (:message result)))
-          (is (= {"test-data (h2).PUBLIC.CATEGORIES" #{"All Users"}
-                  "test-data (h2).PUBLIC.CHECKINS" #{"All Users"}
-                  "test-data (h2).PUBLIC.ORDERS" #{"All Users"}
-                  "test-data (h2).PUBLIC.PEOPLE" #{"All Users"}
-                  "test-data (h2).PUBLIC.PRODUCTS" #{"All Users"}
-                  "test-data (h2).PUBLIC.REVIEWS" #{"All Users"}
-                  "test-data (h2).PUBLIC.USERS" #{"All Users"}
-                  "test-data (h2).PUBLIC.VENUES" #{"All Users"}}
+          (is (= {:blocked-tables {"test-data (h2).PUBLIC.CATEGORIES" #{"All Users"}
+                                   "test-data (h2).PUBLIC.CHECKINS" #{"All Users"}
+                                   "test-data (h2).PUBLIC.ORDERS" #{"All Users"}
+                                   "test-data (h2).PUBLIC.PEOPLE" #{"All Users"}
+                                   "test-data (h2).PUBLIC.PRODUCTS" #{"All Users"}
+                                   "test-data (h2).PUBLIC.REVIEWS" #{"All Users"}
+                                   "test-data (h2).PUBLIC.USERS" #{"All Users"}
+                                   "test-data (h2).PUBLIC.VENUES" #{"All Users"}}}
                  (:data result)))
           (is (= {} (:suggestions result))))))))
 
@@ -254,7 +254,7 @@
           (is (= #{} (:segment result)))
           (is (= #{(tru "User does not have permission to query this card")}
                  (into #{} (:message result))))
-          (is (= {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}} (:data result)))
+          (is (= {:blocked-tables {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}} (:data result)))
           (is (= {} (:suggestions result))))))))
 
 (deftest debug-permissions-card-download-results-with-permission-test
@@ -308,7 +308,7 @@
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User does not have permission to download data from this card")] (:message result)))
-          (is (= {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}} (:data result)))
+          (is (= {:download-no-tables {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}} (:data result)))
           (is (= {} (:suggestions result))))))))
 
 (deftest debug-permissions-card-download-results-mixed-permissions-test
@@ -332,7 +332,8 @@
                     (tru "User has permission to query this card")
                     (tru "User has permission to download data from this card")]
                    (:message result)))
-            (is (= {} (:data result)))
+            (is (= {}
+                   (:data result)))
             (is (= {} (:suggestions result)))))))))
 
 (deftest debug-permissions-card-download-results-admin-test
@@ -362,7 +363,8 @@
           (is (= "limited" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User has permission to download some data from this card")] (:message result)))
-          (is (= {} (:data result)))
+          (is (= {:download-limited-tables {"test-data (h2).PUBLIC.CHECKINS" #{"All Users"}}}
+                 (:data result)))
           (is (= {} (:suggestions result))))))))
 
 (deftest debug-permissions-card-download-results-mixed-limited-permissions-test
@@ -371,7 +373,7 @@
                    :model/Card card {:collection_id (:id collection)
                                      :dataset_query (mt/mbql-query checkins {:filter [:> $date "2014-01-01"]})}]
       (let [regular-user-id (mt/user->id :rasta)]
-        (mt/with-temp [:model/PermissionsGroup {pg-id :id} {}
+        (mt/with-temp [:model/PermissionsGroup {pg-id :id} {:name "test other group"}
                        :model/PermissionsGroupMembership _ {:group_id pg-id :user_id regular-user-id}]
           (perms/set-table-permission! (perms/all-users-group) (mt/id :checkins) :perms/view-data :unrestricted)
           (perms/set-table-permission! pg-id (mt/id :checkins) :perms/download-results :ten-thousand-rows)
@@ -384,5 +386,6 @@
             (is (= #{} (:segment result)))
             (is (= [(tru "User has permission to download some data from this card")]
                    (:message result)))
-            (is (= {} (:data result)))
+            (is (= {:download-limited-tables {"test-data (h2).PUBLIC.CHECKINS" #{"test other group"}}}
+                   (:data result)))
             (is (= {} (:suggestions result)))))))))

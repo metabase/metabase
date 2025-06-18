@@ -225,7 +225,8 @@
       :message     [(if (seq blocked-by-group)
                       (tru "User does not have permission to query this card")
                       (tru "User has permission to query this card"))]
-      :data        (if blocked-by-group (format-blocked blocked-by-group) {})
+      :data        (cond-> {}
+                     (not-empty blocked-by-group) (assoc :blocked-tables (format-blocked blocked-by-group)))
       :suggestions {}})))
 
 (mu/defmethod debug-permissions :card/download-data :- DebuggerSchema
@@ -251,5 +252,7 @@
                       (seq blocked-by-group) (tru "User does not have permission to download data from this card")
                       (seq limited-by-group) (tru "User has permission to download some data from this card")
                       :else (tru "User has permission to download data from this card"))]
-      :data        (if blocked-by-group (format-blocked blocked-by-group) {})
+      :data        (cond-> {}
+                     (not-empty limited-by-group) (assoc :download-limited-tables (format-blocked limited-by-group))
+                     (not-empty blocked-by-group) (assoc :download-no-tables (format-blocked blocked-by-group)))
       :suggestions {}})))
