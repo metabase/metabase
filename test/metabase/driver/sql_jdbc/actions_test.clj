@@ -520,7 +520,7 @@
                       :row-key  {user-name-col "New User"}}))
                   (catch Throwable e
                     (reset! error-thrown? true)
-                    (is (= (str "unintentionally created 2 duplicate rows for key: table user with name = \"new user\". "
+                    (is (= (str "unintentionally created 2 duplicate rows for key: table \"public\".\"user\" with name = \"new user\". "
                                 "this suggests a concurrent modification. we recommend adding a uniqueness constraint to the table.")
                            (-> e ex-data :errors first :error u/lower-case-en)))))
                 (is (true? @error-thrown?))))
@@ -536,7 +536,7 @@
                     :row-key  {user-group-id-col 1}})
                   (catch Throwable e
                     (reset! error-thrown? true)
-                    (is (= (str "found 2 duplicate rows in table user with group-id = 1. unsure which row to update. "
+                    (is (= (str "found 2 duplicate rows in table \"public\".\"user\" with group-id = 1. unsure which row to update. "
                                 "only use this action with key combinations which are meant to be unique. "
                                 "we recommend adding a uniqueness constraint to the table.")
                            (-> e ex-data :errors first :error u/lower-case-en)))))

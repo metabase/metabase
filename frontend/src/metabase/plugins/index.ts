@@ -76,6 +76,7 @@ import type {
   DatasetError,
   DatasetErrorType,
   EditableTableActionsDisplaySettings,
+  EditableTableBuiltInActionDisplaySettings,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -781,7 +782,7 @@ export const PLUGIN_TABLE_ACTIONS = {
   isEnabled: () => false,
   isBuiltInEditableTableAction: (
     _action: EditableTableActionsDisplaySettings,
-  ) => false,
+  ): _action is EditableTableBuiltInActionDisplaySettings => false,
   useTableActionsExecute: (_params: {
     actionsVizSettings: TableActionDisplaySettings[] | undefined;
     datasetData: DatasetData | null | undefined;
