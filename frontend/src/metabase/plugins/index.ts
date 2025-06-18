@@ -767,3 +767,9 @@ export const PLUGIN_API = {
   ) =>
     `/api/dashboard/${dashboardId}/params/${encodeURIComponent(parameterId)}/remapping`,
 };
+
+export const PLUGIN_LAZY_LOAD_SDK_DATE_LOCALES: {
+  load?: ((locale: string) => Promise<void>) | null;
+} = {
+  load: null,
+};
