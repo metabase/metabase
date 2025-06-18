@@ -89,7 +89,9 @@
                                           #_expr [:ref ::expression/expression]]]]
                                        [:default [:? [:schema [:ref ::expression/expression]]]]))
       [:fn
-       ;; further constrain this so all of the exprs are of the same type
+       ;; Further constrain this so all of the exprs are of compatible type
+       ;; This check isn't perfect: it still allows types that have a common ancestor but aren't compatible.
+       ;; We currently don't have a good notion of type compatibility, so this is just a best-effort heuristic.
        {:error/message "All clauses should have the same type"}
        (fn
          [[_tag _opts pred-expr-pairs default]]
