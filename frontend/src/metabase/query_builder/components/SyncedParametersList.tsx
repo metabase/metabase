@@ -1,8 +1,13 @@
+import { useCallback } from "react";
+
+import { useDispatch } from "metabase/lib/redux";
 import {
   ParametersList,
   type ParametersListProps,
 } from "metabase/parameters/components/ParametersList";
+import type { ParameterId } from "metabase-types/api";
 
+import { setParameterValueToDefault } from "../actions";
 import { useSyncUrlParameters } from "../hooks/use-sync-url-parameters";
 
 export const SyncedParametersList = ({
@@ -22,10 +27,18 @@ export const SyncedParametersList = ({
   setParameterValue,
   setParameterIndex,
   setEditingParameter,
-  setParameterValueToDefault,
   enableParameterRequiredBehavior,
 }: ParametersListProps) => {
+  const dispatch = useDispatch();
+
   useSyncUrlParameters({ parameters });
+
+  const dispatchSetParameterValueToDefault = useCallback(
+    (parameterId: ParameterId) => {
+      dispatch(setParameterValueToDefault(parameterId));
+    },
+    [dispatch],
+  );
 
   return (
     <ParametersList
@@ -42,7 +55,7 @@ export const SyncedParametersList = ({
       setParameterValue={setParameterValue}
       setParameterIndex={setParameterIndex}
       setEditingParameter={setEditingParameter}
-      setParameterValueToDefault={setParameterValueToDefault}
+      setParameterValueToDefault={dispatchSetParameterValueToDefault}
       enableParameterRequiredBehavior={enableParameterRequiredBehavior}
     />
   );
