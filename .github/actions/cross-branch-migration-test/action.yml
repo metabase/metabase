@@ -68,10 +68,10 @@ runs:
       run: kill $(cat metabase_pid)
       shell: bash
 
-    - name: Migrate down a version to test going back to the previous state
-      run: |
-        clojure -M:dev:ee:migrate rollback last-deployment
-      shell: bash
+#    - name: Migrate down a version to test going back to the previous state
+#      run: |
+#        clojure -M:dev:ee:migrate rollback last-deployment
+#      shell: bash
 
     - name: (Re)check out base branch
       uses: actions/checkout@v4

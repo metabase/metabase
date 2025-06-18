@@ -692,7 +692,7 @@ databaseChangeLog:
   # restriction separately; we can use Toucan `pre-insert` to set defaults values when saving things.
   - changeSet:
       id: v45.00-042
-#      validCheckSum: ANY
+      validCheckSum: ANY
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database with NULL details
       changes:
