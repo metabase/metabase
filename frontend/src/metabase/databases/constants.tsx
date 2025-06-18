@@ -171,3 +171,24 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
     name: "refingerprint",
   },
 };
+
+export const CONNECTION_STRING_CONFIG = {
+  /**
+   * Maps common connection string parameter names (lowercase) to Metabase fields.
+   */
+  paramMap: {
+    host: "details.host",
+    port: "details.port",
+    database: ["name", "details.dbname"],
+    user: "details.user",
+    password: "details.password",
+  } as Record<string, string | string[]>,
+
+  /**
+   * Maps common connection string provider names (lowercase) to Metabase engine keys to handle mismatches.
+   */
+  providerMap: {
+    postgresql: "postgres",
+    mssql: "sqlserver",
+  } as Record<string, string>,
+};
