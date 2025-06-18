@@ -130,7 +130,11 @@
   :type       :boolean
   :default    false
   :visibility :settings-manager
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (and new-value (not (cloud-email-smtp-host)))
+                  (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))
+                (setting/set-value-of-type! :boolean :cloud-smtp-enabled? new-value)))
 
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
