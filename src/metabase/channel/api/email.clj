@@ -163,7 +163,7 @@
                 [:cloud-email-smtp-port {:optional true} [:or int? nil?]]
                 [:cloud-email-smtp-security {:optional true} [:or string? nil?]]
                 [:cloud-email-smtp-username {:optional true} [:or string? nil?]]
-                [:cloud-smtp-enabled? {:optional true} [:or boolean? nil?]]]]
+                [:cloud-smtp-enabled {:optional true} [:or boolean? nil?]]]]
   (when (not (premium-features/has-feature? :cloud-custom-smtp))
     (throw (ex-info (tru "API is not available in your Metabase plan. Please upgrade to use this feature.")
                     {:status-code 403})))
@@ -177,14 +177,22 @@
                     {:status-code 400})))
 
   (let [response (check-and-update-settings settings cloud-mb-to-smtp-settings (channel.settings/cloud-email-smtp-password))]
-    (when (and (not (:error response)) (not (nil? (:cloud-smtp-enabled? settings))))
-      (merge response {:cloud-smtp-enabled? (channel.settings/cloud-smtp-enabled?! (:cloud-smtp-enabled? settings))}))))
+    (when (and (not (:error response)) (not (nil? (:cloud-smtp-enabled settings))))
+      (merge response {:cloud-smtp-enabled (channel.settings/cloud-smtp-enabled?! (:cloud-smtp-enabled settings))}))))
 
 (api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
   (validation/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
+  api/generic-204-no-content)
+
+(api.macros/defendpoint :delete "/cloud"
+  "Clear all cloud email related settings. You must be a superuser or have `setting` permission to do this."
+  []
+  (validation/check-has-application-permission :setting)
+  (setting/set-many! (assoc (zipmap (keys cloud-mb-to-smtp-settings) (repeat nil))
+                            :cloud-smtp-enabled? false))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/test"
