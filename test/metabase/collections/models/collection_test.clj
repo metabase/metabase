@@ -56,7 +56,7 @@
           (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}
          (collection/user->personal-collection-names [(mt/user->id :lucky) (mt/user->id :rasta)] :site))))
 
-(deftest trash-collection-name-is-localized-test
+(deftest ^:parallel trash-collection-name-is-localized-test
   (let [trash (collection/trash-collection)]
     (is (-> trash :name i18n/localized-string?)
         "Trash name must be a localized string")))
