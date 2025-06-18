@@ -18,7 +18,6 @@
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -670,82 +669,6 @@
                                                   (lib/query (:dataset_query card))
                                                   lib/suggested-name))))
 
-(defn- derive-ident [prefix entity_id stage-number tail]
-  (let [entity_id (cond-> entity_id
-                    (instance? clojure.lang.IDeref entity_id) deref)]
-    (if (= entity_id ::before-insert)
-      ;; If this is a fresh insert, it's safe to generate them at random rather than deriving them!
-      (u/generate-nano-id)
-      ;; If entity_id is provided instead, then derive an opaque string based on that entity_id.
-      (str prefix "_" entity_id "@" stage-number "__" tail))))
-
-(defn- ensure-clause-idents-list [existing xs prefix stage-number {:keys [entity_id] :as _ctx}]
-  (into {} (map (fn [i]
-                  [i (or (get existing i)
-                         (derive-ident prefix entity_id stage-number i))]))
-        (range (count xs))))
-
-(defn- ensure-clause-idents-expressions [existing expressions stage-number {:keys [entity_id] :as _ctx}]
-  (m/map-kv-vals (fn [expr-name _expr-clause]
-                   (or (get existing expr-name)
-                       (derive-ident "expression" entity_id stage-number expr-name)))
-                 expressions))
-
-(defn- ensure-clause-idents-joins [joins stage-number {:keys [entity_id] :as _ctx}]
-  (mapv #(cond-> %
-           (not (:ident %)) (assoc :ident (derive-ident "join" entity_id stage-number (:alias %))))
-        joins))
-
-(defn- ensure-clause-idents-inner [inner-query ctx]
-  (mbql.u/map-stages
-   (fn [query stage-number]
-     (cond-> query
-       (:aggregation query) (update :aggregation-idents
-                                    ensure-clause-idents-list (:aggregation query) "aggregation" stage-number ctx)
-       (:expressions query) (update :expression-idents
-                                    ensure-clause-idents-expressions (:expressions query) stage-number ctx)
-       (:breakout query) (update :breakout-idents
-                                 ensure-clause-idents-list (:breakout query) "breakout" stage-number ctx)
-       (:joins query) (update :joins
-                              ensure-clause-idents-joins stage-number ctx)))
-   inner-query))
-
-(defn- ensure-clause-idents-outer [{:keys [query type] :as outer-query} ctx]
-  (cond-> outer-query
-    (and (= type :query) query) (update :query ensure-clause-idents-inner ctx)))
-
-(defn- ensure-clause-idents
-  ([card]
-   (ensure-clause-idents card nil))
-  ([card forced-entity-id]
-   (let [hashed-eid (atom false)
-         entity-id  (or forced-entity-id
-                        (:entity_id card)
-                        (delay
-                          ;; When the card does not already have an `entity_id`, use serdes hashing to backfill it.
-                          ;; If the columns necessary for that serdes hashing were not selected, throw a specific error
-                          ;; which is caught and logged below.
-                          ;; NOTE: These columns must be kept in sync with the [[serdes/hash-fields]] for :model/Card.
-                          (when-not (every? #(contains? card %) [:collection_id :created_at :name])
-                            (throw (ex-info "Best-effort backfill of :entity_id on :model/Card failed"
-                                            {::best-effort-backfill true})))
-                          (reset! hashed-eid true)
-                          (serdes/backfill-entity-id card)))
-         ;; Calculate the new query. If we need to backfill its `:entity_id` but it fails, it will throw a specific
-         ;; exception that gets caught here, making query' nil. In that case the card is returned unchanged.
-         query'    (when (:dataset_query card)
-                     (try
-                       (ensure-clause-idents-outer (:dataset_query card) {:entity_id entity-id})
-                       (catch clojure.lang.ExceptionInfo e
-                         (when-not (::best-effort-backfill (ex-data e))
-                           (throw e))
-                         (log/warnf "Best-effort backfill of :entity_id failed for Card %d" (:id card))
-                         nil)))]
-     (cond-> card
-       query'      (assoc :dataset_query query')
-       ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
-       @hashed-eid (assoc :entity_id @entity-id)))))
-
 ;; Schema upgrade: 20 to 21 ==========================================================================================
 ;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
 ;; However, that caused performance problems since it's often recursive, and the caching was ineffective.
@@ -798,7 +721,6 @@
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      ensure-clause-idents
       ;; At this point, the card should be at schema version 20 or higher.
       upgrade-card-schema-to-latest))
 
@@ -809,7 +731,6 @@
              :card_schema current-schema-version)
       maybe-normalize-query
       ; Add any missing idents on the query (expr, breakout, agg) before populating :result_metadata.
-      (ensure-clause-idents ::before-insert)
       (u/assoc-default :entity_id (u/generate-nano-id)) ; Must have an entity_id before populating the metadata.
       card.metadata/populate-result-metadata
       pre-insert
@@ -882,7 +803,6 @@
   (t2/delete! 'ModerationReview :moderated_item_type "card", :moderated_item_id id)
   (t2/delete! 'Revision :model "Card", :model_id id))
 
-;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
@@ -1018,8 +938,7 @@
                                                  :entity_id          (u/generate-nano-id))
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
-                                                maybe-normalize-query
-                                                (ensure-clause-idents ::before-insert))
+                                                maybe-normalize-query)
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                              {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
