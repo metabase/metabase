@@ -22,10 +22,7 @@ export const GroupDetailApp = (props: any) => {
     getGroupReq.isLoading ?? membershipsByUserReq.isLoading ?? !currentUser;
 
   return (
-    <SettingsPageWrapper
-      title={t`Groups`}
-      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
-    >
+    <SettingsPageWrapper title={t`Groups`}>
       <LoadingAndErrorWrapper error={error} loading={isLoading}>
         {currentUser && (
           <GroupDetail

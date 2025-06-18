@@ -49,10 +49,7 @@ export const GroupsListingApp = () => {
   };
 
   return (
-    <SettingsPageWrapper
-      title={t`Groups`}
-      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
-    >
+    <SettingsPageWrapper title={t`Groups`}>
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <GroupsListing
