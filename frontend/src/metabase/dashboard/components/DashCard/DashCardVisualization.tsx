@@ -12,12 +12,10 @@ import {
 } from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
-  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
   Flex,
@@ -39,7 +37,8 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -73,6 +72,8 @@ import {
 interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: Series;
+  question: Question | null;
+  metadata: Metadata;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -112,6 +113,8 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   series: untranslatedRawSeries,
+  question,
+  metadata,
   getHref,
   gridSize,
   gridItemWidth,
@@ -145,13 +148,6 @@ export function DashCardVisualization({
   } = useDashboardContext();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
-
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),
