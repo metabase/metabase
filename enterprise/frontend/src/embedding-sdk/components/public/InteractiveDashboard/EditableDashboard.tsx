@@ -114,17 +114,7 @@ export const EditableDashboard = ({
   });
 
   const { isLocaleLoading } = useLocale();
-  const {
-    displayOptions,
-    ref,
-    isFullscreen,
-    onFullscreenChange,
-    refreshPeriod,
-    onRefreshPeriodChange,
-    setRefreshElapsedHook,
-    isLoading,
-    dashboardId,
-  } = useSdkDashboardParams({
+  const { displayOptions, isLoading, dashboardId } = useSdkDashboardParams({
     dashboardId: dashboardIdProp,
     withDownloads,
     withTitle: true,
@@ -167,11 +157,7 @@ export const EditableDashboard = ({
 
   if (errorPage) {
     return (
-      <StyledPublicComponentWrapper
-        className={className}
-        style={style}
-        ref={ref}
-      >
+      <StyledPublicComponentWrapper className={className} style={style}>
         <SdkError
           message={errorPage.data?.message ?? t`Something's gone wrong`}
         />
@@ -180,15 +166,10 @@ export const EditableDashboard = ({
   }
 
   return (
-    <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
+    <StyledPublicComponentWrapper className={className} style={style}>
       <DashboardContextProvider
         dashboardId={dashboardId}
         parameterQueryParams={initialParameters}
-        refreshPeriod={refreshPeriod}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
         navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
         downloadsEnabled={displayOptions.downloadsEnabled}
         background={displayOptions.background}
