@@ -185,7 +185,7 @@ function _ModelCacheRefreshJobs({ onRefresh }: Props) {
   );
 }
 
-const ModelCacheRefreshJobs = connect(
+export const ModelCacheRefreshJobs = connect(
   null,
   mapDispatchToProps,
 )(_ModelCacheRefreshJobs);

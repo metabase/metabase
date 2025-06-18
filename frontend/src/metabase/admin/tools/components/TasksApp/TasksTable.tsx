@@ -43,7 +43,10 @@ export const TasksTable = ({
   };
 
   return (
-    <table className={cx(AdminS.ContentTable, CS.mt2)}>
+    <table
+      className={cx(AdminS.ContentTable, CS.mt2)}
+      data-testid="tasks-table"
+    >
       <thead>
         <tr>
           {/* set width to limit CLS when changing sort direction */}
