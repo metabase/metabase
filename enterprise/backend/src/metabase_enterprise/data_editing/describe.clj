@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.describe
   (:require
-   [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.util :as u]
@@ -185,7 +184,7 @@
      {:action-kw    (:action-kw unified)
       :table-id     (:table-id partial-input)
       :param-map    (:param-map unified)
-      ;; TODO is it really 2 layers deep?
+      ;; tried commenting it out and no tests failed, so will leave this here as reference for now
       :dashcard-viz nil #_(:dashcard-viz (:dashcard-viz unified))})
     (:inner-action unified)
     (let [inner        (:inner-action unified)
@@ -196,8 +195,7 @@
                            (t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))
           saved-id    (:action-id inner)
           action-kw   (:action-kw inner)
-          table-id    (or (:table-id partial-input)
-                          (:table_id dashcard-viz))
+          table-id    (:table-id partial-input)
           _           (when-not table-id
                         (throw (ex-info "Must provide table-id" {:status-code 400})))]
       (cond

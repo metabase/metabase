@@ -293,7 +293,6 @@
     (pos-int? raw-id) {:action-id raw-id}
     (neg-int? raw-id) (let [[op param] (actions/unpack-encoded-action-id raw-id)]
                         (cond
-                          ;; TODO: why this doesn't use the default-mapping?
                           (isa? op :table.row/common)
                           {:action-kw op
                            :mapping {:table-id param :row ::root}}
@@ -384,7 +383,7 @@
          "constant" (assoc acc k (:value v))
          ;; TODO: support override from params?
          "row-data" (assoc acc k (get @row (:sourceValueTarget v)))
-         acc))
+         nil acc))
      (merge input params)
      param-map)))
 
@@ -497,7 +496,10 @@
 (defn- get-row-data
   "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
   [action input]
-  (-> (row-data-mapping action) (apply-mapping-nested  nil [input]) first not-empty))
+  (-> (row-data-mapping action)
+      (apply-mapping-nested nil [input])
+      first
+      not-empty))
 
 ;; test case
 
