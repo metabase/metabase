@@ -172,6 +172,7 @@ export class AccordionList<
     props: Props<TItem>,
     state: State<TItem>,
   ) {
+    const { searchText } = state;
     const searchIndex = getSearchIndex({
       sections: props.sections,
       searchProp: props.searchProp,
@@ -180,7 +181,7 @@ export class AccordionList<
     return {
       ...state,
       searchIndex,
-      searchResults: search(searchIndex, state.searchText),
+      searchResults: search({ searchIndex, searchText }),
     };
   }
 
@@ -281,7 +282,10 @@ export class AccordionList<
     this.setState({
       searchText,
       cursor: null,
-      searchResults: search(this.state.searchIndex, searchText),
+      searchResults: search({
+        searchIndex: this.state.searchIndex,
+        searchText,
+      }),
     });
   };
 

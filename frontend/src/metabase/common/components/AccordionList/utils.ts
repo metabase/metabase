@@ -217,10 +217,13 @@ function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
   };
 }
 
-export function search<T>(
-  searchIndex: Fuse<T>,
-  searchText: string,
-): Fuse.FuseResult<T>[] | null {
+export const search = memoize(function <T>({
+  searchIndex,
+  searchText,
+}: {
+  searchIndex: Fuse<T>;
+  searchText: string;
+}): Fuse.FuseResult<T>[] | null {
   if (searchText === "") {
     return null;
   }
@@ -229,4 +232,4 @@ export function search<T>(
       limit: 50,
     })
     .filter((result) => result.score && result.score < 0.4);
-}
+});
