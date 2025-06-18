@@ -960,21 +960,25 @@
     :else
     id))
 
-(defn- init-grid-actions
+(defn- save-id-actions
   "Actions can be added to editable grids. This makes sure we actually create the corresponding actions.
-  For now, this just means generating an id, and setting default / fallback values."
+  For now, this just means generating an id, and setting default / fallback values.
+  In the future, it will probably persist the action configuration in a separate table. See WRK-544.
+  This function is also a useful place for us to do migrate-on-save stuff, since we call it every time.
+  It must be idempotent."
   [dashcard]
-  (m/update-existing-in
-   dashcard
-   [:visualization_settings :editableTable.enabledActions]
-   (partial map
-            (fn [grid-action]
-              (-> grid-action
-                  (update :id (partial create-or-fix-action-id dashcard))
-                  ;; At the time of writing, the FE only allows the creation of row actions. Make this explicit.
-                  (update :actionType #(or % "data-grid/row-action"))
-                  ;; By default actions are enabled.
-                  (update :enabled #(if (some? %) % true)))))))
+  (let [init-actions (partial map
+                              (fn [grid-action]
+                                (-> grid-action
+                                    (update :id (partial create-or-fix-action-id dashcard))
+                                    ;; At the time of writing, FE only allows the creation of row actions.
+                                    ;; Make sure this explicit.
+                                    (update :actionType #(or % "data-grid/row-action"))
+                                    ;; By default actions are enabled.
+                                    (update :enabled #(if (some? %) % true)))))]
+    (-> dashcard
+        (m/update-existing-in [:visualization_settings :table.enabled_actions] init-actions)
+        (m/update-existing-in [:visualization_settings :editableTable.enabledActions] init-actions))))
 
 (defn- unpack-dashcard-button
   "There are three flavors of action we can link buttons to: saved, primitive, and encoded.
@@ -1083,14 +1087,14 @@
                                                                        (contains? deleted-tab-ids (:dashboard_tab_id dashcard)))
                                                                      current-dashcards)
                    new-dashcards                             (cond->> dashcards
-                                                                ;; fixup the temporary tab ids with the real ones
+                                                                      ;; fixup the temporary tab ids with the real ones
                                                                (seq old->new-tab-id)
                                                                (map (fn [card]
                                                                       (if-let [real-tab-id (get old->new-tab-id (:dashboard_tab_id card))]
                                                                         (assoc card :dashboard_tab_id real-tab-id)
                                                                         card)))
                                                                true
-                                                               (map (comp init-grid-actions unpack-dashcard-button)))
+                                                               (map (comp save-id-actions unpack-dashcard-button)))
 
                    new-dashcards                             (init-editable-table-cards! id new-dashcards)
                    dashcards-changes-stats                   (do-update-dashcards! hydrated-current-dash current-dashcards new-dashcards)]
