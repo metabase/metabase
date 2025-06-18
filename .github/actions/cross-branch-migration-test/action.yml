@@ -1,7 +1,9 @@
 name: Cross-branch migration test
 
 inputs:
-  base-ref:
+  base-ref: ## Base branch PR came from
+    required: true
+  head-ref: ## Source branch of the pull request
     required: true
 
 runs:
@@ -42,7 +44,7 @@ runs:
     - name: Check out pull request branch
       uses: actions/checkout@v4
       with:
-        ref: ${{ github.head_ref }}
+        ref: ${{ inputs.head-ref }}
 
     - name: Run backend on pull request branch
       run: |
