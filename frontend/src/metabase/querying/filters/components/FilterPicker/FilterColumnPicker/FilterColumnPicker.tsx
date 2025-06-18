@@ -20,14 +20,13 @@ import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
-type Item = ColumnListItem | SegmentListItem;
+type Item =
+  | ColumnListItem
+  | (SegmentListItem & {
+      combinedDisplayName?: string;
+    });
 
-const SEARCH_PROP = [
-  "name",
-  "displayName",
-  "tableName",
-  "tableDisplayName",
-] as const;
+const SEARCH_PROP = ["name", "displayName", "combinedDisplayName"] as const;
 
 export interface FilterColumnPickerProps {
   className?: string;
@@ -152,8 +151,8 @@ function getSections(
           column,
           query,
           stageIndex,
-          tableName: columnInfo.table?.name,
-          tableDisplayName: columnInfo.table?.displayName,
+          combinedName: `${columnInfo.table?.name ?? ""} ${columnInfo.name}`,
+          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
         };
       });
       const segments = groupInfo.isSourceTable
