@@ -170,5 +170,13 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
         },
       }, // satisfies Partial<PopoverProps>,
     },
+    Tooltip: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+        },
+      }, // satisfies Partial<TooltipProps>,
+    },
   };
 }
