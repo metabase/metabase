@@ -1645,7 +1645,10 @@ describe("issue QUE-1359", () => {
       .findByText("Custom Expression")
       .parent()
       .then((el) => {
-        cy.wrap(el[0].className).should("contain", "ListSectionHeaderCursor");
+        cy.wrap(window.getComputedStyle(el[0]).outline).should(
+          "contain",
+          "solid",
+        );
       });
   });
 });
