@@ -833,6 +833,10 @@ describe("scenarios > dashboard > parameters", () => {
       H.addHeadingWhileEditing("Heading");
       H.setDashCardFilter(1, "Text or Category", null, "Category");
       H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+      H.getDashboardCard(0).within(() => {
+        // Ensure filters are not draggable
+        cy.icon("grabber").should("not.exist");
+      });
       H.saveDashboard();
 
       // Verify the filter doesn't appear in the dashboard header
