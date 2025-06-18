@@ -54,7 +54,11 @@ export function SettingsPageWrapper({
       {(title || description) && (
         <Box>
           {title && <Title order={1}>{title}</Title>}
-          {description && <Text c="text-medium">{description}</Text>}
+          {description && (
+            <Text c="text-medium" maw="40rem">
+              {description}
+            </Text>
+          )}
         </Box>
       )}
       {children}
