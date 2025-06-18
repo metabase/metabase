@@ -224,7 +224,7 @@
 (defn- normalize-value-opts
   [opts]
   (some-> opts
-          lib.schema.common/normalize-map
+          lib.schema.common/normalize-map-keywords-only
           ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
           (m/update-existing :base_type keyword)
           (m/update-existing :semantic_type keyword)))
