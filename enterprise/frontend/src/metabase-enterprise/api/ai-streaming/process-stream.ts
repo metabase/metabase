@@ -4,6 +4,7 @@ import _ from "underscore";
 import type { MetabotHistory } from "metabase-types/api";
 
 import {
+  type KnownDataPart,
   dataPartSchema,
   finishPartSchema,
   knownDataPartTypes,
@@ -94,10 +95,15 @@ function parseDataStreamPart(line: string) {
 type ParsedStreamPart = Exclude<ReturnType<typeof parseDataStreamPart>, void>;
 type ParsedStreamPartName = ParsedStreamPart["name"];
 
-function isUnknownDataPart(streamPart: ParsedStreamPart): boolean {
+function isKnownDataPart(streamPart: ParsedStreamPart): streamPart is Omit<
+  Extract<ParsedStreamPart, { name: "data" }>,
+  "value"
+> & {
+  value: KnownDataPart;
+} {
   return (
     streamPart.name === "data" &&
-    !knownDataPartTypes.includes(streamPart.value.type)
+    knownDataPartTypes.includes(streamPart.value.type)
   );
 }
 
@@ -176,7 +182,8 @@ type StreamPartValue<name extends ParsedStreamPartName> = Extract<
 
 export type AIStreamingConfig = {
   onTextPart?: (part: StreamPartValue<"text">) => void;
-  onDataPart?: (part: StreamPartValue<"data">) => void;
+  // callback is only called if this version of the client is aware of the recieved data part type
+  onDataPart?: (part: KnownDataPart) => void;
   onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
   onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;
   onStreamStateUpdate?: (
@@ -228,10 +235,10 @@ export async function processChatResponse(
         config.onTextPart?.(streamPart.value);
       }
       if (streamPart.name === "data") {
-        if (!isUnknownDataPart(streamPart)) {
+        if (isKnownDataPart(streamPart)) {
           config.onDataPart?.(streamPart.value);
         } else {
-          console.warn("Ignoring unknown data part:", streamPart);
+          console.warn("Skipping unknown data part:", streamPart);
         }
       }
       if (streamPart.name === "tool_call") {

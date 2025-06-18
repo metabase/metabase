@@ -101,7 +101,10 @@ export const metabot = createSlice({
         state.isProcessing = true;
       })
       .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.data?.history?.slice() ?? [];
+        state.history = [
+          ...state.history,
+          ...(action.payload?.data?.history?.slice() ?? []),
+        ];
         state.state = { ...(action.payload?.data?.state ?? {}) };
         state.activeToolCall = undefined;
         state.isProcessing = false;

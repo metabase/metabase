@@ -27,7 +27,7 @@ import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { metabot } from "./reducer";
 import {
-  getAgentRequestMeta,
+  getAgentRequestMetadata,
   getIsProcessing,
   getMetabotConversationId,
   getUseStreaming,
@@ -78,15 +78,17 @@ export const submitInput = createAsyncThunk(
       return console.error("Metabot is actively serving a request");
     }
 
+    // it's important that we get the current metadata containing the history before
+    // altering it by adding the current message the user is wanting to send
+    const agentMetadata = getAgentRequestMetadata(getState() as any);
     dispatch(addUserMessage(data.message));
 
     const useStreaming = getUseStreaming(getState() as any);
-    const sendRequest = useStreaming
+    const sendRequestAction = useStreaming
       ? sendStreamedAgentRequest
       : sendAgentRequest;
-    const meta = getAgentRequestMeta(getState() as any);
     const sendMessageRequestPromise = dispatch(
-      sendRequest({ ...data, ...meta }),
+      sendRequestAction({ ...data, ...agentMetadata }),
     );
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
@@ -170,18 +172,15 @@ export const sendStreamedAgentRequest = createAsyncThunk(
           signal,
         },
         {
-          // TODO: onDataPart should only log on known values, we should drop unknown
           onDataPart: (part) => {
-            // TODO: did we add a new reaction w/ Thomas' new work?
             match(part)
-              .with({ type: "state" }, (part) =>
-                Object.assign(state, part.value),
-              )
+              // ignore state updates, we'll save it to the state when once we've
+              // streamed the full response and know we have a successful request
+              .with({ type: "state" }, () => {})
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(push(part.value) as UnknownAction);
               })
-              // TODO: change to exhaustive
-              .otherwise(() => {});
+              .exhaustive();
           },
           onTextPart: (part) => {
             dispatch(addAgentMessage({ type: "reply", message: String(part) }));
