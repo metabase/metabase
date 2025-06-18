@@ -700,8 +700,9 @@ describe("scenarios > question > custom column", () => {
     const metaKey = isMac ? "Meta" : "Control";
 
     H.CustomExpressionEditor.formatButton().should("be.visible");
-
-    cy.realPress(["Shift", metaKey, "f"]);
+    H.CustomExpressionEditor.get()
+      .get(".cm-editor")
+      .realPress(["Shift", metaKey, "f"]);
     H.CustomExpressionEditor.value().should("equal", "1 + 1");
 
     // Make sure the cursor is at the end of the expression
