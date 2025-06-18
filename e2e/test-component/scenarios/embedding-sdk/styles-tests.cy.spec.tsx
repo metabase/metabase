@@ -1,20 +1,33 @@
 import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
+  InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, updateSetting } from "e2e/support/helpers";
+import {
+  chartPathWithFillColor,
+  createDashboard,
+  createQuestion,
+  getDashboardCard,
+  modal,
+  tooltip,
+  updateSetting,
+} from "e2e/support/helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mockAuthProviderAndJwtSignIn,
+  mountSdkContent,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/component-testing-sdk";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
@@ -354,6 +367,109 @@ describe("scenarios > embedding-sdk > styles", () => {
         .and("have.css", "font-family", "Lato");
 
       // TODO: good place for a visual regression test
+    });
+
+    describe("tooltips styles", () => {
+      beforeEach(() => {
+        signInAsAdminAndEnableEmbeddingSdk();
+
+        createQuestion({
+          name: "Tooltip test",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          display: "bar",
+        })
+          .then(({ body: { id: ordersQuestionId } }) =>
+            createDashboard({
+              dashcards: [
+                {
+                  id: 1,
+                  size_x: 10,
+                  size_y: 20,
+                  row: 0,
+                  col: 0,
+                  card_id: ordersQuestionId,
+                },
+              ],
+            }),
+          )
+          .then((dashboard) => {
+            cy.wrap(dashboard.body.id).as("dashboardId");
+          });
+
+        cy.signOut();
+
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+          "dashcardQuery",
+        );
+      });
+
+      it("should render Mantine tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        getSdkRoot().findByText("Tooltip test").click();
+        getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
+
+        tooltip()
+          .findByText("Back to Test Dashboard")
+          .then(($tooltip) => {
+            const tooltipElement = $tooltip[0];
+
+            const tooltipContainerStyle =
+              window.getComputedStyle(tooltipElement);
+
+            expect(tooltipContainerStyle.fontFamily).to.equal("Impact");
+          });
+      });
+
+      it("should render echarts tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        getDashboardCard(0).within(() => {
+          chartPathWithFillColor("#509EE3").eq(0).realHover();
+        });
+
+        cy.findAllByTestId("echarts-tooltip")
+          .eq(0)
+          .should("exist")
+          .then(($tooltip) => {
+            const tooltipElement = $tooltip[0];
+
+            const tooltipContainer = tooltipElement.closest(
+              ".echarts-tooltip-container",
+            );
+
+            expect(tooltipContainer).to.exist;
+
+            const tooltipContainerStyle = window.getComputedStyle(
+              tooltipContainer!,
+            );
+
+            expect(tooltipContainerStyle.fontFamily).to.equal("Impact");
+          });
+      });
     });
   });
 
