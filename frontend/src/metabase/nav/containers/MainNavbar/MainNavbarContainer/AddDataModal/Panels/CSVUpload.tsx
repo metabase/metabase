@@ -215,7 +215,7 @@ export const CSVUpload = ({
               <Text fw={700}>{primaryText}</Text>
               {!uploadState.file && (
                 <Text c="text-light">
-                  {c("The allowed MB size of a file")
+                  {c("{0} is the allowed size of a file in MB")
                     .t`.csv or .tsv files, ${MAX_UPLOAD_STRING} MB max`}
                 </Text>
               )}
