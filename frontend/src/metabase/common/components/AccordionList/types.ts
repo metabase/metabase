@@ -51,7 +51,7 @@ export type Row<TItem extends Item, TSection extends Section<TItem>> = {
     }
 );
 
-type SearchProp<TItem extends Item> = TItem extends object
+export type SearchProp<TItem extends Item> = TItem extends object
   ? keyof TItem
   : string;
 
