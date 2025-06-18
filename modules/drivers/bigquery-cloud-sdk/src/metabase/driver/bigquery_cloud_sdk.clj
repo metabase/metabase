@@ -317,7 +317,7 @@
                      {:select [:table_name :column_name :data_type :ordinal_position
                                [[:= :is_partitioning_column "YES"] :partitioned]]
                       :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
-                      :order-by [:table_name]} ; Order by table_name to group rows
+                      :order-by [:table_name :ordinal_position :column_name]}
                       (not-empty table-names)
                       (assoc :where [:in :table_name table-names])))]
     (eduction
