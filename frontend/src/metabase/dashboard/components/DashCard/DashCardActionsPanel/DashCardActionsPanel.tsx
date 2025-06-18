@@ -1,12 +1,14 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
 import {
+  isHeadingDashCard,
   isLinkDashCard,
+  isQuestionDashCard,
   isVirtualDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
@@ -18,6 +20,7 @@ import {
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
   Dashboard,
@@ -25,6 +28,8 @@ import type {
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { canEditQuestion } from "../DashCardMenu/utils";
 
 import { ActionSettingsButtonConnected } from "./ActionSettingsButton/ActionSettingsButton";
 import { ChartSettingsButton } from "./ChartSettingsButton/ChartSettingsButton";
@@ -37,6 +42,7 @@ interface Props {
   series: Series;
   dashboard: Dashboard;
   dashcard?: DashboardCard;
+  question: Question | null;
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
@@ -65,6 +71,7 @@ function DashCardActionsPanelInner({
   series,
   dashboard,
   dashcard,
+  question,
   isLoading,
   isPreviewing,
   hasError,
@@ -138,7 +145,17 @@ function DashCardActionsPanelInner({
     );
   }
 
-  if (dashcard && supportsInlineParameters(dashcard)) {
+  const canAddFilter = useMemo(() => {
+    if (!dashcard || question == null || !supportsInlineParameters(dashcard)) {
+      return false;
+    }
+
+    return isQuestionDashCard(dashcard)
+      ? canEditQuestion(question)
+      : isHeadingDashCard(dashcard);
+  }, [dashcard, question]);
+
+  if (canAddFilter) {
     buttons.push(
       <AddFilterParameterMenu key="add-filter" onAdd={onAddParameter}>
         <DashCardActionButton

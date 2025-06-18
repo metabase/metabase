@@ -1796,6 +1796,26 @@ describe("scenarios > dashboard > parameters", () => {
           .should("be.visible");
       });
     });
+
+    it("should not show add filter button for users with no data editing permissions", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+      }).then(({ body: { dashboard_id } }) => {
+        cy.signIn("nodata");
+        H.visitDashboard(dashboard_id);
+        H.editDashboard();
+
+        H.getDashboardCard(0)
+          .realHover()
+          .findByTestId("dashboardcard-actions-panel")
+          .should("be.visible");
+
+        // Ensure the "Add a filter" button is not present
+        H.getDashboardCard(0)
+          .findByLabelText("Add a filter")
+          .should("not.exist");
+      });
+    });
   });
 });
 
