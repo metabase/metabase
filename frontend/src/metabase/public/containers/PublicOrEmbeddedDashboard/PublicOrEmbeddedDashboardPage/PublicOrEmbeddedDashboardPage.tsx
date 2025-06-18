@@ -1,6 +1,6 @@
 import type { WithRouterProps } from "react-router";
 
-import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/DashboardLocationSync";
+import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -14,19 +14,20 @@ import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMo
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
 import { usePublicDashboardEndpoints } from "../WithPublicDashboardEndpoints";
 
-const PublicOrEmbeddedDashboardPageInner = ({ location }: WithRouterProps) => {
+const PublicOrEmbeddedDashboardPageInner = ({
+  location,
+  router,
+}: WithRouterProps) => {
   useDashboardLocationSync({ location });
-  return (
-    <>
-      <PublicOrEmbeddedDashboardView />
-    </>
-  );
+  useDashboardUrlQuery(router, location);
+
+  return <PublicOrEmbeddedDashboardView />;
 };
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const dispatch = useDispatch();
 
-  const { location, router } = props;
+  const { location } = props;
   const parameterQueryParams = props.location.query;
 
   const { dashboardId } = usePublicDashboardEndpoints(props);
@@ -49,8 +50,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <DashboardUrlSync router={router} location={location} />
-
       <DashboardContextProvider
         dashboardId={dashboardId}
         hideParameters={hide_parameters}
@@ -72,11 +71,3 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     </LocaleProvider>
   );
 };
-
-function DashboardUrlSync({
-  router,
-  location,
-}: Pick<WithRouterProps, "router" | "location">) {
-  useDashboardUrlQuery(router, location);
-  return null;
-}

@@ -38,39 +38,3 @@ export const useDashboardLocationSync = ({
     location,
   });
 };
-
-export function DashboardLocationSync({
-  location,
-}: Pick<WithRouterProps, "location">) {
-  const {
-    refreshPeriod,
-    onRefreshPeriodChange,
-    isFullscreen,
-    onFullscreenChange,
-    theme,
-    setTheme,
-  } = useDashboardContext();
-
-  useLocationSync<RefreshPeriod>({
-    key: "refresh",
-    value: refreshPeriod,
-    onChange: onRefreshPeriodChange,
-    location,
-  });
-
-  useLocationSync<boolean>({
-    key: "fullscreen",
-    value: isFullscreen,
-    onChange: (value) => onFullscreenChange(value ?? false),
-    location,
-  });
-
-  useLocationSync<DisplayTheme>({
-    key: "theme",
-    value: theme,
-    onChange: (value) => setTheme(value ?? "light"),
-    location,
-  });
-
-  return null;
-}

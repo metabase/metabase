@@ -26,13 +26,42 @@ import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getFavicon } from "../../selectors";
 
-import { DashboardLocationSync } from "./DashboardLocationSync";
 import { DashboardTitle } from "./DashboardTitle";
+import { useDashboardLocationSync } from "./use-dashboard-location-sync";
 import { useSlowCardNotification } from "./use-slow-card-notification";
 
-interface DashboardAppProps extends PropsWithChildren {
+interface DashboardAppProps
+  extends PropsWithChildren<WithRouterProps<{ slug: string }>> {
   dashboardId?: DashboardId;
   route: Route;
+}
+
+type DashboardAppInnerProps = Pick<
+  DashboardAppProps,
+  "location" | "route" | "children"
+>;
+
+function DashboardAppInner({
+  location,
+  route,
+  children,
+}: DashboardAppInnerProps) {
+  useDashboardLocationSync({ location });
+  const pageFavicon = useSelector(getFavicon);
+  useFavicon({ favicon: pageFavicon });
+  useSlowCardNotification();
+
+  return (
+    <>
+      <DashboardTitle />
+      <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
+        <DashboardLeaveConfirmationModal route={route} />
+        <Dashboard />
+        {/* For rendering modal urls */}
+        {children}
+      </div>
+    </>
+  );
 }
 
 export const DashboardApp = ({
@@ -42,7 +71,7 @@ export const DashboardApp = ({
   route,
   dashboardId: _dashboardId,
   children,
-}: DashboardAppProps & WithRouterProps<{ slug: string }>) => {
+}: DashboardAppProps) => {
   const dispatch = useDispatch();
 
   const [error, setError] = useState<string>();
@@ -103,28 +132,10 @@ export const DashboardApp = ({
           dispatch(navigateToNewCardFromDashboard(opts))
         }
       >
-        <DashboardTitle />
-        <DashboardFavicon />
-        <DashboardNotifications />
-        <DashboardLocationSync location={location} />
-        <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
-          <DashboardLeaveConfirmationModal route={route} />
-          <Dashboard />
-          {/* For rendering modal urls */}
+        <DashboardAppInner location={location} route={route}>
           {children}
-        </div>
+        </DashboardAppInner>
       </DashboardContextProvider>
     </ErrorBoundary>
   );
 };
-
-function DashboardFavicon() {
-  const pageFavicon = useSelector(getFavicon);
-  useFavicon({ favicon: pageFavicon });
-  return null;
-}
-
-function DashboardNotifications() {
-  useSlowCardNotification();
-  return null;
-}
