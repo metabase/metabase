@@ -61,13 +61,13 @@
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
-(def ^{:arglists '([])} trash-collection
-  "Memoized copy of the Trash collection from the DB."
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (trash-collection*)
-       (when-not <>
-         (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
+(let [get-trash (mdb/memoize-for-application-db
+                 (fn []
+                   (u/prog1 (trash-collection*)
+                     (when-not <>
+                       (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
+  (defn trash-collection []
+    (assoc (get-trash) :name (deferred-tru "Trash"))))
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -110,7 +110,7 @@
   query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (deferred-tru "Trash"))))
+    (is-trash? collection) (assoc :name (tru "Trash"))))
 
 (t2/define-after-select :model/Collection [collection]
   (maybe-localize-trash-name collection))
