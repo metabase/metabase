@@ -1467,7 +1467,7 @@ WHERE NOT (
   });
 });
 
-describe("issue 55673", () => {
+describe("issue 55673", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
