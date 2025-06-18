@@ -190,12 +190,13 @@ export const ModelCacheRefreshJobs = connect(
   mapDispatchToProps,
 )(_ModelCacheRefreshJobs);
 
-export function ModelCachePage() {
+export function ModelCachePage({ children }: { children?: React.ReactNode }) {
   return (
     <SettingsPageWrapper title={t`Model cache log`}>
       <SettingsSection>
         <ModelCacheRefreshJobs />
       </SettingsSection>
+      {children /* refresh modal */}
     </SettingsPageWrapper>
   );
 }
