@@ -438,7 +438,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     H.main().within(() => {
       cy.findByText(
         "A closer look at number of Orders where day of week of Created At is Wednesday",
-      ).should("exist");
+      ).should("be.visible");
     });
 
     getDashcardByTitle("A look at Created At fields").should("exist");
