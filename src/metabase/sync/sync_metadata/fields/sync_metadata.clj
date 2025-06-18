@@ -43,7 +43,8 @@
          old-database-default           :database-default
          old-db-partitioned             :database-partitioned
          old-db-required                :database-required
-         old-visibility-type            :visibility-type} metabase-field
+         old-visibility-type            :visibility-type
+         old-pk?                        :pk?} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
@@ -54,7 +55,8 @@
          new-database-is-nullable       :database-is-nullable
          new-database-default           :database-default
          new-db-partitioned             :database-partitioned
-         new-db-required                :database-required} field-metadata
+         new-db-required                :database-required
+         new-pk?                        :pk?} field-metadata
         new-visibility-type             (compute-new-visibility-type database field-metadata)
         new-database-is-auto-increment  (boolean new-database-is-auto-increment)
         new-db-required                 (boolean new-db-required)
@@ -85,6 +87,7 @@
         ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
 
+        new-db-pk?               (not= old-pk? new-pk?)
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
         new-db-generated?        (not= old-database-is-generated new-database-is-generated)
         new-db-nullable?         (not= old-database-is-nullable new-database-is-nullable)
@@ -144,6 +147,12 @@
                       old-database-name
                       new-database-name)
            {:name new-database-name})
+         (when new-db-pk?
+           (log/infof "Database pk of %s has changed from '%s' to '%s'"
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-pk?
+                      new-pk?)
+           {:database_is_pk new-pk?})
          (when new-db-auto-incremented?
            (log/infof "Database auto incremented of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)

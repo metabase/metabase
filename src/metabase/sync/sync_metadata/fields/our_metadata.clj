@@ -30,6 +30,7 @@
           :pk?                       (isa? (:semantic_type field) :type/PK)
           :field-comment             (:description field)
           :json-unfolding            (:json_unfolding field)
+          :database-is-pk            (:database_is_pk field)
           :database-is-auto-increment (:database_is_auto_increment field)
           :database-is-nullable      (:database_is_nullable field)
           :database-is-generated     (:database_is_generated field)

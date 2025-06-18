@@ -142,6 +142,7 @@
     :fingerprint         false
     :fingerprint_version false
     :fk_target_field_id  false
+    :database_is_pk      false
     :database_is_auto_increment false
     :database_is_generated false
     :database_is_nullable true
@@ -169,6 +170,7 @@
     :effective_type    :type/Integer
     :semantic_type     :type/PK
     :database_position 0
+    :database_is_pk    true
     :database_is_auto_increment true
     :database_is_nullable false
     :position          0}))
