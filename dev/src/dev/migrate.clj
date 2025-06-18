@@ -22,6 +22,11 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private databasechangelog-name
+  (if (#{:mysql} (mdb/db-type))
+    :DATABASECHANGELOG
+    :databasechangelog))
+
 (defn- latest-migration
   []
   ((juxt :id :comments)
@@ -50,9 +55,9 @@
 (defn- migration-since
   [id]
   (->> (t2/query-one {:select [[:%count.* :count]]
-                      :from   [:databasechangelog]
+                      :from   [databasechangelog-name]
                       :where  [:> :orderexecuted {:select   [:orderexecuted]
-                                                  :from     [:databasechangelog]
+                                                  :from     [databasechangelog-name]
                                                   :where    [:like :id (format "%s%%" id)]
                                                   :order-by [[:orderexecuted :desc]]
                                                   :limit    1}]
@@ -72,13 +77,13 @@
   (binding [t2.honeysql/*options* (assoc t2.honeysql/*options*
                                          :quoted false)]
     (if (= 1 (:count (t2/query-one {:select [[[:count [:distinct :deployment_id]] :count]]
-                                    :from   [:databasechangelog]
+                                    :from   [databasechangelog-name]
                                     :limit  1})))
       0 ;; don't rollback if there was just one deployment of everything
       (:count (t2/query-one {:select [[:%count.* :count]]
-                             :from   [:databasechangelog]
+                             :from   [databasechangelog-name]
                              :where  [:= :deployment_id {:select   [:deployment_id]
-                                                         :from     [:databasechangelog]
+                                                         :from     [databasechangelog-name]
                                                          :order-by [[:orderexecuted :desc]]
                                                          :limit    1}]})))))
 
