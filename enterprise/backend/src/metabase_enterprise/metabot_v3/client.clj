@@ -67,7 +67,7 @@
 (defn- agent-v2-endpoint-url []
   (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent"))
 
-defn- agent-v2-streaming-endpoint-url []
+(defn- agent-v2-streaming-endpoint-url []
   (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent/stream"))
 
 (defn- metric-selection-endpoint-url []
@@ -170,7 +170,7 @@ defn- agent-v2-streaming-endpoint-url []
           _ (log/info response)
           response-lines (-> response :body io/reader)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
-      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers}))) keys response #{:body :status :headers})))
+      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
                                (loop []
