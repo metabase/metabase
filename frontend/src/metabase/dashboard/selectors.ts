@@ -500,7 +500,11 @@ export const getQuestionByCard = createCachedSelector(
     return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
-  return props.card.id;
+  // Sometime card doesn't have an id.
+  // In that case, we use the stringified version of the card as a cache key.
+  // That's nless than ideal, but it avoids flooding the console with warnings
+  // and it's still better than using `undefined` as a cache key.
+  return props.card.id ?? JSON.stringify(props.card).slice(0, 50);
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(

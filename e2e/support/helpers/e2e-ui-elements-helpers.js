@@ -166,7 +166,7 @@ export function notificationList() {
  * @todo Extract into a separate helper file.
  */
 export function filterWidget() {
-  return cy.get("fieldset");
+  return cy.findAllByTestId("parameter-widget");
 }
 
 export function clearFilterWidget(index = 0) {
