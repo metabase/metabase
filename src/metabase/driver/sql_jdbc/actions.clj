@@ -950,7 +950,7 @@
                                             ;; Currently we do not have any UX to configure which columns to use for
                                             ;; the row key. To compensate for this, we fall back to using the pk for now.
                                             ;; Ideally, this would be explicitly configured in the future.
-                                            ;; ;;
+                                            ;;
                                             ;; Note, this falls down in the Assign Engineer case where we don't have
                                             ;; a semantic PK. This is because our database PK is customer_id, which is
                                             ;; also an FK to the customer table. The semantic layer has to choose,
@@ -961,9 +961,7 @@
                                             ;; those are).
                                             (if (empty? row-key)
                                               (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
-                                                (-> input
-                                                    (assoc :row-key (select-keys row pk-cols))
-                                                    (update :row (fn [row] (apply dissoc row pk-cols)))))
+                                                (assoc input :row-key (select-keys row pk-cols)))
                                               input)))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) creating or updating rows.")
