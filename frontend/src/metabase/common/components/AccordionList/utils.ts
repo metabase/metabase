@@ -216,3 +216,17 @@ function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
     return lastResult;
   };
 }
+
+export function search<T>(
+  searchIndex: Fuse<T>,
+  searchText: string,
+): Fuse.FuseResult<T>[] | null {
+  if (searchText === "") {
+    return null;
+  }
+  return searchIndex
+    .search(searchText, {
+      limit: 50,
+    })
+    .filter((result) => result.score && result.score < 0.6);
+}

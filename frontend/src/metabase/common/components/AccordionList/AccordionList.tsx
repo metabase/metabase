@@ -29,6 +29,7 @@ import {
   getNextCursor,
   getPrevCursor,
   getSearchIndex,
+  search,
 } from "./utils";
 
 type Props<
@@ -65,6 +66,7 @@ type State<TItem extends Item> = {
   cursor: Cursor | null;
   scrollToAlignment: Alignment;
   searchIndex: Fuse<TItem>;
+  searchResults: Fuse.FuseResult<TItem>[] | null;
 };
 
 export class AccordionList<
@@ -112,6 +114,7 @@ export class AccordionList<
         sections: props.sections,
         searchProp: props.searchProp,
       }),
+      searchResults: null,
     };
 
     this._cache = new CellMeasurerCache({
@@ -169,12 +172,15 @@ export class AccordionList<
     props: Props<TItem>,
     state: State<TItem>,
   ) {
+    const searchIndex = getSearchIndex({
+      sections: props.sections,
+      searchProp: props.searchProp,
+    });
+
     return {
       ...state,
-      searchIndex: getSearchIndex({
-        sections: props.sections,
-        searchProp: props.searchProp,
-      }),
+      searchIndex,
+      searchResults: search(searchIndex, state.searchText),
     };
   }
 
@@ -272,7 +278,11 @@ export class AccordionList<
   };
 
   handleChangeSearchText = (searchText: string) => {
-    this.setState({ searchText, cursor: null });
+    this.setState({
+      searchText,
+      cursor: null,
+      searchResults: search(this.state.searchIndex, searchText),
+    });
   };
 
   searchPredicate = (item: TItem, searchPropMember: string) => {
@@ -391,18 +401,18 @@ export class AccordionList<
       searchProp = ["name", "displayName"] as SearchProp<TItem>[],
       fuzzySearch,
     } = this.props;
-    const { searchText, searchIndex } = this.state;
+    const { searchText } = this.state;
 
     if (!searchText || searchText.length === 0) {
       return true;
     }
 
     if (fuzzySearch) {
-      const results = searchIndex.search(searchText, {
-        limit: 50,
-      });
-      return results.some(
-        (result) => result.item === item && result.score && result.score < 0.6,
+      return (
+        this.state.searchResults?.some(
+          (result) =>
+            result.item === item && result.score && result.score < 0.6,
+        ) ?? false
       );
     }
 
