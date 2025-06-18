@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import { useRootElement } from "metabase/hooks/use-root-element";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
@@ -17,6 +18,8 @@ import {
 } from "./state";
 
 export const useMetabotAgent = () => {
+  const rootElement = useRootElement();
+
   const dispatch = useDispatch();
   const { getChatContext } = useMetabotContext();
 
@@ -68,10 +71,10 @@ export const useMetabotAgent = () => {
       // HACK: if the user opens the command palette via the search button bar focus will be moved
       // back to the search button bar if the metabot option is chosen, so a small delay is used
       setTimeout(() => {
-        document.getElementById("metabot-chat-input")?.focus();
+        rootElement.querySelector<HTMLElement>("#metabot-chat-input")?.focus();
       }, 100);
     },
-    [submitInput, resetConversation, setVisible],
+    [resetConversation, setVisible, submitInput, rootElement],
   );
 
   return {
