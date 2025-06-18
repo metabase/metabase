@@ -274,7 +274,7 @@ Real companies, real data, real stories.
 
 ### [Metabase Twitter](https://twitter.com/metabase)
 
-We tweet stuff.
+We tweet stuff!
 
 ### [Source code repository on GitHub](https://github.com/metabase/metabase)
 
