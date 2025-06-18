@@ -5345,28 +5345,6 @@
                 (:param_fields (mt/with-test-user :crowberto
                                  (#'api.dashboard/get-dashboard (:id dashboard))))))))))
 
-(deftest create-or-fix-action-id-test
-  (let [f       #'api.dashboard/create-or-fix-action-id
-        unsaved {:id -1}
-        saved   {:id 1337}]
-    (mt/with-dynamic-fn-redefs [u/generate-nano-id (fn [] "rAnDoM")]
-      (testing "leaves valid ids alone"
-        (is (= "dashcard:7331:unique"
-               (f saved "dashcard:7331:unique"))))
-      (testing "replaces temporary FE ids"
-        (is (= "dashcard:1337:rAnDoM"
-               (f saved (str (random-uuid))))))
-      (testing "creates useful and unique ids"
-        (is (= "dashcard:1337:rAnDoM"
-               (f saved nil))))
-      (testing "does its best without a parent"
-        (is (= "dashcard:unknown:rAnDoM"
-               (f unsaved nil)
-               (f nil nil))))
-      (testing "accepts its new parent"
-        (is (= "dashcard:1337:SAVE_ME"
-               (f saved "dashcard:unknown:SAVE_ME")))))))
-
 (deftest post-update-test
   (mt/with-temp [:model/Collection    {collection-id-1 :id} {}
                  :model/Collection    {collection-id-2 :id} {}

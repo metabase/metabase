@@ -879,7 +879,8 @@
            metabase.queries.init
            metabase.queries.models.query ; TODO FIXME
            metabase.queries.schema}      ; TODO FIXME
-   :uses #{analytics
+   :uses #{actions
+           analytics
            analyze
            api
            app-db
