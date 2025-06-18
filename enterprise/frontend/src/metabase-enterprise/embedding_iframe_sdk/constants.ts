@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type {
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
@@ -25,6 +23,7 @@ const allowedSettingsKeys = {
     "preferredAuthMethod",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
+    "dashboardId",
     "withTitle",
     "withDownloads",
     "initialParameters",
@@ -32,6 +31,7 @@ const allowedSettingsKeys = {
     "isDrillThroughEnabled",
   ] satisfies (keyof DashboardEmbedOptions)[],
   chart: [
+    "questionId",
     "withTitle",
     "withDownloads",
     "initialSqlParameters",
@@ -45,7 +45,10 @@ const allowedSettingsKeys = {
   ] satisfies (keyof ExplorationEmbedOptions)[],
 };
 
-export const ALLOWED_EMBED_SETTING_KEYS = _.uniq([
+// This file is used by embed.js, so we shouldn't import external dependencies.
+const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
+
+export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...allowedSettingsKeys.base,
   ...allowedSettingsKeys.dashboard,
   ...allowedSettingsKeys.chart,
