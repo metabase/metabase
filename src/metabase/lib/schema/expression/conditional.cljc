@@ -113,9 +113,24 @@
           types (keep expression/type-of exprs)]
       (case-coalesce-return-type types))))
 
-;;; TODO -- add constraint that these types have to be compatible
-(mbql-clause/define-catn-mbql-clause :coalesce
-  [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
+(mbql-clause/define-mbql-clause
+  :coalesce
+  [:schema
+   [:and
+    (mbql-clause/catn-clause-schema :coalesce
+                                    [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
+    [:fn
+       ;; Further constrain this so all of the exprs are of compatible type
+       ;; This check isn't perfect: it still allows types that have a common ancestor but aren't compatible.
+       ;; We currently don't have a good notion of type compatibility, so this is just a best-effort heuristic.
+     {:error/message "All clauses should have the same type"}
+     (fn
+       [[_coalesce _opts & exprs]]
+       (let [types (map expression/type-of exprs)
+             return-type (case-coalesce-return-type types)]
+         (or
+          (not= return-type :type/*)
+          (some #{:expression/type.unknown} types))))]]])
 
 (defmethod expression/type-of-method :coalesce
   [[_coalesce _opts expr null-expr]]
