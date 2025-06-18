@@ -870,6 +870,14 @@
                        :row      after})
                     results)}))
 
+(defn- ref->str [table-ref]
+  (let [s (namespace table-ref)
+        t (name table-ref)
+        e #(str \" (str/escape % {\" "\""}) \")]
+    (if s
+      (str (e s) \. (e t))
+      (e t))))
+
 (defn- create-or-update!*
   [action database {:keys [table-id row row-key]}]
   (with-jdbc-transaction [conn (u/the-id database)]
@@ -894,10 +902,10 @@
         (u/prog1 (assoc (row-create!* action database (row-create-input-fn database table-id row)) :op :created)
           (let [after-count (count-existing)]
             (when (> after-count 1)
-              (throw (ex-info (tru (str "Unintentionally created {0} duplicate rows for key: table \"{1}\" with {2}. "
+              (throw (ex-info (tru (str "Unintentionally created {0} duplicate rows for key: table {1} with {2}. "
                                         "This suggests a concurrent modification. We recommend adding a uniqueness constraint to the table.")
                                    after-count
-                                   (u/qualified-name table-ref)
+                                   (ref->str table-ref)
                                    @formatted-row-key)
                               {:row-key    row-key
                                :rows-count after-count
@@ -913,11 +921,11 @@
                :op :updated)
 
         (> before-count 1)
-        (throw (ex-info (tru (str "Found {0} duplicate rows in table \"{1}\" with {2}. Unsure which row to update. "
+        (throw (ex-info (tru (str "Found {0} duplicate rows in table {1} with {2}. Unsure which row to update. "
                                   "Only use this action with key combinations which are meant to be unique. "
                                   "We recommend adding a uniqueness constraint to the table.")
                              before-count
-                             (u/qualified-name table-ref)
+                             (ref->str table-ref)
                              @formatted-row-key)
                         {:row-key          row-key
                          :duplicates-count before-count
