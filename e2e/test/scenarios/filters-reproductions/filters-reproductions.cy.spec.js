@@ -1,4 +1,6 @@
 const { H } = cy;
+import _ from "underscore";
+
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -1637,16 +1639,7 @@ describe("issue QUE-1359", () => {
     H.openReviewsTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
 
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
-    cy.realPress("ArrowDown");
+    _.times(10, () => cy.realPress("ArrowDown"));
 
     H.popover()
       .findByText("Custom Expression")
