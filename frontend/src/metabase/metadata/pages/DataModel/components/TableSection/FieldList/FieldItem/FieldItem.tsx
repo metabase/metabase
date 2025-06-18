@@ -69,8 +69,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
   };
 
   const handleInputClick = (event: MouseEvent) => {
-    event.nativeEvent.stopPropagation();
-
     // EditableText component breaks a11y with the programmatic
     // event.currentTarget.click() call. The click event bubbles
     // to this Link component. This is problematic e.g. when tabbing
@@ -113,6 +111,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
       w="100%"
       wrap="nowrap"
       onClick={handleClick}
+      draggable={false}
     >
       <Group flex="0 0 auto" gap="sm" maw="100%" wrap="nowrap">
         <Icon className={S.icon} flex="0 0 auto" name={icon} />
@@ -133,10 +132,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
           tabIndex={undefined} // override the default 0 which breaks a11y
           onChange={handleNameChange}
           onClick={handleInputClick}
-          onDragStart={(event) => event.nativeEvent.stopPropagation()}
-          onKeyDown={(event) => event.nativeEvent.stopPropagation()}
-          onMouseDown={(event) => event.nativeEvent.stopPropagation()}
-          onTouchStart={(event) => event.nativeEvent.stopPropagation()}
         />
       </Group>
 
@@ -161,10 +156,6 @@ export const FieldItem = ({ active, field, href }: Props) => {
         w="100%"
         onBlurChange={handleDescriptionChange}
         onClick={handleInputClick}
-        onDragStart={(event) => event.nativeEvent.stopPropagation()}
-        onKeyDown={(event) => event.nativeEvent.stopPropagation()}
-        onMouseDown={(event) => event.nativeEvent.stopPropagation()}
-        onTouchStart={(event) => event.nativeEvent.stopPropagation()}
       />
     </Flex>
   );
