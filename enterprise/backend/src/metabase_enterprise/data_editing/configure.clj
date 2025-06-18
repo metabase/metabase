@@ -19,6 +19,7 @@
     (let [[k o s] entry-schema]
       [k (merge o new-options) s])))
 
+;; This schema is Order important, as it'll be the order UI elments will be shown.
 (mr/def ::param-configuration
   ;; TODO Yeah, gross. This is currently just mirroring the config in the FE.
   ;; They at least have defined it using a nicer dependently typed way! See ConstantRowActionFieldSettings.
@@ -26,8 +27,8 @@
   ;; make the shape more idiomatically Clojure, and maybe we should just wait until we've finalized the shape.
   [:map {:closed true}
    [:id :string]
+   [:configure-details {:optional true} [:sequential [:tuple :keyword :map]]]
    ;; omiited if we have visibility != null
-   [:configure-details {:optional true} [:map-of :keyword :map]]
    [:target {:optional true} :string]
    (merge-option [:source-type [:enum "ask-user" "row-data" "constant"]]
                  {:optional true
@@ -40,28 +41,37 @@
                  {:optional true
                   ::display-name "Pick column"
                   ::default      nil
-                  ::input-type   :column-picker
-                  ::visible-if   [[:source-type :row-value]]})
-   (merge-option [:value [:or :string :int :boolean]]
-                 {:optional true
+                  ::input-type   :column-picker})
+   (merge-option [:value [:or :string :int :boolean]] ;; only when source-value is constant
+                 {:optional     true
                   ::display-name "Value"
                   ::input-type   :field-filter
-                  ::default      nil
-                  ::visible-if   [[:source-type :constant]]})
-   ;; would be much nicer if we have a "visible" option rather than this being optional, but just tracking FE
-   (merge-option [:visibility [:enum  "visible" "readonly" "hidden"]]
+                  ::default      nil})
+   (merge-option [:editable :boolean] ;; only when visible is true
                  {:optional      true
-                  ::display-name nil
-                  ::default      "visible"
+                  ::descripion   "Can you override"
+                  ::display-name "Editable"
                   ::input-type   :select
-                  ::visible-if   [[:source-type :row-value]
-                                  [:source-type :constant]]})])
+                  ::default      nil})
+   (merge-option [:required :boolean] ;; only show when the underline fields is nullable
+                 {:optional true
+                  ::description  "Whether this field is required" ;; hide if the underlying field is required
+                  ::display-name "Required"
+                  ::input-type   :select
+                  ::visible-if   [::field-is-optional]
+                  ::default      nil})
+   (merge-option [:visible :boolean] ;; can't be false if the field is required
+                 {:optional      true
+                  ::description  "Whether to show this field value in the form"
+                  ::display-name "Visible"
+                  ::input-type   :select
+                  ::default      true})])
 
 (def ^:private default-configuration-detais
   (for [[k p _s] (mc/children (mr/resolve-schema ::param-configuration))
         :let    [namespaced-opts (m/filter-keys namespace p)]
         :when   (seq namespaced-opts)]
-    {k (update-keys namespaced-opts (comp keyword name))}))
+    [k (update-keys namespaced-opts (comp keyword name))]))
 
 (mr/def ::action-configuration
   [:map {:closed true}
