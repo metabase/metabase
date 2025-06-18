@@ -66,7 +66,7 @@ jobs:
         docker run -d \
         -v $PWD/my-metabase:/metabase.db \
         -p 3000:3000 \
-        -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.MB_PRO_CLOUD_TOKEN }} \
+        -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }} \
         -e CYPRESS_NO_FEATURES_TOKEN=${{ secrets.MB_STARTER_CLOUD_TOKEN }} \
         --name metabase-${{ matrix.version.source }} \
         ${{ env.DOCKER_SOURCE_IMAGE }}
@@ -97,7 +97,7 @@ jobs:
         docker run -d \
           -v $PWD/my-metabase:/metabase.db \
           -p 3001:3000 \
-          -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.MB_PRO_CLOUD_TOKEN }} \
+          -e CYPRESS_ALL_FEATURES_TOKEN=${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }} \
           -e CYPRESS_NO_FEATURES_TOKEN=${{ secrets.MB_STARTER_CLOUD_TOKEN }} \
           --name metabase-${{ matrix.version.target }} \
           ${{ env.DOCKER_TARGET_IMAGE }}
