@@ -4,7 +4,6 @@
    [clojure.core.cache :as cache]
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
-   [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.actions.core :as actions]
