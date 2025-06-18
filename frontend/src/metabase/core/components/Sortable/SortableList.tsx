@@ -29,6 +29,7 @@ export type RenderItemProps<T> = {
   item: T;
   id: ItemId;
   isDragOverlay?: boolean;
+  index: number;
 };
 type SortableListProps<T> = {
   items: T[];
@@ -37,6 +38,7 @@ type SortableListProps<T> = {
     item,
     id,
     isDragOverlay,
+    index,
   }: RenderItemProps<T>) => JSX.Element | null;
   onSortStart?: (event: DragStartEvent) => void;
   onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
@@ -85,7 +87,7 @@ export const SortableList = <T,>({
             return (
               <React.Fragment key={id}>
                 {divider ? divider.renderFn() : null}
-                {renderItem({ item, id })}
+                {renderItem({ item, id, index })}
               </React.Fragment>
             );
           }
@@ -147,6 +149,7 @@ export const SortableList = <T,>({
                   item: activeItem,
                   id: getId(activeItem),
                   isDragOverlay: true,
+                  index: items.indexOf(activeItem),
                 })
               : null}
           </DragOverlay>,

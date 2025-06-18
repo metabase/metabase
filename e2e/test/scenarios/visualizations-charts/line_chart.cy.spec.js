@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { moveDnDKitElement } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -553,7 +554,14 @@ describe("scenarios > visualizations > line chart", () => {
 
       cy.log("Drag and drop the first y-axis field to the last position");
       cy.findAllByTestId("chart-setting-select").then((initial) => {
-        H.dragField(0, 1);
+        cy.findByTestId("chart-settings-widget-graph.metrics").within(() => {
+          moveDnDKitElement(
+            cy.findAllByTestId("chartsettings-field-picker").first(),
+            {
+              vertical: 50,
+            },
+          );
+        });
 
         cy.findAllByTestId("chart-setting-select").should((content) => {
           expect(content[0].value).to.eq(initial[0].value); // Created At: Month
