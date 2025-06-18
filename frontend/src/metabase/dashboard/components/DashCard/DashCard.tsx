@@ -8,7 +8,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { addParameter } from "metabase/dashboard/actions";
+import { addParameter, duplicateCard } from "metabase/dashboard/actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
@@ -19,8 +19,10 @@ import {
 import { isEmbeddingSdk } from "metabase/env";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -38,7 +40,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardCard,
-  ParameterMappingOptions,
   VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -83,9 +84,9 @@ export interface DashCardProps {
   onRemove: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
   onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,
@@ -97,7 +98,7 @@ export interface DashCardProps {
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 
   /** Auto-scroll to this card on mount */
   autoScroll: boolean;
@@ -322,11 +323,15 @@ function DashCardInner({
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
   const handleAddParameter = useCallback(
-    (option: ParameterMappingOptions) => {
-      dispatch(addParameter({ option, dashcardId: dashcard.id }));
+    (options: NewParameterOpts) => {
+      dispatch(addParameter({ options, dashcardId: dashcard.id }));
     },
     [dashcard.id, dispatch],
   );
+
+  const handleDuplicateDashcard = useCallback(() => {
+    dispatch(duplicateCard({ id: dashcard.id }));
+  }, [dashcard.id, dispatch]);
 
   const onEditVisualizationClick = useCallback(() => {
     let initialState: VisualizerVizDefinitionWithColumns;
@@ -356,7 +361,8 @@ function DashCardInner({
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
-          CS.rounded,
+          CS.roundedSm,
+          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
@@ -376,9 +382,6 @@ function DashCardInner({
           return {
             "--slow-card-border-color": theme.fn.themeColor("accent4"),
             ...(border && { border }),
-            ...(!border && {
-              boxShadow: "0 1px 3px var(--mb-color-shadow)",
-            }),
           };
         }}
         ref={cardRootRef}
@@ -394,6 +397,7 @@ function DashCardInner({
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
+            onDuplicate={handleDuplicateDashcard}
             onRemove={onRemove}
             onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}

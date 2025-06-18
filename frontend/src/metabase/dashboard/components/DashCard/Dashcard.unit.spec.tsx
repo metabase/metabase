@@ -103,7 +103,7 @@ function setup({
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
-      downloadsEnabled
+      downloadsEnabled={{ results: true }}
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
       onEditVisualization={jest.fn()}

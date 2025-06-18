@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useRef } from "react";
 
 import TransitionS from "metabase/css/core/transitions.module.css";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
 import {
   getDashboardComplete,
@@ -101,7 +101,7 @@ export function DashboardParameterPanel({
       >
         <FixedWidthContainer
           className={DashboardS.ParametersFixedWidthContainer}
-          id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+          id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >

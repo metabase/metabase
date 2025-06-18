@@ -1,10 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
@@ -16,6 +17,7 @@ import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source"
 import {
   isDateParameter,
   isStringParameter,
+  isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
@@ -47,6 +49,8 @@ export type ParameterValueWidgetProps = {
   enableRequiredBehavior?: boolean;
   mimicMantine?: boolean;
   isSortable?: boolean;
+  variant?: "default" | "subtle";
+  prefix?: ReactNode;
 } & Partial<PopoverProps>;
 
 export const ParameterValueWidget = ({
@@ -66,8 +70,12 @@ export const ParameterValueWidget = ({
   setParameterValueToDefault,
   setValue,
   value,
+  variant = "default",
+  prefix,
   ...popoverProps
 }: ParameterValueWidgetProps) => {
+  const tc = useTranslateContent();
+
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
@@ -75,7 +83,8 @@ export const ParameterValueWidget = ({
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
-  const showTypeIcon = !isEditing && !hasValue && !isFocused;
+  const showTypeIcon =
+    !isEditing && !hasValue && !isFocused && !(variant === "subtle");
 
   const [isOpen, { close, toggle }] = useDisclosure();
 
@@ -196,6 +205,7 @@ export const ParameterValueWidget = ({
       >
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
+          variant={variant}
           ariaLabel={parameter.name}
           hasValue={hasValue}
         >
@@ -206,6 +216,7 @@ export const ParameterValueWidget = ({
               size={16}
             />
           )}
+          {prefix}
           <ParameterDropdownWidget
             parameter={parameter}
             parameters={parameters}
@@ -229,11 +240,13 @@ export const ParameterValueWidget = ({
     );
   }
 
+  const translatedPlaceholder = tc(placeholder);
+
   const placeholderText = isEditing
     ? isDateParameter(parameter)
       ? t`Select a default value…`
       : t`Enter a default value…`
-    : placeholder || t`Select…`;
+    : translatedPlaceholder || t`Select…`;
 
   return (
     <Popover
@@ -260,6 +273,7 @@ export const ParameterValueWidget = ({
               className={className}
               ariaLabel={placeholder}
               mimicMantine={mimicMantine}
+              variant={variant}
             >
               {showTypeIcon && (
                 <Icon
@@ -268,8 +282,11 @@ export const ParameterValueWidget = ({
                   size={16}
                 />
               )}
+              {prefix && <div className={S.Prefix}>{prefix}</div>}
               <div
-                className={cx(CS.mr1)}
+                className={cx(CS.mr1, {
+                  [S[variant]]: variant,
+                })}
                 style={
                   isStringParameter(parameter) ? { maxWidth: "190px" } : {}
                 }
@@ -320,7 +337,7 @@ export const ParameterValueWidget = ({
 function hasNoPopover(parameter: UiParameter) {
   // This is needed because isTextWidget check isn't complete,
   // and returns true for dates too.
-  if (isDateParameter(parameter)) {
+  if (isDateParameter(parameter) || isTemporalUnitParameter(parameter)) {
     return false;
   }
   return isTextWidget(parameter);

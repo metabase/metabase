@@ -16,6 +16,8 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
@@ -105,7 +107,7 @@ interface DashCardVisualizationProps {
   onChangeLocation: (location: LocationDescriptor) => void;
   onTogglePreviewing: () => void;
 
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 
   onEditVisualization?: () => void;
 }
@@ -116,7 +118,7 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   dashboard,
-  series: rawSeries,
+  series: untranslatedRawSeries,
   getClickActionMode,
   getHref,
   gridSize,
@@ -155,6 +157,10 @@ export function DashCardVisualization({
       ? new Question(dashcard.card, metadata)
       : null;
   }, [dashcard.card, metadata]);
+
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
+    untranslatedRawSeries,
+  );
 
   const series = useMemo(() => {
     if (
@@ -319,7 +325,8 @@ export function DashCardVisualization({
     [dashcard],
   );
   const uuid = useMemo(
-    () => (isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined),
+    () =>
+      isUuid(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
     [dashcard],
   );
 
@@ -383,14 +390,6 @@ export function DashCardVisualization({
       return null;
     }
 
-    const token = isJWT(dashcard.dashboard_id)
-      ? String(dashcard.dashboard_id)
-      : undefined;
-
-    const uuid = isUuid(dashcard.dashboard_id)
-      ? dashcard.dashboard_id
-      : undefined;
-
     // Only show the download button if the dashboard is public or embedded.
     if (isPublicOrEmbedded && downloadsEnabled) {
       return (
@@ -430,10 +429,11 @@ export function DashCardVisualization({
     isXray,
     isPublicOrEmbedded,
     isEditing,
-    dashcard.id,
-    dashcard.dashboard_id,
-    dashboard.id,
     downloadsEnabled,
+    dashcard.id,
+    dashboard.id,
+    token,
+    uuid,
     onEditVisualization,
     titleMenuItems,
   ]);
