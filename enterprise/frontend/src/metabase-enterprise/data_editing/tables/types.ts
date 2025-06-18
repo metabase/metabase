@@ -15,7 +15,8 @@ export type CellUniqKey = string;
 
 export type TableEditingScope =
   | { "table-id": ConcreteTableId }
-  | { "dashcard-id": number };
+  | { "dashcard-id": number }
+  | { "card-id": number };
 
 type ExecuteOutput<Op extends "created" | "updated" | "deleted"> = {
   op: Op;
@@ -79,7 +80,7 @@ export type TableUndoRedoResponse = {
 
 export type TableExecuteActionRequest = {
   actionId: WritebackActionId;
-  scope?: TableEditingScope;
+  scope: TableEditingScope;
   input: ParametersForActionExecution;
   params: ParametersForActionExecution;
 };

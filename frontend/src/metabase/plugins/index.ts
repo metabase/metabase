@@ -802,6 +802,7 @@ export const PLUGIN_TABLE_ACTIONS = {
       handleExecuteActionModalClose: () => void;
     },
   TableActionExecuteModal: PluginPlaceholder as ComponentType<{
+    scope: { "card-id": number };
     selectedTableActionState: SelectedTableActionState | null;
     onClose: () => void;
   }>,

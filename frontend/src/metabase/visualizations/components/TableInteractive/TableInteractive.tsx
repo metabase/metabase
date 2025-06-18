@@ -760,6 +760,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [renderEmptyMessage],
   );
 
+  const actionScope = useMemo(
+    () => ({ "card-id": question._card.id ?? -1 }),
+    [question._card.id],
+  );
+
   if (!width || !height) {
     return <div ref={ref} className={className} />;
   }
@@ -792,6 +797,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onWheel={handleWheel}
       />
       <TableActionExecuteModal
+        scope={actionScope}
         selectedTableActionState={selectedTableActionState}
         onClose={handleExecuteActionModalClose}
       />
