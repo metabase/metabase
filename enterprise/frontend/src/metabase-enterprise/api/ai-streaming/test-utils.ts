@@ -1,10 +1,17 @@
-export function createMockReadableStream(textChunks: string[]) {
+export function createMockReadableStream(
+  textChunks: string[],
+  options?: {
+    disableAutoInsertNewLines: boolean;
+  },
+) {
   return new ReadableStream({
     async start(controller) {
       const textEncoder = new TextEncoder();
       try {
         for (const textChunk of textChunks) {
-          controller.enqueue(textEncoder.encode(`${textChunk}\n`));
+          const text =
+            textChunk + (options?.disableAutoInsertNewLines ? "" : "\n");
+          controller.enqueue(textEncoder.encode(text));
         }
       } finally {
         controller.close();
@@ -19,7 +26,7 @@ export function mockStreamedEndpoint({
   initialDelay = 0,
 }: {
   url: string;
-  textChunks: string[];
+  textChunks: string[] | undefined;
   initialDelay?: number;
 }) {
   const originalFetch = global.fetch;
@@ -38,7 +45,9 @@ export function mockStreamedEndpoint({
             resolve({
               status: 202,
               ok: true,
-              body: createMockReadableStream(textChunks),
+              body: textChunks
+                ? createMockReadableStream(textChunks)
+                : undefined,
             } as any);
           }, initialDelay);
         });

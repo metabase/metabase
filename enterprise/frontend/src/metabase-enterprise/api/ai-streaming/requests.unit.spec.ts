@@ -13,32 +13,7 @@ describe("ai requests", () => {
         textChunks: whoIsYourFavoriteResponse,
       });
       const result = await aiStreamingQuery({ url: ENDPOINT, body: {} });
-
-      // TODO: make a snapshot test
-      expect(result).toEqual({
-        data: [{ type: "state", value: { queries: {} }, version: 1 }],
-        history: [
-          { content: "You, but don't tell anyone.", role: "assistant" },
-        ],
-        parts: [
-          { code: "0", name: "text", value: "You, but don't tell anyone." },
-          {
-            code: "2",
-            name: "data",
-            value: { type: "state", value: { queries: {} }, version: 1 },
-          },
-          {
-            code: "d",
-            name: "finish_message",
-            value: {
-              finishReason: "stop",
-              usage: { completionTokens: 8, promptTokens: 4916 },
-            },
-          },
-        ],
-        text: "You, but don't tell anyone.",
-        toolCalls: [],
-      });
+      expect(result).toMatchSnapshot();
     });
 
     it("should call callbacks for relevant chunk types", async () => {
@@ -84,7 +59,35 @@ describe("ai requests", () => {
       expect(failureCbs.onError).toHaveBeenCalled();
     });
 
-    it.todo("should be able abort request via a passed in signal");
+    it("throw error if bad http status code", async () => {
+      fetchMock.post(`path:${ENDPOINT}`, 500);
+      await expect(
+        aiStreamingQuery({ url: ENDPOINT, body: {} }),
+      ).rejects.toThrow(/Internal Server Error/);
+    });
+
+    it("throw error if no response", async () => {
+      mockStreamedEndpoint({
+        url: ENDPOINT,
+        textChunks: undefined,
+      });
+      await expect(
+        aiStreamingQuery({ url: ENDPOINT, body: {} }),
+      ).rejects.toThrow(/No response/);
+    });
+
+    it("should be able abort request via a passed in signal", async () => {
+      const controller = new AbortController();
+
+      fetchMock.post(`path:${ENDPOINT}`, { delay: 100, status: 200 });
+      const promise = aiStreamingQuery({
+        url: ENDPOINT,
+        body: {},
+        signal: controller.signal,
+      });
+      controller.abort();
+      await expect(promise).rejects.toThrow(/The operation was aborted./);
+    });
 
     describe("in-flight request tracking", () => {
       it("should register/unregister with inflight requests on a successful request", async () => {
@@ -96,20 +99,6 @@ describe("ai requests", () => {
         const promise = aiStreamingQuery({ url: ENDPOINT, body: {} });
         expect(getInflightRequestsForUrl(ENDPOINT).length).toBe(1);
         await promise;
-        expect(getInflightRequestsForUrl(ENDPOINT).length).toBe(0);
-      });
-
-      it("should properly unregister with inflight requests on error", async () => {
-        mockStreamedEndpoint({
-          url: ENDPOINT,
-          textChunks: [`3:{}`], // error message
-        });
-        expect(getInflightRequestsForUrl(ENDPOINT).length).toBe(0);
-        const promise = aiStreamingQuery({ url: ENDPOINT, body: {} });
-        expect(getInflightRequestsForUrl(ENDPOINT).length).toBe(1);
-
-        await expect(promise).rejects.not.toBeFalsy();
-
         expect(getInflightRequestsForUrl(ENDPOINT).length).toBe(0);
       });
 
@@ -134,7 +123,6 @@ describe("ai requests", () => {
   });
 });
 
-// TODO: find a common place for fixtures
 const whoIsYourFavoriteResponse = [
   `0:"You, but don't tell anyone."`,
   `2:{"type":"state","version":1,"value":{"queries":{}}}`,

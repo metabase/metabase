@@ -6,6 +6,8 @@ export const dataPartSchema = Yup.object({
   value: Yup.mixed(),
 });
 
+export const knownDataPartTypes = ["state", "navigate_to"];
+
 export const toolCallPartSchema = Yup.object({
   toolCallId: Yup.string().required(),
   toolName: Yup.string().required(),

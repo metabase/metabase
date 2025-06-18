@@ -314,6 +314,7 @@ const Thinking = ({
     ],
     construct_notebook_query: [t`Creating a query`, t`Contructing a question`],
     analyze_data: [t`Analyzing the data`, t`Exploring your data`],
+    analyze_chart: [t`Inspecting the visualization`, t`Looking at the data`],
     list_available_fields: undefined, // tool executes near instantly
   } as Record<string, string[] | undefined>;
 

@@ -54,12 +54,12 @@ export async function aiStreamingQuery(
       body: JSON.stringify(req.body),
     });
 
-    if (response && !response.ok) {
-      throw response;
+    if (!response.ok) {
+      throw new Error(response.statusText);
     }
 
-    if (!response || !response.body) {
-      throw new Error("No Response");
+    if (!response.body) {
+      throw new Error("No response");
     }
 
     return processChatResponse(response.body, config);
