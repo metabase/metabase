@@ -18,6 +18,7 @@ export const TabButtonInputWrapper = styled.span<TabButtonProps>`
   padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 6px;
+  line-height: 1.15;
 `;
 
 export const TabButtonInputResizer = styled.span`
@@ -30,8 +31,8 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   position: absolute;
   width: 100%;
   left: 0;
-  bottom: 0;
-  padding: 0;
+  bottom: -1px;
+  padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 4px;
   outline: none;
@@ -50,25 +51,29 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
 
 export const TabButtonRoot = styled.div<TabButtonProps>`
   display: flex;
-  height: 1.875rem;
-  padding: 0.25rem;
+  border-top-left-radius: var(--mantine-radius-default);
+  border-top-right-radius: var(--mantine-radius-default);
+  padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px);
   color: ${(props) =>
     props.isSelected && !props.disabled
       ? "var(--mb-color-brand)"
       : "var(--mb-color-text-primary)"};
   opacity: ${(props) => (props.disabled ? 0.3 : 1)};
-  font-size: 0.75rem;
+  font-size: var(--mantine-font-size-md);
   font-weight: 700;
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
   border-bottom: 0.125rem solid
     ${(props) =>
-      props.isSelected && !props.disabled ? color("brand") : "transparent"};
+      props.isSelected && !props.disabled
+        ? color("brand")
+        : "var(--mb-color-border)"};
 
   :hover {
     ${(props) =>
+      props.isSelected &&
       !props.disabled &&
       css`
-        color: var(--mb-color-brand);
+        border-bottom-color: ${color("brand")};
       `}
   }
 `;
@@ -77,7 +82,6 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
   transition: background-color 0s;
   align-self: center;
   padding: 0.25rem;
-  margin-left: 0.25rem;
   color: inherit;
   border: none;
 

@@ -3,6 +3,7 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { type Theme, css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
+import cx from "classnames";
 import type {
   ChangeEventHandler,
   HTMLAttributes,
@@ -23,6 +24,7 @@ import { t } from "ttag";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { lighten } from "metabase/lib/colors";
+import TabS from "metabase/ui/components/navigation/Tabs/Tab.module.css";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -127,6 +129,7 @@ const _TabButton = forwardRef(function TabButton(
       aria-disabled={disabled}
       aria-label={label}
       id={getTabId(idPrefix, value)}
+      className={cx(props.className, TabS.tab)}
     >
       <TabButtonInputWrapper
         onDoubleClick={onInputDoubleClick}
@@ -192,6 +195,7 @@ export interface RenameableTabButtonProps
 
 // These styles need to be here instead of .styled to avoid circular dependency
 const getBorderStyle = (theme: Theme) => css`
+  background: var(--mb-color-background);
   border: 1px solid var(--mb-color-brand);
   box-shadow: 0px 0px 0px 1px ${lighten(theme.fn.themeColor("brand"), 0.28)};
 `;
