@@ -5,13 +5,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]))
 
-;;; TODO (Cam 6/13/25) -- MEGA HACK -- keys that live in MLv2 that aren't SUPPOSED to be kebab-cased. We can and
-;;; should remove these keys altogether.
-(def ^:private HORRIBLE-keys
-  #{:model/inner_ident})
-
 (defn- kebab-cased-key? [k]
-  (or (contains? HORRIBLE-keys k)
+  (or (contains? lib.schema.common/HORRIBLE-keys k)
       (not (str/includes? k "_"))))
 
 (defn- kebab-cased-map? [m]
@@ -20,7 +15,9 @@
 
 (mr/def ::kebab-cased-map
   [:fn
-   {:error/message "map with all kebab-cased keys"}
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (str "map with all kebab-cased keys, got: " (pr-str (filter #(str/includes? % "_") (keys value)))))}
    kebab-cased-map?])
 
 ;;; Column vs Field?
@@ -181,7 +178,7 @@
    [:map
     {:error/message    "Valid column metadata"
      :decode/normalize lib.schema.common/normalize-map}
-    [:lib/type  [:= :metadata/column]]
+    [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
     ;; column names are allowed to be empty strings in SQL Server :/
     ;;
     ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's

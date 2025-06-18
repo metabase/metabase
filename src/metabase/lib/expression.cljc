@@ -3,13 +3,11 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -70,7 +68,7 @@
        (when (lib.util/first-stage? query stage-number)
          (when-let [source-card-id (lib.util/source-card-id query)]
            (when-let [source-card (lib.metadata/card query source-card-id)]
-             (u/prog1 (resolve-expression (lib.query/query
+             (u/prog1 (resolve-expression ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.query/query)
                                            (lib.metadata/->metadata-provider query)
                                            (:dataset-query source-card))
                                           expression-name)
