@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useSearchFieldValuesQuery } from "metabase/api/field";
+import {
+  useGetRemappedFieldValueQuery,
+  useSearchFieldValuesQuery,
+} from "metabase/api/field";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
-import type { FieldValue } from "metabase-types/api";
+import type { FieldValue, RowValue } from "metabase-types/api";
 
 const SEARCH_LIMIT_DEFAULT = 20;
 const SEARCH_DEBOUNCE = 500;
 
 type UseActionInputSearchableOptionsProps = {
+  initialValue?: RowValue;
   search: string;
   fieldId: number;
   searchFieldId?: number;
@@ -16,6 +20,7 @@ type UseActionInputSearchableOptionsProps = {
 };
 
 export function useActionInputSearchableOptions({
+  initialValue,
   search,
   fieldId,
   searchFieldId = fieldId,
@@ -53,6 +58,15 @@ export function useActionInputSearchableOptions({
     limit: SEARCH_LIMIT_DEFAULT,
   });
 
+  const { data: initialFieldValue } = useGetRemappedFieldValueQuery(
+    {
+      fieldId,
+      remappedFieldId: searchFieldId,
+      value: initialValue?.toString() ?? "",
+    },
+    { skip: !initialValue || fieldId === searchFieldId },
+  );
+
   useEffect(() => {
     if (!initialFieldValues && fieldValues) {
       setInitialFieldValues(fieldValues);
@@ -61,7 +75,18 @@ export function useActionInputSearchableOptions({
 
   const options = useMemo(() => {
     if (fieldValues) {
-      const options = getFieldOptions(fieldValues);
+      const mergedFieldValues = fieldValues.slice();
+      if (initialFieldValue) {
+        const hasInitialValueInFieldValues = !!mergedFieldValues.find(
+          ([value]) => value === initialFieldValue[0],
+        );
+
+        if (!hasInitialValueInFieldValues) {
+          mergedFieldValues.push(initialFieldValue);
+        }
+      }
+
+      const options = getFieldOptions(mergedFieldValues);
 
       if (shouldPerformLocalSearch) {
         const searchValue = search.toLowerCase().trim();
@@ -76,7 +101,7 @@ export function useActionInputSearchableOptions({
     }
 
     return [];
-  }, [shouldPerformLocalSearch, fieldValues, search]);
+  }, [shouldPerformLocalSearch, fieldValues, initialFieldValue, search]);
 
   return {
     options,
