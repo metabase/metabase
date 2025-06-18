@@ -252,6 +252,8 @@ export const tokenFeatures = [
   "ai_entity_analysis",
   "database_routing",
   "development_mode",
+  "etl_connections",
+  "etl_connections_pg",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -577,6 +579,11 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
+  "pg-replication-enabled": boolean | null;
+  "pg-replication-connections"?: Record<
+    number,
+    { connection_id: string }
+  > | null;
   /**
    * @deprecated
    */
