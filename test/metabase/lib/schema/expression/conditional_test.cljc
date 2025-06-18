@@ -32,6 +32,28 @@
            :base-type      effective-type}
    x])
 
+(deftest ^:parallel case-schema-test
+  (testing "schema validation for :case expressions"
+    (are [expr] (true?
+                 (mr/validate :mbql.clause/case expr))
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true 1]] 1])
+
+    (are [expr] (false?
+                 (mr/validate :mbql.clause/case expr))
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       1]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [] 1]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true 1]] "A"])))
+
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
     ;; In QP and MLv2: `expression/type-of-method :case`
