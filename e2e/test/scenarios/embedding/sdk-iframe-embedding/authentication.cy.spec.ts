@@ -33,7 +33,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     assertDashboardLoaded(frame);
   });
 
-  it("cannot use existing user session when useExistingUserSession is true", () => {
+  it("cannot use existing user session when useExistingUserSession is false", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
 
     const frame = H.loadSdkIframeEmbedTestPage({
