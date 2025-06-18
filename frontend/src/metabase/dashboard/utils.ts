@@ -137,13 +137,16 @@ export function supportsInlineParameters(
   return isQuestionDashCard(dashcard) || isHeadingDashCard(dashcard);
 }
 
-type VirtualDashboardCardWithInlineFilters = VirtualDashboardCard & {
+type DashboardCardWithInlineFilters = (
+  | VirtualDashboardCard
+  | QuestionDashboardCard
+) & {
   inline_parameters: ParameterId[];
 };
 
 export function hasInlineParameters(
   dashcard: BaseDashboardCard,
-): dashcard is VirtualDashboardCardWithInlineFilters {
+): dashcard is DashboardCardWithInlineFilters {
   return (
     supportsInlineParameters(dashcard) &&
     Array.isArray(dashcard.inline_parameters) &&
@@ -154,12 +157,12 @@ export function hasInlineParameters(
 export function findDashCardForInlineParameter(
   parameterId: ParameterId,
   dashcards: BaseDashboardCard[],
-): VirtualDashboardCardWithInlineFilters | undefined {
+): DashboardCardWithInlineFilters | undefined {
   return dashcards.find((dashcard) => {
     if (hasInlineParameters(dashcard)) {
       return dashcard.inline_parameters.some((id) => id === parameterId);
     }
-  }) as VirtualDashboardCardWithInlineFilters | undefined;
+  }) as DashboardCardWithInlineFilters | undefined;
 }
 
 export function isDashcardInlineParameter(

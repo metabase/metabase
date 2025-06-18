@@ -1762,6 +1762,37 @@ describe("scenarios > dashboard > parameters", () => {
         .should("not.exist");
       H.undoToast().should("not.exist");
     });
+
+    it("should allow connecting inline parameters only to their own card", () => {
+      H.createQuestionAndDashboard({
+        questionDetails: ordersCountByCategory,
+      }).then(({ body: dashcard }) => {
+        H.visitDashboard(dashcard.dashboard_id);
+        H.editDashboard();
+
+        // Add a second card
+        H.openQuestionsSidebar();
+        H.sidebar().findByText("Orders, Count").click();
+        H.getDashboardCard(1).findByText("Count").should("exist");
+
+        // Add a filter to the first card
+        H.setDashCardFilter(0, "Text or Category", null, "Category");
+        H.selectDashboardFilter(H.getDashboardCard(0), "Category");
+
+        // Ensure the filter can't be connected to the second card
+        H.getDashboardCard(1)
+          .findByText("This filter can only connect to its own card.")
+          .should("be.visible");
+
+        // Disconnect the filter from the first card
+        H.sidebar().findByText("Disconnect from card").click();
+
+        // Ensure it still can't be connected to the second card
+        H.getDashboardCard(1)
+          .findByText("This filter can only connect to its own card.")
+          .should("be.visible");
+      });
+    });
   });
 });
 
