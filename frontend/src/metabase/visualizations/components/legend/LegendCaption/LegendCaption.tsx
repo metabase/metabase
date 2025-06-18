@@ -88,6 +88,7 @@ export const LegendCaption = ({
         DashboardS.fullscreenNormalText,
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
+        CS.h3,
       )}
       href={hasTitleMenuItems ? undefined : href}
       onClick={hasTitleMenuItems ? undefined : onSelectTitle}

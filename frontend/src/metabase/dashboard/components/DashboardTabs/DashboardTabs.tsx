@@ -5,6 +5,8 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
+import { getDisplayTheme } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
@@ -24,6 +26,8 @@ export function DashboardTabs({
   isEditing = false,
   className,
 }: DashboardTabsProps) {
+  const displayTheme = useSelector(getDisplayTheme);
+
   const {
     tabs,
     createNewTab,
@@ -84,20 +88,15 @@ export function DashboardTabs({
       >
         {showPlaceholder ? (
           <TabButton
-            className={S.tabButton}
             label={t`Tab 1`}
             value={null}
             showMenu
             menuItems={menuItems}
+            displayTheme={displayTheme}
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable
-              key={tab.id}
-              id={tab.id}
-              className={S.tabButton}
-              disabled={!isEditing}
-            >
+            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}
@@ -105,6 +104,7 @@ export function DashboardTabs({
                 canRename={isEditing && hasMultipleTabs}
                 showMenu={isEditing}
                 menuItems={menuItems}
+                displayTheme={displayTheme}
               />
             </Sortable>
           ))
