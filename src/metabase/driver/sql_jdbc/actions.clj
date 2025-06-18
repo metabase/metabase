@@ -660,19 +660,19 @@
   (driver-api/cached-value
    [::table-fk-relationship table-id]
    (fn []
-     (let [table-fields        (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
-           table-pks           (filter #(isa? (:semantic_type %) :type/PK) table-fields)
-           pk-names            (map :name table-pks)
-           fk-fields           (when-let [pk-ids (seq (map :id table-pks))]
-                                 (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
+     (let [table-fields   (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+           table-pks      (filter #(isa? (:semantic_type %) :type/PK) table-fields)
+           pk-names       (map :name table-pks)
+           fk-fields      (when-let [pk-ids (seq (map :id table-pks))]
+                            (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
            ;; Pre-fetch table names to avoid repeated queries
-           table-ids           (distinct (map :table_id fk-fields))
-           table-id->table-ref (when (seq table-ids)
-                                 (t2/select-pk->fn table->ref :model/Table :id [:in table-ids]))
-           field-id->name      (u/index-by :id table-fields)]
+           table-ids      (distinct (map :table_id fk-fields))
+           table-id->ref  (when (seq table-ids)
+                            (t2/select-pk->fn table->ref :model/Table :id [:in table-ids]))
+           field-id->name (u/index-by :id table-fields)]
        (for [{:keys [name table_id fk_target_field_id]} fk-fields]
          {:table-id   table_id
-          :table-ref  (get table-id->table-ref table_id)
+          :table-ref  (get table-id->ref table_id)
           :fk         {name (get-in field-id->name [fk_target_field_id :name])}
           :pk         pk-names})))))
 
