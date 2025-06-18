@@ -18,19 +18,16 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockPlaceholderDashboardCard,
+  createMockTable,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import {
-  ORDERS_ID,
-  SAMPLE_DB_ID,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
 import {
   createMockDashboardState,
   createMockState,
@@ -40,6 +37,9 @@ import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";
 
 registerVisualizations();
+
+const TEST_DATABASE_ID = 1;
+const TEST_TABLE_ID = 2;
 
 const testDashboard = createMockDashboard();
 
@@ -89,19 +89,34 @@ function setup({
   dashboard = testDashboard,
   dashcard = tableDashcard,
   dashcardData = tableDashcardData,
+  withMetadata = false,
   ...props
-}: Partial<DashCardProps> & { dashcardData?: DashCardDataMap } = {}) {
+}: Partial<DashCardProps> & {
+  dashcardData?: DashCardDataMap;
+  withMetadata?: boolean;
+} = {}) {
   const onReplaceCard = jest.fn();
 
+  const baseDashboardState = createMockDashboardState({
+    dashcardData,
+    dashcards: {
+      [dashcard.id]: dashcard,
+    },
+  });
+
   const storeInitialState = createMockState({
-    dashboard: createMockDashboardState({
-      dashcardData,
-      dashcards: {
-        [dashcard.id]: dashcard,
-      },
-    }),
-    entities: createMockEntitiesState({
-      databases: [createSampleDatabase()],
+    dashboard: baseDashboardState,
+    ...(withMetadata && {
+      entities: createMockEntitiesState({
+        databases: [
+          createMockDatabase({
+            id: TEST_DATABASE_ID,
+            tables: [
+              createMockTable({ id: TEST_TABLE_ID, db_id: TEST_DATABASE_ID }),
+            ],
+          }),
+        ],
+      }),
     }),
   });
 
@@ -131,14 +146,6 @@ function setup({
     />,
     {
       storeInitialState,
-      // storeInitialState: {
-      //   dashboard: createMockDashboardState({
-      //     dashcardData,
-      //     dashcards: {
-      //       [tableDashcard.id]: tableDashcard,
-      //     },
-      //   }),
-      // },
     },
   );
 
@@ -437,9 +444,9 @@ describe("DashCard", () => {
           card: createMockCard({
             dataset_query: {
               type: "query",
-              database: SAMPLE_DB_ID,
+              database: TEST_DATABASE_ID,
               query: {
-                "source-table": ORDERS_ID,
+                "source-table": TEST_TABLE_ID,
               },
             },
           }),
@@ -452,6 +459,7 @@ describe("DashCard", () => {
           dashcard,
           dashcardData: {},
           isEditing: true,
+          withMetadata: true,
         });
         expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
       });
@@ -462,9 +470,9 @@ describe("DashCard", () => {
             can_write: false,
             dataset_query: {
               type: "query",
-              database: SAMPLE_DB_ID,
+              database: TEST_DATABASE_ID,
               query: {
-                "source-table": ORDERS_ID,
+                "source-table": TEST_TABLE_ID,
               },
             },
           }),
@@ -477,6 +485,7 @@ describe("DashCard", () => {
           dashcard,
           dashcardData: {},
           isEditing: true,
+          withMetadata: true,
         });
         expect(screen.queryByLabelText("Add a filter")).not.toBeInTheDocument();
       });
