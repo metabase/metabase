@@ -6952,7 +6952,6 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:20
       author: noahmoss
       comment: Analyze permissions table in preparation for subsequent migrations
-      validCheckSum: ANY
       runInTransaction: false
       changes:
         - sql:
