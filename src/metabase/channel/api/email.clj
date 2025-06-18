@@ -162,8 +162,7 @@
                 [:cloud-email-smtp-password {:optional true} [:or string? nil?]]
                 [:cloud-email-smtp-port {:optional true} [:or int? nil?]]
                 [:cloud-email-smtp-security {:optional true} [:or string? nil?]]
-                [:cloud-email-smtp-username {:optional true} [:or string? nil?]]
-                [:cloud-smtp-enabled {:optional true} [:or boolean? nil?]]]]
+                [:cloud-email-smtp-username {:optional true} [:or string? nil?]]]]
   (when (not (premium-features/has-feature? :cloud-custom-smtp))
     (throw (ex-info (tru "API is not available in your Metabase plan. Please upgrade to use this feature.")
                     {:status-code 403})))
@@ -176,9 +175,7 @@
     (throw (ex-info (tru "Invalid cloud-email-smtp-security value")
                     {:status-code 400})))
 
-  (let [response (check-and-update-settings settings cloud-mb-to-smtp-settings (channel.settings/cloud-email-smtp-password))]
-    (when (and (not (:error response)) (not (nil? (:cloud-smtp-enabled settings))))
-      (merge response {:cloud-smtp-enabled (channel.settings/cloud-smtp-enabled?! (:cloud-smtp-enabled settings))}))))
+  (check-and-update-settings settings cloud-mb-to-smtp-settings (channel.settings/cloud-email-smtp-password)))
 
 (api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
