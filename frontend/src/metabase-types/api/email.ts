@@ -9,7 +9,7 @@ export interface EmailSMTPSettings {
 export interface CloudEmailSMTPSettings {
   "cloud-email-smtp-host": string;
   "cloud-email-smtp-password": string | null;
-  "cloud-email-smtp-port": 456 | 587 | 2525;
+  "cloud-email-smtp-port": 465 | 587 | 2525;
   "cloud-email-smtp-security": "ssl" | "tls" | "starttls";
   "cloud-email-smtp-username": string | null;
 }
