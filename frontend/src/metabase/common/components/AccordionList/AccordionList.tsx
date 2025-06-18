@@ -401,7 +401,9 @@ export class AccordionList<
       const results = searchIndex.search(searchText, {
         limit: 50,
       });
-      return results.some((result) => result.item === item);
+      return results.some(
+        (result) => result.item === item && result.score && result.score < 0.6,
+      );
     }
 
     const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
