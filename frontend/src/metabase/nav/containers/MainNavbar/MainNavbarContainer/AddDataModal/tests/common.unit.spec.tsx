@@ -7,8 +7,8 @@ import { setup } from "./setup";
 const csvFile = new File(["test,data"], "bank-statement.csv", {
   type: "text/csv",
 });
-const tsvFile = new File(["test,data"], "pokemon-cards.csv", {
-  type: "text/csv",
+const tsvFile = new File(["test,data"], "pokemon-cards.tsv", {
+  type: "text/tab-separated-values",
 });
 const mp3File = new File(
   ["test,data"],
