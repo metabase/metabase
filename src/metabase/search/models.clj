@@ -10,15 +10,11 @@
 
 (t2/define-after-insert :hook/search-index
   [instance]
-  (when (= :model/Table (t2/model instance))
-    #p instance)
   (search/update! instance true)
   instance)
 
 (t2/define-after-update :hook/search-index
   [instance]
-  (when (= :model/Table (t2/model instance))
-    (metabase.util.log/info (with-out-str (clojure.stacktrace/print-stack-trace (Exception. "Table model updated!")))))
 
   (search/update! instance)
   nil)

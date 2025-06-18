@@ -76,11 +76,17 @@
      {})))
 
 (defn- smtp-settings []
-  (-> {:host (channel.settings/email-smtp-host)
-       :user (channel.settings/email-smtp-username)
-       :pass (channel.settings/email-smtp-password)
-       :port (channel.settings/email-smtp-port)}
-      (add-ssl-settings (channel.settings/email-smtp-security))))
+  (if (channel.settings/cloud-smtp-enabled?)
+    (-> {:host (channel.settings/cloud-email-smtp-host)
+         :user (channel.settings/cloud-email-smtp-username)
+         :pass (channel.settings/cloud-email-smtp-password)
+         :port (channel.settings/cloud-email-smtp-port)}
+        (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
+    (-> {:host (channel.settings/email-smtp-host)
+         :user (channel.settings/email-smtp-username)
+         :pass (channel.settings/email-smtp-password)
+         :port (channel.settings/email-smtp-port)}
+        (add-ssl-settings (channel.settings/email-smtp-security)))))
 
 (def ^:private EmailMessage
   [:and
