@@ -1294,6 +1294,7 @@ describe("scenarios > dashboard > parameters", () => {
           cy.findByText("Widget").should("be.visible");
         });
 
+        H.getDashboardCard(0).findByText("Category").click();
         H.popover().within(() => {
           cy.findByText("Gadget").click();
           cy.button("Add filter").click();
