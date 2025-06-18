@@ -57,16 +57,24 @@
   [s] (try (java.util.UUID/fromString s) true
            (catch Exception _e false)))
 
+(defn- continuation-byte? [b]
+  (= (bit-and b 0xC0) 0x80))
+
 (defn limit-bytes
   "Limits the string to the given number of bytes, ensuring it's still a valid UTF-8 string"
   ^String [^String s max-bytes]
   (if (nil? s)
     s
-    (let [byte-count (Utf8/encodedLength s)]
-      (if (<= byte-count max-bytes)
-        s
-        (let [target-count (int (* (count s) (/ max-bytes byte-count)))]
-          (subs s 0 target-count))))))
+    (if (<= (Utf8/encodedLength s) max-bytes)
+      s
+      ;; first do big first-pass at truncating, then truncate the rest of the way to preserve a valid string
+      (let [bytes (.getBytes s "UTF-8")
+            end   (loop [pos max-bytes]
+                    (if-not (and (pos? pos)
+                                 (continuation-byte? (aget bytes pos)))
+                      pos
+                      (recur (dec pos))))]
+        (String. bytes 0 ^long end "UTF-8")))))
 
 (defn limit-chars
   "Limits the string to the given number of characters"
