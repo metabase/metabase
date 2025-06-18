@@ -692,13 +692,13 @@ databaseChangeLog:
   # restriction separately; we can use Toucan `pre-insert` to set defaults values when saving things.
   - changeSet:
       id: v45.00-042
-      validCheckSum: 8:d04207471480e335f14094e9a7a5d293
+      validCheckSum: ANY
       author: camsaul
       comment: Added 0.45.0 -- add default value for Database with NULL details
       changes:
         - sql:
             sql: >-
-              UPDATE metabase_database SET details = '{}' WHERE details IS NULL;
+              UPDATE metabase_database SET details = '{}' WHERE details IS NULL; UPDATE metabase_database SET details = '{}' WHERE details = '{}';
       rollback: # nothing to do, since a '{}' is okay for v44
 
   - changeSet:
@@ -6952,13 +6952,14 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:20
       author: noahmoss
       comment: Analyze permissions table in preparation for subsequent migrations
+      validCheckSum: ANY
       runInTransaction: false
       changes:
         - sql:
-            sql: ANALYZE permissions;ANALYZE permissions;
+            sql: ANALYZE permissions;
             dbms: postgresql
         - sql:
-            sql: ANALYZE TABLE permissions;ANALYZE TABLE permissions;
+            sql: ANALYZE TABLE permissions;
             dbms: mysql,mariadb
       rollback: # not needed
 
