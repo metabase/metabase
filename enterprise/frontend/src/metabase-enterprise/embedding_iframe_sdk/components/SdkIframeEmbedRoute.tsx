@@ -17,7 +17,6 @@ import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-b
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
 import {
-  SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
@@ -47,11 +46,6 @@ export const SdkIframeEmbedRoute = () => {
     return <SdkIframeInvalidLicenseError />;
   }
 
-  // Using API keys in production is not allowed. SSO is required.
-  if (isProduction && embedSettings.apiKey) {
-    return <SdkIframeApiKeyInProductionError />;
-  }
-
   // Using the existing user's session in production is not allowed. SSO is required.
   if (isProduction && embedSettings.useExistingUserSession) {
     return <SdkIframeExistingUserSessionInProductionError />;
@@ -61,7 +55,6 @@ export const SdkIframeEmbedRoute = () => {
 
   const authConfig = defineMetabaseAuthConfig({
     metabaseInstanceUrl: embedSettings.instanceUrl,
-    apiKey: embedSettings.apiKey,
   });
 
   return (

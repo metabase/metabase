@@ -2,7 +2,6 @@ import { MetabaseEmbed } from "./embed";
 
 describe("embed.js script tag for sdk iframe embedding", () => {
   const defaultSettings = {
-    apiKey: "test-api-key",
     instanceUrl: "http://localhost:3000",
 
     // this will fail due to the target being missing,

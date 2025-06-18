@@ -96,29 +96,6 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
-  it("shows an error if we are using an API key in production", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
-    cy.signOut();
-
-    cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
-
-    cy.log("visit a test page with an origin of example.com using api keys");
-    cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = H.loadSdkIframeEmbedTestPage({
-        origin: "http://example.com",
-        dashboardId: ORDERS_DASHBOARD_ID,
-        apiKey,
-      });
-
-      frame
-        .findByText("Using an API key in production is not allowed.")
-        .should("exist");
-
-      cy.findByText("Orders in a dashboard").should("not.exist");
-    });
-  });
-
   it("shows an error if we are using the existing user session in production", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
     cy.signOut();
@@ -142,24 +119,6 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
       .should("exist");
 
     frame.findByText("Orders in a dashboard").should("not.exist");
-  });
-
-  it("does not show an error if we are using an API key in development", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
-    cy.signOut();
-
-    cy.get<string>("@apiKey").then((apiKey) => {
-      const frame = H.loadSdkIframeEmbedTestPage({
-        dashboardId: ORDERS_DASHBOARD_ID,
-        apiKey,
-      });
-
-      assertDashboardLoaded(frame);
-
-      frame
-        .findByText("Using an API key in production is not allowed.")
-        .should("not.exist");
-    });
   });
 
   it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {

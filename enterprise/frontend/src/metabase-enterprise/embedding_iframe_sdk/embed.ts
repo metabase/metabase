@@ -18,7 +18,6 @@ const EMBEDDING_ROUTE = "embed/sdk/v1";
 type EmbedSettingKey = keyof SdkIframeEmbedSettings;
 
 const ALLOWED_EMBED_SETTING_KEYS = [
-  "apiKey",
   "instanceUrl",
   "dashboardId",
   "questionId",
@@ -207,11 +206,6 @@ class MetabaseEmbed {
   }
 
   private async _authenticate() {
-    // If we are using an API key, we don't need to authenticate via SSO.
-    if (this._settings.apiKey) {
-      return;
-    }
-
     try {
       const { method, sessionToken } = await this._getMetabaseSessionToken();
       validateSessionToken(sessionToken);
