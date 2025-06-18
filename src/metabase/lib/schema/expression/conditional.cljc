@@ -79,15 +79,14 @@
     tag
     [:schema
      [:and
-      (:schema
-       (mbql-clause/catn-clause-schema tag
-                                       [:pred-expr-pairs
-                                        [:sequential {:min 1}
-                                         [:tuple
-                                          {:error/message "Valid [pred expr] pair"}
-                                          #_pred [:ref ::expression/boolean]
-                                          #_expr [:ref ::expression/expression]]]]
-                                       [:default [:? [:schema [:ref ::expression/expression]]]]))
+      (mbql-clause/catn-clause-schema tag
+                                      [:pred-expr-pairs
+                                       [:sequential {:min 1}
+                                        [:tuple
+                                         {:error/message "Valid [pred expr] pair"}
+                                         #_pred [:ref ::expression/boolean]
+                                         #_expr [:ref ::expression/expression]]]]
+                                      [:default [:? [:schema [:ref ::expression/expression]]]])
       [:fn
        ;; Further constrain this so all of the exprs are of compatible type
        ;; This check isn't perfect: it still allows types that have a common ancestor but aren't compatible.
