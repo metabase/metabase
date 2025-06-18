@@ -2,9 +2,12 @@ import { t } from "ttag";
 
 import {
   AdminNavItem,
+  type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/settings/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
 
 export function ToolsApp({ children }: { children: React.ReactNode }) {
   {
@@ -13,32 +16,32 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
         maw="100rem"
         sidebar={
           <AdminNavWrapper>
-            <AdminNavItem
+            <ToolsNavItem
               label={t`Help`}
               path="/admin/tools/help"
               icon="info_filled"
             />
-            <AdminNavItem
+            <ToolsNavItem
               label={t`Tasks`}
               path="/admin/tools/tasks"
               icon="clipboard"
             />
-            <AdminNavItem
+            <ToolsNavItem
               label={t`Jobs`}
               path="/admin/tools/jobs"
               icon="clock"
             />
-            <AdminNavItem
+            <ToolsNavItem
               label={t`Logs`}
               path="/admin/tools/logs"
               icon="audit"
             />
-            <AdminNavItem
+            <ToolsNavItem
               label={t`Erroring questions`}
               path="/admin/tools/errors"
               icon="warning_round_filled"
             />
-            <AdminNavItem
+            <ToolsNavItem
               label={t`Model cache log`}
               path="/admin/tools/model-caching"
               icon="database"
@@ -51,3 +54,13 @@ export function ToolsApp({ children }: { children: React.ReactNode }) {
     );
   }
 }
+
+const ToolsNavItem = (props: AdminNavItemProps) => {
+  const location = useSelector(getLocation);
+  const subpath = location?.pathname;
+
+  // we want to highlight the nav item even if a subpath is active
+  const isActive = subpath.includes(props.path);
+
+  return <AdminNavItem {...props} active={isActive} />;
+};
