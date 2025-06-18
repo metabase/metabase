@@ -229,7 +229,7 @@
                                                (update :failed-fingerprints inc))
                                            ret)]
                                  (merge-with + acc ret))]
-                   (if (and (continue? ret) (not (sync-util/abandon-sync? ret)))
+                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
                      new-acc
                      (reduced new-acc))))
                (empty-stats-map 0)
