@@ -70,11 +70,14 @@
                         (thunk))))
 
 (deftest sanity-check-test
-  (mt/test-driver :snowflake
-    (is (= [100]
-           (mt/first-row
-            (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      attempted-murders
+      (is (= [20]
+             (mt/first-row
+              (mt/run-mbql-query attempts
+                {:aggregation [[:count]]})))))))
 
 (deftest ^:parallel describe-fields-test
   (mt/test-driver

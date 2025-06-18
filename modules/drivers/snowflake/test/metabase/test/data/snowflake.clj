@@ -13,7 +13,8 @@
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import    [java.sql PreparedStatement ResultSet]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,15 +50,13 @@
 (defn qualified-db-name
   "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
   time."
-  [database-name]
-  (let [prefix (*database-prefix-fn*)]
-    ;; try not to qualify the database name twice!
-    (if (str/starts-with? database-name prefix)
-      database-name
-      (str prefix database-name))))
+  [{:keys [database-name] :as db-def}]
+  (if (str/starts-with? database-name "sha_")
+    database-name
+    (str "sha_" (tx/hash-dataset db-def) "_" database-name)))
 
 (defmethod tx/dbdef->connection-details :snowflake
-  [_driver context {:keys [database-name], :as _dbdef}]
+  [_driver context dbdef]
   (merge
    {:account             (tx/db-test-env-var-or-throw :snowflake :account)
     :user                (tx/db-test-env-var-or-throw :snowflake :user)
@@ -77,17 +76,23 @@
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
-     {:db (qualified-db-name database-name)})))
+     {:db (qualified-db-name dbdef)})))
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
-  ([_ db-name]                       [(qualified-db-name db-name)])
-  ([_ db-name table-name]            [(qualified-db-name db-name) "PUBLIC" table-name])
-  ([_ db-name table-name field-name] [(qualified-db-name db-name) "PUBLIC" table-name field-name]))
+  ([_ db-name]
+   (assert (str/starts-with? db-name "sha_") "Must be qualified")
+   [db-name])
+  ([_ db-name table-name]
+   (assert (str/starts-with? db-name "sha_") "Must be qualified")
+   [db-name "PUBLIC" table-name])
+  ([_ db-name table-name field-name]
+   (assert (str/starts-with? db-name "sha_") "Must be qualified")
+   [db-name "PUBLIC" table-name field-name]))
 
 (defmethod sql.tx/create-db-sql :snowflake
-  [driver {:keys [database-name]}]
-  (let [db (sql.tx/qualify-and-quote driver (qualified-db-name database-name))]
+  [driver dbdef]
+  (let [db (sql.tx/qualify-and-quote driver (qualified-db-name dbdef))]
     (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
 (defn- no-db-connection-spec
@@ -98,15 +103,8 @@
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
   []
-  ;; modified the query from the snowflake driver:
-  ;; https://github.com/snowflakedb/snowflake-jdbc/blob/fa58e3496809395d039ee4d8fb2cf2767997cdd4/src/main/java/net/snowflake/client/jdbc/SnowflakeDatabaseMetaData.java#L1644C21-L1644C90
-  ;; We run into issues where this returns more than 10,000 items and we get an error: "The result set size exceeded
-  ;; the max number of rows(10000) supported for SHOW statements. Use LIMIT option to limit result set"
-  (let [query "show /* JDBC:DatabaseMetaData.getCatalogs() with limit */ databases in account limit 10000"]
-    (into []
-          (comp (map :name)
-                (filter sql.tu.unique-prefix/old-dataset-name?))
-          (jdbc/reducible-query (no-db-connection-spec) [query] {:raw? true}))))
+  (let [query "select name from metabase_test_tracking.PUBLIC.datasets where updated_at < dateadd(day, -2, current_timestamp())"]
+    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query]))))
 
 (defn- delete-old-datasets!
   "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
@@ -127,7 +125,10 @@
            #_{:clj-kondo/ignore [:discouraged-var]}
            (println "[Snowflake] Deleting old dataset:" dataset-name)
            (try
-             (.execute stmt (format "DROP DATABASE \"%s\";" dataset-name))
+             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+                                    dataset-name))
+             (.execute stmt (format "DROP DATABASE \"%s\";"
+                                    dataset-name))
              ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
              ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
              ;; deleting anything it's not the end of the world because it won't affect our ability to run our tests
@@ -141,11 +142,8 @@
 (defn- delete-old-datsets-if-needed!
   "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
-  (when-not @deleted-old-datasets?
-    (locking deleted-old-datasets?
-      (when-not @deleted-old-datasets?
-        (delete-old-datasets!)
-        (reset! deleted-old-datasets? true)))))
+  (when (compare-and-set! deleted-old-datasets? false true)
+    (delete-old-datasets!)))
 
 (defn- set-current-user-timezone!
   [timezone]
@@ -160,7 +158,7 @@
 (defmethod tx/create-db! :snowflake
   [driver db-def & options]
   ;; qualify the DB name with the unique prefix
-  (let [db-def (update db-def :database-name qualified-db-name)]
+  (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
     ;; clean up any old datasets that should be deleted
     (delete-old-datsets-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
@@ -171,10 +169,12 @@
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
 (defmethod tx/destroy-db! :snowflake
-  [_driver {:keys [database-name]}]
-  (let [database-name (qualified-db-name database-name)
+  [_driver dbdef]
+  (let [database-name (qualified-db-name dbdef)
         sql           (format "DROP DATABASE \"%s\";" database-name)]
     (log/infof "[Snowflake] %s" sql)
+    (jdbc/query (no-db-connection-spec)
+                ["DELETE FROM metabase_test_tracking.PUBLIC.datasets where name = ?" database-name])
     (jdbc/execute! (no-db-connection-spec) [sql])))
 
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
@@ -211,20 +211,60 @@
       {:base_type :type/Number}))))
 
 (defmethod tx/dataset-already-loaded? :snowflake
-  [driver dbdef]
+  [driver db-def]
   ;; check and see if ANY tables are loaded for the current catalog
   (sql-jdbc.execute/do-with-connection-with-options
    driver
-   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server dbdef))
+   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-     (with-open [rset (.getTables (.getMetaData conn)
-                                  #_catalog        (qualified-db-name (:database-name dbdef))
-                                  #_schema-pattern nil
-                                  #_table-pattern  nil
-                                  #_types          (into-array String ["TABLE"]))]
-       ;; if the ResultSet returns anything we know the catalog has been created
-       (.next rset)))))
+      ;; idempotent test tracking database
+     (with-open [^PreparedStatement setup-1 (sql-jdbc.execute/prepared-statement
+                                             driver
+                                             conn
+                                             "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;"
+                                             [])
+                 ^PreparedStatement setup-2 (sql-jdbc.execute/prepared-statement
+                                             driver
+                                             conn
+                                             "CREATE TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.datasets (hash TEXT, name TEXT, updated_at TIMESTAMP_TZ)"
+                                             [])
+                 ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-1)
+                 ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
+       nil)
+     (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                          driver
+                                          conn
+                                          "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
+                                          [(tx/hash-dataset db-def) (qualified-db-name db-def)])
+                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+       (when (some-> rs
+                     resultset-seq
+                     first
+                     :tracked)
+         ;; Even if it's tracked we want to ensure the database is actually there.
+         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn "SHOW DATABASES LIKE ?" [(qualified-db-name db-def)])
+                     ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+           (some-> rs resultset-seq first)))))))
+
+(defmethod tx/track-dataset :snowflake
+  [driver db-def]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
+   {:write? false}
+   (fn [^java.sql.Connection conn]
+     (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                          driver
+                                          conn
+                                          (str "MERGE INTO metabase_test_tracking.PUBLIC.datasets d"
+                                               "  USING (select ? as hash, ? as name, current_timestamp() as updated_at) as n on d.hash = n.hash"
+                                               "  WHEN MATCHED THEN UPDATE SET d.updated_at = n.updated_at"
+                                               "  WHEN NOT MATCHED THEN INSERT (hash,name, updated_at) VALUES (n.hash, n.name, n.updated_at)")
+                                          [(tx/hash-dataset db-def)
+                                           (qualified-db-name db-def)])
+                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+       (some-> rs resultset-seq doall)))))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
