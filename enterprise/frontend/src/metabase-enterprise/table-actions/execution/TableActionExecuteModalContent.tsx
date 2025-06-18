@@ -99,7 +99,7 @@ export const TableActionExecuteModalContent = ({
         }
       });
 
-      const executeActionId = actionWithOverrides?.id || actionId;
+      const executeActionId = actionWithOverrides?.id;
       if (!executeActionId) {
         return { success: false, error: new Error("Action ID is required") };
       }
@@ -122,7 +122,7 @@ export const TableActionExecuteModalContent = ({
       dispatch(addUndo({ message, toastColor: "error" }));
       return { success: false, error: result.error, message };
     },
-    [executeAction, initialValues, actionId, actionWithOverrides, dispatch],
+    [executeAction, initialValues, actionWithOverrides, dispatch],
   );
 
   const handleSubmitSuccess = useCallback(() => {
