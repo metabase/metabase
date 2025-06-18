@@ -10,11 +10,9 @@ import S from "./AdminSettingsLayout.module.css";
 export const AdminSettingsLayout = ({
   sidebar,
   children,
-  maw = "50rem",
 }: {
   sidebar: React.ReactNode;
   children?: React.ReactNode;
-  maw?: string;
 }) => {
   return (
     <Box className={S.Wrapper}>
@@ -23,7 +21,7 @@ export const AdminSettingsLayout = ({
           {sidebar}
         </Box>
         <Box className={S.Content} data-testid="admin-layout-content">
-          <Box maw={maw} w="100%">
+          <Box maw="50rem" w="100%">
             <Box pb="2rem">
               <ErrorBoundary>{children ?? <NotFound />}</ErrorBoundary>
             </Box>
