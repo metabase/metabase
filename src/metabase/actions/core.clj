@@ -55,6 +55,7 @@
  [metabase.actions.models
   enabled-table-actions
   dashcard->action
+  save-grid-action
   select-action
   select-actions
   table-primitive-action

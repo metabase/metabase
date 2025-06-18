@@ -1045,7 +1045,11 @@
                                                 (cond-> (nil? type)
                                                   (assoc :type :question))
                                                 maybe-normalize-query
-                                                (ensure-clause-idents ::before-insert))
+                                                (ensure-clause-idents ::before-insert)
+                                                (u/update-in-if-exists
+                                                 [:visualization_settings :table.enabled_actions]
+                                                 (let [save-grid-action @(requiring-resolve 'metabase.actions.core/save-grid-action)]
+                                                   (partial map (partial save-grid-action "card" (:id input-card-data))))))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
                                              {:query     (:dataset_query card-data)
                                               :metadata  result_metadata
