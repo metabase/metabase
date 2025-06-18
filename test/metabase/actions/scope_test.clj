@@ -53,7 +53,14 @@
                                                                :row          0
                                                                :col          4
                                                                :size_x       4
-                                                               :size_y       4}]
+                                                               :size_y       4}
+                     ;; editable
+                     :model/DashboardCard {dashcard-id-3 :id} {:dashboard_id dashboard-id
+                                                               :row                    0
+                                                               :col                    0
+                                                               :size_x                 4
+                                                               :size_y                 4
+                                                               :visualization_settings {:table_id table-id}}]
         (testing "hydrate for dashcard with MBQL card"
           (is (= {:dashcard-id   dashcard-id-1
                   :dashboard-id  dashboard-id
@@ -72,6 +79,15 @@
                   :database-id   db-id
                   :type          :dashcard}
                  (actions.scope/hydrate-scope {:dashcard-id dashcard-id-2}))))
+
+        (testing "hydrate for dashcard with editable"
+          (is (= {:dashcard-id   dashcard-id-3
+                  :dashboard-id  dashboard-id
+                  :collection-id collection-id
+                  :table-id      table-id
+                  :database-id   db-id
+                  :type          :dashcard}
+                 (actions.scope/hydrate-scope {:dashcard-id dashcard-id-3}))))
 
         (testing "hydrate for dashboard"
           (is (= {:dashboard-id  dashboard-id
