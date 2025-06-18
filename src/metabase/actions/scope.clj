@@ -24,18 +24,10 @@
 (defn- hydrate-from-dashcard [scope]
   (if (and (contains? scope :card-id) (contains? scope :dashboard-id))
     scope
-    (let [{:keys [card_id
-                  dashboard_id
-                  visualization_settings]}
-          (t2/select-one [:model/DashboardCard :card_id :dashboard_id :visualization_settings]
-                         (:dashcard-id scope))]
-      (merge {:dashboard-id (or dashboard_id missing-id)}
-             ;; actions on on mbql / native card
-             (when card_id
-               {:card-id card_id})
-             ;; editable
-             (when-let [table-id (:table_id visualization_settings)]
-               {:table-id table-id})
+    (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
+                                                        (:dashcard-id scope))]
+      (merge {:card-id      (or card_id missing-id)
+              :dashboard-id (or dashboard_id missing-id)}
              scope))))
 
 (defn- hydrate-from-card [scope card-id]

@@ -1440,7 +1440,10 @@
         (data-editing.tu/toggle-data-editing-enabled! true)
         (mt/with-temp
           [:model/Dashboard     dashboard {}
+           :model/Card          model     {:type           :model
+                                           :dataset_query  {:database (mt/id), :type :query, :query {:source-table @categories}}}
            :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                           :card_id      (:id model)
                                            :visualization_settings
                                            {:table_id @categories
                                             :table.columns
@@ -1523,7 +1526,10 @@
                                                                {:primary-key [:id]})]
         (mt/with-temp
           [:model/Dashboard     dashboard {}
+           :model/Card          model     {:type           :model
+                                           :dataset_query  {:database (mt/id), :type :query, :query {:source-table @test-table}}}
            :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                           :card_id      (:id model)
                                            :visualization_settings
                                            {:table_id @test-table
                                             :table.columns
