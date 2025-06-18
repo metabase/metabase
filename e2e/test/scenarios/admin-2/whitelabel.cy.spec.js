@@ -464,7 +464,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.log("test custom illustration");
 
-          cy.findByTestId("navbar-root").findByText("Exit admin").click();
+          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -497,7 +497,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           }).click();
           H.selectDropdown().findByText("No illustration").click();
 
-          cy.findByTestId("navbar-root").findByText("Exit admin").click();
+          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -735,7 +735,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByTestId("navbar-root").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.url().should("include", "/test-1");
     });
 
@@ -757,7 +757,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("This field must be a relative URL.")
         .should("be.visible");
 
-      cy.findByTestId("navbar-root").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.url().should("include", "/test-2");
     });
   });
