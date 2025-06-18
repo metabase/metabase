@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
@@ -96,23 +97,22 @@ export const CSVUpload = ({
       const [{ errors }] = rejected;
       const [{ code }] = errors;
 
-      switch (code) {
-        case "file-invalid-type":
+      match(code)
+        .with("file-invalid-type", () =>
           setUploadState({
             file: null,
             error: t`Sorry, this file type is not supported`,
-          });
-          break;
-        case "file-too-large":
+          }),
+        )
+        .with("file-too-large", () =>
           setUploadState({
             file: null,
             error: t`Sorry, this file is too large`,
-          });
-          break;
-        default:
-          setUploadState({ file: null, error: "An error has occurred" });
-          break;
-      }
+          }),
+        )
+        .otherwise(() =>
+          setUploadState({ file: null, error: t`An error has occurred` }),
+        );
     }
   }, []);
 
