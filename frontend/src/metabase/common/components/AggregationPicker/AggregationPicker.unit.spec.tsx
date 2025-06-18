@@ -192,7 +192,11 @@ describe("AggregationPicker", () => {
 
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Count");
 
-      ["Count of rows", "Cumulative count of rows"].forEach((name) => {
+      [
+        "Count of rows",
+        "Cumulative count of rows",
+        "Cumulative sum of ...", // fuzzy match
+      ].forEach((name) => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
       });
 
@@ -200,7 +204,6 @@ describe("AggregationPicker", () => {
         "Sum of ...",
         "Average of ...",
         "Number of distinct values of ...",
-        "Cumulative sum of ...",
         "Standard deviation of ...",
         "Minimum of ...",
         "Maximum of ...",
