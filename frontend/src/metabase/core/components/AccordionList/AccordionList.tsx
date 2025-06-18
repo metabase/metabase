@@ -23,7 +23,7 @@ import {
   AccordionListCell,
   type SharedAccordionProps,
 } from "./AccordionListCell";
-import type { Item, Row, SearchProps, Section } from "./types";
+import type { Item, Row, SearchProp, SearchProps, Section } from "./types";
 import {
   type Cursor,
   getNextCursor,
@@ -387,7 +387,10 @@ export class AccordionList<
   };
 
   searchFilter = (item: TItem) => {
-    const { searchProp = ["name", "displayName"], fuzzySearch } = this.props;
+    const {
+      searchProp = ["name", "displayName"] as SearchProp<TItem>[],
+      fuzzySearch,
+    } = this.props;
     const { searchText, searchIndex } = this.state;
 
     if (!searchText || searchText.length === 0) {
