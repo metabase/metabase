@@ -69,10 +69,10 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
-   [toucan2.realize :as t2.realize])
-  (:import [com.google.common.base Utf8]))
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -847,13 +847,9 @@
 (def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
 
 (defn- truncate-label [^String s]
-  (let [char-count (count s)
-        byte-count (Utf8/encodedLength s)]
-    (cond
-      (> byte-count max-label-bytes)  (let [target-count (int (* char-count (/ max-label-bytes byte-count)))]
-                                        (subs s 0 target-count))
-      (> char-count max-label-length) (subs s 0 max-label-length)
-      :else                           s)))
+  (-> s
+      (u.str/limit-bytes max-label-bytes)
+      (u.str/limit-chars max-label-length)))
 
 (defn- lower-plural [s]
   (-> s u/lower-case-en (str "s")))
