@@ -35,7 +35,12 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
   }, [rootElement, appColors, theme, font]);
 
   return (
-    <ThemeProvider theme={themeOverride}>
+    <ThemeProvider
+      theme={themeOverride}
+      mantineProviderProps={{
+        getRootElement: () => rootElement,
+      }}
+    >
       <GlobalSdkCssVariables />
       {children}
     </ThemeProvider>

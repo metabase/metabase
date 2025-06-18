@@ -88,7 +88,12 @@ module.exports = (env) => {
           use: [
             {
               loader: "style-loader",
-              options: { attributes: { "data-mb-styles": true } },
+              options: {
+                attributes: { "data-mb-styles": true },
+                insert: require.resolve(
+                  "./enterprise/frontend/src/embedding-sdk/lib/web-components/insert-styles",
+                ),
+              },
             },
             { loader: "css-loader", options: CSS_CONFIG },
             { loader: "postcss-loader" },
@@ -140,7 +145,7 @@ module.exports = (env) => {
       // so we use a different value instead
       moduleIds: isDevMode ? "natural" : undefined,
 
-      minimize: !isDevMode,
+      minimize: false,
       minimizer: mainConfig.optimization.minimizer,
     },
 

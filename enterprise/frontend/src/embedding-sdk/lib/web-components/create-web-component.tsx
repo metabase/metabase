@@ -9,7 +9,6 @@ import {
 } from "embedding-sdk";
 import {
   getR2wcRenderer,
-  withInjectedStyles,
   withPropForwarding,
 } from "embedding-sdk/lib/web-components";
 import { AttributeSerializer } from "embedding-sdk/lib/web-components/attribute-serializer";
@@ -59,7 +58,7 @@ export const createWebComponent = <TComponentProps,>(
       );
     },
     {
-      shadow: "closed",
+      shadow: "open",
       props: {
         // Provider props
         authConfig: "string",
@@ -72,10 +71,8 @@ export const createWebComponent = <TComponentProps,>(
     { mount, update, unmount },
   );
 
-  return withInjectedStyles(
-    withPropForwarding(Constructor, {
-      propsStorage,
-      propertyNames,
-    }),
-  );
+  return withPropForwarding(Constructor, {
+    propsStorage,
+    propertyNames,
+  });
 };

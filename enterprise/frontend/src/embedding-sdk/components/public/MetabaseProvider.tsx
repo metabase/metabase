@@ -153,6 +153,11 @@ export const MetabaseProviderInternal = ({
         <SdkThemeProvider theme={theme}>
           <Box
             ref={emotionStyleContainerRef}
+            data-style-container="css-modules"
+          ></Box>
+
+          <Box
+            ref={emotionStyleContainerRef}
             data-style-container="emotion"
           ></Box>
 
