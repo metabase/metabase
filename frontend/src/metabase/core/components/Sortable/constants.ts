@@ -1,0 +1,1 @@
+export const NEW_SORTABLE_ITEM_KEY = "$$NEW_SORTABLE_ITEM_KEY$$";
