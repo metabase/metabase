@@ -83,10 +83,7 @@ export const InteractiveQuestionDefaultView = ({
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (
-    !isEditorOpen &&
-    (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
-  ) {
+  if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
