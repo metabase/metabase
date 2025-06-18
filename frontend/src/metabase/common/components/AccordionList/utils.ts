@@ -228,5 +228,5 @@ export function search<T>(
     .search(searchText, {
       limit: 50,
     })
-    .filter((result) => result.score && result.score < 0.6);
+    .filter((result) => result.score && result.score < 0.4);
 }
