@@ -180,7 +180,7 @@ export const createMockSettings = (
   "bcc-enabled?": true,
   "cloud-smtp-enabled?": false,
   "cloud-email-smtp-host": "localhost",
-  "cloud-email-smtp-port": 456,
+  "cloud-email-smtp-port": 465,
   "cloud-email-smtp-security": "ssl",
   "cloud-email-smtp-username": null,
   "cloud-email-smtp-password": null,

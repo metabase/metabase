@@ -57,10 +57,10 @@ const getFormValueSchema = (
       ?.is_env_setting
       ? anySchema
       : Yup.string()
-          .oneOf(["456", "587", "2525"], "Must be either 456, 587 or 2525")
+          .oneOf(["465", "587", "2525"], "Must be either 465, 587 or 2525")
           .nullable()
           // .required(Errors.required)
-          .default("456"),
+          .default("465"),
     "cloud-email-smtp-security": settingsDetails?.["email-smtp-security"]
       ?.is_env_setting
       ? anySchema
@@ -102,7 +102,7 @@ export const CloudSMTPConnectionForm = ({
       "cloud-email-smtp-host": settingValues?.["cloud-email-smtp-host"] ?? "",
       "cloud-email-smtp-port": settingValues?.["cloud-email-smtp-port"]
         ? settingValues?.["cloud-email-smtp-port"] + ""
-        : "456",
+        : "465",
       "cloud-email-smtp-security":
         settingValues?.["cloud-email-smtp-security"] ?? "ssl",
       "cloud-email-smtp-username":
@@ -215,8 +215,8 @@ export const CloudSMTPConnectionForm = ({
                     label={t`SMTP Port`}
                     groupProps={{ mt: "0.5rem" }}
                   >
-                    <Chip value={"456"} variant="brand">
-                      456
+                    <Chip value={"465"} variant="brand">
+                      465
                     </Chip>
                     <Chip value={"587"} variant="brand">
                       587
