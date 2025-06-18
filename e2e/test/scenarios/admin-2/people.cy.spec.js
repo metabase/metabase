@@ -660,7 +660,7 @@ describe("scenarios > admin > people > group managers", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.findByTestId("admin-left-nav-pane").within(() => {
+      cy.findByTestId("admin-layout-sidebar").within(() => {
         cy.findByTextEnsureVisible("Groups").click();
       });
 
@@ -793,7 +793,7 @@ describe("scenarios > admin > people > group managers", () => {
   });
 
   it("after removing the last group redirects to the home page", () => {
-    cy.findByTestId("admin-left-nav-pane").findByText("Groups").click();
+    cy.findByTestId("admin-layout-sidebar").findByText("Groups").click();
 
     removeFirstGroup();
     cy.url().should("match", /\/admin\/people\/groups$/);
