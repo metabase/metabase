@@ -151,10 +151,7 @@ export const MetabaseProviderInternal = ({
       >
         <Global styles={SCOPED_CSS_RESET} />
         <SdkThemeProvider theme={theme}>
-          <Box
-            ref={emotionStyleContainerRef}
-            data-style-container="css-modules"
-          ></Box>
+          <Box data-style-container="css-modules"></Box>
 
           <Box
             ref={emotionStyleContainerRef}
