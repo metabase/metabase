@@ -14,10 +14,10 @@ import {
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getDraftParameterValues,
   getIsNavigatingBackToDashboard,
   getParameterValues,
-  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";
@@ -44,7 +44,7 @@ const mapStateToProps = (state: State) => {
   return {
     dashboard: getDashboardComplete(state),
     slowCards: getSlowCards(state),
-    parameters: getParameters(state),
+    parameters: getDashboardHeaderParameters(state),
     parameterValues: getParameterValues(state),
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
