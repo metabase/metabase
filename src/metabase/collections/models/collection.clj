@@ -66,7 +66,9 @@
                    (u/prog1 (trash-collection*)
                      (when-not <>
                        (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
-  (defn trash-collection []
+  (defn trash-collection
+    "Get the (memoized) trash collection"
+    []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
 
 (defn trash-collection-id
