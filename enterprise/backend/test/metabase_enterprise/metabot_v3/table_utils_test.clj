@@ -224,10 +224,10 @@
                                         {:match-schema? true}))
       (is (table-utils/matching-tables? {:name "test" :schema "public"}
                                         {:name "test" :schema nil}
-                                        {:match-schema? true})))
-    (is (table-utils/matching-tables? {:name "test" :schema "public"}
-                                      {:name "test" :schema nil}
-                                      {:match-schema? true})))
+                                        {:match-schema? true}))
+      (is (table-utils/matching-tables? {:name "test" :schema "public"}
+                                        {:name "test" :schema nil}
+                                        {:match-schema? true}))))
 
   (testing "database-tables with invalid database ID"
     (mt/with-current-user (mt/user->id :crowberto)
