@@ -27,8 +27,6 @@ const getMockSuccessStream = () =>
 
 const getMockErrorStream = () => createMockReadableStream([`3:{}`]);
 
-// TODO: check code coverage
-
 describe("processChatResponse", () => {
   it("should be able to process a valid stream", async () => {
     const mockStream = getMockSuccessStream();
@@ -54,14 +52,21 @@ describe("processChatResponse", () => {
     expect(config.onError).toHaveBeenCalled();
   });
 
-  it("should not error when seeing data parts it does not recognize", async () => {
+  it("should ignore unknown data parts", async () => {
     const mockStream = createMockReadableStream([
-      `2:{"type":"__invalid__","version":1,"value":"hi"}`,
+      `2:{"type":"__some_futurist_data__","version":1,"value":"hi"}`,
       `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
     ]);
     const config = getMockedCallbacks();
-    await expect(processChatResponse(mockStream, config)).resolves.toBeTruthy();
+
+    const result = await processChatResponse(mockStream, config);
+    // callbacks shouldn't have been triggered
     expect(config.onError).not.toHaveBeenCalled();
+    expect(config.onDataPart).not.toHaveBeenCalled();
+    // we should keep track of the info in the result
+    expect(result.data).toEqual([
+      { type: "__some_futurist_data__", value: "hi", version: 1 },
+    ]);
   });
 
   it("should ignore unknown part types", async () => {
@@ -76,5 +81,32 @@ describe("processChatResponse", () => {
     await expect(
       processChatResponse(mockStream, expectNoStreamedError),
     ).rejects.toBeTruthy();
+  });
+
+  it("should error if a tool result is returned without a preceeding tool call", async () => {
+    const mockStream = createMockReadableStream([
+      `a:{"toolCallId":"x","result":""}`,
+      `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+    ]);
+    await expect(
+      processChatResponse(mockStream, expectNoStreamedError),
+    ).rejects.toBeTruthy();
+  });
+
+  it("should handle messages across multiple chunks", async () => {
+    const mockStream = createMockReadableStream(
+      [
+        `0:"You, but `,
+        `don't tell anyone."\n`,
+        `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}\n`,
+      ],
+      { disableAutoInsertNewLines: true },
+    );
+
+    const result = await processChatResponse(mockStream, expectNoStreamedError);
+    expect(result.text).toEqual("You, but don't tell anyone.");
+    expect(result.history).toEqual([
+      { content: "You, but don't tell anyone.", role: "assistant" },
+    ]);
   });
 });

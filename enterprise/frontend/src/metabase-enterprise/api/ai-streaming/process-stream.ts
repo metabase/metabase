@@ -6,6 +6,7 @@ import type { MetabotHistory } from "metabase-types/api";
 import {
   dataPartSchema,
   finishPartSchema,
+  knownDataPartTypes,
   toolCallPartSchema,
   toolResultPartSchema,
 } from "./schemas";
@@ -92,6 +93,13 @@ function parseDataStreamPart(line: string) {
 
 type ParsedStreamPart = Exclude<ReturnType<typeof parseDataStreamPart>, void>;
 type ParsedStreamPartName = ParsedStreamPart["name"];
+
+function isUnknownDataPart(streamPart: ParsedStreamPart): boolean {
+  return (
+    streamPart.name === "data" &&
+    !knownDataPartTypes.includes(streamPart.value.type)
+  );
+}
 
 type AccumulatedStreamParts = {
   toolCalls: (
@@ -220,7 +228,11 @@ export async function processChatResponse(
         config.onTextPart?.(streamPart.value);
       }
       if (streamPart.name === "data") {
-        config.onDataPart?.(streamPart.value);
+        if (!isUnknownDataPart(streamPart)) {
+          config.onDataPart?.(streamPart.value);
+        } else {
+          console.warn("Ignoring unknown data part:", streamPart);
+        }
       }
       if (streamPart.name === "tool_call") {
         config.onToolCallPart?.(streamPart.value);
