@@ -257,7 +257,7 @@
       (is (= [{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name view-name :table-schema test-db-name}
               {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :table-name view-name :table-schema test-db-name}
               {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema test-db-name}]
-             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [test-db-name]}))
+             (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [test-db-name]})))
           "`describe-fields` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
 
@@ -368,7 +368,7 @@
                    (if (set? n)
                      (sort-by :name n)
                      n))
-                 (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]}))))))))
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]})))))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
@@ -806,7 +806,7 @@
                :base-type :type/Decimal,
                :database-partitioned false,
                :database-position 9}]
-             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+             (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]})))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -862,7 +862,7 @@
                                  :base-type :type/Array,
                                  :database-partitioned false,
                                  :database-position 3}]
-                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+                               (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]})))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
