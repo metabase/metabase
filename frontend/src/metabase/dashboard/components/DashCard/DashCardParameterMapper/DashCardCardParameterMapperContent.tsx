@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getVirtualCardType,
+  isQuestionDashCard,
   isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
@@ -40,6 +41,7 @@ interface DashCardCardParameterMapperContentProps {
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
+  editingParameterInlineDashcard?: DashboardCard;
 }
 
 export const DashCardCardParameterMapperContent = ({
@@ -56,6 +58,7 @@ export const DashCardCardParameterMapperContent = ({
   card,
   target,
   shouldShowAutoConnectHint,
+  editingParameterInlineDashcard,
 }: DashCardCardParameterMapperContentProps) => {
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
@@ -63,6 +66,14 @@ export const DashCardCardParameterMapperContent = ({
     editingParameter != null && isTemporalUnitParameter(editingParameter);
 
   const dispatch = useDispatch();
+
+  const isInlineParameterOfAnotherQuestionCard = useMemo(() => {
+    return (
+      editingParameterInlineDashcard != null &&
+      isQuestionDashCard(editingParameterInlineDashcard) &&
+      editingParameterInlineDashcard.id !== dashcard.id
+    );
+  }, [editingParameterInlineDashcard, dashcard.id]);
 
   const headerContent = useMemo(() => {
     if (layoutHeight <= 2) {
@@ -132,6 +143,15 @@ export const DashCardCardParameterMapperContent = ({
         question={question}
         parameter={editingParameter}
       />
+    );
+  }
+
+  if (isInlineParameterOfAnotherQuestionCard) {
+    return (
+      <Flex className={S.TextCardDefault} ta="center">
+        <Icon name="info" size={12} className={CS.pr1} />
+        {t`This filter can only connect to its own card.`}
+      </Flex>
     );
   }
 
