@@ -1,6 +1,9 @@
-const tryOrDefault = <T>(fn: () => T, defaultValue: T): T => {
+export const tryOrDefault = <T>(
+  fn: () => T,
+  defaultValue: NonNullable<T>,
+): NonNullable<T> => {
   try {
-    return fn();
+    return fn() ?? defaultValue;
   } catch (e) {
     console.warn(
       "Error while trying to get env",

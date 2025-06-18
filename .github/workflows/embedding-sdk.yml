@@ -12,6 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
+env:
+  ARTIFACT_NAME: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_REF_ARTIFACT_NAME: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   files-changed:
     name: Check which files changed
@@ -43,8 +47,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-embedding-sdk
         with:
-          m2-cache-key: "embedding-sdk-build"
-          artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          m2-cache-key: "cljs"
+          artifact-name: ${{ env.ARTIFACT_NAME }}
 
   # Builds the target branch for a PR (base ref)
   build-base-ref:
@@ -61,14 +65,12 @@ jobs:
         with:
           ref: ${{ github.base_ref }}
           m2-cache-key: "embedding-sdk-build-base-ref"
-          artifact-name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+          artifact-name: ${{ env.BASE_REF_ARTIFACT_NAME }}
 
   embedding-sdk-bundle-size-check:
     needs: [files-changed, build, build-base-ref]
     if: |
-      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
-      needs.build.result == 'success' &&
-      needs.build-base-ref.result == 'success'
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     env:
@@ -78,9 +80,9 @@ jobs:
       - uses: ./.github/actions/sdk-bundle-size-check
         id: compare
         with:
-          current-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          current-artifact-name: ${{ env.ARTIFACT_NAME }}
           current-dist-path: temp/embedding-sdk-current
-          base-ref-artifact-name: embedding-sdk-${{ github.base_ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+          base-ref-artifact-name: ${{ env.BASE_REF_ARTIFACT_NAME }}
           base-ref-dist-path: temp/embedding-sdk-base-ref
           max-bundle-size-diff-percent: ${{ env.MAX_BUNDLE_SIZE_DIFF_PERCENT }}
 
@@ -109,7 +111,7 @@ jobs:
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:cli-snippets:type-check
@@ -128,7 +130,7 @@ jobs:
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Run frontend embedding SDK snippets type check
         run: yarn run embedding-sdk:docs-snippets:type-check
@@ -149,7 +151,7 @@ jobs:
       - name: Retrieve Embedding SDK dist artifact
         uses: actions/download-artifact@v4
         with:
-          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          name: ${{ env.ARTIFACT_NAME }}
           path: ${{ github.workspace }}/resources/embedding-sdk
       - name: Generate documentation to check for generation errors
         id: docs-generation
@@ -188,7 +190,7 @@ jobs:
     needs: [build]
     secrets: inherit
     with:
-      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+      cached-embedding-sdk-dist-artifact-name: ${{ env.ARTIFACT_NAME }}
 
   e2e-component-tests-embedding-sdk-cross-version:
     # run on: every push on release branches, and every pr that targets a release branch

@@ -9,7 +9,7 @@ import type {
   MetabaseAuthConfig,
   MetabaseEmbeddingSessionToken,
 } from "embedding-sdk";
-import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import { embeddingSdkVersion } from "embedding-sdk/env";
 import * as MetabaseError from "embedding-sdk/errors";
 import { getIsLocalhost } from "embedding-sdk/lib/is-localhost";
 import { isSdkVersionCompatibleWithMetabaseVersion } from "embedding-sdk/lib/version-utils";
@@ -83,7 +83,7 @@ export const initAuth = createAsyncThunk(
     ]);
 
     const mbVersion = (siteSettings.payload as Settings)?.version?.tag;
-    const sdkVersion = getEmbeddingSdkVersion();
+    const sdkVersion = embeddingSdkVersion;
 
     if (
       mbVersion &&
@@ -169,7 +169,7 @@ export function getSdkRequestHeaders(hash?: string): Record<string, string> {
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     "X-Metabase-Client": "embedding-sdk-react",
     // eslint-disable-next-line no-literal-metabase-strings -- header name
-    "X-Metabase-Client-Version": getEmbeddingSdkVersion(),
+    "X-Metabase-Client-Version": embeddingSdkVersion,
     // eslint-disable-next-line no-literal-metabase-strings -- header name
     ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
   };
