@@ -18,7 +18,7 @@ import {
 } from "metabase/lib/notifications";
 import {
   getHasConfiguredAnyChannel,
-  getHasConfiguredEmailChannel,
+  getHasConfiguredChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
@@ -136,7 +136,14 @@ export const CreateOrEditQuestionAlertModal = ({
     useSendUnsavedNotificationMutation();
 
   const hasConfiguredAnyChannel = getHasConfiguredAnyChannel(channelSpec);
-  const hasConfiguredEmailChannel = getHasConfiguredEmailChannel(channelSpec);
+  const hasConfiguredEmailChannel = getHasConfiguredChannel(
+    channelSpec,
+    "email",
+  );
+  const hasConfiguredSlackChannel = getHasConfiguredChannel(
+    channelSpec,
+    "slack",
+  );
 
   const triggerOptions = useMemo(
     () =>
@@ -239,7 +246,7 @@ export const CreateOrEditQuestionAlertModal = ({
 
   const channelRequirementsMet = userCanAccessSettings
     ? hasConfiguredAnyChannel
-    : hasConfiguredEmailChannel;
+    : hasConfiguredEmailChannel || hasConfiguredSlackChannel;
 
   const handleScheduleChange = useCallback(
     (updatedSubscription: NotificationCronSubscription) => {
