@@ -163,8 +163,18 @@
 
 (defn- check-table-permissions
   "Check table-level permissions for a card's query tables.
-   Returns a map of blocked tables by group."
-  [user-id card permission-filter visible-filter]
+   
+   Arguments:
+   - user-id: The ID of the user to check permissions for
+   - card: The card model containing the dataset_query to analyze
+   - permissions-blocking: Map specifying which permission types to check for blocking
+                           (e.g., {:perms/view-data :blocked} or {:perms/download-results :no})
+   - permissions-granting: Map specifying which permission types should be considered as granting access
+                            (e.g., {:perms/view-data :legacy-no-self-service} or {:perms/download-results :ten-thousand-rows})
+   
+   Returns a map of blocked tables by group in the format:
+   {[db-name schema table-name] #{group-name-1 group-name-2}}"
+  [user-id card permissions-blocking permissions-granting]
   (let [query (-> card :dataset_query qp.preprocess/preprocess)
         query-tables (-> query :query lib.util/collect-source-tables)
         native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
@@ -177,16 +187,16 @@
                   :join [[(perms/select-tables-and-groups-granting-perm
                            {:user-id user-id
                             :is-superuser? false}
-                           permission-filter) :perm_grant] [:= :blocked.id :perm_grant.id]
+                           permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
                          [:metabase_database :db] [:= :blocked.db_id :db.id]
                          [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
                   :where [:and [:= :blocked.db_id (:database_id card)]
                           [:not
                            [:in :blocked.id (perms/visible-table-filter-select
-                                             :db_id
+                                             :id
                                              {:user-id user-id
                                               :is-superuser? false}
-                                             visible-filter)]]]})
+                                             permissions-granting)]]]})
 
        (seq query-tables)
        (t2/query {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
@@ -194,7 +204,7 @@
                   :join [[(perms/select-tables-and-groups-granting-perm
                            {:user-id user-id
                             :is-superuser? false}
-                           permission-filter) :perm_grant] [:= :blocked.id :perm_grant.id]
+                           permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
                          [:metabase_database :db] [:= :blocked.db_id :db.id]
                          [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
                   :where [:and [:in :blocked.id query-tables]
@@ -203,7 +213,7 @@
                                              :id
                                              {:user-id user-id
                                               :is-superuser? false}
-                                             visible-filter)]]]})
+                                             permissions-granting)]]]})
        :else
        nil)
      (map (juxt (juxt :db_name :schema :table_name) :group_name))
@@ -216,7 +226,7 @@
    (let [card-id (Integer/parseInt model-id)
          card (t2/select-one :model/Card :id card-id)
          blocked-by-group (check-table-permissions user-id card
-                                                   {:perms/view-data [:blocked :most]}
+                                                   {:perms/view-data :blocked}
                                                    {:perms/view-data :legacy-no-self-service})]
      {:decision    (if (seq blocked-by-group) "denied" "allow")
       :segment     #{}
@@ -236,10 +246,10 @@
    (let [card-id (Integer/parseInt model-id)
          card (t2/select-one :model/Card :id card-id)
          limited-by-group (check-table-permissions user-id card
-                                                   {:perms/download-results [:ten-thousand-rows :least]}
+                                                   {:perms/download-results :ten-thousand-rows}
                                                    {:perms/download-results :one-million-rows})
          blocked-by-group (check-table-permissions user-id card
-                                                   {:perms/download-results [:no :most]}
+                                                   {:perms/download-results :no}
                                                    {:perms/download-results :ten-thousand-rows})]
      {:decision    (cond
                      (seq blocked-by-group) "denied"
