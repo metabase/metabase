@@ -1,3 +1,4 @@
+import { memo } from "react";
 import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -28,7 +29,7 @@ interface Props {
   tableId: TableId;
 }
 
-export function TablePreview(props: Props) {
+const TablePreviewBase = (props: Props) => {
   const { error, rawSeries } = useDataSample(props);
 
   if (error) {
@@ -43,7 +44,7 @@ export function TablePreview(props: Props) {
       rawSeries={rawSeries}
     />
   );
-}
+};
 
 function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
   const datasetQuery = getPreviewQuery(databaseId, tableId, fieldId);
@@ -114,3 +115,5 @@ function getDistinctRows(rows: RowValues[]) {
   const distinctRows = _.uniq(rows, ([_stubValue, value]) => value);
   return distinctRows.slice(0, PREVIEW_ROW_COUNT);
 }
+
+export const TablePreview = memo(TablePreviewBase);

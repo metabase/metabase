@@ -23,12 +23,6 @@ import S from "./FieldSection.module.css";
 import { FormattingSection } from "./FormattingSection";
 import { MetadataSection } from "./MetadataSection";
 
-// memoize components for smooth column resizing experience
-const MemoizedDataSection = memo(DataSection);
-const MemoizedMetadataSection = memo(MetadataSection);
-const MemoizedBehaviorSection = memo(BehaviorSection);
-const MemoizedFormattingSection = memo(FormattingSection);
-
 interface Props {
   databaseId: DatabaseId;
   field: Field;
@@ -36,7 +30,7 @@ interface Props {
   onPreviewClick: () => void;
 }
 
-export const FieldSection = ({
+const FieldSectionBase = ({
   databaseId,
   field,
   isPreviewOpen,
@@ -103,10 +97,10 @@ export const FieldSection = ({
       </Group>
 
       <Stack gap="xl">
-        <MemoizedDataSection field={field} />
-        <MemoizedMetadataSection databaseId={databaseId} field={field} />
-        <MemoizedBehaviorSection databaseId={databaseId} field={field} />
-        <MemoizedFormattingSection field={field} />
+        <DataSection field={field} />
+        <MetadataSection databaseId={databaseId} field={field} />
+        <BehaviorSection databaseId={databaseId} field={field} />
+        <FormattingSection field={field} />
 
         <Stack gap="sm" mt="lg">
           <RescanFieldButton fieldId={getRawTableFieldId(field)} />
@@ -116,3 +110,5 @@ export const FieldSection = ({
     </Stack>
   );
 };
+
+export const FieldSection = memo(FieldSectionBase);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -21,7 +21,7 @@ interface Props {
   field: Field;
 }
 
-export const DataSection = ({ field }: Props) => {
+const DataSectionBase = ({ field }: Props) => {
   const id = getRawTableFieldId(field);
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
@@ -114,3 +114,5 @@ export const DataSection = ({ field }: Props) => {
     </Stack>
   );
 };
+
+export const DataSection = memo(DataSectionBase);

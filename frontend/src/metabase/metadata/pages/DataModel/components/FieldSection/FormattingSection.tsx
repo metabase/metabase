@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -19,7 +19,7 @@ interface Props {
   field: Field;
 }
 
-export const FormattingSection = ({ field }: Props) => {
+const FormattingSectionBase = ({ field }: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
@@ -55,3 +55,5 @@ export const FormattingSection = ({ field }: Props) => {
     </Stack>
   );
 };
+
+export const FormattingSection = memo(FormattingSectionBase);

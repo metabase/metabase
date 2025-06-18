@@ -1,12 +1,6 @@
 import { useElementSize, useWindowEvent } from "@mantine/hooks";
 import cx from "classnames";
-import {
-  type ReactNode,
-  memo,
-  useCallback,
-  useLayoutEffect,
-  useState,
-} from "react";
+import { type ReactNode, useCallback, useLayoutEffect, useState } from "react";
 import { usePrevious, useWindowSize } from "react-use";
 import { t } from "ttag";
 
@@ -35,11 +29,6 @@ import {
 } from "./constants";
 import type { RouteParams } from "./types";
 import { clamp, getTableMetadataQuery, parseRouteParams } from "./utils";
-
-// memoize components for smooth column resizing experience
-const MemoizedFieldSection = memo(FieldSection);
-const MemoizedPreviewSection = memo(PreviewSection);
-const MemoizedTableSection = memo(TableSection);
 
 interface Props {
   params: RouteParams;
@@ -200,7 +189,7 @@ export const DataModel = ({ params, location, children }: Props) => {
               <Box bg="bg-white" className={S.column} h="100%" w={tableWidth}>
                 <LoadingAndErrorWrapper error={error} loading={isLoading}>
                   {table && (
-                    <MemoizedTableSection
+                    <TableSection
                       /**
                        * Make sure internal component state is reset when changing tables.
                        * This is to avoid state mix-up with optimistic updates.
@@ -229,7 +218,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                   <Flex justify="space-between" w="100%">
                     {field && (
                       <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                        <MemoizedFieldSection
+                        <FieldSection
                           databaseId={databaseId}
                           field={field}
                           isPreviewOpen={isPreviewOpen}
@@ -255,7 +244,7 @@ export const DataModel = ({ params, location, children }: Props) => {
                 maw={COLUMN_CONFIG.preview.max}
                 miw={COLUMN_CONFIG.preview.min}
               >
-                <MemoizedPreviewSection
+                <PreviewSection
                   className={S.preview}
                   databaseId={databaseId}
                   field={field}
