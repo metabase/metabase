@@ -83,7 +83,7 @@ export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
 
-export const getAgentRequestMeta = createSelector(
+export const getAgentRequestMetadata = createSelector(
   getHistory,
   getMetabotState,
   (history, state) => ({

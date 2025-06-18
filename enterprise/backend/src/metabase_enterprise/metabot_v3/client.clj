@@ -13,8 +13,8 @@
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.api.common :as api]
    [metabase.premium-features.core :as premium-features]
-   [metabase.system.core :as system]
    [metabase.server.streaming-response :as sr]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -173,16 +173,16 @@
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-                               (loop []
-                                 (when-let [line (.readLine response-lines)]
-                                   (println "LINE" line)
-                                   (.write os (.getBytes (str line "\n") "UTF-8"))
-                                   (.flush os)
-                                   (Thread/sleep 10)
-                                   (recur))))
+          (loop []
+            (when-let [line (.readLine response-lines)]
+              (println "LINE" line)
+              (.write os (.getBytes (str line "\n") "UTF-8"))
+              (.flush os)
+              (Thread/sleep 10)
+              (recur))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
-                          :response response}))))
+                         :response response}))))
     (catch Throwable e
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 

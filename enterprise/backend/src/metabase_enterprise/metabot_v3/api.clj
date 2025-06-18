@@ -77,6 +77,7 @@
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
    _query-params
+   ; TODO: conversation_id is unused, should we should send it back as a header?
    {:keys [conversation_id] :as body} :- [:map
                                           [:metabot_id {:optional true} :string]
                                           [:message ms/NonBlankString]
