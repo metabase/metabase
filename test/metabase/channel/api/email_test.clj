@@ -53,8 +53,7 @@
    :cloud-email-smtp-password (setting/get :cloud-email-smtp-password)
    :cloud-email-from-address  (setting/get :cloud-email-from-address)
    :cloud-email-from-name     (setting/get :cloud-email-from-name)
-   :cloud-email-reply-to      (setting/get :cloud-email-reply-to)
-   :cloud-smtp-enabled       (str (setting/get :cloud-smtp-enabled?))})
+   :cloud-email-reply-to      (setting/get :cloud-email-reply-to)})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -74,8 +73,7 @@
    :cloud-email-smtp-password "gobble gobble"
    :cloud-email-from-address  "eating@hungry.com"
    :cloud-email-from-name     "Eating"
-   :cloud-email-reply-to      ["reply-to@hungry.com"]
-   :cloud-smtp-enabled        "true"})
+   :cloud-email-reply-to      ["reply-to@hungry.com"]})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
@@ -349,6 +347,5 @@
                   :cloud-email-smtp-password nil
                   :cloud-email-from-address  "notifications@metabase.com"
                   :cloud-email-from-name     nil
-                  :cloud-email-reply-to      nil
-                  :cloud-smtp-enabled        "false"}
+                  :cloud-email-reply-to      nil}
                  (cloud-email-settings))))))))
