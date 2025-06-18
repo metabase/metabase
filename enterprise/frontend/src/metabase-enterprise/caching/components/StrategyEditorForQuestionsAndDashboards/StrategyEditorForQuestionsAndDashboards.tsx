@@ -4,27 +4,17 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
-import { rootId } from "metabase/admin/performance/constants/simple";
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
+import { SettingsPageWrapper } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useSearchQuery } from "metabase/api";
+import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
 import type { ColumnItem } from "metabase/common/components/Table/types";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  Icon,
-  Skeleton,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Center, Flex, Skeleton, Stack } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
@@ -249,17 +239,9 @@ const _StrategyEditorForQuestionsAndDashboards = ({
   }, [updateTarget, isStrategyFormDirty]);
 
   return (
-    <Flex
-      role="region"
-      aria-label={t`Dashboard and question caching`}
-      w="100%"
-      direction="row"
-      justify="space-between"
-      onKeyDown={(e) => {
-        if (e.key === "Escape" && !e.ctrlKey && !e.metaKey) {
-          closeForm();
-        }
-      }}
+    <SettingsPageWrapper
+      title={t`Caching for dashboards and questions`}
+      description={t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
     >
       <Stack
         gap="xl"
@@ -268,12 +250,6 @@ const _StrategyEditorForQuestionsAndDashboards = ({
           overflowY: "auto",
         }}
       >
-        <Box component="aside" id={explanatoryAsideId}>
-          <Title order={1}>{t`Caching for dashboards and questions`}</Title>
-          <Text>
-            {t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
-          </Text>
-        </Box>
         {confirmationModal}
         <Flex>
           <DelayedLoadingAndErrorWrapper
@@ -305,35 +281,26 @@ const _StrategyEditorForQuestionsAndDashboards = ({
         </Flex>
       </Stack>
 
-      {targetId !== null && targetModel !== null && (
-        <Panel className={Styles.StrategyFormPanel}>
-          <Button
-            variant="subtle"
-            pos="absolute"
-            p="1rem"
-            top="1rem"
-            style={{ insetInlineEnd: "1rem" }}
-            onClick={() => {
-              closeForm();
-            }}
-          >
-            <Text color="var(--mb-color-text-dark)">
-              <Icon name="close" />
-            </Text>
-          </Button>
+      <Sidesheet
+        isOpen={targetId !== null && targetModel !== null}
+        onClose={closeForm}
+        title={targetName ?? `Untitled ${targetModel}`}
+      >
+        {targetModel && (
           <StrategyForm
             targetId={targetId}
             targetModel={targetModel}
-            targetName={targetName ?? `Untitled ${targetModel}`}
+            targetName=""
             setIsDirty={setIsStrategyFormDirty}
             saveStrategy={saveStrategy}
             savedStrategy={savedStrategy}
             shouldAllowInvalidation={true}
-            shouldShowName={targetId !== rootId}
+            shouldShowName={false}
+            isInSidebar
           />
-        </Panel>
-      )}
-    </Flex>
+        )}
+      </Sidesheet>
+    </SettingsPageWrapper>
   );
 };
 

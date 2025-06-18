@@ -4,11 +4,12 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
+import { SettingsPageWrapper } from "metabase/admin/settings/components/SettingsSection";
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Box, Flex, Stack, Text, Title } from "metabase/ui";
+import { Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
@@ -123,15 +124,17 @@ const StrategyEditorForDatabases_Base = ({
   }
 
   return (
-    <Stack gap="xl" aria-label={t`Data caching settings`}>
-      <Box>
-        <Title order={1}>{t`Database caching`}</Title>
-        <Text>
+    <SettingsPageWrapper
+      title={t`Database caching`}
+      aria-label={t`Data caching settings`}
+      description={
+        <>
           {t`Speed up queries by caching their results.`}
           <PLUGIN_CACHING.GranularControlsExplanation />
-        </Text>
-      </Box>
-      <Stack gap="xl" aria-label={t`Data caching settings`}></Stack>
+        </>
+      }
+      h="calc(100vh - 7rem)"
+    >
       {confirmationModal}
       <Flex gap="xl" style={{ overflow: "hidden" }}>
         <RoundedBox twoColumns={canOverrideRootStrategy}>
@@ -163,7 +166,7 @@ const StrategyEditorForDatabases_Base = ({
         </RoundedBox>
         <UpsellCacheConfig source="performance-data_cache" />
       </Flex>
-    </Stack>
+    </SettingsPageWrapper>
   );
 };
 

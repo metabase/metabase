@@ -10,6 +10,7 @@ import { getPerformanceTabName } from "../utils";
 
 export const PerformanceApp = ({ children }: { children: React.ReactNode }) => (
   <AdminSettingsLayout
+    maw="60rem"
     sidebar={
       <AdminNavWrapper>
         <AdminNavItem
