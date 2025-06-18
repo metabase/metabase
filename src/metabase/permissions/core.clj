@@ -81,7 +81,8 @@
   impersonation-enforced-for-db?
   log-permissions-changes
   sandboxed-or-impersonated-user?
-  sandboxed-user?])
+  sandboxed-user?
+  increment-implicit-perms-revision!])
 
 ;;; import these vars with different names to make their purpose more obvious. These actually do have docstrings but
 ;;; Kondo gets tripped up here.
