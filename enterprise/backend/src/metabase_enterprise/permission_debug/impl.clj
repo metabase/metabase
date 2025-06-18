@@ -4,8 +4,8 @@
   Maps actions to it's own definition of a permission type since the permission types used in our
   modeling don't necessarily match 1:1 with actions a user may perform in the ui.
 
-  | Permission Type | Action | Target Model | Permissions |
-  | --------------- | ------ | ------------ | ----------- |
+  | Action Type | Action | Target Model | Permissions |
+  | ----------- | ------ | ------------ | ----------- |
   | `:card/read` | get a card model via API | card | perms/collection-access |
   | `:card/query` | run the query associated with the card | card → tables used in query | perms/view-data perms/collection-access |
   | `:card/download-data` | download data from the card query | card → tables used in query | perms/download-results perms/collection-access |
@@ -20,52 +20,73 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
-(mr/def ::DebuggerSchema [:schema {:registry
-                                   {::group-id :int
-                                    ::perm-debug-info [:map
-                                                       [:model-type  [:enum "question" "invalid"]]
-                                                       [:model-id    :string]
-                                                       [:decision    [:enum "allow" "denied" "limited"]]
-                                                       [:segment     [:set [:enum "sandboxed" "impersonated" "routed"]]]
-                                                       [:message     [:sequential :string]]
-                                                       [:data        [:map]]
-                                                       [:suggestions [:map-of ::group-id :string]]]}}
-                          ::perm-debug-info])
+(def DebuggerSchema
+  "Format of the response the Debugger will return"
+  [:schema {:registry
+            {::group-id :int
+             ::perm-debug-info [:map
+                                [:model-type  [:enum "card" "invalid"]]
+                                [:model-id    :string]
+                                [:decision    [:enum "allow" "denied" "limited"]]
+                                [:segment     [:set [:enum "sandboxed" "impersonated" "routed"]]]
+                                [:message     [:sequential :string]]
+                                [:data        [:map]]
+                                [:suggestions [:map-of ::group-id :string]]]}}
+   ::perm-debug-info])
 
-(mr/def ::PermissionType [:enum :card/read :card/query :card/download-data])
+(def ActionType
+  "Type of the action in the debugger API to dispatch on"
+  [:enum :card/read :card/query :card/download-data])
 
-(mr/def ::DebuggerArguments [:map
-                             [:user-id pos-int?]
-                             [:model-id :string]
-                             [:permission-type ::PermissionType]])
+(def DebuggerArguments
+  "Arguements for the Debugger function. The model type being operated on is infered by the requested action type"
+  [:map
+   [:user-id pos-int?]
+   [:model-id :string]
+   [:action-type ActionType]])
 
 (defmulti debug-permissions
   "Debug permissions for a given entity and user.
 
-   Dispatches on the `:permission_type` key in the input map.
+   Dispatches on the `:action-type` key in the input map.
 
    Expected input map keys:
    - `:user-id` - The ID of the user to check permissions for
    - `:model-id` - The ID of the model to check permissions against
-   - `:permission-type` - The type of permission to check (e.g., 'view', 'write')
+   - `:action-type` - The type of permission to check (e.g., 'view', 'write')
 
    Returns a map conforming to the DebuggerSchema defined in the API."
   {:arglists '([debug-info-map])}
-  (fn [{:keys [permission-type]}]
-    permission-type))
+  (fn [{:keys [action-type user-id]}]
+    (let [user-is-superuser? (t2/select-one-fn :is_superuser :model/User :id user-id)]
+      (if user-is-superuser?
+        ::is-superuser
+        action-type))))
 
-(mu/defmethod debug-permissions :default :- ::DebuggerSchema
-  [_debug-info-map :- ::DebuggerArguments]
+(mu/defmethod debug-permissions :default :- DebuggerSchema
+  [_debug-info-map :- DebuggerArguments]
   {:decision    "denied"
    :model-type  "invalid"
    :model-id    ""
    :segment     #{}
    :message     [(tru "Unknown permission type")]
+   :data        {}
+   :suggestions {}})
+
+(mu/defmethod debug-permissions ::is-superuser :- DebuggerSchema
+  [{:keys [action-type model-id]} :- DebuggerArguments]
+  ()
+  {:decision    "allow"
+   :model-type  (case (namespace action-type)
+                  "card" "card")
+   :model-id    model-id
+   :segment     #{}
+   :message     [(tru "Superuser is allowed full access")]
+   :data        {}
    :suggestions {}})
 
 (defn- user-can-read?
@@ -75,11 +96,11 @@
             api/*current-user-permissions-set* (delay (perms/user-permissions-set user-id))]
     (mi/can-read? model pk)))
 
-(mu/defn- merge-permission-check :- ::DebuggerSchema
+(mu/defn- merge-permission-check :- DebuggerSchema
   "Merges n permissions responses with right most wins semantics. model-type and model-id must match across
   permissions respones. If the decision is denied that should that precendence over limited which should be
   prefered over allowed when merging."
-  [& responses :- [:sequential ::DebuggerSchema]]
+  [& responses :- [:sequential DebuggerSchema]]
   (when (seq responses)
     (let [first-response (first responses)
           decision-precedence {"denied" 3 "limited" 2 "allow" 1}
@@ -118,11 +139,11 @@
               first-response
               (rest responses)))))
 
-(mu/defmethod debug-permissions :card/read :- ::DebuggerSchema
-  [{:keys [user-id model-id] :as _debug-info} :- ::DebuggerArguments]
+(mu/defmethod debug-permissions :card/read :- DebuggerSchema
+  [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
   (let [can-read? (user-can-read? :model/Card (Integer/parseInt model-id) user-id)]
     {:decision    (if can-read? "allow" "denied")
-     :model-type  "question"
+     :model-type  "card"
      :model-id    model-id
      :segment     #{}
      :message     [(if can-read?
@@ -144,8 +165,7 @@
   "Check table-level permissions for a card's query tables.
    Returns a map of blocked tables by group."
   [user-id card permission-filter visible-filter]
-  (let [user-is-superuser? (t2/select-one-fn :is_superuser :model/User :id user-id)
-        query (-> card :dataset_query qp.preprocess/preprocess)
+  (let [query (-> card :dataset_query qp.preprocess/preprocess)
         query-tables (-> query :query lib.util/collect-source-tables)
         native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
     (->>
@@ -156,7 +176,7 @@
                   :from [[:metabase_table :blocked]]
                   :join [[(perms/select-tables-and-groups-granting-perm
                            {:user-id user-id
-                            :is-superuser? user-is-superuser?}
+                            :is-superuser? false}
                            permission-filter) :perm_grant] [:= :blocked.id :perm_grant.id]
                          [:metabase_database :db] [:= :blocked.db_id :db.id]
                          [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
@@ -165,7 +185,7 @@
                            [:in :blocked.id (perms/visible-table-filter-select
                                              :db_id
                                              {:user-id user-id
-                                              :is-superuser? user-is-superuser?}
+                                              :is-superuser? false}
                                              visible-filter)]]]})
 
        (seq query-tables)
@@ -173,7 +193,7 @@
                   :from [[:metabase_table :blocked]]
                   :join [[(perms/select-tables-and-groups-granting-perm
                            {:user-id user-id
-                            :is-superuser? user-is-superuser?}
+                            :is-superuser? false}
                            permission-filter) :perm_grant] [:= :blocked.id :perm_grant.id]
                          [:metabase_database :db] [:= :blocked.db_id :db.id]
                          [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
@@ -182,17 +202,17 @@
                            [:in :blocked.id (perms/visible-table-filter-select
                                              :id
                                              {:user-id user-id
-                                              :is-superuser? user-is-superuser?}
+                                              :is-superuser? false}
                                              visible-filter)]]]})
        :else
        nil)
      (map (juxt (juxt :db_name :schema :table_name) :group_name))
      (reduce #(update %1 (first %2) set/union (set [(second %2)])) {}))))
 
-(mu/defmethod debug-permissions :card/query :- ::DebuggerSchema
-  [{:keys [user-id model-id] :as debug-info} :- ::DebuggerArguments]
+(mu/defmethod debug-permissions :card/query :- DebuggerSchema
+  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
-   (debug-permissions (assoc debug-info :permission-type :card/read))
+   (debug-permissions (assoc debug-info :action-type :card/read))
    (let [card-id (Integer/parseInt model-id)
          card (t2/select-one :model/Card :id card-id)
          blocked-by-group (check-table-permissions user-id card
@@ -200,7 +220,7 @@
                                                    {:perms/view-data :legacy-no-self-service})]
      {:decision    (if (seq blocked-by-group) "denied" "allow")
       :segment     #{}
-      :model-type  "question"
+      :model-type  "card"
       :model-id    model-id
       :message     [(if (seq blocked-by-group)
                       (tru "User does not have permission to query this card")
@@ -208,10 +228,10 @@
       :data        (if blocked-by-group (format-blocked blocked-by-group) {})
       :suggestions {}})))
 
-(mu/defmethod debug-permissions :card/download-data :- ::DebuggerSchema
-  [{:keys [user-id model-id] :as debug-info} :- ::DebuggerArguments]
+(mu/defmethod debug-permissions :card/download-data :- DebuggerSchema
+  [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
-   (debug-permissions (assoc debug-info :permission-type :card/query))
+   (debug-permissions (assoc debug-info :action-type :card/query))
    (let [card-id (Integer/parseInt model-id)
          card (t2/select-one :model/Card :id card-id)
          limited-by-group (check-table-permissions user-id card
@@ -224,7 +244,7 @@
                      (seq blocked-by-group) "denied"
                      (seq limited-by-group) "limited"
                      :else "allow")
-      :model-type  "question"
+      :model-type  "card"
       :model-id    model-id
       :segment     #{}
       :message     [(cond

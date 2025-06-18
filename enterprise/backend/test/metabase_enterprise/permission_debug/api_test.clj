@@ -26,7 +26,7 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                              :user_id (str (mt/user->id :rasta))
                                              :model_id (str (:id card))
-                                             :permission_type "card/read")]
+                                             :action_type "card/read")]
           (is (= "allow" (:decision response)))
           (is (= "question" (:model-type response)))
           (is (= (str (:id card)) (:model-id response)))
@@ -42,7 +42,7 @@
           (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                                :user_id (str (mt/user->id :rasta))
                                                :model_id (str (:id private-card))
-                                               :permission_type "card/read")]
+                                               :action_type "card/read")]
             (is (= "denied" (:decision response)))
             (is (= "question" (:model-type response)))
             (is (seq (:message response))))
@@ -58,7 +58,7 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                              :user_id (str (mt/user->id :rasta))
                                              :model_id (str (:id card))
-                                             :permission_type "card/query")]
+                                             :action_type "card/query")]
           (is (= "allow" (:decision response)))
           (is (= "question" (:model-type response)))
           (is (= '() (:segment response)))
@@ -69,7 +69,7 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                              :user_id (str (mt/user->id :rasta))
                                              :model_id (str (:id card))
-                                             :permission_type "card/query")]
+                                             :action_type "card/query")]
           (is (= "denied" (:decision response)))
           (is (seq (:data response))))))))
 
@@ -84,7 +84,7 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                              :user_id (str (mt/user->id :crowberto))
                                              :model_id (str (:id card))
-                                             :permission_type "card/download-data")]
+                                             :action_type "card/download-data")]
           (is (= "allow" (:decision response)))
           (is (= "question" (:model-type response)))
           (is (= '() (:segment response)))
@@ -96,7 +96,7 @@
         (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                              :user_id (str (mt/user->id :rasta))
                                              :model_id (str (:id card))
-                                             :permission_type "card/download-data")]
+                                             :action_type "card/download-data")]
           (is (contains? #{"allow" "limited" "denied"} (:decision response)))
           (is (= "question" (:model-type response))))))))
 
@@ -104,12 +104,12 @@
   (testing "GET /api/ee/permission_debug for invalid scenarios"
     (testing "should handle unknown permission types"
       (is (= {:specific-errors
-              {:permission_type ["should be either :card/read, :card/query or :card/download-data, received: :unknown/permission"]},
-              :errors {:permission_type "enum of :card/read, :card/query, :card/download-data"}}
+              {:action_type ["should be either :card/read, :card/query or :card/download-data, received: :unknown/permission"]},
+              :errors {:action_type "enum of :card/read, :card/query, :card/download-data"}}
              (mt/user-http-request :crowberto :get 400 "ee/permission_debug"
                                    :user_id "1"
                                    :model_id "999"
-                                   :permission_type "unknown/permission"))))
+                                   :action_type "unknown/permission"))))
 
     (testing "should require valid parameters"
       (is (= {:errors {:user_id "integer greater than 0"},
@@ -117,7 +117,7 @@
              (mt/user-http-request :crowberto :get "ee/permission_debug"
                                    :user_id "invalid"
                                    :model_id "999"
-                                   :permission_type "card/read"))))))
+                                   :action_type "card/read"))))))
 
 (deftest permission-debug-response-schema-test
   (testing "GET /api/ee/permission_debug response schema validation"
@@ -126,7 +126,7 @@
       (let [response (mt/user-http-request :crowberto :get 200 "ee/permission_debug"
                                            :user_id (str (mt/user->id :rasta))
                                            :model_id (str (:id card))
-                                           :permission_type "card/read")]
+                                           :action_type "card/read")]
         (testing "response should have all required fields"
           (is (contains? response :decision))
           (is (contains? response :model-type))

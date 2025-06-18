@@ -23,7 +23,7 @@
             result (permission-debug.impl/debug-permissions
                     {:user-id regular-user-id
                      :model-id (str (:id card))
-                     :permission-type :card/read})]
+                     :action-type :card/read})]
         (is (= "allow" (:decision result)))
         (is (= #{} (:segment result)))
         (is (= [(tru "User has permission to read this card")] (:message result)))
@@ -38,7 +38,7 @@
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
                          :model-id (str (:id card))
-                         :permission-type :card/read})]
+                         :action-type :card/read})]
             (is (= "denied" (:decision result)))
             (is (= #{} (:segment result)))
             (is (= [(tru "User does not have permission to read this card")] (:message result)))
@@ -52,7 +52,7 @@
             result (permission-debug.impl/debug-permissions
                     {:user-id admin-user-id
                      :model-id (str (:id card))
-                     :permission-type :card/read})]
+                     :action-type :card/read})]
         (is (= "allow" (:decision result)))))))
 
 (deftest debug-permissions-card-query-with-permission-test
@@ -65,7 +65,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User has permission to read this card")
@@ -84,7 +84,7 @@
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
                          :model-id (str (:id card))
-                         :permission-type :card/query})]
+                         :action-type :card/query})]
             (is (= "denied" (:decision result)))
             (is (= #{} (:segment result)))
             (is (= [(tru "User does not have permission to read this card")] (:message result)))
@@ -100,7 +100,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= #{(tru "User does not have permission to query this card")}
@@ -121,7 +121,7 @@
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
                          :model-id (str (:id card))
-                         :permission-type :card/query})]
+                         :action-type :card/query})]
             (is (= "allow" (:decision result)))
             (is (= #{} (:segment result)))
             (is (= [(tru "User has permission to read this card")
@@ -138,7 +138,7 @@
             result (permission-debug.impl/debug-permissions
                     {:user-id admin-user-id
                      :model-id (str (:id card))
-                     :permission-type :card/query})]
+                     :action-type :card/query})]
         (is (= "allow" (:decision result)))))))
 
 (deftest debug-permissions-card-query-native-query-test
@@ -153,7 +153,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User has permission to read this card")
@@ -172,7 +172,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User has permission to read this card")
@@ -192,7 +192,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User does not have permission to query this card")]
@@ -211,7 +211,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User does not have permission to query this card")]
@@ -249,7 +249,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id joined-card))
-                       :permission-type :card/query})]
+                       :action-type :card/query})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= #{(tru "User does not have permission to query this card")}
@@ -267,7 +267,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/download-data})]
+                       :action-type :card/download-data})]
           (is (= "allow" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User has permission to read this card")
@@ -287,7 +287,7 @@
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
                          :model-id (str (:id card))
-                         :permission-type :card/download-data})]
+                         :action-type :card/download-data})]
             (is (= "denied" (:decision result)))
             (is (= #{} (:segment result)))
             (is (= [(tru "User does not have permission to read this card")] (:message result)))
@@ -304,7 +304,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/download-data})]
+                       :action-type :card/download-data})]
           (is (= "denied" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User does not have permission to download data from this card")] (:message result)))
@@ -325,7 +325,7 @@
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
                          :model-id (str (:id card))
-                         :permission-type :card/download-data})]
+                         :action-type :card/download-data})]
             (is (= "allow" (:decision result)))
             (is (= #{} (:segment result)))
             (is (= [(tru "User has permission to read this card")
@@ -344,7 +344,7 @@
             result (permission-debug.impl/debug-permissions
                     {:user-id admin-user-id
                      :model-id (str (:id card))
-                     :permission-type :card/download-data})]
+                     :action-type :card/download-data})]
         (is (= "allow" (:decision result)))))))
 
 (deftest debug-permissions-card-download-results-ten-thousand-rows-test
@@ -358,7 +358,7 @@
         (let [result (permission-debug.impl/debug-permissions
                       {:user-id regular-user-id
                        :model-id (str (:id card))
-                       :permission-type :card/download-data})]
+                       :action-type :card/download-data})]
           (is (= "limited" (:decision result)))
           (is (= #{} (:segment result)))
           (is (= [(tru "User has permission to download some data from this card")] (:message result)))
@@ -379,7 +379,7 @@
           (let [result (permission-debug.impl/debug-permissions
                         {:user-id regular-user-id
                          :model-id (str (:id card))
-                         :permission-type :card/download-data})]
+                         :action-type :card/download-data})]
             (is (= "limited" (:decision result)))
             (is (= #{} (:segment result)))
             (is (= [(tru "User has permission to download some data from this card")]

@@ -6,9 +6,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
 
-(api.macros/defendpoint :get "/" :- ::permission-debug.impl/DebuggerSchema
-  "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `permission_type`.
-  The type of model we are debugging against is inferred by the `permission_type`.
+(api.macros/defendpoint :get "/" :- permission-debug.impl/DebuggerSchema
+  "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `action_type`.
+  The type of model we are debugging against is inferred by the `action_type`.
 
   It will return:
   - `decision`: The overall permission decision (\"allow\", \"denied\", or \"limited\")
@@ -20,9 +20,9 @@
   - `suggestions`: A map of group IDs to group names that could provide access
 
   Example requests:
-  - Check if user can read a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&permission_type=card/read`
-  - Check if user can query a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&permission_type=card/query`
-  - Check if user can download data: `GET /api/ee/permission_debug?user_id=123&model_id=456&permission_type=card/download-data`
+  - Check if user can read a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/read`
+  - Check if user can query a card: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/query`
+  - Check if user can download data: `GET /api/ee/permission_debug?user_id=123&model_id=456&action_type=card/download-data`
 
   Example responses:
   - Allowed access:
@@ -62,16 +62,16 @@
     }
     ```"
   [_route-params
-   {:keys [user_id model_id permission_type]
+   {:keys [user_id model_id action_type]
     :or {}} :- [:map
                 [:user_id pos-int?]
                 [:model_id :string]
-                [:permission_type ::permission-debug.impl/PermissionType]]
+                [:action_type permission-debug.impl/ActionType]]
    _body]
   (permission-debug.impl/debug-permissions
    {:user-id user_id
     :model-id model_id
-    :permission-type permission_type}))
+    :action-type action_type}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/permission_debug` routes."
