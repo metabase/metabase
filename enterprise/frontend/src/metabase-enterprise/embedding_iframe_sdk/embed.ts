@@ -26,6 +26,7 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "theme",
   "locale",
   "preferredAuthMethod",
+  "useExistingUserSession",
 ] as const satisfies EmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
