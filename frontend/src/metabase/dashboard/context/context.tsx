@@ -4,6 +4,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
@@ -304,11 +305,15 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
-  const hiddenParameterSlugs = getTabHiddenParameterSlugs({
-    parameters,
-    dashboard,
-    selectedTabId,
-  });
+  const hiddenParameterSlugs = useMemo(
+    () =>
+      getTabHiddenParameterSlugs({
+        parameters,
+        dashboard,
+        selectedTabId,
+      }),
+    [dashboard, parameters, selectedTabId],
+  );
 
   const hideParameters = !isEditing
     ? [hide_parameters, hiddenParameterSlugs].filter(Boolean).join(",")
