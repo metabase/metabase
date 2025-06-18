@@ -37,7 +37,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function ModelCacheRefreshJobModal({
+function _ModelCacheRefreshJobModal({
   persistedModel,
   onClose,
   onRefresh,
@@ -83,12 +83,11 @@ function ModelCacheRefreshJobModal({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
+export const ModelCacheRefreshJobModal = _.compose(
   connect(null, mapDispatchToProps),
   PersistedModels.load({
     id: (state: unknown, props: ModelCacheRefreshJobModalOwnProps) =>
       props.params.jobId,
     loadingAndErrorWrapper: false,
   }),
-)(ModelCacheRefreshJobModal);
+)(_ModelCacheRefreshJobModal);

@@ -20,7 +20,15 @@ export const AdminNavWrapper = ({
   stackProps?: StackProps;
 }) => {
   return (
-    <Stack w="16rem" gap="xs" bg="white" p="md" h="100%" {...stackProps}>
+    <Stack
+      w="16rem"
+      gap="xs"
+      bg="white"
+      p="md"
+      h="100%"
+      {...stackProps}
+      component="nav"
+    >
       {children}
     </Stack>
   );
