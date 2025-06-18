@@ -1,3 +1,9 @@
+import { t } from "ttag";
+
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import {
   useCreatePermissionsGroupMutation,
   useDeletePermissionsGroupMutation,
@@ -43,14 +49,21 @@ export const GroupsListingApp = () => {
   };
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading}>
-      <GroupsListing
-        isAdmin={isAdmin}
-        groups={groups}
-        create={handleCreate}
-        update={handleUpdate}
-        delete={handleDelete}
-      />
-    </LoadingAndErrorWrapper>
+    <SettingsPageWrapper
+      title={t`Groups`}
+      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
+    >
+      <SettingsSection>
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          <GroupsListing
+            isAdmin={isAdmin}
+            groups={groups}
+            create={handleCreate}
+            update={handleUpdate}
+            delete={handleDelete}
+          />
+        </LoadingAndErrorWrapper>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };

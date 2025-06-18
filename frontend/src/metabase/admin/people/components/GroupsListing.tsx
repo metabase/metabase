@@ -485,12 +485,10 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   return (
     <AdminPaneLayout
-      title={t`Groups`}
       buttonText={isAdmin ? t`Create a group` : undefined}
       buttonAction={
         isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
       }
-      description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
     >
       <GroupsTable
         groups={groups}
