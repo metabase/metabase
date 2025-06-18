@@ -20,7 +20,14 @@ import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
-import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  type IconName,
+  type IconProps,
+  Menu,
+  Title,
+} from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -400,6 +407,7 @@ export function DashCardVisualization({
         <Flex align="center" justify="flex-end">
           {inlineParameters.length > 0 && (
             <DashboardParameterList
+              widgetsVariant="subtle"
               parameters={inlineParameters}
               isSortable={false}
               isFullscreen={isFullscreen}
@@ -425,13 +433,16 @@ export function DashCardVisualization({
 
     return (
       <Flex align="center" justify="flex-end">
-        {inlineParameters.length > 0 && (
-          <DashboardParameterList
-            parameters={inlineParameters}
-            isSortable={false}
-            isFullscreen={isFullscreen}
-          />
-        )}
+        <Box mr="sm">
+          {inlineParameters.length > 0 && (
+            <DashboardParameterList
+              widgetsVariant="subtle"
+              parameters={inlineParameters}
+              isSortable={false}
+              isFullscreen={isFullscreen}
+            />
+          )}
+        </Box>
         {!isEditing && (
           <DashCardMenu
             downloadsEnabled={downloadsEnabled}
