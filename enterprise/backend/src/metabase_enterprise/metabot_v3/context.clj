@@ -4,6 +4,7 @@
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
    [metabase.config.core :as config]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -58,7 +59,8 @@
                                       {:all-tables-limit all-tables-limit
                                        :priority-tables used-tables
                                        :exclude-table-ids used-table-ids}))
-       (catch Exception _e
+       (catch Exception e
+         (log/error e "Error getting database tables for context")
          ;; If we can't get table info, just return empty - don't break the context
          [])))))
 
@@ -68,7 +70,7 @@
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
-                  (if (and (:is_native item)
+                  (if (and (#{:native "native"} (get-in item [:query :type]))
                            (get-in item [:query :database]))
                     (let [database-id (get-in item [:query :database])
                           tables (database-tables-for-context database-id {:query (:query item)})]
