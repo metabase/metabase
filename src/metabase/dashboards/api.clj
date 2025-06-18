@@ -933,52 +933,14 @@
       (create-editable-table-card! dashboard-id dashcard table-id)
       dashcard)))
 
-(defn- create-or-fix-action-id
-  "Even though currently these actions only live in the visualization settings, they are conceptually first-class
-  actions, which can be used with the /execute API etc. This means that they need unique identifiers, and since we need
-  a way to retrieve the corresponding JSON easily, we embed the dashcard id within their string id.
-
-  Since we are saving this JSON inside the dashcard, there's a chicken-and-egg problem when pre-configuring actions
-  before saving the dashcard for the first time. In this case, we use a placeholder, and rely on the fact that these
-  actions will be executed with the same dashcard in their :scope.
-
-  When the dashcard is saved for the second time, we fix all these placeholders, so that the ids are less obscure, and
-  the semantically dubious dependency on :scope is minimized.
-
-  Once these actions are stored in some sort of first-class action table, we won't have this issue."
-  [{dashcard-id :id} id]
-  (cond
-    ;; new action, give it an id
-    ;; currently the frontend is generating its own ids... we need to replace those
-    (or (not id) (not (str/starts-with? id "dashcard:")))
-    (format "dashcard:%s:%s"
-            (if (pos-int? dashcard-id) dashcard-id "unknown")
-            (u/generate-nano-id))
-    ;; chicken-and-egg resulted in a suboptimal id, fix it
-    (and (str/starts-with? id "dashcard:unknown:") dashcard-id)
-    (str/replace id #"dashcard:unknown" (str "dashcard:" dashcard-id))
-    :else
-    id))
-
 (defn- save-id-actions
-  "Actions can be added to editable grids. This makes sure we actually create the corresponding actions.
-  For now, this just means generating an id, and setting default / fallback values.
-  In the future, it will probably persist the action configuration in a separate table. See WRK-544.
-  This function is also a useful place for us to do migrate-on-save stuff, since we call it every time.
-  It must be idempotent."
+  "Create or update nested actions, where relevant, replacing their definitions with a reference to them.
+   Well, not really, but one day - see WRK-544. For now, this just transforms their definitions in-place."
   [dashcard]
-  (let [init-actions (partial map
-                              (fn [grid-action]
-                                (-> grid-action
-                                    (update :id (partial create-or-fix-action-id dashcard))
-                                    ;; At the time of writing, FE only allows the creation of row actions.
-                                    ;; Make sure this explicit.
-                                    (update :actionType #(or % "data-grid/row-action"))
-                                    ;; By default actions are enabled.
-                                    (update :enabled #(if (some? %) % true)))))]
+  (let [save-actions (partial map (partial actions/save-grid-action "dashcard" (:id dashcard)))]
     (-> dashcard
-        (m/update-existing-in [:visualization_settings :table.enabled_actions] init-actions)
-        (m/update-existing-in [:visualization_settings :editableTable.enabledActions] init-actions))))
+        (m/update-existing-in [:visualization_settings :table.enabled_actions] save-actions)
+        (m/update-existing-in [:visualization_settings :editableTable.enabledActions] save-actions))))
 
 (defn- unpack-dashcard-button
   "There are three flavors of action we can link buttons to: saved, primitive, and encoded.
