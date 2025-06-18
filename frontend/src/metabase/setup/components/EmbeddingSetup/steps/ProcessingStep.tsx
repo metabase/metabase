@@ -27,8 +27,9 @@ export const ProcessingStep = () => {
   const setupSettings = useCallback(async () => {
     await updateSettings({
       "embedding-homepage": "visible",
-      "embedding-app-origins-interactive": "*",
       "enable-embedding-interactive": true,
+      "embedding-app-origins-interactive": "localhost:*",
+      "session-cookie-samesite": "none",
     }).unwrap();
   }, [updateSettings]);
 
