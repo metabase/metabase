@@ -280,9 +280,8 @@
 
 (defmethod ->pMBQL :value
   [[_tag value opts]]
-  ;; `:value` uses `:snake_case` keys in legacy MBQL for some insane reason (actually this was to match the shape of
-  ;; the keys in Field metadata), at least for the three type keys enumerated below.
-  ;; See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
+  ;; `:value` uses `:snake_case` keys in legacy MBQL (this was to match the shape of the keys in Field metadata), at
+  ;; least for the three type keys enumerated below. See [[metabase.legacy-mbql.schema/ValueTypeInfo]].
   (let [opts (set/rename-keys opts {:base_type     :base-type
                                     :semantic_type :semantic-type
                                     :database_type :database-type})
@@ -545,9 +544,10 @@
   [[_tag opts value]]
   (let [opts (-> opts
                  ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-                 (set/rename-keys  {:base-type     :base_type
-                                    :semantic-type :semantic_type
-                                    :database-type :database_type})
+                 (set/rename-keys  {:base-type      :base_type
+                                    :semantic-type  :semantic_type
+                                    :database-type  :database_type
+                                    :effective-type :effective_type})
                  options->legacy-MBQL)]
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.

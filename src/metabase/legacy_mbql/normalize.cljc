@@ -223,11 +223,14 @@
 
 (defn- normalize-value-opts
   [opts]
-  (some-> opts
-          lib.schema.common/normalize-map-keywords-only
-          ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
-          (m/update-existing :base_type keyword)
-          (m/update-existing :semantic_type keyword)))
+  (when opts
+    (-> opts
+        (update-keys (fn [k]
+                       (keyword (u/->snake_case_en k))))
+        (m/update-existing :base_type      keyword)
+        (m/update-existing :effective_type keyword)
+        (m/update-existing :semantic_type  keyword)
+        (m/update-existing :unit           keyword))))
 
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.

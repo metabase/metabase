@@ -27,7 +27,7 @@
   (cond-> x
     (string? x) (-> u/lower-case-en keyword)))
 
-(defn normalize-map-keywords-only
+(defn normalize-map-no-kebab-case
   "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
   [m]
   ;; check to make sure we actually need to update anything before we do it. [[update-keys]] always creates new maps
@@ -62,7 +62,7 @@
   "Base normalization behavior for a pMBQL map: keywordize keys and keywordize `:lib/type`; convert map to
   kebab-case (excluding the so-called [[HORRIBLE-keys]]."
   [m]
-  (-> m normalize-map-keywords-only map->kebab-case))
+  (-> m normalize-map-no-kebab-case map->kebab-case))
 
 (defn normalize-string-key
   "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This
