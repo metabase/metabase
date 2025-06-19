@@ -8,6 +8,7 @@ const { IS_ENTERPRISE } = Cypress.env();
 
 /**
  *
+ * @deprecated Use H.activateToken()
  * @param {"all"} featuresScope
  */
 export const setTokenFeatures = (featuresScope) => {
