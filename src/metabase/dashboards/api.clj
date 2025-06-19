@@ -28,7 +28,6 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
@@ -1053,7 +1052,7 @@
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
@@ -1065,7 +1064,7 @@
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -1073,7 +1072,7 @@
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
