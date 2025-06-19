@@ -55,7 +55,8 @@
                               :left-join                       (not config/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :metadata/key-constraints        (not config/is-test?)}]
+                              :metadata/key-constraints        (not config/is-test?)
+                              :database-routing                false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details

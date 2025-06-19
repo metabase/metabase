@@ -83,7 +83,8 @@
                               :expressions/text         true
                               :expressions/integer      true
                               :expressions/float        true
-                              :expressions/date         true}]
+                              :expressions/date         true
+                              :database-routing         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
