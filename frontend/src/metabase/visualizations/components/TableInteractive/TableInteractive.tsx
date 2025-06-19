@@ -40,6 +40,7 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { useTranslateContent } from "metabase/i18n/hooks";
 import { TABLE_ACTIONS_SETTING } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -173,6 +174,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const tc = useTranslateContent();
+
   const { rows, cols } = data;
 
   const getColumnSortDirection = useMemo(() => {
@@ -238,8 +241,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((value, rowIndex) => {
+      return memoize((untranslatedValue, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
+
+        const value = tc(untranslatedValue);
+
         return formatValue(value, {
           ...columnSettings,
           type: "cell",
@@ -249,7 +255,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         });
       });
     });
-  }, [cols, settings, getCellClickedObject]);
+  }, [cols, settings, getCellClickedObject, tc]);
 
   const {
     tableActions,
@@ -483,9 +489,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
+      const translatedColumnName = tc(columnName);
+
       const options: ColumnOptions<RowValues, RowValue> = {
         id,
-        name: columnName,
+        name: translatedColumnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
         getCellClassName: (value) =>
@@ -509,7 +517,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               timezone={data.results_timezone}
               question={question}
               column={col}
-              name={columnName}
+              name={translatedColumnName}
               align={align}
               sort={sortDirection}
               variant={headerVariant}
@@ -570,6 +578,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     tableTheme,
     isDashboard,
+    tc,
   ]);
 
   const handleColumnResize = useCallback(
