@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
@@ -30,7 +30,6 @@ type TableOrModelDataPickerProps = {
   value: TableActionPickerItem | ModelActionPickerItem | undefined;
   onChange: (action: ActionItem | undefined) => void;
   onClose: () => void;
-  children?: ReactNode;
 };
 
 const options: Partial<EntityPickerOptions> = {
@@ -43,7 +42,6 @@ export const TableOrModelActionPicker = ({
   value,
   onChange,
   onClose,
-  children,
 }: TableOrModelDataPickerProps) => {
   const { hasModels, isLoading: isLoadingAvailableData } = useAvailableData({
     databaseId: undefined,
@@ -104,9 +102,7 @@ export const TableOrModelActionPicker = ({
               onPathChange={(path) => {
                 setTableActionPath(path);
               }}
-            >
-              {children}
-            </TableActionPicker>
+            />
           );
         },
       },
@@ -133,9 +129,7 @@ export const TableOrModelActionPicker = ({
               path={modelActionPath}
               onItemSelect={onItemSelect}
               onPathChange={setModelActionPath}
-            >
-              {children}
-            </ModelActionPicker>
+            ></ModelActionPicker>
           );
         },
       });

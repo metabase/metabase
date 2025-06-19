@@ -1,10 +1,4 @@
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 
 import {
@@ -49,14 +43,12 @@ interface Props {
   path: TableActionPickerStatePath | undefined;
   onItemSelect: (value: TableActionPickerItem) => void;
   onPathChange: (path: TableActionPickerStatePath) => void;
-  children?: ReactNode;
 }
 
 export const TableActionPicker = ({
   path,
   onItemSelect,
   onPathChange,
-  children,
 }: Props) => {
   const [initialDbId, initialSchemaId, initialTableId, initialActionId] =
     path ?? [undefined, undefined, undefined, undefined];
@@ -355,8 +347,6 @@ export const TableActionPicker = ({
             onClick={handleActionSelect}
           />
         )}
-
-        {children}
       </Flex>
     </AutoScrollBox>
   );
