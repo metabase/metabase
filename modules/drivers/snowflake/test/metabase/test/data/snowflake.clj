@@ -6,6 +6,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -38,17 +39,8 @@
                               :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
-(def ^:dynamic *database-prefix-fn*
-  "Function that returns a unique prefix to use for test datasets for this instance. This is dynamic so we can rebind it
-  to something fixed when we're testing the SQL we generate
-  e.g. [[metabase.driver.snowflake-test/report-timezone-test]].
-
-  This is a function because [[unique-prefix]] can't be calculated until the application database is initialized
-  because it relies on [[system/site-uuid]]."
-  #'sql.tu.unique-prefix/unique-prefix)
-
 (defn qualified-db-name
-  "Prepend `database-name` with the [[*database-prefix-fn*]] so we don't stomp on any other jobs running at the same
+  "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
   time."
   [{:keys [database-name] :as db-def}]
   (if (str/starts-with? database-name "sha_")
@@ -80,15 +72,14 @@
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
-  ([_ db-name]
-   (assert (str/starts-with? db-name "sha_") "Must be qualified")
-   [db-name])
-  ([_ db-name table-name]
-   (assert (str/starts-with? db-name "sha_") "Must be qualified")
-   [db-name "PUBLIC" table-name])
-  ([_ db-name table-name field-name]
-   (assert (str/starts-with? db-name "sha_") "Must be qualified")
-   [db-name "PUBLIC" table-name field-name]))
+  ([driver db-name]
+   (if (some-> db-name (str/starts-with? "sha_"))
+     [db-name]
+     [(qualified-db-name (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver))))]))
+  ([driver db-name table-name]
+   (into (sql.tx/qualified-name-components driver db-name) ["PUBLIC" table-name]))
+  ([driver db-name table-name field-name]
+   (into (sql.tx/qualified-name-components driver db-name table-name) [field-name])))
 
 (defmethod sql.tx/create-db-sql :snowflake
   [driver dbdef]

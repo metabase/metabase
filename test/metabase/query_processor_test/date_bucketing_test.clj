@@ -40,6 +40,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
+   [metabase.util.random :as u.random]
    [metabase.util.regex :as u.regex]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -1183,7 +1184,7 @@
   (let [interval-seconds (.intervalSeconds this)
         intervalCount    (.intervalCount this)]
     (mt/dataset-definition
-     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)))
+     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)) "_" (u.random/random-name))
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
