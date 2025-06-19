@@ -1,5 +1,5 @@
 import type { NonEmpty } from "metabase/i18n/types";
-import type { DictionaryArray } from "metabase-types/api";
+import type { DictionaryArray, DictionaryArrayRow } from "metabase-types/api";
 
 export const germanFieldNames: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Title", msgstr: "Titel" },
@@ -9,6 +9,12 @@ export const germanFieldNames: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Created At", msgstr: "Erstellt am" },
   { locale: "de", msgid: "Price", msgstr: "Preis" },
 ];
+
+export const germanCustomAxisTitle: DictionaryArrayRow = {
+  locale: "de",
+  msgid: "The average price",
+  msgstr: "Der durchschnittliche Preis",
+};
 
 export const germanFieldValues: NonEmpty<DictionaryArray> = [
   { locale: "de", msgid: "Doohickey", msgstr: "Dingsbums" },

@@ -7,7 +7,6 @@
    [metabase-enterprise.content-translation.dictionary :as dictionary]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.content-translation.models :as ct]
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.schema :as ms]))
@@ -25,7 +24,7 @@
   "Provides content translation dictionary in CSV"
   []
   (api/check-superuser)
-  (let [translations (ct/get-translations)
+  (let [translations (dictionary/get-translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
                               [locale msgid msgstr])
@@ -70,7 +69,7 @@
   ;; this will error if bad
   (embedding.jwt/unsign token)
   (if locale
-    {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
+    {:data (dictionary/get-translations (i18n/normalized-locale-string (str/trim locale)))}
     (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
 
 (defn- +require-content-translation [handler]

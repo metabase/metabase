@@ -2,7 +2,7 @@
   "Unit tests for content translation model utilities."
   (:require
    [clojure.test :refer :all]
-   [metabase.content-translation.models :as ct.models]
+   [metabase.content-translation.dictionary :as ct.dict]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -37,17 +37,17 @@
             (is (every? #(contains? % :msgid) all-translations))
             (is (every? #(contains? % :msgstr) all-translations))))
         (testing "get-translations with locale parameter filters by locale"
-          (let [fr-translations (ct.models/get-translations "fr")
-                es-translations (ct.models/get-translations "es")]
+          (let [fr-translations (ct.dict/get-translations "fr")
+                es-translations (ct.dict/get-translations "es")]
             (is (= 2 (count fr-translations)))
             (is (= 1 (count es-translations)))
             (is (every? #(= "fr" (:locale %)) fr-translations))
             (is (every? #(= "es" (:locale %)) es-translations))))
         (testing "get-translations with empty locale returns empty collection"
-          (let [nonexistent-translations (ct.models/get-translations "ja")]
+          (let [nonexistent-translations (ct.dict/get-translations "ja")]
             (is (empty? nonexistent-translations))))
         (testing "get-translations with nil locale behaves same as no parameter"
-          (let [all-translations (ct.models/get-translations)
-                nil-translations (ct.models/get-translations nil)]
+          (let [all-translations (ct.dict/get-translations)
+                nil-translations (ct.dict/get-translations nil)]
             (is (= (count all-translations) (count nil-translations)))
             (is (= (set all-translations) (set nil-translations)))))))))

@@ -2580,3 +2580,13 @@
   > **Code health:** Healthy, Single use. Only called when creating a new card/query."
   []
   (lib.core/random-ident))
+
+(defn ^:export set-content-translations
+  "Set the current content-translation dictionary."
+  [m]
+  (lib.core/set-content-translations m))
+
+(defn ^:export set-locale
+  "Set the current locale"
+  [locale]
+  (lib.core/set-locale locale))

@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
+   [metabase.lib.content-translation :as lib.content-translation]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -68,6 +69,7 @@
     stage-number :- :int
     x
     style        :- DisplayNameStyle]
+   (log/info "options/options x" (lib.options/options x))
    (or
     ;; if this is an MBQL clause with `:display-name` in the options map, then use that rather than calculating a name.
     ((some-fn :display-name :lib/expression-name) (lib.options/options x))

@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.config.core :as config]
+   [metabase.content-translation.dictionary :as content-translation.dictionary]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -375,6 +376,7 @@
     (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
                     {:field &match}))))
 
+;; This might be the spot to add translations for 'Average of X'
 (mu/defn- col-info-for-aggregation-clauses
   "Return appropriate (legacy) column metadata for the `:aggregation` clauses of this legacy inner query, in order."
   [inner-query]
@@ -671,6 +673,7 @@
   [query {cols-returned-by-driver :cols, :as result} :- [:maybe :map]]
   (->> (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)
        (deduplicate-cols-names)
+       (map content-translation.dictionary/translate-column-display-name)
        (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
        (map lib.binning/ensure-binning-in-display-name)))
 

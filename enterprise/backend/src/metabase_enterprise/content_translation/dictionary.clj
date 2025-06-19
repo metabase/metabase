@@ -4,8 +4,9 @@
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :as i18n :refer [tru]]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -142,3 +143,33 @@
       (doall (csv/read-csv reader))
       (catch Exception original-exception
         (throw-informative-csv-error file original-exception)))))
+
+(defenterprise get-translations
+  "List the translations stored in the content_translation table.
+  Optionally filter by locale if a locale parameter is provided."
+  :feature :content-translation
+  ([]
+   (get-translations nil))
+  ([locale]
+   (premium-features/assert-has-feature :content-translation (tru "Content translation"))
+   (if locale
+     (t2/select :model/ContentTranslation :locale locale {:order-by [:msgid]})
+     (t2/select :model/ContentTranslation {:order-by [:locale :msgid]}))))
+
+(defenterprise translate-content-string
+  "Translate the given string using the content-translation dictionary."
+  :feature :content-translation
+  [msgid]
+  (let [locale (i18n/user-locale-string)
+        translations (get-translations locale)
+        translation (some #(when (= (:msgid %) (str/trim msgid)) %) translations)]
+    (if translation
+      (:msgstr translation)
+      msgid)))
+
+(defenterprise translate-column-display-name
+  "Update column metadata to use the content-translation dictionary to translate the column's display name"
+  :feature :content-translation
+  [column-metadata]
+  (log/info "translation in ee translate-column-display-name" (translate-content-string (get column-metadata :display_name)))
+  (assoc column-metadata :display_name (translate-content-string (get column-metadata :display_name))))

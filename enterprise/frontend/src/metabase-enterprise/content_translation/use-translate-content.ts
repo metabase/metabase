@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import * as Lib from "metabase-lib";
 
 import { skipToken } from "metabase/api";
 import { useLocale } from "metabase/common/hooks";
@@ -33,6 +34,8 @@ export const useTranslateContent = (): ContentTranslationFunction => {
   return tc;
 };
 
+/** This also initializes the translation of user-generated content in Metabase
+ * Lib */
 export const useListContentTranslations = () => {
   const { locale } = useLocale();
   const { data } = useListContentTranslationsQuery(
@@ -43,5 +46,12 @@ export const useListContentTranslations = () => {
       : skipToken,
   );
   const dictionary = data?.data;
+
+  const localeSpecificDictionary = Object.fromEntries(
+    dictionary?.map(({ msgid, msgstr }) => [msgid, msgstr]) || [],
+  );
+
+  Lib.setContentTranslations(localeSpecificDictionary);
+  Lib.setLocale(locale);
   return dictionary;
 };
