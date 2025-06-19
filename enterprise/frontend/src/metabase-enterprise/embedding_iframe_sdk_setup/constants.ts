@@ -19,11 +19,13 @@ export const EMBED_TYPES = [
   },
 ];
 
-export const EMBED_STEPS: Array<{
+type EmbedStepConfig = {
   id: SdkIframeEmbedSetupStep;
   component: React.ComponentType;
   skipFor?: SdkIframeEmbedSetupType[];
-}> = [
+};
+
+export const EMBED_STEPS: EmbedStepConfig[] = [
   {
     id: "select-embed-type",
     component: SelectEmbedTypeStep,
