@@ -246,7 +246,7 @@
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
   (lib.temporal-bucket/available-temporal-buckets-for-type
-   ((some-fn :effective-type :base-type) field-metadata)
+   ((some-fn ::original-effective-type :effective-type :base-type) field-metadata)
    ;; `:inherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
    ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE, by setting `:inherited`
    ;; default unit.
