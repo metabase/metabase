@@ -270,8 +270,7 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
    [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-   [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]
-   [:exclude-display                     {:optional true} [:maybe ms/NonBlankString]]])
+   [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -283,7 +282,6 @@
            current-user-id
            current-user-perms
            display
-           exclude-display
            has-temporal-dimensions?
            required-non-temporal-dimension-ids
            filter-items-in-personal-collection
@@ -329,7 +327,6 @@
                         :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq display)                               (assoc :display display)
-                 (some? exclude-display)                     (assoc :exclude-display exclude-display)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
                  (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
