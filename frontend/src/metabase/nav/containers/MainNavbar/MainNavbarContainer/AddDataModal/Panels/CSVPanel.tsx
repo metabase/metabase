@@ -18,32 +18,31 @@ export const CSVPanel = ({
   onCloseAddDataModal,
   uploadsEnabled,
 }: CSVPanelProps) => {
-  const showUploads = uploadsEnabled && canUpload;
   const showObtainPermissionPrompt = uploadsEnabled && !canUpload;
 
   const showEnableUploadsCTA = !uploadsEnabled && canManageUploads;
   const showEnableUploadsPrompt = !uploadsEnabled && !canManageUploads;
 
-  return (
-    <>
-      {showUploads && <CSVUpload onCloseAddDataModal={onCloseAddDataModal} />}
+  if (showEnableUploadsPrompt) {
+    return <CSVPanelEmptyState contactAdminReason="enable-csv-upload" />;
+  }
 
-      {showObtainPermissionPrompt && (
-        <CSVPanelEmptyState contactAdminReason="obtain-csv-upload-permission" />
-      )}
+  if (showObtainPermissionPrompt) {
+    return (
+      <CSVPanelEmptyState contactAdminReason="obtain-csv-upload-permission" />
+    );
+  }
 
-      {showEnableUploadsCTA && (
-        <CSVPanelEmptyState
-          ctaLink={{
-            text: t`Enable uploads`,
-            to: Urls.uploadsSettings(),
-          }}
-        />
-      )}
+  if (showEnableUploadsCTA) {
+    return (
+      <CSVPanelEmptyState
+        ctaLink={{
+          text: t`Enable uploads`,
+          to: Urls.uploadsSettings(),
+        }}
+      />
+    );
+  }
 
-      {showEnableUploadsPrompt && (
-        <CSVPanelEmptyState contactAdminReason="enable-csv-upload" />
-      )}
-    </>
-  );
+  return <CSVUpload onCloseAddDataModal={onCloseAddDataModal} />;
 };
