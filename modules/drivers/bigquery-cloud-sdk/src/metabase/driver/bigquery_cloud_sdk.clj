@@ -308,64 +308,61 @@
      {}
      nested-columns)))
 
+(defn- maybe-add-nested-fields [nested-column-lookup col nfc-path root-database-position]
+  (let [new-path ((fnil conj []) nfc-path (:name col))
+        nested-fields (get nested-column-lookup new-path)]
+    (cond-> (assoc col :database-position root-database-position)
+      (and (= :type/Dictionary (:base-type col)) nested-fields)
+      (assoc :nested-fields (into #{}
+                                  (map #(maybe-add-nested-fields nested-column-lookup % new-path root-database-position))
+                                  nested-fields)
+             :visibility-type :details-only))))
+
+(defn- describe-dataset-rows [driver database project-id dataset-id [table-name table-rows]]
+  (let [nested-column-lookup (get-nested-columns-for-table driver database project-id dataset-id table-name)
+        max-position (transduce (keep :ordinal_position) max -1 table-rows)]
+    (mapcat
+     (fn [{column-name :column_name
+           data-type :data_type
+           database-position :ordinal_position
+           partitioned? :partitioned}]
+       (let [database-position (or (some-> database-position dec) max-position)
+             [database-type base-type] (raw-type->database+base-type data-type)]
+         (cond-> [(maybe-add-nested-fields
+                   nested-column-lookup
+                   {:name column-name
+                    :table-name table-name
+                    :table-schema dataset-id
+                    :database-type database-type
+                    :base-type base-type
+                    :database-partitioned partitioned?
+                    :database-position database-position}
+                   nil
+                   database-position)]
+           ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
+           (= column-name partitioned-time-field-name)
+           (conj {:name partitioned-date-field-name
+                  :table-name table-name
+                  :table-schema dataset-id
+                  :database-type "DATE"
+                  :base-type :type/Date
+                  :database-position (inc database-position)
+                  :database-partitioned true}))))
+     table-rows)))
+
 (defn- describe-dataset-fields-reducible
   [driver database project-id dataset-id table-names]
-  (let [named-rows (query-honeysql
-                    driver
-                    database
-                    (cond->
-                     {:select [:table_name :column_name :data_type :ordinal_position
-                               [[:= :is_partitioning_column "YES"] :partitioned]]
-                      :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
-                      :order-by [:table_name :ordinal_position :column_name]}
-                      (not-empty table-names)
-                      (assoc :where [:in :table_name table-names])))]
+  (let [named-rows-query (cond->
+                          {:select [:table_name :column_name :data_type :ordinal_position
+                                    [[:= :is_partitioning_column "YES"] :partitioned]]
+                           :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
+                           :order-by [:table_name :ordinal_position :column_name]}
+                           (not-empty table-names)
+                           (assoc :where [:in :table_name table-names]))
+        named-rows (query-honeysql driver database named-rows-query)]
     (eduction
      (x/by-key :table_name (x/into []))
-     (mapcat
-      (fn [[table-name table-rows]]
-        (let [nested-column-lookup (get-nested-columns-for-table driver database project-id dataset-id table-name)
-              max-position (reduce (fn [max-pos {pos :ordinal_position}]
-                                     (max max-pos (or pos 0)))
-                                   -1
-                                   table-rows)
-              maybe-add-nested-fields (fn maybe-add-nested-fields [col nfc-path root-database-position]
-                                        (let [new-path ((fnil conj []) nfc-path (:name col))
-                                              nested-fields (get nested-column-lookup new-path)]
-                                          (cond-> (assoc col :database-position root-database-position)
-                                            (and (= :type/Dictionary (:base-type col)) nested-fields)
-                                            (assoc :nested-fields (into #{}
-                                                                        (map #(maybe-add-nested-fields % new-path root-database-position))
-                                                                        nested-fields)
-                                                   :visibility-type :details-only))))]
-          (mapcat
-           (fn [{column-name :column_name
-                 data-type :data_type
-                 database-position :ordinal_position
-                 partitioned? :partitioned}]
-             (let [database-position (or (some-> database-position dec)
-                                         max-position)
-                   [database-type base-type] (raw-type->database+base-type data-type)]
-               (cond-> [(maybe-add-nested-fields
-                         {:name column-name
-                          :table-name table-name
-                          :table-schema dataset-id
-                          :database-type database-type
-                          :base-type base-type
-                          :database-partitioned partitioned?
-                          :database-position database-position}
-                         nil
-                         database-position)]
-                 ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
-                 (= column-name partitioned-time-field-name)
-                 (conj {:name partitioned-date-field-name
-                        :table-name table-name
-                        :table-schema dataset-id
-                        :database-type "DATE"
-                        :base-type :type/Date
-                        :database-position (inc database-position)
-                        :database-partitioned true}))))
-           table-rows))))
+     (mapcat #(describe-dataset-rows driver database project-id dataset-id %))
      named-rows)))
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
