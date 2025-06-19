@@ -83,31 +83,25 @@ class MetabaseEmbed {
     }
   }
 
-  public addEventListener<T extends SdkIframeEmbedEvent["type"]>(
-    eventType: T,
-    handler: SdkIframeEmbedEventHandler<
-      Extract<SdkIframeEmbedEvent, { type: T }>
-    >,
+  public addEventListener(
+    eventType: SdkIframeEmbedEvent["type"],
+    handler: SdkIframeEmbedEventHandler,
   ) {
     if (!this._eventHandlers.has(eventType)) {
       this._eventHandlers.set(eventType, new Set());
     }
 
-    this._eventHandlers
-      .get(eventType)!
-      .add(handler as SdkIframeEmbedEventHandler);
+    this._eventHandlers.get(eventType)!.add(handler);
   }
 
-  public removeEventListener<T extends SdkIframeEmbedEvent["type"]>(
-    eventType: T,
-    handler: SdkIframeEmbedEventHandler<
-      Extract<SdkIframeEmbedEvent, { type: T }>
-    >,
+  public removeEventListener(
+    eventType: SdkIframeEmbedEvent["type"],
+    handler: SdkIframeEmbedEventHandler,
   ) {
     const handlers = this._eventHandlers.get(eventType);
 
     if (handlers) {
-      handlers.delete(handler as SdkIframeEmbedEventHandler);
+      handlers.delete(handler);
 
       if (handlers.size === 0) {
         this._eventHandlers.delete(eventType);
@@ -115,11 +109,11 @@ class MetabaseEmbed {
     }
   }
 
-  private _emitEvent<T extends SdkIframeEmbedEvent>(event: T) {
+  private _emitEvent(event: SdkIframeEmbedEvent) {
     const handlers = this._eventHandlers.get(event.type);
 
     if (handlers) {
-      handlers.forEach((handler) => handler(event));
+      handlers.forEach((handler) => handler());
     }
   }
 
