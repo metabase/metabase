@@ -25,7 +25,7 @@ export const activateToken = (
     .with("bleeding-edge", () => "MB_ALL_FEATURES_TOKEN")
     .with("starter", () => "MB_STARTER_CLOUD_TOKEN")
     .with("pro-cloud", () => "MB_PRO_CLOUD_TOKEN")
-    .with("pro-self-hosted", () => "MB_PRO_SELF_HOSTED")
+    .with("pro-self-hosted", () => "MB_PRO_SELF_HOSTED_TOKEN")
     .exhaustive();
 
   const fallbackToken =
