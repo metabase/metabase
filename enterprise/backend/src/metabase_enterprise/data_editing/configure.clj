@@ -29,36 +29,42 @@
    [:id :string]
    [:configure-details {:optional true} [:sequential [:tuple :keyword :map]]]
    ;; omiited if we have visibility != null
-   [:target {:optional true} :string]
+   (merge-option [:display-name :string]
+                 {:optional      true
+                  ::display-name "Field Name"
+                  ::input-type   :text})
    (merge-option [:source-type [:enum "ask-user" "row-data" "constant"]]
-                 {:optional true
+                 {:optional      true
                   ::display-name "Source Type"
-                  ::default  "ask-user"
-                  ::input-type :dropdown
-                  ::options    ["ask-user" "row-data" "constant"]})
+                  ::default      "ask-user"
+                  ::input-type   :dropdown
+                  ::options      ["ask-user" "row-data" "constant"]})
    ;; omitted if we have visibility != null
    (merge-option [:source-value :string]
-                 {:optional true
+                 {:optional      true
                   ::display-name "Pick column"
                   ::default      nil
+                  ::visible-if   [:source-type "row-data"]
                   ::input-type   :column-picker})
-   (merge-option [:value [:or :string :int :boolean]] ;; only when source-value is constant
-                 {:optional     true
+   (merge-option [:value [:or :string :int :boolean]]
+                 {:optional      true
                   ::display-name "Value"
                   ::input-type   :field-filter
+                  ::visible-if   [:source-type "constant"]
                   ::default      nil})
    (merge-option [:editable :boolean] ;; only when visible is true
                  {:optional      true
                   ::descripion   "Can you override"
                   ::display-name "Editable"
                   ::input-type   :select
+                  ::vislble-if   [[:source-type "ask-user"] [:source-type "constant"]]
                   ::default      nil})
    (merge-option [:required :boolean] ;; only show when the underline fields is nullable
-                 {:optional true
-                  ::description  "Whether this field is required" ;; hide if the underlying field is required
+                 {:optional      true
+                  ::description  "Whether this field is required" ;; can't turn off if the underlying field is required
                   ::display-name "Required"
                   ::input-type   :select
-                  ::visible-if   [::field-is-optional]
+                  ::vislble-if   [[:source-type "ask-user"] [:source-type "constant"]]
                   ::default      nil})
    (merge-option [:visible :boolean] ;; can't be false if the field is required
                  {:optional      true
@@ -87,11 +93,10 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id                (:id param)
-                    :source-type       "ask-user"
-                    :target            (case (:type action)
+                   {:id                (case (:type action)
                                          :query (:slug param)
                                          :implicit (:id param))
+                    :source-type       "ask-user"
                     :configure-details default-configuration-detais})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
@@ -111,9 +116,8 @@
                                :table.row/create (not (:database_is_auto_increment field))
                                :table.row/update true
                                :table.row/delete (isa? (:semantic_type field) :type/PK))]
-                   {:id                (format "field-%s" (:name field))
+                   {:id                (:name field)
                     :source            "ask-user"
-                    :target            (:name field)
                     :configure-details default-configuration-detais})}))
 
 (mu/defn configuration :- [:or ::action-configuration [:map [:status ms/PositiveInt]]]
