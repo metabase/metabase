@@ -12,7 +12,7 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
-import { Button, Flex } from "metabase/ui";
+import { Button, Flex, Group } from "metabase/ui";
 
 import { ActiveStatusFilter } from "../components/ActiveStatusFilter";
 import { PeopleList } from "../components/PeopleList";
@@ -49,39 +49,40 @@ export function PeopleListingApp({
   } = usePeopleQuery(PAGE_SIZE, external ? "external" : "internal");
 
   return (
-    <SettingsPageWrapper title={t`People`}>
+    <SettingsPageWrapper title={external ? t`External Users` : t`People`}>
       <SettingsSection>
         <LoadingAndErrorWrapper
           error={error}
           loading={isLoading || !currentUser}
         >
           <AdminPaneLayout
-            title={t`People`}
-            titleActions={
-              <Flex gap="sm">
-                {isAdmin && status === ACTIVE_STATUS.active && (
-                  <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
-                    <Button variant="filled">{t`Invite someone`}</Button>
-                  </Link>
-                )}
-                {!external && <PLUGIN_TENANTS.EditUserStrategySettingsButton />}
-              </Flex>
-            }
             headerContent={
-              <>
-                <SearchFilter
-                  value={searchInputValue}
-                  onChange={updateSearchInputValue}
-                  placeholder={t`Find someone`}
-                />
-
-                {isAdmin && (
-                  <ActiveStatusFilter
-                    status={status}
-                    onStatusChange={updateStatus}
+              <Flex justify="space-between" w="100%">
+                <Group>
+                  <SearchFilter
+                    value={searchInputValue}
+                    onChange={updateSearchInputValue}
+                    placeholder={t`Find someone`}
                   />
-                )}
-              </>
+
+                  {isAdmin && (
+                    <ActiveStatusFilter
+                      status={status}
+                      onStatusChange={updateStatus}
+                    />
+                  )}
+                </Group>
+                <Group gap="sm">
+                  {isAdmin && status === ACTIVE_STATUS.active && (
+                    <Link to={external ? Urls.newTenantUser() : Urls.newUser()}>
+                      <Button variant="filled">{t`Invite someone`}</Button>
+                    </Link>
+                  )}
+                  {!external && (
+                    <PLUGIN_TENANTS.EditUserStrategySettingsButton />
+                  )}
+                </Group>
+              </Flex>
             }
           >
             {currentUser && (

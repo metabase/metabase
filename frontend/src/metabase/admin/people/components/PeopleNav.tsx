@@ -7,12 +7,14 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/settings/components/AdminNav";
 import { UpsellSSO } from "metabase/admin/upsells";
+import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
-import { Stack } from "metabase/ui";
+import { Divider, Stack } from "metabase/ui";
 
 export function PeopleNav() {
   const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
+  const tenantEnabled = useSetting("use-tenants");
 
   return (
     <AdminNavWrapper justify="space-between">
@@ -29,6 +31,23 @@ export function PeopleNav() {
           label={t`Groups`}
           icon="group"
         />
+        {tenantEnabled && (
+          <>
+            <Divider my="sm" />
+            <PeopleNavItem
+              path="/admin/tenants"
+              data-testid="nav-item"
+              label={t`Tenants`}
+              icon="info"
+            />
+            <PeopleNavItem
+              path="/admin/tenants/people"
+              data-testid="nav-item"
+              label={t`External Users`}
+              icon="group"
+            />
+          </>
+        )}
       </Stack>
       {shouldNudge && <UpsellSSO source="people-groups-settings" />}
     </AdminNavWrapper>
