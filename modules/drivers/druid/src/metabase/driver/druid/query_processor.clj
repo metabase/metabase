@@ -702,11 +702,6 @@
                       [:aggregation-options [:aggregation-options ag options-1] options-2]
                       [:aggregation-options ag (merge options-1 options-2)]))
 
-(def ^:private ^:dynamic *query-unique-identifier-counter*
-  "Counter used for generating unique identifiers for use in the query. Bound to `(atom 0)` and incremented on each use
-  as the MBQL query is compiled."
-  nil)
-
 (defn- aggregation-unique-identifier [clause]
   (format "__%s" (*query-unique-name-fn* (name clause))))
 
