@@ -13,9 +13,8 @@ export const CloudSMTPConnectionCard = ({
   onOpenCloudSMTPModal: () => void;
 }) => {
   const isCloudSMTPConfigured = Boolean(useSetting("cloud-email-smtp-host"));
-  const { value: iscloudSMTPEnabled, updateSetting } = useAdminSetting(
-    "cloud-smtp-enabled?",
-  );
+  const { value: iscloudSMTPEnabled, updateSetting } =
+    useAdminSetting("cloud-smtp-enabled");
 
   const [localValue, setLocalValue] = useState(iscloudSMTPEnabled);
 
@@ -29,7 +28,7 @@ export const CloudSMTPConnectionCard = ({
       return;
     }
     setLocalValue(newIsCloudSMTPEnabled);
-    updateSetting({ key: "cloud-smtp-enabled?", value: newIsCloudSMTPEnabled });
+    updateSetting({ key: "cloud-smtp-enabled", value: newIsCloudSMTPEnabled });
   };
 
   return (

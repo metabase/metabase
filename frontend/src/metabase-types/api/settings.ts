@@ -318,7 +318,7 @@ interface InstanceSettings {
   "cloud-email-smtp-security": "ssl" | "tls" | "starttls";
   "cloud-email-smtp-username": string | null;
   "cloud-email-smtp-password": string | null;
-  "cloud-smtp-enabled?": boolean;
+  "cloud-smtp-enabled": boolean;
   "email-from-name": string | null;
   "email-from-address": string | null;
   "email-reply-to": string[] | null;

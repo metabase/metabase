@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { Box, Icon, TextInput } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
@@ -17,8 +17,10 @@ export function EmailFromAddressWidget() {
   } = useAdminSetting("email-from-address");
   const isHosted = useSetting("is-hosted?") || true;
   const isEnvSetting = settingDetails?.is_env_setting || true;
-
-  const isFromAddressManagedByMetabase = isHosted && isEnvSetting;
+  const isCloudSMTPEnabled = useSetting("cloud-smtp-enabled");
+  const isFromAddressManagedByMetabase =
+    isHosted && isEnvSetting && !isCloudSMTPEnabled;
+  const hasCloudCustomSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
 
   const [localValue, setLocalValue] = useState(initialValue);
 
@@ -26,13 +28,15 @@ export function EmailFromAddressWidget() {
     setLocalValue(initialValue);
   }, [initialValue]);
 
-  const handleChange = (newValue: any) => {
-    setLocalValue(newValue);
-    if (newValue === initialValue) {
+  const handleChange = () => {
+    if (localValue === initialValue) {
       return;
     }
 
-    updateSetting({ key: "email-from-address", value: newValue });
+    updateSetting({
+      key: "email-from-address",
+      value: localValue ? localValue : null,
+    });
   };
 
   if (isLoading) {
@@ -46,17 +50,17 @@ export function EmailFromAddressWidget() {
         title={t`From Address`}
         description={
           isFromAddressManagedByMetabase
-            ? t`Please set up a custom SMTP server to change this`
+            ? t`Please set up a custom SMTP server to change this${hasCloudCustomSMTPFeature ? "" : t` (Pro only)`}`
             : settingDescription
         }
       />
 
       <TextInput
         id={"email-from-address"}
-        value={initialValue ? initialValue : "noreply@metabase.com"}
+        value={localValue ? localValue : ""}
         placeholder={"metabase@yourcompany.com"}
         onChange={(e) => setLocalValue(e.target.value)}
-        onBlur={() => handleChange(localValue)}
+        onBlur={() => handleChange()}
         type={"text"}
         disabled={isFromAddressManagedByMetabase}
         rightSection={
