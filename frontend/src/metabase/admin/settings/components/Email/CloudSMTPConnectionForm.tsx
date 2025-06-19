@@ -8,46 +8,40 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import {
-  useDeleteEmailSMTPSettingsMutation,
+  useDeleteCloudEmailSMTPSettingsMutation,
   useSendTestEmailMutation,
-  useUpdateEmailSMTPSettingsMutation,
+  useUpdateCloudEmailSMTPSettingsMutation,
 } from "metabase/api/email";
 import { useSetting, useToast } from "metabase/common/hooks";
 import {
   Form,
+  FormChipGroup,
   FormProvider,
-  FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Modal,
-  Radio,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Chip, Flex, Modal, Stack, Text } from "metabase/ui";
 import type {
-  EmailSMTPSettings,
+  CloudEmailSMTPSettings,
   SettingDefinitionMap,
 } from "metabase-types/api";
 
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
 const emailSettingKeys = [
-  "email-smtp-host",
-  "email-smtp-port",
-  "email-smtp-security",
-  "email-smtp-username",
-  "email-smtp-password",
+  "cloud-email-smtp-host",
+  "cloud-email-smtp-port",
+  "cloud-email-smtp-security",
+  "cloud-email-smtp-username",
+  "cloud-email-smtp-password",
 ] as const;
 
 const anySchema = Yup.mixed().nullable().default(null);
+
+type FormValues = Omit<CloudEmailSMTPSettings, "cloud-email-smtp-port"> & {
+  "cloud-email-smtp-port": string; // FormChip doesn't work well with integers
+};
 
 // we need to allow this form to be submitted even when we have removed certain inputs
 // when they are set by env vars
@@ -55,51 +49,71 @@ const getFormValueSchema = (
   settingsDetails: SettingDefinitionMap | undefined,
 ) => {
   return Yup.object({
-    "email-smtp-host": settingsDetails?.["email-smtp-host"]?.is_env_setting
-      ? anySchema
-      : Yup.string().required(Errors.required).default(""),
-    "email-smtp-port": settingsDetails?.["email-smtp-port"]?.is_env_setting
-      ? anySchema
-      : Yup.number()
-          .positive()
-          .nullable()
-          .required(Errors.required)
-          .default(null),
-    "email-smtp-security": settingsDetails?.["email-smtp-security"]
+    "cloud-email-smtp-host": settingsDetails?.["email-smtp-host"]
       ?.is_env_setting
       ? anySchema
-      : Yup.string().default("none"),
-    "email-smtp-username": settingsDetails?.["email-smtp-username"]
+      : Yup.string().required(Errors.required).default(""),
+    "cloud-email-smtp-port": settingsDetails?.["email-smtp-port"]
+      ?.is_env_setting
+      ? anySchema
+      : Yup.string()
+          .oneOf(["465", "587", "2525"], "Must be either 465, 587 or 2525")
+          .nullable()
+          // .required(Errors.required)
+          .default("465"),
+    "cloud-email-smtp-security": settingsDetails?.["email-smtp-security"]
+      ?.is_env_setting
+      ? anySchema
+      : Yup.string()
+          .oneOf(
+            ["ssl", "tls", "starttls"],
+            "Must be either SSL, TLS or STARTTLS",
+          )
+          .nullable()
+          // .required(Errors.required)
+          .default("ssl"),
+    "cloud-email-smtp-username": settingsDetails?.["email-smtp-username"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
-    "email-smtp-password": settingsDetails?.["email-smtp-password"]
+    "cloud-email-smtp-password": settingsDetails?.["email-smtp-password"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
   });
 };
 
-export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
-  const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
+export const CloudSMTPConnectionForm = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
+  const [updateCloudEmailSMTPSettings] =
+    useUpdateCloudEmailSMTPSettingsMutation();
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
-  const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
+  const [deleteCloudEmailSMTPSettings] =
+    useDeleteCloudEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
   const isHosted = useSetting("is-hosted?");
-  const initialValues = useMemo<EmailSMTPSettings>(
+  const initialValues = useMemo<FormValues>(
     () => ({
-      "email-smtp-host": settingValues?.["email-smtp-host"] ?? "",
-      "email-smtp-port": settingValues?.["email-smtp-port"] ?? null,
-      "email-smtp-security": settingValues?.["email-smtp-security"] ?? "none",
-      "email-smtp-username": settingValues?.["email-smtp-username"] ?? "",
-      "email-smtp-password": settingValues?.["email-smtp-password"] ?? "",
+      "cloud-email-smtp-host": settingValues?.["cloud-email-smtp-host"] ?? "",
+      "cloud-email-smtp-port": settingValues?.["cloud-email-smtp-port"]
+        ? settingValues?.["cloud-email-smtp-port"] + ""
+        : "465",
+      "cloud-email-smtp-security":
+        settingValues?.["cloud-email-smtp-security"] ?? "ssl",
+      "cloud-email-smtp-username":
+        settingValues?.["cloud-email-smtp-username"] ?? "",
+      "cloud-email-smtp-password":
+        settingValues?.["cloud-email-smtp-password"] ?? "",
     }),
     [settingValues],
   );
   const handleClearEmailSettings = useCallback(async () => {
-    const result = await deleteEmailSMTPSettings();
+    const result = await deleteCloudEmailSMTPSettings();
     if (result.error) {
       sendToast({
         icon: "warning",
@@ -113,11 +127,17 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
         message: t`Email settings cleared`,
       });
     }
-  }, [deleteEmailSMTPSettings, sendToast]);
+  }, [deleteCloudEmailSMTPSettings, sendToast]);
 
   const handleUpdateEmailSettings = useCallback(
-    async (formData: EmailSMTPSettings) => {
-      const result = await updateEmailSMTPSettings(formData);
+    async (formData: FormValues) => {
+      const smtpPort = parseInt(
+        formData["cloud-email-smtp-port"],
+      ) as CloudEmailSMTPSettings["cloud-email-smtp-port"];
+      const result = await updateCloudEmailSMTPSettings({
+        ...formData,
+        "cloud-email-smtp-port": smtpPort,
+      });
       if (result.error) {
         sendToast({
           icon: "warning",
@@ -133,7 +153,7 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
         onClose();
       }
     },
-    [updateEmailSMTPSettings, sendToast, onClose],
+    [updateCloudEmailSMTPSettings, sendToast, onClose],
   );
 
   const handleSendTestEmail = useCallback(async () => {
@@ -170,84 +190,87 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
           onSubmit={handleUpdateEmailSettings}
           enableReinitialize
         >
-          {({ dirty, isValid, isSubmitting, values }) => (
+          {({ dirty, isValid, isSubmitting }) => (
             <Form>
               <Stack gap="lg">
                 <SetByEnvVarWrapper
-                  settingKey="email-smtp-host"
-                  settingDetails={settingsDetails?.["email-smtp-host"]}
+                  settingKey="cloud-email-smtp-host"
+                  settingDetails={settingsDetails?.["cloud-email-smtp-host"]}
                 >
                   <FormTextInput
-                    name="email-smtp-host"
+                    name="cloud-email-smtp-host"
                     label={t`SMTP Host`}
                     description={
-                      settingsDetails?.["email-smtp-host"]?.description
+                      settingsDetails?.["cloud-email-smtp-host"]?.description
                     }
                     placeholder={"smtp.yourservice.com"}
                   />
                 </SetByEnvVarWrapper>
                 <SetByEnvVarWrapper
-                  settingKey="email-smtp-port"
-                  settingDetails={settingsDetails?.["email-smtp-port"]}
+                  settingKey="cloud-email-smtp-port"
+                  settingDetails={settingsDetails?.["cloud-email-smtp-port"]}
                 >
-                  <FormTextInput
-                    name="email-smtp-port"
+                  <FormChipGroup
+                    name="cloud-email-smtp-port"
                     label={t`SMTP Port`}
-                    placeholder={"587"}
-                  />
-                </SetByEnvVarWrapper>
-                <SetByEnvVarWrapper
-                  settingKey="email-smtp-security"
-                  settingDetails={settingsDetails?.["email-smtp-security"]}
-                >
-                  <FormRadioGroup
-                    name="email-smtp-security"
-                    label={t`SMTP Security`}
+                    groupProps={{ mt: "0.5rem" }}
                   >
-                    <Group>
-                      {[
-                        { value: "none", name: "None" },
-                        { value: "ssl", name: "SSL" },
-                        { value: "tls", name: "TLS" },
-                        { value: "starttls", name: "STARTTLS" },
-                      ].map(({ value, name }) => (
-                        <Radio
-                          value={value as string}
-                          name="email-smtp-security"
-                          label={name}
-                          key={name}
-                          styles={{
-                            inner: { display: "none" },
-                            label: {
-                              paddingLeft: 0,
-                              color:
-                                values["email-smtp-security"] === value
-                                  ? color("brand")
-                                  : color("text-dark"),
-                            },
-                          }}
-                        />
-                      ))}
-                    </Group>
-                  </FormRadioGroup>
+                    <Chip value={"465"} variant="brand">
+                      465
+                    </Chip>
+                    <Chip value={"587"} variant="brand">
+                      587
+                    </Chip>
+
+                    <Chip value={"2525"} variant="brand">
+                      2525
+                    </Chip>
+                  </FormChipGroup>
                 </SetByEnvVarWrapper>
                 <SetByEnvVarWrapper
-                  settingKey="email-smtp-username"
-                  settingDetails={settingsDetails?.["email-smtp-username"]}
+                  settingKey="cloud-email-smtp-security"
+                  settingDetails={
+                    settingsDetails?.["cloud-email-smtp-security"]
+                  }
+                >
+                  <FormChipGroup
+                    name="cloud-email-smtp-security"
+                    label={t`SMTP Security`}
+                    groupProps={{ mt: "0.5rem" }}
+                  >
+                    <Chip value={"ssl"} variant="brand">
+                      SSL
+                    </Chip>
+                    <Chip value={"tls"} variant="brand">
+                      TLS
+                    </Chip>
+
+                    <Chip value={"starttls"} variant="brand">
+                      STARTTLS
+                    </Chip>
+                  </FormChipGroup>
+                </SetByEnvVarWrapper>
+                <SetByEnvVarWrapper
+                  settingKey="cloud-email-smtp-username"
+                  settingDetails={
+                    settingsDetails?.["cloud-email-smtp-username"]
+                  }
                 >
                   <FormTextInput
-                    name="email-smtp-username"
+                    name="cloud-email-smtp-username"
                     label={t`SMTP Username`}
                     placeholder={"nicetoseeyou"}
                   />
                 </SetByEnvVarWrapper>
                 {!isHosted && (
                   <SetByEnvVarWrapper
-                    settingKey="email-smtp-password"
-                    settingDetails={settingsDetails?.["email-smtp-password"]}
+                    settingKey="cloud-email-smtp-password"
+                    settingDetails={
+                      settingsDetails?.["cloud-email-smtp-password"]
+                    }
                   >
                     <FormTextInput
-                      name="email-smtp-password"
+                      name="cloud-email-smtp-password"
                       type="password"
                       label={t`SMTP Password`}
                       placeholder={"Shhh..."}

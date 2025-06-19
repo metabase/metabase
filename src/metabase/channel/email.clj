@@ -2,6 +2,7 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.channel.settings :as channel.settings]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -76,11 +77,17 @@
      {})))
 
 (defn- smtp-settings []
-  (-> {:host (channel.settings/email-smtp-host)
-       :user (channel.settings/email-smtp-username)
-       :pass (channel.settings/email-smtp-password)
-       :port (channel.settings/email-smtp-port)}
-      (add-ssl-settings (channel.settings/email-smtp-security))))
+  (if (and (channel.settings/cloud-smtp-enabled) (premium-features/is-hosted?))
+    (-> {:host (channel.settings/cloud-email-smtp-host)
+         :user (channel.settings/cloud-email-smtp-username)
+         :pass (channel.settings/cloud-email-smtp-password)
+         :port (channel.settings/cloud-email-smtp-port)}
+        (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
+    (-> {:host (channel.settings/email-smtp-host)
+         :user (channel.settings/email-smtp-username)
+         :pass (channel.settings/email-smtp-password)
+         :port (channel.settings/email-smtp-port)}
+        (add-ssl-settings (channel.settings/email-smtp-security)))))
 
 (def ^:private EmailMessage
   [:and

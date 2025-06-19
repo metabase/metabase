@@ -1,24 +1,34 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { UpsellHostingBanner } from "metabase/admin/upsells";
+import {
+  UpsellEmailWhitelabelBanner,
+  UpsellHostingBanner,
+} from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Center } from "metabase/ui";
 
+import { CloudSMTPConnectionCard } from "../Email/CloudSMTPConnectionCard";
+import { CloudSMTPConnectionForm } from "../Email/CloudSMTPConnectionForm";
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { SMTPConnectionForm } from "../Email/SMTPConnectionForm";
 import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
+import { EmailFromAddressWidget } from "../widgets/EmailFromAddressWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
 
 export function EmailSettingsPage() {
   const [showModal, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
+  const [showCloudModal, { open: openCloudModal, close: closeCloudModal }] =
+    useDisclosure(false);
+
   const { data: settingValues, isLoading } = useGetSettingsQuery();
-  const isHosted = settingValues?.["is-hosted?"];
+  // const isHosted = settingValues?.["is-hosted?"] || true;
+  const hasCloudSMTPFeature = true;
   const isEmailConfigured = settingValues?.["email-configured?"];
   const hasEmailAllowListFeature = useHasTokenFeature("email_allow_list");
   const hasEmailRestrictRecipientsFeature = useHasTokenFeature(
@@ -32,7 +42,13 @@ export function EmailSettingsPage() {
   return (
     <>
       <SettingsPageWrapper title={t`Email`}>
-        {!isHosted && <SMTPConnectionCard onOpenSMTPModal={openModal} />}
+        {<SMTPConnectionCard onOpenSMTPModal={openModal} />}
+        {hasCloudSMTPFeature && (
+          <CloudSMTPConnectionCard onOpenCloudSMTPModal={openCloudModal} />
+        )}
+        <Center>
+          <UpsellEmailWhitelabelBanner source="settings-email" />
+        </Center>
         {isEmailConfigured && (
           <SettingsSection>
             <AdminSettingInput
@@ -41,12 +57,7 @@ export function EmailSettingsPage() {
               placeholder="Metabase"
               inputType="text"
             />
-            <AdminSettingInput
-              name="email-from-address"
-              title={t`From Address`}
-              placeholder="metabase@yourcompany.com"
-              inputType="text"
-            />
+            <EmailFromAddressWidget />
             <EmailReplyToWidget />
             <AdminSettingInput
               name="bcc-enabled?"
@@ -87,6 +98,7 @@ export function EmailSettingsPage() {
         </Center>
       </SettingsPageWrapper>
       {showModal && <SMTPConnectionForm onClose={closeModal} />}
+      {showCloudModal && <CloudSMTPConnectionForm onClose={closeCloudModal} />}
     </>
   );
 }

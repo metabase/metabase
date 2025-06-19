@@ -18,7 +18,7 @@ export const SMTPConnectionCard = ({
       <SettingsSection data-testid="smtp-connection-card">
         <Flex justify="space-between" align="center">
           <Flex align="center" gap="sm">
-            <Title order={2}>{t`SMTP`}</Title>
+            <Title order={2}>{t`Self-Hosted SMTP`}</Title>
             {isEmailConfigured && (
               <Paper
                 fw="bold"
