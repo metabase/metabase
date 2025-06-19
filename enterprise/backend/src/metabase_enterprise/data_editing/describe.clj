@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-editing.describe
   (:require
-   [metabase-enterprise.data-editing.data-editing :as data-editing]
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
    [metabase.util :as u]
@@ -30,13 +29,6 @@
    [:title :string]
    [:parameters [:sequential ::describe-param]]])
 
-(defn- param-value
-  [param-setting row-delay]
-  (case (:sourceType param-setting)
-    "constant" (:value param-setting)
-    "row-data" (when row-delay (get @row-delay (keyword (:sourceValueTarget param-setting))))
-    nil))
-
 (defn- field-input-type
   [field field-values]
   (case (:type field-values)
@@ -55,7 +47,7 @@
              table-id
              param-map
              dashcard-viz
-             row-delay]}]
+             row-data]}]
   (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
         fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
@@ -103,7 +95,11 @@
                           :database_default        (:database_default field)
                           :readonly                (or (= "readonly" (:visibility param-setting))
                                                        (not (dashcard-column-editable? (:name field))))
-                          :value                   (param-value param-setting row-delay)}))
+                          ;; TODO oh dear, we need to worry about case sensitivity issue now (e.g. in tests)
+                          ;; it would be much better if our mappings were based on field ids.
+                          ;; probably not an issue in practice, because FE is writing the config AND calling tmp-modal
+                          ;; with likely the same names for fields (fingers crossed)
+                          :value                   (get row-data (keyword (:name field)))}))
                       vec)}))
 
 (defn- saved-param-base-type
@@ -142,7 +138,7 @@
   [& {:keys [action-id
              ;; TODO: refactor to not relying on param-map
              param-map
-             row-delay]}]
+             row-data]}]
   (let [action              (-> (actions/select-action :id action-id
                                                        :archived false
                                                        {:where [:not [:= nil :model_id]]})
@@ -155,7 +151,7 @@
      :parameters (->> (for [param (:parameters action)
                             ;; query type actions store most stuff in viz settings rather than the
                             ;; parameter
-                            :let [viz-field     (param-id->viz-field (:id param))
+                            :let [viz-field (param-id->viz-field (:id param))
                                   param-map (param-id->mapping (:id param))]
                             :when (and (not (:hidden viz-field))
                                        (not= "hidden" (:visibility param-map)))]
@@ -166,14 +162,14 @@
                           :optional      (and (not (:required param)) (not (:required viz-field)))
                           :nullable      true ; is there a way to know this?
                           :readonly      (= "readonly" (:visibility param-map))
-                          :value         (param-value param-map row-delay)
+                          :value         (get row-data (keyword (:id param)))
                           :value_options (:valueOptions viz-field)}))
                       vec)}))
 
 (mu/defn describe-unified-action :- ::action-description
   "Describe parameters of an unified action."
-  [unified scope input]
-  ;; TODO: we didn't handle dashboard-action
+  [unified scope row-data partial-input]
+  ;; TODO: we didn't handle dashboard-action (i.e. dashboard buttons)
   (cond
     ;; saved action
     ;; hmm, having checked like this makes me insecure, what makes having an action-id enforces that this
@@ -182,54 +178,39 @@
     (describe-saved-action :action-id (:action-id unified))
 
     ;; table action
+    ;; TODO remove assumption that all primitives are table actions
     (:action-kw unified)
     (describe-table-action
-     {:action-kw     (:action-kw unified)
-      ;; todo this should come from applying the (arbitrarily nested) mappings to the input
-      ;;      ... and we also need apply-mapping to pull constants out of the form configuration as well!
-      :table-id      (or (:table-id (:mapping (:inner-action unified)))
-                         (:table-id (:mapping unified)))
-      :param-map (:param-map unified)
-      ;; TODO is it really 2 layers deep?
-      :dashcard-viz  (:dashcard-viz (:dashcard-viz unified))})
+     {:action-kw    (:action-kw unified)
+      :table-id     (:table-id partial-input)
+      :param-map    (:param-map unified)
+      ;; tried commenting it out and no tests failed, so will leave this here as reference for now
+      ;; (also don't see any code that could ever populate this tho)
+      :dashcard-viz nil #_(:dashcard-viz (:dashcard-viz unified))})
     (:inner-action unified)
-    (let [inner       (:inner-action unified)
-          mapping     (:param-map unified)
-          dashcard-id (:dashcard-id unified)
+    (let [inner        (:inner-action unified)
+          param-map    (:param-map unified)
+          dashcard-id  (:dashcard-id unified)
           dashcard-viz (or (:dashcard-viz unified)
-                           ;; TODO get rid of dashcard-viz in unified, we should always get it from querying the
-                           ;; dashcard table
+                           ;; TODO we shouldn't need this fallback, fetch-unified-action should have fetched this for us
                            (t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))
           saved-id    (:action-id inner)
           action-kw   (:action-kw inner)
-          table-id    (or (:table-id mapping)
-                          (:table-id (:mapping inner))
-                          (:table-id scope)
-                          ;; built-in actions on editable
-                          (:table_id dashcard-viz))
+          table-id    (:table-id partial-input)
           _           (when-not table-id
-                        (throw (ex-info "Must provide table-id" {:status-code 400})))
-          row-delay   (delay
-                       ;; TODO this is incorrect - in general the row will not come from the table we are acting
-                       ;;      upon - this is not even true for our first use case!
-                        (when table-id
-                          (let [pk-fields    (data-editing/select-table-pk-fields table-id)
-                                pk           (select-keys input (mapv (comp keyword :name) pk-fields))
-                                pk-satisfied (= (count pk) (count pk-fields))]
-                            (when pk-satisfied
-                              (first (data-editing/query-db-rows table-id pk-fields [pk]))))))]
+                        (throw (ex-info "Must provide table-id" {:status-code 400})))]
       (cond
         saved-id
         (describe-saved-action :action-id              saved-id
                                :row-action-dashcard-id dashcard-id
-                               :param-map          mapping
-                               :row-delay              row-delay)
+                               :param-map              param-map
+                               :row-data               row-data)
         action-kw
         (describe-table-action :action-kw     action-kw
                                :table-id      table-id
-                               :param-map mapping
-                               :dashcard-viz  (or (:dashcard-viz unified) dashcard-viz)
-                               :row-delay     row-delay)
+                               :param-map     param-map
+                               :dashcard-viz dashcard-viz
+                               :row-data      row-data)
         :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified unified})))
     :else
     (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified}))))

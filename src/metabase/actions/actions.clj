@@ -20,7 +20,8 @@
    [metabase.util.malli.registry :as mr]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
-  (:import (clojure.lang ExceptionInfo)))
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (defmulti default-mapping
   "Allow actions to dynamically generating a :mapping, in none has been configured."
@@ -30,6 +31,11 @@
     action-kw))
 
 (defmethod default-mapping :default [_ _])
+
+(defmethod default-mapping :table.row/common
+  [_ scope]
+  (when (= :table (:type scope))
+    (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.data-editing.api/root)))
 
 (defmulti perform-action!*
   "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
