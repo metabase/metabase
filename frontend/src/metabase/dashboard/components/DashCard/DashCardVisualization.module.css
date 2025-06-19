@@ -6,6 +6,6 @@
   color: var(--mb-color-text-medium);
 }
 
-.InlineParametersContainer * {
+.InlineParametersList * {
   pointer-events: all;
 }

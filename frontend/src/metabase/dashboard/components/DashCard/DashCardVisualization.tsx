@@ -435,6 +435,7 @@ export function DashCardVisualization({
         <Box mr="sm">
           {inlineParameters.length > 0 && (
             <DashboardParameterList
+              className={S.InlineParametersList}
               widgetsVariant="subtle"
               parameters={inlineParameters}
               isSortable={false}
