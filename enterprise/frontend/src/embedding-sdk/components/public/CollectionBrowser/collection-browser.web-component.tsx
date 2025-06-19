@@ -10,13 +10,15 @@ import {
 
 export type CollectionBrowserWebComponentAttributes = {
   "collection-id": CollectionBrowserProps["collectionId"];
+  "on-click": string;
 };
 
 const CollectionBrowserWebComponent = createWebComponent<
-  Pick<CollectionBrowserProps, "collectionId">
+  Pick<CollectionBrowserProps, "collectionId" | "onClick">
 >((props) => <CollectionBrowser {...props} />, {
   propTypes: {
     collectionId: "id",
+    onClick: "function",
   },
 });
 
