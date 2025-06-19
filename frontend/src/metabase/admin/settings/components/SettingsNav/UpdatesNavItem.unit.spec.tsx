@@ -74,6 +74,6 @@ describe("UpdatesNavItem", () => {
 
   it("should show badge updates are available", async () => {
     await setup({ versionTag: "v1.53.8", updateChannel: "beta" });
-    expect(screen.getByTestId("updates-nav-badge")).toBeInTheDocument();
+    expect(await screen.findByTestId("updates-nav-badge")).toBeInTheDocument();
   });
 });
