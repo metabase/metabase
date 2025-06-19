@@ -35,7 +35,7 @@ export function UpdatesNavItem() {
               },
             }}
           >
-            {t`1`}
+            1
           </Badge>
         ) : null
       }
