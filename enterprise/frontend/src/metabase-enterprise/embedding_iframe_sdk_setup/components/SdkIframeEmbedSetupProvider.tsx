@@ -32,7 +32,8 @@ export const SdkIframeEmbedSetupProvider = ({
     dashboardId: 1,
   });
 
-  const embedType = useMemo(
+  // Which embed experience are we setting up?
+  const experience = useMemo(
     () =>
       match<SdkIframeEmbedSettings, SdkIframeEmbedSetupExperience>(settings)
         .with({ questionId: P.nonNullable }, () => "chart")
@@ -50,7 +51,7 @@ export const SdkIframeEmbedSetupProvider = ({
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
     setCurrentStep,
-    embedType,
+    experience,
     settings,
     setSettings,
     updateSettings,
