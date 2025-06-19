@@ -1339,7 +1339,8 @@
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (defn- non-temporal-dimension-ids-clause
-  "Creates a PostgreSQL-specific clause to extract field IDs from result_metadata JSON.
+  "TODO tplude - Add more info to this
+  Creates a PostgreSQL-specific clause to extract field IDs from result_metadata JSON.
   Returns a JSON array of field IDs for non-temporal dimensions.
   For non-PostgreSQL databases, returns an empty JSON array to avoid PostgreSQL-specific syntax."
   []
@@ -1356,8 +1357,6 @@
          )"]
     [:raw "'[]'"]))
 
-;;;; ------------------------------------------------- Search ----------------------------------------------------------
-
 (def ^:private base-search-spec
   {:model        :model/Card
    :attrs        {:archived            true
@@ -1365,14 +1364,11 @@
                   :creator-id          true
                   :dashboard-id        true
                   :dashboardcard-count {:select [:%count.*]
-                                        :from [:report_dashboardcard]
-                                        :where [:= :report_dashboardcard.card_id :this.id]}
+                                        :from   [:report_dashboardcard]
+                                        :where  [:= :report_dashboardcard.card_id :this.id]}
                   :database-id         true
-                  :display-type        :this.display
-                  :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]
-                  :non-temporal-dimension-ids (non-temporal-dimension-ids-clause)
-                  :last-viewed-at :last_used_at
-                  :native-query (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
+                  :last-viewed-at      :last_used_at
+                  :native-query        (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]
                   :last-edited-at      :r.timestamp
                   :last-editor-id      :r.user_id
@@ -1380,7 +1376,10 @@
                   :verified            [:= "verified" :mr.status]
                   :view-count          true
                   :created-at          true
-                  :updated-at          true}
+                  :updated-at          true
+                  :display-type        :this.display
+                  :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]
+                  :non-temporal-dimension-ids (non-temporal-dimension-ids-clause)}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
