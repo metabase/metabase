@@ -1593,6 +1593,7 @@
    :uses #{api
            config
            database-routing
+           driver
            events
            lib
            models
