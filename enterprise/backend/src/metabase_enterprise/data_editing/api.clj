@@ -487,24 +487,26 @@
 
 (defn- row-data-mapping
   ;; TODO get this working with arbitrary nesting of inner actions
-  ;;      it would also be nice to avoid running apply-mapping twice (once on this stub action, once on the real one)
   "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
   [{:keys [param-map] :as action}]
   ;; We create a version of the action that will "map" to an input which is just the row data itself.
-  {:inner-action {:action-kw :placeholder}
-   :dashcard-id  (:dashcard-id action)
-   :param-map    param-map
-   :mapping      (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
-                             :when (= "row-data" sourceType)]
-                   [id [::key (keyword sourceValueTarget)]])})
+  (let [row-data-mapping (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+                                     :when (= "row-data" sourceType)]
+                           [id [::key (keyword sourceValueTarget)]])]
+    (when (seq row-data-mapping)
+      {:inner-action {:action-kw :placeholder}
+       :dashcard-id  (:dashcard-id action)
+       :param-map    param-map
+       :mapping      row-data-mapping})))
 
 (defn- get-row-data
   "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
   [action input]
-  (-> (row-data-mapping action)
-      (apply-mapping-nested nil [input])
-      first
-      not-empty))
+  ;; it would be nice to avoid using "apply-mapping" twice (once here on this stub action, once later on the real one)
+  (some-> (row-data-mapping action)
+          (apply-mapping-nested nil [input])
+          first
+          not-empty))
 
 ;; test case
 
