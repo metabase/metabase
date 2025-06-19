@@ -55,6 +55,7 @@ import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  ActionScope,
   BaseEntityId,
   BaseUser,
   Bookmark,
@@ -802,7 +803,7 @@ export const PLUGIN_TABLE_ACTIONS = {
       handleExecuteActionModalClose: () => void;
     },
   TableActionExecuteModal: PluginPlaceholder as ComponentType<{
-    scope: { "card-id": number };
+    scope: ActionScope;
     selectedTableActionState: SelectedTableActionState | null;
     onClose: () => void;
   }>,

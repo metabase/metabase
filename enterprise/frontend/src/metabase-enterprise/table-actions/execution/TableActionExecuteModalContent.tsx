@@ -19,8 +19,8 @@ import {
   useExecuteActionMutation,
   useGetActionsQuery,
 } from "metabase-enterprise/api";
-import type { TableEditingScope } from "metabase-enterprise/data_editing/tables/types";
 import type {
+  ActionScope,
   DataGridWritebackAction,
   DataGridWritebackActionId,
   ParametersForActionExecution,
@@ -32,7 +32,7 @@ export interface TableActionExecuteModalProps {
   actionId: WritebackActionId | undefined;
   initialValues: ParametersForActionExecution;
   actionOverrides?: TableActionsExecuteFormVizOverride;
-  scope?: TableEditingScope;
+  scope: ActionScope;
   onClose?: () => void;
   onSuccess?: () => void;
 }
@@ -109,7 +109,7 @@ export const TableActionExecuteModalContent = ({
 
       const result = await executeAction({
         actionId: executeActionId,
-        scope: scope,
+        scope,
         input: initialValues,
         params: changedFields,
       });

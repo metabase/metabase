@@ -1,11 +1,11 @@
 import Modal from "metabase/components/Modal";
 import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
-import type { TableEditingScope } from "metabase-enterprise/data_editing/tables/types";
+import type { ActionScope } from "metabase-types/api";
 
 import { TableActionExecuteModalContent } from "./TableActionExecuteModalContent";
 
 export type TableActionExecuteModalProps = {
-  scope: TableEditingScope;
+  scope: ActionScope;
   selectedTableActionState: SelectedTableActionState | null;
   onClose: () => void;
 };

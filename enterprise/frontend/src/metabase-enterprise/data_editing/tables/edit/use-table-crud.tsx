@@ -11,6 +11,7 @@ import {
   useUpdateTableRowsMutation,
 } from "metabase-enterprise/api";
 import type {
+  ActionScope,
   ConcreteTableId,
   DatasetData,
   FieldWithMetadata,
@@ -18,7 +19,6 @@ import type {
 
 import type {
   RowCellsWithPkValue,
-  TableEditingScope,
   UpdateCellValueHandlerParams,
   UpdatedRowBulkHandlerParams,
   UpdatedRowHandlerParams,
@@ -40,7 +40,7 @@ export const useTableCRUD = ({
   setRowSelection,
 }: {
   tableId: ConcreteTableId;
-  scope?: TableEditingScope;
+  scope?: ActionScope;
   datasetData: DatasetData | null | undefined;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
   setRowSelection?: (state: RowSelectionState) => void;

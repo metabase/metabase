@@ -1,14 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 
-import type { DatasetData, RowValue } from "metabase-types/api";
+import type { ActionScope, DatasetData, RowValue } from "metabase-types/api";
 
-import type { TableEditingScope } from "../../types";
 import { BuiltInTableAction } from "../../types";
 import { useActionFormDescription } from "../use-table-action-form-description";
 
 export type UseActionUpdateRowModalFromDatasetParams = {
   datasetData?: DatasetData;
-  scope: TableEditingScope;
+  scope: ActionScope;
   fetchOnMount?: boolean;
 };
 
