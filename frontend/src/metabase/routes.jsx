@@ -87,6 +87,13 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
+          const searchParams = new URLSearchParams(window.location.search);
+          if (
+            searchParams.get("use_case") === "embedding" &&
+            searchParams.get("new_embedding_flow") === "true"
+          ) {
+            replace("/setup/embedding" + window.location.search);
+          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
