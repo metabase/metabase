@@ -67,7 +67,7 @@ export const TaskModal = ({ params }: Props) => {
         <Button
           component={Link}
           leftSection={<Icon name="audit" />}
-          to="/admin/troubleshooting/logs"
+          to="/admin/tools/logs"
         >{t`See logs`}</Button>
 
         <Button
