@@ -203,9 +203,8 @@
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
     (mt/with-premium-features #{:advanced-permissions}
-      (let [db-name (:db (mt/db))
-            venues-table (sql.tx/qualify-and-quote driver/*driver* db-name "venues")
-            checkins-table (sql.tx/qualify-and-quote driver/*driver* db-name "checkins")
+      (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+            checkins-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "checkins")
             role-a (u/lower-case-en (mt/random-name))
             role-b (u/lower-case-en (mt/random-name))]
         (tx/with-temp-roles! driver/*driver*
