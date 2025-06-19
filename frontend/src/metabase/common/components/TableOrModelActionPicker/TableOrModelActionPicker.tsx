@@ -60,7 +60,7 @@ export const TableOrModelActionPicker = ({
   const shouldHaveTableInitialPath = value?.model === "table";
   const shouldHaveModelInitialPath = value?.model === "dataset";
 
-  const isSetupComplete = (() => {
+  const [isSetupComplete, setIsSetupComplete] = useState(() => {
     if (!value) {
       return true;
     }
@@ -74,7 +74,7 @@ export const TableOrModelActionPicker = ({
     }
 
     return false;
-  })();
+  });
 
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
@@ -89,7 +89,7 @@ export const TableOrModelActionPicker = ({
         folderModels: [],
         icon: "table",
         render: ({ onItemSelect }) => {
-          if (shouldHaveTableInitialPath && !tableActionPath) {
+          if (shouldHaveTableInitialPath && !isSetupComplete) {
             return (
               <Center h="100%">
                 <DelayedLoadingSpinner />
@@ -120,7 +120,7 @@ export const TableOrModelActionPicker = ({
         folderModels: [],
         icon: "model",
         render: ({ onItemSelect }) => {
-          if (shouldHaveModelInitialPath && !modelActionPath) {
+          if (shouldHaveModelInitialPath && !isSetupComplete) {
             return (
               <Center h="100%">
                 <DelayedLoadingSpinner />
@@ -159,12 +159,6 @@ export const TableOrModelActionPicker = ({
     [onChange],
   );
 
-  const handleTabChange = useCallback(() => {
-    onChange(undefined);
-    setTableActionPath(undefined);
-    setModelActionPath(undefined);
-  }, [onChange]);
-
   useMount(() => {
     async function fetchTableMetadata(tableId: TableId) {
       const action = dispatch(
@@ -178,6 +172,8 @@ export const TableOrModelActionPicker = ({
         setTableActionPath([db_id, schema, id, undefined]);
       } catch (e) {
         setTableActionPath([undefined, undefined, undefined, undefined]);
+      } finally {
+        setIsSetupComplete(true);
       }
     }
 
@@ -199,6 +195,8 @@ export const TableOrModelActionPicker = ({
         setModelActionPath([collection_id || "root", id, undefined]);
       } catch (e) {
         setModelActionPath([undefined, undefined, undefined]);
+      } finally {
+        setIsSetupComplete(true);
       }
     }
 
@@ -219,7 +217,6 @@ export const TableOrModelActionPicker = ({
       onClose={onClose}
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData && !isSetupComplete}
-      onTabChange={handleTabChange}
     />
   );
 };

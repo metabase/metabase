@@ -159,7 +159,7 @@ export const ConfigureTableActions = ({
         >
           <Modal.Overlay />
           <AddOrEditActionSettingsContent
-            action={editingAction}
+            actionSettings={editingAction}
             tableColumns={columns}
             onSubmit={editingAction ? handleEditAction : handleAddAction}
             onClose={cancelEditAction}

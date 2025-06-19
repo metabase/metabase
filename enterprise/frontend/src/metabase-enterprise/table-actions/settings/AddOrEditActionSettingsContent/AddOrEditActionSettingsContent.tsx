@@ -1,9 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
+import { isModelAction, isTableAction } from "metabase/actions/utils";
 import { skipToken } from "metabase/api";
-import type { ActionItem } from "metabase/common/components/DataPicker";
+import type {
+  ActionItem,
+  ModelItem,
+  TableItem,
+} from "metabase/common/components/DataPicker";
 import { TableOrModelActionPicker } from "metabase/common/components/TableOrModelActionPicker";
-import { Flex, Modal } from "metabase/ui";
+import { Button, Icon, Modal } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
@@ -13,10 +19,9 @@ import type {
 } from "metabase-types/api";
 
 import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
-import S from "./AddOrEditActionSettingsContent.module.css";
 
 interface Props {
-  action: TableActionDisplaySettings | null | undefined;
+  actionSettings: TableActionDisplaySettings | null | undefined;
   tableColumns: BasicTableViewColumn[];
   onClose: () => void;
   onSubmit: (actionParams: {
@@ -29,7 +34,7 @@ interface Props {
 }
 
 export function AddOrEditActionSettingsContent({
-  action: editedActionSettings,
+  actionSettings,
   tableColumns,
   onClose,
   onSubmit,
@@ -37,34 +42,38 @@ export function AddOrEditActionSettingsContent({
   const [selectedPickerAction, setSelectedPickerAction] = useState<
     ActionItem | undefined
   >(
-    editedActionSettings
+    actionSettings
       ? {
-          id: editedActionSettings.actionId,
-          name: editedActionSettings.name,
+          id: actionSettings.actionId,
+          name: actionSettings.name,
           model: "action",
         }
       : undefined,
   );
 
-  const isEditMode = !!editedActionSettings;
+  const [newActionInitialParentItem, setNewActionInitialParentItem] = useState<
+    TableItem | ModelItem | undefined
+  >();
+
+  const showNewActionStep = !!newActionInitialParentItem;
 
   // TODO: replace this block with action describe api.
   const { data: allActions } = useGetActionsQuery(
-    selectedPickerAction || editedActionSettings ? undefined : skipToken,
+    selectedPickerAction ? undefined : skipToken,
   );
-  const selectedAction = useMemo(() => {
-    if (editedActionSettings) {
-      return allActions?.find(
-        (action) => action.id === editedActionSettings.actionId,
-      );
-    }
 
+  const action = useMemo(() => {
     if (selectedPickerAction) {
       return allActions?.find(
         (action) => action.id === selectedPickerAction.id,
       );
     }
-  }, [allActions, editedActionSettings, selectedPickerAction]);
+  }, [allActions, selectedPickerAction]);
+
+  const setAction = (newActionItem: ActionItem | undefined) => {
+    setSelectedPickerAction(newActionItem);
+    setNewActionInitialParentItem(undefined);
+  };
 
   const handleSubmit = useCallback(
     (actionParams: {
@@ -80,37 +89,79 @@ export function AddOrEditActionSettingsContent({
     [onClose, onSubmit],
   );
 
-  if (!isEditMode) {
+  const handleChooseNewAction = useCallback(() => {
+    if (!action) {
+      return;
+    }
+
+    if (isModelAction(action)) {
+      const parentItem: ModelItem = {
+        model: "dataset",
+        id: action.model_id,
+        name: "",
+      };
+      setNewActionInitialParentItem(parentItem);
+    }
+
+    if (isTableAction(action)) {
+      const parentItem: TableItem = {
+        model: "table",
+        id: action.table_id,
+        name: "",
+      };
+      setNewActionInitialParentItem(parentItem);
+    }
+  }, [action]);
+
+  if (!selectedPickerAction || !action || showNewActionStep) {
     return (
       <TableOrModelActionPicker
-        value={selectedPickerAction}
-        onChange={setSelectedPickerAction}
+        value={newActionInitialParentItem}
+        onChange={setAction}
         onClose={onClose}
-      >
-        {selectedAction && (
-          <ActionParameterMappingForm
-            action={selectedAction}
-            actionSettings={editedActionSettings}
-            tableColumns={tableColumns}
-            onSubmit={handleSubmit}
-          />
-        )}
-      </TableOrModelActionPicker>
+      />
+    );
+  }
+
+  const selectedActionSettings =
+    actionSettings?.actionId === selectedPickerAction?.id
+      ? actionSettings
+      : undefined;
+  const isEditMode = !!actionSettings;
+
+  if (isEditMode) {
+    return (
+      <Modal.Content>
+        <ActionParameterMappingForm
+          action={action}
+          actionSettings={selectedActionSettings}
+          tableColumns={tableColumns}
+          onSubmit={handleSubmit}
+        />
+      </Modal.Content>
     );
   }
 
   return (
     <Modal.Content>
-      <Flex className={S.ParametersFormWrapper}>
-        {selectedAction && (
-          <ActionParameterMappingForm
-            action={selectedAction}
-            actionSettings={editedActionSettings}
-            tableColumns={tableColumns}
-            onSubmit={handleSubmit}
-          />
-        )}
-      </Flex>
+      <Modal.Header p="2rem 1.5rem 0.5rem 1.2rem">
+        <Button
+          leftSection={<Icon name="chevronleft" />}
+          color="text-dark"
+          variant="subtle"
+          size="compact-md"
+          onClick={handleChooseNewAction}
+        >{t`Choose a new action`}</Button>
+        <Modal.CloseButton />
+      </Modal.Header>
+      <Modal.Body p="0">
+        <ActionParameterMappingForm
+          action={action}
+          actionSettings={selectedActionSettings}
+          tableColumns={tableColumns}
+          onSubmit={handleSubmit}
+        />
+      </Modal.Body>
     </Modal.Content>
   );
 }

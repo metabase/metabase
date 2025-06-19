@@ -43,15 +43,9 @@
 }
 
 .ParametersModalRightSection {
-  width: 30rem;
   display: flex;
   flex: 1;
   flex-direction: column;
-}
-
-.ParametersFormWrapper {
-  overflow: hidden;
-  height: 78vh;
 }
 
 .ParametersForm {
