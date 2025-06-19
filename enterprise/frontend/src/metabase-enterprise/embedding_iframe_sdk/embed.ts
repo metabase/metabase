@@ -7,15 +7,16 @@ import {
 import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 
 import type {
+  SdkIframeEmbedEvent,
+  SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
+  SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
   SdkIframeEmbedTagSettings,
 } from "./types/embed";
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
-
-type EmbedSettingKey = keyof SdkIframeEmbedSettings;
 
 const ALLOWED_EMBED_SETTING_KEYS = [
   "apiKey",
@@ -26,7 +27,17 @@ const ALLOWED_EMBED_SETTING_KEYS = [
   "theme",
   "locale",
   "preferredAuthMethod",
-] as const satisfies EmbedSettingKey[];
+  "withTitle",
+  "withDownloads",
+  "initialParameters",
+  "initialSqlParameters",
+  "hiddenParameters",
+  "isDrillThroughEnabled",
+  "entityTypes",
+  "initialCollection",
+  "isSaveEnabled",
+  "targetCollection",
+] as const satisfies SdkIframeEmbedSettingKey[];
 
 type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
 
@@ -36,6 +47,10 @@ class MetabaseEmbed {
   private _settings: SdkIframeEmbedTagSettings;
   private _isEmbedReady: boolean = false;
   private iframe: HTMLIFrameElement | null = null;
+  private eventHandlers: Map<
+    SdkIframeEmbedEvent["type"],
+    Set<SdkIframeEmbedEventHandler>
+  > = new Map();
 
   constructor(settings: SdkIframeEmbedTagSettings) {
     this._settings = settings;
@@ -71,6 +86,46 @@ class MetabaseEmbed {
       this.iframe.remove();
       this._isEmbedReady = false;
       this.iframe = null;
+      this.eventHandlers.clear();
+    }
+  }
+
+  public addEventListener<T extends SdkIframeEmbedEvent["type"]>(
+    eventType: T,
+    handler: SdkIframeEmbedEventHandler<
+      Extract<SdkIframeEmbedEvent, { type: T }>
+    >,
+  ) {
+    if (!this.eventHandlers.has(eventType)) {
+      this.eventHandlers.set(eventType, new Set());
+    }
+
+    this.eventHandlers
+      .get(eventType)!
+      .add(handler as SdkIframeEmbedEventHandler);
+  }
+
+  public removeEventListener<T extends SdkIframeEmbedEvent["type"]>(
+    eventType: T,
+    handler: SdkIframeEmbedEventHandler<
+      Extract<SdkIframeEmbedEvent, { type: T }>
+    >,
+  ) {
+    const handlers = this.eventHandlers.get(eventType);
+
+    if (handlers) {
+      handlers.delete(handler as SdkIframeEmbedEventHandler);
+
+      if (handlers.size === 0) {
+        this.eventHandlers.delete(eventType);
+      }
+    }
+  }
+
+  private _emitEvent<T extends SdkIframeEmbedEvent>(event: T) {
+    const handlers = this.eventHandlers.get(event.type);
+    if (handlers) {
+      handlers.forEach((handler) => handler(event));
     }
   }
 
@@ -181,6 +236,7 @@ class MetabaseEmbed {
 
       this._isEmbedReady = true;
       this._setEmbedSettings(this._settings);
+      this._emitEvent({ type: "ready" });
     }
 
     if (event.data.type === "metabase.embed.requestSessionToken") {

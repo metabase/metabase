@@ -106,8 +106,8 @@ type CollectionBrowserEntityTypes =
   | "model";
 
 type SdkIframeEmbedBaseSettings = {
-  apiKey: string;
   instanceUrl: string;
+  apiKey?: string;
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
@@ -131,3 +131,24 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;
+
+// --- Event Handler Types ---
+
+export interface SdkIframeEmbedReadyEvent {
+  type: "ready";
+}
+
+export type SdkIframeEmbedEvent = SdkIframeEmbedReadyEvent;
+
+export type SdkIframeEmbedEventHandler<
+  T extends SdkIframeEmbedEvent = SdkIframeEmbedEvent,
+> = (event: T) => void;
