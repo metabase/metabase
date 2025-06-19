@@ -143,7 +143,7 @@ jobs:
       - name: Run the tests
         env:
           MB_EDITION: ee
-          CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+          CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
           CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
           CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
           CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
