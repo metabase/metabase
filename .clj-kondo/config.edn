@@ -76,8 +76,13 @@
    ;;
    ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
    ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
+   ;;
+   ;; TODO (Cam 6/19/25) -- move this into the `test-helpers/config.edn` file so they can live with their friends.
    :parallel/unsafe
-   #{clojure.core/alter-var-root
+   #{java.util.Locale/setDefault
+     java.lang.System/setProperty
+     java.lang.System/setProperties
+     clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
      metabase.actions.test-util/with-actions

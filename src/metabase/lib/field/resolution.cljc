@@ -21,6 +21,15 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+;;; TODO (Cam 6/17/25) -- move this into `lib.util` so we can use it elsewhere
+(defn- merge-non-nil
+  [m & more]
+  (into (or m {})
+        (comp cat
+              (filter (fn [[_k v]]
+                        (some? v))))
+        more))
+
 (mu/defn- add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
   [query                             :- ::lib.schema/query
@@ -105,28 +114,20 @@
                                (resolve-column-name-in-metadata column-name stage-columns))]
           (if-not previous-stage-number
             column
-            (merge
-             (-> column
-                 (lib.join/with-join-alias nil)
-                 (dissoc :table-id :metabase.lib.field/binning :metabase.lib.field/temporal-unit))
-             ;; TODO (Cam 6/18/25) -- not sure this is useful for anything, can we remove it??
-             (when-let [join-alias (lib.join.util/current-join-alias column)]
-               {:lib/previous-stage-join-alias join-alias})
-             {:lib/original-name ((some-fn :lib/original-name :name) column)
-              :lib/source        :source/previous-stage})))))))
-
-;;; TODO (Cam 6/17/25) -- move this into `lib.util` so we can use it elsewhere
-(defn- merge-non-nil
-  [m & more]
-  (into (or m {})
-        (comp cat
-              (filter (fn [[_k v]]
-                        (some? v))))
-        more))
+            ;; from a previous stage, remove join alias
+            (-> column
+                ;; make sure this is UNSET if was propagated from a stage earlier than the immediately previous stage
+                (dissoc :lib/previous-stage-join-alias)
+                (m/assoc-some :lib/previous-stage-join-alias (lib.join.util/current-join-alias column))
+                (lib.join/with-join-alias nil)
+                (dissoc :metabase.lib.field/binning :metabase.lib.field/temporal-unit)
+                (assoc :lib/original-name ((some-fn :lib/original-name :name) column)
+                       :lib/source        :source/previous-stage))))))))
 
 (def ^:private opts-propagated-keys
   "Keys to copy non-nil values directly from `:field` opts into column metadata."
   #{:base-type
+    :effective-type
     :display-name
     :ident
     :metabase.lib.query/transformation-added-base-type
@@ -158,15 +159,7 @@
   (merge
    (into {} (map (fn [k] [k k])) opts-propagated-keys)
    (into {} (map (fn [[opts-k col-k]] [col-k opts-k]) opts-propagated-renamed-keys))
-   {:effective-type
-    ;; don't override the effective type of the column with the base type of ref, unless it's missing or has the
-    ;; default value `:type/*` (see #56453)
-    (fn [opts]
-      (when-some [effective-type (:effective-type opts)]
-        (if (= effective-type :type/*)
-          (:base-type opts effective-type)
-          effective-type)))
-    ;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+   {;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
     ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
     ;;
     ;; TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works.
@@ -328,15 +321,19 @@
    ;; not from a join.
    ;;
    ;; resolve the field ID if we can.
-   (let [field-id (if (integer? id-or-name)
-                    id-or-name
-                    (:id (resolve-column-name query stage-number id-or-name)))]
+   (let [resolved-for-name (when (string? id-or-name)
+                             (resolve-column-name query stage-number id-or-name))
+         field-id          (if (integer? id-or-name)
+                             id-or-name
+                             (:id resolved-for-name))]
      (merge-non-nil
       {:lib/type         :metadata/column
        :name             (str id-or-name)
        :lib/original-ref field-ref}
       ;; metadata about the field from the metadata provider
       (field-metadata query field-id)
+      ;; metadata resolved when we have a field literal (name) ref
+      resolved-for-name
       ;; metadata we want to 'flow' from previous stage(s) / source models of the query (e.g.
       ;; `:semantic-type`)
       (previous-stage-or-source-card-metadata query stage-number (or field-id id-or-name))
@@ -352,5 +349,10 @@
    field-ref    :- :mbql.clause/field]
   (as-> (resolve-field-metadata* query stage-number field-ref) $metadata
     (add-parent-column-metadata query $metadata)
+    ;; update the effective type if needed now that we have merged metadata from all relevant sources
+    (assoc $metadata :effective-type (if (or (not (:effective-type $metadata))
+                                             (= (:effective-type $metadata) :type/*))
+                                       (:base-type $metadata)
+                                       (:effective-type $metadata)))
     ;; recalculate the display name so we can make sure it includes binning info or temporal unit or whatever.
     (assoc $metadata :display-name (lib.metadata.calculation/display-name query stage-number $metadata))))

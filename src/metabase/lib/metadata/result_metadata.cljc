@@ -36,6 +36,10 @@
   mbql.s/Reference)
 
 (mr/def ::col
+  ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
+  ;; came from) and then have the `annotate` middleware convert them to something else for QP results purposes. Then
+  ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
+  ;; there.
   [:map
    [:source    {:optional true} ::legacy-source]
    [:field-ref {:optional true} ::super-broken-legacy-field-ref]])

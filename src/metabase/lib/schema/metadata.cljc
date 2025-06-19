@@ -3,7 +3,10 @@
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.binning :as lib.schema.binning]))
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
@@ -18,7 +21,9 @@
   [:fn
    {:error/message "map with all kebab-cased keys"
     :error/fn      (fn [{:keys [value]} _]
-                     (str "map with all kebab-cased keys, got: " (pr-str (filter #(str/includes? % "_") (keys value)))))}
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (filter #(str/includes? % "_") (keys value))))))}
    kebab-cased-map?])
 
 ;;; Column vs Field?
@@ -180,6 +185,10 @@
     {:error/message    "Valid column metadata"
      :decode/normalize lib.schema.common/normalize-map}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
+    ;;
+    ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
+    ;; in [[metabase.legacy-mbql.schema]] so we can generate this documentation from this schema or whatever.
+    ;;
     ;; column names are allowed to be empty strings in SQL Server :/
     ;;
     ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's
@@ -213,10 +222,32 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+    ;;
     ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
     ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
     ;; remove it.
+    ;;
+    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
+    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
+    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
+    ;; `:lib/previous-stage-join-alias` or add a new key like `:lib/original-join-alias` instead to serve this purpose
+    ;; since `:source-alias` is not set or used correctly. Check out experimental
+    ;; https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban' this key so we can root
+    ;; out anywhere trying to use it. Going forward, we should use `:lib/previous-stage-join-alias` instead when we
     [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
+    ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
+    ;; allowed to join on the results of something else)
+    ;;
+    ;; TODO (Cam 6/19/25) -- rename this key to `:lib/join-alias` since we're not really good about only using the
+    ;; special getter and setter functions to get at this key
+    [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    ;; join alias used in the stage immediately prior to this one. Not currently set consistently (yet). We should try
+    ;; to make better use of it going forward.
+    [:lib/previous-stage-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    ;; other misc namespaced keys
+    [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+    [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
     ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
     ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
@@ -239,8 +270,14 @@
     ;;
     ;; see description in schemas above
     ;;
-    [:lib/original-name        {:optional true} ::original-name]
-    [:lib/deduplicated-name    {:optional true} ::deduplicated-name]
+    [:lib/original-name     {:optional true} ::original-name]
+    [:lib/deduplicated-name {:optional true} ::deduplicated-name]
+    ;; appears to serve the same purpose as `:lib/original-name` but it's unclear where or why it is
+    ;; used.https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589
+    ;;
+    ;; TODO (Cam 6/19/25) -- can we remove this entirely?
+    [:lib/hack-original-name {:optional true} ::original-name]
+    ;;
     ;; when column metadata is returned by certain things
     ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
     ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.

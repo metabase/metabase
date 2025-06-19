@@ -83,6 +83,10 @@
                        temporal-unit       ::temporal-unit
                        binning             ::binning
                        join-alias          :metabase.lib.join/join-alias
+                       original-join-alias :lib/original-join-alias
+                       ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
+                       ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
+                       source-alias        :source-alias
                        fk-field-id         :fk-field-id
                        table-id            :table-id
                        parent-id           :parent-id
@@ -92,6 +96,7 @@
                        source-uuid         :lib/source-uuid
                        :as                 field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+        join-alias     (or join-alias original-join-alias source-alias)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
