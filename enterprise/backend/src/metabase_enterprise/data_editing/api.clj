@@ -358,24 +358,23 @@
     "::param"  ::param}
    mapping))
 
-(defn- augment-params [{:keys [dashcard-id param-map] :as _action} input params]
-  (let [row (delay (let [{:keys [table-id]} (actions/cached-value
+(defn- augment-params
+  [{:keys [dashcard-id param-map] :as _action} input params]
+  ;; TODO cool optimization where we don'l fetch the row-data from the db if we only need the pk (or a subset of the pk)
+  (let [row (delay (let [{:keys [table_id]} (actions/cached-value
                                              [:dashcard-viz dashcard-id]
                                              #(t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))]
-                     (if-not table-id
+                     (if-not table_id
                        ;; this is not an Editable, it must be a question - so we use the client-side row
                        (update-keys input name)
                        ;; TODO batch fetching all these rows, across all inputs
-                       (let [fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+                       (let [fields    (t2/select [:model/Field :id :name :semantic_type] :table_id table_id)
                              pk-fields (filter #(= :type/PK (:semantic_type %)) fields)
                              ;; TODO we could restrict which fields we fetch in future
-                             [row]     (data-editing/query-db-rows table-id pk-fields [input])
+                             [row]     (data-editing/query-db-rows table_id pk-fields [input])
                              _         (api/check-404 row)]
-                         ;; staging uses both field ids and names, not sure which is canonical
-                         ;; we just support both
-                         (merge
-                          (update-keys row (comp (u/index-by :name :id fields) name))
-                          (update-keys row name))))))]
+                         ;; TODO i would much prefer if we used field-ids and not names in the configuration
+                         (update-keys row name)))))]
     (reduce-kv
      (fn [acc k v]
        (case (:sourceType v)
@@ -386,7 +385,9 @@
                       acc)
          "constant" (assoc acc k (:value v))
          ;; TODO: support override from params?
-         "row-data" (assoc acc k (get @row (:sourceValueTarget v)))))
+         "row-data" (assoc acc k (get @row (:sourceValueTarget v)))
+         ;; no mapping? omit the key
+         nil acc))
      (merge input params)
      param-map)))
 
@@ -484,6 +485,39 @@
          [:params {:optional true} [:map-of :keyword :any]]]]
     {:outputs (execute!* action_id scope params inputs)}))
 
+(defn- row-data-mapping
+  ;; TODO get this working with arbitrary nesting of inner actions
+  "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
+  [{:keys [param-map] :as action}]
+  ;; We create a version of the action that will "map" to an input which is just the row data itself.
+  (let [row-data-mapping (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+                                     :when (= "row-data" sourceType)]
+                           [id [::key (keyword sourceValueTarget)]])]
+    (when (seq row-data-mapping)
+      {:inner-action {:action-kw :placeholder}
+       :dashcard-id  (:dashcard-id action)
+       :param-map    param-map
+       :mapping      row-data-mapping})))
+
+(defn- get-row-data
+  "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
+  [action input]
+  ;; it would be nice to avoid using "apply-mapping" twice (once here on this stub action, once later on the real one)
+  (some-> (row-data-mapping action)
+          (apply-mapping-nested nil [input])
+          first
+          not-empty))
+
+;; test case
+
+(comment
+  (get-row-data {:inner-action {:mapping {:table-id 3, :row ::root}}
+                 :param-map    {:customer_id {:sourceType "row-data", :sourceValueTarget "id"}
+                                :engineer    {:sourceType "ask-user"}}
+                 ;; because we don't have a dashcard with this id to map to a table, our code treats it like a Question instead of an Editable
+                 :dashcard-id  3}
+                {:id 3}))
+
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/tmp-modal"
@@ -493,40 +527,11 @@
      {}
      ;; TODO support for bulk actions
      {:keys [action_id scope input]}]
-    (let [scope   (actions/hydrate-scope scope)
-          ;; TODO consolidate this with [[fetch-unified-action]]
-          unified (cond
-                    (not (#{"table.row/create"
-                            "table.row/update"
-                            "table.row/delete"} action_id))
-                    (fetch-unified-action scope action_id)
-
-                    (:dashcard-id scope)
-                    (let [{:keys [dashcard-id]} scope
-                          {:keys [dashboard_id visualization_settings]} (t2/select-one :model/DashboardCard dashcard-id)]
-                      (api/read-check (t2/select-one :model/Dashboard dashboard_id))
-                      {:dashcard-viz visualization_settings
-                       :inner-action {:action-kw (keyword action_id)
-                                      :mapping   {:table-id (:table_id visualization_settings)
-                                                  :row      ::root}}
-                       ;; TODO: migrate on read this to our own configuration
-                       :param-map    (->> visualization_settings
-                                          :editableTable.enabledActions
-                                          (some (fn [{:keys [id parameterMappings]}]
-                                                  (when (= id action_id)
-                                                    parameterMappings))))})
-
-                    (:table-id scope)
-                    {:action-kw (keyword action_id)
-                     :mapping   {:table-id (:table-id scope)
-                                 :row      ::root}}
-
-                    :else
-                    (throw (ex-info "Using table.row/* actions require either a table-id or dashcard-id in the scope"
-                                    {:status-code 400
-                                     :scope       scope
-                                     :action_id   action_id})))]
-      (data-editing.describe/describe-unified-action unified scope input))))
+    (let [scope         (actions/hydrate-scope scope)
+          unified       (fetch-unified-action scope action_id)
+          row-data      (get-row-data unified input)
+          partial-input (first (apply-mapping-nested unified nil [input]))]
+      (data-editing.describe/describe-unified-action unified scope row-data partial-input))))
 
 (def configure
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
