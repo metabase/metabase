@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { ActionSettingsWrapper } from "metabase/actions/components/ActionViz/ActionDashcardSettings.styled";
 import { skipToken } from "metabase/api";
 import type { ActionItem } from "metabase/common/components/DataPicker";
 import { TableOrModelActionPicker } from "metabase/common/components/TableOrModelActionPicker";
-import { Modal } from "metabase/ui";
+import { Flex, Modal } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
@@ -14,6 +13,7 @@ import type {
 } from "metabase-types/api";
 
 import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
+import S from "./AddOrEditActionSettingsContent.module.css";
 
 interface Props {
   action: TableActionDisplaySettings | null | undefined;
@@ -101,13 +101,7 @@ export function AddOrEditActionSettingsContent({
 
   return (
     <Modal.Content>
-      <ActionSettingsWrapper
-        style={{
-          padding: 0,
-          height: "78vh",
-          minWidth: "auto",
-        }}
-      >
+      <Flex className={S.ParametersFormWrapper}>
         {selectedAction && (
           <ActionParameterMappingForm
             action={selectedAction}
@@ -116,7 +110,7 @@ export function AddOrEditActionSettingsContent({
             onSubmit={handleSubmit}
           />
         )}
-      </ActionSettingsWrapper>
+      </Flex>
     </Modal.Content>
   );
 }

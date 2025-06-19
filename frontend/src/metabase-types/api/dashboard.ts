@@ -6,6 +6,8 @@ import type {
   Collection,
   CollectionAuthorityLevel,
   CollectionId,
+  DataGridWritebackAction,
+  DataGridWritebackActionId,
   Database,
   EditableTableActionsDisplaySettings,
   Field,
@@ -19,10 +21,9 @@ import type {
   UserId,
   VirtualCardDisplay,
   VisualizerVizDefinition,
-  WritebackActionId,
 } from "metabase-types/api";
 
-import type { ActionDisplayType, WritebackAction } from "./actions";
+import type { ActionDisplayType } from "./actions";
 import type { Card, CardId, VisualizationSettings } from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
@@ -161,8 +162,8 @@ export type ActionDashboardCard = Omit<
   BaseDashboardCard,
   "parameter_mappings"
 > & {
-  action_id: WritebackActionId;
-  action?: WritebackAction;
+  action_id: DataGridWritebackActionId;
+  action?: DataGridWritebackAction;
   card_id: CardId | null; // model card id for the associated action
   card: Card;
 

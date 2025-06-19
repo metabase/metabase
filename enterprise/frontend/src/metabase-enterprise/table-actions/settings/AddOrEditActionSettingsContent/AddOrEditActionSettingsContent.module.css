@@ -49,6 +49,11 @@
   flex-direction: column;
 }
 
+.ParametersFormWrapper {
+  overflow: hidden;
+  height: 78vh;
+}
+
 .ParametersForm {
   display: flex;
   flex-direction: column;

@@ -35,7 +35,6 @@ import type {
   TableActionPickerFolderItem,
   TableActionPickerItem,
   TableActionPickerStatePath,
-  TableActionPickerValue,
 } from "./types";
 import {
   generateTableActionKey,
@@ -48,7 +47,6 @@ const isTableFolder = () => true;
 
 interface Props {
   path: TableActionPickerStatePath | undefined;
-  value: TableActionPickerValue | undefined;
   onItemSelect: (value: TableActionPickerItem) => void;
   onPathChange: (path: TableActionPickerStatePath) => void;
   children?: ReactNode;
@@ -56,16 +54,12 @@ interface Props {
 
 export const TableActionPicker = ({
   path,
-  value,
   onItemSelect,
   onPathChange,
   children,
 }: Props) => {
-  const defaultPath = useMemo<TableActionPickerStatePath>(() => {
-    return [value?.db_id, value?.schema, value?.table_id, value?.id];
-  }, [value]);
   const [initialDbId, initialSchemaId, initialTableId, initialActionId] =
-    path ?? defaultPath;
+    path ?? [undefined, undefined, undefined, undefined];
   const [dbId, setDbId] = useState<DatabaseId | undefined>(initialDbId);
   const [schemaName, setSchemaName] = useState<SchemaName | undefined>(
     initialSchemaId,

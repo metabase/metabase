@@ -1,15 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ConnectedActionPicker } from "metabase/actions/containers/ActionPicker";
 import EmptyState from "metabase/components/EmptyState";
-import Button from "metabase/core/components/Button";
+import LegacyButton from "metabase/core/components/Button/Button";
 import CS from "metabase/css/core/index.css";
-import { setActionForDashcard } from "metabase/dashboard/actions";
-import { connect } from "metabase/lib/redux";
-// TODO: Remove this once we have a proper API for actions.
-// eslint-disable-next-line no-restricted-imports
-import { useGetActionsQuery } from "metabase-enterprise/api";
+import { Button, Divider, Icon, Modal, Stack } from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -18,9 +13,6 @@ import type {
 
 import {
   ActionSettingsHeader,
-  ActionSettingsLeft,
-  ActionSettingsRight,
-  ActionSettingsWrapper,
   ModalActions,
   ParameterMapperContainer,
 } from "./ActionDashcardSettings.styled";
@@ -35,34 +27,22 @@ import {
   isParameterRequired,
 } from "./utils";
 
-const mapDispatchToProps = {
-  setActionForDashcard,
-};
-
 interface Props {
+  action: WritebackAction; // TODO: this should be DataGridWritebackAction, fix this when replacing this legacy parameters form
   dashboard: Dashboard;
   dashcard: ActionDashboardCard;
+  onChooseNewAction: () => void;
   onClose: () => void;
-  setActionForDashcard: (
-    dashcard: ActionDashboardCard,
-    action: WritebackAction,
-  ) => void;
 }
 
 export function ActionDashcardSettings({
+  action,
   dashboard,
   dashcard,
+  onChooseNewAction,
   onClose,
-  setActionForDashcard,
 }: Props) {
-  const action = dashcard.action;
-  const { data: actions } = useGetActionsQuery();
-
-  const setAction = (newAction: WritebackAction) => {
-    setActionForDashcard(dashcard, newAction);
-  };
-
-  const hasParameters = !!action?.parameters?.length;
+  const hasParameters = !!action.parameters?.length;
   const currentMappings = useMemo(
     () =>
       Object.fromEntries(
@@ -74,70 +54,63 @@ export function ActionDashcardSettings({
     [dashcard.parameter_mappings],
   );
 
-  const isFormInvalid =
-    action != null &&
-    action.parameters?.some((actionParameter) => {
-      const isHidden = isParameterHidden(action, actionParameter);
-      const isRequired = isParameterRequired(action, actionParameter);
-      const isParameterMapped =
-        currentMappings[getTargetKey(actionParameter)] != null;
-      const defaultValue = getParameterDefaultValue(action, actionParameter);
-      const hasDefaultValue = defaultValue != null;
+  const isFormInvalid = action.parameters?.some((actionParameter) => {
+    const isHidden = isParameterHidden(action, actionParameter);
+    const isRequired = isParameterRequired(action, actionParameter);
+    const isParameterMapped =
+      currentMappings[getTargetKey(actionParameter)] != null;
+    const defaultValue = getParameterDefaultValue(action, actionParameter);
+    const hasDefaultValue = defaultValue != null;
 
-      return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
-    });
+    return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
+  });
 
   return (
-    <ActionSettingsWrapper>
-      <ActionSettingsLeft>
-        <h4 className={CS.pb2}>{t`Action Library`}</h4>
-        <ConnectedActionPicker
-          currentAction={action}
-          onClick={setAction}
-          actions={actions}
-          enableTableActions
-        />
-      </ActionSettingsLeft>
-      <ActionSettingsRight>
-        {action ? (
-          <>
-            {hasParameters && (
-              <>
-                <ActionSettingsHeader>
-                  {t`Where should the values for '${action.name}' come from?`}
-                </ActionSettingsHeader>
-                <ExplainerText />
-              </>
-            )}
+    <Modal.Content>
+      <Modal.Header p="2rem 1.5rem 0.5rem 1.2rem">
+        <Button
+          leftSection={<Icon name="chevronleft" />}
+          color="text-dark"
+          variant="subtle"
+          size="compact-md"
+          onClick={onChooseNewAction}
+        >{t`Choose a new action`}</Button>
+        <Modal.CloseButton />
+      </Modal.Header>
+      <Modal.Body p="1rem 2rem">
+        <Stack>
+          {hasParameters ? (
+            <>
+              <ActionSettingsHeader>
+                {t`Where should the values for '${action.name}' come from?`}
+              </ActionSettingsHeader>
+              <ExplainerText />
+            </>
+          ) : (
             <ParameterMapperContainer>
-              <ActionParameterMappingForm
-                dashcard={dashcard}
-                dashboard={dashboard}
-                action={action}
-                currentMappings={currentMappings}
-              />
+              <EmptyActionState />
             </ParameterMapperContainer>
-          </>
-        ) : (
+          )}
           <ParameterMapperContainer>
-            <EmptyActionState />
+            <ActionParameterMappingForm
+              dashcard={dashcard}
+              dashboard={dashboard}
+              action={action}
+              currentMappings={currentMappings}
+            />
           </ParameterMapperContainer>
-        )}
-        <ModalActions>
-          <Button primary onClick={onClose} disabled={isFormInvalid}>
-            {t`Done`}
-          </Button>
-        </ModalActions>
-      </ActionSettingsRight>
-    </ActionSettingsWrapper>
+          <Divider mx="-2rem" />
+          <ModalActions>
+            <LegacyButton primary onClick={onClose} disabled={isFormInvalid}>
+              {t`Done`}
+            </LegacyButton>
+          </ModalActions>
+        </Stack>
+      </Modal.Body>
+    </Modal.Content>
   );
 }
 
 const EmptyActionState = () => (
   <EmptyState className={CS.p3} message={t`Select an action to get started`} />
 );
-
-export const ConnectedActionDashcardSettings = connect(
-  null,
-  mapDispatchToProps,
-)(ActionDashcardSettings);

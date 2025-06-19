@@ -34,7 +34,6 @@ import type {
   ModelActionPickerFolderItem,
   ModelActionPickerItem,
   ModelActionPickerStatePath,
-  ModelActionPickerValue,
 } from "./types";
 import {
   generateModelActionKey,
@@ -45,7 +44,6 @@ import {
 
 interface Props {
   path: ModelActionPickerStatePath | undefined;
-  value: ModelActionPickerValue | undefined;
   onItemSelect: (value: ModelActionPickerItem) => void;
   onPathChange: (path: ModelActionPickerStatePath) => void;
   children?: ReactNode;
@@ -55,16 +53,15 @@ const isFolderTrue = () => true;
 
 export const ModelActionPicker = ({
   path,
-  value,
   onItemSelect,
   onPathChange,
   children,
 }: Props) => {
-  const defaultPath = useMemo<ModelActionPickerStatePath>(() => {
-    return [value?.collection_id, value?.model_id, value?.id];
-  }, [value]);
-  const [initialCollectionId, initialModelId, initialActionId] =
-    path ?? defaultPath;
+  const [initialCollectionId, initialModelId, initialActionId] = path ?? [
+    undefined,
+    undefined,
+    undefined,
+  ];
   const [collectionId, setCollectionId] = useState<CollectionId | undefined>(
     initialCollectionId,
   );
