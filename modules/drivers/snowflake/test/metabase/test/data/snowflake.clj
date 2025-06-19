@@ -5,7 +5,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -15,7 +14,8 @@
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
    [metabase.util.log :as log])
-  (:import    [java.sql PreparedStatement ResultSet]))
+  (:import
+   (java.sql PreparedStatement ResultSet)))
 
 (set! *warn-on-reflection* true)
 

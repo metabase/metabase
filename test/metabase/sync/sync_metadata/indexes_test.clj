@@ -75,38 +75,37 @@
                               :base-type :type/Integer}]
                             [[1 2 3]]]]]
       (mt/with-temp-test-data ds-to-index-def
-        (try
-          (testing "Base: Id is indexed"
-            (is (some? (t2/select-one :model/Field
-                                      {:where [:and
-                                               [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]
-                                               [:= :display_name "ID"]
-                                               [:= :database_indexed true]]}))))
-          (testing "Base: Other columns have no index"
-            (let [other-fields (t2/select :model/Field
-                                          {:where [:and
-                                                   [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]
-                                                   [:!= :display_name "ID"]]})]
-              (is (every? (comp (complement true?) :database_indexed) other-fields))
-              (is (= 3 (count other-fields)))))
-          (testing "All indexed fields picked up by sync (first, second, third)"
-            (doseq [field ["first" "second" "third"]
-                    :let [sql (sql.tx/create-index-sql driver/*driver* "first_table" [field])]]
-              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
-            (binding [sync.indexes/*update-partition-size* 2]
-              (#'sync.indexes/sync-all-indexes! (mt/db)))
-            (is (every? :database_indexed
-                        (t2/select :model/Field
-                                   {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
-          (testing "Index removal is picked up correctly"
-            (doseq [field ["first" "second" "third"]
-                    :let [sql (format "DROP INDEX %s;" (sql.u/quote-name
-                                                        driver/*driver* :index (str "idx_first_table_" field)))]]
-              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
-            (binding [sync.indexes/*update-partition-size* 2]
-              (#'sync.indexes/sync-all-indexes! (mt/db)))
-            (is (every? (complement :database_indexed)
-                        (t2/select :model/Field
-                                   {:where [:and
-                                            [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]
-                                            [:!= :display_name "ID"]]})))))))))
+        (testing "Base: Id is indexed"
+          (is (some? (t2/select-one :model/Field
+                                    {:where [:and
+                                             [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]
+                                             [:= :display_name "ID"]
+                                             [:= :database_indexed true]]}))))
+        (testing "Base: Other columns have no index"
+          (let [other-fields (t2/select :model/Field
+                                        {:where [:and
+                                                 [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]
+                                                 [:!= :display_name "ID"]]})]
+            (is (every? (comp (complement true?) :database_indexed) other-fields))
+            (is (= 3 (count other-fields)))))
+        (testing "All indexed fields picked up by sync (first, second, third)"
+          (doseq [field ["first" "second" "third"]
+                  :let [sql (sql.tx/create-index-sql driver/*driver* "first_table" [field])]]
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
+          (binding [sync.indexes/*update-partition-size* 2]
+            (#'sync.indexes/sync-all-indexes! (mt/db)))
+          (is (every? :database_indexed
+                      (t2/select :model/Field
+                                 {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
+        (testing "Index removal is picked up correctly"
+          (doseq [field ["first" "second" "third"]
+                  :let [sql (format "DROP INDEX %s;" (sql.u/quote-name
+                                                      driver/*driver* :index (str "idx_first_table_" field)))]]
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
+          (binding [sync.indexes/*update-partition-size* 2]
+            (#'sync.indexes/sync-all-indexes! (mt/db)))
+          (is (every? (complement :database_indexed)
+                      (t2/select :model/Field
+                                 {:where [:and
+                                          [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]
+                                          [:!= :display_name "ID"]]}))))))))
