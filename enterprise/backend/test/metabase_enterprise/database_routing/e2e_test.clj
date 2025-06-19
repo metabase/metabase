@@ -4,12 +4,15 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
+   [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -195,3 +198,73 @@
                   (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
                            response))))))))))))
+
+(deftest destination-databases-get-used-for-postgres
+  (mt/with-premium-features #{:database-routing}
+    (mt/test-drivers #{:postgres}
+      (met/with-user-attributes! :rasta {"db_name" "destination"}
+        (tx/drop-if-exists-and-create-db! driver/*driver* "router")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "destination")
+        (let [router-details (mt/dbdef->connection-details :postgres :db {:database-name "router"})
+              dest-details (mt/dbdef->connection-details :postgres :db {:database-name "destination"})
+              router-spec (sql-jdbc.conn/connection-details->spec :postgres router-details)
+              dest-spec (sql-jdbc.conn/connection-details->spec :postgres dest-details)]
+          (jdbc/execute! router-spec ["CREATE TABLE tweets (airline TEXT, content TEXT);"])
+          (doseq [stmt ["CREATE TABLE tweets (airline TEXT, content TEXT);"
+                        "INSERT INTO tweets (airline, content) VALUES ('united', 'is good!');"
+                        "INSERT INTO tweets (airline, content) VALUES ('united', 'is bad!');"]]
+            (jdbc/execute! dest-spec stmt))
+          (mt/with-temp [:model/Database router {:details router-details :engine :postgres}
+                         :model/Database dest {:details dest-details
+                                               :engine :postgres
+                                               :router_database_id (u/the-id router)
+                                               :name "destination"}
+                         :model/DatabaseRouter _ {:database_id (u/the-id router)
+                                                  :user_attribute "db_name"}]
+            (mt/with-test-user :crowberto
+              (sync/sync-database! router))
+            (mt/with-temp [:model/Card card {:name          "Some Name"
+                                             :dataset_query {:database (u/the-id router)
+                                                             :type     :query
+                                                             :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router))}}}]
+              (let [response (mt/user-http-request :rasta :post 202 (str "card/" (u/the-id card) "/query"))]
+                (is (= [["united" "is good!"]
+                        ["united" "is bad!"]] (mt/rows response))))
+              (let [response (mt/user-http-request :crowberto :post 202 (str "card/" (u/the-id card) "/query"))]
+                (is (= [] (mt/rows response)))))))))))
+(mt/set-test-drivers! #{:clickhouse})
+
+(deftest destination-databases-get-used-for-clickhouse
+  (mt/with-premium-features #{:database-routing}
+    (mt/test-drivers #{:clickhouse}
+      (met/with-user-attributes! :rasta {"db_name" "destination"}
+        (tx/drop-if-exists-and-create-db! driver/*driver* "router")
+        (tx/drop-if-exists-and-create-db! driver/*driver* "destination")
+        (let [router-details (mt/dbdef->connection-details :clickhouse :db {:database-name "router"})
+              dest-details (mt/dbdef->connection-details :clickhouse :db {:database-name "destination"})
+              router-spec (sql-jdbc.conn/connection-details->spec :clickhouse router-details)
+              dest-spec (sql-jdbc.conn/connection-details->spec :clickhouse dest-details)]
+          (jdbc/execute! router-spec ["CREATE TABLE tweets (airline String, content String) ENGINE = Memory;"])
+          (doseq [stmt ["CREATE TABLE tweets (airline String, content String) ENGINE = Memory;"
+                        "INSERT INTO tweets (airline, content) VALUES ('united', 'is good!');"
+                        "INSERT INTO tweets (airline, content) VALUES ('united', 'is bad!');"]]
+            (jdbc/execute! dest-spec stmt))
+          (mt/with-temp [:model/Database router {:details router-details :engine :clickhouse}
+                         :model/Database dest {:details dest-details
+                                               :engine :clickhouse
+                                               :router_database_id (u/the-id router)
+                                               :name "destination"}
+                         :model/DatabaseRouter _ {:database_id (u/the-id router)
+                                                  :user_attribute "db_name"}]
+            (mt/with-test-user :crowberto
+              (sync/sync-database! router))
+            (mt/with-test-user :crowberto
+              (is (=? {:data {:rows []}}
+                      (qp/process-query {:database (u/the-id router)
+                                         :type :query
+                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router))}}))))
+            (mt/with-test-user :rasta
+              (is (=? {:data {:rows [["united" "is good!"]]}}
+                      (qp/process-query {:database (u/the-id router)
+                                         :type :query
+                                         :query {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router))}}))))))))))
