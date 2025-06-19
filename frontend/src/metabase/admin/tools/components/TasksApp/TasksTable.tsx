@@ -1,13 +1,15 @@
 import cx from "classnames";
+import { push } from "react-router-redux";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { useDispatch } from "metabase/lib/redux";
 import { Box, Flex } from "metabase/ui";
 import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
@@ -34,9 +36,17 @@ export const TasksTable = ({
   // index databases by id for lookup
   const databaseByID: Record<number, Database> = _.indexBy(databases, "id");
   const showLoadingAndErrorWrapper = isLoading || error != null;
+  const dispatch = useDispatch();
+
+  const onClickTask = (task: Task) => {
+    dispatch(push(`/admin/tools/tasks/${task.id}`));
+  };
 
   return (
-    <table className={cx(AdminS.ContentTable, CS.mt2)}>
+    <table
+      className={cx(AdminS.ContentTable, CS.mt2)}
+      data-testid="tasks-table"
+    >
       <thead>
         <tr>
           {/* set width to limit CLS when changing sort direction */}
@@ -59,7 +69,6 @@ export const TasksTable = ({
             onSortingOptionsChange={onSortingOptionsChange}
           >{t`Duration (ms)`}</SortableColumnHeader>
           <th>{t`Status`}</th>
-          <th>{t`Details`}</th>
         </tr>
       </thead>
 
@@ -88,12 +97,25 @@ export const TasksTable = ({
               const engine = db ? db.engine : null;
               // only want unknown if there is a db on the task and we don't have info
               return (
-                <tr data-testid="task" key={task.id}>
+                <tr
+                  data-testid="task"
+                  key={task.id}
+                  className={CS.cursorPointer}
+                  onClick={() => onClickTask(task)}
+                >
                   <td className={CS.textBold}>{task.task}</td>
                   <td>{task.db_id ? name || t`Unknown name` : null}</td>
                   <td>{task.db_id ? engine || t`Unknown engine` : null}</td>
-                  <td>{task.started_at}</td>
-                  <td>{task.ended_at}</td>
+                  <td>
+                    <Ellipsified style={{ maxWidth: 100 }}>
+                      {task.started_at}
+                    </Ellipsified>
+                  </td>
+                  <td>
+                    <Ellipsified style={{ maxWidth: 100 }}>
+                      {task.ended_at}
+                    </Ellipsified>
+                  </td>
                   <td>{task.duration}</td>
                   <td>
                     {match(task.status)
@@ -103,12 +125,7 @@ export const TasksTable = ({
                       .with("unknown", () => t`Unknown`)
                       .exhaustive()}
                   </td>
-                  <td>
-                    <Link
-                      className={cx(CS.link, CS.textBold)}
-                      to={`/admin/troubleshooting/tasks/${task.id}`}
-                    >{t`View`}</Link>
-                  </td>
+                  <td></td>
                 </tr>
               );
             })}

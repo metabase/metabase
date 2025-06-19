@@ -27,7 +27,6 @@ export const Cell = styled.td<ResponsiveProps>`
     padding: 0.25em 0.5rem 0.25em 0.5rem;
   }
 
-  &:focus-within,
   &:focus {
     outline: 2px solid var(--mb-color-focus);
 

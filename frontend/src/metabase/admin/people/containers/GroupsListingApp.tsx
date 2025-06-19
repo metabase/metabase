@@ -1,3 +1,9 @@
+import { t } from "ttag";
+
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import {
   useCreatePermissionsGroupMutation,
   useDeletePermissionsGroupMutation,
@@ -43,14 +49,18 @@ export const GroupsListingApp = () => {
   };
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading}>
-      <GroupsListing
-        isAdmin={isAdmin}
-        groups={groups}
-        create={handleCreate}
-        update={handleUpdate}
-        delete={handleDelete}
-      />
-    </LoadingAndErrorWrapper>
+    <SettingsPageWrapper title={t`Groups`}>
+      <SettingsSection>
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          <GroupsListing
+            isAdmin={isAdmin}
+            groups={groups}
+            create={handleCreate}
+            update={handleUpdate}
+            delete={handleDelete}
+          />
+        </LoadingAndErrorWrapper>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };

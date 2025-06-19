@@ -4,25 +4,22 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { useSetting } from "metabase/common/hooks";
-import AdminHeader from "metabase/components/AdminHeader";
 import Code from "metabase/components/Code";
 import { CopyButton } from "metabase/components/CopyButton";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
-import { Box, Flex } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 
-import {
-  HelpBody,
-  HelpExternalLink,
-  HelpLinks,
-  HelpRoot,
-  InfoBlockButton,
-  InfoBlockRoot,
-} from "./Help.styled";
+import S from "./help.module.css";
 
 function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
@@ -71,14 +68,12 @@ interface HelpLinkProps {
 }
 
 const HelpLink = ({ title, description, link }: HelpLinkProps) => (
-  <li className={CS.mb2}>
-    <HelpExternalLink href={link} target="_blank">
-      <div>
-        <h3 className={CS.textBrand}>{title}</h3>
-        <p className={cx(CS.m0, CS.mt1)}>{description}</p>
-      </div>
-    </HelpExternalLink>
-  </li>
+  <ExternalLink href={link} target="_blank" className={S.HelpExternalLink}>
+    <div>
+      <h3 className={CS.textBrand}>{title}</h3>
+      <p className={cx(CS.m0, CS.mt1)}>{description}</p>
+    </div>
+  </ExternalLink>
 );
 
 interface InfoBlockProps {
@@ -86,14 +81,12 @@ interface InfoBlockProps {
 }
 
 const InfoBlock = ({ children }: InfoBlockProps) => (
-  <InfoBlockRoot
-    className={cx(CS.bordered, CS.rounded, CS.bgLight, CS.relative)}
-  >
-    <InfoBlockButton>
+  <Box p="md" className={cx(CS.bordered, CS.rounded, CS.bgLight, CS.relative)}>
+    <Box className={S.InfoBlockButton}>
       <CopyButton value={children} />
-    </InfoBlockButton>
+    </Box>
     <Code>{children}</Code>
-  </InfoBlockRoot>
+  </Box>
 );
 
 export const Help = () => {
@@ -110,52 +103,42 @@ export const Help = () => {
   const compactDetailStringForUrl = encodeURIComponent(JSON.stringify(details));
 
   return (
-    <HelpRoot>
-      <Flex
-        align="flex-start"
-        justify="space-between"
-        direction={{ base: "column", md: "row" }}
-        gap={{ base: 0, md: "md" }}
-      >
-        <Box>
-          <AdminHeader title={t`Help`} className={CS.mb2} />
-          <HelpLinks>
-            <ol>
-              <HelpLink
-                title={t`Get Help`}
-                description={t`Resources and support`}
-                link={
-                  isPaidPlan
-                    ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
-                    : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
-                }
-              />
-              <HelpLink
-                title={t`Report an issue`}
-                description={t`Create a GitHub issue (includes the diagnostic info below)`}
-                link={githubIssueLink(detailString)}
-              />
-            </ol>
-          </HelpLinks>
-        </Box>
-        <UpsellBetterSupport source="settings-troubleshooting" />
-      </Flex>
+    <SettingsPageWrapper title={t`Help`}>
+      <Group grow>
+        <HelpLink
+          title={t`Get help`}
+          description={t`Resources and support`}
+          link={
+            isPaidPlan
+              ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
+              : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
+          }
+        />
+        <HelpLink
+          title={t`Report an issue`}
+          description={t`Create a GitHub issue (includes the diagnostic info below)`}
+          link={githubIssueLink(detailString)}
+        />
+      </Group>
 
-      <HelpBody>
-        <AdminHeader title={t`Diagnostic Info`} className={CS.mb2} />
-        <p>{t`Please include these details in support requests. Thank you!`}</p>
+      <UpsellBetterSupport source="settings-troubleshooting" />
+
+      <SettingsSection
+        title={t`Diagnostic info`}
+        description={t`Please include these details in support requests. Thank you!`}
+      >
         <InfoBlock>{detailString}</InfoBlock>
-        <div
-          className={cx(CS.textMedium, CS.textBold, CS.textUppercase, CS.py2)}
-        >{t`Advanced Details (click to download)`}</div>
-        <ol>
-          <HelpLink
-            title={t`Connection Pool Details`}
-            description={t`Information about active and idle connections for all pools`}
-            link={UtilApi.get_connection_pool_details_url()}
-          />
-        </ol>
-      </HelpBody>
-    </HelpRoot>
+      </SettingsSection>
+      <SettingsSection
+        title={t`Advanced details`}
+        description={t`Click to download`}
+      >
+        <HelpLink
+          title={t`Connection Pool Details`}
+          description={t`Information about active and idle connections for all pools`}
+          link={UtilApi.get_connection_pool_details_url()}
+        />
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 };

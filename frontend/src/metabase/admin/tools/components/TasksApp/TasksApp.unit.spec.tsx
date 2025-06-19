@@ -29,7 +29,7 @@ interface SetupOpts {
   tasksResponse?: ListTasksResponse;
 }
 
-const PATHNAME = "/admin/troubleshooting/tasks";
+const PATHNAME = "/admin/tools/tasks";
 
 const setup = ({
   error,
