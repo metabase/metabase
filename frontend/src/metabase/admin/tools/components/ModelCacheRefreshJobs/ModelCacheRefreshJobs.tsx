@@ -4,6 +4,10 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { useListPersistedInfoQuery } from "metabase/api";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
@@ -66,7 +70,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
 
   return (
     <tr key={job.id}>
-      <th>
+      <td>
         <span>
           <Link variant="brand" to={modelUrl}>
             {job.card_name}
@@ -76,15 +80,15 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
             {job.collection_name || t`Our analytics`}
           </Link>
         </span>
-      </th>
-      <th>{renderStatus()}</th>
-      <th>
+      </td>
+      <td>{renderStatus()}</td>
+      <td>
         <Tooltip label={<DateTime value={job.refresh_begin} />}>
           <span>{lastRunAtLabel}</span>
         </Tooltip>
-      </th>
-      <th>{job.creator?.common_name || t`Automatic`}</th>
-      <th>
+      </td>
+      <td>{job.creator?.common_name || t`Automatic`}</td>
+      <td>
         {checkCanRefreshModelCache(job) && (
           <Tooltip label={t`Refresh`}>
             <IconButtonContainer onClick={onRefresh}>
@@ -92,7 +96,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
             </IconButtonContainer>
           </Tooltip>
         )}
-      </th>
+      </td>
     </tr>
   );
 }
@@ -108,7 +112,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function ModelCacheRefreshJobs({ onRefresh }: Props) {
+function _ModelCacheRefreshJobs({ onRefresh }: Props) {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
   const { data, error, isFetching } = useListPersistedInfoQuery({
     limit: PAGE_SIZE,
@@ -181,5 +185,18 @@ function ModelCacheRefreshJobs({ onRefresh }: Props) {
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(null, mapDispatchToProps)(ModelCacheRefreshJobs);
+export const ModelCacheRefreshJobs = connect(
+  null,
+  mapDispatchToProps,
+)(_ModelCacheRefreshJobs);
+
+export function ModelCachePage({ children }: { children?: React.ReactNode }) {
+  return (
+    <SettingsPageWrapper title={t`Model cache log`}>
+      <SettingsSection>
+        <ModelCacheRefreshJobs />
+      </SettingsSection>
+      {children /* refresh modal */}
+    </SettingsPageWrapper>
+  );
+}

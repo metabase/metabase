@@ -75,7 +75,7 @@ export const FileUploadErrorModal = ({
   }
 
   return (
-    <_FileUploadErrorModal onClose={onClose} fileName={fileName}>
+    <_FileUploadErrorModal onClose={onClose} fileName={fileName} opened>
       {children}
     </_FileUploadErrorModal>
   );
