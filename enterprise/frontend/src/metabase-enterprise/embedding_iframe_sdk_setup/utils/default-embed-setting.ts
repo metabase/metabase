@@ -1,9 +1,9 @@
 import { match } from "ts-pattern";
 
-import type { SdkIframeEmbedSetupType } from "../types";
+import type { SdkIframeEmbedSetupExperience } from "../types";
 
 export const getDefaultSdkIframeEmbedSettings = (
-  type: SdkIframeEmbedSetupType,
+  type: SdkIframeEmbedSetupExperience,
   defaultEntityId: string | number,
 ) =>
   match(type)

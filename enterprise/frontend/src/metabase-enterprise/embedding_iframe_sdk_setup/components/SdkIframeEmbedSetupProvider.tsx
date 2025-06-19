@@ -9,8 +9,8 @@ import {
   type SdkIframeEmbedSetupContextType,
 } from "../context";
 import type {
+  SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
-  SdkIframeEmbedSetupType,
 } from "../types";
 
 interface SdkIframeEmbedSetupProviderProps {
@@ -20,20 +20,21 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
-  const [currentStep, setCurrentStep] =
-    useState<SdkIframeEmbedSetupStep>("select-embed-type");
+  const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
+    "select-embed-experience",
+  );
 
   const instanceUrl = useSetting("site-url");
 
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
     apiKey: "",
-    dashboardId: 1,
     instanceUrl,
+    dashboardId: 1,
   });
 
   const embedType = useMemo(
     () =>
-      match<SdkIframeEmbedSettings, SdkIframeEmbedSetupType>(settings)
+      match<SdkIframeEmbedSettings, SdkIframeEmbedSetupExperience>(settings)
         .with({ questionId: P.nonNullable }, () => "chart")
         .with({ template: "exploration" }, () => "exploration")
         .otherwise(() => "dashboard"),

@@ -4,15 +4,15 @@ import _ from "underscore";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import { EMBED_TYPES } from "../constants";
+import { EMBED_EXPERIENCES } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
-import type { SdkIframeEmbedSetupType } from "../types";
+import type { SdkIframeEmbedSetupExperience } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
-export const SelectEmbedTypeStep = () => {
+export const SelectEmbedExperienceStep = () => {
   const { embedType, settings, setSettings } = useSdkIframeEmbedSetupContext();
 
-  const handleEmbedTypeChange = (type: SdkIframeEmbedSetupType) => {
+  const handleEmbedExperienceChange = (type: SdkIframeEmbedSetupExperience) => {
     const persistedSettings = _.pick(settings, [
       "theme",
       "instanceUrl",
@@ -45,11 +45,11 @@ export const SelectEmbedTypeStep = () => {
       <Radio.Group
         value={embedType}
         onChange={(value) =>
-          handleEmbedTypeChange(value as SdkIframeEmbedSetupType)
+          handleEmbedExperienceChange(value as SdkIframeEmbedSetupExperience)
         }
       >
         <Stack gap="md">
-          {EMBED_TYPES.map((type) => (
+          {EMBED_EXPERIENCES.map((type) => (
             <Radio
               key={type.value}
               value={type.value}
