@@ -183,4 +183,32 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.get("iframe").invoke("attr", "src").should("eq", originalSrc);
     });
   });
+
+  it("fires ready event after iframe is loaded", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+      onVisitPage: () => {
+        cy.window().then((win) => {
+          // @ts-expect-error -- this is within the iframe
+          win.embed.addEventListener("ready", () => {
+            cy.wrap(true).as("readyEventFired");
+          });
+        });
+      },
+    });
+
+    cy.get("@readyEventFired").should("not.eq", true);
+    cy.wait("@getCardQuery");
+
+    cy.log("1. verify iframe is visible");
+    cy.get("iframe").should("be.visible");
+
+    cy.log("2. verify ready event was fired");
+    cy.get("@readyEventFired").should("eq", true);
+
+    cy.log("3. verify iframe content is loaded");
+    frame.within(() => {
+      H.assertSdkInteractiveQuestionOrdersUsable();
+    });
+  });
 });
