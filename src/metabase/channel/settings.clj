@@ -132,7 +132,7 @@
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
-                (when (and new-value (not (cloud-email-smtp-host)))
+                (when (and new-value (not (:cloud-email-smtp-host)))
                   (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))
                 (setting/set-value-of-type! :boolean :cloud-smtp-enabled? new-value)))
 
