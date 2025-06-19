@@ -441,6 +441,7 @@ export class AccordionList<
     const { searchText } = this.state;
 
     const openSection = this.getOpenSection();
+    const isSearching = searchText.length > 0;
 
     // if any section is searchable just enable a global search
     let globalSearch = this.props.globalSearch ?? false;
@@ -448,7 +449,7 @@ export class AccordionList<
     const sectionIsExpanded = (sectionIndex: number) =>
       alwaysExpanded ||
       openSection === sectionIndex ||
-      (globalSearch && searchText.length > 0);
+      (globalSearch && isSearching);
 
     const sectionIsSearchable = (sectionIndex: number) =>
       typeof searchable === "function"
@@ -539,7 +540,6 @@ export class AccordionList<
     }
 
     if (globalSearch) {
-      const isSearching = searchText.length > 0;
       const isEmpty = rows.filter((row) => row.type === "item").length === 0;
 
       if (isSearching && isEmpty) {
