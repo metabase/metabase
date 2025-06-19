@@ -19,7 +19,14 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  type IconName,
+  type IconProps,
+  Menu,
+  Title,
+} from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -400,11 +407,12 @@ export function DashCardVisualization({
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
-      <Flex align="center" justify="flex-end">
+      <Box mr="sm">
         {inlineParameters.length > 0 && (
           <DashboardParameterList
             parameters={inlineParameters}
             isSortable={false}
+            widgetsVariant="subtle"
           />
         )}
         <DashCardMenu
@@ -416,7 +424,7 @@ export function DashCardVisualization({
             onChangeCardAndRun && (title ? undefined : titleMenuItems)
           }
         />
-      </Flex>
+      </Box>
     );
   }, [
     dashboard,
