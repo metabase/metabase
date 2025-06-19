@@ -213,8 +213,9 @@
        :body   (humanize-error-messages mb-to-smtp-settings response)})))
 
 (api.macros/defendpoint :post "/test"
-  "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
-  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
+  "Send a test email using the standard SMTP Settings. You must be a superuser or have `setting` permission to do this.
+  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response.
+  NOTE: if you have an overridden 'cloud' SMTP settings, this will still test the standard settings."
   []
   (test-email :standard))
 
