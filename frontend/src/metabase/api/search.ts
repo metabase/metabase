@@ -23,7 +23,6 @@ interface VisualizationCompatibleSearchRequest {
   models?: Array<"card" | "dataset" | "metric">;
   include_dashboard_questions?: boolean;
   include_metadata?: boolean;
-  exclude_display?: string;
   has_temporal_dimensions?: boolean;
   required_non_temporal_dimension_ids?: number[];
   visualization_context?: VisualizationContext;
