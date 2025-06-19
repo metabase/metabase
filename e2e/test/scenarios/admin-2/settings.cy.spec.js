@@ -320,7 +320,7 @@ describe("scenarios > admin > settings (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   // Unskip when mocking Cloud in Cypress is fixed (#18289)
@@ -657,7 +657,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should show the user store info for an self-hosted instance managed by the store", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -700,7 +700,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should not show license input for cloud-hosted instances", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,
@@ -711,7 +711,7 @@ describe("scenarios > admin > license and billing", () => {
     });
 
     it("should render an error if something fails when fetching billing info", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       mockBillingTokenFeatures([
         STORE_MANAGED_FEATURE_KEY,
         NO_UPSELL_FEATURE_HEY,

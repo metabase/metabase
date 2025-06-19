@@ -170,7 +170,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
 
     it("should not include branding on Pro/Enterprise instances", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       sendTestAlertForQuestion(questionName);
       cy.findAllByRole("link")
         .filter(":contains(Made with)")

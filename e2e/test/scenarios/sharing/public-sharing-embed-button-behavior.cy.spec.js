@@ -529,7 +529,7 @@ describe("#39152 sharing an unsaved question", () => {
 
         describe("Pro/EE instances", () => {
           beforeEach(() => {
-            H.setTokenFeatures("all");
+            H.activateToken("pro-self-hosted");
           });
 
           it("should send `static_embed_code_copied` when copying the static embed code", () => {
