@@ -22,5 +22,5 @@ export function isVisualizerSupportedVisualization(
     return false;
   }
 
-  return visualizations.get(display)?.supportsVisualizer;
+  return Boolean(visualizations.get(display)?.supportsVisualizer);
 }

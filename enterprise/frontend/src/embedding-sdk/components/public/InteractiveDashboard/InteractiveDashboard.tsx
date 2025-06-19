@@ -181,7 +181,6 @@ const InteractiveDashboardInner = ({
       ) : (
         <InteractiveDashboardProvider
           plugins={plugins}
-          onEditQuestion={onEditQuestion}
           dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
         >
           <PublicOrEmbeddedDashboard
@@ -208,6 +207,8 @@ const InteractiveDashboardInner = ({
             isNightMode={false}
             onNightModeChange={_.noop}
             hasNightModeToggle={false}
+            dashcardMenu={plugins?.dashboard?.dashboardCardMenu}
+            onEditQuestion={onEditQuestion}
           />
         </InteractiveDashboardProvider>
       )}

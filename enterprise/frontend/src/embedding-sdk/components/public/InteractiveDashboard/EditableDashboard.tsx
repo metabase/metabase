@@ -65,7 +65,6 @@ export type EditableDashboardProps = {
 
 const EditableDashboardInner = ({
   drillThroughQuestionProps,
-  onEditQuestion,
 }: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
   Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
   const { isEditing } = useDashboardContext();
@@ -77,7 +76,6 @@ const EditableDashboardInner = ({
   return (
     <InteractiveDashboardProvider
       plugins={drillThroughQuestionProps?.plugins}
-      onEditQuestion={onEditQuestion}
       dashboardActions={dashboardActions}
     >
       <Dashboard />
@@ -208,6 +206,7 @@ export const EditableDashboard = ({
               drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
           })
         }
+        onEditQuestion={onEditQuestion}
       >
         {adhocQuestionUrl ? (
           <InteractiveAdHocQuestion
@@ -218,7 +217,6 @@ export const EditableDashboard = ({
         ) : (
           <EditableDashboardInner
             drillThroughQuestionProps={drillThroughQuestionProps}
-            onEditQuestion={onEditQuestion}
           />
         )}
       </DashboardContextProvider>

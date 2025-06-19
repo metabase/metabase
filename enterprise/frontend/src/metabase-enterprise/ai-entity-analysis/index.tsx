@@ -1,11 +1,14 @@
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import {
   PLUGIN_AI_ENTITY_ANALYSIS,
   PLUGIN_DASHCARD_MENU,
 } from "metabase/plugins";
+import { Icon, Menu } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type Question from "metabase-lib/v1/Question";
+import type { DashCardId } from "metabase-types/api";
 
 import { showDashCardAnalysisSidebar } from "./actions";
 import { AIDashboardAnalysisSidebar } from "./components/AIDashboardAnalysisSidebar/AIDashboardAnalysisSidebar";
@@ -45,6 +48,26 @@ if (hasPremiumFeature("ai_entity_analysis")) {
       };
     },
   );
+  PLUGIN_DASHCARD_MENU.dashcardMenuItem = function MetabotDashcardMenuItem({
+    dashcardId,
+  }: {
+    dashcardId: DashCardId | null;
+  }) {
+    const dispatch = useDispatch();
+    return (
+      <Menu.Item
+        leftSection={<Icon name="metabot" />}
+        onClick={() => {
+          if (dashcardId != null) {
+            dispatch(showDashCardAnalysisSidebar(dashcardId));
+          }
+        }}
+        closeMenuOnClick
+      >
+        {t`Analyze chart`}
+      </Menu.Item>
+    );
+  };
 }
 
 export { AIQuestionAnalysisButton };

@@ -12,6 +12,7 @@ import {
   setEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
+import { canEditQuestion } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
@@ -25,7 +26,14 @@ import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
 import { setErrorPage } from "metabase/redux/app";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import {
+  isVisualizerDashboardCard,
+  isVisualizerSupportedVisualization,
+} from "metabase/visualizer/utils";
 import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
@@ -137,6 +145,31 @@ export const DashboardApp = ({
         onAddQuestion={(dashboard: IDashboard | null) => {
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+        }}
+        dashcardMenu={{
+          "edit-visualization": ({ dashcard }) =>
+            isVisualizerSupportedVisualization(dashcard.card.display),
+          "edit-link": ({ dashcard, question }) =>
+            !isVisualizerSupportedVisualization(dashcard.card.display) &&
+            !!question &&
+            canEditQuestion(question),
+          download: ({ series }) => !!series[0]?.data && !series[0]?.error,
+          metabot: ({ question }) =>
+            !!question &&
+            PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question),
+          "view-underlying-question": ({
+            dashboard: _dashboard,
+            dashcard,
+            question: _question,
+            series,
+          }) => {
+            const settings = getComputedSettingsForSeries(
+              series,
+            ) as ComputedVisualizationSettings;
+            const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+
+            return !title && isVisualizerDashboardCard(dashcard);
+          },
         }}
       >
         <DashboardTitle />

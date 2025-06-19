@@ -1,7 +1,6 @@
 import {
   type PropsWithChildren,
   createContext,
-  useCallback,
   useContext,
   useMemo,
 } from "react";
@@ -25,7 +24,6 @@ export const InteractiveDashboardProvider = ({
   children,
   plugins,
   dashboardActions,
-  onEditQuestion: initOnEditQuestion,
 }: PropsWithChildren<InteractiveDashboardContextType>) => {
   const globalPlugins = useSdkSelector(getPlugins);
 
@@ -35,18 +33,12 @@ export const InteractiveDashboardProvider = ({
     return addDefaultDashboardPluginValues(combinedPlugins);
   }, [globalPlugins, plugins]);
 
-  const onEditQuestion = useCallback(
-    (question: Question) => initOnEditQuestion?.(question),
-    [initOnEditQuestion],
-  );
-
   const value = useMemo(
     () => ({
       plugins: initializedPlugins,
       dashboardActions,
-      onEditQuestion,
     }),
-    [dashboardActions, initializedPlugins, onEditQuestion],
+    [dashboardActions, initializedPlugins],
   );
   return (
     <InteractiveDashboardContext.Provider value={value}>

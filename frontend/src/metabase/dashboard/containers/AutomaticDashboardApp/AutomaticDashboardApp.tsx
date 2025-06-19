@@ -212,6 +212,7 @@ export const AutomaticDashboardApp = ({
         dispatch(navigateToNewCardFromDashboard(opts))
       }
       downloadsEnabled={{ pdf: false, results: false }}
+      dashcardMenu={null}
     >
       <AutomaticDashboardAppInner />
     </DashboardContextProvider>

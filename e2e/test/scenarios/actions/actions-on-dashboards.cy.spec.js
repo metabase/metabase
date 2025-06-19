@@ -362,7 +362,10 @@ const MODEL_NAME = "Test Action Model";
 
           cy.log("Visit static embed dashboard");
 
-          H.openStaticEmbeddingModal({ activeTab: "parameters" });
+          H.openStaticEmbeddingModal({
+            activeTab: "parameters",
+            acceptTerms: false,
+          });
           H.visitIframe();
 
           cy.log("Assert static embed dashboard");

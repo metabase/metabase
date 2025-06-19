@@ -1,5 +1,6 @@
 import {
   type PropsWithChildren,
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
@@ -12,8 +13,11 @@ import { isEqual, isObject, noop } from "underscore";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { QuestionUrlBuilderParams } from "metabase/lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
+import { editQuestion } from "../actions";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
@@ -28,10 +32,19 @@ import type {
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
+import type {
+  DashboardCardCustomMenuItem,
+  DashboardCardMenuCustomElement,
+} from "./types/dashcard-menu";
 
 export type DashboardContextErrorState = {
   error: unknown | null;
 };
+
+export type DashcardMenu =
+  | ReactNode
+  | DashboardCardMenuCustomElement
+  | DashboardCardCustomMenuItem;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
@@ -40,9 +53,15 @@ export type DashboardContextOwnProps = {
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
   onAddQuestion?: (dashboard: Dashboard | null) => void;
+  onEditQuestion?: (
+    question: Question | null,
+    mode?: QuestionUrlBuilderParams["mode"],
+  ) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
+  isDashcardVisible?: (dashcard: DashboardCard) => boolean;
+  dashcardMenu?: DashcardMenu;
 };
 
 export type DashboardContextOwnResult = {
@@ -78,8 +97,13 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
+  onEditQuestion,
+  onAddQuestion,
 
   children,
+
+  isDashcardVisible,
+  dashcardMenu,
 
   // url params
   isFullscreen = false,
@@ -284,6 +308,13 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
+  const finalDashboard = dashboard && {
+    ...dashboard,
+    dashcards: isDashcardVisible
+      ? dashboard.dashcards.filter((dc) => isDashcardVisible(dc))
+      : dashboard.dashcards,
+  };
+
   return (
     <DashboardContext.Provider
       value={{
@@ -292,6 +323,10 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
+
+        onAddQuestion,
+        onEditQuestion: (question, mode = "notebook") =>
+          dispatch(editQuestion(question, mode)),
 
         navigateToNewCardFromDashboard,
         isLoading,
@@ -321,8 +356,11 @@ const DashboardContextProviderInner = ({
         getClickActionMode,
         withFooter,
 
+        dashcardMenu,
+
+        dashboard: finalDashboard,
+
         // redux selectors
-        dashboard,
         selectedTabId,
         isEditing,
         isNavigatingBackToDashboard,

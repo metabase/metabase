@@ -710,10 +710,16 @@ type DashCardMenuItemGetter = (
 
 export type PluginDashcardMenu = {
   dashcardMenuItemGetters: DashCardMenuItemGetter[];
+  dashcardMenuItem: ({
+    dashcardId,
+  }: {
+    dashcardId: number | null;
+  }) => ReactNode;
 };
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+  dashcardMenuItem: () => null,
 };
 
 export const PLUGIN_CONTENT_TRANSLATION = {
