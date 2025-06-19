@@ -37,6 +37,8 @@ import { XrayIcon } from "../XrayIcon";
 import S from "./AutomaticDashboardApp.module.css";
 import { SuggestionsSidebar } from "./SuggestionsSidebar";
 
+const SIDEBAR_W = 346;
+
 type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
 const AutomaticDashboardAppInner = () => {
@@ -122,27 +124,44 @@ const AutomaticDashboardAppInner = () => {
           <div className={CS.wrapper}>
             <FixedWidthContainer
               data-testid="fixed-width-dashboard-header"
-              isFixedWidth={dashboard?.width === "fixed"}
+              isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
             >
-              <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                <XrayIcon />
-                <div>
-                  <h2 className={cx(CS.textWrap, CS.mr2)}>
-                    {dashboard && <TransientTitle dashboard={dashboard} />}
-                  </h2>
-                </div>
-                {savedDashboardId != null ? (
-                  <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
-                ) : (
-                  <ActionButton
-                    className={cx(CS.mlAuto, CS.textNoWrap)}
-                    success
-                    borderless
-                    actionFn={save}
-                  >
-                    {t`Save this`}
-                  </ActionButton>
+              <div
+                className={cx(
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.py2,
+                  hasSidebar && CS.pl1,
                 )}
+              >
+                <FixedWidthContainer
+                  className={cx(CS.flex, CS.alignCenter)}
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
+                  <XrayIcon />
+                  <div>
+                    <h2 className={cx(CS.textWrap, CS.mr2)}>
+                      {dashboard && <TransientTitle dashboard={dashboard} />}
+                    </h2>
+                  </div>
+                </FixedWidthContainer>
+                <div
+                  className={cx(CS.flex, CS.flexGrow1)}
+                  style={{ maxWidth: SIDEBAR_W }}
+                >
+                  {savedDashboardId != null ? (
+                    <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                  ) : (
+                    <ActionButton
+                      className={cx(CS.mlAuto, CS.textNoWrap)}
+                      success
+                      borderless
+                      actionFn={save}
+                    >
+                      {t`Save this`}
+                    </ActionButton>
+                  )}
+                </div>
               </div>
               {dashboard && tabs.length > 1 && (
                 <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
@@ -156,7 +175,7 @@ const AutomaticDashboardAppInner = () => {
 
       <div
         className={CS.relative}
-        style={{ paddingRight: hasSidebar ? 346 : undefined }}
+        style={{ paddingRight: hasSidebar ? SIDEBAR_W : undefined }}
       >
         <div className={cx(CS.wrapper, CS.pb4)}>
           {parameters && parameters.length > 0 && (
