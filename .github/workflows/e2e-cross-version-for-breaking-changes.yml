@@ -144,7 +144,7 @@ jobs:
         env:
           MB_EDITION: ee
           CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
-          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
+          CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
           CYPRESS_CI: true
         run: |
           node bin/backward-compatibility-test.js \
