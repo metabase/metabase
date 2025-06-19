@@ -492,10 +492,10 @@
   ;; We create a version of the action that will "map" to an input which is just the row data itself.
   {:inner-action {:action-kw :placeholder}
    :dashcard-id  (:dashcard-id action)
-   :param-map param-map
-   :mapping   (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
-                          :when (= "row-data" sourceType)]
-                [id [::key (keyword sourceValueTarget)]])})
+   :param-map    param-map
+   :mapping      (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+                             :when (= "row-data" sourceType)]
+                   [id [::key (keyword sourceValueTarget)]])})
 
 (defn- get-row-data
   "For a row or header action, fetch underlying database values that'll be used for specific action params in mapping."
