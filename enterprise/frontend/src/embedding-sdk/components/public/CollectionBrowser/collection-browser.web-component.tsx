@@ -15,8 +15,8 @@ export type CollectionBrowserWebComponentAttributes = {
 const CollectionBrowserWebComponent = createWebComponent<
   Pick<CollectionBrowserProps, "collectionId">
 >((props) => <CollectionBrowser {...props} />, {
-  props: {
-    collectionId: "string",
+  propTypes: {
+    collectionId: "id",
   },
 });
 

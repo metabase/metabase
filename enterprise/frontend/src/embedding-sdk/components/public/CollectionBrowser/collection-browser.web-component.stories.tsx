@@ -5,7 +5,7 @@ import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkSt
 import "../metabase-provider.web-component";
 import "./collection-browser.web-component";
 
-const COLLECTION_ID = "2";
+const COLLECTION_ID = "root";
 const config = getStorybookSdkAuthConfigForUser("admin");
 (window as any).fetchRequestToken = config.fetchRequestToken;
 

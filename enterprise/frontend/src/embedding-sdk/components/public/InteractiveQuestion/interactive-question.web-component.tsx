@@ -16,8 +16,8 @@ const InteractiveQuestionWebComponent = createWebComponent<
   Pick<InteractiveQuestionProps, "questionId">
 >((props) => <InteractiveQuestion {...props} />, {
   propertyNames: ["plugins"],
-  props: {
-    questionId: "number",
+  propTypes: {
+    questionId: "id",
   },
 });
 

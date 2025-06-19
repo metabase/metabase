@@ -79,3 +79,6 @@ export const QuestionWithDefinedProperties = () => {
   return <interactive-question ref={ref} question-id={QUESTION_ID} />;
 };
 QuestionWithDefinedProperties.decorators = [withDefinedProperties];
+
+export const NewQuestion = () => <interactive-question question-id="new" />;
+NewQuestion.decorators = [withDefinedAttributes];

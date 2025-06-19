@@ -15,8 +15,8 @@ export type InteractiveDashboardWebComponentAttributes = {
 const InteractiveDashboardWebComponent = createWebComponent<
   Pick<InteractiveDashboardProps, "dashboardId">
 >(({ dashboardId }) => <InteractiveDashboard dashboardId={dashboardId} />, {
-  props: {
-    dashboardId: "number",
+  propTypes: {
+    dashboardId: "id",
   },
 });
 
