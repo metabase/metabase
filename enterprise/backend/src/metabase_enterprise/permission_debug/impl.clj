@@ -163,15 +163,15 @@
 
 (defn- check-table-permissions
   "Check table-level permissions for a card's query tables.
-   
-   Arguments:
+
+  Arguments:
    - user-id: The ID of the user to check permissions for
    - card: The card model containing the dataset_query to analyze
    - permissions-blocking: Map specifying which permission types to check for blocking
                            (e.g., {:perms/view-data :blocked} or {:perms/download-results :no})
    - permissions-granting: Map specifying which permission types should be considered as granting access
                             (e.g., {:perms/view-data :legacy-no-self-service} or {:perms/download-results :ten-thousand-rows})
-   
+
    Returns a map of blocked tables by group in the format:
    {[db-name schema table-name] #{group-name-1 group-name-2}}"
   [user-id card permissions-blocking permissions-granting]
