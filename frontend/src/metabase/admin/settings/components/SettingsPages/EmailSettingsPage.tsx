@@ -47,7 +47,7 @@ export function EmailSettingsPage() {
           <CloudSMTPConnectionCard onOpenCloudSMTPModal={openCloudModal} />
         )}
         <Center>
-          <UpsellEmailWhitelabelBanner source="settings-email-migrate_to_cloud" />
+          <UpsellEmailWhitelabelBanner source="settings-email" />
         </Center>
         {isEmailConfigured && (
           <SettingsSection>
