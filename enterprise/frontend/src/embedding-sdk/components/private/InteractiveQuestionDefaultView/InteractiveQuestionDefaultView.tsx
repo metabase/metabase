@@ -85,7 +85,7 @@ export const InteractiveQuestionDefaultView = ({
     return <SdkLoader />;
   }
 
-  if (!question) {
+  if (!isEditorOpen && !question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
