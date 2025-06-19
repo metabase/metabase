@@ -12,7 +12,6 @@ import {
 } from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
-  isQuestionCard,
   isVirtualDashCard,
   supportsInlineParameters,
 } from "metabase/dashboard/utils";
@@ -21,7 +20,6 @@ import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -39,7 +37,8 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -72,6 +71,8 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
+  question: Question | null;
+  metadata: Metadata;
   getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
@@ -124,6 +125,8 @@ export function DashCardVisualization({
   dashcard,
   dashboard,
   series: untranslatedRawSeries,
+  question,
+  metadata,
   getClickActionMode,
   getHref,
   gridSize,
@@ -155,13 +158,6 @@ export function DashCardVisualization({
   onEditVisualization,
 }: DashCardVisualizationProps) {
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
-
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
 
   const inlineParameters = useSelector((state) =>
     getDashCardInlineValuePopulatedParameters(state, dashcard.id),

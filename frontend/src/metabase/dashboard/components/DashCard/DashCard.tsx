@@ -14,6 +14,7 @@ import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
+  isQuestionCard,
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { isEmbeddingSdk } from "metabase/env";
@@ -23,6 +24,7 @@ import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -34,6 +36,7 @@ import {
   isVisualizerDashboardCard,
   isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
+import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   CardId,
@@ -350,6 +353,13 @@ function DashCardInner({
     onEditVisualization(dashcard, initialState);
   }, [dashcard, series, onEditVisualization, datasets]);
 
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+  }, [dashcard.card, metadata]);
+
   return (
     <ErrorBoundary>
       <Box
@@ -394,6 +404,7 @@ function DashCardInner({
             series={series}
             dashboard={dashboard}
             dashcard={dashcard}
+            question={question}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
             hasError={hasError}
@@ -414,6 +425,8 @@ function DashCardInner({
         <DashCardVisualization
           dashboard={dashboard}
           dashcard={dashcard}
+          question={question}
+          metadata={metadata}
           series={series}
           getClickActionMode={getClickActionMode}
           gridSize={gridSize}

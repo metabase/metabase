@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
 import {
   act,
   getIcon,
@@ -17,20 +18,28 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDatabase,
   createMockDataset,
   createMockDatasetData,
   createMockHeadingDashboardCard,
   createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
   createMockPlaceholderDashboardCard,
+  createMockTable,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";
 
 registerVisualizations();
+
+const TEST_DATABASE_ID = 1;
+const TEST_TABLE_ID = 2;
 
 const testDashboard = createMockDashboard();
 
@@ -80,9 +89,36 @@ function setup({
   dashboard = testDashboard,
   dashcard = tableDashcard,
   dashcardData = tableDashcardData,
+  withMetadata = false,
   ...props
-}: Partial<DashCardProps> & { dashcardData?: DashCardDataMap } = {}) {
+}: Partial<DashCardProps> & {
+  dashcardData?: DashCardDataMap;
+  withMetadata?: boolean;
+} = {}) {
   const onReplaceCard = jest.fn();
+
+  const baseDashboardState = createMockDashboardState({
+    dashcardData,
+    dashcards: {
+      [dashcard.id]: dashcard,
+    },
+  });
+
+  const storeInitialState = createMockState({
+    dashboard: baseDashboardState,
+    ...(withMetadata && {
+      entities: createMockEntitiesState({
+        databases: [
+          createMockDatabase({
+            id: TEST_DATABASE_ID,
+            tables: [
+              createMockTable({ id: TEST_TABLE_ID, db_id: TEST_DATABASE_ID }),
+            ],
+          }),
+        ],
+      }),
+    }),
+  });
 
   renderWithProviders(
     <DashCard
@@ -109,14 +145,7 @@ function setup({
       onEditVisualization={jest.fn()}
     />,
     {
-      storeInitialState: {
-        dashboard: createMockDashboardState({
-          dashcardData,
-          dashcards: {
-            [tableDashcard.id]: tableDashcard,
-          },
-        }),
-      },
+      storeInitialState,
     },
   );
 
@@ -411,7 +440,17 @@ describe("DashCard", () => {
       });
 
       it("should be visible for question cards", () => {
-        const dashcard = createMockDashboardCard();
+        const dashcard = createMockDashboardCard({
+          card: createMockCard({
+            dataset_query: {
+              type: "query",
+              database: TEST_DATABASE_ID,
+              query: {
+                "source-table": TEST_TABLE_ID,
+              },
+            },
+          }),
+        });
         setup({
           dashboard: {
             ...testDashboard,
@@ -420,8 +459,35 @@ describe("DashCard", () => {
           dashcard,
           dashcardData: {},
           isEditing: true,
+          withMetadata: true,
         });
         expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
+      });
+
+      it("should not be visible for question cards when user cannot edit the question", () => {
+        const dashcard = createMockDashboardCard({
+          card: createMockCard({
+            can_write: false,
+            dataset_query: {
+              type: "query",
+              database: TEST_DATABASE_ID,
+              query: {
+                "source-table": TEST_TABLE_ID,
+              },
+            },
+          }),
+        });
+        setup({
+          dashboard: {
+            ...testDashboard,
+            dashcards: [dashcard],
+          },
+          dashcard,
+          dashcardData: {},
+          isEditing: true,
+          withMetadata: true,
+        });
+        expect(screen.queryByLabelText("Add a filter")).not.toBeInTheDocument();
       });
 
       it.each([
