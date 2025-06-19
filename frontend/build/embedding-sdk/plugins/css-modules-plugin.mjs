@@ -62,7 +62,7 @@ export const cssModulesPlugin = ({
           const { fullPath } = pluginData;
 
           const source = await fs.promises.readFile(fullPath, "utf8");
-          const json = {};
+          const namesByScopeNameMap = {};
 
           const result = await postcss([
             ...getPostcssPlugins(),
@@ -70,7 +70,7 @@ export const cssModulesPlugin = ({
               generateScopedName: (name, filename) => {
                 const scopedName = generateScopedName(name, filename);
 
-                json[name] = scopedName;
+                namesByScopeNameMap[name] = scopedName;
 
                 return scopedName;
               },
@@ -97,7 +97,7 @@ export const cssModulesPlugin = ({
               import "${fullPath}";
               import ${CSS_MODULE_INJECT_FUNCTION_NAME} from '#style-inject';
 
-              export default ${JSON.stringify(json)};
+              export default ${JSON.stringify(namesByScopeNameMap)};
 
               ${CSS_MODULE_INJECT_FUNCTION_NAME}(${JSON.stringify(injectedCss)});
             `,
