@@ -9,6 +9,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
@@ -304,7 +305,7 @@
   [query stage-number col]
   (merge
    (when-not (:id col)
-     (lib.field/resolve-column-name
+     (lib.field.resolution/resolve-column-name
       query
       stage-number
       ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) col)))

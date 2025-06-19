@@ -156,7 +156,7 @@
                                                                  :max-value 100}}]]}})
              {:columns [:price]})))))
 
-(def ^:private child-parent-grandparent-metadata-provider
+(def child-parent-grandparent-metadata-provider
   (lib.tu/mock-metadata-provider
    meta/metadata-provider
    {:fields [(assoc (meta/field-metadata :venues :name)
@@ -187,8 +187,7 @@
                :field-ref         [:field 2 nil]
                :parent-id         1
                :visibility-type   :normal
-               ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
-               :display-name      "Grandparent: Grandparent: Parent"
+               :display-name      "Grandparent: Parent"
                :base-type         :type/Text}
               (first (column-info query {:cols [{:metabase.lib.query/transformation-added-base-type true}]})))))))
 
@@ -203,8 +202,7 @@
                :parent-id         2
                :id                3
                :visibility-type   :normal
-               ;; TODO -- not sure about this display name, seems like it's including parent twice -- Cam
-               :display-name      "Grandparent: Parent: Grandparent: Parent: Child"
+               :display-name      "Grandparent: Parent: Child"
                :base-type         :type/Text}
               (first (column-info query {:cols [{:metabase.lib.query/transformation-added-base-type false}]})))))))
 
