@@ -28,6 +28,11 @@ export const uploadTranslationDictionary = (rows: DictionaryArray) => {
     },
     { force: true },
   );
+
+  cy.findByRole("dialog", { name: /upload new dictionary/i })
+    .button("Replace existing dictionary")
+    .click();
+
   cy.wait("@uploadDictionary");
 };
 
