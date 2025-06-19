@@ -33,7 +33,7 @@ export interface DatabaseFormConfig {
   /** present the form with advanced configuration options */
   isAdvanced?: boolean;
   engine?: {
-    /** present the engine field as normal, disabled, or hidden */
+    /** present the enginge field as normal, disabled, or hidden */
     fieldState?: EngineFieldState | undefined;
   };
   name?: {
@@ -275,7 +275,7 @@ const getEngineKey = (
   values?: Partial<DatabaseData>,
   isAdvanced?: boolean,
 ) => {
-  if (values?.engine && Object.keys(engines).includes(values.engine)) {
+  if (values?.engine) {
     return values.engine;
   } else if (isAdvanced) {
     return getDefaultEngineKey(engines);

@@ -28,8 +28,8 @@ import { UserCollectionList } from "metabase/containers/UserCollectionList";
 import { DashboardCopyModalConnected } from "metabase/dashboard/components/DashboardCopyModal";
 import { DashboardMoveModalConnected } from "metabase/dashboard/components/DashboardMoveModal";
 import { ArchiveDashboardModalConnected } from "metabase/dashboard/containers/ArchiveDashboardModal";
-import { AutomaticDashboardAppConnected } from "metabase/dashboard/containers/AutomaticDashboardApp";
-import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { AutomaticDashboardApp } from "metabase/dashboard/containers/AutomaticDashboardApp";
+import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import { HomePage } from "metabase/home/components/HomePage";
@@ -58,6 +58,7 @@ import SegmentListContainer from "metabase/reference/segments/SegmentListContain
 import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
 import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
 import SearchApp from "metabase/search/containers/SearchApp";
+import { EmbeddingSetup } from "metabase/setup/components/EmbeddingSetup/EmbeddingSetup";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
@@ -86,10 +87,31 @@ export const getRoutes = (store) => {
           if (hasUserSetup) {
             replace("/");
           }
+          const searchParams = new URLSearchParams(window.location.search);
+          if (
+            searchParams.get("use_case") === "embedding" &&
+            searchParams.get("new_embedding_flow") === "true"
+          ) {
+            replace("/setup/embedding" + window.location.search);
+          }
           trackPageView(location.pathname);
         }}
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
+        }}
+        disableCommandPalette
+      />
+
+      {/* EMBEDDING SETUP */}
+      <Route
+        path="/setup/embedding"
+        component={EmbeddingSetup}
+        onEnter={async (nextState, replace, done) => {
+          if (hasUserSetup) {
+            replace("/");
+          }
+          trackPageView(location.pathname);
+          done();
         }}
         disableCommandPalette
       />
@@ -205,7 +227,7 @@ export const getRoutes = (store) => {
           <Route
             path="dashboard/:slug"
             title={t`Dashboard`}
-            component={DashboardAppConnected}
+            component={DashboardApp}
           >
             <ModalRoute
               path="move"
@@ -288,10 +310,7 @@ export const getRoutes = (store) => {
 
           {/* INDIVIDUAL DASHBOARDS */}
 
-          <Route
-            path="/auto/dashboard/*"
-            component={AutomaticDashboardAppConnected}
-          />
+          <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
 
           {/* REFERENCE */}
           <Route path="/reference" title={t`Data Reference`}>
