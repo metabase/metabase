@@ -108,15 +108,23 @@ export function groupColumnsBySuitableVizSettings(
   }
 }
 
-export function partitionTimeDimensions(columns: DatasetColumn[] | Field[]) {
+export function partitionTimeDimensions<T extends DatasetColumn[] | Field[]>(
+  columns: T,
+): {
+  dimensions: T;
+  timeDimensions: T;
+  otherDimensions: T;
+} {
   // Extract only dimension columns (exclude metrics and pivot group columns)
   const dimensions = columns.filter(
     (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-  );
+  ) as T;
+
   // Partition temporal & non-temporal dimensions
   const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
     isDate(col),
-  );
+  ) as unknown as [T, T];
+
   return { dimensions, timeDimensions, otherDimensions };
 }
 
@@ -131,8 +139,10 @@ function checkDimensionCompatibilityForCartesianCharts(
   } = partitionTimeDimensions(ownColumns);
 
   // Cartesian charts require at least one dimension in the current visualization
-  if (ownDimensions.length === 0) return false;
-  
+  if (ownDimensions.length === 0) {
+    return false;
+  }
+
   // If current viz has time dimensions, target dataset must have at least one date field
   if (ownTimeDimensions.length > 0) {
     const isCompatible = targetColumns.some((field) => isDate(field));
@@ -140,7 +150,7 @@ function checkDimensionCompatibilityForCartesianCharts(
       return false;
     }
   }
-  
+
   // If current viz has non-time dimensions, target dataset must contain all of them (by ID)
   if (ownOtherDimensions.length > 0) {
     const isCompatible = ownOtherDimensions.every((dimension) =>
