@@ -7,17 +7,15 @@ import { Box, Group, Modal } from "metabase/ui";
 import S from "../AddDataModal.module.css";
 
 interface HeaderProps {
-  activeTab: string | null;
-  isAdmin: boolean;
+  showDatabasesLink: boolean;
+  showUploadsLink: boolean;
   onAddDataModalClose: () => void;
 }
 export const PanelsHeader = ({
-  activeTab,
-  isAdmin,
+  showDatabasesLink,
+  showUploadsLink,
   onAddDataModalClose,
 }: HeaderProps) => {
-  const showDatabasesLink = activeTab === "db" && isAdmin;
-
   return (
     <Box component="header" className={S.header}>
       <Group ml="auto" align="center" justify="flex-end" gap="lg">
@@ -25,9 +23,17 @@ export const PanelsHeader = ({
           <Box
             component={Link}
             to={Urls.viewDatabases()}
-            fw={700}
+            fw="bold"
             c="brand"
           >{t`Manage databases`}</Box>
+        )}
+        {showUploadsLink && (
+          <Box
+            component={Link}
+            to={Urls.uploadsSettings()}
+            fw="bold"
+            c="brand"
+          >{t`Manage uploads`}</Box>
         )}
         <Modal.CloseButton size="1rem" onClick={onAddDataModalClose} />
       </Group>
