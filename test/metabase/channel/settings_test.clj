@@ -94,9 +94,10 @@
 
 (deftest cloud-email-reply-to
   (mt/with-temporary-setting-values [cloud-email-reply-to nil]
-    (testing "requires cloud-custom-smtp feature to be enabled"
-      (is (thrown-with-msg? Exception #"Setting cloud-email-reply-to is not enabled because feature :cloud-custom-smtp is not available"
-                            (channel.settings/cloud-email-reply-to! "test@example.com"))))
+    (mt/with-premium-features []
+      (testing "requires cloud-custom-smtp feature to be enabled"
+        (is (thrown-with-msg? Exception #"Setting cloud-email-reply-to is not enabled because feature :cloud-custom-smtp is not available"
+                              (channel.settings/cloud-email-reply-to! "test@example.com")))))
     (mt/with-premium-features [:cloud-custom-smtp]
       (testing "invalid email is not allowed"
         (is (thrown-with-msg? Exception #"Invalid reply-to address"
@@ -107,9 +108,10 @@
 
 (deftest cloud-email-smtp-port
   (mt/with-temporary-setting-values [cloud-email-smtp-port nil]
-    (testing "requires cloud-custom-smtp feature to be enabled"
-      (is (thrown-with-msg? Exception #"Setting cloud-email-smtp-port is not enabled because feature :cloud-custom-smtp is not available"
-                            (channel.settings/cloud-email-smtp-port! 465))))
+    (mt/with-premium-features []
+      (testing "requires cloud-custom-smtp feature to be enabled"
+        (is (thrown-with-msg? Exception #"Setting cloud-email-smtp-port is not enabled because feature :cloud-custom-smtp is not available"
+                              (channel.settings/cloud-email-smtp-port! 465)))))
     (mt/with-premium-features [:cloud-custom-smtp]
       (testing "invalid port is not allowed"
         (is (thrown-with-msg? AssertionError #"Invalid custom email-smtp-port"
@@ -120,9 +122,10 @@
 
 (deftest cloud-email-smtp-security
   (mt/with-temporary-setting-values [cloud-email-smtp-security nil]
-    (testing "requires cloud-custom-smtp feature to be enabled"
-      (is (thrown-with-msg? Exception #"Setting cloud-email-smtp-security is not enabled because feature :cloud-custom-smtp is not available"
-                            (channel.settings/cloud-email-smtp-security! "ssl"))))
+    (mt/with-premium-features []
+      (testing "requires cloud-custom-smtp feature to be enabled"
+        (is (thrown-with-msg? Exception #"Setting cloud-email-smtp-security is not enabled because feature :cloud-custom-smtp is not available"
+                              (channel.settings/cloud-email-smtp-security! "ssl")))))
     (mt/with-premium-features [:cloud-custom-smtp]
       (testing "'none' is not allowed"
         (is (thrown-with-msg? AssertionError #"Invalid cloud-email-smtp-security"

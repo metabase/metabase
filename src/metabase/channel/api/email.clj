@@ -41,8 +41,13 @@
   "Convert a SMTP setting to a Metabase setting name."
   (get (set/map-invert mb-to-smtp-map) smtp-setting))
 
-(comment
-  (smtp->mb-setting :username mb-to-smtp-settings))
+(defn- check-features []
+  (when (not (premium-features/is-hosted?))
+    (throw (ex-info (tru "API is not available on non-hosted servers.")
+                    {:status-code 403})))
+  (when (not (premium-features/has-feature? :cloud-custom-smtp))
+    (throw (ex-info (tru "API is not available in your Metabase plan. Please upgrade to use this feature.")
+                    {:status-code 403}))))
 
 (defn- humanize-error-messages
   "Convert raw error message responses from our email functions into our normal api error response structure."
@@ -163,9 +168,7 @@
                 [:cloud-email-smtp-port {:optional true} [:or int? nil?]]
                 [:cloud-email-smtp-security {:optional true} [:or string? nil?]]
                 [:cloud-email-smtp-username {:optional true} [:or string? nil?]]]]
-  (when (not (premium-features/has-feature? :cloud-custom-smtp))
-    (throw (ex-info (tru "API is not available in your Metabase plan. Please upgrade to use this feature.")
-                    {:status-code 403})))
+  (check-features)
 
   ;; Validations match validation in settings, but pre-checking here to avoid attempting network checks for invalid settings.
   (when (and (:cloud-email-smtp-port settings) (not (#{465 587 2525} (:cloud-email-smtp-port settings))))
@@ -187,6 +190,7 @@
 (api.macros/defendpoint :delete "/cloud"
   "Clear all cloud email related settings. You must be a superuser or have `setting` permission to do this."
   []
+  (check-features)
   (validation/check-has-application-permission :setting)
   (setting/set-many! (assoc (zipmap (keys cloud-mb-to-smtp-settings) (repeat nil))
                             :cloud-smtp-enabled false))
