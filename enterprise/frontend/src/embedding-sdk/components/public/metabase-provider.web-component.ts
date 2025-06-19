@@ -11,7 +11,11 @@ export type MetabaseProviderWebComponentAttributes = {
 
 const MetabaseProviderWebComponent =
   withPropForwarding<MetabaseProviderInternalProps>(HTMLElement, {
-    childrenComponents: ["interactive-question", "interactive-dashboard"],
+    childrenComponents: [
+      "interactive-question",
+      "interactive-dashboard",
+      "editable-dashboard",
+    ],
     propertyNames: ["authConfig", "theme"],
     propMappings: [
       {

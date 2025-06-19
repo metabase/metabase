@@ -1,4 +1,5 @@
 import type {
+  EditableDashboardWebComponentAttributes,
   InteractiveDashboardWebComponentAttributes,
   InteractiveQuestionWebComponentAttributes,
   MetabaseProviderWebComponentAttributes,
@@ -8,7 +9,10 @@ import type {
 declare global {
   interface HTMLElementTagNameMap {
     "metabase-provider": WebComponentAttributes<MetabaseProviderWebComponentAttributes>;
+
     "interactive-dashboard": WebComponentAttributes<InteractiveDashboardWebComponentAttributes>;
+    "editable-dashboard": WebComponentAttributes<EditableDashboardWebComponentAttributes>;
+
     "interactive-question": WebComponentAttributes<InteractiveQuestionWebComponentAttributes>;
   }
 
@@ -16,7 +20,10 @@ declare global {
     namespace JSX {
       interface IntrinsicElements {
         "metabase-provider": WebComponentAttributes<MetabaseProviderWebComponentAttributes>;
+
         "interactive-dashboard": WebComponentAttributes<InteractiveDashboardWebComponentAttributes>;
+        "editable-dashboard": WebComponentAttributes<EditableDashboardWebComponentAttributes>;
+
         "interactive-question": WebComponentAttributes<InteractiveQuestionWebComponentAttributes>;
       }
     }
