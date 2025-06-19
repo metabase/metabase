@@ -4,12 +4,10 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import type { DisplayTheme } from "metabase/public/lib/types";
 
 interface TabButtonProps {
   isSelected?: boolean;
   disabled?: boolean;
-  displayTheme?: DisplayTheme;
 }
 
 // Wrapper and Resizer are needed to auto-grow the input with its content
@@ -51,6 +49,7 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`
+  position: relative;
   display: flex;
   padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px); /* tab .list padding - input padding - borders/margins */
   color: ${(props) =>
@@ -61,13 +60,7 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
   font-size: var(--mantine-font-size-md);
   font-weight: 700;
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
-  border-bottom: 0.125rem solid
-    ${(props) =>
-      props.isSelected && !props.disabled
-        ? "var(--mb-color-brand)"
-        : props.displayTheme === "night" // one-off colors to prevent jarring contrast between light/dark themes
-          ? "rgb(255 255 255 / 0.3)"
-          : "rgb(0 0 0 / 0.07)"};
+  border-bottom: 0.125rem solid transparent;
 
   :hover {
     ${(props) =>
@@ -76,6 +69,30 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
         color: var(--mb-color-brand);
       `}
   }
+
+  :before,
+  :after {
+    content: " ";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    border-bottom: 0.125rem solid transparent;
+  }
+
+  :before {
+    transition: var(--transition-theme-change);
+    border-color: var(--mb-color-border);
+  }
+
+  ${(props) =>
+    props.isSelected &&
+    !props.disabled &&
+    css`
+      :after {
+        border-color: var(--mb-color-brand);
+      }
+    `}
 `;
 
 export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`

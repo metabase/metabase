@@ -1,3 +1,9 @@
+.dashboardTabs {
+  &.isNightMode {
+    --mb-color-border: var(--mb-color-text-medium);
+  }
+}
+
 .createTabButton {
   border: none;
   padding: 0.25rem;

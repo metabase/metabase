@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -5,8 +6,6 @@ import { Sortable } from "metabase/core/components/Sortable";
 import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
 import { TabButton } from "metabase/core/components/TabButton";
 import { TabRow } from "metabase/core/components/TabRow";
-import { getDisplayTheme } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
@@ -18,16 +17,16 @@ import { useDashboardTabs } from "./use-dashboard-tabs";
 export type DashboardTabsProps = {
   dashboardId: DashboardId;
   isEditing?: boolean;
+  isNightMode?: boolean;
   className?: string;
 };
 
 export function DashboardTabs({
   dashboardId,
   isEditing = false,
+  isNightMode,
   className,
 }: DashboardTabsProps) {
-  const displayTheme = useSelector(getDisplayTheme);
-
   const {
     tabs,
     createNewTab,
@@ -79,7 +78,12 @@ export function DashboardTabs({
   }
 
   return (
-    <Flex align="start" gap="lg" w="100%" className={className}>
+    <Flex
+      align="start"
+      gap="lg"
+      w="100%"
+      className={cx(S.dashboardTabs, isNightMode && S.isNightMode, className)}
+    >
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
@@ -92,7 +96,6 @@ export function DashboardTabs({
             value={null}
             showMenu
             menuItems={menuItems}
-            displayTheme={displayTheme}
           />
         ) : (
           tabs.map((tab) => (
@@ -104,7 +107,6 @@ export function DashboardTabs({
                 canRename={isEditing && hasMultipleTabs}
                 showMenu={isEditing}
                 menuItems={menuItems}
-                displayTheme={displayTheme}
               />
             </Sortable>
           ))

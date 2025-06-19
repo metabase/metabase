@@ -23,7 +23,6 @@ import { t } from "ttag";
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { lighten } from "metabase/lib/colors";
-import type { DisplayTheme } from "metabase/public/lib/types";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -64,7 +63,6 @@ export interface TabButtonProps extends HTMLAttributes<HTMLDivElement> {
   isRenaming?: boolean;
   onInputDoubleClick?: MouseEventHandler<HTMLSpanElement>;
   disabled?: boolean;
-  displayTheme?: DisplayTheme;
 }
 
 const _TabButton = forwardRef(function TabButton(
@@ -79,7 +77,6 @@ const _TabButton = forwardRef(function TabButton(
     disabled = false,
     isRenaming = false,
     showMenu: showMenuProp = true,
-    displayTheme,
     ...props
   }: TabButtonProps,
   inputRef: Ref<HTMLInputElement>,
@@ -130,7 +127,6 @@ const _TabButton = forwardRef(function TabButton(
       aria-disabled={disabled}
       aria-label={label}
       id={getTabId(idPrefix, value)}
-      displayTheme={displayTheme}
     >
       <TabButtonInputWrapper
         onDoubleClick={onInputDoubleClick}
