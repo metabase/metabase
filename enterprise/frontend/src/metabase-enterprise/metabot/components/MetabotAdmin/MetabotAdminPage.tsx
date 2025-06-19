@@ -214,6 +214,8 @@ function MetabotConfigurationPane({
       {isOpen && (
         <CollectionPickerModal
           title={t`Select a collection`}
+          shouldDisableItem={(item) => item.id === "root"}
+          canSelectItem={(item) => item && item.id !== "root"}
           value={{
             id: collection?.id ?? null,
             model: "collection",
