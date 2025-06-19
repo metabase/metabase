@@ -66,7 +66,7 @@
 
 (def ^:private optional-attrs
   "These attributes may be omitted (for now) in the interest of brevity in the definitions."
-  (->> (keys (apply dissoc search.config/filters (conj explicit-attrs :exclude-display)))
+  (->> (keys (apply dissoc search.config/filters explicit-attrs))
        ;; identifiers and rankers
        (into
         [:id                                                ;;  in addition to being a filter, this is a key property

@@ -116,14 +116,13 @@
   Test endpoint for visualization-specific search filtering."
   [_route-params
    _query-params
-   {:keys [q limit models display exclude_display include_dashboard_questions
+   {:keys [q limit models display include_dashboard_questions
            include_metadata has_temporal_dimensions required_non_temporal_dimension_ids]}
    :- [:map
        [:q                            {:optional true} [:maybe ms/NonBlankString]]
        [:limit                        {:default 10} ms/PositiveInt]
        [:models                       {:default ["card" "dataset" "metric"]} [:maybe [:vector ms/NonBlankString]]]
        [:display                      {:optional true} [:maybe [:vector ms/NonBlankString]]]
-       [:exclude_display              {:optional true} [:maybe ms/NonBlankString]]
        [:include_dashboard_questions  {:default true} :boolean]
        [:include_metadata             {:default true} :boolean]
        [:has_temporal_dimensions      {:optional true} [:maybe :boolean]]
@@ -140,7 +139,6 @@
                      :offset                       0
                      :search-string                q
                      :display                      (set display)
-                     :exclude-display              exclude_display
                      :has-temporal-dimensions?     has_temporal_dimensions
                      :required-non-temporal-dimension-ids required_non_temporal_dimension_ids
                      :include-dashboard-questions? include_dashboard_questions
@@ -159,7 +157,6 @@
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
   - `display`: search for cards/models with specific display types
-  - `exclude_display`: exclude cards/models with a specific display type
   - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
@@ -177,7 +174,6 @@
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
-    exclude-display                     :exclude_display
     filter-items-in-personal-collection :filter_items_in_personal_collection
     has-temporal-dimensions             :has_temporal_dimensions
     include-dashboard-questions         :include_dashboard_questions
@@ -198,7 +194,6 @@
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
-       [:exclude_display                     {:optional true} [:maybe ms/NonBlankString]]
        [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
@@ -220,7 +215,6 @@
                 :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
                 :display                             (set display)
-                :exclude-display                     exclude-display
                 :is-impersonated-user?               (perms/impersonated-user?)
                 :is-sandboxed-user?                  (perms/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
@@ -240,7 +234,8 @@
                 :ids                                 (set ids)
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
-                :include-metadata?                   include-metadata}))
+                :include-metadata?                   include-metadata
+                :has-temporal-dimensions?            has-temporal-dimensions}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]

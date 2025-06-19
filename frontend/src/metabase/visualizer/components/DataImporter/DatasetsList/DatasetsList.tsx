@@ -141,7 +141,6 @@ export function DatasetsList({
       >,
       include_dashboard_questions: true,
       include_metadata: true,
-      exclude_display: "pie",
       has_temporal_dimensions: timeDimensions.length > 0,
       required_non_temporal_dimension_ids: otherDimensions
         .map((dim) => dim.id)
