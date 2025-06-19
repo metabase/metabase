@@ -14,6 +14,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.models.permissions-revision :as perms-revision]
+   [metabase.permissions.types :as perms.types]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -56,9 +57,9 @@
 (mu/defn ellide? :- :boolean
   "If a table has the least permissive value for a perm type, leave it out,
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
-  [type :- data-perms/PermissionType
-   value :- data-perms/PermissionValue]
-  (= (data-perms/least-permissive-value type) value))
+  [type :- perms.types/PermissionType
+   value :- perms.types/PermissionValue]
+  (= (perms.types/least-permissive-value type) value))
 
 (defn- rename-or-ellide-kv
   "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
@@ -69,7 +70,7 @@
 (mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
    Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
-  [type :- data-perms/PermissionType
+  [type :- perms.types/PermissionType
    schema->table-id->api-val]
   (let [transform-val         (fn [perm-val] ((->api-vals type) perm-val))
         coalesce-or-transform (fn [table-id->perm]
@@ -167,7 +168,7 @@
         [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
         [:db-id {:optional true} [:maybe pos-int?]]
         [:audit? {:optional true} [:maybe :boolean]]
-        [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
+        [:perm-type {:optional true} [:maybe perms.types/PermissionType]]]]
    (let [graph (data-perms/data-permissions-graph opts)]
      {:revision (perms-revision/latest-id)
       :groups (-> graph

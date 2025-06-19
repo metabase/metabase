@@ -37,7 +37,7 @@
          :params {:customer [10]}}}
      :collections
      {1 {:perms/collection-access :read}
-      2 {:read-and-write}}
+      2 {:perms/collection-access :read-and-write}}
      :databases
      {1 {:tables {10 {:perms/download-results :no
                       :perms/create-queries :no

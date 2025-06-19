@@ -15,6 +15,7 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.policy :as p.policy]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -58,7 +59,14 @@
 
 (defmethod mi/can-read? :model/Dashboard
   ([instance]
-   (perms/can-read-audit-helper :model/Dashboard instance))
+   (prn @api/*current-permissions-document*)
+   (prn (:collection_id instance))
+   (p.policy/evaluate-policy
+    [:or [:in :self.id :dashboards [:more :perms/dashboard-access :read]]
+     [:in :self.collection_id :collections [:more :perms/collection-access :read]]]
+    @api/*current-permissions-document* instance)
+   ;;(perms/can-read-audit-helper :model/Dashboard instance)
+   )
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Dashboard :id pk))))
 
