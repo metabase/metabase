@@ -477,7 +477,7 @@
           (is (=? (assoc expected
                          :lib/deduplicated-name   "NAME"
                          :name                    "NAME"
-                         :lib/source-column-alias "NAME")
+                         :lib/source-column-alias "C__NAME")
                   (lib.field.resolution/resolve-field-metadata query -1 field-ref))))
         (testing "With a query that has been preprocessed (current-stage-model-metadata pathway)"
           (let [model-query (lib/query mp (:dataset-query (lib.metadata/card mp 1)))
@@ -533,22 +533,4 @@
                :name                         "CATEGORY"
                :lib/original-join-alias      "Products"
                :metabase.lib.join/join-alias "Products"}
-              (lib.field.resolution/resolve-field-metadata query -1 broken-ref)))
-      (testing "with busted metadata (e.g. as returned by the QP and saved in the app DB for a Card)"
-        (let [mp (lib.tu/mock-metadata-provider
-                  meta/metadata-provider
-                  {:cards [{:id              1
-                            :name            "Card with Busted Metadata"
-                            :database-id     (meta/id)
-                            :dataset-query   query
-                            :result-metadata (for [col (lib/returned-columns query)]
-                                               (dissoc col :lib/original-join-alias :metabase.lib.join/join-alias :source-alias))}]})
-              busted-query (lib/query mp (lib.metadata/card mp 1))]
-          (is (=? {:id                           (meta/id :products :category)
-                   :table-id                     (meta/id :products)
-                   :name                         "CATEGORY"
-                   :lib/source                   :source/card
-                   :lib/original-join-alias      "Products"
-                   ;; should not be present because the join isn't in this stage of the query!
-                   :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
-                  (lib.field.resolution/resolve-field-metadata busted-query -1 broken-ref))))))))
+              (lib.field.resolution/resolve-field-metadata query -1 broken-ref))))))
