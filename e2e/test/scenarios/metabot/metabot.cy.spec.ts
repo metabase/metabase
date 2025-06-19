@@ -10,7 +10,6 @@ import {
   popover,
   restore,
   sendMetabotMessage,
-  setTokenFeatures,
 } from "e2e/support/helpers";
 
 describe("Metabot UI", () => {
@@ -40,7 +39,7 @@ describe("Metabot UI", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      setTokenFeatures("all");
+      H.activateToken("bleeding-edge");
       cy.visit("/");
       cy.wait("@sessionProperties");
     });

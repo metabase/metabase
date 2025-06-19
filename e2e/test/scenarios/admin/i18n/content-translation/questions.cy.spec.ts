@@ -21,7 +21,7 @@ describe("scenarios > content translation > static embedding > questions", () =>
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("bleeding-edge");
 
       H.createQuestion(
         {
