@@ -111,40 +111,6 @@
       (set-weights! context overrides))
     (search.config/weights context)))
 
-(api.macros/defendpoint :post "/visualization-compatible"
-  "Search for items compatible with current visualization context.
-  Test endpoint for visualization-specific search filtering."
-  [_route-params
-   _query-params
-   {:keys [q limit models display include_dashboard_questions
-           include_metadata has_temporal_dimensions required_non_temporal_dimension_ids]}
-   :- [:map
-       [:q                            {:optional true} [:maybe ms/NonBlankString]]
-       [:limit                        {:default 10} ms/PositiveInt]
-       [:models                       {:default ["card" "dataset" "metric"]} [:maybe [:vector ms/NonBlankString]]]
-       [:display                      {:optional true} [:maybe [:vector ms/NonBlankString]]]
-       [:include_dashboard_questions  {:default true} :boolean]
-       [:include_metadata             {:default true} :boolean]
-       [:has_temporal_dimensions      {:optional true} [:maybe :boolean]]
-       [:required_non_temporal_dimension_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]]]
-  ;; Build search context
-  (let [search-ctx (search/search-context
-                    {:current-user-id              api/*current-user-id*
-                     :is-impersonated-user?        (perms/impersonated-user?)
-                     :is-sandboxed-user?           (perms/sandboxed-user?)
-                     :is-superuser?                api/*is-superuser?*
-                     :current-user-perms           @api/*current-user-permissions-set*
-                     :limit                        limit
-                     :models                       (set models)
-                     :offset                       0
-                     :search-string                q
-                     :display                      (set display)
-                     :has-temporal-dimensions?     has_temporal_dimensions
-                     :required-non-temporal-dimension-ids required_non_temporal_dimension_ids
-                     :include-dashboard-questions? include_dashboard_questions
-                     :include-metadata?            include_metadata})]
-    (search/search search-ctx)))
-
 (api.macros/defendpoint :get "/"
   "Search for items in Metabase.
   For the list of supported models, check [[metabase.search.config/all-models]].
@@ -158,6 +124,7 @@
   - `created_by`: search for items created by a specific user
   - `display`: search for cards/models with specific display types
   - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
+  - `required_non_temporal_dimension_ids`: search for cards containing all specified non-temporal dimension field IDs
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
@@ -176,6 +143,7 @@
     created-by                          :created_by
     filter-items-in-personal-collection :filter_items_in_personal_collection
     has-temporal-dimensions             :has_temporal_dimensions
+    required-non-temporal-dimension-ids :required_non_temporal_dimension_ids
     include-dashboard-questions         :include_dashboard_questions
     last-edited-at                      :last_edited_at
     last-edited-by                      :last_edited_by
@@ -195,6 +163,7 @@
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
        [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
+       [:required_non_temporal_dimension_ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
        [:last_edited_by                      {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:model_ancestors                     {:default false} [:maybe :boolean]]
@@ -235,7 +204,8 @@
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
                 :include-metadata?                   include-metadata
-                :has-temporal-dimensions?            has-temporal-dimensions}))
+                :has-temporal-dimensions?            has-temporal-dimensions
+                :required-non-temporal-dimension-ids (seq (sort required-non-temporal-dimension-ids))}))
       (analytics/inc! :metabase-search/response-ok))
     (catch Exception e
       (let [status-code (:status-code (ex-data e))]
