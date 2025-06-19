@@ -230,8 +230,8 @@
     ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
     ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
     ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/previous-stage-join-alias` or add a new key like `:lib/original-join-alias` instead to serve this purpose
-    ;; since `:source-alias` is not set or used correctly. Check out experimental
+    ;; `:lib/previous-stage-join-alias` or `:lib/original-join-alias` instead to serve this purpose since
+    ;; `:source-alias` is not set or used correctly. Check out experimental
     ;; https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban' this key so we can root
     ;; out anywhere trying to use it. Going forward, we should use `:lib/previous-stage-join-alias` instead when we
     [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
@@ -245,6 +245,9 @@
     ;; join alias used in the stage immediately prior to this one. Not currently set consistently (yet). We should try
     ;; to make better use of it going forward.
     [:lib/previous-stage-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
+    ;; from a previous stage.
+    [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; other misc namespaced keys
     [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
