@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
   useListRecentsQuery,
-  useVisualizationCompatibleSearchMutation,
+  useVisualizationCompatibleSearchQuery,
 } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
@@ -77,15 +77,15 @@ export function DatasetsList({
   const datasets = useSelector(getDatasets);
 
   // State to store visualization search results
-  const [visualizationSearchResult, setVisualizationSearchResult] = useState<
-    any[]
-  >([]);
-  const [isVisualizationSearchLoading, setIsVisualizationSearchLoading] =
-    useState(false);
+  // const [visualizationSearchResult, setVisualizationSearchResult] = useState<
+  //   any[]
+  // >([]);
+  // const [isVisualizationSearchLoading, setIsVisualizationSearchLoading] =
+  //   useState(false);
 
   // Test the new visualization-compatible endpoint
-  const [triggerVisualizationSearch] =
-    useVisualizationCompatibleSearchMutation();
+  // const [triggerVisualizationSearch] =
+  //   useVisualizationCompatibleSearchMutation();
 
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
@@ -125,6 +125,35 @@ export function DatasetsList({
       },
     );
 
+  const { timeDimensions, otherDimensions } = useMemo(() => {
+    return partitionTimeDimensions(visualizationColumns || []);
+  }, [visualizationColumns]);
+
+  const {
+    data: visualizationSearchResult = { data: [] },
+    isLoading: isVisualizationSearchLoading,
+  } = useVisualizationCompatibleSearchQuery(
+    {
+      q: search.length > 0 ? search : undefined, // Include search query if present
+      limit: 50,
+      models: ["card", "dataset", "metric"] as Array<
+        "card" | "dataset" | "metric"
+      >,
+      include_dashboard_questions: true,
+      include_metadata: true,
+      exclude_display: "pie",
+      has_temporal_dimensions: timeDimensions.length > 0,
+      required_non_temporal_dimension_ids: otherDimensions
+        .map((dim) => dim.id)
+        .filter((id) => id != null)
+        .sort((a, b) => a - b),
+    },
+    {
+      skip: !visualizationType || !visualizationColumns,
+      refetchOnMountOrArgChange: true,
+    },
+  );
+
   const debouncedIsVisualizationSearchLoading = useDebouncedValue(
     isVisualizationSearchLoading || isListRecentsLoading,
     300, // Adjust debounce duration as needed
@@ -147,80 +176,6 @@ export function DatasetsList({
     [dataSources, handleAddDataSource, handleRemoveDataSource],
   );
 
-  // Use visualization-compatible endpoint for both search and recent items
-  useEffect(() => {
-    // Only trigger when we have visualization context
-    if (visualizationType && visualizationColumns) {
-      setIsVisualizationSearchLoading(true);
-
-      // Extract dimension IDs from current visualization columns
-      const { timeDimensions, otherDimensions } =
-        partitionTimeDimensions(visualizationColumns);
-
-      const payload = {
-        q: search.length > 0 ? search : undefined, // Include search query if present
-        limit: 50,
-        models: ["card", "dataset", "metric"] as Array<
-          "card" | "dataset" | "metric"
-        >,
-        include_dashboard_questions: true,
-        include_metadata: true,
-        exclude_display: "pie",
-        // display: [
-        //   "bar",
-        //   "line",
-        //   "table",
-        //   "scalar",
-        //   "row",
-        //   "area",
-        //   "combo",
-        //   "pivot",
-        //   "smartscalar",
-        //   "gauge",
-        //   "progress",
-        //   "funnel",
-        //   "object",
-        //   "map",
-        //   "scatter",
-        //   "waterfall",
-        //   "sankey",
-        // ],
-        has_temporal_dimensions: timeDimensions.length > 0,
-        required_non_temporal_dimension_ids: otherDimensions
-          .map((dim) => dim.id)
-          .filter((id) => id != null)
-          .sort((a, b) => a - b),
-        // visualization_context: {
-        //   display: visualizationType || null,
-        //   dimensions: {
-        //     temporal: timeDimensions
-        //       .map((col) => col.id)
-        //       .filter((id): id is number => id != null),
-        //     non_temporal: otherDimensions
-        //       .map((col) => col.id)
-        //       .filter((id): id is number => id != null),
-        //   },
-        // },
-      };
-
-      triggerVisualizationSearch(payload)
-        .then((result) => {
-          setVisualizationSearchResult(result.data?.data || []);
-          setIsVisualizationSearchLoading(false);
-        })
-        .catch((error) => {
-          console.error("Visualization-compatible endpoint error:", error);
-          setVisualizationSearchResult([]);
-          setIsVisualizationSearchLoading(false);
-        });
-    }
-  }, [
-    search,
-    visualizationType,
-    visualizationColumns,
-    triggerVisualizationSearch,
-  ]);
-
   const items = useMemo(() => {
     if (!visualizationType || !columns || !settings || !computedSettings) {
       return allRecents
@@ -234,14 +189,14 @@ export function DatasetsList({
         }));
     }
 
-    return visualizationSearchResult
+    return visualizationSearchResult.data
       .filter(
         (maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model) &&
           shouldIncludeDashboardQuestion(maybeCard, dashboardId),
       )
       .map((card) => ({
-        ...createDataSource("card", card.id, card.name),
+        ...createDataSource("card", +card.id, card.name),
         display: card.display,
         result_metadata: card.result_metadata,
       }))

@@ -1,5 +1,9 @@
 import { trackSearchRequest } from "metabase/search/analytics";
-import type { SearchRequest, SearchResponse } from "metabase-types/api";
+import type {
+  SearchRequest,
+  SearchResponse,
+  SearchResult,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 import { provideSearchItemListTags } from "./tags";
@@ -19,6 +23,9 @@ interface VisualizationCompatibleSearchRequest {
   models?: Array<"card" | "dataset" | "metric">;
   include_dashboard_questions?: boolean;
   include_metadata?: boolean;
+  exclude_display?: string;
+  has_temporal_dimensions?: boolean;
+  required_non_temporal_dimension_ids?: number[];
   visualization_context?: VisualizationContext;
 }
 
@@ -42,7 +49,10 @@ export const searchApi = Api.injectEndpoints({
         }
       },
     }),
-    visualizationCompatibleSearch: builder.mutation<any, VisualizationCompatibleSearchRequest>({
+    visualizationCompatibleSearch: builder.query<
+      { data: SearchResult[] },
+      VisualizationCompatibleSearchRequest
+    >({
       query: (data) => ({
         method: "POST",
         url: "/api/search/visualization-compatible",
@@ -52,4 +62,5 @@ export const searchApi = Api.injectEndpoints({
   }),
 });
 
-export const { useSearchQuery, useVisualizationCompatibleSearchMutation } = searchApi;
+export const { useSearchQuery, useVisualizationCompatibleSearchQuery } =
+  searchApi;
