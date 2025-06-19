@@ -5,9 +5,9 @@ import { t } from "ttag";
 import "react-resizable/css/styles.css";
 
 import { Box, Button, Card, Group, Stack } from "metabase/ui";
-import { useSdkIframeEmbedNavigation } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-sdk-iframe-embed-navigation";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { useSdkIframeEmbedNavigation } from "../hooks";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
