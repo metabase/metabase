@@ -26,8 +26,8 @@
     scope
     (let [{:keys [card_id dashboard_id]} (t2/select-one [:model/DashboardCard :card_id :dashboard_id]
                                                         (:dashcard-id scope))]
-      (merge {:card-id (or card_id missing-id)
-              :dashboard-id (or dashboard_id missing-id)}
+      (merge {:dashboard-id (or dashboard_id missing-id)}
+             (when card_id {:card-id card_id})
              scope))))
 
 (defn- hydrate-from-card [scope card-id]
