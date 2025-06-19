@@ -625,6 +625,8 @@
                                                                      :strategy     :left-join
                                                                      :fk-field-id  %product-id}]
                                                      :expressions  {"pivot-grouping" [:abs 0]}
+                                                     ;; XXX: START HERE: This is failing because products-id and
+                                                     ;; products-category switched places - missing a sort by position?
                                                      :fields       [product-id
                                                                     created-at
                                                                     pivot-grouping

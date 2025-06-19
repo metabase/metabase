@@ -200,6 +200,7 @@
 (defmethod ->pMBQL :mbql.stage/mbql
   [stage]
   (let [aggregations (from-clause-list stage :aggregation)
+        breakouts    (from-clause-list stage :breakout)
         expressions  (->> stage
                           :expressions
                           (mapv (fn [[k v]]
@@ -210,9 +211,9 @@
     (metabase.lib.convert/with-aggregation-list aggregations
       (let [stage (-> stage
                       stage-source-card-id->pMBQL
-                      (m/update-existing :breakout from-clause-list :breakout)
                       (m/assoc-some :expressions expressions
-                                    :aggregation aggregations))
+                                    :aggregation aggregations
+                                    :breakout    breakouts))
             stage (reduce
                    (fn [stage k]
                      (if-not (get stage k)
