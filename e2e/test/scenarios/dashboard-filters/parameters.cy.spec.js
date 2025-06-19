@@ -1766,7 +1766,7 @@ describe("scenarios > dashboard > parameters", () => {
       H.undoToast().should("not.exist");
     });
 
-    it("should allow connecting inline parameters only to their own card", () => {
+    it("should allow connecting inline parameters only to cards on the same tab", () => {
       H.createQuestionAndDashboard({
         questionDetails: ordersCountByCategory,
       }).then(({ body: dashcard }) => {
@@ -1776,23 +1776,28 @@ describe("scenarios > dashboard > parameters", () => {
         // Add a second card
         H.openQuestionsSidebar();
         H.sidebar().findByText("Orders, Count").click();
-        H.getDashboardCard(1).findByText("Count").should("exist");
+
+        // Add a second tab
+        H.createNewTab();
+        H.goToTab("Tab 2");
+
+        // Add a question to the second tab
+        H.sidebar().findByText("Orders, Count").click();
+
+        H.goToTab("Tab 1");
 
         // Add a filter to the first card
         H.setDashCardFilter(0, "Text or Category", null, "Category");
         H.selectDashboardFilter(H.getDashboardCard(0), "Category");
 
+        // Connect it to the second card
+        H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+
+        H.goToTab("Tab 2");
+
         // Ensure the filter can't be connected to the second card
-        H.getDashboardCard(1)
-          .findByText("This filter can only connect to its own card.")
-          .should("be.visible");
-
-        // Disconnect the filter from the first card
-        H.sidebar().findByText("Disconnect from card").click();
-
-        // Ensure it still can't be connected to the second card
-        H.getDashboardCard(1)
-          .findByText("This filter can only connect to its own card.")
+        H.getDashboardCard(0)
+          .findByText("The selected filter is on another tab.")
           .should("be.visible");
       });
     });
