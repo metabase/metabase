@@ -487,6 +487,7 @@
 
 (defn- row-data-mapping
   ;; TODO get this working with arbitrary nesting of inner actions
+  ;;      it would also be nice to avoid running apply-mapping twice (once on this stub action, once on the real one)
   "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
   [{:keys [param-map] :as action}]
   ;; We create a version of the action that will "map" to an input which is just the row data itself.
