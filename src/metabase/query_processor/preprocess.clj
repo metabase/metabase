@@ -52,7 +52,8 @@
 ;;; flavor of MBQL it is written for.
 
 (mu/defn- ->legacy :- mbql.s/Query
-  [query]
+  [query :- [:map
+             [:database ::lib.schema.id/database]]]
   (lib/->legacy-MBQL query))
 
 (defn- ^:deprecated ensure-legacy [middleware-fn]
@@ -185,7 +186,7 @@
      query
      middleware)))
 
-(mu/defn query->expected-cols :- [:maybe [:sequential :map]]
+(mu/defn query->expected-cols :- [:maybe [:sequential ::annotate/snake_cased-col]]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."

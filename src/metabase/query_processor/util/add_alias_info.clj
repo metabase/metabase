@@ -272,15 +272,14 @@
                                  (when (string? id-or-name)
                                    [id-or-name (some-> driver/*driver* (driver/escape-alias id-or-name))]))]
           (some #(field-name-match % all-exports source-metadata field-exports) field-names))
-        ;; otherwise we failed to find a match!
-        (log/errorf "Failed to find matching field for\n\n%s\n\nin source query, query may not work! Found:\n\n%s"
-                    (pr-str field-clause)
-                    (u/pprint-to-str (into #{}
-                                           (map (fn [a-ref]
-                                                  (lib.util.match/match-one a-ref
-                                                    (m :guard (every-pred map? ::desired-alias))
-                                                    (:metabase.query-processor.util.add-alias-info/desired-alias m))))
-                                           (exports source-query)))))))
+        ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
+        ;; there's probably something wrong.
+        (when-not (:native source-query)
+          (log/errorf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
+                      (pr-str field-clause)
+                      (u/pprint-to-str (into #{}
+                                             (map (some-fn ::desired-alias :name identity))
+                                             all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause

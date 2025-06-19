@@ -45,6 +45,7 @@
    [:map
     {:decode/normalize common/normalize-map}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
+    [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
     ;; Only restriction is that, if present, it is non-nil.
     ;; It is valid to have a blank query like `{:type :native}` in legacy.
@@ -173,17 +174,18 @@
   [:and
    [:map
     {:decode/normalize common/normalize-map}
-    [:lib/type     [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
-    [:joins        {:optional true} [:ref ::join/joins]]
-    [:expressions  {:optional true} [:ref ::expression/expressions]]
-    [:breakout     {:optional true} [:ref ::breakouts]]
-    [:aggregation  {:optional true} [:ref ::aggregation/aggregations]]
-    [:fields       {:optional true} [:ref ::fields]]
-    [:filters      {:optional true} [:ref ::filters]]
-    [:order-by     {:optional true} [:ref ::order-by/order-bys]]
-    [:source-table {:optional true} [:ref ::id/table]]
-    [:source-card  {:optional true} [:ref ::id/card]]
-    [:page         {:optional true} [:ref ::page]]]
+    [:lib/type           [:= {:decode/normalize common/normalize-keyword} :mbql.stage/mbql]]
+    [:lib/stage-metadata {:optional true} [:maybe [:ref ::lib.schema.metadata/stage]]]
+    [:joins              {:optional true} [:ref ::join/joins]]
+    [:expressions        {:optional true} [:ref ::expression/expressions]]
+    [:breakout           {:optional true} [:ref ::breakouts]]
+    [:aggregation        {:optional true} [:ref ::aggregation/aggregations]]
+    [:fields             {:optional true} [:ref ::fields]]
+    [:filters            {:optional true} [:ref ::filters]]
+    [:order-by           {:optional true} [:ref ::order-by/order-bys]]
+    [:source-table       {:optional true} [:ref ::id/table]]
+    [:source-card        {:optional true} [:ref ::id/card]]
+    [:page               {:optional true} [:ref ::page]]]
    [:fn
     {:error/message ":source-query is not allowed in pMBQL queries."}
     #(not (contains? % :source-query))]

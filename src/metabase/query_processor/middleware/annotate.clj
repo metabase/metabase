@@ -53,6 +53,10 @@
   (fn [query _rff]
     (last-stage-type query)))
 
+;;; TODO (Cam 6/18/25) -- only convert unnamespaced keys to snake case; other keys such as `lib/` keys should stay in
+;;; kebab-case. No point in converting them back and forth a hundred times, and it's not like JS can use namespaced keys
+;;; directly without bracket notation anyway (actually ideally the FE wouldn't even be using result metadata directly --
+;;; right?)
 (defn- ->snake_case [col]
   (as-> col col
     (update-keys col u/->snake_case_en)

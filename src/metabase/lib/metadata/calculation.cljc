@@ -487,7 +487,7 @@
   previous stages. Thanks to that, it is possible to avoid presetting binning for previously binned fields when
   breakout column popover is opened in query builder.
 
-  The value is used in [[metabase.lib.field/resolve-field-metadata]]."
+  The value is used in [[metabase.lib.field.resolution/resolve-field-metadata]]."
   false)
 
 (mu/defn returned-columns :- [:maybe ColumnsWithUniqueAliases]

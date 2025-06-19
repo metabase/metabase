@@ -101,7 +101,7 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
-(mu/defn resolve-field-id-in-source-card :- ::lib.schema.metadata/column
+(mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
   Saved Question metadata if available.
 

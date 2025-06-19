@@ -8,6 +8,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -108,9 +109,11 @@
               ;; accordingly.
               (not= (:semantic-type source-metadata-col) :type/FK)
               (assoc :fk-target-field-id nil))]
-    ;; :effective-type is required, but not always set, see e.g.,
-    ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
-    (u/assoc-default col :effective-type (:base-type col))))
+    (as-> col col
+      ;; :effective-type is required, but not always set, see e.g.,
+      ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
+      (u/assoc-default col :effective-type (:base-type col))
+      (lib.normalize/normalize ::lib.schema.metadata/column col))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata."

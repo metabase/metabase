@@ -6,8 +6,9 @@
    [metabase.util.malli.registry :as mr]))
 
 (defn- kebab-cased-key? [k]
-  (or (contains? lib.schema.common/HORRIBLE-keys k)
-      (not (str/includes? k "_"))))
+  (and (keyword? k)
+       (or (contains? lib.schema.common/HORRIBLE-keys k)
+           (not (str/includes? k "_")))))
 
 (defn- kebab-cased-map? [m]
   (and (map? m)
@@ -301,10 +302,12 @@
   `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
   metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
   [:multi
-   {:dispatch (fn [m]
-                (boolean (:lib/type m)))}
+   {:dispatch #(boolean (:lib/type %))}
    [true
-    [:ref ::column]]
+    [:merge
+     [:ref ::column]
+     [:map
+      {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
    ;; If it's not already MLv2 metadata just make sure it at the least something that can pass for legacy metadata.
    ;; This is a sanity check -- we should not be seen maps that have duplicate keys because of case confusion. They
    ;; should be all one or the other.
@@ -434,5 +437,5 @@
   `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
   `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
   [:map
-   [:lib/type [:= :metadata/results]]
+   [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])

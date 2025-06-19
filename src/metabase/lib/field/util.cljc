@@ -8,7 +8,8 @@
 
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
-  [column :- ::lib.schema.metadata/column]
+  [column :- [:map
+              [:lib/source {:optional true} ::lib.schema.metadata/column-source]]]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
@@ -41,5 +42,5 @@
               (let [original-name ((some-fn :lib/original-name :name) col)]
                 (assoc col
                        :lib/original-name     original-name
-                       :lib/deduplicated-name (deduplicated-name-fn original-name)))))
+                       :lib/deduplicated-name (deduplicated-name-fn (:name col))))))
           cols)))

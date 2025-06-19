@@ -3,10 +3,17 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.humanization :as u.humanization]))
 
 (deftest preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
@@ -104,3 +111,67 @@
                             :alias        "u"
                             :source-table $$users
                             :condition    [:= $user_id &u.users.id]}]})))))))
+
+(deftest ^:parallel model-display-names-test
+  (testing "Preserve display names from models"
+    (let [native-cols (for [col [{:name "EXAMPLE_TIMESTAMP", :base_type :type/DateTime}
+                                 {:name "EXAMPLE_DATE", :base_type :type/Date}
+                                 {:name "EXAMPLE_WEEK_NUMBER", :base_type :type/Integer}
+                                 {:name "EXAMPLE_WEEK", :base_type :type/DateTime}]]
+                        (assoc col :display_name (:name col)))
+          expected-display-names ["Example Timestamp"
+                                  "Example Date"
+                                  "Example Week Number"
+                                  ;; old `annotate` behavior would append the temporal unit to the display name here
+                                  ;; even tho we explicitly overrode the display name in the model metadata. I don't
+                                  ;; think that behavior is desirable. New behavior takes the display name specified
+                                  ;; by the user as-is.
+                                  "Example Week"
+                                  #_"Example Week: Week"]
+          mp (as-> meta/metadata-provider mp
+               (lib.tu/mock-metadata-provider
+                mp
+                {:cards
+                 [{:id              1
+                   :name            "NATIVE"
+                   :database-id     (meta/id)
+                   :dataset-query   {:database (meta/id), :type :native, :native {:query "SELECT * FROM some_table;"}}
+                   :result-metadata native-cols}]})
+               ;; Card 2 is a model that uses the Card 1 (a native query) as a source
+               (lib.tu/mock-metadata-provider
+                mp
+                {:cards
+                 [(let [query (lib.tu.macros/mbql-query nil
+                                {:fields [[:field "EXAMPLE_TIMESTAMP" {:base-type :type/DateTime}]
+                                          [:field "EXAMPLE_DATE" {:base-type :type/Date}]
+                                          [:field "EXAMPLE_WEEK_NUMBER" {:base-type :type/Integer}]
+                                          [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]]
+                                 :source-table "card__1"})]
+                    {:id              2
+                     :type            :model
+                     :name            "MODEL"
+                     :database-id     (meta/id)
+                     :dataset-query   query
+                     :result-metadata (for [col (annotate/expected-cols (lib/query mp query))]
+                                        (assoc col :display_name (u.humanization/name->human-readable-name :simple (:name col))))})]})
+               ;; Card 3 is a model that uses Card 2 (also a model) as a source
+               (lib.tu/mock-metadata-provider
+                mp
+                {:cards
+                 [(let [query (lib.tu.macros/mbql-query nil {:source-table "card__2"})]
+                    {:id              3
+                     :type            :model
+                     :name            "METAMODEL"
+                     :database-id     (meta/id)
+                     :dataset-query   query
+                     ;; make sure we're getting metadata for the PREPROCESSED query.
+                     :result-metadata (qp.preprocess/query->expected-cols (lib/query mp query))})]}))]
+      (testing "Model (Card 2) saved result metadata"
+        (is (= expected-display-names
+               (map :display_name (:result-metadata (lib.metadata/card mp 2))))))
+      (testing "Model => Model (Card 3) saved result metadata"
+        (is (= expected-display-names
+               (map :display_name (:result-metadata (lib.metadata/card mp 3))))))
+      (testing "Ad-hoc Query with Model => Model (Card 3) as source result metadata"
+        (is (= expected-display-names
+               (map :display_name (qp.preprocess/query->expected-cols (lib/query mp (lib.metadata/card mp 3))))))))))
