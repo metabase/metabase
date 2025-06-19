@@ -1,4 +1,5 @@
 import {
+  assertNoUnstructuredSnowplowEvent,
   describeWithSnowplowEE,
   expectUnstructuredSnowplowEvent,
   main,
@@ -11,6 +12,22 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore("blank");
+  });
+
+  it("should redirect correctly from `/setup?use_case=embedding&new_embedding_flow=true&first_name=First&last_name=Last&email=testy@metabase.test&site_name=Epic%20Team`", () => {
+    cy.visit(
+      "/setup?use_case=embedding&new_embedding_flow=true&first_name=First&last_name=Last&email=testy@metabase.test&site_name=Epic%20Team",
+    );
+    cy.location("pathname").should("eq", "/setup/embedding");
+    cy.location("search").should(
+      "eq",
+      "?use_case=embedding&new_embedding_flow=true&first_name=First&last_name=Last&email=testy@metabase.test&site_name=Epic%20Team",
+    );
+
+    // `/setup` should not be rendered and its events should not be sent to not add noise to events
+    assertNoUnstructuredSnowplowEvent({
+      event: "step_seen", // `step_seen` event is sent on `/setup`, on `/setup/embedding` we send `embedding_setup_step_seen`
+    });
   });
 
   it("should allow users to use existing setup flow", () => {
