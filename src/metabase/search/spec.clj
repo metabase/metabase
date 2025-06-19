@@ -37,27 +37,27 @@
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived                 :boolean
-   :collection-id            :pk
-   :created-at               :timestamp
-   :creator-id               :pk
-   :dashboard-id             :int
-   :dashboardcard-count      :int
-   :database-id              :pk
-   :display                  :text
-   :has-temporal-dimensions  :boolean
-   :id                       :text
+  {:archived                   :boolean
+   :collection-id              :pk
+   :created-at                 :timestamp
+   :creator-id                 :pk
+   :dashboard-id               :int
+   :dashboardcard-count        :int
+   :database-id                :pk
+   :display                    :text
+   :has-temporal-dimensions    :boolean
+   :id                         :text
    :non-temporal-dimension-ids :json
-   :last-edited-at           :timestamp
-   :last-editor-id           :pk
-   :last-viewed-at           :timestamp
-   :name                     :text
-   :native-query             nil
-   :official-collection      :boolean
-   :pinned                   :boolean
-   :updated-at               :timestamp
-   :verified                 :boolean
-   :view-count               :int})
+   :last-edited-at             :timestamp
+   :last-editor-id             :pk
+   :last-viewed-at             :timestamp
+   :name                       :text
+   :native-query               nil
+   :official-collection        :boolean
+   :pinned                     :boolean
+   :updated-at                 :timestamp
+   :verified                   :boolean
+   :view-count                 :int})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
