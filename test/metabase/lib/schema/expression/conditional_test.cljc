@@ -38,7 +38,17 @@
                  (mr/validate :mbql.clause/case expr))
       [:case
        {:lib/uuid (str (random-uuid))}
-       [[true 1]] 1])
+       [[true 1]] 1]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true false]] false]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true true]] true]
+      ;;
+      )
 
     (are [expr] (false?
                  (mr/validate :mbql.clause/case expr))
@@ -52,7 +62,15 @@
 
       [:case
        {:lib/uuid (str (random-uuid))}
-       [[true 1]] "A"])))
+       [[true 1]] "A"]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true 1]] true]
+
+      [:case
+       {:lib/uuid (str (random-uuid))}
+       [[true 1]] false])))
 
 (deftest ^:parallel case-type-of-test
   (testing "type-of logic for :case expressions"
@@ -108,7 +126,7 @@
        {:lib/uuid (str (random-uuid))}
        1
        [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} 1]])
-      (are [expr] (false?
+    (are [expr] (false?
 
                  (mr/validate :mbql.clause/coalesce expr))
       [:coalesce
