@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type Fuse from "fuse.js";
 import { getIn } from "icepick";
 import {
   type CSSProperties,
@@ -22,8 +23,14 @@ import {
   AccordionListCell,
   type SharedAccordionProps,
 } from "./AccordionListCell";
-import type { Item, Row, Section } from "./types";
-import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
+import type { Item, Row, SearchProps, Section } from "./types";
+import {
+  type Cursor,
+  getNextCursor,
+  getPrevCursor,
+  getSearchIndex,
+  search,
+} from "./utils";
 
 type Props<
   TItem extends Item,
@@ -41,8 +48,9 @@ type Props<
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
   openSection?: number;
   role?: string;
-  searchProp?: string | string[];
+  searchProp?: SearchProps<TItem>;
   searchable?: boolean | ((section: Section) => boolean | undefined);
+  fuzzySearch?: boolean;
   sections: TSection[];
   style?: CSSProperties;
 
@@ -52,17 +60,19 @@ type Props<
   maxHeight?: number;
 };
 
-type State = {
+type State<TItem extends Item> = {
   openSection: number | null;
   searchText: string;
   cursor: Cursor | null;
   scrollToAlignment: Alignment;
+  searchIndex: Fuse<TItem>;
+  searchResults: Map<TItem, number> | null;
 };
 
 export class AccordionList<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
-> extends Component<Props<TItem, TSection>, State> {
+> extends Component<Props<TItem, TSection>, State<TItem>> {
   _cache: CellMeasurerCache;
 
   listRef: RefObject<List>;
@@ -100,6 +110,11 @@ export class AccordionList<
       searchText: "",
       cursor: null,
       scrollToAlignment: "start",
+      searchIndex: getSearchIndex({
+        sections: props.sections,
+        searchProp: props.searchProp,
+      }),
+      searchResults: null,
     };
 
     this._cache = new CellMeasurerCache({
@@ -140,7 +155,10 @@ export class AccordionList<
     }, 0);
   }
 
-  componentDidUpdate(_prevProps: Props<TItem, TSection>, prevState: State) {
+  componentDidUpdate(
+    _prevProps: Props<TItem, TSection>,
+    prevState: State<TItem>,
+  ) {
     // if anything changes that affects the selected rows we need to clear the row height cache
     if (
       this.state.openSection !== prevState.openSection ||
@@ -148,6 +166,23 @@ export class AccordionList<
     ) {
       this._clearRowHeightCache();
     }
+  }
+
+  static getDerivedStateFromProps<TItem extends Item>(
+    props: Props<TItem>,
+    state: State<TItem>,
+  ) {
+    const { searchText } = state;
+    const searchIndex = getSearchIndex({
+      sections: props.sections,
+      searchProp: props.searchProp,
+    });
+
+    return {
+      ...state,
+      searchIndex,
+      searchResults: search({ searchIndex, searchText }),
+    };
   }
 
   componentWillUnmount() {
@@ -244,7 +279,14 @@ export class AccordionList<
   };
 
   handleChangeSearchText = (searchText: string) => {
-    this.setState({ searchText, cursor: null });
+    this.setState({
+      searchText,
+      cursor: null,
+      searchResults: search({
+        searchIndex: this.state.searchIndex,
+        searchText,
+      }),
+    });
   };
 
   searchPredicate = (item: TItem, searchPropMember: string) => {
@@ -256,11 +298,8 @@ export class AccordionList<
     return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
   };
 
-  checkSectionHasItemsMatchingSearch = (
-    section: TSection,
-    searchFilter: (item: TItem) => boolean,
-  ) => {
-    return (section.items?.filter(searchFilter).length ?? 0) > 0;
+  checkSectionHasItemsMatchingSearch = (section: TSection) => {
+    return (section.items?.filter(this.searchFilter).length ?? 0) > 0;
   };
 
   getFirstSelectedItemCursor = () => {
@@ -362,43 +401,67 @@ export class AccordionList<
   };
 
   searchFilter = (item: TItem) => {
-    const { searchProp = ["name", "displayName"] } = this.props;
+    return this.itemScore(item) < 0.6;
+  };
+
+  itemScore = (item: TItem) => {
+    const { fuzzySearch, searchProp } = this.props;
     const { searchText } = this.state;
 
     if (!searchText || searchText.length === 0) {
-      return true;
+      return 0;
+    }
+
+    if (fuzzySearch) {
+      const { searchResults } = this.state;
+      return searchResults?.get(item) ?? 1;
     }
 
     const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
+    for (const member of searchProps) {
+      if (this.searchPredicate(item, member)) {
+        return 0;
+      }
+    }
 
-    const searchResults = searchProps.map((member) =>
-      this.searchPredicate(item, member),
-    );
-    return searchResults.reduce((acc, curr) => acc || curr);
+    return 1;
   };
 
-  getRowsCached = (
-    searchFilter: (item: TItem) => boolean,
-    searchable:
-      | boolean
-      | ((section: TSection) => boolean | undefined)
-      | undefined,
-    sections: TSection[],
-    alwaysTogglable: boolean,
-    alwaysExpanded: boolean,
-    hideSingleSectionTitle: boolean,
-    itemIsSelected: (item: TItem, index: number) => boolean | undefined,
-    openSection: number | null,
-    _globalSearch: boolean,
-    searchText: string,
-  ): Row<TItem, TSection>[] => {
+  sectionScore = (section: TSection) => {
+    if (!section.items) {
+      return 1;
+    }
+
+    let best = 1;
+    for (const item of section.items) {
+      const score = this.itemScore(item);
+      best = Math.min(best, score);
+    }
+    return best;
+  };
+
+  getRows = (): Row<TItem, TSection>[] => {
+    const {
+      alwaysTogglable = false,
+      alwaysExpanded = false,
+      hideSingleSectionTitle = false,
+      itemIsSelected = () => false,
+      searchable = (section: TSection) =>
+        section?.items && section.items.length > 10,
+      sections,
+    } = this.props;
+    const { searchText } = this.state;
+
+    const openSection = this.getOpenSection();
+    const isSearching = searchText.length > 0;
+
     // if any section is searchable just enable a global search
-    let globalSearch = _globalSearch;
+    let globalSearch = this.props.globalSearch ?? false;
 
     const sectionIsExpanded = (sectionIndex: number) =>
       alwaysExpanded ||
       openSection === sectionIndex ||
-      (globalSearch && searchText.length > 0);
+      (globalSearch && isSearching);
 
     const sectionIsSearchable = (sectionIndex: number) =>
       typeof searchable === "function"
@@ -406,7 +469,14 @@ export class AccordionList<
         : searchable;
 
     const rows: Row<TItem, TSection>[] = [];
-    for (const [sectionIndex, section] of sections.entries()) {
+
+    const sortedSections = isSearching
+      ? Array.from(sections).sort(
+          (a, b) => this.sectionScore(a) - this.sectionScore(b),
+        )
+      : sections;
+
+    for (const [sectionIndex, section] of sortedSections.entries()) {
       const isLastSection = sectionIndex === sections.length - 1;
       if (
         section.name &&
@@ -415,7 +485,7 @@ export class AccordionList<
         if (
           !searchable ||
           !globalSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
+          this.checkSectionHasItemsMatchingSearch(section) ||
           section.type === "action"
         ) {
           if (section.type === "action") {
@@ -460,8 +530,13 @@ export class AccordionList<
         section.items.length > 0 &&
         !section.loading
       ) {
-        for (const [itemIndex, item] of section.items.entries()) {
-          if (searchFilter(item)) {
+        const sortedItems = isSearching
+          ? Array.from(section.items).sort(
+              (a, b) => this.itemScore(a) - this.itemScore(b),
+            )
+          : section.items;
+        for (const [itemIndex, item] of sortedItems.entries()) {
+          if (this.searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
             if (itemIsSelected(item, itemIndex)) {
               this._initialSelectedRowIndex = rows.length;
@@ -489,7 +564,6 @@ export class AccordionList<
     }
 
     if (globalSearch) {
-      const isSearching = searchText.length > 0;
       const isEmpty = rows.filter((row) => row.type === "item").length === 0;
 
       if (isSearching && isEmpty) {
@@ -511,36 +585,6 @@ export class AccordionList<
 
     return rows;
   };
-
-  getRows(): Row<TItem, TSection>[] {
-    const {
-      sections,
-      searchable = (section: TSection) =>
-        section?.items && section.items.length > 10,
-      alwaysTogglable = false,
-      alwaysExpanded = false,
-      hideSingleSectionTitle = false,
-      itemIsSelected = () => false,
-      globalSearch = false,
-    } = this.props;
-
-    const { searchText } = this.state;
-
-    const openSection = this.getOpenSection();
-
-    return this.getRowsCached(
-      this.searchFilter,
-      searchable,
-      sections,
-      alwaysTogglable,
-      alwaysExpanded,
-      hideSingleSectionTitle,
-      itemIsSelected,
-      openSection,
-      globalSearch,
-      searchText,
-    );
-  }
 
   isVirtualized = () => this.props.maxHeight !== Infinity;
 

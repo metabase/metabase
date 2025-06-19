@@ -1,7 +1,9 @@
+import { shallowEqual } from "@mantine/hooks";
+import Fuse from "fuse.js";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 
-import type { Section } from "./types";
+import type { Item, SearchProps, Section } from "./types";
 
 export type Cursor = {
   sectionIndex: number;
@@ -174,3 +176,66 @@ export function isReactNode(x: unknown): x is ReactNode {
     x === undefined
   );
 }
+
+export const getSearchIndex = memoize(function <
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>({
+  sections,
+  searchProp = ["name", "displayName"],
+}: {
+  sections: TSection[];
+  searchProp?: SearchProps<TItem>;
+}) {
+  const items = sections.flatMap((section) => section.items ?? []);
+  const keys = Array.isArray(searchProp) ? searchProp : [searchProp];
+
+  return new Fuse<TItem>(items, {
+    keys,
+    includeScore: true,
+    isCaseSensitive: false,
+  });
+});
+
+/**
+ * Memoizes a function based on shallow equality of its argument.
+ */
+function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
+  let lastArgs: T | null = null;
+  let lastResult: R | null = null;
+
+  return function (args: T): R {
+    if (
+      lastArgs == null ||
+      lastResult == null ||
+      !shallowEqual(lastArgs, args)
+    ) {
+      lastArgs = args;
+      lastResult = fn(args);
+    }
+    return lastResult;
+  };
+}
+
+export const search = memoize(function <T>({
+  searchIndex,
+  searchText,
+}: {
+  searchIndex: Fuse<T>;
+  searchText: string;
+}): Map<T, number> | null {
+  if (searchText === "") {
+    return null;
+  }
+  const results = searchIndex
+    .search(searchText, {
+      limit: 50,
+    })
+    .filter((result) => result.score && result.score < 0.4);
+
+  const map = new Map<T, number>();
+  for (const result of results) {
+    map.set(result.item, result.score ?? 1);
+  }
+  return map;
+});
