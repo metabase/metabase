@@ -51,6 +51,7 @@ export const ActionInputSearchableSelect = ({
   });
 
   const { options, isLoading, isFetching } = useActionInputSearchableOptions({
+    initialValue,
     search,
     fieldId: fieldId,
     searchFieldId: searchFieldId,

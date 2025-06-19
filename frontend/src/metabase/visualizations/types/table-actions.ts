@@ -9,6 +9,7 @@ import type {
 export type TableActionsExecuteFormVizOverride = Partial<
   Omit<ActionFormSettings, "fields">
 > & {
+  id: string;
   fields?: Record<ParameterId, Partial<FieldSettings>>;
 };
 

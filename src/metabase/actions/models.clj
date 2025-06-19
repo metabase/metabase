@@ -1,6 +1,7 @@
 (ns metabase.actions.models
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -333,6 +334,58 @@
     (map (fn [action]
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))
+
+(defn- create-or-fix-action-id
+  "Even though currently these actions only live in the visualization settings, they are conceptually first-class
+  actions, which can be used with the /execute API etc. This means that they need unique identifiers, and since we need
+  a way to retrieve the corresponding JSON easily, we embed the dashcard id within their string id.
+
+  Since we are saving this JSON inside, say, a dashcard, there's a chicken-and-egg problem when pre-configuring actions
+  before saving the dashcard for the first time. In this case, we use a placeholder, and rely on the fact that these
+  actions will be executed with the same dashcard in their :scope.
+
+  When the dashcard is saved for the second time, we fix all these placeholders, so that the ids are less obscure, and
+  the semantically dubious dependency on :scope is minimized.
+
+  Once these actions are stored in some sort of first-class action table, we won't have this issue."
+  [parent-type parent-id id]
+  (let [prefix         (str parent-type \:)
+        unknown-prefix (str prefix "unknown")
+        parent-or-?    (if (pos-int? parent-id) parent-id "unknown")]
+    (cond
+      ;; temp id, just prefix it
+      (and id (re-matches u/uuid-regex id))
+      (format "%s:%s:%s" parent-type parent-or-? id)
+      ;; missing, or not a format we recognize - init from scratch
+      (or (not id) (not (str/starts-with? id prefix)))
+      (format "%s:%s:%s" parent-type parent-or-? (u/generate-nano-id))
+      ;; chicken-and-egg resulted in a suboptimal id, fix it
+      (and (str/starts-with? id unknown-prefix) parent-id)
+      (str/replace id unknown-prefix (str prefix parent-id))
+      :else
+      id)))
+
+(defn save-grid-action
+  "In the future:
+
+   Determine whether there are unsaved changes for a new or existing action related to some data grid, e.g. an Editable.
+   If so, create-or-update that action, and return an opaque reference to it, to take its place in the viz settings.
+   Otherwise, return the existing reference unchanged.
+
+   Today:
+
+   The actions just keep living here inside the viz settings of the grid, but we use this function to initialize ids,
+   and apply defaults. We could also use it for validation and migrate-on-write updates.
+
+   We'll move into the future as part of WRK-544."
+  [parent-type parent-id grid-action]
+  (-> grid-action
+      ;; Make sure the id is globally unique, and sufficient to retrieve the definition.
+      (update :id (partial create-or-fix-action-id parent-type parent-id))
+      ;; At the time of writing, FE only allows the creation of row actions. Make sure this is explicit.
+      (update :actionType #(or % "data-grid/row-action"))
+      ;; By default actions are enabled.
+      (update :enabled #(if (some? %) % true))))
 
 ;; to avoid headaches with rewriting too much frontend code we will hack in a representation of an operation and a single
 ;; parameter as an integer. The frontend picker can when creating the dashcard pass the negative action_id.

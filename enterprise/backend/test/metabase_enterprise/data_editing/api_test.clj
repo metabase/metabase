@@ -1143,6 +1143,24 @@
                                                                                            (assoc-in [:params :bb] "necessary")
                                                                                            (assoc-in [:params :cc] "optional"))))))))))))))))
 
+(deftest unified-execute-unsaved-action-id
+  (let [url "action/v2/execute"
+        req #(-> (mt/user-http-request-full-response
+                  (:user % :crowberto) :post url
+                  (merge {:scope {:unknown :legacy-action} :input {}} %))
+                 (dissoc :headers))]
+    (mt/with-premium-features #{:table-data-editing}
+      (data-editing.tu/with-data-editing-enabled! true
+        (mt/with-actions-enabled
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (testing "Cannot execute a temporary action id"
+              (is (=? {:status 400
+                       :body   {:message "Cannot execute an unsaved action given only its temporary id"}}
+                      (req {:action_id (str (random-uuid))
+                            :scope     {:table-id (mt/id :venues)}
+                            :input     {:id 1}
+                            :params    {:status "approved"}}))))))))))
+
 (deftest list-and-add-to-dashcard-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}

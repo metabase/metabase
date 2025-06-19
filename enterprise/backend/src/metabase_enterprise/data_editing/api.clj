@@ -339,12 +339,15 @@
                          (let [dashboard-id (api/check-404 (:dashboard-id scope))]
                            (api/read-check :model/Dashboard dashboard-id)
                            {:dashboard-action (parse-long dashcard-id)})
-                         ;; Not a fancy encoded string, it must refer directly to a primitive.
-                         (let [kw (keyword raw-id)]
-                           {:action-kw kw
-                            :mapping   (actions/default-mapping kw scope)})))
+                         (if (re-matches u/uuid-regex raw-id)
+                           (throw (ex-info "Cannot execute an unsaved action given only its temporary id"
+                                           {:status-code 400, :action-id raw-id}))
+                           ;; Not a fancy encoded string, it must refer directly to a primitive.
+                           (let [kw (keyword raw-id)]
+                             {:action-kw kw
+                              :mapping   (actions/default-mapping kw scope)}))))
     :else
-    (throw (ex-info "Unexpected id value" {:status 400, :action-id raw-id}))))
+    (throw (ex-info "Unexpected id value" {:status-code 400, :action-id raw-id}))))
 
 (defn- hydrate-mapping [mapping]
   (walk/postwalk-replace
