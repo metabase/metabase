@@ -12,8 +12,8 @@ export interface StepDefinition {
 export interface StepProps {
   nextStep: () => void;
   prevStep?: () => void;
-  goToStep: (key: string) => void;
-  stepKey: string;
+  goToStep: (key: EmbeddingSetupStepKey) => void;
+  stepKey: EmbeddingSetupStepKey;
   stepIndex: number;
   totalSteps: number;
 }
