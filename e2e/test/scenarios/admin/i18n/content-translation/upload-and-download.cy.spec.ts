@@ -199,6 +199,11 @@ describe("scenarios > admin > localization > content translation", () => {
           },
           { force: true }, // We need this because the input has display: none
         );
+
+        cy.findByRole("dialog", { name: /upload new dictionary/i })
+          .button("Replace existing dictionary")
+          .click();
+
         cy.findAllByRole("alert")
           .contains(/The file is larger than 1.5 MB/)
           .should("be.visible");
@@ -221,6 +226,10 @@ describe("scenarios > admin > localization > content translation", () => {
           },
           { force: true },
         );
+
+        cy.findByRole("dialog", { name: /upload new dictionary/i })
+          .button("Replace existing dictionary")
+          .click();
         cy.findAllByRole("alert")
           .contains(/CSV error/)
           .should("be.visible");
