@@ -223,13 +223,19 @@ export const search = memoize(function <T>({
 }: {
   searchIndex: Fuse<T>;
   searchText: string;
-}): Fuse.FuseResult<T>[] | null {
+}): Map<T, number> | null {
   if (searchText === "") {
     return null;
   }
-  return searchIndex
+  const results = searchIndex
     .search(searchText, {
       limit: 50,
     })
     .filter((result) => result.score && result.score < 0.4);
+
+  const map = new Map<T, number>();
+  for (const result of results) {
+    map.set(result.item, result.score ?? 1);
+  }
+  return map;
 });

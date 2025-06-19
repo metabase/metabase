@@ -23,7 +23,7 @@ import {
   AccordionListCell,
   type SharedAccordionProps,
 } from "./AccordionListCell";
-import type { Item, Row, SearchProp, SearchProps, Section } from "./types";
+import type { Item, Row, SearchProps, Section } from "./types";
 import {
   type Cursor,
   getNextCursor,
@@ -66,7 +66,7 @@ type State<TItem extends Item> = {
   cursor: Cursor | null;
   scrollToAlignment: Alignment;
   searchIndex: Fuse<TItem>;
-  searchResults: Fuse.FuseResult<TItem>[] | null;
+  searchResults: Map<TItem, number> | null;
 };
 
 export class AccordionList<
@@ -401,31 +401,43 @@ export class AccordionList<
   };
 
   searchFilter = (item: TItem) => {
-    const {
-      searchProp = ["name", "displayName"] as SearchProp<TItem>[],
-      fuzzySearch,
-    } = this.props;
+    return this.itemScore(item) < 0.6;
+  };
+
+  itemScore = (item: TItem) => {
+    const { fuzzySearch, searchProp } = this.props;
     const { searchText } = this.state;
 
     if (!searchText || searchText.length === 0) {
-      return true;
+      return 0;
     }
 
     if (fuzzySearch) {
-      return (
-        this.state.searchResults?.some(
-          (result) =>
-            result.item === item && result.score && result.score < 0.6,
-        ) ?? false
-      );
+      const { searchResults } = this.state;
+      return searchResults?.get(item) ?? 1;
     }
 
     const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
+    for (const member of searchProps) {
+      if (this.searchPredicate(item, member)) {
+        return 0;
+      }
+    }
 
-    const searchResults = searchProps.map((member) =>
-      this.searchPredicate(item, member),
-    );
-    return searchResults.reduce((acc, curr) => acc || curr);
+    return 1;
+  };
+
+  sectionScore = (section: TSection) => {
+    if (!section.items) {
+      return 1;
+    }
+
+    let best = 1;
+    for (const item of section.items) {
+      const score = this.itemScore(item);
+      best = Math.min(best, score);
+    }
+    return best;
   };
 
   getRows = (): Row<TItem, TSection>[] => {
@@ -457,7 +469,14 @@ export class AccordionList<
         : searchable;
 
     const rows: Row<TItem, TSection>[] = [];
-    for (const [sectionIndex, section] of sections.entries()) {
+
+    const sortedSections = isSearching
+      ? Array.from(sections).sort(
+          (a, b) => this.sectionScore(a) - this.sectionScore(b),
+        )
+      : sections;
+
+    for (const [sectionIndex, section] of sortedSections.entries()) {
       const isLastSection = sectionIndex === sections.length - 1;
       if (
         section.name &&
@@ -511,7 +530,12 @@ export class AccordionList<
         section.items.length > 0 &&
         !section.loading
       ) {
-        for (const [itemIndex, item] of section.items.entries()) {
+        const sortedItems = isSearching
+          ? Array.from(section.items).sort(
+              (a, b) => this.itemScore(a) - this.itemScore(b),
+            )
+          : section.items;
+        for (const [itemIndex, item] of sortedItems.entries()) {
           if (this.searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
             if (itemIsSelected(item, itemIndex)) {
