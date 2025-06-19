@@ -10,6 +10,7 @@
    [metabase.permissions.models.permissions-group]
    [metabase.permissions.models.permissions-group-membership]
    [metabase.permissions.path]
+   [metabase.permissions.types]
    [metabase.permissions.user]
    [metabase.permissions.util]
    [metabase.permissions.validation]
@@ -31,7 +32,6 @@
 
 (p/import-vars
  [metabase.permissions.models.data-permissions
-  at-least-as-permissive?
   disable-perms-cache
   full-db-permission-for-user
   full-schema-permission-for-user
@@ -54,6 +54,8 @@
   user-has-permission-for-table?
   with-additional-table-permission
   with-relevant-permissions-for-user]
+ [metabase.permissions.types
+  at-least-as-permissive?]
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
