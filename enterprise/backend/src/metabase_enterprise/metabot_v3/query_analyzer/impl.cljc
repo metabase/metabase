@@ -1,4 +1,4 @@
-(ns metabase-enterprise.ai-sql-fixer.query-analyzer.impl
+(ns metabase-enterprise.metabot-v3.query-analyzer.impl
   (:require
    [metabase.driver :as driver]))
 

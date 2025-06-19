@@ -1663,6 +1663,7 @@
            app-db
            collections
            config
+           driver
            legacy-mbql
            lib
            lib-be

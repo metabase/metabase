@@ -1,9 +1,34 @@
-import { main, setTokenFeatures } from "e2e/support/helpers";
+import {
+  assertNoUnstructuredSnowplowEvent,
+  describeWithSnowplowEE,
+  expectUnstructuredSnowplowEvent,
+  main,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 
 const { H } = cy;
 
-describe("scenarios > setup embedding (EMB-477)", () => {
-  beforeEach(() => H.restore("blank"));
+describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.restore("blank");
+  });
+
+  it("should redirect correctly from `/setup?use_case=embedding&new_embedding_flow=true&first_name=First&last_name=Last&email=testy@metabase.test&site_name=Epic%20Team`", () => {
+    cy.visit(
+      "/setup?use_case=embedding&new_embedding_flow=true&first_name=First&last_name=Last&email=testy@metabase.test&site_name=Epic%20Team",
+    );
+    cy.location("pathname").should("eq", "/setup/embedding");
+    cy.location("search").should(
+      "eq",
+      "?use_case=embedding&new_embedding_flow=true&first_name=First&last_name=Last&email=testy@metabase.test&site_name=Epic%20Team",
+    );
+
+    // `/setup` should not be rendered and its events should not be sent to not add noise to events
+    assertNoUnstructuredSnowplowEvent({
+      event: "step_seen", // `step_seen` event is sent on `/setup`, on `/setup/embedding` we send `embedding_setup_step_seen`
+    });
+  });
 
   it("should allow users to use existing setup flow", () => {
     cy.visit("/setup/embedding");
@@ -67,6 +92,12 @@ describe("scenarios > setup embedding (EMB-477)", () => {
 
     cy.log("0: Welcome step");
     assertEmbeddingOnboardingPageLoaded();
+
+    expectUnstructuredSnowplowEvent({
+      event: "embedding_setup_step_seen",
+      event_detail: "welcome",
+    });
+
     step().within(() => {
       cy.findByRole("heading", {
         name: "Let's get you up and running with a starting setup for embedded analytics",
@@ -85,6 +116,11 @@ describe("scenarios > setup embedding (EMB-477)", () => {
       cy.findByRole("heading", { name: "What should we call you?" }).should(
         "be.visible",
       );
+
+      expectUnstructuredSnowplowEvent({
+        event: "embedding_setup_step_seen",
+        event_detail: "user-creation",
+      });
 
       cy.findByLabelText("First name").should("have.value", "Firstname");
       cy.findByLabelText("Last name").should("have.value", "Lastname");

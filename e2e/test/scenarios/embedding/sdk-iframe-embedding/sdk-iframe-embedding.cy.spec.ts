@@ -211,4 +211,37 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       H.assertSdkInteractiveQuestionOrdersUsable();
     });
   });
+
+  it("shows dashboard title when updateSettings({ withTitle: true }) is called", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      withTitle: false,
+    });
+
+    cy.wait("@getDashCardQuery");
+
+    cy.log("1. dashboard title should initially be hidden");
+    frame.within(() => {
+      cy.findByText("Orders in a dashboard").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+
+    cy.log("2. call embed.updateSettings to show the title");
+    frame.window().then((win) => {
+      // @ts-expect-error -- this is within the iframe
+      win.embed.updateSettings({ withTitle: true });
+    });
+
+    cy.log("3. dashboard title should now be visible");
+    getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
+  });
 });
+
+const getIframeWindow = () =>
+  cy
+    .get("iframe")
+    .should("be.visible")
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.empty");

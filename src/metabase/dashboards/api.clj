@@ -905,20 +905,17 @@
                                            :embedding_params :archived :auto_apply_filters}))]
              (when (api/column-will-change? :archived current-dash dash-updates)
                (if (:archived dash-updates)
-                 (queries/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card
-                               :dashboard_id id
-                               :archived false
-                               {:archived true :archived_directly false}))
-                 (queries/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card
-                               :dashboard_id id
-                               :archived true
-                               :archived_directly false
-                               {:archived false}))))
+                 (t2/update! :model/Card
+                             :dashboard_id id
+                             :archived false
+                             {:archived true :archived_directly false})
+                 (t2/update! :model/Card
+                             :dashboard_id id
+                             :archived true
+                             :archived_directly false
+                             {:archived false})))
              (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (queries/with-allowed-changes-to-internal-dashboard-card
-                 (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
+               (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)}))
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))

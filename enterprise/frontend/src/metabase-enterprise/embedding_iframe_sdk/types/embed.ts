@@ -105,7 +105,7 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
+export type SdkIframeEmbedBaseSettings = {
   apiKey: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
@@ -135,3 +135,12 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
 export type SdkIframeEmbedEvent = { type: "ready" };
 
 export type SdkIframeEmbedEventHandler = () => void;
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;
