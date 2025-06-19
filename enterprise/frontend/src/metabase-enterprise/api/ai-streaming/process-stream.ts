@@ -258,7 +258,5 @@ export async function processChatResponse(
     config.onStreamStateUpdate?.(accumulated);
   }
 
-  reader.releaseLock();
-
   return accumulateStreamParts(parsedStreamParts);
 }
