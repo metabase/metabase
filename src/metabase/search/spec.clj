@@ -44,7 +44,7 @@
    :dashboard-id               :int
    :dashboardcard-count        :int
    :database-id                :pk
-   :display                    :text
+   :display-type               :text
    :has-temporal-dimensions    :boolean
    :id                         :text
    :non-temporal-dimension-ids :json

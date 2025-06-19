@@ -73,17 +73,6 @@ export function DatasetsList({
   );
   const datasets = useSelector(getDatasets);
 
-  // State to store visualization search results
-  // const [visualizationSearchResult, setVisualizationSearchResult] = useState<
-  //   any[]
-  // >([]);
-  // const [isVisualizationSearchLoading, setIsVisualizationSearchLoading] =
-  //   useState(false);
-
-  // Test the new visualization-compatible endpoint
-  // const [triggerVisualizationSearch] =
-  //   useVisualizationCompatibleSearchMutation();
-
   const handleAddDataSource = useCallback(
     (source: VisualizerDataSource) => {
       trackSimpleEvent({

@@ -1367,8 +1367,8 @@
                   :dashboardcard-count {:select [:%count.*]
                                         :from [:report_dashboardcard]
                                         :where [:= :report_dashboardcard.card_id :this.id]}
-                  :database-id true
-                  :display true
+                  :database-id         true
+                  :display-type        :this.display
                   :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]
                   :non-temporal-dimension-ids (non-temporal-dimension-ids-clause)
                   :last-viewed-at :last_used_at
@@ -1390,7 +1390,7 @@
                   :collection-position        true
                   :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.
-                  ;:display                    true
+                  :display                    true
                   :moderated-status           :mr.status}
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]

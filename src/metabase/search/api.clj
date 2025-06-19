@@ -122,14 +122,14 @@
   - `filters_items_in_personal_collection`: only search for items in personal collections
   - `created_at`: search for items created at a specific timestamp
   - `created_by`: search for items created by a specific user
-  - `display`: search for cards/models with specific display types
-  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
-  - `required_non_temporal_dimension_ids`: search for cards containing all specified non-temporal dimension field IDs
   - `last_edited_at`: search for items last edited at a specific timestamp
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
   - `ids`: search for items with those ids, works iff single value passed to `models`
+  - `display_type`: search for cards/models with specific display types
+  - `has_temporal_dimensions`: set to true to search for cards with temporal dimensions only
+  - `required_non_temporal_dimension_ids`: search for cards containing all specified non-temporal dimension field IDs
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -137,11 +137,12 @@
 
   A search query that has both filters applied will only return models and cards."
   [_route-params
-   {:keys                               [q context archived models verified ids display]
+   {:keys                               [q context archived models verified ids]
     calculate-available-models          :calculate_available_models
     created-at                          :created_at
     created-by                          :created_by
     filter-items-in-personal-collection :filter_items_in_personal_collection
+    display-type                        :display_type
     has-temporal-dimensions             :has_temporal_dimensions
     required-non-temporal-dimension-ids :required_non_temporal_dimension_ids
     include-dashboard-questions         :include_dashboard_questions
@@ -161,7 +162,7 @@
        [:filter_items_in_personal_collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
        [:created_at                          {:optional true} [:maybe ms/NonBlankString]]
        [:created_by                          {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-       [:display                             {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
+       [:display_type                        {:optional true} [:maybe (ms/QueryVectorOf ms/NonBlankString)]]
        [:has_temporal_dimensions             {:optional true} [:maybe :boolean]]
        [:required_non_temporal_dimension_ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
        [:last_edited_at                      {:optional true} [:maybe ms/NonBlankString]]
@@ -183,7 +184,6 @@
                 :created-at                          created-at
                 :created-by                          (set created-by)
                 :current-user-id                     api/*current-user-id*
-                :display                             (set display)
                 :is-impersonated-user?               (perms/impersonated-user?)
                 :is-sandboxed-user?                  (perms/sandboxed-user?)
                 :is-superuser?                       api/*is-superuser?*
@@ -204,6 +204,7 @@
                 :calculate-available-models?         calculate-available-models
                 :include-dashboard-questions?        include-dashboard-questions
                 :include-metadata?                   include-metadata
+                :display-type                        (set display-type)
                 :has-temporal-dimensions?            has-temporal-dimensions
                 :required-non-temporal-dimension-ids (seq (sort required-non-temporal-dimension-ids))}))
       (analytics/inc! :metabase-search/response-ok))
