@@ -19,7 +19,10 @@
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.walk :as lib.walk]
+   [metabase.util.log :as log]))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/card
   [_query _stage-number card-metadata _style]
@@ -222,8 +225,7 @@
   (when-let [card (lib.metadata/card metadata-providerable card-id)]
     (card-metadata-columns metadata-providerable card)))
 
-(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
-  [query _stage-number card {:keys [unique-name-fn], :as options}]
+(defn- returned-columns-from-metadata [query card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
           (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
             (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
@@ -236,6 +238,61 @@
                         (lib.util/query-stage metric-query -1)
                         options)))
           (card-metadata-columns query card))))
+
+(defn- remove-all-metadata [query]
+  (lib.walk/walk-stages
+   query
+   (fn [_query _path stage]
+     (cond-> stage
+       (not= (:lib/type stage) :mbql.stage/native)
+       (dissoc stage :lib/stage-metadata :metabase.lib.stage/cached-metadata)))))
+
+;;; recalculate metadata for Cards regardless of the saved metadata attached and merge that into the saved metadata.
+;;; That way we can work around broken metadata.
+
+(defn- recalculated-cols [query card options]
+  (when-not (::is-recalculating? options)
+    (let [card-query  (remove-all-metadata (lib/query
+                                            (lib.metadata/->metadata-provider query)
+                                            (:dataset-query card)))
+          card-stage  (lib.util/query-stage card-query -1)
+          options'    (-> options
+                          (assoc ::is-recalculating? true)
+                          ;; get a fresh unique name generator.
+                          (m/update-existing :unique-name-fn (fn [f] (f))))]
+      (not-empty
+       ;; desired-column-alias is previous stage => source column alias in next stage
+       (for [col (lib.metadata.calculation/returned-columns card-query -1 card-stage options')]
+         (assoc col :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)))))))
+
+#(defn- merge-recalculated-cols [existing recalculated]
+  (when (seq existing)
+    (if-not (= (count existing)
+               (count recalculated))
+      (do
+        (log/errorf "Warning: existing stage metadata has %d columns, but we calculated %d"
+                    (count existing)
+                    (count recalculated))
+        existing)
+      (mapv (fn [existing-col recalculated-col]
+              (merge
+               ;; TODO (Cam 6/19/25) -- keep the nil keys from `existing-col` so I don't have to update 500 tests. We
+               ;; can actually remove this if we go fix the tests.
+               existing-col
+               (m/filter-vals some? recalculated-col)
+               (m/filter-vals some? existing-col)
+               ;; prefer the source column alias from the recalculated col since we recalculated it to be CORRECT.
+               (u/select-non-nil-keys recalculated-col [:lib/source-column-alias])))
+            existing
+            recalculated))))
+
+(defmethod lib.metadata.calculation/returned-columns-method :metadata/card
+  [query _stage-number card options]
+  (let [existing     (returned-columns-from-metadata query card options)
+        recalculated (recalculated-cols query card options)]
+    (if (empty? recalculated)
+      existing
+      (merge-recalculated-cols existing recalculated))))
 
 (mu/defn source-card-type :- [:maybe ::lib.schema.metadata/card.type]
   "The type of the query's source-card, if it has one."

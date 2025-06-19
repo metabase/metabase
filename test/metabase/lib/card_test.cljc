@@ -152,7 +152,7 @@
           cols              (lib/returned-columns q)]
       (is (=? [{:name                     "CATEGORY"
                 :lib/source               :source/card
-                :lib/source-column-alias  "CATEGORY"
+                :lib/source-column-alias  "Products__CATEGORY"
                 :lib/desired-column-alias "Products__CATEGORY"}
                {:name                     "count"
                 :lib/source               :source/card
@@ -405,3 +405,31 @@
                                    (as-> query query
                                      (lib/expression query "ID" 1)
                                      (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))
+
+(deftest ^:parallel fix-busted-metadata-test
+  (testing "We should calculate correct metadata for Cards that have busted metadata attached (#36861)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :name            "Card with Busted Metadata"
+                        :database-id     (meta/id)
+                        :dataset-query   query
+                        :result-metadata (for [col (lib/returned-columns query)]
+                                           (dissoc col :lib/original-join-alias :metabase.lib.join/join-alias :source-alias :lib/source))}]})
+          busted-query (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:id                           (meta/id :products :category)
+               :table-id                     (meta/id :products)
+               :name                         "CATEGORY"
+               :lib/source                   :source/card
+               ;; make sure we propagate a correct source column alias.
+               :lib/source-column-alias      "Products__CATEGORY"
+               :lib/desired-column-alias     "Products__CATEGORY"
+               :lib/original-join-alias      "Products"
+               ;; join alias shouldn't be present because this column DOES NOT come from a join.
+               :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+              (m/find-first #(= (:name %) "CATEGORY")
+                            (lib/returned-columns busted-query)))))))
