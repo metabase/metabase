@@ -2,6 +2,7 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
@@ -14,29 +15,16 @@ import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
 export const UNDEFINED_ITEM_KEY = "$$UNDEFINED_ITEM_KEY$$";
 export const NULL_ITEM_KEY = "$$NULL_ITEM_KEY$$";
 
-const convertFieldToSortableField = (field) => {
-  switch (field) {
-    case undefined:
-      return UNDEFINED_ITEM_KEY;
-    case null:
-      return NULL_ITEM_KEY;
-    default:
-      return field;
-  }
-};
-const convertSortableFieldToField = (field) => {
-  switch (field) {
-    case UNDEFINED_ITEM_KEY:
-      return undefined;
-    case NULL_ITEM_KEY:
-      return null;
-    default:
-      return field;
-  }
+const convertField = (field) => {
+  return match(field)
+    .with(undefined, () => UNDEFINED_ITEM_KEY)
+    .with(null, () => NULL_ITEM_KEY)
+    .with(UNDEFINED_ITEM_KEY, () => undefined)
+    .with(NULL_ITEM_KEY, () => null)
+    .otherwise((x) => x);
 };
 
-const convertFieldsToSortableFields = (fields) =>
-  fields.map(convertFieldToSortableField);
+const convertFieldsToSortableFields = (fields) => fields.map(convertField);
 
 const ChartSettingFieldsPicker = ({
   value: fields = [],
@@ -59,7 +47,7 @@ const ChartSettingFieldsPicker = ({
   });
 
   const handleDragEnd = ({ id: sortableField, newIndex }) => {
-    const field = convertSortableFieldToField(sortableField);
+    const field = convertField(sortableField);
     const oldIndex = fields.indexOf(field);
 
     onChange(moveElement(fields, oldIndex, newIndex));
@@ -79,7 +67,7 @@ const ChartSettingFieldsPicker = ({
 
   const renderItem = useCallback(
     ({ item: sortableField, id, index: fieldIndex }) => {
-      const field = convertSortableFieldToField(sortableField);
+      const field = convertField(sortableField);
 
       return (
         <Sortable
