@@ -386,6 +386,7 @@
          "constant" (assoc acc k (:value v))
          ;; TODO: support override from params?
          "row-data" (assoc acc k (get @row (:sourceValueTarget v)))
+         ;; no mapping? omit the key
          nil acc))
      (merge input params)
      param-map)))
