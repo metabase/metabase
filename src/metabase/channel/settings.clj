@@ -123,19 +123,6 @@
   :doc "The base URL where dashboard notitification links will point to instead of the Metabase base URL.
         Only applicable for users who utilize interactive embedding and subscriptions.")
 
-(defsetting cloud-smtp-enabled?
-  (deferred-tru "Whether to use the custom SMTP server rather than the standard settings.")
-  :encryption :no
-  :feature    :cloud-custom-smtp
-  :type       :boolean
-  :default    false
-  :visibility :settings-manager
-  :audit      :getter
-  :setter     (fn [new-value]
-                (when (and new-value (not (cloud-email-smtp-host)))
-                  (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))
-                (setting/set-value-of-type! :boolean :cloud-smtp-enabled? new-value)))
-
 (defsetting email-from-address
   (deferred-tru "The email address you want to use for the sender of emails.")
   :encryption :no
@@ -290,6 +277,19 @@
                   (assert (#{:tls :ssl :starttls} (keyword new-value))
                           (tru "Invalid cloud-email-smtp-security! Only values of tls, ssl, and starttls are allowed.")))
                 (setting/set-value-of-type! :keyword :cloud-email-smtp-security new-value)))
+
+(defsetting cloud-smtp-enabled
+  (deferred-tru "Whether to use the custom SMTP server rather than the standard settings.")
+  :encryption :no
+  :feature    :cloud-custom-smtp
+  :type       :boolean
+  :default    false
+  :visibility :settings-manager
+  :audit      :getter
+  :setter     (fn [new-value]
+                (when (and new-value (not (setting/get-value-of-type :string :cloud-email-smtp-host)))
+                  (throw (ex-info (tru "Cannot enable cloud-smtp when it is not configured.") {:status-code 400})))
+                (setting/set-value-of-type! :boolean :cloud-smtp-enabled new-value)))
 
 (defsetting email-max-recipients-per-second
   (deferred-tru "The maximum number of recipients, summed across emails, that can be sent per second.

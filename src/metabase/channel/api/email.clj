@@ -189,7 +189,7 @@
   []
   (validation/check-has-application-permission :setting)
   (setting/set-many! (assoc (zipmap (keys cloud-mb-to-smtp-settings) (repeat nil))
-                            :cloud-smtp-enabled? false))
+                            :cloud-smtp-enabled false))
   api/generic-204-no-content)
 
 (api.macros/defendpoint :post "/test"

@@ -219,7 +219,7 @@
                                       (with-redefs [email/retry-delay-ms 0]
                                         (thunk)))}]
           (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
-                                       cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to cloud-smtp-enabled?]
+                                       cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to cloud-smtp-enabled]
             (testing (format "SMTP connection is valid? %b\n" success?)
               (f (fn []
                    (testing "API request"
@@ -329,23 +329,24 @@
 
 (deftest clear-cloud-email-settings-test
   (testing "DELETE /api/email/cloud"
-    (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
-                                 cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
-      (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-        (is (= (-> default-cloud-email-settings
-                   (assoc :with-corrections {})
-                   (update :cloud-email-smtp-security name))
-               (mt/user-http-request :crowberto :put 200 "email/cloud" default-cloud-email-settings)))
-        (let [new-cloud-email-settings (cloud-email-settings)]
-          (is (nil? (mt/user-http-request :crowberto :delete 204 "email/cloud")))
-          (is (= default-cloud-email-settings
-                 new-cloud-email-settings))
-          (is (= {:cloud-email-smtp-host     nil
-                  :cloud-email-smtp-port     nil
-                  :cloud-email-smtp-security :ssl
-                  :cloud-email-smtp-username nil
-                  :cloud-email-smtp-password nil
-                  :cloud-email-from-address  "notifications@metabase.com"
-                  :cloud-email-from-name     nil
-                  :cloud-email-reply-to      nil}
-                 (cloud-email-settings))))))))
+    (mt/with-premium-features [:cloud-custom-smtp]
+      (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
+                                   cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
+        (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+          (is (= (-> default-cloud-email-settings
+                     (assoc :with-corrections {})
+                     (update :cloud-email-smtp-security name))
+                 (mt/user-http-request :crowberto :put 200 "email/cloud" default-cloud-email-settings)))
+          (let [new-cloud-email-settings (cloud-email-settings)]
+            (is (nil? (mt/user-http-request :crowberto :delete 204 "email/cloud")))
+            (is (= default-cloud-email-settings
+                   new-cloud-email-settings))
+            (is (= {:cloud-email-smtp-host     nil
+                    :cloud-email-smtp-port     nil
+                    :cloud-email-smtp-security :ssl
+                    :cloud-email-smtp-username nil
+                    :cloud-email-smtp-password nil
+                    :cloud-email-from-address  "notifications@metabase.com"
+                    :cloud-email-from-name     nil
+                    :cloud-email-reply-to      nil}
+                   (cloud-email-settings)))))))))

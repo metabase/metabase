@@ -76,7 +76,7 @@
      {})))
 
 (defn- smtp-settings []
-  (if (channel.settings/cloud-smtp-enabled?)
+  (if (channel.settings/cloud-smtp-enabled)
     (-> {:host (channel.settings/cloud-email-smtp-host)
          :user (channel.settings/cloud-email-smtp-username)
          :pass (channel.settings/cloud-email-smtp-password)

@@ -83,14 +83,14 @@
   (mt/with-premium-features [:cloud-custom-smtp]
 
     (testing "cannot enable cloud-smtp without hostname set"
-      (mt/with-temporary-setting-values [cloud-smtp-enabled? nil
+      (mt/with-temporary-setting-values [cloud-smtp-enabled nil
                                          cloud-email-smtp-host nil]
         (is (thrown-with-msg? Exception #"Cannot enable cloud-smtp when it is not configured."
-                              (channel.settings/cloud-smtp-enabled?! true)))))
+                              (channel.settings/cloud-smtp-enabled! true)))))
     (testing "can enable cloud-smtp with hostname set"
-      (mt/with-temporary-setting-values [cloud-smtp-enabled? nil
+      (mt/with-temporary-setting-values [cloud-smtp-enabled nil
                                          cloud-email-smtp-host "localhost"]
-        (is (= "true" (channel.settings/cloud-smtp-enabled?! true)))))))
+        (is (= "true" (channel.settings/cloud-smtp-enabled! true)))))))
 
 (deftest cloud-email-reply-to
   (mt/with-temporary-setting-values [cloud-email-reply-to nil]
@@ -135,11 +135,11 @@
   (mt/with-premium-features [:cloud-custom-smtp]
 
     (testing "cannot enable cloud-smtp without hostname set"
-      (mt/with-temporary-setting-values [cloud-smtp-enabled? nil
+      (mt/with-temporary-setting-values [cloud-smtp-enabled nil
                                          cloud-email-smtp-host nil]
         (is (thrown-with-msg? Exception #"Cannot enable cloud-smtp when it is not configured."
-                              (channel.settings/cloud-smtp-enabled?! true)))))
+                              (channel.settings/cloud-smtp-enabled! true)))))
     (testing "can enable cloud-smtp with hostname set"
-      (mt/with-temporary-setting-values [cloud-smtp-enabled? nil
+      (mt/with-temporary-setting-values [cloud-smtp-enabled nil
                                          cloud-email-smtp-host "localhost"]
-        (is (= "true" (channel.settings/cloud-smtp-enabled?! true)))))))
+        (is (= "true" (channel.settings/cloud-smtp-enabled! true)))))))
