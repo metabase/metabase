@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -54,6 +55,11 @@
   (is (= {(mt/user->id :rasta) "Rasta Toucan's Personal Collection"
           (mt/user->id :lucky) "Lucky Pigeon's Personal Collection"}
          (collection/user->personal-collection-names [(mt/user->id :lucky) (mt/user->id :rasta)] :site))))
+
+(deftest ^:parallel trash-collection-name-is-localized-test
+  (let [trash (collection/trash-collection)]
+    (is (-> trash :name i18n/localized-string?)
+        "Trash name must be a localized string")))
 
 (deftest personal-collection-with-ui-details-test
   (testing "With personal_owner"

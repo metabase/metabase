@@ -3,6 +3,7 @@ title: Visualization overview
 redirect_from:
   - /docs/latest/users-guide/05-visualizing-results
   - /docs/latest/questions/sharing/visualizing-results
+  - /docs/latest/questions/visualizations
 ---
 
 # Visualization overview
@@ -12,6 +13,7 @@ While tables are useful for looking up information or finding specific numbers, 
 ## Visualize query results
 
 The query builder will automatically select an appropriate chart to visual your results. With native queries, however, you'll need to manually select a chart type.
+
 ### Visualizing questions in the query builder
 
 To visualize results of a question built in the [query builder](../query-builder/editor.md), click on the **Visualize** button under the last query builder step. Metabase will select a chart type most appropriate for your data, but you can [change the visualization type](#change-visualization-type). You can also toggle between the visualization and the table of results.

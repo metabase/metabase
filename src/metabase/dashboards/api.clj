@@ -28,7 +28,6 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
@@ -905,20 +904,17 @@
                                            :embedding_params :archived :auto_apply_filters}))]
              (when (api/column-will-change? :archived current-dash dash-updates)
                (if (:archived dash-updates)
-                 (queries/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card
-                               :dashboard_id id
-                               :archived false
-                               {:archived true :archived_directly false}))
-                 (queries/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card
-                               :dashboard_id id
-                               :archived true
-                               :archived_directly false
-                               {:archived false}))))
+                 (t2/update! :model/Card
+                             :dashboard_id id
+                             :archived false
+                             {:archived true :archived_directly false})
+                 (t2/update! :model/Card
+                             :dashboard_id id
+                             :archived true
+                             :archived_directly false
+                             {:archived false})))
              (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (queries/with-allowed-changes-to-internal-dashboard-card
-                 (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
+               (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)}))
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
@@ -1053,7 +1049,7 @@
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
@@ -1065,7 +1061,7 @@
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -1073,7 +1069,7 @@
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 

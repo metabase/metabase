@@ -6,16 +6,21 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import {
+  AdminNavItem,
+  AdminNavWrapper,
+} from "metabase/admin/settings/components/AdminNav";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
-import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
 import {
   useDeleteMetabotEntitiesMutation,
   useListMetabotsEntitiesQuery,
@@ -53,10 +58,9 @@ export function MetabotAdminPage() {
   }
 
   return (
-    <ErrorBoundary>
-      <Flex p="xl">
-        <MetabotNavPane />
-        <Stack w="100%" px="xl" gap="xl">
+    <AdminSettingsLayout sidebar={<MetabotNavPane />}>
+      <ErrorBoundary>
+        <SettingsSection>
           <Box>
             <SettingHeader
               id="configure-metabot"
@@ -85,9 +89,9 @@ export function MetabotAdminPage() {
               )}
             </>
           )}
-        </Stack>
-      </Flex>
-    </ErrorBoundary>
+        </SettingsSection>
+      </ErrorBoundary>
+    </AdminSettingsLayout>
   );
 }
 
@@ -112,15 +116,16 @@ function MetabotNavPane() {
 
   return (
     <Flex direction="column" w="266px" flex="0 0 auto">
-      <LeftNavPane>
+      <AdminNavWrapper>
         {metabots?.map((metabot) => (
-          <LeftNavPaneItem
+          <AdminNavItem
             key={metabot.id}
-            name={metabot.name}
+            icon="metabot"
+            label={metabot.name}
             path={`/admin/metabot/${metabot.id}`}
           />
         ))}
-      </LeftNavPane>
+      </AdminNavWrapper>
     </Flex>
   );
 }

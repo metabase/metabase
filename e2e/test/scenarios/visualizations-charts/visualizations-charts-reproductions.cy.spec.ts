@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -403,5 +404,36 @@ union all select '2020-04-01' x, 40 y`,
       footer: null,
       blurAfter: true,
     });
+  });
+});
+
+describe("issue 59671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when removing dimension aggregation column from the query (metabase#59671)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.removeSummaryGroupingField({
+      field: "Created At: Month",
+      stage: 0,
+      index: 0,
+    });
+    H.visualize();
   });
 });

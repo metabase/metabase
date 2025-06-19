@@ -1,11 +1,11 @@
 import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { c, t } from "ttag";
 
-import {
-  type CollectionOrTableIdProps,
-  ModelUploadModal,
-} from "metabase/collections/components/ModelUploadModal";
-import type { OnFileUpload } from "metabase/collections/types";
+import { ModelUploadModal } from "metabase/collections/components/ModelUploadModal";
+import type {
+  CollectionOrTableIdProps,
+  OnFileUpload,
+} from "metabase/collections/types";
 import { UploadInput } from "metabase/components/upload";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";

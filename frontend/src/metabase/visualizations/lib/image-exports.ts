@@ -171,6 +171,30 @@ export const getDashboardImage = async (
   return canvas.toDataURL("image/png").split(",")[1];
 };
 
+export const getVisualizationSvgDataUri = (
+  selector: string,
+): string | undefined => {
+  const element = document.querySelector(selector)?.cloneNode(true);
+  if (element && !(element instanceof SVGElement)) {
+    throw new Error("Selector did not provide an SVG element");
+  }
+
+  const backgroundColor = getComputedStyle(document.documentElement)
+    .getPropertyValue("--mb-color-bg-dashboard")
+    .trim();
+  if (backgroundColor && element instanceof SVGElement) {
+    element.style.backgroundColor = backgroundColor;
+  }
+  if (!element) {
+    return undefined;
+  }
+
+  const svgString = new XMLSerializer().serializeToString(element);
+  const utf8Bytes = new TextEncoder().encode(svgString);
+  const binaryString = String.fromCharCode(...utf8Bytes);
+  return `data:image/svg+xml;base64,${window.btoa(binaryString)}`;
+};
+
 export const getChartSelector = (
   input: { dashcardId: number | undefined } | { cardId: number | undefined },
 ) => {
@@ -181,7 +205,15 @@ export const getChartSelector = (
   }
 };
 
-export const getBase64ChartImage = async (
+export const getChartSvgSelector = (
+  input: { dashcardId: number | undefined } | { cardId: number | undefined },
+) => {
+  // :not selector shouldn't be needed, but just an extra check to make sure
+  // we don't accidently get some kind of svg icon
+  return `${getChartSelector(input)} svg:not([role="img"])`;
+};
+
+export const getChartImagePngDataUri = async (
   selector: string,
 ): Promise<string | undefined> => {
   const chartRoot = document.querySelector(selector);
@@ -197,7 +229,7 @@ export const getBase64ChartImage = async (
     },
   });
 
-  return canvas.toDataURL("image/png").split(",")[1];
+  return canvas.toDataURL("image/png");
 };
 
 export const saveChartImage = async (selector: string, fileName: string) => {

@@ -2,6 +2,7 @@
 title: "People overview"
 redirect_from:
   - /docs/latest/administration-guide/sso
+  - /docs/latest/people-and-groups
 ---
 
 # People overview
@@ -70,4 +71,3 @@ Metabase supports user provisioning via the SCIM protocol.
 [saml-google]: ./saml-google.md
 [saml-keycloak]: ./saml-keycloak.md
 [sso-def]: https://www.metabase.com/glossary/sso
-
