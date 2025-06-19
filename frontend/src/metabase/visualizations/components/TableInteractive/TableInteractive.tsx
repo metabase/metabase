@@ -62,6 +62,7 @@ import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ActionScope,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -135,6 +136,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   {
     className,
     data,
+    dashcard,
     series,
     height,
     settings,
@@ -760,6 +762,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [renderEmptyMessage],
   );
 
+  const actionScope = useMemo<ActionScope>(() => {
+    return dashcard
+      ? { "dashcard-id": dashcard.id }
+      : { "card-id": question.card().id ?? -1 };
+  }, [question, dashcard]);
+
   if (!width || !height) {
     return <div ref={ref} className={className} />;
   }
@@ -792,6 +800,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onWheel={handleWheel}
       />
       <TableActionExecuteModal
+        scope={actionScope}
         selectedTableActionState={selectedTableActionState}
         onClose={handleExecuteActionModalClose}
       />

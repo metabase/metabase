@@ -8,15 +8,15 @@ import {
   useTableRedoMutation,
   useTableUndoMutation,
 } from "metabase-enterprise/api/table-data-edit";
-import type { ConcreteTableId } from "metabase-types/api";
+import type { ActionScope, ConcreteTableId } from "metabase-types/api";
 
-import type { RowCellsWithPkValue, TableEditingScope } from "../types";
+import type { RowCellsWithPkValue } from "../types";
 
 import type { TableEditingStateUpdateStrategy } from "./use-table-state-update-strategy";
 
 type UseTableEditingUndoRedoProps = {
   tableId: ConcreteTableId;
-  scope?: TableEditingScope;
+  scope?: ActionScope;
   stateUpdateStrategy: TableEditingStateUpdateStrategy;
 };
 

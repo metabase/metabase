@@ -1,4 +1,5 @@
 import type {
+  ActionScope,
   ConcreteTableId,
   DatasetColumn,
   ParametersForActionExecution,
@@ -13,10 +14,6 @@ export type RowPkValuesKey = string;
 
 export type CellUniqKey = string;
 
-export type TableEditingScope =
-  | { "table-id": ConcreteTableId }
-  | { "dashcard-id": number };
-
 type ExecuteOutput<Op extends "created" | "updated" | "deleted"> = {
   op: Op;
   row: RowCellsWithPkValue;
@@ -25,7 +22,7 @@ type ExecuteOutput<Op extends "created" | "updated" | "deleted"> = {
 
 export type TableInsertRowsRequest = {
   rows: RowCellsWithPkValue[];
-  scope?: TableEditingScope;
+  scope?: ActionScope;
 };
 
 export type TableInsertRowsResponse = {
@@ -35,7 +32,7 @@ export type TableInsertRowsResponse = {
 export type TableUpdateRowsRequest = {
   inputs: RowCellsWithPkValue[];
   params: Record<DatasetColumn["name"], RowValue>;
-  scope?: TableEditingScope;
+  scope?: ActionScope;
 };
 
 export type TableUpdateRowsResponse = {
@@ -44,7 +41,7 @@ export type TableUpdateRowsResponse = {
 
 export type TableDeleteRowsRequest = {
   rows: RowCellsWithPkValue[];
-  scope?: TableEditingScope;
+  scope?: ActionScope;
   params?: { "delete-children"?: boolean };
 };
 
@@ -70,7 +67,7 @@ export type UpdatedRowBulkHandlerParams = {
 
 export type TableUndoRedoRequest = {
   tableId: ConcreteTableId;
-  scope?: TableEditingScope;
+  scope?: ActionScope;
 };
 
 export type TableUndoRedoResponse = {
@@ -79,6 +76,7 @@ export type TableUndoRedoResponse = {
 
 export type TableExecuteActionRequest = {
   actionId: WritebackActionId | string;
+  scope: ActionScope;
   input: ParametersForActionExecution;
   params: ParametersForActionExecution;
 };
@@ -95,7 +93,7 @@ export enum BuiltInTableAction {
 
 export type DescribeActionFormRequest = {
   action_id: BuiltInTableAction | number;
-  scope: TableEditingScope;
+  scope: ActionScope;
   input?: Record<string, unknown>;
 };
 

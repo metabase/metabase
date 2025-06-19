@@ -20,6 +20,7 @@ import {
   useGetActionsQuery,
 } from "metabase-enterprise/api";
 import type {
+  ActionScope,
   DataGridWritebackAction,
   DataGridWritebackActionId,
   ParametersForActionExecution,
@@ -31,6 +32,7 @@ export interface TableActionExecuteModalProps {
   actionId: WritebackActionId | undefined;
   initialValues: ParametersForActionExecution;
   actionOverrides?: TableActionsExecuteFormVizOverride;
+  scope: ActionScope;
   onClose?: () => void;
   onSuccess?: () => void;
 }
@@ -43,6 +45,7 @@ export const TableActionExecuteModalContent = ({
   actionId,
   initialValues,
   actionOverrides,
+  scope,
   onClose,
   onSuccess,
 }: TableActionExecuteModalProps) => {
@@ -106,6 +109,7 @@ export const TableActionExecuteModalContent = ({
 
       const result = await executeAction({
         actionId: executeActionId,
+        scope,
         input: initialValues,
         params: changedFields,
       });
@@ -122,7 +126,7 @@ export const TableActionExecuteModalContent = ({
       dispatch(addUndo({ message, toastColor: "error" }));
       return { success: false, error: result.error, message };
     },
-    [executeAction, initialValues, actionWithOverrides, dispatch],
+    [executeAction, initialValues, actionWithOverrides, dispatch, scope],
   );
 
   const handleSubmitSuccess = useCallback(() => {

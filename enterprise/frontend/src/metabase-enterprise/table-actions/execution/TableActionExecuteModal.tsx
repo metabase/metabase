@@ -1,14 +1,17 @@
 import Modal from "metabase/components/Modal";
 import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
+import type { ActionScope } from "metabase-types/api";
 
 import { TableActionExecuteModalContent } from "./TableActionExecuteModalContent";
 
 export type TableActionExecuteModalProps = {
+  scope: ActionScope;
   selectedTableActionState: SelectedTableActionState | null;
   onClose: () => void;
 };
 
 export const TableActionExecuteModal = ({
+  scope,
   selectedTableActionState,
   onClose,
 }: TableActionExecuteModalProps) => {
@@ -16,6 +19,7 @@ export const TableActionExecuteModal = ({
     <Modal isOpen={!!selectedTableActionState} onClose={onClose}>
       {selectedTableActionState && (
         <TableActionExecuteModalContent
+          scope={scope}
           actionId={selectedTableActionState.actionId}
           initialValues={selectedTableActionState.rowData}
           actionOverrides={selectedTableActionState.actionOverrides}

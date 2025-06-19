@@ -1,12 +1,13 @@
 import { useCallback, useEffect } from "react";
 
 import { useDescribeActionFormMutation } from "metabase-enterprise/api";
+import type { ActionScope } from "metabase-types/api";
 
-import type { BuiltInTableAction, TableEditingScope } from "../types";
+import type { BuiltInTableAction } from "../types";
 
 type UseTableDescribeTmpModalProps = {
   actionId: BuiltInTableAction;
-  scope: TableEditingScope;
+  scope: ActionScope;
   fetchOnMount?: boolean;
 };
 
