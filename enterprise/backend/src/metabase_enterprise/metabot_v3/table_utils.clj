@@ -65,11 +65,9 @@
   "Check if two strings are similar using Levenshtein distance with a max distance of 4."
   [left right]
   (cond
-    ;; Both empty strings are considered similar
-    (and (empty? left) (empty? right)) true
     ;; One empty, one non-empty are not similar
-    (or (empty? left) (empty? right)) false
-    ;; Use Levenshtein distance for non-empty strings
+    (not= (empty? left) (empty? right)) false
+    ;; Use Levenshtein distance for other cases
     :else
     (let [max-distance 4
           matcher (LevenshteinDistance. (int max-distance))]
