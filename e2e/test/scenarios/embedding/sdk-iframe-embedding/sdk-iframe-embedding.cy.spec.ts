@@ -191,22 +191,22 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
         cy.window().then((win) => {
           // @ts-expect-error -- this is within the iframe
           win.embed.addEventListener("ready", () => {
-            cy.wrap(true).as("readyEventFired");
+            win.document.body.setAttribute("data-iframe-is-ready", "true");
           });
         });
       },
     });
 
-    cy.get("@readyEventFired").should("not.eq", true);
+    cy.log("ready event should not be fired before the page loads");
+    cy.get("body").should("not.have.attr", "data-iframe-is-ready", "true");
+
     cy.wait("@getCardQuery");
 
-    cy.log("1. verify iframe is visible");
+    cy.log("ready event should be fired after the page loads");
     cy.get("iframe").should("be.visible");
+    cy.get("body").should("have.attr", "data-iframe-is-ready", "true");
 
-    cy.log("2. verify ready event was fired");
-    cy.get("@readyEventFired").should("eq", true);
-
-    cy.log("3. verify iframe content is loaded");
+    cy.log("iframe content should now be loaded");
     frame.within(() => {
       H.assertSdkInteractiveQuestionOrdersUsable();
     });
