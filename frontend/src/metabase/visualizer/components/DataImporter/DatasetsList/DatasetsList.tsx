@@ -1,10 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  useListRecentsQuery,
-  useVisualizationCompatibleSearchQuery,
-} from "metabase/api";
+import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { trackSimpleEvent } from "metabase/lib/analytics";
@@ -130,22 +127,19 @@ export function DatasetsList({
   }, [visualizationColumns]);
 
   const {
-    data: visualizationSearchResult = { data: [] },
+    data: visualizationSearchResult,
     isLoading: isVisualizationSearchLoading,
-  } = useVisualizationCompatibleSearchQuery(
+  } = useSearchQuery(
     {
-      q: search.length > 0 ? search : undefined, // Include search query if present
+      q: search.length > 0 ? search : undefined,
       limit: 50,
-      models: ["card", "dataset", "metric"] as Array<
-        "card" | "dataset" | "metric"
-      >,
+      models: ["card", "dataset", "metric"],
       include_dashboard_questions: true,
       include_metadata: true,
       has_temporal_dimensions: timeDimensions.length > 0,
       required_non_temporal_dimension_ids: otherDimensions
         .map((dim) => dim.id)
-        .filter((id) => id != null)
-        .sort((a, b) => a - b),
+        .filter((id) => id != null),
     },
     {
       skip: !visualizationType || !visualizationColumns,
@@ -188,7 +182,7 @@ export function DatasetsList({
         }));
     }
 
-    return visualizationSearchResult.data
+    return (visualizationSearchResult?.data || [])
       .filter(
         (maybeCard) =>
           ["card", "dataset", "metric"].includes(maybeCard.model) &&
