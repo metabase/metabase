@@ -30,15 +30,15 @@ export const EMBED_STEPS: Array<{
   },
   {
     id: "select-entity",
-    component: () => null,
+    component: () => "select entity placeholder",
     skipFor: ["exploration"],
   },
   {
     id: "configure",
-    component: () => null,
+    component: () => "configure placeholder",
   },
   {
     id: "get-code",
-    component: () => null,
+    component: () => "get code placeholder",
   },
 ];
