@@ -1,14 +1,21 @@
 [
   {
     "data": {
-      "rows": [[18760]],
+      "rows": [
+        [
+          18760
+        ]
+      ],
       "cols": [
         {
           "database_type": "BIGINT",
           "semantic_type": "type/Quantity",
           "name": "count",
           "source": "aggregation",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "effective_type": "type/BigInteger",
           "aggregation_index": 0,
           "ident": "wWdrekpgDOpR7Pi3fgktk",
@@ -28,7 +35,10 @@
           {
             "display_name": "Count",
             "semantic_type": "type/Quantity",
-            "field_ref": ["aggregation", 0],
+            "field_ref": [
+              "aggregation",
+              0
+            ],
             "base_type": "type/BigInteger",
             "effective_type": "type/BigInteger",
             "database_type": "BIGINT",
@@ -62,10 +72,11 @@
       "type": "query",
       "query": {
         "source-table": 5,
-        "aggregation": [["count"]],
-        "aggregation-idents": {
-          "0": "wWdrekpgDOpR7Pi3fgktk"
-        }
+        "aggregation": [
+          [
+            "count"
+          ]
+        ]
       },
       "middleware": {
         "js-int-to-string?": true,
@@ -126,7 +137,10 @@
         {
           "display_name": "Count",
           "semantic_type": "type/Quantity",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "base_type": "type/BigInteger",
           "effective_type": "type/BigInteger",
           "database_type": "BIGINT",
@@ -174,10 +188,11 @@
         "type": "query",
         "query": {
           "source-table": 5,
-          "aggregation": [["count"]],
-          "aggregation-idents": {
-            "0": "wWdrekpgDOpR7Pi3fgktk"
-          }
+          "aggregation": [
+            [
+              "count"
+            ]
+          ]
         }
       },
       "parameter_mappings": [],
@@ -187,8 +202,12 @@
       "entity_id": "3dpgqTLOK3ykxUHXqI76X",
       "collection_preview": true,
       "visualization_settings": {
-        "graph.dimensions": ["CREATED_AT"],
-        "graph.metrics": ["count"]
+        "graph.dimensions": [
+          "CREATED_AT"
+        ],
+        "graph.metrics": [
+          "count"
+        ]
       },
       "collection": null,
       "metabase_version": "v0.54.4-SNAPSHOT (19d811b)",

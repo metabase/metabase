@@ -295,7 +295,7 @@
 
 (defn- column-signature [column-metadata]
   (dissoc column-metadata
-          :source-alias :ident :lib/source :lib/source-uuid
+          :source-alias :lib/source :lib/source-uuid
           :lib/desired-column-alias :lib/hack-original-name))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
@@ -315,21 +315,9 @@
 
        field-cols
        (let [_          (doall field-cols)           ; force generation of unique names before join columns
-             join-cols  (lib.join/all-joins-expected-columns query stage-number options)
-             ;; The field-cols may contain would-be joined cols already! We de-duplicate them, but take the :ident
-             ;; from the last of the duplicates.
-             ;; TODO: This almost certainly doesn't work properly with double-joins, and should be powered by
-             ;; "original ident" where possible. Or field-cols should return the correct joins; then taking that
-             ;; copy doesn't hurt anything.
-             signed    (mapv (juxt column-signature identity) (concat field-cols join-cols))
-             idents    (into {} (keep (fn [[sig col]]
-                                        (when-let [ident (:ident col)]
-                                          [sig ident])))
-                             signed)]
-         (mapv (fn [[sig column]]
-                 (let [ident (get idents sig)]
-                   (assoc column :ident ident)))
-               (m/distinct-by first signed)))
+             join-cols  (lib.join/all-joins-expected-columns query stage-number options)]
+         ;; The field-cols may contain would-be joined cols already! We de-duplicate them here.
+         (into [] (m/distinct-by column-signature) (concat field-cols join-cols)))
 
        :else
        ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible

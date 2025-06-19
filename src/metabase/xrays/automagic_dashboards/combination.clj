@@ -21,7 +21,6 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
@@ -40,15 +39,13 @@
    breakout-fields
    filter-clauses]
   (let [breakouts  (mapv (partial interesting/->reference :mbql) breakout-fields)]
-    (cond-> (assoc query :breakout breakouts :breakout-idents (lib.ident/indexed-idents breakouts))
+    (cond-> (assoc query :breakout breakouts)
       (seq filter-clauses) (assoc :filter (into [:and] filter-clauses)))))
 
 (defn- add-aggregations
   "Add aggregations to a query."
   [query aggregations]
-  (assoc query
-         :aggregation aggregations
-         :aggregation-idents (lib.ident/indexed-idents aggregations)))
+  (assoc query :aggregation aggregations))
 
 (defn matching-types?
   "Given two seqs of types, return true of the types of the child

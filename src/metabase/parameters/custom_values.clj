@@ -9,7 +9,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
@@ -83,8 +82,7 @@
                                       inner-mbql)]
                    (-> inner-mbql
                        (dissoc :aggregation :order-by)
-                       (assoc :breakout        [value-field-ref]
-                              :breakout-idents (lib.ident/indexed-idents 1))
+                       (assoc :breakout [value-field-ref])
                        (update :limit (fnil min *max-rows*) *max-rows*)
                        (update :filter (fn [old]
                                          (cond->> new-filter
@@ -92,7 +90,6 @@
                  ;; Model or Native query - wrap it with a new MBQL stage.
                  {:source-table    (format "card__%d" (:id card))
                   :breakout        [value-field-ref]
-                  :breakout-idents (lib.ident/indexed-idents 1)
                   :limit           *max-rows*
                   :filter          new-filter})
      :middleware {:disable-remaps? true}}))

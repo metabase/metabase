@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
-   [metabase.config.core :as config]
    [metabase.driver.common :as driver.common]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
@@ -81,11 +80,11 @@
                          :type             qp.error-type/qp}))))))
 
 (defn annotate-native-cols
-  "Given metadata columns and the `entity_id` of the card, annotate the metadata with full details.
+  "Given metadata columns, annotate the metadata with full details.
 
   Do not call this from other namespaces; it is exposed only to support
   [[metabase.query-processor.test-util/metadata->native-form]]."
-  [cols card-entity-id]
+  [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
     (mapv (fn [{col-name :name :as driver-col-metadata}]
             (let [col-name (name col-name)]
@@ -99,15 +98,14 @@
                (when-not (str/blank? col-name)
                  (let [unique-col-name (unique-name-fn col-name)]
                    {:field_ref [:field unique-col-name {:base-type (or (:base_type driver-col-metadata)
-                                                                       (:base-type driver-col-metadata))}]
-                    :ident     (lib/native-ident unique-col-name card-entity-id)}))
+                                                                       (:base-type driver-col-metadata))}]}))
                driver-col-metadata)))
           cols)))
 
 (defmethod column-info :native
-  [{{:keys [card-entity-id]} :info :as _query} {:keys [cols rows] :as _results}]
+  [_query {:keys [cols rows] :as _results}]
   (check-driver-native-columns cols rows)
-  (annotate-native-cols cols card-entity-id))
+  (annotate-native-cols cols))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Adding :cols info for MBQL queries                                       |
@@ -250,7 +248,6 @@
    (infer-expression-type (mbql.u/expression-with-name inner-query expression-name))
    {:name            expression-name
     :display_name    expression-name
-    :ident           (get-in inner-query [:expression-idents expression-name])
     :field_ref       (fe-friendly-expression-ref clause)}
    (when temporal-unit
      {:unit temporal-unit})))
@@ -272,9 +269,7 @@
                                                     opts))]
     ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
     ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref (-> clause
-                            mbql.u/remove-namespaced-options
-                            (mbql.u/update-field-options dissoc :ident))}
+    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
       (:base-type opts)
       (assoc :base_type (:base-type opts))
 
@@ -284,12 +279,8 @@
       (string? id-or-name)
       (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
                          (dissoc :field_ref))
-                 (merge
-                  {:name         id-or-name
-                   :display_name (humanization/name->human-readable-name id-or-name)}
-                  (when-let [ident (some-> (some #(when (= (:name %) id-or-name) %) (:source-metadata join))
-                                           :ident)]
-                    {:ident ident}))))
+                 {:name         id-or-name
+                  :display_name (humanization/name->human-readable-name id-or-name)}))
 
       (integer? id-or-name)
       (merge (let [{:keys [parent-id], :as field} (lib.metadata/field (qp.store/metadata-provider) id-or-name)]
@@ -314,20 +305,6 @@
 
       join
       (update :display_name display-name-for-joined-field join)
-
-      ;; When a new join is introduced, wrap all the input :idents with that join.
-      ;; If the clause is a number, then it needs re-joining. If it's a string, then any join clause should already
-      ;; be included.
-      (and join (or (integer? id-or-name)
-                    join-is-at-current-level?))
-      (update :ident lib/explicitly-joined-ident (:ident join))
-
-      ;; Sometimes we see an implicitly joined ref with `:source-field`, but no corresponding join clause.
-      ;; In that case, look up the FK's ident and use it to adjust this column's ident.
-      (and (:source-field opts)
-           (not join))
-      (update :ident lib/implicitly-joined-ident
-              (:ident (lib.metadata/field (qp.store/metadata-provider) (:source-field opts))))
 
       ;; Join with fk-field-id => IMPLICIT JOIN
       ;; Join w/o fk-field-id  => EXPLICIT JOIN
@@ -441,13 +418,12 @@
            :source :fields)))
 
 (mu/defn- cols-for-ags-and-breakouts
-  [{breakouts :breakout, breakout-idents :breakout-idents, :as inner-query} :- :map]
+  [{breakouts :breakout, :as inner-query} :- :map]
   (concat
-   (map-indexed (fn [i breakout]
-                  (assoc (col-info-for-field-clause inner-query breakout)
-                         :source :breakout
-                         :ident  (get breakout-idents i)))
-                breakouts)
+   (map (fn [breakout]
+          (assoc (col-info-for-field-clause inner-query breakout)
+                 :source :breakout))
+        breakouts)
    (for [[i aggregation] (m/indexed (col-info-for-aggregation-clauses inner-query))]
      (assoc aggregation
             :source            :aggregation
@@ -476,21 +452,7 @@
    ;; frontend will display the results correctly if bucketing was applied in the nested query, e.g. it will format
    ;; temporal values in results using that unit
    (when (= (:unit col) :default)
-     (select-keys source-metadata-col [:unit]))
-
-   ;; Idents are sometimes preserved from the source, and sometimes replaced.
-   ;; TODO: Expressions that simply wrap a field ref keep their IDs and might also need special handling here?
-   (when-let [ident (or ;; If the new col is an aggregation or breakout, use its ident for sure.
-                     (when (#{:aggregation :breakout} (:source col))
-                       (:ident col))
-                        ;; Otherwise prefer the ident of the source, if any.
-                        ;; If col is not an aggregation or breakout, then its ident probably comes from a naive re-read
-                        ;; by Field ID, and we don't want to overwrite the ident of a breakout or joined field from an
-                        ;; earlier stage.
-                     (:ident source-metadata-col)
-                        ;; If the source doesn't have an ident, keep col's ident.
-                     (:ident col))]
-     {:ident ident})))
+     (select-keys source-metadata-col [:unit]))))
 
 (defn- maybe-merge-source-metadata
   "Merge information from `source-metadata` into the returned `cols` for queries that return the columns of a source
@@ -536,28 +498,11 @@
                   (mbql-cols source-query outer-query results))]
     (qp.util/combine-metadata columns source-metadata)))
 
-(defn- idents-for-model
-  [cols card-entity-id]
-  ;; Safety checks during dev and test.
-  (when-not config/is-prod?
-    (when-not (every? :ident cols)
-      (throw (ex-info "idents-for-model with missing idents" {:cols           cols
-                                                              :card-entity-id card-entity-id})))
-    (when-not (string? card-entity-id)
-      (throw (ex-info "idents-for-model with blank card-entity-id" {:cols cols}))))
-
-  (for [col cols]
-    (cond-> col
-      ;; Check that the ident isn't already set for the source model, to avoid "double-bagging".
-      ;; That only applies to `:source :fields` columns though - not expressions, aggregations, etc.
-      (not (lib/valid-model-ident? col card-entity-id))
-      (lib/add-model-ident card-entity-id))))
-
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
   [{:keys [source-metadata source-query fields]
-    :source-query/keys [entity-id model?]
+    :source-query/keys [model?]
     :as inner-query}
    outer-query
    results]
@@ -566,11 +511,6 @@
       source-query
       (cond-> (cols-for-source-query inner-query outer-query results)
         true       (u/prog1 #_sq-cols (qp.debug/debug> [`cols-for-source-query <>]))
-        model?     ((fn [sq-cols]
-                      (u/prog1 (idents-for-model sq-cols entity-id)
-                        (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
-                                          ^{:portal.viewer/default :portal.viewer/diff}
-                                          [(vec sq-cols) (vec <>)]]))))
         (seq cols) ((fn [sq-cols]
                       (u/prog1 (flow-field-metadata sq-cols cols model?)
                         (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
@@ -685,18 +625,9 @@
              (driver.common/values->base-type)
              (analyze/constant-fingerprinter driver-base-type)))))
 
-;; TODO: Start recording the :ident of the inner column under a different key.
-;; TODO: Use `:ident`s for matching up model metadata!
 (defn- merge-model-metadata
   [query-metadata model-metadata _card-entity-id]
-  (qp.util/combine-metadata query-metadata model-metadata)
-  ;; FIXME: Breadcrumbs during development.
-  #_(qp.util/combine-metadata
-     (for [{:keys [source name display_name] :as col} query-metadata]
-       (cond-> col
-         (and (= source :native)
-              (= name display_name)) (assoc :display_name (humanization/name->human-readable-name name))))
-     model-metadata))
+  (qp.util/combine-metadata query-metadata model-metadata))
 
 (defn- add-column-info-xform
   [query metadata rf]
@@ -706,7 +637,7 @@
     ((take 1) conj)]
    (fn combine [result base-types truncated-rows]
      (let [metadata (update metadata :cols
-                            (comp #(annotate-native-cols % (-> query :info :card-entity-id))
+                            (comp annotate-native-cols
                                   (fn [cols]
                                     (map (fn [col base-type]
                                            (-> col
@@ -743,7 +674,7 @@
         (rff metadata))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
-      (let [metadata (cond-> (update metadata :cols annotate-native-cols card-entity-id)
+      (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                        ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                        (seq model-metadata)
                        (update :cols merge-model-metadata model-metadata card-entity-id)

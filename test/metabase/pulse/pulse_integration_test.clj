@@ -10,7 +10,6 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.settings :as channel.settings]
-   [metabase.lib.core :as lib]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
@@ -38,7 +37,6 @@
                                                                                 :expressions  {"Tax Rate" [:/
                                                                                                            [:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                            [:field (mt/id :orders :total) {:base-type :type/Float}]]},
-                                                                                :expression-idents {"Tax Rate" "BDpp6yH1r645cmTpDov7e"}
                                                                                 :fields       [[:field (mt/id :orders :tax) {:base-type :type/Float}]
                                                                                                [:field (mt/id :orders :total) {:base-type :type/Float}]
                                                                                                [:expression "Tax Rate"]]
@@ -870,14 +868,11 @@
                        :type            :model
                        :entity_id       model-eid
                        :result_metadata [{:name  "ID"
-                                          :id    (mt/id :airport :id)
-                                          :ident (lib/model-ident (mt/ident :airport :id) model-eid)}
+                                          :id    (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude
-                                          :name          "LONGITUDE"
-                                          :ident         (lib/model-ident (mt/ident :airport :longitude) model-eid)}
+                                          :name          "LONGITUDE"}
                                          {:semantic_type :type/Latitude
-                                          :name          "LATITUDE"
-                                          :ident         (lib/model-ident (mt/ident :airport :latitude) model-eid)}]}]
+                                          :name          "LATITUDE"}]}]
         (mt/with-temp [:model/Card {card-id :id} base-card
                        :model/Card {model-id :id} model
                        :model/Dashboard {dash-id :id} {}

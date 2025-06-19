@@ -528,7 +528,6 @@
       (check-field-filter-fields-are-from-correct-database card)
       ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters (#40013)
       (assert-valid-type card)
-      (card.metadata/assert-valid-idents! card)
       (params/assert-valid-parameters card)
       (params/assert-valid-parameter-mappings card)
       (collection/check-collection-namespace :model/Card (:collection_id card)))))
@@ -631,7 +630,7 @@
                  (= (:type old-card-info) :model)
                  (not (model-supports-implicit-actions? changes)))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions and strip the model out of `:ident`s.
+      ;; Changing from a Model to a Question: archive associated actions.
       (when (and (= (:type changes) :question)
                  (= (:type old-card-info) :model))
         (t2/update! :model/Action {:model_id id :type [:not= :implicit]} {:archived true})
@@ -648,7 +647,6 @@
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints card changes)
-      (card.metadata/assert-valid-idents! (merge old-card-info changes))
       (assert-valid-type (merge old-card-info changes)))))
 
 (defn- add-query-description-to-metric-card
@@ -672,7 +670,7 @@
 ;; Schema upgrade: 20 to 21 ==========================================================================================
 ;; Originally this backfilled `:ident`s on all columns in `:result_metadata`.
 ;; However, that caused performance problems since it's often recursive, and the caching was ineffective.
-;; Now this upgrade is a no-op.
+;; Now this upgrade is a no-op. Also `:ident`s have now been deprecated outright.
 (defmethod upgrade-card-schema-to 21 [card _schema-version]
   card)
 
@@ -749,24 +747,6 @@
     (assoc card :collection_id (t2/select-one-fn :collection_id :model/Dashboard :id dashboard-id))
     card))
 
-(defn- strip-model-from-idents
-  [result-metadata
-   {eid :entity_id :as _card}]
-  (mapv #(lib/remove-model-ident % eid) result-metadata))
-
-(defn- normalize-result-metadata-idents
-  "If the `:type` is changing, the `:result_metadata` needs to change too, either adding or removing model details
-  from the `:ident`s."
-  [card]
-  (let [changes (t2/changes card)
-        input-metadata (:result_metadata card)
-        updated-metadata (case (:type changes)
-                           :question (strip-model-from-idents input-metadata card)
-                           :model (card.metadata/fix-incoming-idents input-metadata card)
-                           nil)]
-    (cond-> card
-      updated-metadata (assoc :result_metadata updated-metadata))))
-
 (defn- populate-result-metadata
   "If we have fresh result_metadata, we don't have to populate it anew. When result_metadata doesn't
   change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
@@ -787,7 +767,6 @@
         (assoc :card_schema current-schema-version)
         (apply-dashboard-question-updates changes)
         maybe-normalize-query
-        normalize-result-metadata-idents
         (populate-result-metadata changes verified-result-metadata?)
         (pre-update changes)
         populate-query-fields

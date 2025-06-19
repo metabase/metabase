@@ -423,7 +423,7 @@
                      :model/Card model2 (mt/card-with-metadata {:dataset_query inner-query
                                                                 :name          "Model 2"
                                                                 :type          :model})]
-        (testing "both models get :result_metadata containing model :idents"
+        (testing "both models get correct :result_metadata"
           (doseq [the-model [model1 model2]]
             (is (=? expected-inner-metadata
                     (:result_metadata the-model)))))

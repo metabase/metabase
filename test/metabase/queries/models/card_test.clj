@@ -1,7 +1,5 @@
 (ns metabase.queries.models.card-test
   (:require
-   [clojure.data :as data]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.audit-app.impl :as audit]
@@ -10,7 +8,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.test-metadata :as meta]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
@@ -117,17 +114,13 @@
       (testing "happy paths\n"
         (let [base (mt/mbql-query users)]
           (doseq [query-change [{:limit              1}
-                                {:expressions        {"id + 1" [:+ (mt/$ids $users.id) 1]}
-                                 :expression-idents  {"id + 1" (lib/random-ident)}}
+                                {:expressions        {"id + 1" [:+ (mt/$ids $users.id) 1]}}
                                 {:filter             [:> (mt/$ids $users.id) 2]}
-                                {:breakout           [(mt/$ids !month.users.last_login)]
-                                 :breakout-idents    {0 (lib/random-ident)}}
-                                {:aggregation        [[:count]]
-                                 :aggregation-idents {0 (lib/random-ident)}}
+                                {:breakout           [(mt/$ids !month.users.last_login)]}
+                                {:aggregation        [[:count]]}
                                 {:joins              [{:fields       :all
                                                        :source-table (mt/id :checkins)
                                                        :condition    [:= (mt/$ids $users.id) (mt/$ids $checkins.user_id)]
-                                                       :ident        (lib/random-ident)
                                                        :alias        "People"}]}
                                 {:order-by           [[(mt/$ids $users.id) :asc]]}
                                 {:fields             [(mt/$ids $users.id)]}]]
@@ -290,7 +283,7 @@
         (let [card-eid (u/generate-nano-id)
               metadata (-> (mt/mbql-query checkins)
                            qp.preprocess/query->expected-cols
-                           (mt/metadata->native-form card-eid))]
+                           mt/metadata->native-form)]
           (f (cond-> {:dataset_query   (mt/native-query {:native "SELECT * FROM CHECKINS"})
                       :result_metadata metadata
                       :entity_id       card-eid}
@@ -1048,21 +1041,6 @@
                              lib.convert/->legacy-MBQL)}]
         (is (= "Orders, Count"
                (:query_description (t2/select-one :model/Card :id id))))))))
-
-(defn- bare-query []
-  (mt/$ids orders
-    {:database (mt/id)
-     :type     :query
-     :query    {:source-query {:source-table $$orders
-                               :aggregation  [[:count] [:sum $subtotal]]
-                               :breakout     [$subtotal [:expression "yo"]]
-                               :expressions  {"yo" [:+ $subtotal 7]}}
-                :joins        [{:alias        "a_join"
-                                :condition    [:= $product_id &a_join.products.id]
-                                :source-table $$products}
-                               {:alias        "another_join"
-                                :condition    [:= $user_id &another_join.people.id]
-                                :source-table $$people}]}}))
 
 (deftest before-update-card-schema-test
   (testing "card_schema gets set to current-schema-version on update"

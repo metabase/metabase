@@ -8,7 +8,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -203,7 +202,6 @@
                                  :joins        [{:lib/type    :mbql/join
                                                  :lib/options {:lib/uuid "490a5abb-54c2-4e62-9196-7e9e99e8d291"}
                                                  :alias       "CATEGORIES__via__CATEGORY_ID"
-                                                 :ident       "dJbULfDmVAyTENMCo7q1q"
                                                  :conditions  [[:=
                                                                 {:lib/uuid "cc5f6c43-1acb-49c2-aeb5-e3ff9c70541f"}
                                                                 (lib.tu/field-clause :venues :category-id)
@@ -218,9 +216,6 @@
           metadata (lib/returned-columns query)]
       (is (=? [(merge (meta/field-metadata :categories :name)
                       {:display-name         "Name"
-                       :ident                (lib.metadata.ident/explicitly-joined-ident
-                                              #_col-ident  "RDOjlMfV-Fg8UwZMPWiq3"
-                                              #_join-ident "dJbULfDmVAyTENMCo7q1q")
                        :lib/source           :source/fields
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
@@ -242,7 +237,6 @@
                            :stages      [{:lib/type    :mbql.stage/mbql
                                           :source-card 1}]
                            :alias       "checkins_by_user"
-                           :ident       "t3Xq_zGttWJ3xht4ROnWv"
                            :conditions  [[:=
                                           {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
                                           [:field
@@ -354,7 +348,6 @@
                                     :joins        [{:lib/type    :mbql/join
                                                     :lib/options {:lib/uuid "10ee93eb-6749-41ed-a48b-93c66427eb49"}
                                                     :alias       join-alias
-                                                    :ident       "AMaECnokvRTFgTVDTbrKG"
                                                     :fields      [[:field
                                                                    {:join-alias join-alias
                                                                     :lib/uuid   "87ad4bf3-a00b-462a-b9cc-3dde44945d66"}
@@ -1030,9 +1023,6 @@
           account-card-id 1000
           contact-card-id 1100
 
-          account-f-ident              (lib/random-ident)
-          contact-f-organization-ident (lib/random-ident)
-
           metadata-provider (lib.tu/mock-metadata-provider
                              {:database meta/database
                               :tables   [{:id   account-tab-id
@@ -1043,24 +1033,20 @@
                                           :name "contact"}]
                               :fields   [{:id account-f-id
                                           :name "account__id"
-                                          :ident account-f-ident
                                           :table-id account-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-id
                                           :name "organization__id"
-                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer}
                                          {:id organization-f-account-id
                                           :name "organization__account_id"
-                                          :ident (lib/random-ident)
                                           :table-id organization-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
                                           :fk-target-field-id account-f-id}
                                          {:id contact-f-organization-id
                                           :name "contact__organization_id"
-                                          :ident contact-f-organization-ident
                                           :table-id contact-tab-id
                                           :base-type :type/Integer
                                           :semantic-type :type/FK
@@ -1072,7 +1058,6 @@
                                         :database-id (:id meta/database)
                                         :result-metadata [{:id account-f-id
                                                            :name "account__id"
-                                                           :ident account-f-ident
                                                            :table-id account-tab-id
                                                            :base-type :type/Integer}]
                                         :dataset-query {:lib/type :mbql.stage/mbql
@@ -1085,7 +1070,6 @@
                                         :database-id (:id meta/database)
                                         :result-metadata [{:id contact-f-organization-id
                                                            :name "contact__organization_id"
-                                                           :ident contact-f-organization-ident
                                                            :table-id contact-tab-id
                                                            :base-type :type/Integer
                                                            :semantic-type :type/FK

@@ -25,8 +25,6 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation__lfXwss_MckZBidbcJsgk@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -42,9 +40,6 @@ dataset_query:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Entity Qualified
-    breakout-idents:
-      0: breakout__lfXwss_MckZBidbcJsgk@0__0
-      1: breakout__lfXwss_MckZBidbcJsgk@0__1
     filter:
     - and
     - - =

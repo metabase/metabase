@@ -14,7 +14,6 @@
    [metabase.lib.common :as lib.common]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -104,8 +103,7 @@
          clause])
       (lib.options/update-options (fn [opts]
                                     (-> opts
-                                        (assoc :lib/expression-name a-name
-                                               :ident (lib.ident/random-ident))
+                                        (assoc :lib/expression-name a-name)
                                         (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
@@ -132,12 +130,10 @@
    If `location` contains no clause with `target-clause` no replacement happens."
   [stage location target-clause new-clause]
   {:pre [((some-fn clause? #(= (:lib/type %) :mbql/join)) target-clause)]}
-  (let [new-clause (if (= :expressions (first location))
-                     (-> new-clause
-                         (top-level-expression-clause (or (custom-name new-clause)
-                                                          (expression-name target-clause)))
-                         (lib.common/preserve-ident-of target-clause))
-                     new-clause)]
+  (let [new-clause (cond-> new-clause
+                     (= :expressions (first location))
+                     (top-level-expression-clause (or (custom-name new-clause)
+                                                      (expression-name target-clause))))]
     (m/update-existing-in
      stage
      location
@@ -571,7 +567,6 @@
                    (fn [summary-clauses]
                      (->> a-summary-clause
                           lib.common/->op-arg
-                          lib.common/ensure-ident
                           (conj (vec summary-clauses)))))]
     (if new-summary?
       (-> new-query

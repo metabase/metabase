@@ -72,7 +72,7 @@
                ;; https://github.com/aws/amazon-redshift-jdbc-driver/issues/118 ... not really important here anyway
                :cols (mapv (fn [col-name]
                              (-> (qp.test-util/native-query-col :venues col-name)
-                                 (dissoc :database_type :lib/type :lib/source :ident)))
+                                 (dissoc :database_type :lib/type :lib/source)))
                            [:id :longitude :category_id :price :name :latitude])}
               (mt/format-rows-by
                [int 4.0 int int str 4.0]
@@ -207,8 +207,6 @@
                                                               [:aggregation-options
                                                                [:max $rating]
                                                                {:name "max"}]]
-                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                     1 "O7xQpRu8mQfVAnjroblU2"}
                                                 :breakout    [$category]
                                                 :order-by    [[:asc $category]]})])
             (is (partial= {:data {:cols [{:name "sum" :display_name "Sum of Sum of Price"}
@@ -227,9 +225,7 @@
                                                                                 {:name "sum"}]
                                                                                [:aggregation-options
                                                                                 [:count]
-                                                                                {:name "count"}]]
-                                                                :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
-                                                                                     1 "q0awK8v8lIp1iW_ZhSS_E"}}}
+                                                                                {:name "count"}]]}}
                                                     (when dataset?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
@@ -267,14 +263,12 @@
                                              {:fields [$id]
                                               :joins  [{:source-table $$products
                                                         :alias        "P"
-                                                        :ident        "Zh421ECf3-b2l2Ml7s_3P"
                                                         :fields       [&P.products.id &P.products.ean]
                                                         :condition    [:= $product_id &P.products.id]}]})
                                            (mt/mbql-query orders
                                              {:fields [$id]
                                               :joins  [{:source-table "card__1"
                                                         :alias        "RP"
-                                                        :ident        "FGuqyLkhyOtYbUCeFSpfl"
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
@@ -638,7 +632,6 @@
                (qp/process-query
                 (query-with-source-card 1 (mt/mbql-query checkins
                                             {:aggregation [[:count]]
-                                             :aggregation-idents {0 "vX12AxUR50eQNFNZgdG0m"}
                                              :breakout    [!day.*date]})))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
@@ -664,7 +657,7 @@
                                                    :data :cols)]
                                        (-> (into {} col)
                                            (assoc :source :fields)
-                                           (dissoc :position :aggregation_index :ident)))]
+                                           (dissoc :position :aggregation_index)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
@@ -701,7 +694,6 @@
                (-> (query-with-source-card 1
                                            (mt/mbql-query checkins
                                              {:aggregation [[:count]]
-                                              :aggregation-idents {0 "D8bJ476ZFWsYM5G159Ndc"}
                                               :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
                                               :breakout    [!month.*date]}))
                    qp/process-query
@@ -738,8 +730,7 @@
                 [int]
                 (qp/process-query
                  (query-with-source-card 1
-                                         {:aggregation [:count]
-                                          :aggregation-idents {0 "ApWqC4pOyxysqqeiuiPeS"}})))))))))
+                                         {:aggregation [:count]})))))))))
 
 (deftest ^:parallel card-perms-test
   (testing "perms for a Card with a SQL source query\n"
@@ -1700,9 +1691,7 @@
                                                                 :type :native}
                                                 :name          "Spaces in Name"
                                                 :entity_id     "yZvzZlw8lRkATwq8w8fDi"
-                                                :result_metadata
-                                                (for [col (get-in results [:data :results_metadata :columns])]
-                                                  (assoc col :ident (lib/native-ident (:name col) "yZvzZlw8lRkATwq8w8fDi")))}]
+                                                :result_metadata (get-in results [:data :results_metadata :columns])}]
         (let [created-at-pred (every-pred (comp #{"Created At"} :display-name) (comp #{"Spaces in Name"} :source-alias))
               query (as-> (lib/query mp (lib.metadata/table mp (mt/id "products"))) $q
                       (lib/join $q (lib/join-clause (lib.metadata/card mp card-id)))

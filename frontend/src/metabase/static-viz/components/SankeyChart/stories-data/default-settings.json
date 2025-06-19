@@ -2,24 +2,114 @@
   {
     "data": {
       "rows": [
-        ["Button Clicked", null, "Basic", 4909],
-        ["Button Clicked", null, "Business", 48],
-        ["Button Clicked", null, "Premium", 227],
-        ["Page Viewed", "www.piespace.example/help", "Basic", 5924],
-        ["Page Viewed", "www.piespace.example/help", "Business", 62],
-        ["Page Viewed", "www.piespace.example/help", "Premium", 425],
-        ["Page Viewed", "www.piespace.example/home", "Basic", 5906],
-        ["Page Viewed", "www.piespace.example/home", "Business", 64],
-        ["Page Viewed", "www.piespace.example/home", "Premium", 419],
-        ["Page Viewed", "www.piespace.example/invite", "Basic", 5845],
-        ["Page Viewed", "www.piespace.example/invite", "Business", 72],
-        ["Page Viewed", "www.piespace.example/invite", "Premium", 425],
-        ["Page Viewed", "www.piespace.example/login", "Basic", 5938],
-        ["Page Viewed", "www.piespace.example/login", "Business", 67],
-        ["Page Viewed", "www.piespace.example/login", "Premium", 435],
-        ["Page Viewed", "www.piespace.example/pies", "Basic", 5905],
-        ["Page Viewed", "www.piespace.example/pies", "Business", 72],
-        ["Page Viewed", "www.piespace.example/pies", "Premium", 426]
+        [
+          "Button Clicked",
+          null,
+          "Basic",
+          4909
+        ],
+        [
+          "Button Clicked",
+          null,
+          "Business",
+          48
+        ],
+        [
+          "Button Clicked",
+          null,
+          "Premium",
+          227
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/help",
+          "Basic",
+          5924
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/help",
+          "Business",
+          62
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/help",
+          "Premium",
+          425
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/home",
+          "Basic",
+          5906
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/home",
+          "Business",
+          64
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/home",
+          "Premium",
+          419
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/invite",
+          "Basic",
+          5845
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/invite",
+          "Business",
+          72
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/invite",
+          "Premium",
+          425
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/login",
+          "Basic",
+          5938
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/login",
+          "Business",
+          67
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/login",
+          "Premium",
+          435
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/pies",
+          "Basic",
+          5905
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/pies",
+          "Business",
+          72
+        ],
+        [
+          "Page Viewed",
+          "www.piespace.example/pies",
+          "Premium",
+          426
+        ]
       ],
       "cols": [
         {
@@ -162,7 +252,10 @@
           "semantic_type": "type/Quantity",
           "name": "count",
           "source": "aggregation",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "effective_type": "type/BigInteger",
           "aggregation_index": 0,
           "ident": "imKFIqVD2-gfeiilpJbbn",
@@ -296,7 +389,10 @@
             "database_type": "BIGINT",
             "semantic_type": "type/Quantity",
             "name": "count",
-            "field_ref": ["aggregation", 0],
+            "field_ref": [
+              "aggregation",
+              0
+            ],
             "effective_type": "type/BigInteger",
             "ident": "imKFIqVD2-gfeiilpJbbn",
             "display_name": "Count",
@@ -330,7 +426,11 @@
       "type": "query",
       "query": {
         "source-table": 7,
-        "aggregation": [["count"]],
+        "aggregation": [
+          [
+            "count"
+          ]
+        ],
         "breakout": [
           [
             "field",
@@ -354,15 +454,7 @@
               "source-field": 45
             }
           ]
-        ],
-        "aggregation-idents": {
-          "0": "imKFIqVD2-gfeiilpJbbn"
-        },
-        "breakout-idents": {
-          "0": "_I8L7mn5ucTG0C8sbB2__",
-          "1": "SANU8XnvpgLFTuvL4gfyp",
-          "2": "LmTwvynC6QC1WS5Y3dBUh"
-        }
+        ]
       },
       "middleware": {
         "js-int-to-string?": true,
@@ -383,7 +475,11 @@
         "type": "query",
         "query": {
           "source-table": 7,
-          "aggregation": [["count"]],
+          "aggregation": [
+            [
+              "count"
+            ]
+          ],
           "breakout": [
             [
               "field",
@@ -407,15 +503,7 @@
                 "source-field": 45
               }
             ]
-          ],
-          "aggregation-idents": {
-            "0": "imKFIqVD2-gfeiilpJbbn"
-          },
-          "breakout-idents": {
-            "0": "_I8L7mn5ucTG0C8sbB2__",
-            "1": "SANU8XnvpgLFTuvL4gfyp",
-            "2": "LmTwvynC6QC1WS5Y3dBUh"
-          }
+          ]
         }
       },
       "display": "sankey",

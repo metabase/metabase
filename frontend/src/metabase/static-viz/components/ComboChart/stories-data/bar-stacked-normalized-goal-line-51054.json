@@ -9,19 +9,28 @@
         "query": {
           "source-table": 2,
           "breakout": [
-            ["field", 18, { "base-type": "type/Text", "source-field": 14 }],
+            [
+              "field",
+              18,
+              {
+                "base-type": "type/Text",
+                "source-field": 14
+              }
+            ],
             [
               "field",
               13,
-              { "base-type": "type/DateTime", "temporal-unit": "year" }
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
             ]
           ],
-          "aggregation": [["count"]],
-          "aggregation-idents": { "0": "nb94vF4pz4ugemyAJGfOD" },
-          "breakout-idents": {
-            "0": "CXP2hgGwwCdOwGWt9iJy5",
-            "1": "gdmLlKwZNjyFpfpDPpL5O"
-          }
+          "aggregation": [
+            [
+              "count"
+            ]
+          ]
         }
       },
       "visualization_settings": {
@@ -32,26 +41,106 @@
     },
     "data": {
       "rows": [
-        ["Doohickey", "2022-01-01T00:00:00Z", 177],
-        ["Doohickey", "2023-01-01T00:00:00Z", 805],
-        ["Doohickey", "2024-01-01T00:00:00Z", 1206],
-        ["Doohickey", "2025-01-01T00:00:00Z", 1352],
-        ["Doohickey", "2026-01-01T00:00:00Z", 436],
-        ["Gadget", "2022-01-01T00:00:00Z", 199],
-        ["Gadget", "2023-01-01T00:00:00Z", 938],
-        ["Gadget", "2024-01-01T00:00:00Z", 1505],
-        ["Gadget", "2025-01-01T00:00:00Z", 1783],
-        ["Gadget", "2026-01-01T00:00:00Z", 514],
-        ["Gizmo", "2022-01-01T00:00:00Z", 158],
-        ["Gizmo", "2023-01-01T00:00:00Z", 864],
-        ["Gizmo", "2024-01-01T00:00:00Z", 1592],
-        ["Gizmo", "2025-01-01T00:00:00Z", 1664],
-        ["Gizmo", "2026-01-01T00:00:00Z", 506],
-        ["Widget", "2022-01-01T00:00:00Z", 210],
-        ["Widget", "2023-01-01T00:00:00Z", 1003],
-        ["Widget", "2024-01-01T00:00:00Z", 1531],
-        ["Widget", "2025-01-01T00:00:00Z", 1779],
-        ["Widget", "2026-01-01T00:00:00Z", 538]
+        [
+          "Doohickey",
+          "2022-01-01T00:00:00Z",
+          177
+        ],
+        [
+          "Doohickey",
+          "2023-01-01T00:00:00Z",
+          805
+        ],
+        [
+          "Doohickey",
+          "2024-01-01T00:00:00Z",
+          1206
+        ],
+        [
+          "Doohickey",
+          "2025-01-01T00:00:00Z",
+          1352
+        ],
+        [
+          "Doohickey",
+          "2026-01-01T00:00:00Z",
+          436
+        ],
+        [
+          "Gadget",
+          "2022-01-01T00:00:00Z",
+          199
+        ],
+        [
+          "Gadget",
+          "2023-01-01T00:00:00Z",
+          938
+        ],
+        [
+          "Gadget",
+          "2024-01-01T00:00:00Z",
+          1505
+        ],
+        [
+          "Gadget",
+          "2025-01-01T00:00:00Z",
+          1783
+        ],
+        [
+          "Gadget",
+          "2026-01-01T00:00:00Z",
+          514
+        ],
+        [
+          "Gizmo",
+          "2022-01-01T00:00:00Z",
+          158
+        ],
+        [
+          "Gizmo",
+          "2023-01-01T00:00:00Z",
+          864
+        ],
+        [
+          "Gizmo",
+          "2024-01-01T00:00:00Z",
+          1592
+        ],
+        [
+          "Gizmo",
+          "2025-01-01T00:00:00Z",
+          1664
+        ],
+        [
+          "Gizmo",
+          "2026-01-01T00:00:00Z",
+          506
+        ],
+        [
+          "Widget",
+          "2022-01-01T00:00:00Z",
+          210
+        ],
+        [
+          "Widget",
+          "2023-01-01T00:00:00Z",
+          1003
+        ],
+        [
+          "Widget",
+          "2024-01-01T00:00:00Z",
+          1531
+        ],
+        [
+          "Widget",
+          "2025-01-01T00:00:00Z",
+          1779
+        ],
+        [
+          "Widget",
+          "2026-01-01T00:00:00Z",
+          538
+        ]
       ],
       "cols": [
         {
@@ -68,7 +157,10 @@
           "field_ref": [
             "field",
             18,
-            { "base-type": "type/Text", "source-field": 14 }
+            {
+              "base-type": "type/Text",
+              "source-field": 14
+            }
           ],
           "effective_type": "type/Text",
           "active": true,
@@ -80,7 +172,10 @@
           "visibility_type": "normal",
           "display_name": "Product → Category",
           "fingerprint": {
-            "global": { "distinct-count": 4, "nil%": 0 },
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
             "type": {
               "type/Text": {
                 "percent-json": 0,
@@ -108,7 +203,10 @@
           "field_ref": [
             "field",
             13,
-            { "base-type": "type/DateTime", "temporal-unit": "year" }
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
           ],
           "effective_type": "type/DateTime",
           "active": true,
@@ -120,7 +218,10 @@
           "visibility_type": "normal",
           "display_name": "Created At: Year",
           "fingerprint": {
-            "global": { "distinct-count": 10001, "nil%": 0 },
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
             "type": {
               "type/DateTime": {
                 "earliest": "2022-04-30T18:56:13.352Z",
@@ -135,7 +236,10 @@
           "semantic_type": "type/Quantity",
           "name": "count",
           "source": "aggregation",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "effective_type": "type/BigInteger",
           "aggregation_index": 0,
           "ident": "nb94vF4pz4ugemyAJGfOD",
@@ -162,14 +266,20 @@
             "field_ref": [
               "field",
               18,
-              { "base-type": "type/Text", "source-field": 14 }
+              {
+                "base-type": "type/Text",
+                "source-field": 14
+              }
             ],
             "effective_type": "type/Text",
             "id": 18,
             "visibility_type": "normal",
             "display_name": "Product → Category",
             "fingerprint": {
-              "global": { "distinct-count": 4, "nil%": 0 },
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
               "type": {
                 "type/Text": {
                   "percent-json": 0,
@@ -194,14 +304,20 @@
             "field_ref": [
               "field",
               13,
-              { "base-type": "type/DateTime", "temporal-unit": "year" }
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
             ],
             "effective_type": "type/DateTime",
             "id": 13,
             "visibility_type": "normal",
             "display_name": "Created At: Year",
             "fingerprint": {
-              "global": { "distinct-count": 10001, "nil%": 0 },
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
               "type": {
                 "type/DateTime": {
                   "earliest": "2022-04-30T18:56:13.352Z",
@@ -214,13 +330,19 @@
           {
             "display_name": "Count",
             "semantic_type": "type/Quantity",
-            "field_ref": ["aggregation", 0],
+            "field_ref": [
+              "aggregation",
+              0
+            ],
             "base_type": "type/BigInteger",
             "effective_type": "type/BigInteger",
             "database_type": "BIGINT",
             "name": "count",
             "fingerprint": {
-              "global": { "distinct-count": 20, "nil%": 0 },
+              "global": {
+                "distinct-count": 20,
+                "nil%": 0
+              },
               "type": {
                 "type/Number": {
                   "min": 158,
@@ -247,7 +369,14 @@
           "best-fit": [
             "+",
             -74009.54608785399,
-            ["*", 7578.713263568262, ["log", "x"]]
+            [
+              "*",
+              7578.713263568262,
+              [
+                "log",
+                "x"
+              ]
+            ]
           ]
         }
       ]

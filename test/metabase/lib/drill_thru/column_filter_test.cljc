@@ -251,12 +251,10 @@
 
 (deftest ^:parallel native-models-with-renamed-columns-test
   (testing "Generate sane queries for native query models with renamed columns (#22715 #36583)"
-    (let [card-eid          (lib/random-ident)
-          metadata-provider (-> {:name                   "Card 5"
+    (let [metadata-provider (-> {:name                   "Card 5"
                                  :result-metadata        [{:description        "This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens."
                                                            :semantic_type      :type/PK
                                                            :name               "ID"
-                                                           :ident              (lib/native-ident "ID" card-eid)
                                                            :settings           nil
                                                            :fk_target_field_id nil
                                                            :field_ref          [:field "ID" {:base-type :type/Integer}]
@@ -269,7 +267,6 @@
                                                           {:description        "The date and time an order was submitted."
                                                            :semantic_type      :type/CreationTimestamp
                                                            :name               "ALIAS_CREATED_AT"
-                                                           :ident              (lib/native-ident "ALIAS_CREATED_AT" card-eid)
                                                            :settings           nil
                                                            :fk_target_field_id nil
                                                            :field_ref          [:field "ALIAS_CREATED_AT" {:base-type :type/DateTime}]
@@ -286,7 +283,6 @@
                                                           :native   {:query "select 1 as \"ID\", current_timestamp::datetime as \"ALIAS_CREATED_AT\"", :template-tags {}}
                                                           :type     :native}
                                  :id                     5
-                                 :entity-id              card-eid
                                  :parameter-mappings     []
                                  :display                :table
                                  :visualization-settings {:table.pivot_column "ID", :table.cell_column "ALIAS_CREATED_AT"}

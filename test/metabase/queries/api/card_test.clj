@@ -98,8 +98,7 @@
    {:database (u/the-id db-or-id)
     :type     :query
     :query    {:source-table       (u/the-id table-or-id)
-               :aggregation        [[:count]]
-               :aggregation-idents {0 (u/generate-nano-id)}}}))
+               :aggregation        [[:count]]}}))
 
 (defn pmbql-count-query
   ([]
@@ -1197,13 +1196,10 @@
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query orders
                                                       {:fields [$id $subtotal $created_at]})}]
       (let [base-metadata [{:id    (mt/id :orders :id)
-                            :ident (mt/ident :orders :id)
                             :name  "ID"}
                            {:id    (mt/id :orders :subtotal)
-                            :ident (mt/ident :orders :subtotal)
                             :name  "SUBTOTAL"}
                            {:id    (mt/id :orders :created_at)
-                            :ident (mt/ident :orders :created_at)
                             :name  "CREATED_AT"}]]
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1211,7 +1207,7 @@
             "initial result_metadata is inferred correctly")
 
         (is (=? {:type            "model"
-                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                 :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1223,13 +1219,10 @@
                                      {:dataset_query
                                       (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
       (let [base-metadata [{:name      "ID"
-                            :ident     (lib/native-ident "ID" (:entity_id card))
                             :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
                            {:name      "SUBTOTAL"
-                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
                             :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
                            {:name      "CREATED_AT"
-                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
                             :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1237,7 +1230,7 @@
             "initial result_metadata is inferred correctly")
 
         (is (=? {:type            "model"
-                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                 :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "model"})))
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1249,13 +1242,10 @@
                                      {:dataset_query
                                       (mt/native-query {:query "SELECT id, subtotal, created_at FROM orders"})})]
       (let [base-metadata [{:name      "ID"
-                            :ident     (lib/native-ident "ID" (:entity_id card))
                             :field_ref ["field" "ID" {:base-type "type/BigInteger"}]}
                            {:name      "SUBTOTAL"
-                            :ident     (lib/native-ident "SUBTOTAL" (:entity_id card))
                             :field_ref ["field" "SUBTOTAL" {:base-type "type/Float"}]}
                            {:name      "CREATED_AT"
-                            :ident     (lib/native-ident "CREATED_AT" (:entity_id card))
                             :field_ref ["field" "CREATED_AT" {:base-type string?}]}]]
         (is (=? {:type            "question"
                  :result_metadata base-metadata}
@@ -1263,7 +1253,7 @@
             "initial result_metadata is inferred correctly")
 
         (is (=? {:type            "model"
-                 :result_metadata (mapv #(lib/add-model-ident % (:entity_id card)) base-metadata)}
+                 :result_metadata base-metadata}
                 (mt/user-http-request :crowberto :put 200 (str "card/" (:id card))
                                       (assoc card :type "model"))))
         (is (=? {:type            "question"
@@ -3351,7 +3341,6 @@
                                                                     :joins [{:fields       :all
                                                                              :source-table table-id
                                                                              :condition    [:= 1 2] ; field-ids don't matter
-                                                                             :ident        "DqJ2fSIeMkc31Hx_B1Ees"
                                                                              :alias        "SomeAlias"}]}})]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the table is not based on uploads, based_on_upload should be nil"

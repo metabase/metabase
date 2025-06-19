@@ -31,8 +31,6 @@ dataset_query:
           - v_tasks
           - duration_seconds
         - base-type: type/Float
-    aggregation-idents:
-      0: aggregation_KXNGLyYyS1pO_9wMguHIB@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -48,9 +46,6 @@ dataset_query:
         - name
       - base-type: type/Text
         join-alias: Databases - Database Qualified
-    breakout-idents:
-      0: breakout_KXNGLyYyS1pO_9wMguHIB@0__0
-      1: breakout_KXNGLyYyS1pO_9wMguHIB@0__1
     filter:
     - and
     - - =

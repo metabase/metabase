@@ -31,8 +31,6 @@ dataset_query:
           - v_view_log
           - user_id
         - base-type: type/Integer
-    aggregation-idents:
-      0: aggregation_gYt6bo9DFKz6tSeDLxYVs@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -41,8 +39,6 @@ dataset_query:
         - timestamp
       - base-type: type/DateTimeWithLocalTZ
         temporal-unit: week
-    breakout-idents:
-      0: breakout_gYt6bo9DFKz6tSeDLxYVs@0__0
     filter:
     - time-interval
     - - field
