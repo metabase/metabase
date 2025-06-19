@@ -1,4 +1,5 @@
 import type {
+  CollectionBrowserWebComponentAttributes,
   EditableDashboardWebComponentAttributes,
   InteractiveDashboardWebComponentAttributes,
   InteractiveQuestionWebComponentAttributes,
@@ -14,6 +15,8 @@ declare global {
     "editable-dashboard": WebComponentAttributes<EditableDashboardWebComponentAttributes>;
 
     "interactive-question": WebComponentAttributes<InteractiveQuestionWebComponentAttributes>;
+
+    "collection-browser": WebComponentAttributes<CollectionBrowserWebComponentAttributes>;
   }
 
   namespace React {
@@ -25,6 +28,8 @@ declare global {
         "editable-dashboard": WebComponentAttributes<EditableDashboardWebComponentAttributes>;
 
         "interactive-question": WebComponentAttributes<InteractiveQuestionWebComponentAttributes>;
+
+        "collection-browser": WebComponentAttributes<CollectionBrowserWebComponentAttributes>;
       }
     }
   }
