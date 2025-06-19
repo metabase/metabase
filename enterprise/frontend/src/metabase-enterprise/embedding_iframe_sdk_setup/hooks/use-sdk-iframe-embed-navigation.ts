@@ -4,13 +4,13 @@ import { EMBED_STEPS } from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 
 export function useSdkIframeEmbedNavigation() {
-  const { embedType, currentStep, setCurrentStep } =
+  const { experience, currentStep, setCurrentStep } =
     useSdkIframeEmbedSetupContext();
 
   const availableSteps = useMemo(() => {
     // Exclude non-applicable steps for the current embed type
-    return EMBED_STEPS.filter((step) => !step.skipFor?.includes(embedType));
-  }, [embedType]);
+    return EMBED_STEPS.filter((step) => !step.skipFor?.includes(experience));
+  }, [experience]);
 
   const handleNext = () => {
     const currentIndex = availableSteps.findIndex(

@@ -10,7 +10,7 @@ import type { SdkIframeEmbedSetupExperience } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 export const SelectEmbedExperienceStep = () => {
-  const { embedType, settings, setSettings } = useSdkIframeEmbedSetupContext();
+  const { experience, settings, setSettings } = useSdkIframeEmbedSetupContext();
 
   const handleEmbedExperienceChange = (type: SdkIframeEmbedSetupExperience) => {
     const persistedSettings = _.pick(settings, [
@@ -43,7 +43,7 @@ export const SelectEmbedExperienceStep = () => {
       </Text>
 
       <Radio.Group
-        value={embedType}
+        value={experience}
         onChange={(value) =>
           handleEmbedExperienceChange(value as SdkIframeEmbedSetupExperience)
         }

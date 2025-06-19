@@ -11,7 +11,7 @@ export interface SdkIframeEmbedSetupContextType {
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
-  embedType: SdkIframeEmbedSetupExperience;
+  experience: SdkIframeEmbedSetupExperience;
   settings: SdkIframeEmbedSettings;
   setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
