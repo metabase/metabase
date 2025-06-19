@@ -157,7 +157,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
     });
 
     it("should include branding for Starter instances", () => {
-      H.setTokenFeatures("none");
+      H.activateToken("starter");
       sendTestAlertForQuestion(questionName);
       cy.findAllByRole("link")
         .filter(":contains(Made with)")

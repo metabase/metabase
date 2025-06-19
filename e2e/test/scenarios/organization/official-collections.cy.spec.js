@@ -161,7 +161,7 @@ function testOfficialBadgePresence(expectBadge = true) {
       collection_id: collectionId,
     });
 
-    !expectBadge && H.setTokenFeatures("none");
+    !expectBadge && H.deleteToken();
     cy.visit(`/collection/${collectionId}`);
   });
 
@@ -221,7 +221,7 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
     });
   });
 
-  !expectBadge && H.setTokenFeatures("none");
+  !expectBadge && H.deleteToken();
 
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();

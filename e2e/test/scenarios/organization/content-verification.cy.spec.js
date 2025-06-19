@@ -14,7 +14,7 @@ describe(
     });
 
     context("without a token", () => {
-      beforeEach(() => H.setTokenFeatures("none"));
+      beforeEach(() => H.deleteToken());
 
       it("should not be able to verify a saved question", () => {
         cy.log("Gate the API");
@@ -375,7 +375,7 @@ describe(
           moderated_item_id: ORDERS_DASHBOARD_ID,
         });
 
-        H.setTokenFeatures("none");
+        H.deleteToken();
       });
 
       it("should not treat the question as verified anymore", () => {
