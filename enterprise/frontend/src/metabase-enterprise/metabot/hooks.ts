@@ -56,8 +56,8 @@ export const useMetabotAgent = () => {
   );
 
   const startNewConversation = useCallback(
-    (message: string, metabotId?: string) => {
-      resetConversation();
+    async (message: string, metabotId?: string) => {
+      await resetConversation();
       setVisible(true);
       if (message) {
         submitInput(message, metabotId);

@@ -62,7 +62,11 @@ export async function aiStreamingQuery(
       throw new Error("No response");
     }
 
-    return processChatResponse(response.body, config);
+    // without the await here the finally clause will run before
+    // processChatResponse has resolved causing the chat response
+    // to continue to be processed even if the provided abort
+    // signal has been aborted
+    return await processChatResponse(response.body, config);
   } finally {
     inflightAiStreamingRequests.delete(reqId);
   }

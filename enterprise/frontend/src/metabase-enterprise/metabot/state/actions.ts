@@ -227,7 +227,7 @@ export const cancelInflightAgentRequests = createAsyncThunk(
 
     // cancel streamed requests
     getInflightRequestsForUrl("/api/ee/metabot-v3/v2/agent-streaming").forEach(
-      (req) => req.abortController.abort("User manaully cancelled the request"),
+      (req) => req.abortController.abort(),
     );
   },
 );
