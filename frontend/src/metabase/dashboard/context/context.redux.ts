@@ -52,6 +52,7 @@ import {
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getDraftParameterValues,
   getIsAddParameterPopoverOpen,
   getIsAdditionalInfoVisible,
@@ -77,6 +78,7 @@ import {
 export const mapStateToProps = (state: State) => ({
   dashboard: getDashboardComplete(state),
   parameters: getParameters(state),
+  headerParameters: getDashboardHeaderParameters(state),
   tabs: getTabs(state),
   canManageSubscriptions: canManageSubscriptions(state),
   isAdmin: getUserIsAdmin(state),
