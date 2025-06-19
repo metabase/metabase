@@ -37,6 +37,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
    [ring.util.codec :as codec]
