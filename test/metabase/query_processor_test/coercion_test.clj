@@ -16,15 +16,11 @@
   (mt/test-drivers
     (mt/normal-drivers)
     (mt/dataset
-      string-nums-db
+      coerced-string-nums-db
       (doseq [[human-col col res] [["integer" :int_col   10.0]
                                    ["float"   :float_col 12.5]
                                    ["mixed"   :mix_col   7.259]]]
-        (let [mp (lib.tu/merged-mock-metadata-provider
-                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                  {:fields [{:id                (mt/id :string_nums col)
-                             :coercion-strategy :Coercion/String->Float
-                             :effective-type    :type/Float}]})
+        (let [mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :string_nums)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :string_nums col)))))]
           (testing (format "String->Float coercion works with %s" human-col)
@@ -38,13 +34,9 @@
   (mt/test-drivers
     (mt/normal-drivers)
     (mt/dataset
-      string-nums-db
+      coerced-string-nums-db
       (doseq [[human-col col res] [["integer" :int_col   (biginteger 10)]]]
-        (let [mp (lib.tu/merged-mock-metadata-provider
-                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                  {:fields [{:id                (mt/id :string_nums col)
-                             :coercion-strategy :Coercion/String->Integer
-                             :effective-type    :type/Integer}]})
+        (let [mp (mt/metadata-provider)
               query (-> (lib/query mp (lib.metadata/table mp (mt/id :string_nums)))
                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :string_nums col)))))]
           (testing (format "String->Integer coercion works with %s" human-col)
