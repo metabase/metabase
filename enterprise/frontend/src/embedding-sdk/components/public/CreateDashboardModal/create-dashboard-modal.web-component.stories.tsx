@@ -1,23 +1,23 @@
 import type { StoryFn } from "@storybook/react";
 
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk/test/CommonSdkStoryWrapper";
-import type { MetabaseCollectionItem } from "embedding-sdk/types/collection";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
 
 import "../metabase-provider.web-component";
-import "./collection-browser.web-component";
+import "./create-dashboard-modal.web-component";
 
 const COLLECTION_ID = "root";
 const config = getStorybookSdkAuthConfigForUser("admin");
 (window as any).fetchRequestToken = config.fetchRequestToken;
 
-(window as any).onCollectionClick = (collection: MetabaseCollectionItem) => {
+(window as any).onDashboardCreate = (dashboard: MetabaseDashboard) => {
   // eslint-disable-next-line no-console
-  console.log(collection);
+  console.log(dashboard);
 };
 
 export default {
-  title: "EmbeddingSDK/CollectionBrowser/web-component",
-  component: "collection-browser",
+  title: "EmbeddingSDK/CreateDashboardModal/web-component",
+  component: "create-dashboard-modal",
   parameters: {
     layout: "fullscreen",
   },
@@ -33,8 +33,8 @@ export default {
   ],
 };
 export const CollectionBrowser = () => (
-  <collection-browser
-    collection-id={COLLECTION_ID}
-    on-click="onCollectionClick"
+  <create-dashboard-modal
+    initial-collection-id={COLLECTION_ID}
+    on-create="onDashboardCreate"
   />
 );

@@ -1,5 +1,6 @@
 import type {
   CollectionBrowserWebComponentAttributes,
+  CreateDashboardModalWebComponentAttributes,
   EditableDashboardWebComponentAttributes,
   InteractiveDashboardWebComponentAttributes,
   InteractiveQuestionWebComponentAttributes,
@@ -17,6 +18,8 @@ declare global {
     "interactive-question": WebComponentAttributes<InteractiveQuestionWebComponentAttributes>;
 
     "collection-browser": WebComponentAttributes<CollectionBrowserWebComponentAttributes>;
+
+    "create-dashboard-modal": WebComponentAttributes<CreateDashboardModalWebComponentAttributes>;
   }
 
   namespace React {
@@ -30,6 +33,8 @@ declare global {
         "interactive-question": WebComponentAttributes<InteractiveQuestionWebComponentAttributes>;
 
         "collection-browser": WebComponentAttributes<CollectionBrowserWebComponentAttributes>;
+
+        "create-dashboard-modal": WebComponentAttributes<CreateDashboardModalWebComponentAttributes>;
       }
     }
   }
