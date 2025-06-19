@@ -857,7 +857,6 @@
                             [{:semantic_type   :type/PK
                               :table_id        32598
                               :name            "id"
-                              :source          :fields
                               :field_ref       [:field 134528 nil]
                               :effective_type  :type/Integer
                               :id              134528

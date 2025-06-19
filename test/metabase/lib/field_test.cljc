@@ -669,58 +669,6 @@
                query
                [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
-(deftest ^:parallel base-type-in-field-ref-does-not-overwrite-everything-test
-  (testing "base-type of reference doesn't override a non-default effective-type in the column (#55171)"
-    (let [provider (lib.tu/mock-metadata-provider
-                    {:database {:id   1
-                                :name "My Database"}
-                     :tables   [{:id   2
-                                 :name "My Table"}]
-                     :cards    [{:id              3
-                                 :name            "Card 3"
-                                 :database-id     (meta/id)
-                                 :dataset-query   {:lib/type :mbql/query
-                                                   :database 1
-                                                   :stages   [{:lib/type     :mbql.stage/mbql
-                                                               :source-table 2}]}
-                                 :result-metadata [{:id                4
-                                                    :base-type         :type/Text
-                                                    :effective-type    :type/Date
-                                                    :coercion-strategy :Coercion/ISO8601->Date
-                                                    :ident             "ybTElkkGoYYBAyDRTIiUe"
-                                                    :name              "Field 4"}]}]})
-          query    (lib/query provider {:lib/type :mbql/query
-                                        :database 1
-                                        :stages   [{:lib/type    :mbql.stage/mbql
-                                                    :source-card 3}]})]
-      (is (=? [{:lib/type                 :metadata/column
-                :base-type                :type/Text
-                :effective-type           :type/Date
-                :coercion-strategy        :Coercion/ISO8601->Date
-                :id                       4
-                :name                     "Field 4"
-                :ident                    "ybTElkkGoYYBAyDRTIiUe"
-                :lib/source               :source/card
-                :lib/card-id              3
-                :lib/source-column-alias  "Field 4"
-                :lib/desired-column-alias "Field 4"}]
-              (lib/returned-columns query)))
-      (is (=? {:lib/type                :metadata/column
-               :base-type               :type/Text
-               :effective-type          :type/Date
-               :coercion-strategy       :Coercion/ISO8601->Date
-               :id                      4
-               :name                    "Field 4"
-               :ident                   "ybTElkkGoYYBAyDRTIiUe"
-               :display-name            "Field 4"
-               :lib/card-id             3
-               :lib/source              :source/card
-               :lib/source-column-alias "Field 4"
-               :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
-              (lib/metadata
-               query
-               [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
-
 (deftest ^:parallel ref-to-joined-column-from-previous-stage-test
   (let [query (-> (lib.tu/venues-query)
                   (lib/join (-> (lib/join-clause
@@ -1594,8 +1542,7 @@
                                (assoc :lib/source :source/card)
                                (dissoc :id :table-id)))
           join-cols      [(-> (meta/field-metadata :products :category)
-                              (assoc :lib/source :source/card
-                                     :source-alias "Products")
+                              (assoc :lib/source :source/card)
                               (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]

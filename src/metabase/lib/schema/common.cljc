@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.common
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.types.core]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -39,7 +40,7 @@
     (cond-> m
       (string? (:lib/type m)) (update :lib/type keyword))))
 
-(def HORRIBLE-keys
+(def ^:private HORRIBLE-keys
   "TODO (Cam 6/13/25) -- MEGA HACK -- keys that live in MLv2 that aren't SUPPOSED to be kebab-cased. We can and should
   remove these keys altogether."
   #{:model/inner_ident})
@@ -204,3 +205,38 @@
    (def ^{:arglists '([& classes])} instance-of-class
      "Convenience for defining a Malli schema for an instance of a particular Class."
      (memoize instance-of-class*)))
+
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (or (contains? HORRIBLE-keys k)
+           (not (str/includes? k "_")))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (str "map with all kebab-cased keys, got: " (pr-str (filter #(str/includes? % "_") (keys value)))))}
+   kebab-cased-map?])
+
+(defn map-without-keys
+  "Create a schema that checks that a map doesn't have any keys in `ks`."
+  [ks]
+  [:fn
+   {:error/message (str "map should not have any of these keys: " (pr-str ks))
+    :error/fn      (fn [{:keys [value]} _]
+                     (if (map? value)
+                       (m/find-first (fn [k]
+                                       (when (contains? value k)
+                                         (str "map should not have the key " k)))
+                                     ks)
+                       "should be a map"))}
+   (fn [m]
+     (and (map? m)
+          (not (some (fn [k]
+                       (contains? m k))
+                     ks))))])

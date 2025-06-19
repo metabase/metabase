@@ -9,6 +9,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
@@ -152,7 +153,9 @@
             col
             {:lib/source               :source/previous-stage
              :lib/source-column-alias  source-alias
-             :lib/desired-column-alias (unique-name-fn source-alias)})
+             :lib/desired-column-alias (unique-name-fn source-alias)}
+            (when-let [join-alias (:metabase.lib.join/join-alias col)]
+              {:lib/previous-stage-join-alias join-alias}))
            ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
            ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
@@ -161,7 +164,7 @@
            ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
            ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
            ;; to generate `:expression` or `:field` refs.
-           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
+           (dissoc ::lib.field/temporal-unit :lib/expression-name :metabase.lib.join/join-alias))))))
 
 (mu/defn- saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
@@ -304,7 +307,7 @@
   [query stage-number col]
   (merge
    (when-not (:id col)
-     (lib.field/resolve-column-name
+     (lib.field.resolution/resolve-column-name
       query
       stage-number
       ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) col)))

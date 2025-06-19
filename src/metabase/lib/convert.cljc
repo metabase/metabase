@@ -548,6 +548,7 @@
                                     :semantic-type  :semantic_type
                                     :database-type  :database_type
                                     :effective-type :effective_type})
+                 (dissoc :effective_type)
                  options->legacy-MBQL)]
     ;; in legacy MBQL, `:value` has to be three args; `opts` has to be present, but it should can be `nil` if it is
     ;; empty.

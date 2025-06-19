@@ -350,7 +350,7 @@
                                  :metabase.lib.join/join-alias "Orders"
                                  :lib/desired-column-alias     (str "Orders__" (:name %))})
                          (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
-          sorted    #(sort-by (juxt :position :source-alias) %)
+          sorted    #(sort-by (juxt :position :metabase.lib.join/join-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (sorted (concat (map table-col cols)
                               (map join-col  cols)))
@@ -433,7 +433,7 @@
                            :table-id           (meta/id :orders)
                            :id                 (meta/id :orders :id)
                            :name               "ID_2"
-                           :source-alias       "Orders"
+                           :metabase.lib.join/join-alias       "Orders"
                            :lib/source         :source/fields
                            :fk-target-field-id nil
                            :parent-id          nil
@@ -447,7 +447,7 @@
                            :table-id           (meta/id :orders)
                            :id                 (meta/id :orders :tax)
                            :name               "TAX_2"
-                           :source-alias       "Orders"
+                           :metabase.lib.join/join-alias       "Orders"
                            :lib/source         :source/fields
                            :fk-target-field-id nil
                            :parent-id          nil
@@ -590,7 +590,7 @@
           query            (-> base
                                (lib/breakout base-user-source)
                                (lib/breakout base-category))
-          returned         (map #(assoc %1 :source-alias %2)
+          returned         (map #(assoc %1 :metabase.lib.join/join-alias %2)
                                 (lib/returned-columns query)
                                 [nil "PEOPLE__via__USER_ID" "PRODUCTS__via__PRODUCT_ID" nil])]
       (is (= :source/implicitly-joinable (:lib/source base-user-source)))

@@ -3,23 +3,13 @@
    [clojure.string :as str]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.binning :as lib.schema.binning]
+   [clojure.set :as set]))
 
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (or (contains? lib.schema.common/HORRIBLE-keys k)
-           (not (str/includes? k "_")))))
 
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (str "map with all kebab-cased keys, got: " (pr-str (filter #(str/includes? % "_") (keys value)))))}
-   kebab-cased-map?])
 
 ;;; Column vs Field?
 ;;;
@@ -162,6 +152,19 @@
   `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
   [:maybe :string])
 
+(def ^:private column-renamed-keys
+  "Map of QP results/old key name to Lib key name."
+  {:binning       :metabase.lib.field/binning
+   :source-alias  :metabase.lib.join/join-alias
+   :unit          :metabase.lib.field/temporal-unit
+   ;; :temporal-unit :metabase.lib.field/temporal-unit
+   })
+
+(def ^:private column-metadata-disallowed-keys
+  (cons
+   :source ; use lib/source instead
+   (keys column-renamed-keys)))
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -178,7 +181,12 @@
   [:and
    [:map
     {:error/message    "Valid column metadata"
-     :decode/normalize lib.schema.common/normalize-map}
+     :decode/normalize (fn [m]
+                         (-> m
+                             lib.schema.common/normalize-map
+                             ;; TODO (Cam 6/18/25) -- we COULD map this to the lib equivalent if we wanted
+                             (dissoc :source)
+                             (set/rename-keys column-renamed-keys)))}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
     ;; column names are allowed to be empty strings in SQL Server :/
     ;;
@@ -213,10 +221,11 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-    ;; remove it.
-    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; Join alias of the table we're joining against, if any.
+    [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    ;; other misc namespaced keys
+    [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+    [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
     ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
     ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
@@ -263,7 +272,8 @@
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map])
+   ::lib.schema.common/kebab-cased-map
+   (lib.schema.common/map-without-keys column-metadata-disallowed-keys)])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

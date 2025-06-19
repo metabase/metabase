@@ -123,7 +123,8 @@
 
 (mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
-  ((some-fn :metabase.lib.join/join-alias :source-alias) column))
+  ;;; TODO (Cam 6/18/25) -- it seems wrong to use `:lib/previous-stage-join-alias` here so generally
+  ((some-fn :metabase.lib.join/join-alias :lib/previous-stage-join-alias) column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name

@@ -230,11 +230,10 @@
    stage-number    :- :int
    column-metadata :- ::lib.schema.metadata/column
    join-alias      :- ::lib.schema.common/non-blank-string]
-  (let [column-metadata (assoc column-metadata :source-alias join-alias)
-        col             (-> (assoc column-metadata
-                                   :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
-                                   :lib/source   :source/joins)
-                            (with-join-alias join-alias))]
+  (let [col (-> (assoc column-metadata
+                       :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
+                       :lib/source   :source/joins)
+                (with-join-alias join-alias))]
     (assert (= (lib.join.util/current-join-alias col) join-alias))
     col))
 
@@ -930,7 +929,6 @@
           ([result input]
            (as-> input col
              (with-join-alias col join-alias)
-             (assoc col :source-alias join-alias)
              (add-source-and-desired-aliases a-join unique-name-fn col)
              (xf result col))))))))
 

@@ -37,8 +37,8 @@
 
 (mr/def ::col
   [:map
-   [:source    {:optional true} ::legacy-source]
-   [:field-ref {:optional true} ::super-broken-legacy-field-ref]])
+   [::source    {:optional true} ::legacy-source]
+   [::field-ref {:optional true} ::super-broken-legacy-field-ref]])
 
 (mr/def ::kebab-cased-map
   [:and
@@ -150,34 +150,19 @@
                                          (let [[_convert-timezone _opts _expr source-tz] &match]
                                            source-tz))))]
             (cond-> col
-              converted-timezone (assoc :converted-timezone converted-timezone))))
+              converted-timezone (assoc ::converted-timezone converted-timezone))))
         cols))
-
-(mu/defn- add-source-alias :- [:sequential ::kebab-cased-map]
-  "`:source-alias` (`:source_alias`) is still needed
-  for [[metabase.query-processor.middleware.remove-inactive-field-refs]]
-  and [[metabase.lib.equality/column-join-alias]] to work correctly. Why? Not 100% sure -- we should theoretically be
-  able to use `:metabase.lib.join/join-alias` for this purpose -- but that doesn't seem to work. Until I figure that
-  out, include the `:source-alias` key.
-
-  Note that this is no longer used on the FE -- see QUE-1355"
-  [cols :- [:sequential ::kebab-cased-map]]
-  (for [col cols]
-    (merge
-     (when-let [join-alias ((some-fn lib.join.util/current-join-alias :source-alias :lib/previous-stage-join-alias) col)]
-       {:source-alias join-alias})
-     col)))
 
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
                                  ::kebab-cased-map
                                  [:map
-                                  [:source ::legacy-source]]]]
+                                  [::source ::legacy-source]]]]
   "Add `:source` to result columns. Needed for legacy FE code. See
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064861598669?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
-          (assoc col :source (source->legacy-source (:lib/source col))))
+          (assoc col ::source (source->legacy-source (:lib/source col))))
         cols))
 
 (defn- add-traditional-display-names
@@ -186,7 +171,7 @@
   [query cols]
   (for [col cols]
     (let [col' (merge col
-                      (when-let [previous-join-alias ((some-fn :lib/previous-stage-join-alias :source-alias) col)]
+                      (when-let [previous-join-alias ((some-fn :lib/previous-stage-join-alias :metabase.lib.join/join-alias) col)]
                         {:metabase.lib.join/join-alias previous-join-alias})
                       (when-let [original-name (:lib/original-name col)]
                         {:name original-name}))]
@@ -241,6 +226,7 @@
    col   :- ::kebab-cased-map]
   (when (= (:lib/type col) :metadata/column)
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
+      (println "(:lib/original-ref col):" (:lib/original-ref col)) ; NOCOMMIT
       (->> (if-let [original-ref (:lib/original-ref col)]
              (cond-> original-ref
                remove-join-alias? (lib.join/with-join-alias nil))
@@ -248,13 +234,12 @@
                (let [col (cond-> col
                            remove-join-alias? (lib.join/with-join-alias nil)
                            remove-join-alias? (assoc ::remove-join-alias? true))]
-
                  (->> (merge
                        col
                        (when-not remove-join-alias?
-                         (when-let [previous-join-alias (:lib/previous-stage-join-alias col)]
+                         (when-some [previous-join-alias (:lib/previous-stage-join-alias col)]
                            {:metabase.lib.join/join-alias previous-join-alias}))
-                       (when-let [original-name (:lib/original-name col)]
+                       (when-some [original-name (:lib/original-name col)]
                          {:name original-name}))
                       lib.ref/ref))))
            lib.convert/->legacy-MBQL
@@ -271,7 +256,7 @@
      (mapv (fn [col]
              (let [field-ref (super-broken-legacy-field-ref query col)]
                (cond-> col
-                 field-ref (assoc :field-ref field-ref))))
+                 field-ref (assoc ::field-ref field-ref))))
            cols))))
 
 (mu/defn- deduplicate-names :- [:sequential ::kebab-cased-map]
@@ -325,29 +310,27 @@
             (cond-> cols
               (seq lib-cols) (merge-cols lib-cols))))
          (add-converted-timezone query)
-         add-source-alias
          add-legacy-source
          (add-traditional-display-names query)
          (add-legacy-field-refs query)
          deduplicate-names
          (merge-model-metadata query))))
 
+;;; TODO (Cam 6/18/25) -- maybe these should be part of the big `->>` in the function above?
+
 (defn- add-unit [col]
   (merge
-   ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
-   ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
    (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
-     {:unit temporal-unit})
+     {::unit temporal-unit})
    col))
 
 (defn- add-binning-info [col]
   (merge
    (when-let [binning-info (:metabase.lib.field/binning col)]
-     {:binning-info (merge
-                     (when-let [strategy (:strategy binning-info)]
-                       {:binning-strategy strategy})
-                     binning-info)})
+     {::binning-info (merge
+                      (when-let [strategy (:strategy binning-info)]
+                        {:binning-strategy strategy})
+                      binning-info)})
    col))
 
 ;;; TODO (Cam 6/12/25) -- remove `:lib/uuid` because it causes way to many test failures. Probably would be better to
