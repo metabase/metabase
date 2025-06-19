@@ -534,3 +534,25 @@
                :lib/original-join-alias      "Products"
                :metabase.lib.join/join-alias "Products"}
               (lib.field.resolution/resolve-field-metadata query -1 broken-ref))))))
+
+(deftest ^:parallel explict-join-against-implicit-join-test
+  (testing "Should be able to explicitly join against an implicit join (#20519)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-table $$orders
+                                   :breakout     [$product-id->products.category]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-table $$products
+                                    :alias        "Products"
+                                    :condition    [:= *products.category &Products.products.category]
+                                    :fields       [&Products.products.id
+                                                   &Products.products.title]}]
+                    :expressions  {"CC" [:+ 1 1]}
+                    :order-by     [[:asc &Products.products.id]]}))]
+      (is (= ["PRODUCTS__via__PRODUCT_ID__CATEGORY"
+              "count"
+              "CC"
+              "ID"
+              "TITLE"]
+             (map :lib/source-column-alias (lib/returned-columns query)))))))

@@ -44,7 +44,6 @@
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -185,7 +184,7 @@
 
 (declare id)
 
-(mu/defn native-query :- ::mbql.s/Query
+(defn native-query
   "Like `mbql-query`, but for native queries."
   [inner-native-query]
   {:database (id)

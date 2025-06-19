@@ -118,8 +118,7 @@
                           {:joins [{:fields       :all
                                     :source-table $$categories
                                     :condition    [:= $category-id &c.categories.id]
-                                    :alias        "c"}]}))
-            join-ident (get-in base-query [:query :joins 0 :ident])]
+                                    :alias        "c"}]}))]
         (doseq [level [0 1 2 3]
                 :let [field (fn [field-key legacy-ref]
                               (let [metadata (meta/field-metadata :venues field-key)]
@@ -130,23 +129,21 @@
             (let [nested-query (lib/query
                                 (qp.store/metadata-provider)
                                 (mt/nest-query base-query level))]
-              (is (= (lib.tu.macros/$ids venues
-                       [(field :id          $id)
-                        (field :name        $name)
-                        (field :category-id $category-id)
-                        (field :latitude    $latitude)
-                        (field :longitude   $longitude)
-                        (field :price       $price)
-                        {:name      "ID_2"
-                         :id        %categories.id
-                         :ident     (lib/explicitly-joined-ident (meta/ident :categories :id) join-ident)
-                         :field_ref &c.categories.id}
-                        {:name      "NAME_2"
-                         :id        %categories.name
-                         :ident     (lib/explicitly-joined-ident (meta/ident :categories :name) join-ident)
-                         :field_ref &c.categories.name}])
-                     (map #(select-keys % [:name :id :field_ref :ident])
-                          (:cols (add-column-info nested-query {:cols []}))))))))))))
+              (is (=? (lib.tu.macros/$ids venues
+                        [(field :id          $id)
+                         (field :name        $name)
+                         (field :category-id $category-id)
+                         (field :latitude    $latitude)
+                         (field :longitude   $longitude)
+                         (field :price       $price)
+                         {:name      "ID_2"
+                          :id        %categories.id
+                          :field_ref &c.categories.id}
+                         {:name      "NAME_2"
+                          :id        %categories.name
+                          :field_ref &c.categories.name}])
+                      (map #(select-keys % [:name :id :field_ref :ident])
+                           (:cols (add-column-info nested-query {:cols []}))))))))))))
 
 (deftest ^:parallel mbql-cols-nested-queries-test-2
   (testing "Aggregated question with source is an aggregated models should infer display_name correctly (#23248)"

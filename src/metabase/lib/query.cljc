@@ -176,6 +176,7 @@
        pmbql-query
        (query-with-stages metadata-providerable (:stages pmbql-query))))
     (catch #?(:clj Throwable :cljs :default) e
+      (println "(u/pprint-to-str legacy-query):" (u/pprint-to-str legacy-query)) ; NOCOMMIT
       (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
                       {:legacy-query legacy-query}
                       e)))))
