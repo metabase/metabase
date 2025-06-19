@@ -13,7 +13,8 @@ type PopoverData = {
 export const RENDERED_POPOVERS: PopoverData[] = [];
 
 function isEventInsideElement(e: Event, el: Element) {
-  return isElement(e.target) && el.contains(e.target);
+  const target = e.composedPath()[0];
+  return isElement(target) && el.contains(target);
 }
 
 export function removePopoverData(popoverData: PopoverData) {
