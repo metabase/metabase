@@ -14,6 +14,8 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
+const COLLECTION_ID = "root";
+
 const Template: StoryFn<ComponentProps<typeof CollectionBrowser>> = (args) => {
   return <CollectionBrowser {...args} />;
 };
@@ -25,6 +27,9 @@ export const Default = {
     layout: "fullscreen",
   },
   decorators: [CommonSdkStoryWrapper],
+  args: {
+    collectionId: COLLECTION_ID,
+  },
   argTypes: {
     collectionId: collectionIdArgType,
   },
@@ -34,6 +39,7 @@ export const WithTypeAndNameColumn = {
   render: Template,
 
   args: {
+    collectionId: COLLECTION_ID,
     visibleColumns: ["type", "name"],
   },
 };
