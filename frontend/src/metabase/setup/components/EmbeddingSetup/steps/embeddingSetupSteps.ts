@@ -13,7 +13,7 @@ export interface StepProps {
   nextStep: () => void;
   prevStep?: () => void;
   goToStep: (key: EmbeddingSetupStepKey) => void;
-  stepKey: EmbeddingSetupStepKey;
+  stepKey: EmbeddingSetupStepKey; // Be aware that this is sent in the `embedding_setup_step_seen` simple event
   stepIndex: number;
   totalSteps: number;
 }
