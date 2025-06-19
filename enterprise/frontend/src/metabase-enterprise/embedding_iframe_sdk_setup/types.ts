@@ -1,7 +1,10 @@
-export type SdkIframeEmbedSetupType = "dashboard" | "chart" | "exploration";
+export type SdkIframeEmbedSetupExperience =
+  | "dashboard"
+  | "chart"
+  | "exploration";
 
 export type SdkIframeEmbedSetupStep =
-  | "select-embed-type"
-  | "select-entity"
-  | "configure"
+  | "select-embed-experience"
+  | "select-embed-entity"
+  | "select-embed-options"
   | "get-code";

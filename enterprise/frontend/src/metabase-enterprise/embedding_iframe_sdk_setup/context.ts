@@ -2,13 +2,16 @@ import { createContext, useContext } from "react";
 
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import type { SdkIframeEmbedSetupStep, SdkIframeEmbedSetupType } from "./types";
+import type {
+  SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupStep,
+} from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
-  embedType: SdkIframeEmbedSetupType;
+  embedType: SdkIframeEmbedSetupExperience;
   settings: SdkIframeEmbedSettings;
   setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;

@@ -11,7 +11,7 @@ import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
-import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupContext";
+import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupProvider";
 
 const SdkIframeEmbedSetupContent = () => {
   const { currentStep } = useSdkIframeEmbedSetupContext();
@@ -48,7 +48,7 @@ const SdkIframeEmbedSetupContent = () => {
                 onClick={handleNext}
                 disabled={!canGoNext}
               >
-                {currentStep === "configure" ? t`Get Code` : t`Next`}
+                {currentStep === "select-embed-options" ? t`Get Code` : t`Next`}
               </Button>
             )}
           </Group>
