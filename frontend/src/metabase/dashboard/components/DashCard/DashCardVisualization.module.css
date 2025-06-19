@@ -5,3 +5,7 @@
 .VirtualDashCardOverlayText {
   color: var(--mb-color-text-medium);
 }
+
+.InlineParametersContainer * {
+  pointer-events: all;
+}

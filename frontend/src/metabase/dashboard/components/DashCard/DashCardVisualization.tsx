@@ -13,7 +13,6 @@ import {
 import {
   getVirtualCardType,
   isVirtualDashCard,
-  supportsInlineParameters,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
@@ -487,11 +486,7 @@ export function DashCardVisualization({
       className={cx(CS.flexFull, {
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
-
-        // Heading dashcards configure pointer events on their own
-        // to make the inner input and inline filters interactive.
-        [CS.pointerEventsNone]:
-          isEditingDashboardLayout && !supportsInlineParameters(dashcard),
+        [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       dashboard={dashboard}
       dashcard={dashcard}
