@@ -15,10 +15,11 @@ import type {
 } from "metabase-types/api";
 
 export const remapRowActionMappingsToActionOverride = ({
+  id,
   name,
   parameterMappings,
 }: TableRowActionDisplaySettings): TableActionsExecuteFormVizOverride => {
-  const result: TableActionsExecuteFormVizOverride = {};
+  const result: TableActionsExecuteFormVizOverride = { id };
 
   if (name) {
     result.name = name;

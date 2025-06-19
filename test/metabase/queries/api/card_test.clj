@@ -919,6 +919,24 @@
                 (is (=? {:id pos-int?}
                         (mt/user-http-request :crowberto :post 200 "card" card)))))))))))
 
+(deftest save-row-action
+  (testing "POST /api/card"
+    (testing "Should be able to save a card with a row action"
+      (mt/with-model-cleanup [:model/Card]
+        (testing "without result metadata"
+          (let [temp-id (str (random-uuid))]
+            (is (=? {:id pos-int?
+                     :visualization_settings {:table.enabled_actions
+                                              [{:id         (str "card:unknown:" temp-id),
+                                                :action-id  1
+                                                :actionType "data-grid/row-action"
+                                                :enabled    true}]}}
+                    (mt/user-http-request :crowberto :post 200 "card"
+                                          (merge (mt/with-temp-defaults :model/Card)
+                                                 {:dataset_query          (mt/mbql-query venues {:filter [:= $id 0]})
+                                                  :visualization_settings {:table.enabled_actions
+                                                                           [{:id temp-id, :action-id 1}]}}))))))))))
+
 (deftest save-card-with-empty-result-metadata-test
   (testing "we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)"
     (mt/with-model-cleanup [:model/Card]

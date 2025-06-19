@@ -79,7 +79,7 @@ export type TableUndoRedoResponse = {
 };
 
 export type TableExecuteActionRequest = {
-  actionId: WritebackActionId;
+  actionId: WritebackActionId | string;
   scope: TableEditingScope;
   input: ParametersForActionExecution;
   params: ParametersForActionExecution;
