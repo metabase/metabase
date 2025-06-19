@@ -380,7 +380,7 @@ describe("scenarios > browse > metrics", () => {
   describe("verified metrics", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should not show the verified metrics filter when there are no verified metrics", () => {

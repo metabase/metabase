@@ -30,7 +30,7 @@ describe("scenarios > admin > tools > help (EE)", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should link `Get Help` to help-premium", () => {
@@ -432,7 +432,7 @@ describe("admin > tools > erroring questions ", { tags: "@quarantine" }, () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("POST", "/api/dataset").as("dataset");
     });
@@ -519,7 +519,7 @@ describe("admin > tools", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should show either the erroring questions or the upsell (based on the `audit_app` feature flag)", () => {

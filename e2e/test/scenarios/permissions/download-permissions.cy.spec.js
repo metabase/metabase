@@ -26,7 +26,7 @@ describe("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     // Restrict downloads for Collection and Data groups before each test so that they don't override All Users
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {

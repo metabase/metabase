@@ -542,7 +542,7 @@ describe("scenarios > admin > databases > exceptions", () => {
   it("should handle a failure to `GET` the list of all databases (metabase#20471)", () => {
     const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    IS_ENTERPRISE && H.setTokenFeatures("all");
+    IS_ENTERPRISE && H.activateToken("pro-self-hosted");
 
     cy.intercept(
       {

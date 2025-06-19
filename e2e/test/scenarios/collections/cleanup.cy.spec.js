@@ -33,7 +33,7 @@ describe("scenarios > collections > clean up", () => {
     describe("action menu", () => {
       it("should show in proper contexts", () => {
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.log("should not show in custom analytics collections");
         H.visitCollection("root");
@@ -145,7 +145,7 @@ describe("scenarios > collections > clean up", () => {
       beforeEach(() => {
         H.resetSnowplow();
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.enableTracking();
       });
 
