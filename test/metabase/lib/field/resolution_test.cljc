@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.field-test]
@@ -264,8 +265,9 @@
                                  ;; by [[metabase.query-processor.middleware.fetch-source-query/resolve-source-cards-in-stage]]]
                                  :source-query/model? true}]}]
       (testing `lib.field.resolution/previous-stage-or-source-card-metadata
-        (is (= {:display-name "Example Timestamp"}
-               (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 "EXAMPLE_TIMESTAMP"))))
+        (is (=? {:display-name "Example Timestamp"
+                 :lib/source   :source/card}
+                (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 "EXAMPLE_TIMESTAMP"))))
       (let [field-ref (first (lib/fields query -1))]
         (is (=? [:field {:lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"} "EXAMPLE_TIMESTAMP"]
                 field-ref))
@@ -415,11 +417,9 @@
                        :id                            (meta/id :products :category)
                        :lib/original-display-name     "Category"
                        :lib/original-name             "CATEGORY"
-                       ;; this theoretically SHOULD be getting set but isn't. Not really important until we finally
-                       ;; remove `:source-alias`
-                       #_:lib/previous-stage-join-alias #_"Products"
                        :lib/original-join-alias       "Products"
-                       ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR NOW)
+                       ;; this key is DEPRECATED (see description in column metadata schema) but still used (FOR
+                       ;; NOW) (QUE-1403)
                        :source-alias                  "Products"
                        :lib/source                    :source/card ; or is it supposed to be `:source/breakouts`?
                        :lib/source-uuid               (lib.options/uuid breakout-ref)
@@ -431,3 +431,124 @@
                        :was-binned                    false}
                       ;; this eventually uses `lib.field.resolution`
                       (lib.field.resolution/resolve-field-metadata query -1 breakout-ref))))))))))
+
+(deftest ^:parallel join-from-model-test
+  (testing "Do the right thing with joins that come from models"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1
+                        :name "Model"
+                        :type :model
+                        :database-id (meta/id)
+                        :dataset-query (lib.tu.macros/mbql-query venues
+                                         {:joins [{:source-table $$categories
+                                                   :alias "C"
+                                                   :condition    [:= &C.categories.id $venues.category-id]}]
+                                          :fields [[:field
+                                                    "C__NAME"
+                                                    {:base-type :type/Text
+                                                     :temporal-unit :month
+                                                     :binning       {:strategy :default}}]]})}]})
+          query (lib/query mp {:type :query, :database (meta/id), :query {:source-table "card__1"}})
+          expected {:base-type                        :type/Text
+                    :display-name                     "C → Name: Auto binned: Month"
+                    :effective-type                   :type/Text
+                    :fingerprint                      map?
+                    :id                               (meta/id :categories :name)
+                    :inherited-temporal-unit          :month
+                    :semantic-type                    :type/Name
+                    :table-id                         (meta/id :categories)
+                    :visibility-type                  :normal
+                    :was-binned                       false
+                    :lib/card-id                      1
+                    :lib/desired-column-alias         "C__NAME"
+                    :lib/original-display-name        "Name"
+                    :lib/original-join-alias          "C"
+                    :lib/original-name                "NAME"
+                    :lib/source                       :source/card
+                    :lib/source-uuid                  string?
+                    :lib/type                         :metadata/column
+                    :metabase.lib.field/binning       (symbol "nil #_\"key is not present.\"")
+                    :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                    :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")}
+          field-ref [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "C__NAME"]]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (testing "with model as :source-card (current-stage-source-card-metadata pathway)"
+          (is (=? (assoc expected
+                         :lib/deduplicated-name   "NAME"
+                         :name                    "NAME"
+                         :lib/source-column-alias "NAME")
+                  (lib.field.resolution/resolve-field-metadata query -1 field-ref))))
+        (testing "With a query that has been preprocessed (current-stage-model-metadata pathway)"
+          (let [model-query (lib/query mp (:dataset-query (lib.metadata/card mp 1)))
+                query'      (update query :stages (fn [[original-stage]]
+                                                    [(-> (first (:stages model-query))
+                                                         (assoc :qp/stage-is-from-source-card 1))
+                                                     (dissoc original-stage :source-card)]))]
+            (is (=? (assoc expected
+                           :lib/deduplicated-name   "C__NAME"
+                           :name                    "C__NAME"
+                           :lib/source-column-alias "C__NAME")
+                    (lib.field.resolution/resolve-field-metadata query' -1 field-ref)))))))))
+
+(deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
+  (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
+    (let [query (metabase.lib.breakout-test/legacy-query-with-broken-breakout)
+          breakout-ref (first (lib/breakouts query))]
+      (is (=? [:field {:lib/uuid string?} (meta/id :products :category)]
+              breakout-ref))
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (=? {:active                        true
+                 :base-type                     :type/Text
+                 :database-type                 "CHARACTER VARYING"
+                 :display-name                  "Products → Category"
+                 :fingerprint-version           5
+                 :has-field-values              :auto-list
+                 :id                            (meta/id :products :category)
+                 :lib/original-display-name     "Category"
+                 :lib/original-join-alias       "Products"
+                 :lib/original-name             "CATEGORY"
+                 :lib/source                    :source/breakouts
+                 :lib/source-uuid               (lib.options/uuid breakout-ref)
+                 :lib/type                      :metadata/column
+                 :metabase.lib.join/join-alias  (symbol "nil #_\"key is not present.\"")
+                 :name                          "CATEGORY"
+                 :preview-display               true
+                 :semantic-type                 :type/Category
+                 :table-id                      (meta/id :products)
+                 :visibility-type               :normal
+                 :was-binned                    false}
+                (first (lib/breakouts-metadata query))))
+        (testing "don't set :lib/previous-stage-join-alias")))))
+
+(deftest ^:parallel column-filter-join-alias-test
+  (testing "We should be able to resolve a ref missing join alias and add that to the metadata (#36861)"
+    (let [query        (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/join (lib/join-clause (meta/table-metadata :products)
+                                                      [(lib/= (meta/field-metadata :orders :product-id)
+                                                              (meta/field-metadata :products :id))])))
+          broken-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Text} "CATEGORY"]]
+      (is (=? {:id                           (meta/id :products :category)
+               :table-id                     (meta/id :products)
+               :name                         "CATEGORY"
+               :lib/original-join-alias      "Products"
+               :metabase.lib.join/join-alias "Products"}
+              (lib.field.resolution/resolve-field-metadata query -1 broken-ref)))
+      (testing "with busted metadata (e.g. as returned by the QP and saved in the app DB for a Card)"
+        (let [mp (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:cards [{:id              1
+                            :name            "Card with Busted Metadata"
+                            :database-id     (meta/id)
+                            :dataset-query   query
+                            :result-metadata (for [col (lib/returned-columns query)]
+                                               (dissoc col :lib/original-join-alias :metabase.lib.join/join-alias :source-alias))}]})
+              busted-query (lib/query mp (lib.metadata/card mp 1))]
+          (is (=? {:id                           (meta/id :products :category)
+                   :table-id                     (meta/id :products)
+                   :name                         "CATEGORY"
+                   :lib/source                   :source/card
+                   :lib/original-join-alias      "Products"
+                   ;; should not be present because the join isn't in this stage of the query!
+                   :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+                  (lib.field.resolution/resolve-field-metadata busted-query -1 broken-ref))))))))

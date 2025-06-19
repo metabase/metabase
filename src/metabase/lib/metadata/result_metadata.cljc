@@ -168,7 +168,8 @@
   [cols :- [:sequential ::kebab-cased-map]]
   (for [col cols]
     (merge
-     (when-let [join-alias ((some-fn lib.join.util/current-join-alias :source-alias :lib/previous-stage-join-alias) col)]
+     (when-let [join-alias ((some-fn lib.join.util/current-join-alias :source-alias :lib/original-join-alias)
+                            col)]
        {:source-alias join-alias})
      col)))
 
@@ -190,7 +191,7 @@
   [query cols]
   (for [col cols]
     (let [col' (merge col
-                      (when-let [previous-join-alias ((some-fn :lib/previous-stage-join-alias :source-alias) col)]
+                      (when-let [previous-join-alias ((some-fn :lib/original-join-alias :source-alias) col)]
                         {:metabase.lib.join/join-alias previous-join-alias})
                       (when-let [original-name (:lib/original-name col)]
                         {:name original-name}))]
@@ -256,7 +257,7 @@
                  (->> (merge
                        col
                        (when-not remove-join-alias?
-                         (when-let [previous-join-alias (:lib/previous-stage-join-alias col)]
+                         (when-let [previous-join-alias (:lib/original-join-alias col)]
                            {:metabase.lib.join/join-alias previous-join-alias}))
                        (when-let [original-name (:lib/original-name col)]
                          {:name original-name}))

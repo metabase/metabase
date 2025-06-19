@@ -1,12 +1,12 @@
 (ns metabase.lib.schema.metadata
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.util.malli.registry :as mr]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.schema.binning :as lib.schema.binning]))
+   [metabase.util.malli.registry :as mr]))
 
 (defn- kebab-cased-key? [k]
   (and (keyword? k)
@@ -230,10 +230,9 @@
     ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
     ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
     ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/previous-stage-join-alias` or `:lib/original-join-alias` instead to serve this purpose since
-    ;; `:source-alias` is not set or used correctly. Check out experimental
-    ;; https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban' this key so we can root
-    ;; out anywhere trying to use it. Going forward, we should use `:lib/previous-stage-join-alias` instead when we
+    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
+    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
+    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
     [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
     ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
     ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
@@ -242,11 +241,15 @@
     ;; TODO (Cam 6/19/25) -- rename this key to `:lib/join-alias` since we're not really good about only using the
     ;; special getter and setter functions to get at this key
     [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
-    ;; join alias used in the stage immediately prior to this one. Not currently set consistently (yet). We should try
-    ;; to make better use of it going forward.
-    [:lib/previous-stage-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
     ;; from a previous stage.
+    ;;
+    ;; What about when the column comes from join `X`, but inside `X` itself it comes from join `Y`? I think in this
+    ;; case we want the outside world to see `X` since `Y` is not visible outside of `X`.
+    ;;
+    ;;    original join alias = X
+    ;;    column => [join X => join Y]
+    ;;
     [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; other misc namespaced keys
     [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
@@ -276,7 +279,7 @@
     [:lib/original-name     {:optional true} ::original-name]
     [:lib/deduplicated-name {:optional true} ::deduplicated-name]
     ;; appears to serve the same purpose as `:lib/original-name` but it's unclear where or why it is
-    ;; used.https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589
+    ;; used. https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589
     ;;
     ;; TODO (Cam 6/19/25) -- can we remove this entirely?
     [:lib/hack-original-name {:optional true} ::original-name]

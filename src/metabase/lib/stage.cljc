@@ -164,7 +164,7 @@
            ;; to generate `:expression` or `:field` refs.
            (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
 
-(mu/defn- saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- saved-question-visible-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
   [query          :- ::lib.schema/query
    stage-number   :- :int
@@ -256,7 +256,7 @@
              (metric-metadata query stage-number card options))
            ;; 1c. Metadata associated with a saved Question
            (when source-card
-             (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+             (saved-question-visible-columns query stage-number source-card (assoc options :include-implicitly-joinable? false)))
            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
            (for [col (:columns (:lib/stage-metadata this-stage))]
              (assoc col
@@ -343,11 +343,6 @@
     (into (vec field-cols)
           (remove duplicate-col?)
           join-cols)))
-
-#_(defn- flow-previous-stage-metadata [query stage-number cols options]
-    (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-      (let [previous-stage (lib.util/query-stage query previous-stage-number)]
-        (when-let [cols (lib.metadata.calculation/returned-columns query previous-stage-number previous-stage)]))))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return

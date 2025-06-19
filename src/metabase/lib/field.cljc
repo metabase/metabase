@@ -333,10 +333,7 @@
           ::original-effective-type
           ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
-    :metabase.lib.field/temporal-unit :temporal-unit
-    ;; NOCOMMIT
-    :metabase.lib.join/join-alias :join-alias
-    }))
+    :metabase.lib.field/temporal-unit :temporal-unit}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-colums
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
@@ -369,6 +366,17 @@
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
                                  (select-renamed-keys metadata field-ref-propagated-keys)
+                                 ;; MEGA HACK! If the QP result metadata included `:source-alias` use that as a join
+                                 ;; alias! We should only do this for metadata that came from the QP results metadata!
+                                 ;;
+                                 ;; TODO (Cam 6/19/25) -- need a way to determine if this metadata came from the QP or
+                                 ;; not!
+                                 (when-let [source-alias (and (not inherited-column?)
+                                                              (not (:fk-field-id metadata))
+                                                              (not= :source/implicitly-joinable
+                                                                    (:lib/source metadata))
+                                                              (:source-alias metadata))]
+                                   {:join-alias source-alias})
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-colums)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)
