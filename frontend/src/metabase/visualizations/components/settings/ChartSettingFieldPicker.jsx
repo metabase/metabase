@@ -28,6 +28,8 @@ export const ChartSettingFieldPicker = ({
   columns,
   showColumnSetting,
   showDragHandle,
+  dragHandleRef,
+  dragHandleListeners,
   columnHasSettings,
   showColorPicker,
   colors,
@@ -89,7 +91,6 @@ export const ChartSettingFieldPicker = ({
   return (
     <ChartSettingFieldPickerRoot
       className={className}
-      showDragHandle={showDragHandle}
       data-testid="chartsettings-field-picker"
       bg="bg-white"
       align="center"
@@ -107,8 +108,10 @@ export const ChartSettingFieldPicker = ({
             <Group wrap="nowrap" gap="xs" p="xs" ml="sm" mr="md" align="center">
               {showDragHandle && (
                 <GrabberHandle
+                  ref={dragHandleRef}
                   name="grabber"
                   noMargin
+                  {...dragHandleListeners}
                   onClick={(e) => e.stopPropagation()}
                   c="text-medium"
                   className={CS.pointerEventsAll}

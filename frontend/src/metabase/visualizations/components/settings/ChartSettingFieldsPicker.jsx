@@ -76,40 +76,44 @@ const ChartSettingFieldsPicker = ({
           disabled={isDragDisabled}
           draggingStyle={{ opacity: 0.5 }}
         >
-          <ChartSettingFieldPicker
-            className={CS.mb1}
-            {...props}
-            showColumnSetting={
-              showColumnSetting ||
-              showColumnSettingForIndicies?.includes(fieldIndex)
-            }
-            key={id}
-            value={field}
-            options={calculateOptions(field)}
-            onChange={(updatedField) => {
-              const fieldsCopy = [...fields];
-              // this swaps the position of the existing value
-              const existingIndex = fields.indexOf(updatedField);
-              if (existingIndex >= 0) {
-                fieldsCopy.splice(existingIndex, 1, fields[fieldIndex]);
+          {({ dragHandleRef, dragHandleListeners }) => (
+            <ChartSettingFieldPicker
+              className={CS.mb1}
+              {...props}
+              showColumnSetting={
+                showColumnSetting ||
+                showColumnSettingForIndicies?.includes(fieldIndex)
               }
-              // replace with the new value
-              fieldsCopy.splice(fieldIndex, 1, updatedField);
-              onChange(fieldsCopy);
-            }}
-            onRemove={
-              fields.filter((field) => field != null).length > 1 ||
-              (fields.length > 1 && field == null)
-                ? () =>
-                    onChange([
-                      ...fields.slice(0, fieldIndex),
-                      ...fields.slice(fieldIndex + 1),
-                    ])
-                : null
-            }
-            showDragHandle={fields.length > 1}
-            fieldSettingWidget={fieldSettingWidgets[fieldIndex]}
-          />
+              key={id}
+              value={field}
+              options={calculateOptions(field)}
+              onChange={(updatedField) => {
+                const fieldsCopy = [...fields];
+                // this swaps the position of the existing value
+                const existingIndex = fields.indexOf(updatedField);
+                if (existingIndex >= 0) {
+                  fieldsCopy.splice(existingIndex, 1, fields[fieldIndex]);
+                }
+                // replace with the new value
+                fieldsCopy.splice(fieldIndex, 1, updatedField);
+                onChange(fieldsCopy);
+              }}
+              onRemove={
+                fields.filter((field) => field != null).length > 1 ||
+                (fields.length > 1 && field == null)
+                  ? () =>
+                      onChange([
+                        ...fields.slice(0, fieldIndex),
+                        ...fields.slice(fieldIndex + 1),
+                      ])
+                  : null
+              }
+              showDragHandle={fields.length > 1}
+              dragHandleRef={dragHandleRef}
+              dragHandleListeners={dragHandleListeners}
+              fieldSettingWidget={fieldSettingWidgets[fieldIndex]}
+            />
+          )}
         </Sortable>
       );
     },
