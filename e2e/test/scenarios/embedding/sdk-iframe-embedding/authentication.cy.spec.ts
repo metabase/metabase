@@ -22,6 +22,36 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
     });
   });
 
+  it("can use existing user session when useExistingUserSession is true", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      useExistingUserSession: true,
+    });
+
+    assertDashboardLoaded(frame);
+  });
+
+  it("cannot use existing user session when useExistingUserSession is false", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      useExistingUserSession: false,
+    });
+
+    cy.log(
+      "when no auth methods are enabled and the existing user session is not used, it should fail to login",
+    );
+
+    frame.within(() => {
+      cy.findByTestId("sdk-error-container")
+        .should("be.visible")
+        .and("contain", "Backend returned an error when refreshing the token");
+    });
+  });
+
   it("can login via JWT", () => {
     H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
     cy.signOut();
@@ -87,6 +117,31 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
+  });
+
+  it("shows an error if we are using the existing user session in production", () => {
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+    cy.signOut();
+
+    cy.log("restore the current page's domain");
+    cy.visit("http://localhost:4000");
+
+    cy.log(
+      "visit a test page with an origin of example.com using the existing user session",
+    );
+    const frame = H.loadSdkIframeEmbedTestPage({
+      origin: "http://example.com",
+      dashboardId: ORDERS_DASHBOARD_ID,
+      useExistingUserSession: true,
+    });
+
+    frame
+      .findByText(
+        "Using the existing user's session in production is not allowed.",
+      )
+      .should("exist");
+
+    frame.findByText("Orders in a dashboard").should("not.exist");
   });
 
   it("does not show an error if we are using an API key in development", () => {

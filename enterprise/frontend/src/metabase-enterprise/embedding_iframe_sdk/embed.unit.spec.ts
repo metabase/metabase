@@ -62,6 +62,22 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     }).not.toThrow();
   });
 
+  it("throws an error when useExistingUserSession is updated to be a different value", () => {
+    expect(() => {
+      const embed = new MetabaseEmbed({
+        ...defaultSettings,
+        instanceUrl: "https://foo-bar-baz.com",
+        questionId: 10,
+        target: document.createElement("div"),
+        useExistingUserSession: true,
+      });
+
+      embed.updateSettings({ useExistingUserSession: false });
+    }).toThrow(
+      "useExistingUserSession cannot be updated after the embed is created",
+    );
+  });
+
   it("throws when question id is provided in the exploration template", () => {
     expect(() => {
       // @ts-expect-error -- we are testing for incorrect configuration

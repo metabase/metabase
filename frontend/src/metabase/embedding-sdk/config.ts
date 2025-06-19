@@ -6,4 +6,7 @@ export const EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID =
 export const EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG = {
   /** Whether the iframe embedding auth flow should be used. */
   isSdkIframeEmbedAuth: false,
+
+  /** Whether we should use the existing user session (i.e. admin user's cookie) */
+  useExistingUserSession: false,
 };
