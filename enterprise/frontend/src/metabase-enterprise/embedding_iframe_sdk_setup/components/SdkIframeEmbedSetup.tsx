@@ -1,82 +1,33 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ResizableBox } from "react-resizable";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import "react-resizable/css/styles.css";
 
 import { Box, Button, Card, Group, Stack } from "metabase/ui";
+import { useSdkIframeEmbedNavigation } from "metabase-enterprise/embedding_iframe_sdk_setup/hooks/use-sdk-iframe-embed-navigation";
+
+import { useSdkIframeEmbedSetupContext } from "../context";
 
 import { SdkIframeEmbedPreview } from "./SdkIframeEmbedPreview";
 import S from "./SdkIframeEmbedSetup.module.css";
-import {
-  SdkIframeEmbedSetupProvider,
-  useSdkIframeEmbedSetupContext,
-} from "./SdkIframeEmbedSetupContext";
-import { SelectEmbedTypeStep } from "./SelectEmbedTypeStep";
+import { SdkIframeEmbedSetupProvider } from "./SdkIframeEmbedSetupContext";
 
 const SdkIframeEmbedSetupContent = () => {
-  const [sidebarWidth, setSidebarWidth] = useState(400);
+  const { currentStep } = useSdkIframeEmbedSetupContext();
 
   const {
-    embedType: selectedType,
-    currentStep,
-    setCurrentStep,
-  } = useSdkIframeEmbedSetupContext();
-
-  const handleNext = () => {
-    if (currentStep === "select-embed-type") {
-      // Skip select-entity for exploration
-      if (selectedType === "exploration") {
-        setCurrentStep("configure");
-      } else {
-        setCurrentStep("select-entity");
-      }
-    } else if (currentStep === "select-entity") {
-      setCurrentStep("configure");
-    } else if (currentStep === "configure") {
-      setCurrentStep("get-code");
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep === "select-entity") {
-      setCurrentStep("select-embed-type");
-    } else if (currentStep === "configure") {
-      // Skip select-entity for exploration
-      if (selectedType === "exploration") {
-        setCurrentStep("select-embed-type");
-      } else {
-        setCurrentStep("select-entity");
-      }
-    } else if (currentStep === "get-code") {
-      setCurrentStep("configure");
-    }
-  };
-
-  const canGoNext = currentStep !== "get-code";
-  const canGoBack = currentStep !== "select-embed-type";
-
-  const StepContent = useMemo(() => {
-    return match(currentStep)
-      .with("select-embed-type", () => SelectEmbedTypeStep)
-      .with("select-entity", () => () => null)
-      .with("configure", () => () => null)
-      .with("get-code", () => () => null)
-      .exhaustive();
-  }, [currentStep]);
+    handleNext,
+    handleBack,
+    canGoNext,
+    canGoBack,
+    isLastStep,
+    StepContent,
+  } = useSdkIframeEmbedNavigation();
 
   return (
     <Box className={S.Container}>
-      <ResizableBox
-        width={sidebarWidth}
-        height={Infinity}
-        minConstraints={[300, Infinity]}
-        maxConstraints={[600, Infinity]}
-        onResizeStop={(_, data) => setSidebarWidth(data.size.width)}
-        axis="x"
-        handle={<Box className={S.ResizeHandle} />}
-      >
+      <SidebarResizer>
         <Box className={S.Sidebar}>
           <Box className={S.SidebarContent}>
             <StepContent />
@@ -91,7 +42,7 @@ const SdkIframeEmbedSetupContent = () => {
               {t`Back`}
             </Button>
 
-            {currentStep !== "get-code" && (
+            {!isLastStep && (
               <Button
                 variant="filled"
                 onClick={handleNext}
@@ -102,7 +53,7 @@ const SdkIframeEmbedSetupContent = () => {
             )}
           </Group>
         </Box>
-      </ResizableBox>
+      </SidebarResizer>
 
       <Box className={S.PreviewPanel}>
         <Card p="md" h="100%">
@@ -115,10 +66,26 @@ const SdkIframeEmbedSetupContent = () => {
   );
 };
 
-export const SdkIframeEmbedSetup = () => {
+const SidebarResizer = ({ children }: { children: React.ReactNode }) => {
+  const [sidebarWidth, setSidebarWidth] = useState(400);
+
   return (
-    <SdkIframeEmbedSetupProvider>
-      <SdkIframeEmbedSetupContent />
-    </SdkIframeEmbedSetupProvider>
+    <ResizableBox
+      width={sidebarWidth}
+      height={Infinity}
+      minConstraints={[300, Infinity]}
+      maxConstraints={[600, Infinity]}
+      onResizeStop={(_, data) => setSidebarWidth(data.size.width)}
+      axis="x"
+      handle={<Box className={S.ResizeHandle} />}
+    >
+      {children}
+    </ResizableBox>
   );
 };
+
+export const SdkIframeEmbedSetup = () => (
+  <SdkIframeEmbedSetupProvider>
+    <SdkIframeEmbedSetupContent />
+  </SdkIframeEmbedSetupProvider>
+);

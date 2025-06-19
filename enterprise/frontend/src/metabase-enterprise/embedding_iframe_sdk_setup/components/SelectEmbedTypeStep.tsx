@@ -5,10 +5,9 @@ import { Card, Radio, Stack, Text } from "metabase/ui";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
 import { EMBED_TYPES } from "../constants";
+import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupType } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
-
-import { useSdkIframeEmbedSetupContext } from "./SdkIframeEmbedSetupContext";
 
 export const SelectEmbedTypeStep = () => {
   const { embedType, settings, setSettings } = useSdkIframeEmbedSetupContext();

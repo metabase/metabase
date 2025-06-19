@@ -1,32 +1,17 @@
-import {
-  type ReactNode,
-  createContext,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
+import {
+  SdkIframeEmbedSetupContext,
+  type SdkIframeEmbedSetupContextType,
+} from "../context";
 import type {
   SdkIframeEmbedSetupStep,
   SdkIframeEmbedSetupType,
 } from "../types";
-
-interface SdkIframeEmbedSetupContextType {
-  currentStep: SdkIframeEmbedSetupStep;
-  setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
-
-  embedType: SdkIframeEmbedSetupType;
-  settings: SdkIframeEmbedSettings;
-  setSettings: (settings: SdkIframeEmbedSettings) => void;
-  updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
-}
-
-const SdkIframeEmbedSetupContext =
-  createContext<SdkIframeEmbedSetupContextType | null>(null);
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -75,16 +60,4 @@ export const SdkIframeEmbedSetupProvider = ({
       {children}
     </SdkIframeEmbedSetupContext.Provider>
   );
-};
-
-export const useSdkIframeEmbedSetupContext = () => {
-  const context = useContext(SdkIframeEmbedSetupContext);
-
-  if (!context) {
-    throw new Error(
-      "useSdkIframeEmbedSetupContext must be used within a SdkIframeEmbedSetupProvider",
-    );
-  }
-
-  return context;
 };
