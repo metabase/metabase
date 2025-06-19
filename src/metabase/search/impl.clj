@@ -270,7 +270,7 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:has-temporal-dimensions?            {:optional true} [:maybe boolean?]]
    [:required-non-temporal-dimension-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-   [:display                             {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -281,7 +281,7 @@
            created-by
            current-user-id
            current-user-perms
-           display
+           display-type
            has-temporal-dimensions?
            required-non-temporal-dimension-ids
            filter-items-in-personal-collection
@@ -326,7 +326,6 @@
                         :search-engine                       engine
                         :search-string                       search-string}
                  (some? created-at)                          (assoc :created-at created-at)
-                 (seq display)                               (assoc :display display)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
                  (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
@@ -338,9 +337,10 @@
                  (some? verified)                            (assoc :verified verified)
                  (some? include-dashboard-questions?)        (assoc :include-dashboard-questions? include-dashboard-questions?)
                  (some? include-metadata?)                   (assoc :include-metadata? include-metadata?)
+                 (seq ids)                                   (assoc :ids ids)
+                 (seq display-type)                          (assoc :display-type display-type)
                  (some? has-temporal-dimensions?)            (assoc :has-temporal-dimensions? has-temporal-dimensions?)
-                 (seq required-non-temporal-dimension-ids)   (assoc :required-non-temporal-dimension-ids required-non-temporal-dimension-ids)
-                 (seq ids)                                   (assoc :ids ids))]
+                 (seq required-non-temporal-dimension-ids)   (assoc :required-non-temporal-dimension-ids required-non-temporal-dimension-ids))]
     (when (and (seq ids)
                (not= (count models) 1))
       (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))

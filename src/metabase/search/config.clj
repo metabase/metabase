@@ -145,7 +145,7 @@
     :creator-id                 {:type :list, :context-key :created-by}
     ;; This actually has nothing to do with tables, as we also filter cards, it would be good to rename the context key.
     :database-id                {:type :single-value, :context-key :table-db-id}
-    :display                    {:type :list}
+    :display-type               {:type :list, :field "display_type"}
     :has-temporal-dimensions    {:type :single-value, :context-key :has-temporal-dimensions?}
     :id                         {:type :list, :context-key :ids, :field "model_id"}
     :last-edited-at             {:type :date-range}
@@ -238,7 +238,7 @@
    ;;
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
-   [:display                             {:optional true} [:set {:min 1} ms/NonBlankString]]
+   [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]
    [:filter-items-in-personal-collection {:optional true} [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]
    [:has-temporal-dimensions?            {:optional true} [:maybe :boolean]]
    [:last-edited-at                      {:optional true} ms/NonBlankString]
