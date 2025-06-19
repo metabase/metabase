@@ -185,6 +185,7 @@
       :table-id     (:table-id partial-input)
       :param-map    (:param-map unified)
       ;; tried commenting it out and no tests failed, so will leave this here as reference for now
+      ;; (also don't see any code that could ever populate this tho)
       :dashcard-viz nil #_(:dashcard-viz (:dashcard-viz unified))})
     (:inner-action unified)
     (let [inner        (:inner-action unified)
