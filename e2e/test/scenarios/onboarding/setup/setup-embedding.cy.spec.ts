@@ -137,7 +137,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       "Now we have a user we simulate being on cloud by setting a Metatabase Token",
     );
     cy.wait("@setup");
-    activateToken("pro-self-hosted");
+    H.activateToken("pro-self-hosted");
 
     cy.log("2: Data connection step");
     sidebar().within(() => {
