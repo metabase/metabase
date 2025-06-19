@@ -474,7 +474,7 @@ describe("Cloud settings section", () => {
   it("should be visible when running Metabase Cloud", () => {
     // Setting to none will give us an instance where token-features.hosting is set to true
     // Allowing us to pretend that we are a hosted instance (seems backwards though haha)
-    H.setTokenFeatures("none");
+    H.activateToken("pro-cloud");
 
     cy.visit("/admin/settings");
     cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
@@ -484,7 +484,7 @@ describe("Cloud settings section", () => {
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     cy.visit("/admin/settings/cloud");
     cy.findAllByTestId("settings-sidebar-link")
       .filter(":contains(Cloud)")
