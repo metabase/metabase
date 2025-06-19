@@ -1,10 +1,8 @@
 import { merge } from "icepick";
 
 import { OVERLAY_Z_INDEX } from "metabase/css/core/overlays/constants";
-import {
-  EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID,
-  EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
-} from "metabase/embedding-sdk/config";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
+import { EMBEDDING_SDK_FULL_PAGE_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseComponentTheme } from "metabase/embedding-sdk/theme";
 import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -144,9 +142,7 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: rootElement.querySelector(
-            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-          ),
+          target: getPortalRootElement(rootElement),
         },
       },
     },
@@ -174,9 +170,7 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: rootElement.querySelector(
-            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-          ),
+          target: getPortalRootElement(rootElement),
         },
       }, // satisfies Partial<PopoverProps>,
     },
@@ -185,9 +179,7 @@ export function getEmbeddingComponentOverrides(
       defaultProps: {
         withinPortal: true,
         portalProps: {
-          target: rootElement.querySelector(
-            `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
-          ),
+          target: getPortalRootElement(rootElement),
         },
       }, // satisfies Partial<TooltipProps>,
     },
