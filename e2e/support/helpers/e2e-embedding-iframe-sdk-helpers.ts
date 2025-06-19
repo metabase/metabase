@@ -1,6 +1,5 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
-import { createApiKey } from "./api";
 import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
@@ -154,7 +153,7 @@ export function prepareSdkIframeEmbedTest({
   setupMockAuthProviders(enabledAuthMethods);
 }
 
-type EnabledAuthMethods = "jwt" | "saml" | "api-key";
+type EnabledAuthMethods = "jwt" | "saml";
 
 function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
   if (enabledAuthMethods.includes("jwt")) {
@@ -166,15 +165,5 @@ function setupMockAuthProviders(enabledAuthMethods: EnabledAuthMethods[]) {
   // Metabase into thinking that SAML is enabled and configured.
   if (enabledAuthMethods.includes("saml")) {
     enableSamlAuth();
-  }
-
-  if (enabledAuthMethods.includes("api-key")) {
-    const ADMIN_GROUP_ID = 2;
-
-    createApiKey("test iframe sdk embedding", ADMIN_GROUP_ID).then(
-      ({ body }) => {
-        cy.wrap(body.unmasked_key).as("apiKey");
-      },
-    );
   }
 }
