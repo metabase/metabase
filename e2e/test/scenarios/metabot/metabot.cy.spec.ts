@@ -1,4 +1,5 @@
 import {
+  activateToken,
   assertChatVisibility,
   chatMessages,
   closeMetabotViaCloseButton,
@@ -39,7 +40,7 @@ describe("Metabot UI", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      activateToken("bleeding-edge");
       cy.visit("/");
       cy.wait("@sessionProperties");
     });
