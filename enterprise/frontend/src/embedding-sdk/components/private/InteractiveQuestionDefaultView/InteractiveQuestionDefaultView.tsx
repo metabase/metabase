@@ -83,11 +83,14 @@ export const InteractiveQuestionDefaultView = ({
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
+  if (
+    !isEditorOpen &&
+    (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
+  ) {
     return <SdkLoader />;
   }
 
-  if (!question) {
+  if (!isEditorOpen && !question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {
