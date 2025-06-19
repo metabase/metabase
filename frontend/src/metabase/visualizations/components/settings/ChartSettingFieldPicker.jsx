@@ -115,6 +115,7 @@ export const ChartSettingFieldPicker = ({
                   onClick={(e) => e.stopPropagation()}
                   c="text-medium"
                   className={CS.pointerEventsAll}
+                  data-testid="drag-handle"
                 />
               )}
               {showColorPicker && seriesKey && (
