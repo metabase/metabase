@@ -441,8 +441,7 @@
                        (sort (keys metamodel-results))))))
             ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
             ;;
-            ;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see
-            ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1750288689214359
+            ;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see #59803
             (testing "The default export formats conform to the default UI formats"
               (is (= {"FULL_DATETIME_UTC"                "December 11, 2023, 3:30 PM"
                       "FULL_DATETIME_PACIFIC"            "December 11, 2023, 3:30 PM"
