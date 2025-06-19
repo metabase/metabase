@@ -104,20 +104,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
             leftSection={<Icon name="search" />}
             autoFocus
           />
-          <Flex
-            direction="column"
-            pt="sm"
-            px="sm"
-            style={{
-              overflowY: "auto",
-              flex: 1,
-            }}
-          >
-            <DatasetsList
-              search={debouncedSearch}
-              setDataSourceCollapsed={setDataSourceCollapsed}
-            />
-          </Flex>
+          <DatasetsList
+            style={{ flex: 1 }}
+            search={debouncedSearch}
+            setDataSourceCollapsed={setDataSourceCollapsed}
+          />
         </Flex>
       ) : (
         <Flex

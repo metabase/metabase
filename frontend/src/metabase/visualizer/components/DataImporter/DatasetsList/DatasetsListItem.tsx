@@ -7,8 +7,6 @@ import type {
   VisualizerDataSource,
 } from "metabase-types/api";
 
-import { useVisualizerUi } from "../../VisualizerUiContext";
-
 import S from "./DatasetsListItem.module.css";
 
 interface DatasetsListItemProps {
@@ -23,12 +21,7 @@ interface DatasetsListItemProps {
 }
 
 export const DatasetsListItem = (props: DatasetsListItemProps) => {
-  const { selected, item, onSwap, onToggle, onRemove } = props;
-
-  const { setSwapAffordanceVisible } = useVisualizerUi();
-
-  // TODO: We run compatibility in DatasetsList now
-  const isCompatible = true;
+  const { selected, item, onToggle, onRemove } = props;
 
   return (
     <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>
@@ -39,51 +32,14 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
         aria-pressed={selected}
         size="xs"
         onClick={() => {
-          onSwap?.(item);
+          selected ? onRemove?.(item) : onToggle?.(item);
         }}
-        onMouseOver={() => setSwapAffordanceVisible(true)}
-        onMouseOut={() => setSwapAffordanceVisible(false)}
         leftSection={
           <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
       >
         <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
       </Button>
-      {selected ? (
-        <Button
-          data-testid="remove-dataset-button"
-          variant="visualizer"
-          aria-pressed={selected}
-          size="xs"
-          rightSection={<Icon name="close" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove?.(item);
-          }}
-        />
-      ) : (
-        isCompatible && (
-          <Button
-            data-testid="add-dataset-button"
-            size="xs"
-            variant="visualizer"
-            rightSection={<Icon name="add" />}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggle?.(item);
-            }}
-          />
-        )
-      )}
-      {!selected && !isCompatible && (
-        <Button
-          data-testid="placeholder-button"
-          size="xs"
-          variant="visualizer"
-          rightSection={<Icon name="add" />}
-          style={{ opacity: 0, pointerEvents: "none" }}
-        />
-      )}
     </ButtonGroup>
   );
 };
