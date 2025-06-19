@@ -8,7 +8,7 @@ const { IS_ENTERPRISE } = Cypress.env();
 
 /**
  *
- * @param {("all"|"none")} featuresScope
+ * @param {"all"} featuresScope
  */
 export const setTokenFeatures = (featuresScope) => {
   if (!IS_ENTERPRISE) {
@@ -17,21 +17,12 @@ export const setTokenFeatures = (featuresScope) => {
     );
   }
 
-  let token;
-
-  switch (featuresScope) {
-    case "all":
-      token = Cypress.env("ALL_FEATURES_TOKEN");
-      break;
-    case "none":
-      token = Cypress.env("NO_FEATURES_TOKEN");
-      break;
-
-    default:
-      throw new Error(
-        'You must set the token features scope to either "all" or "none"!',
-      );
+  if (featuresScope !== "all") {
+    throw new Error('You must set the token features scope to "all"!');
   }
+
+  const token =
+    Cypress.env("MB_ALL_FEATURES_TOKEN") || Cypress.env("ALL_FEATURES_TOKEN");
 
   if (token === undefined) {
     throw new Error(

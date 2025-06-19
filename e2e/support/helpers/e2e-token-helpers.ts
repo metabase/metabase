@@ -22,7 +22,7 @@ export const activateToken = (
   throwIfNotEnterprise();
 
   const tokenReference = match(tokenName)
-    .with("bleeding-edge", () => "ALL_FEATURES_TOKEN")
+    .with("bleeding-edge", () => "MB_ALL_FEATURES_TOKEN")
     .with("starter", () => "MB_STARTER_CLOUD_TOKEN")
     .with("pro-cloud", () => "MB_PRO_CLOUD_TOKEN")
     .with("pro-self-hosted", () => "MB_PRO_SELF_HOSTED")
@@ -35,7 +35,7 @@ export const activateToken = (
   if (!token) {
     const errorMessage = `
     Please make sure you have correctly set the following tokens in your environment variables:
-      - CYPRESS_ALL_FEATURES_TOKEN
+      - CYPRESS_MB_ALL_FEATURES_TOKEN
       - CYPRESS_MB_STARTER_CLOUD_TOKEN
       - CYPRESS_MB_PRO_CLOUD_TOKEN
       - CYPRESS_MB_PRO_SELF_HOSTED_TOKEN
