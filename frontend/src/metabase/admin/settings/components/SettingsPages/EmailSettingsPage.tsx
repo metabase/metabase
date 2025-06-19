@@ -1,7 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { UpsellHostingBanner } from "metabase/admin/upsells";
+import {
+  UpsellEmailWhitelabelBanner,
+  UpsellHostingBanner,
+} from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -43,6 +46,9 @@ export function EmailSettingsPage() {
         {hasCloudSMTPFeature && (
           <CloudSMTPConnectionCard onOpenCloudSMTPModal={openCloudModal} />
         )}
+        <Center>
+          <UpsellEmailWhitelabelBanner source="settings-email" />
+        </Center>
         {isEmailConfigured && (
           <SettingsSection>
             <AdminSettingInput

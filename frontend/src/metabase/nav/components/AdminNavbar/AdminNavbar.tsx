@@ -66,6 +66,7 @@ export const AdminNavbar = ({
   return (
     <AdminNavbarRoot
       data-element-id="navbar-root"
+      data-testid="admin-navbar"
       aria-label={t`Navigation bar`}
     >
       <AdminLogoLink to="/admin">

@@ -485,7 +485,6 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   return (
     <AdminPaneLayout
-      title={t`Groups`}
       buttonText={isAdmin ? t`Create a group` : undefined}
       buttonAction={
         isShowingAddGroupRow ? undefined : onCreateAGroupButtonClicked
