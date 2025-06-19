@@ -715,7 +715,22 @@
         (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
         (is (=? [{:level   :error
                   :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}]
-                (messages)))))))
+                (messages))))
+      (mt/with-log-messages-for-level [messages [metabase.parameters.params :debug]]
+        (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
+        (is (=? [{:level :error
+                  :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"}
+                 {:level :debug
+                  :message "Failed to lookup template-tag dimension"
+                  :e  {:cause "Failed to lookup template-tag dimension"
+                       :data {:dataset_query
+                              {:type :native
+                               :native {:query "SELECT category FROM products LIMIT 10;"}}
+                              :dimension [:template-tag "not-existed-filter"]
+                              :tag-name "not-existed-filter"}}}]
+                (->> (messages)
+                     (map #(update % :e (fn [ex] {:cause (ex-message ex)
+                                                  :data (ex-data ex)}))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
