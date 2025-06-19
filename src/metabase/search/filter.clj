@@ -9,7 +9,6 @@
    [metabase.search.spec :as search.spec]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time LocalDate)))
@@ -19,7 +18,7 @@
 
 (defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
-    :all true
+    :all      true
     :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
 
 (def ^:private context-key->filter
@@ -68,11 +67,11 @@
                      (params.dates/date-string->range dt-val {:inclusive-end? false})
                      (catch Exception _e
                        (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
-        start (some-> (:start date-range) u.date/parse)
-        end (some-> (:end date-range) u.date/parse)
-        dt-col (if (some #(instance? LocalDate %) [start end])
-                 [:cast dt-col :date]
-                 dt-col)]
+        start      (some-> (:start date-range) u.date/parse)
+        end        (some-> (:end date-range) u.date/parse)
+        dt-col     (if (some #(instance? LocalDate %) [start end])
+                     [:cast dt-col :date]
+                     dt-col)]
     (cond
       (= start end)
       [:= dt-col start]
@@ -126,7 +125,7 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
           child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"
@@ -170,7 +169,6 @@
                     (assert (supported-value? v) (str "Unsupported value for " context-key " - " v))
                     (when (or (nil? required-feature) (premium-features/has-feature? required-feature))
                       (when-some [c (where-clause* t (keyword (str "search_index." field)) v)]
-                        (log/info "Generated WHERE clause:" c)
                         (sql.helpers/where qry c))))
                   qry))
             qry
