@@ -31,7 +31,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       cy.button("Yes").click();
     });
 
-    H.setTokenFeatures("none").then(() => {
+    H.deleteToken().then(() => {
       cy.reload();
 
       H.assertPermissionTable([["Sample Database", "No"]]);
@@ -107,7 +107,7 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
     });
 
     // downgrade to OSS
-    H.setTokenFeatures("none");
+    H.deleteToken();
     cy.reload();
 
     H.assertPermissionTable([
