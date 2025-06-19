@@ -623,42 +623,30 @@
             (map lowercase-value)
             (driver/describe-table-indexes driver database table)))))
 
-(defn- do-with-temporary-dataset [dataset thunk]
-  (mt/dataset dataset
-    (try
-      (thunk)
-      (finally
-        ;; clean and destroy the db so this test is repeatable.
-        (t2/delete! :model/Database (mt/id))
-        (u/ignore-exceptions
-          (tx/destroy-db! driver/*driver* dataset))))))
-
 (deftest describe-table-indexes-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:index-info]})
-    (do-with-temporary-dataset
-     (mt/dataset-definition "indexes"
-                            ["single_index"
-                             [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                              {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                             [[1 2]]]
-                            ["composite_index"
-                             [{:field-name "first" :indexed? false :base-type :type/Integer}
-                              {:field-name "second" :indexed? false :base-type :type/Integer}]
-                             [[1 2]]])
-     (fn []
-       (testing "single column indexes are synced correctly"
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "indexed"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
+    (mt/with-temp-test-data
+      [["single_index"
+        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]
+       ["composite_index"
+        [{:field-name "first" :indexed? false :base-type :type/Integer}
+         {:field-name "second" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "single column indexes are synced correctly"
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "indexed"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
 
-       (testing "for composite indexes, we only care about the 1st column"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-         (sync/sync-database! (mt/db))
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "first"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index))))))))))
+      (testing "for composite indexes, we only care about the 1st column"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
+        (sync/sync-database! (mt/db))
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "first"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::unique-index]
   [_driver _feature _database]
@@ -672,36 +660,30 @@
 (deftest describe-table-indexes-unique-index-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:index-info ::unique-index]})
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-unique"
-      ["unique_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "unique index"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "column"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index))))))))))
+    (mt/with-temp-test-data
+      [["unique_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "unique index"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "column"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index)))))))))
 
 (deftest describe-table-indexes-hashed-index-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:index-info]})
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-hashed"
-      ["hashed_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "hashed index"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "column"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index))))))))))
+    (mt/with-temp-test-data
+      [["hashed_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "hashed index"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "column"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::clustered-index]
   [_driver _feature _database]
@@ -714,21 +696,18 @@
 (deftest describe-table-indexes-clustered-index-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:index-info ::clustered-index]})
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-clustered"
-      ["clustered_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "clustered index"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        "CLUSTER clustered_index USING idx_clustered_index_column;")
-         (is (= #{{:type :normal-column-index :value "id"}
-                  {:type :normal-column-index :value "column"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index))))))))))
+    (mt/with-temp-test-data
+      [["clustered_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "clustered index"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       "CLUSTER clustered_index USING idx_clustered_index_column;")
+        (is (= #{{:type :normal-column-index :value "id"}
+                 {:type :normal-column-index :value "column"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index)))))))))
 
 ;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
 ;; for those indexes so we can't filter those out.
@@ -743,18 +722,15 @@
 (deftest describe-table-indexes-conditional-index-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
                                              :+features [:index-info ::conditional-index]})
-    (do-with-temporary-dataset
-     (mt/dataset-definition
-      "advanced-indexes-conditional"
-      ["conditional_index"
-       [{:field-name "column" :indexed? false :base-type :type/Integer}]
-       [[1 2]]])
-     (fn []
-       (testing "conditional index are ignored"
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
-         (is (= #{{:type :normal-column-index :value "id"}}
-                (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index))))))))))
+    (mt/with-temp-test-data
+      [["conditional_index"
+        [{:field-name "column" :indexed? false :base-type :type/Integer}]
+        [[1 2]]]]
+      (testing "conditional index are ignored"
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                       (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
+        (is (= #{{:type :normal-column-index :value "id"}}
+               (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index)))))))))
 
 (deftest describe-fields-are-sorted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)
