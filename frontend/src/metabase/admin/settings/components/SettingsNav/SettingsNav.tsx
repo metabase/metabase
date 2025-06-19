@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { Divider, Flex, Text } from "metabase/ui";
+import { Divider, Flex } from "metabase/ui";
 
 import {
   AdminNavItem,
@@ -25,11 +25,7 @@ export function SettingsNav() {
   return (
     <AdminNavWrapper>
       <SettingsNavItem path="general" label={t`General`} icon="gear" />
-      <SettingsNavItem
-        path="authentication"
-        label={t`Authentication`}
-        icon="lock"
-      >
+      <SettingsNavItem label={t`Authentication`} path="auth" icon="lock">
         <SettingsNavItem path="authentication" label={t`Overview`} />
         {hasScim && (
           <SettingsNavItem
@@ -62,7 +58,7 @@ export function SettingsNav() {
         path="whitelabel"
         label={
           <Flex gap="sm" align="center">
-            <Text>{t`Appearance`}</Text>
+            <span>{t`Appearance`}</span>
             {!hasWhitelabel && <UpsellGem />}
           </Flex>
         }
@@ -115,7 +111,7 @@ export function SettingsNav() {
         path="cloud"
         label={
           <Flex gap="sm" align="center">
-            <Text>{t`Cloud`}</Text>
+            <span>{t`Cloud`}</span>
             {!hasHosting && <UpsellGem />}
           </Flex>
         }
