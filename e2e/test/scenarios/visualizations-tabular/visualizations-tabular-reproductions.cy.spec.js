@@ -1478,6 +1478,11 @@ describe("issue 55673", () => {
     H.tableHeaderClick("Product ID");
     cy.findByTestId("click-actions-view").should("be.visible");
 
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
     cy.realPress(["Escape"]);
     cy.findByTestId("click-actions-view").should("not.exist");
   });
