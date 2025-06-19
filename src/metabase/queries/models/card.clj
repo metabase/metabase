@@ -1321,7 +1321,7 @@
 
 (defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (t2/select-one :model/Card :id id)
-        source-table       (some-> card :dataset_query :query :source-table)
+        source-table       (some->  card :dataset_query :query :source-table)
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
@@ -1360,10 +1360,10 @@
 
 (def ^:private base-search-spec
   {:model        :model/Card
-   :attrs        {:archived true
-                  :collection-id true
-                  :creator-id true
-                  :dashboard-id true
+   :attrs        {:archived            true
+                  :collection-id       true
+                  :creator-id          true
+                  :dashboard-id        true
                   :dashboardcard-count {:select [:%count.*]
                                         :from [:report_dashboardcard]
                                         :where [:= :report_dashboardcard.card_id :this.id]}
@@ -1374,13 +1374,13 @@
                   :last-viewed-at :last_used_at
                   :native-query (search/searchable-value-trim-sql [:case [:= "native" :query_type] :dataset_query])
                   :official-collection [:= "official" :collection.authority_level]
-                  :last-edited-at :r.timestamp
-                  :last-editor-id :r.user_id
-                  :pinned [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
-                  :verified [:= "verified" :mr.status]
-                  :view-count true
-                  :created-at true
-                  :updated-at true}
+                  :last-edited-at      :r.timestamp
+                  :last-editor-id      :r.user_id
+                  :pinned              [:> [:coalesce :collection_position [:inline 0]] [:inline 0]]
+                  :verified            [:= "verified" :mr.status]
+                  :view-count          true
+                  :created-at          true
+                  :updated-at          true}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1390,23 +1390,23 @@
                   :collection-position        true
                   :collection-type            :collection.type
                   ;; This field can become stale, unless we change to calculate it just-in-time.
-                  ; :display                    true
-                  :moderated-status :mr.status}
+                  ;:display                    true
+                  :moderated-status           :mr.status}
    :bookmark     [:model/CardBookmark [:and
                                        [:= :bookmark.card_id :this.id]
                                        [:= :bookmark.user_id :current_user/id]]]
    :where        [:= :collection.namespace nil]
    :joins        {:collection [:model/Collection [:= :collection.id :this.collection_id]]
-                  :r [:model/Revision [:and
-                                       [:= :r.model_id :this.id]
-                                       ;; Interesting for inversion, another condition on whether to update.
-                                       ;; For now, let's just swallow the extra update (2x amplification)
-                                       [:= :r.most_recent true]
-                                       [:= :r.model "Card"]]]
-                  :mr [:model/ModerationReview [:and
-                                                [:= :mr.moderated_item_type "card"]
-                                                [:= :mr.moderated_item_id :this.id]
-                                                [:= :mr.most_recent true]]]}
+                  :r          [:model/Revision [:and
+                                                [:= :r.model_id :this.id]
+                                                ;; Interesting for inversion, another condition on whether to update.
+                                                ;; For now, let's just swallow the extra update (2x amplification)
+                                                [:= :r.most_recent true]
+                                                [:= :r.model "Card"]]]
+                  :mr         [:model/ModerationReview [:and
+                                                        [:= :mr.moderated_item_type "card"]
+                                                        [:= :mr.moderated_item_id :this.id]
+                                                        [:= :mr.most_recent true]]]}
                   ;; Workaround for dataflow :((((((
                   ;; NOTE: disabled for now, as this is not a very important ranker and can afford to have stale data,
                   ;;       and could cause a large increase in the query count for dashboard updates.
