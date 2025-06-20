@@ -12004,10 +12004,10 @@ html-webpack-plugin@^5.5.0:
     pretty-error "^4.0.0"
     tapable "^2.0.0"
 
-html2canvas-pro@^1.5.0:
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/html2canvas-pro/-/html2canvas-pro-1.5.0.tgz#18925def43505bad352a394b95fffb45d6d46a8f"
-  integrity sha512-izxSphcINRwfEVV6eamsPVdhsxSYqX8n/hxzK+niVWdB+onM+aYRoVO+xgS9iMmZoUleZTWg1tJwryikib2hXg==
+html2canvas-pro@^1.5.11:
+  version "1.5.11"
+  resolved "https://registry.yarnpkg.com/html2canvas-pro/-/html2canvas-pro-1.5.11.tgz#5145e9fbc511734c9e0bf37bdddccb046eaf41b1"
+  integrity sha512-W4pEeKLG8+9a54RDOSiEKq7gRXXDzt0ORMaLXX+l6a3urSKbmnkmyzcRDCtgTOzmHLaZTLG2wiTQMJqKLlSh3w==
   dependencies:
     css-line-break "^2.1.0"
     text-segmentation "^1.0.3"
