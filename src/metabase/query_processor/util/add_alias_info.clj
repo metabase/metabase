@@ -554,29 +554,35 @@
 
   If this clause is 'selected', this is the position the clause will appear in the results (i.e. the corresponding
   column index)."
-  [query-or-inner-query]
-  (as-> query-or-inner-query $q
-    ;; first escape all the join aliases
-    (walk/postwalk
-     (fn [form]
-       (if (and (map? form)
-                (seq (:joins form)))
-         (as-> form form
-           (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
-                                                  (lib.util/unique-name-generator))]
-                                 (fn [joins]
-                                   (mapv (fn [join]
-                                           (assoc join ::alias (unique (:alias join))))
-                                         joins))))
-           (assoc form ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins form))))
-         form))
-     $q)
-    ;; then add alias info
-    (walk/postwalk
-     (fn [form]
-       (if (and (map? form)
-                ((some-fn :source-query :source-table) form)
-                (not (:strategy form)))
-         (vary-meta (add-alias-info* form) assoc ::transformed true)
-         form))
-     $q)))
+  ([query-or-inner-query]
+   (add-alias-info query-or-inner-query nil))
+
+  ([query-or-inner-query {:keys [globally-unique-join-aliases?], :or {globally-unique-join-aliases? false}}]
+   (let [make-join-alias-unique-name-generator (if globally-unique-join-aliases?
+                                                 (constantly (lib.util/unique-name-generator))
+                                                 lib.util/unique-name-generator)]
+     (as-> query-or-inner-query $q
+       ;; first escape all the join aliases
+       (walk/postwalk
+        (fn [form]
+          (if (and (map? form)
+                   (seq (:joins form)))
+            (as-> form form
+              (update form :joins (let [unique (comp (partial driver/escape-alias driver/*driver*)
+                                                     (make-join-alias-unique-name-generator))]
+                                    (fn [joins]
+                                      (mapv (fn [join]
+                                              (assoc join ::alias (unique (:alias join))))
+                                            joins))))
+              (assoc form ::join-alias->escaped (into {} (map (juxt :alias ::alias)) (:joins form))))
+            form))
+        $q)
+       ;; then add alias info
+       (walk/postwalk
+        (fn [form]
+          (if (and (map? form)
+                   ((some-fn :source-query :source-table) form)
+                   (not (:strategy form)))
+            (vary-meta (add-alias-info* form) assoc ::transformed true)
+            form))
+        $q)))))
