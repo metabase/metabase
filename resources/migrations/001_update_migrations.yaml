@@ -11969,9 +11969,9 @@ databaseChangeLog:
             UPDATE metabase_field AS f1
             WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK'
             SET has_field_values = (
-              SELECT has_field_values
+              SELECT f2.has_field_values
               FROM metabase_fields AS f2
-              WHERE id = f1.fk_target_field_id
+              WHERE f2.id = f1.fk_target_field_id
             );
       rollback: # not necessary
 
