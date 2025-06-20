@@ -305,8 +305,8 @@
 (defn- parse-filter [filter-clause]
   ;; strip out all the filters against temporal fields. Those are handled separately, as intervals
   (-> (driver-api/replace filter-clause
-                          [_ [:field _ (_ :guard :temporal-unit)] & _]
-                          nil)
+        [_ [:field _ (_ :guard :temporal-unit)] & _]
+        nil)
       driver-api/simplify-compound-filter
       parse-filter*))
 
@@ -325,11 +325,11 @@
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
   (driver-api/replace clause
-                      [:absolute-datetime t :default]
-                      [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
+    [:absolute-datetime t :default]
+    [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
-                      _
-                      (add-datetime-units* clause n)))
+    _
+    (add-datetime-units* clause n)))
 
 (defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
   (driver-api/match-one clause
@@ -696,8 +696,8 @@
 
 (defn- deduplicate-aggregation-options [expression]
   (driver-api/replace expression
-                      [:aggregation-options [:aggregation-options ag options-1] options-2]
-                      [:aggregation-options ag (merge options-1 options-2)]))
+    [:aggregation-options [:aggregation-options ag options-1] options-2]
+    [:aggregation-options ag (merge options-1 options-2)]))
 
 (def ^:private ^:dynamic *query-unique-identifier-counter*
   "Counter used for generating unique identifiers for use in the query. Bound to `(atom 0)` and incremented on each use
@@ -710,11 +710,11 @@
 (defn- add-expression-aggregation-output-names
   [expression]
   (driver-api/replace expression
-                      [:aggregation-options ag options]
-                      (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
+    [:aggregation-options ag options]
+    (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
 
-                      [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
-                      [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
+    [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
+    [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
 (defn- post-aggregator-type
   "Complex aggregators like `cardinality` and ``hyperUnique` (which we use to implement MBQL

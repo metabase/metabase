@@ -922,8 +922,8 @@
   See [[find-mapped-field-name]] for an explanation why this is done."
   [expr alias]
   (driver-api/replace expr
-                      [:field _ {:join-alias alias}]
-                      (update &match 2 set/rename-keys {:join-alias ::join-local})))
+    [:field _ {:join-alias alias}]
+    (update &match 2 set/rename-keys {:join-alias ::join-local})))
 
 (defn- get-field-mappings [source-query projections]
   (when source-query
