@@ -1,20 +1,12 @@
 .editor {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 1;
+  height: 100%;
+  color: var(--mb-color-text-dark);
+
   :global {
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-    flex-shrink: 1;
-    height: 100%;
-    color: var(--mb-color-text-dark);
-
-    .cm-tag {
-      color: var(--mb-color-brand);
-
-      & * {
-        color: inherit;
-      }
-    }
-
     .cm-tooltip-autocomplete {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
       border-radius: 4px;
@@ -96,5 +88,13 @@
         text-overflow: ellipsis;
       }
     }
+  }
+}
+
+.tag {
+  color: var(--mb-color-brand);
+
+  & * {
+    color: inherit;
   }
 }

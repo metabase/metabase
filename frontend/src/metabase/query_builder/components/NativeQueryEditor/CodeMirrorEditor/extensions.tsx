@@ -102,7 +102,7 @@ function highlightTags() {
 
       return Decoration.mark({
         tagName: "span",
-        class: cx("cm-tag", {
+        class: cx(S.tag, {
           "cm-tag-variable": !isSnippet && !isCard,
           "cm-tag-snippet": isSnippet,
           "cm-tag-card": isCard,
