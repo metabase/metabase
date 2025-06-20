@@ -3,6 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [malli.error :as me]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.schema.util-test :as lib.schema.util-test]
@@ -39,8 +40,9 @@
                           {:lib/uuid "00000000-0000-0000-0000-000000000050"
                            :base-type :type/Integer}
                           4]]]}]}]
-      (is (not (mr/explain ::lib.schema/query query-with-no-duplicate-order-bys)))))
+      (is (not (mr/explain ::lib.schema/query query-with-no-duplicate-order-bys))))))
 
+(deftest ^:parallel disallow-duplicate-order-bys-test-2
   (testing "query should not validate if order-bys are duplicated"
     (let [query-with-duplicate-order-bys
           {:lib/type :mbql/query
@@ -273,3 +275,15 @@
                         (me/humanize (mr/explain ::lib.schema/stage {:lib/type :mbql.stage/mbql, k duplicate-refs})))
         :breakout {:breakout ["Breakouts must be distinct"]}
         :fields   {:fields [":fields must be distinct"]}))))
+
+(deftest ^:parallel normalize-query-test
+  (let [normalized (lib.normalize/normalize
+                    ::lib.schema/query
+                    {:stages [{:lib/type     :mbql.stage/mbql
+                               :source-table 1
+                               :aggregation  [[:count {:name "count"}]]
+                               :breakout     [[:field {:temporal-unit :quarter} 2]
+                                              [:field {:temporal-unit :day-of-week} 2]]
+                               :order-by     [[:asc {} [:field {:temporal-unit :quarter} 2]]
+                                              [:asc {} [:field {:temporal-unit :day-of-week} 2]]]}]})]
+    (is (not (me/humanize (mr/explain ::lib.schema/query normalized))))))

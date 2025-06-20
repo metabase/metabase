@@ -17,6 +17,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
+   [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]))
 
@@ -268,7 +269,8 @@
       (testing `lib.field.resolution/previous-stage-or-source-card-metadata
         (is (=? {:display-name "Example Timestamp"
                  :lib/source   :source/card}
-                (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 "EXAMPLE_TIMESTAMP"))))
+                (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 [:field {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/*}
+                                                                                         "EXAMPLE_TIMESTAMP"]))))
       (let [field-ref (first (lib/fields query -1))]
         (is (=? [:field {:lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"} "EXAMPLE_TIMESTAMP"]
                 field-ref))
@@ -588,3 +590,26 @@
                                [:field %people.address {:join-alias "Question 54"}]]}))]
         (is (=? {:lib/original-display-name "Address"}
                 (lib.field.resolution/resolve-field-metadata query -1 (last (lib/fields query -1)))))))))
+
+(deftest ^:parallel disambiguate-duplicate-columns-test
+  (testing "Handle duplicates of the same column with different bucketing/binning correctly"
+    (let [q1 (lib/query
+              meta/metadata-provider
+              {:stages [{:lib/type     :mbql.stage/mbql
+                         :source-table (meta/id :orders)
+                         :aggregation  [[:count {:name "count"}]]
+                         :breakout     [[:field {:temporal-unit :quarter} (meta/id :orders :created-at)]
+                                        [:field {:temporal-unit :day-of-week} (meta/id :orders :created-at)]]}]})
+          q2 (lib/query
+              meta/metadata-provider
+              {:lib/type :mbql/query
+               :database (meta/id)
+               :stages   [(assoc (lib.util/query-stage q1 0)
+                                 :lib/stage-metadata {:lib/type :metadata/results
+                                                      :columns  (lib/returned-columns q1)})
+                          {:lib/type :mbql.stage/mbql
+                           :fields   [[:field {:base-type :type/DateTimeWithLocalTZ} "CREATED_AT"]
+                                      [:field {:base-type :type/DateTimeWithLocalTZ} "CREATED_AT_2"]]}]})]
+      (is (= ["Created At: Quarter"
+              "Created At: Day of week"]
+             (map :display-name (lib/returned-columns q2)))))))
