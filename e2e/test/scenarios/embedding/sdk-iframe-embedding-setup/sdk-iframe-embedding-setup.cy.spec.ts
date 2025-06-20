@@ -9,7 +9,7 @@ describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
   });
 
-  it("shows a preview iframe when visiting the new embed page", () => {
+  it("shows dashboard experience by default", () => {
     cy.visit("/embed/new");
     cy.wait("@dashboard");
 
@@ -22,6 +22,32 @@ describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
       cy.findByText("Person detail").should("be.visible");
     });
   });
+
+  it("shows chart experience when selected", () => {
+    cy.visit("/embed/new");
+    cy.wait("@dashboard");
+
+    cy.log("clicking on Chart tab");
+    getEmbedSidebar().findByText("Chart").click();
+
+    const iframe = getPreviewIframe();
+    iframe.within(() => {
+      cy.log("Query log should be visible");
+      cy.findByText("Query log").should("be.visible");
+    });
+  });
+
+  it("shows exploration template when selected", () => {
+    cy.visit("/embed/new");
+    cy.wait("@dashboard");
+
+    getEmbedSidebar().findByText("Exploration").click();
+
+    const iframe = getPreviewIframe();
+    iframe.within(() => {
+      cy.findByText("Pick your starting data").should("be.visible");
+    });
+  });
 });
 
 const getPreviewIframe = () =>
@@ -32,3 +58,5 @@ const getPreviewIframe = () =>
     .should("exist")
     .its("body")
     .should("not.be.empty");
+
+const getEmbedSidebar = () => cy.findByTestId("embed-sidebar-content");
