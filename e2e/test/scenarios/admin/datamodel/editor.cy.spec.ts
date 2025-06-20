@@ -814,7 +814,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should be able to select and update a table in a database without schemas", () => {
       H.DataModel.visit({
-        databaseId: MYSQL_DB_SCHEMA_ID,
+        databaseId: MYSQL_DB_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
       setValueAndBlurInput("Orders", "New orders");
@@ -824,7 +824,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should be able to select and update a field in a database without schemas", () => {
       H.DataModel.visit({
-        databaseId: MYSQL_DB_SCHEMA_ID,
+        databaseId: MYSQL_DB_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
       getFieldSection("TAX").findByDisplayValue("Everywhere").click();
