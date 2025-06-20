@@ -1339,10 +1339,15 @@
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 
 (defn- non-temporal-dimension-ids-clause
-  "TODO tplude - Add more info to this
-  Creates a PostgreSQL-specific clause to extract field IDs from result_metadata JSON.
-  Returns a JSON array of field IDs for non-temporal dimensions.
-  For non-PostgreSQL databases, returns an empty JSON array to avoid PostgreSQL-specific syntax."
+  "TODO @tplude 20250619
+  This index column is specifically for being able to search for compatible datasets for the visualizer
+  in a somewhat performant way for larger instances (20k+ cards). One of the broad conditions for dataset
+  compatibility is such that if the current visualizer state has any non temporal dimensions active, each
+  of those dimensions must be present in a candidate dataset (by field id). To support that filtering logic
+  we use the below query for crudely extracting the non temporal field IDs present in a card's result_metadata
+  into an index column. A more robust way of doing this would be to not use a DB query and instead populate
+  this index column by taking the card's dataset_query and converting it to lib format and using lib utilities
+  for properly deciding which columns are non temporal dimensions."
   []
   (if (= (app-db/db-type) :postgres)
     [:raw "COALESCE(
@@ -1378,6 +1383,7 @@
                   :created-at          true
                   :updated-at          true
                   :display-type        :this.display
+                  ;; Niche columns for visualizer compatibility filtering
                   :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]
                   :non-temporal-dimension-ids (non-temporal-dimension-ids-clause)}
    :search-terms [:name :description]
