@@ -8,6 +8,7 @@ import {
 } from "@codemirror/view";
 import {
   type Extension,
+  Prec,
   type Range,
   StateEffect,
   StateField,
@@ -74,15 +75,17 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
       }),
       highlightTags(),
       highlightLines(),
-      keymap.of([
-        {
-          key: "Mod-Enter",
-          run: () => {
-            onRunQuery?.();
-            return true;
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-Enter",
+            run: () => {
+              onRunQuery?.();
+              return true;
+            },
           },
-        },
-      ]),
+        ]),
+      ),
     ]
       .flat()
       .filter(isNotNull);
