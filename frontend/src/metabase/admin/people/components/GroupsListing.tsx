@@ -495,21 +495,22 @@ export const GroupsListing = (props: GroupsListingProps) => {
 
   return (
     <AdminPaneLayout
-      title={t`Groups`}
-      titleActions={
-        isAdmin && !isShowingAddGroupRow ? (
-          <Button
-            variant="filled"
-            onClick={onCreateAGroupButtonClicked}
-          >{t`Create a group`}</Button>
-        ) : null
-      }
       headerContent={
         <SearchFilter
           value={searchText}
           onChange={setSearchText}
           placeholder={t`Find a group`}
         />
+      }
+      titleActions={
+        isAdmin &&
+        !isShowingAddGroupRow && (
+          <Button
+            variant="filled"
+            onClick={onCreateAGroupButtonClicked}
+            flex="0 1 140px"
+          >{t`Create a group`}</Button>
+        )
       }
       description={t`You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed.`}
     >

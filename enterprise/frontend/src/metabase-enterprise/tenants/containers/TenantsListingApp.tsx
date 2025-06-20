@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
+import { t } from "ttag";
 
 import { ACTIVE_STATUS } from "metabase/admin/people/constants";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/settings/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -22,18 +27,20 @@ export const TenantsListingApp = ({
   const tenants = useMemo(() => data?.data ?? [], [data]);
 
   return (
-    <>
-      <LoadingAndErrorWrapper error={error} loading={isLoading}>
-        <TenantsListing
-          isAdmin={isAdmin}
-          tenants={tenants}
-          searchInputValue={searchInputValue}
-          setSearchInputValue={setSearchInputValue}
-          status={status}
-          onStatusChange={setStatus}
-        />
-      </LoadingAndErrorWrapper>
-      {children}
-    </>
+    <SettingsPageWrapper title={t`Tenants`}>
+      <SettingsSection>
+        <LoadingAndErrorWrapper error={error} loading={isLoading}>
+          <TenantsListing
+            isAdmin={isAdmin}
+            tenants={tenants}
+            searchInputValue={searchInputValue}
+            setSearchInputValue={setSearchInputValue}
+            status={status}
+            onStatusChange={setStatus}
+          />
+        </LoadingAndErrorWrapper>
+        {children}
+      </SettingsSection>{" "}
+    </SettingsPageWrapper>
   );
 };

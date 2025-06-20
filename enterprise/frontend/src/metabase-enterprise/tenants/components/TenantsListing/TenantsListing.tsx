@@ -20,6 +20,7 @@ import {
   Box,
   Button,
   Flex,
+  Group,
   Icon,
   Menu,
   Text,
@@ -61,29 +62,28 @@ export const TenantsListing = ({
   return (
     <>
       <AdminPaneLayout
-        title={t`Tenants`}
-        titleActions={
-          isAdmin && (
-            <Button
-              variant="filled"
-              onClick={openNewTenantModal}
-            >{t`New tenant`}</Button>
-          )
-        }
         headerContent={
-          <>
-            <SearchFilter
-              value={searchInputValue}
-              onChange={setSearchInputValue}
-              placeholder={t`Find a tenant`}
-            />
-            {isAdmin && (
-              <ActiveStatusFilter
-                status={status}
-                onStatusChange={onStatusChange}
+          <Flex justify="space-between" w="100%">
+            <Group>
+              <SearchFilter
+                value={searchInputValue}
+                onChange={setSearchInputValue}
+                placeholder={t`Find a tenant`}
               />
+              {isAdmin && (
+                <ActiveStatusFilter
+                  status={status}
+                  onStatusChange={onStatusChange}
+                />
+              )}
+            </Group>
+            {isAdmin && (
+              <Button
+                variant="filled"
+                onClick={openNewTenantModal}
+              >{t`New tenant`}</Button>
             )}
-          </>
+          </Flex>
         }
       >
         <AdminContentTable columnTitles={[t`Tenant`, t`Slug`, t`Users`]}>
