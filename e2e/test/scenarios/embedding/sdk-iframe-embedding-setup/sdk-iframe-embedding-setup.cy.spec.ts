@@ -32,7 +32,7 @@ describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
 
     const iframe = getPreviewIframe();
     iframe.within(() => {
-      cy.log("Query log should be visible");
+      cy.log("question title is visible");
       cy.findByText("Query log").should("be.visible");
     });
   });
@@ -45,6 +45,7 @@ describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
 
     const iframe = getPreviewIframe();
     iframe.within(() => {
+      cy.log("data picker is visible");
       cy.findByText("Pick your starting data").should("be.visible");
     });
   });
