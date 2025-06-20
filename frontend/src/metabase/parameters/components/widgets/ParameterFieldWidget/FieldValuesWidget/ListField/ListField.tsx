@@ -3,11 +3,11 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { delay } from "metabase/lib/delay";
 import { optionItemEqualsFilter } from "metabase/parameters/components/widgets/ParameterFieldWidget/FieldValuesWidget/SingleSelectListField/utils";

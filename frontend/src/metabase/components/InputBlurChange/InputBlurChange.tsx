@@ -2,7 +2,7 @@ import type * as React from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import _ from "underscore";
 
-import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
+import { useUnmountLayout } from "metabase/common/hooks/use-unmount-layout";
 import { TextInput, type TextInputProps } from "metabase/ui";
 
 /**
@@ -20,6 +20,7 @@ export interface InputBlurChangeProps
   normalize?: (value: Value) => Value;
 }
 
+/** see also: metabase/ui/components/inputs/TextInputBlurChange 🤦‍♀️ */
 const InputBlurChange = (props: InputBlurChangeProps) => {
   const {
     value,
@@ -77,7 +78,9 @@ const InputBlurChange = (props: InputBlurChangeProps) => {
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
-      w="100%"
+      styles={{
+        input: { width: "100%" },
+      }}
     />
   );
 };
