@@ -28,7 +28,7 @@ export default {
 };
 
 const Template: StoryFn<InteractiveDashboardProps> = (args) => {
-  return <InteractiveDashboard {...args} withDownloads={true} />;
+  return <InteractiveDashboard {...args} />;
 };
 
 export const Default = {
