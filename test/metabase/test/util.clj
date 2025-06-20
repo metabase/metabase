@@ -1128,7 +1128,7 @@
 (defmacro with-locale!
   "Allows a test to override the locale temporarily"
   [locale-tag & body]
-  `(call-with-locale ~locale-tag (fn [] ~@body)))
+  `(call-with-locale! ~locale-tag (fn [] ~@body)))
 
 ;;; TODO -- this could be made thread-safe if we made [[with-temp-vals-in-db]] thread-safe which I think is pretty
 ;;; doable (just do it in a transaction?)

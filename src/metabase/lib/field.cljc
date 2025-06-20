@@ -126,7 +126,7 @@
                                  humanized-name
                                  (str field-name)))
         join-display-name  (when (= style :long)
-                             (let [field-display-name (or original-display-name field-display-name)]
+                             (when-some [field-display-name (or original-display-name field-display-name)]
                                ;; don't prepend a join display name if `:display-name` already contains one! Legacy
                                ;; result metadata might include it for joined Fields, don't want to add it twice.
                                ;; Otherwise we'll end up with display names like

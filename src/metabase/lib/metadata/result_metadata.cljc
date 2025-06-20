@@ -51,7 +51,8 @@
     {:error/message "column with all kebab-cased keys"}
     (fn [m]
       (every? (fn [k]
-                (not (str/includes? k "_")))
+                (and (keyword? k)
+                     (not (str/includes? k "_"))))
               (keys m)))]])
 
 (mr/def ::cols
