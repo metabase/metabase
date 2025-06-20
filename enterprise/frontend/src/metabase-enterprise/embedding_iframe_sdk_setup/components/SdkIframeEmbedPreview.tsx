@@ -15,14 +15,14 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings, isEmbedOptionsLoaded } = useSdkIframeEmbedSetupContext();
+  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
   const localeOverride = useSearchParam("locale");
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   useEffect(() => {
-    if (!scriptRef.current && isEmbedOptionsLoaded) {
+    if (!scriptRef.current && isEmbedSettingsLoaded) {
       const script = document.createElement("script");
 
       script.src = `${settings.instanceUrl}/app/embed.js`;
@@ -48,7 +48,7 @@ export const SdkIframeEmbedPreview = () => {
       embedJsRef.current?.destroy();
       scriptRef.current?.remove();
     };
-  }, [isEmbedOptionsLoaded, settings, localeOverride]);
+  }, [settings, localeOverride, isEmbedSettingsLoaded]);
 
   useEffect(() => {
     if (embedJsRef.current) {

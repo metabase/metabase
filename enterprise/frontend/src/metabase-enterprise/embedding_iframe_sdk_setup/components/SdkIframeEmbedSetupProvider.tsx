@@ -30,7 +30,7 @@ const DEFAULT_DASHBOARD_ID = 1;
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
-  const [isEmbedOptionsLoaded, setEmbedOptionsLoaded] = useState(false);
+  const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
     useRecentItems();
@@ -70,18 +70,18 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   useEffect(() => {
-    if (!isEmbedOptionsLoaded && !isRecentsLoading) {
+    if (!isEmbedSettingsLoaded && !isRecentsLoading) {
       const defaultSettings = getDefaultSdkIframeEmbedSettings(
         "dashboard",
         recentDashboards[0]?.id ?? DEFAULT_DASHBOARD_ID,
       );
 
       updateSettings(defaultSettings);
-      setEmbedOptionsLoaded(true);
+      setEmbedSettingsLoaded(true);
     }
   }, [
     isRecentsLoading,
-    isEmbedOptionsLoaded,
+    isEmbedSettingsLoaded,
     recentDashboards,
     updateSettings,
   ]);
@@ -96,7 +96,7 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     recentQuestions,
     addRecentItem,
-    isEmbedOptionsLoaded,
+    isEmbedSettingsLoaded: isEmbedSettingsLoaded,
   };
 
   return (
