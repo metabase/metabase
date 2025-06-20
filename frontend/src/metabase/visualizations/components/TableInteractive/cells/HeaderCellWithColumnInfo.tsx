@@ -16,7 +16,7 @@ import type { DatasetColumn } from "metabase-types/api";
 import S from "./HeaderCellWithColumnInfo.module.css";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
-  infoPopoversDisabled: boolean;
+  getInfoPopoversDisabled: () => boolean;
   timezone?: string;
   question: Question;
   column: DatasetColumn;
@@ -36,7 +36,7 @@ export const HeaderCellWithColumnInfo = memo(
     align,
     sort,
     variant = "light",
-    infoPopoversDisabled,
+    getInfoPopoversDisabled,
     question,
     timezone,
     column,
@@ -67,7 +67,7 @@ export const HeaderCellWithColumnInfo = memo(
 
     return (
       <HeaderCellWrapper className={className} variant={variant} align={align}>
-        {infoPopoversDisabled ? (
+        {getInfoPopoversDisabled() ? (
           cellContent
         ) : (
           <QueryColumnInfoPopover
