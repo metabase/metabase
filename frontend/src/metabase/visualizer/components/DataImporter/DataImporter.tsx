@@ -90,10 +90,9 @@ export const DataImporter = ({ className }: { className?: string }) => {
       <Flex
         direction="column"
         className={S.Content}
-        style={{
-          height: "100%",
-          display: showDatasets ? "flex" : "none",
-        }}
+        h="100%"
+        gap="sm"
+        display={showDatasets ? "flex" : "none"}
       >
         <TextInput
           m="xs"
@@ -114,11 +113,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
         direction="column"
         className={S.Content}
         bg="white"
+        h="100%"
+        display={showDatasets ? "none" : "flex"}
+        bd="1px solid var(--mb-color-border)"
         style={{
           borderRadius: "var(--default-border-radius)",
-          height: "100%",
-          border: `1px solid var(--mb-color-border)`,
-          display: showDatasets ? "none" : "flex",
         }}
       >
         {dataSources.length > 0 ? (
