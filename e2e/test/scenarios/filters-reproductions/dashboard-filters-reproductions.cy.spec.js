@@ -1158,7 +1158,7 @@ describe("issue 21528", () => {
         "Select any table to see its schema and add or edit metadata.",
       )
       .should("be.visible");
-    cy.findByRole("navigation").findByText("Exit admin").click();
+    cy.findByTestId("admin-navbar").findByText("Exit admin").click();
 
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Our analytics").click();

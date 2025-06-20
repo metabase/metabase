@@ -264,9 +264,9 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0 } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd } = {},
 ) => {
-  element
+  const chainable = element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
@@ -286,7 +286,11 @@ export const moveDnDKitElement = (
       isPrimary: true,
       button: 0,
     })
-    .wait(200)
+    .wait(200);
+
+  onBeforeDragEnd?.();
+
+  chainable
     .trigger("pointerup", horizontal, vertical, {
       force: true,
       isPrimary: true,
