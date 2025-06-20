@@ -4,8 +4,10 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import { useDashcardMenuState } from "metabase/dashboard/hooks/use-dashcard-menu-state";
+import { useDashCardSeries } from "metabase/dashboard/hooks/use-dashcard-series";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import { isQuestionCard } from "metabase/dashboard/utils";
+import { getSeriesForDashcard } from "metabase/dashboard/utils/dashcard-series";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
@@ -14,9 +16,6 @@ import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
-
-import { useDashCardSeries } from "./DashCard";
-import { getSeriesForDashcard } from "./DashCardVisualization";
 
 type DashCardQuestionDownloadButtonProps = {
   dashboard: Dashboard;

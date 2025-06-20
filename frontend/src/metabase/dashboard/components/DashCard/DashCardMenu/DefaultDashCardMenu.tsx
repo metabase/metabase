@@ -1,5 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import type {
@@ -140,12 +141,12 @@ export const DefaultDashCardMenu = ({
 }: {
   dashcardMenu: DashboardCardMenuObject;
 } & UseDashcardMenuItemsProps) => {
+  const [menuView, setMenuView] = useState<string | null>(null);
+  const [isOpen, { close, toggle }] = useDisclosure(false, {
+    onClose: () => setMenuView(null),
+  });
+
   const {
-    menuView,
-    setMenuView,
-    isOpen,
-    close,
-    toggle,
     formatPreference,
     setFormatPreference,
     isDownloadingData,

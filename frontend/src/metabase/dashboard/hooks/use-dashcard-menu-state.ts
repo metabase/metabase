@@ -1,5 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
@@ -29,10 +28,6 @@ export function useDashcardMenuState({
   series: Series;
 }) {
   const store = useStore();
-  const [menuView, setMenuView] = useState<string | null>(null);
-  const [isOpen, { close, toggle }] = useDisclosure(false, {
-    onClose: () => setMenuView(null),
-  });
 
   const token = useMemo(
     () =>
@@ -77,11 +72,6 @@ export function useDashcardMenuState({
   });
 
   return {
-    menuView,
-    setMenuView,
-    isOpen,
-    close,
-    toggle,
     formatPreference,
     setFormatPreference,
     isDownloadingData,

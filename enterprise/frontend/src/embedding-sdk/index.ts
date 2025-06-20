@@ -17,10 +17,7 @@ export * from "./components/public";
 export type {
   ButtonProps,
   ChartColor,
-  CustomDashboardCardMenuItem,
   DashCardMenuItem,
-  DashboardCardCustomMenuItem,
-  DashboardCardMenuCustomElement,
   EntityTypeFilterKeys,
   IconName,
   LoginStatus,

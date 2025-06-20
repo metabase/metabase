@@ -1,19 +1,27 @@
 import { useMemo } from "react";
+import { P, match } from "ts-pattern";
 
 import { useDashboardContext } from "metabase/dashboard/context";
+import type {
+  DashboardCardMenuCustomElement,
+  DashboardCardMenuObject,
+} from "metabase/dashboard/context/types/dashcard-menu";
+import { useDashCardSeries } from "metabase/dashboard/hooks/use-dashcard-series";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import { isQuestionCard } from "metabase/dashboard/utils";
-import { resolveDashcardMenu } from "metabase/dashboard/utils/dashcard-menu-resolver";
+import {
+  isCustomElementFn,
+  isCustomMenuConfig,
+  isReactNode,
+} from "metabase/dashboard/utils/dashcard-menu-resolver";
+import { getSeriesForDashcard } from "metabase/dashboard/utils/dashcard-series";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
-import type { DashboardCard, Dataset, Series } from "metabase-types/api";
-
-import { useDashCardSeries } from "../DashCard";
-import { getSeriesForDashcard } from "../DashCardVisualization";
+import type { DashboardCard, Dataset } from "metabase-types/api";
 
 import { DefaultDashCardMenu } from "./DefaultDashCardMenu";
 import { canDownloadResults, canEditQuestion } from "./utils";
@@ -51,32 +59,24 @@ export const DashCardMenu = ({
       return null;
     }
 
-    const resolvedMenu = resolveDashcardMenu(dashcardMenu, {
-      question,
-      dashboard,
-      dashcard,
-      series: series as Series,
-    });
-
-    // If it's a config object, render with DefaultDashCardMenu
-    if (
-      resolvedMenu &&
-      typeof resolvedMenu === "object" &&
-      !Array.isArray(resolvedMenu)
-    ) {
-      return (
+    const menuItemsProps = { question, dashboard, dashcard, series };
+    const resolvedMenu = match(dashcardMenu)
+      .with(P.nullish, () => null)
+      .with(P.when(isReactNode), (node) => node)
+      .with(P.when(isCustomElementFn), (fn: DashboardCardMenuCustomElement) => {
+        if (!menuItemsProps) {
+          return fn;
+        }
+        return fn(menuItemsProps);
+      })
+      .with(P.when(isCustomMenuConfig), (menu: DashboardCardMenuObject) => (
         <DefaultDashCardMenu
-          dashcardMenu={resolvedMenu}
-          question={question}
-          dashboard={dashboard}
-          dashcard={dashcard}
-          series={series as Series}
+          dashcardMenu={menu}
           onEditVisualization={onEditVisualization}
+          {...menuItemsProps}
         />
-      );
-    }
+      ));
 
-    // Otherwise it's a React node or null
     return resolvedMenu;
   }, [
     dashboard,
