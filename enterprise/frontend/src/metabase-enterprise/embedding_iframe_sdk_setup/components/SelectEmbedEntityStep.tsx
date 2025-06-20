@@ -37,10 +37,10 @@ export const SelectEmbedEntityStep = () => {
     : settings.questionId;
 
   const updateEmbedSettings = (
-    type: SdkIframeEmbedSetupExperience,
+    experience: SdkIframeEmbedSetupExperience,
     id: string | number,
   ) => {
-    if (type === "dashboard") {
+    if (experience === "dashboard") {
       updateSettings({
         dashboardId: id,
 
@@ -48,7 +48,7 @@ export const SelectEmbedEntityStep = () => {
         initialParameters: {},
         hiddenParameters: [],
       });
-    } else if (type === "chart") {
+    } else if (experience === "chart") {
       updateSettings({
         questionId: id,
 
@@ -69,8 +69,8 @@ export const SelectEmbedEntityStep = () => {
     updateEmbedSettings(experience, resourceId);
 
     // Add the current entity to the top of the recent items list
-    const type = experience === "dashboard" ? "dashboard" : "question";
-    addRecentItem(type, {
+    const resourceType = experience === "dashboard" ? "dashboard" : "question";
+    addRecentItem(resourceType, {
       id: resourceId,
       name: item.name,
       description: item.description,
