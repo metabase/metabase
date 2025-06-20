@@ -1,6 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { parseTimestamp } from "metabase/lib/time-dayjs";
 import type {
   Timeline,
   TimelineEvent,
@@ -45,12 +46,22 @@ const EditEventModal = ({
     onArchiveSuccess?.();
   }, [event, timeline, onArchive, onArchiveSuccess]);
 
+  const initialValues = useMemo(() => {
+    if (event.timezone) {
+      return {
+        ...event,
+        timestamp: parseTimestamp(event.timestamp).tz(event.timezone).format(),
+      };
+    }
+    return event;
+  }, [event]);
+
   return (
     <div>
       <ModalHeader title={t`Edit event`} onClose={onClose} />
       <ModalBody>
         <EventForm
-          initialValues={event}
+          initialValues={initialValues}
           onSubmit={handleSubmit}
           onArchive={handleArchive}
           onCancel={onCancel}
