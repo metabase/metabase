@@ -6,11 +6,12 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
-import { getDashcardData } from "metabase/dashboard/selectors";
+import {
+  getDashCardInlineValuePopulatedParameters,
+  getDashcardData,
+} from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
-  isHeadingDashCard,
-  isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
@@ -18,8 +19,14 @@ import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  type IconName,
+  type IconProps,
+  Menu,
+  Title,
+} from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -36,7 +43,8 @@ import {
   splitVisualizerSeries,
 } from "metabase/visualizer/utils";
 import { getVisualizationColumns } from "metabase/visualizer/utils/get-visualization-columns";
-import Question from "metabase-lib/v1/Question";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
@@ -51,6 +59,8 @@ import type {
   VisualizationSettings,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+
+import { DashboardParameterList } from "../DashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
@@ -67,6 +77,8 @@ interface DashCardVisualizationProps {
   dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
+  question: Question | null;
+  metadata: Metadata;
   getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
@@ -119,6 +131,8 @@ export function DashCardVisualization({
   dashcard,
   dashboard,
   series: untranslatedRawSeries,
+  question,
+  metadata,
   getClickActionMode,
   getHref,
   gridSize,
@@ -151,12 +165,9 @@ export function DashCardVisualization({
 }: DashCardVisualizationProps) {
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
+  const inlineParameters = useSelector((state) =>
+    getDashCardInlineValuePopulatedParameters(state, dashcard.id),
+  );
 
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
     untranslatedRawSeries,
@@ -382,7 +393,6 @@ export function DashCardVisualization({
       result: mainSeries,
       isXray,
       isPublicOrEmbedded,
-      isEditing,
       downloadsEnabled,
     });
 
@@ -391,16 +401,26 @@ export function DashCardVisualization({
     }
 
     // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded && downloadsEnabled) {
+    if (!isEditing && isPublicOrEmbedded && downloadsEnabled) {
       return (
-        <DashCardQuestionDownloadButton
-          question={question}
-          result={mainSeries}
-          dashboardId={dashboard.id}
-          dashcardId={dashcard.id}
-          uuid={uuid}
-          token={token}
-        />
+        <Flex align="center" justify="flex-end">
+          {inlineParameters.length > 0 && (
+            <DashboardParameterList
+              widgetsVariant="subtle"
+              parameters={inlineParameters}
+              isSortable={false}
+              isFullscreen={isFullscreen}
+            />
+          )}
+          <DashCardQuestionDownloadButton
+            question={question}
+            result={mainSeries}
+            dashboardId={dashboard.id}
+            dashcardId={dashcard.id}
+            uuid={uuid}
+            token={token}
+          />
+        </Flex>
       );
     }
 
@@ -411,25 +431,45 @@ export function DashCardVisualization({
     const title = settings["card.title"] ?? series?.[0].card.name ?? "";
 
     return (
-      <DashCardMenu
-        downloadsEnabled={downloadsEnabled}
-        question={question}
-        result={mainSeries}
-        dashcardId={dashcard.id}
-        dashboardId={dashboard.id}
-        token={token}
-        uuid={uuid}
-        onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
-      />
+      <Flex align="center" justify="flex-end">
+        <Box mr="sm">
+          {inlineParameters.length > 0 && (
+            <DashboardParameterList
+              className={S.InlineParametersList}
+              widgetsVariant="subtle"
+              parameters={inlineParameters}
+              isSortable={false}
+              isFullscreen={isFullscreen}
+            />
+          )}
+        </Box>
+        {!isEditing && (
+          <DashCardMenu
+            downloadsEnabled={downloadsEnabled}
+            question={question}
+            result={mainSeries}
+            dashcardId={dashcard.id}
+            dashboardId={dashboard.id}
+            token={token}
+            uuid={uuid}
+            position={
+              inlineParameters.length > 0 ? "bottom-start" : "bottom-end"
+            }
+            onEditVisualization={onEditVisualization}
+            openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
+          />
+        )}
+      </Flex>
     );
   }, [
     question,
     series,
     isXray,
     isPublicOrEmbedded,
-    isEditing,
     downloadsEnabled,
+    isEditing,
+    inlineParameters,
+    isFullscreen,
     dashcard.id,
     dashboard.id,
     token,
@@ -447,11 +487,7 @@ export function DashCardVisualization({
       className={cx(CS.flexFull, {
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
-
-        // Heading dashcards configure pointer events on their own
-        // to make the inner input and inline filters interactive.
-        [CS.pointerEventsNone]:
-          isEditingDashboardLayout && !isHeadingDashCard(dashcard),
+        [CS.pointerEventsNone]: isEditingDashboardLayout,
       })}
       dashboard={dashboard}
       dashcard={dashcard}

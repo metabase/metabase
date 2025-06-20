@@ -5,6 +5,7 @@ import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/D
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getEditingParameter,
+  getEditingParameterInlineDashcard,
   getParameters,
 } from "metabase/dashboard/selectors";
 import { useSelector } from "metabase/lib/redux";
@@ -117,6 +118,9 @@ export function DashboardSidebars({
 }: DashboardSidebarsProps) {
   const parameters = useSelector(getParameters);
   const editingParameter = useSelector(getEditingParameter);
+  const editingParameterInlineDashcard = useSelector(
+    getEditingParameterInlineDashcard,
+  );
 
   const handleAddCard = useCallback(
     (cardId: CardId) => {
@@ -186,9 +190,11 @@ export function DashboardSidebars({
         parameters,
         (p) => p.id === editingParameterId,
       );
+
       return (
         <ParameterSidebar
           parameter={parameter}
+          editingParameterInlineDashcard={editingParameterInlineDashcard}
           otherParameters={otherParameters}
           onChangeName={setParameterName}
           onChangeType={setParameterType}

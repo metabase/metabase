@@ -40,6 +40,7 @@ interface DashCardCardParameterMapperContentProps {
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
+  editingParameterInlineDashcard?: DashboardCard;
 }
 
 export const DashCardCardParameterMapperContent = ({
@@ -56,6 +57,7 @@ export const DashCardCardParameterMapperContent = ({
   card,
   target,
   shouldShowAutoConnectHint,
+  editingParameterInlineDashcard,
 }: DashCardCardParameterMapperContentProps) => {
   const isVirtual = isVirtualDashCard(dashcard);
   const virtualCardType = getVirtualCardType(dashcard);
@@ -63,6 +65,14 @@ export const DashCardCardParameterMapperContent = ({
     editingParameter != null && isTemporalUnitParameter(editingParameter);
 
   const dispatch = useDispatch();
+
+  const isInlineParameterFromAnotherTab = useMemo(() => {
+    return (
+      editingParameterInlineDashcard != null &&
+      editingParameterInlineDashcard.dashboard_tab_id !==
+        dashcard.dashboard_tab_id
+    );
+  }, [editingParameterInlineDashcard, dashcard.dashboard_tab_id]);
 
   const headerContent = useMemo(() => {
     if (layoutHeight <= 2) {
@@ -132,6 +142,15 @@ export const DashCardCardParameterMapperContent = ({
         question={question}
         parameter={editingParameter}
       />
+    );
+  }
+
+  if (isInlineParameterFromAnotherTab) {
+    return (
+      <Flex className={S.TextCardDefault} ta="center">
+        <Icon name="info" size={12} className={CS.pr1} />
+        {t`The selected filter is on another tab.`}
+      </Flex>
     );
   }
 

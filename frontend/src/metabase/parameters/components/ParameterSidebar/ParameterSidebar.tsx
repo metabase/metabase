@@ -11,6 +11,7 @@ import { Tabs, Text } from "metabase/ui";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
+  DashboardCard,
   Parameter,
   ParameterId,
   TemporalUnit,
@@ -61,6 +62,7 @@ export interface ParameterSidebarProps {
   ) => void;
   onRemoveParameter: (parameterId: ParameterId) => void;
   onClose: () => void;
+  editingParameterInlineDashcard?: DashboardCard;
 }
 
 export const ParameterSidebar = ({
@@ -79,6 +81,7 @@ export const ParameterSidebar = ({
   onRemoveParameter,
   onClose,
   hasMapping,
+  editingParameterInlineDashcard,
 }: ParameterSidebarProps): JSX.Element => {
   const parameterId = parameter.id;
   const tabs = useMemo(() => getTabs(parameter), [parameter]);
@@ -225,6 +228,7 @@ export const ParameterSidebar = ({
 
         <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
           <ParameterSettings
+            editingParameterInlineDashcard={editingParameterInlineDashcard}
             parameter={parameter}
             embeddedParameterVisibility={embeddedParameterVisibility}
             isParameterSlugUsed={isParameterSlugUsed}
