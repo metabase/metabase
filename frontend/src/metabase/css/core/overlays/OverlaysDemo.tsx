@@ -8,12 +8,12 @@ import {
 import _ from "underscore";
 
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
+import LegacySelect, { Option } from "metabase/common/components/Select";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { UndoListOverlay } from "metabase/common/components/UndoListing";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Toaster from "metabase/components/Toaster";
-import LegacySelect, { Option } from "metabase/core/components/Select";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
   Box,

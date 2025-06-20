@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import Link from "metabase/common/components/Link";
 import Card from "metabase/components/Card";
-import Link from "metabase/core/components/Link";
 import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import type { BoxProps } from "metabase/ui";

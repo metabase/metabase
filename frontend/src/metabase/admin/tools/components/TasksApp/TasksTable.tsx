@@ -4,9 +4,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";

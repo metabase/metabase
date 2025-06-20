@@ -16,7 +16,7 @@ import {
 import { type MutableRefObject, useState } from "react";
 import { t } from "ttag";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
