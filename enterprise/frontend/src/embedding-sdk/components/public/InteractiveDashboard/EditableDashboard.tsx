@@ -25,6 +25,7 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import { EDITABLE_DASHCARD_MENU } from "metabase/dashboard/utils/default-dashcard-menus";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -208,31 +209,7 @@ export const EditableDashboard = ({
               drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
           })
         }
-        dashcardMenu={{
-          "edit-visualization": ({ dashcard }) =>
-            isVisualizerSupportedVisualization(dashcard.card.display),
-          "edit-link": ({ dashcard, question }) =>
-            !isVisualizerSupportedVisualization(dashcard.card.display) &&
-            !!question &&
-            canEditQuestion(question),
-          download: ({ series }) => !!series[0]?.data && !series[0]?.error,
-          metabot: ({ question }) =>
-            !!question &&
-            PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question),
-          "view-underlying-question": ({
-            dashboard: _dashboard,
-            dashcard,
-            question: _question,
-            series,
-          }) => {
-            const settings = getComputedSettingsForSeries(
-              series,
-            ) as ComputedVisualizationSettings;
-            const title = settings["card.title"] ?? series?.[0].card.name ?? "";
-
-            return !title && isVisualizerDashboardCard(dashcard);
-          },
-        }}
+        dashcardMenu={EDITABLE_DASHCARD_MENU}
       >
         {adhocQuestionUrl ? (
           <InteractiveAdHocQuestion

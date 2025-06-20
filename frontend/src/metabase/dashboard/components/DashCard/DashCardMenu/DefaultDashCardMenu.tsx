@@ -1,6 +1,5 @@
-import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { type ReactNode, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import type {
@@ -8,19 +7,11 @@ import type {
   DashboardCardMenuObject,
   DashcardMenuItems,
 } from "metabase/dashboard/context/types/dashcard-menu";
-import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
-import { useStore } from "metabase/lib/redux";
-import { exportFormatPng, exportFormats } from "metabase/lib/urls";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
+import { useDashcardMenuState } from "metabase/dashboard/hooks/use-dashcard-menu-state";
 import { PLUGIN_DASHCARD_MENU } from "metabase/plugins";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import type { Dataset } from "metabase-types/api";
 
 import { DownloadMenuItem } from "./components/DownloadMenuItem";
 import { EditLinkMenuItem } from "./components/EditLinkMenuItem";
@@ -149,53 +140,18 @@ export const DefaultDashCardMenu = ({
 }: {
   dashcardMenu: DashboardCardMenuObject;
 } & UseDashcardMenuItemsProps) => {
-  const store = useStore();
-
-  const [menuView, setMenuView] = useState<string | null>(null);
-  const [isOpen, { close, toggle }] = useDisclosure(false, {
-    onClose: () => setMenuView(null),
-  });
-
-  const token = useMemo(
-    () =>
-      dashcard && isJWT(dashcard.dashboard_id)
-        ? String(dashcard.dashboard_id)
-        : undefined,
-    [dashcard],
-  );
-  const uuid = useMemo(
-    () =>
-      dashcard && isUuid(dashcard.dashboard_id)
-        ? String(dashcard.dashboard_id)
-        : undefined,
-    [dashcard],
-  );
-
-  const canDownloadPng = question && canSavePng(question.display());
-  const formats = canDownloadPng
-    ? [...exportFormats, exportFormatPng]
-    : exportFormats;
-
-  const { value: formatPreference, setValue: setFormatPreference } =
-    useUserKeyValue({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      defaultValue: {
-        last_download_format: formats[0],
-        last_table_download_format: exportFormats[0],
-      },
-    });
-
-  const result = series[0] as unknown as Dataset;
-  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
-    question,
+  const {
+    menuView,
+    setMenuView,
+    isOpen,
+    close,
+    toggle,
+    formatPreference,
+    setFormatPreference,
+    isDownloadingData,
+    handleDownload,
     result,
-    dashboardId: dashboard.id,
-    dashcardId: dashcard.id,
-    uuid,
-    token,
-    params: getParameterValuesBySlugMap(store.getState()),
-  });
+  } = useDashcardMenuState({ question, dashboard, dashcard, series });
 
   return (
     <Menu position="bottom-end" opened={isOpen} onClose={close}>

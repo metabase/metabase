@@ -1,16 +1,9 @@
 import { useMemo } from "react";
-import { P, match } from "ts-pattern";
 
-import {
-  type DashboardContextProps,
-  useDashboardContext,
-} from "metabase/dashboard/context";
-import type {
-  DashboardCardMenuCustomElement,
-  DashboardCardMenuObject,
-} from "metabase/dashboard/context/types/dashcard-menu";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import { isQuestionCard } from "metabase/dashboard/utils";
+import { resolveDashcardMenu } from "metabase/dashboard/utils/dashcard-menu-resolver";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
@@ -23,51 +16,7 @@ import { useDashCardSeries } from "../DashCard";
 import { getSeriesForDashcard } from "../DashCardVisualization";
 
 import { DefaultDashCardMenu } from "./DefaultDashCardMenu";
-import {
-  isCustomElementFn,
-  isCustomMenuConfig,
-  isReactNode,
-} from "./type-guards";
-import type { UseDashcardMenuItemsProps } from "./types";
 import { canDownloadResults, canEditQuestion } from "./utils";
-
-const getDashcardMenuItems = ({
-  dashcardMenu,
-  question,
-  dashboard,
-  dashcard,
-  series,
-  onEditVisualization,
-}: {
-  dashcardMenu: DashboardContextProps["dashcardMenu"];
-} & UseDashcardMenuItemsProps) => {
-  return match(dashcardMenu)
-    .with(P.nullish, () => null)
-
-    .with(P.when(isReactNode), (node) => node)
-
-    .with(P.when(isCustomElementFn), (fn: DashboardCardMenuCustomElement) => {
-      return fn({
-        question,
-        dashboard,
-        dashcard,
-        series,
-      });
-    })
-
-    .with(P.when(isCustomMenuConfig), (menu: DashboardCardMenuObject) => (
-      <DefaultDashCardMenu
-        dashcardMenu={menu}
-        question={question}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        series={series}
-        onEditVisualization={onEditVisualization}
-      />
-    ))
-
-    .exhaustive();
-};
 
 export const DashCardMenu = ({
   dashcard,
@@ -97,20 +46,46 @@ export const DashCardMenu = ({
     [rawSeries, dashcard, datasets],
   );
 
-  const menuItems = useMemo(
-    () =>
-      dashboard && question
-        ? getDashcardMenuItems({
-            dashcardMenu,
-            question,
-            dashboard,
-            dashcard,
-            series: series as Series,
-            onEditVisualization,
-          })
-        : null,
-    [dashboard, dashcard, dashcardMenu, onEditVisualization, question, series],
-  );
+  const menuItems = useMemo(() => {
+    if (!dashboard || !question) {
+      return null;
+    }
+
+    const resolvedMenu = resolveDashcardMenu(dashcardMenu, {
+      question,
+      dashboard,
+      dashcard,
+      series: series as Series,
+    });
+
+    // If it's a config object, render with DefaultDashCardMenu
+    if (
+      resolvedMenu &&
+      typeof resolvedMenu === "object" &&
+      !Array.isArray(resolvedMenu)
+    ) {
+      return (
+        <DefaultDashCardMenu
+          dashcardMenu={resolvedMenu}
+          question={question}
+          dashboard={dashboard}
+          dashcard={dashcard}
+          series={series as Series}
+          onEditVisualization={onEditVisualization}
+        />
+      );
+    }
+
+    // Otherwise it's a React node or null
+    return resolvedMenu;
+  }, [
+    dashboard,
+    dashcard,
+    dashcardMenu,
+    onEditVisualization,
+    question,
+    series,
+  ]);
 
   return menuItems ?? null;
 };

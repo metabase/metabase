@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
 } from "react";
-import { P, match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,36 +15,24 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveDashboard.styled";
+import { resolveSdkDashcardMenu } from "embedding-sdk/components/public/InteractiveDashboard/sdk-dashcard-menu-resolver";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
-import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
-import type {
-  DashboardCardCustomMenuItem,
-  DashboardCardMenuCustomElement,
-  MetabasePluginsConfig,
-} from "embedding-sdk/types/plugins";
-import {
-  isCustomElementFn,
-  isCustomMenuConfig,
-  isReactNode,
-} from "metabase/dashboard/components/DashCard/DashCardMenu/type-guards";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import type { DashboardCardMenuProps } from "metabase/dashboard/context/types/dashcard-menu";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { isNotNull } from "metabase/lib/types";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion/InteractiveQuestion";
 
@@ -182,30 +169,9 @@ const InteractiveDashboardInner = ({
       </StyledPublicComponentWrapper>
     );
   }
-  const dashcardMenu = match(plugins?.dashboard?.dashboardCardMenu)
-    .with(P.when(isCustomMenuConfig), (menu: DashboardCardCustomMenuItem) => ({
-      download: menu.withDownloads,
-      "edit-link": menu.withEditLink,
-      "edit-visualization": menu.withEditLink,
-      customItems: menu.customItems
-        ?.map((item) =>
-          typeof item === "function"
-            ? (props: DashboardCardMenuProps) =>
-                item({
-                  question: transformSdkQuestion(props.question),
-                })
-            : item,
-        )
-        .filter(isNotNull),
-    }))
-    .with(
-      P.when(isCustomElementFn),
-      (menu: DashboardCardMenuCustomElement) =>
-        (props: { question: Question }) =>
-          menu({ question: transformSdkQuestion(props.question) }),
-    )
-    .with(P.when(isReactNode), (menu) => menu)
-    .exhaustive();
+  const dashcardMenu = resolveSdkDashcardMenu(
+    plugins?.dashboard?.dashboardCardMenu,
+  );
 
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
