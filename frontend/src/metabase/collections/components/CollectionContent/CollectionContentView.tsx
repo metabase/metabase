@@ -24,10 +24,10 @@ import {
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
+import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
-import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Search from "metabase/entities/search";
