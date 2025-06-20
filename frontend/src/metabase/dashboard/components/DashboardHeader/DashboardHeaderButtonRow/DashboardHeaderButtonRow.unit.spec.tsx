@@ -98,6 +98,10 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: null,
   },
+  DOWNLOAD_PDF: {
+    icon: "download",
+    tooltip: "Download as PDF",
+  },
 };
 
 const setup = ({
