@@ -13,6 +13,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.premium-features.core :as premium-features]
@@ -23,6 +24,7 @@
    [metabase.search.permissions :as search.permissions]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate)))
@@ -239,6 +241,52 @@
                             (search.config/column-with-model-alias model :updated_at)
                             last-edited-at)))
 
+;; Display types filter
+(doseq [model ["card" "dataset" "metric"]]
+  (defmethod build-optional-filter-query [:display-type model]
+    [_filter model query display-types]
+    (sql.helpers/where query [:in (search.config/column-with-model-alias model :display) display-types])))
+
+;; Has temporal dimensions filter
+(doseq [model ["card" "dataset" "metric"]]
+  (defmethod build-optional-filter-query [:has-temporal-dimensions model]
+    [_filter model query has-temporal-dimensions?]
+    (if has-temporal-dimensions?
+      ;; Filter for cards that DO have temporal dimensions
+      (sql.helpers/where query [:like
+                                (search.config/column-with-model-alias model :result_metadata)
+                                "%\"temporal_unit\":%"])
+      ;; Filter for cards that do NOT have temporal dimensions
+      (sql.helpers/where query [:or
+                                [:is (search.config/column-with-model-alias model :result_metadata) nil]
+                                [:not [:like
+                                       (search.config/column-with-model-alias model :result_metadata)
+                                       "%\"temporal_unit\":%"]]]))))
+;; Non-temporal dimension IDs filter
+(doseq [model ["card" "dataset" "metric"]]
+  (defmethod build-optional-filter-query [:required-non-temporal-dimension-ids model]
+    [_filter model query required-field-ids]
+    (if (and (seq required-field-ids) (= (mdb/db-type) :postgres))
+      ;; PostgreSQL-specific JSONB containment check
+      (let [metadata-column (search.config/column-with-model-alias model :result_metadata)
+            ;; Create the JSON array of required field IDs
+            required-ids-json (json/encode (vec (sort required-field-ids)))]
+        (sql.helpers/where query
+                           [:raw (format "COALESCE(
+                                           (SELECT jsonb_agg(field_id ORDER BY field_id)
+                                             FROM (
+                                               SELECT DISTINCT (elem->>'id')::integer as field_id
+                                               FROM jsonb_array_elements(%s::jsonb) elem
+                                               WHERE elem->>'id' IS NOT NULL
+                                                 AND elem->>'temporal_unit' IS NULL
+                                             ) sorted_ids),
+                                            '[]'::jsonb
+                                          ) @> '%s'::jsonb"
+                                         (name metadata-column)
+                                         required-ids-json)]))
+      ;; For non-PostgreSQL or empty required IDs, don't filter (return all results)
+      query)))
+
 (defn- feature->supported-models
   "Return A map of filter to its support models.
 
@@ -275,15 +323,21 @@
                 last-edited-by
                 models
                 search-native-query
-                verified]}        search-context
+                verified
+                display-type
+                has-temporal-dimensions?
+                required-non-temporal-dimension-ids]} search-context
         feature->supported-models (feature->supported-models)]
     (cond-> models
-      (some? created-at)          (set/intersection (:created-at feature->supported-models))
-      (some? created-by)          (set/intersection (:created-by feature->supported-models))
-      (some? last-edited-at)      (set/intersection (:last-edited-at feature->supported-models))
-      (some? last-edited-by)      (set/intersection (:last-edited-by feature->supported-models))
-      (true? search-native-query) (set/intersection (:search-native-query feature->supported-models))
-      (true? verified)            (set/intersection (:verified feature->supported-models)))))
+      (some? created-at)                          (set/intersection (:created-at feature->supported-models))
+      (some? created-by)                          (set/intersection (:created-by feature->supported-models))
+      (some? last-edited-at)                      (set/intersection (:last-edited-at feature->supported-models))
+      (some? last-edited-by)                      (set/intersection (:last-edited-by feature->supported-models))
+      (true? search-native-query)                 (set/intersection (:search-native-query feature->supported-models))
+      (true? verified)                            (set/intersection (:verified feature->supported-models))
+      (seq   display-type)                        (set/intersection (:display-type feature->supported-models))
+      (some? has-temporal-dimensions?)            (set/intersection (:has-temporal-dimensions feature->supported-models))
+      (seq   required-non-temporal-dimension-ids) (set/intersection (:required-non-temporal-dimension-ids feature->supported-models)))))
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
@@ -299,7 +353,10 @@
                 search-string
                 search-native-query
                 verified
-                ids]}    search-context]
+                ids
+                display-type
+                has-temporal-dimensions?
+                required-non-temporal-dimension-ids]} search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -326,6 +383,15 @@
       (and (some? ids)
            (contains? models model))
       (#(build-optional-filter-query :id model % ids))
+
+      (seq display-type)
+      (#(build-optional-filter-query :display-type model % display-type))
+
+      (some? has-temporal-dimensions?)
+      (#(build-optional-filter-query :has-temporal-dimensions model % has-temporal-dimensions?))
+
+      (seq required-non-temporal-dimension-ids)
+      (#(build-optional-filter-query :required-non-temporal-dimension-ids model % required-non-temporal-dimension-ids))
 
       (= "table" model)
       (sql.helpers/where
