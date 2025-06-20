@@ -39,9 +39,9 @@ export const SdkIframeEmbedPreview = () => {
 
           ...(localeOverride ? { locale: localeOverride } : {}),
         });
-
-        scriptRef.current = script;
       };
+
+      scriptRef.current = script;
     }
 
     return () => {
