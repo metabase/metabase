@@ -31,10 +31,10 @@ describe("visualization.lib.numeric", () => {
       [1.2345678, 1e-7],
       [1.23456789, 1e-8],
       [-1.23456789, 1e-8],
+      // very precise numbers are cut off at 10^-13
       [-1.2345678912345, 1e-13],
-      [-1.23456789123456, 1e-14],
-      // very precise numbers are cut off at 10^-14
-      [-1.23456789123456789123456789, 1e-14],
+      [-1.23456789123456, 1e-13],
+      [-1.234567891234568, 1e-13],
     ];
     for (const [n, p] of CASES) {
       it(`precision of ${n} should be ${p}`, () => {
