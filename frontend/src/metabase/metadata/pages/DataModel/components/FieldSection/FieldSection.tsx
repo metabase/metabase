@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
@@ -12,7 +13,7 @@ import {
   getFieldDisplayName,
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
-import { Box, Stack } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, Field } from "metabase-types/api";
 
@@ -25,9 +26,16 @@ import { MetadataSection } from "./MetadataSection";
 interface Props {
   databaseId: DatabaseId;
   field: Field;
+  isPreviewOpen: boolean;
+  onPreviewClick: () => void;
 }
 
-export const FieldSection = ({ databaseId, field }: Props) => {
+const FieldSectionBase = ({
+  databaseId,
+  field,
+  isPreviewOpen,
+  onPreviewClick,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
@@ -35,7 +43,7 @@ export const FieldSection = ({ databaseId, field }: Props) => {
   return (
     <Stack gap={0} p="xl" pt={0}>
       <Box
-        bg="accent-gray-light"
+        bg="bg-white"
         className={S.header}
         pb="lg"
         pos="sticky"
@@ -74,6 +82,20 @@ export const FieldSection = ({ databaseId, field }: Props) => {
         />
       </Box>
 
+      <Group align="center" h={48} justify="space-between">
+        <Text fw="bold">{t`Field settings`}</Text>
+
+        {!isPreviewOpen && (
+          <Button
+            leftSection={<Icon name="eye" />}
+            px="sm"
+            py="xs"
+            size="xs"
+            onClick={onPreviewClick}
+          >{t`Preview`}</Button>
+        )}
+      </Group>
+
       <Stack gap="xl">
         <DataSection field={field} />
         <MetadataSection databaseId={databaseId} field={field} />
@@ -88,3 +110,5 @@ export const FieldSection = ({ databaseId, field }: Props) => {
     </Stack>
   );
 };
+
+export const FieldSection = memo(FieldSectionBase);

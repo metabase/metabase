@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetDatabaseQuery, useUpdateFieldMutation } from "metabase/api";
@@ -24,7 +25,7 @@ interface Props {
   field: Field;
 }
 
-export const BehaviorSection = ({ databaseId, field }: Props) => {
+const BehaviorSectionBase = ({ databaseId, field }: Props) => {
   const id = getRawTableFieldId(field);
   const { data: database } = useGetDatabaseQuery({
     id: databaseId,
@@ -111,3 +112,5 @@ export const BehaviorSection = ({ databaseId, field }: Props) => {
     </Stack>
   );
 };
+
+export const BehaviorSection = memo(BehaviorSectionBase);

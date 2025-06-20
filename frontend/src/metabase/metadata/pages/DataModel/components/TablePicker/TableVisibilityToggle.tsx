@@ -64,8 +64,8 @@ export function TableVisibilityToggle({
   return (
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
-        variant="transparent"
         className={className}
+        variant="transparent"
         onClick={(event) => {
           event.stopPropagation();
 

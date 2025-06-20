@@ -37,7 +37,7 @@ import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
-import { DataModel, DataModelEditor } from "metabase/metadata/pages/DataModel";
+import { DataModel } from "metabase/metadata/pages/DataModel";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -88,26 +88,31 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
-        <Route title={t`Table Metadata`} component={DataModel}>
-          <IndexRedirect to="database" />
-          <Route path="database" component={DataModelEditor} />
-          <Route path="database/:databaseId" component={DataModelEditor} />
+        <Route title={t`Table Metadata`}>
+          <IndexRedirect to="database" component={DataModel} />
+          <Route path="database" component={DataModel} />
+          <Route path="database/:databaseId" component={DataModel} />
           <Route
             path="database/:databaseId/schema/:schemaId"
-            component={DataModelEditor}
+            component={DataModel}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={DataModelEditor}
+            component={DataModel}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            component={DataModelEditor}
+            component={DataModel}
           />
-          <Route path="segments" component={SegmentListApp} />
-          <Route path="segment/create" component={SegmentApp} />
-          <Route path="segment/:id" component={SegmentApp} />
-          <Route path="segment/:id/revisions" component={RevisionHistoryApp} />
+          <Route component={DataModel}>
+            <Route path="segments" component={SegmentListApp} />
+            <Route path="segment/create" component={SegmentApp} />
+            <Route path="segment/:id" component={SegmentApp} />
+            <Route
+              path="segment/:id/revisions"
+              component={RevisionHistoryApp}
+            />
+          </Route>
           <Redirect
             from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
             to="database/:databaseId/schema/:schemaId/table/:tableId"

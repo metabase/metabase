@@ -30,6 +30,7 @@ function TestComponent({
       previewType={previewType}
       table={table}
       tableId={field.table_id}
+      onClose={jest.fn()}
       onPreviewTypeChange={handlePreviewTypeChange}
     />
   );

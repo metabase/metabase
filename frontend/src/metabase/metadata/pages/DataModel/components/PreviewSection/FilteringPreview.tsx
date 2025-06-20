@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import _ from "underscore";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -19,7 +19,7 @@ interface Props {
 
 const STAGE_INDEX = 0;
 
-export function FilteringPreview({ databaseId, fieldId, table }: Props) {
+const FilteringPreviewBase = ({ databaseId, fieldId, table }: Props) => {
   const query = useMemo(
     () => getPreviewQuery(table, databaseId),
     [databaseId, table],
@@ -37,7 +37,7 @@ export function FilteringPreview({ databaseId, fieldId, table }: Props) {
       onChange={_.noop}
     />
   );
-}
+};
 
 function getPreviewQuery(table: Table, databaseId: number): Lib.Query {
   const metadata = createMockMetadata({
@@ -69,3 +69,5 @@ function getPreviewColumn(
 
   return columns[index];
 }
+
+export const FilteringPreview = memo(FilteringPreviewBase);
