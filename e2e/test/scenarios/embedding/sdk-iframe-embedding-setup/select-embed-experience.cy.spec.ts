@@ -1,3 +1,4 @@
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { RecentItem } from "metabase-types/api";
 
 const { H } = cy;
@@ -13,54 +14,99 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     H.activateToken("bleeding-edge");
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("shows most recent dashboard from the activity log", () => {
-    const dashboardName = "Orders in a dashboard";
+  describe("select embed experiences with a non-empty activity log", () => {
+    it("shows the most recent dashboard from the activity log by default", () => {
+      const dashboardName = "Orders in a dashboard";
 
-    cy.visit("/embed/new");
-    cy.wait("@dashboard");
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
 
-    cy.log("assert that the most recent dashboard is the one we expect");
-    cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-      const mostRecentDashboard = intercept.response?.body.recents?.filter(
-        (recent) => recent.model === "dashboard",
-      )?.[0];
+      cy.log("assert that the most recent dashboard is the one we expect");
+      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
+        const recentItem = intercept.response?.body.recents?.filter(
+          (recent) => recent.model === "dashboard",
+        )?.[0];
 
-      expect(mostRecentDashboard.name).to.be.equal(dashboardName);
+        expect(recentItem.name).to.be.equal(dashboardName);
+      });
+
+      const iframe = H.getIframeBody();
+      iframe.within(() => {
+        cy.log("dashboard title is visible");
+        cy.findByText(dashboardName).should("be.visible");
+
+        cy.log("dashboard card is visible");
+        cy.findByText("Orders").should("be.visible");
+      });
     });
 
-    H.getIframeBody().within(() => {
-      cy.log("dashboard title is visible");
-      cy.findByText(dashboardName).should("be.visible");
+    it("shows the most recent question from the activity log when selected", () => {
+      cy.log("go to a question to add to the activity log");
+      cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
+      cy.wait("@cardQuery");
 
-      cy.log("dashboard card is visible");
-      cy.findByText("Orders").should("be.visible");
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+
+      getEmbedSidebar().findByText("Chart").click();
+      cy.wait("@cardQuery");
+
+      const iframe = H.getIframeBody();
+      iframe.within(() => {
+        cy.log("question title is visible");
+        cy.findByText("Orders, Count").should("be.visible");
+      });
+    });
+
+    it("shows exploration template when selected", () => {
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+
+      getEmbedSidebar().findByText("Exploration").click();
+
+      const iframe = H.getIframeBody();
+      iframe.within(() => {
+        cy.log("data picker is visible");
+        cy.findByText("Pick your starting data").should("be.visible");
+      });
     });
   });
 
-  it("shows chart experience when selected", () => {
-    cy.visit("/embed/new");
-    cy.wait("@dashboard");
-
-    getEmbedSidebar().findByText("Chart").click();
-
-    H.getIframeBody().within(() => {
-      cy.log("question title is visible");
-      cy.findByText("Query log").should("be.visible");
+  describe("select embed experiences with an empty activity log", () => {
+    beforeEach(() => {
+      // simulate a totally empty activity log
+      cy.intercept("GET", "/api/activity/recents?*", {
+        recents: [],
+      }).as("emptyRecentItems");
     });
-  });
 
-  it("shows exploration template when selected", () => {
-    cy.visit("/embed/new");
-    cy.wait("@dashboard");
+    it("shows dashboard of id=1 when activity log is empty", () => {
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+      cy.wait("@emptyRecentItems");
 
-    getEmbedSidebar().findByText("Exploration").click();
+      cy.log("dashboard title and card of id=1 should be visible");
+      H.getIframeBody().within(() => {
+        cy.findByText("Person overview").should("be.visible");
+        cy.findByText("Person detail").should("be.visible");
+      });
+    });
 
-    H.getIframeBody().within(() => {
-      cy.log("data picker is visible");
-      cy.findByText("Pick your starting data").should("be.visible");
+    it("shows question of id=1 when activity log is empty and chart is selected", () => {
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+      cy.wait("@emptyRecentItems");
+
+      getEmbedSidebar().findByText("Chart").click();
+
+      H.getIframeBody().within(() => {
+        cy.log("question title of id=1 is visible");
+        cy.findByText("Query log").should("be.visible");
+      });
     });
   });
 
@@ -74,44 +120,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     H.getIframeBody().within(() => {
       cy.log("data picker is localized");
       cy.findByText("Choisissez vos données de départ").should("be.visible");
-    });
-  });
-
-  describe("Step 2: Select embed experience with empty activity log", () => {
-    beforeEach(() => {
-      // Mock empty activity log
-      cy.intercept("GET", "/api/activity/recents?*", {
-        recents: [],
-      }).as("emptyRecentItems");
-    });
-
-    it("shows example dashboard when activity log is empty", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-      cy.wait("@emptyRecentItems");
-
-      // Should show dashboard experience by default
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.log("example dashboard is visible");
-        cy.findByText("Person overview").should("be.visible");
-        cy.findByText("Person detail").should("be.visible");
-      });
-    });
-
-    it("shows example question when activity log is empty and chart experience is selected", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-      cy.wait("@emptyRecentItems");
-
-      // Switch to chart experience
-      getEmbedSidebar().findByText("Chart").click();
-
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.log("example question is visible");
-        cy.findByText("Query log").should("be.visible");
-      });
     });
   });
 });
