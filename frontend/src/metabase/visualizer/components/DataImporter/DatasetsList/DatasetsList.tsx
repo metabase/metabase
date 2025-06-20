@@ -231,7 +231,7 @@ export function DatasetsList({
       style={{ overflow: "auto", ...style }}
     >
       {debouncedIsVisualizationSearchLoading && <Loader />}
-      {items.length === 0 && <p>{t`No results`}</p>}
+      {items.length === 0 && <p>{t`No compatible results`}</p>}
       {items.map((item, index) => (
         <DatasetsListItem
           key={index}
