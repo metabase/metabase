@@ -68,7 +68,8 @@
                               :regex                     true
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
-                              :uploads                   true}]
+                              :uploads                   true
+                              :database-routing          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
