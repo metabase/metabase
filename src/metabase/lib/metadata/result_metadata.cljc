@@ -253,7 +253,6 @@
                (let [col (cond-> col
                            remove-join-alias? (lib.join/with-join-alias nil)
                            remove-join-alias? (assoc ::remove-join-alias? true))]
-
                  (->> (merge
                        col
                        (when-not remove-join-alias?

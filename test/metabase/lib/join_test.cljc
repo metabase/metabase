@@ -1700,7 +1700,7 @@
                      query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
 
 (deftest ^:parallel remapping-in-joins-duplicates-test
-  (testing "Remapped columns in joined source queries should not append duplicates"
+  (testing "Remapped columns in joined source queries should not append duplicates (QUE-1410)"
     (let [mp    (lib.tu/remap-metadata-provider
                  meta/metadata-provider
                  (meta/id :orders :product-id) (meta/id :products :title))

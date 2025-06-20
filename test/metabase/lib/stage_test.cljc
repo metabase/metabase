@@ -604,3 +604,26 @@
                      -1
                      (lib.util/query-stage query -1)
                      {:include-remaps? true}))))))))
+
+(deftest ^:parallel no-duplicate-remaps-test
+  (testing "Do not add duplicate columns when :include-remaps? is true (QUE-1410)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :venues :category-id) (meta/id :categories :name))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query venues
+                   {:joins  [{:source-table $$categories
+                              :condition    [:= 1 1]
+                              :alias        "CATEGORIES__via__CATEGORY_ID"
+                              :fields       :none}]
+                    :fields [$venues.id
+                             $venues.name
+                             $venues.category-id
+                             $venues.latitude
+                             $venues.longitude
+                             $venues.price
+                             ;; this is already here, DO NOT add a duplicate of it.
+                             &CATEGORIES__via__CATEGORY_ID.categories.name]}))]
+      (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
+             (map :lib/desired-column-alias (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})))))))

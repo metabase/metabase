@@ -326,12 +326,9 @@
       ;; add any remaps for the fields as needed.
       (for [col (concat
                  cols'
-                 ;; filter out any duplicates.
-                 (remove (let [existing-ids (into #{} (keep :id) cols')]
-                           #(existing-ids (:id %)))
-                         (lib.metadata.calculation/remapped-columns
-                          (assoc query :stages stages)
-                          0 cols' (assoc options :unique-name-fn (unique-name-fn)))))]
+                 (lib.metadata.calculation/remapped-columns
+                  (assoc query :stages stages)
+                  0 cols' (assoc options :unique-name-fn (unique-name-fn))))]
         (->> (column-from-join query stage-number col join-alias)
              (adjust-ident join)
              (add-source-and-desired-aliases join unique-name-fn))))))
