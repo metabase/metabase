@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import _ from "underscore";
 
 import GrabberS from "metabase/css/components/grabber.module.css";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import { isNotNull } from "metabase/lib/types";
 
 export type SortableDivider = {
@@ -29,6 +30,7 @@ export type RenderItemProps<T> = {
   item: T;
   id: ItemId;
   isDragOverlay?: boolean;
+  index: number;
 };
 type SortableListProps<T> = {
   items: T[];
@@ -37,6 +39,7 @@ type SortableListProps<T> = {
     item,
     id,
     isDragOverlay,
+    index,
   }: RenderItemProps<T>) => JSX.Element | null;
   onSortStart?: (event: DragStartEvent) => void;
   onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
@@ -85,7 +88,7 @@ export const SortableList = <T,>({
             return (
               <React.Fragment key={id}>
                 {divider ? divider.renderFn() : null}
-                {renderItem({ item, id })}
+                {renderItem({ item, id, index })}
               </React.Fragment>
             );
           }
@@ -141,16 +144,20 @@ export const SortableList = <T,>({
         // we need to render the DragOverlay in a separate portal
         // (https://docs.dndkit.com/api-documentation/draggable/drag-overlay#portals)
         createPortal(
-          <DragOverlay>
+          <DragOverlay
+            // Used in e2e, because can't pass data-testid
+            className="drag-overlay"
+          >
             {activeItem
               ? renderItem({
                   item: activeItem,
                   id: getId(activeItem),
                   isDragOverlay: true,
+                  index: items.indexOf(activeItem),
                 })
               : null}
           </DragOverlay>,
-          document.body,
+          getPortalRootElement(),
         )}
     </DndContext>
   );

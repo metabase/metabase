@@ -1,7 +1,6 @@
 (ns metabase-enterprise.ai-sql-fixer.api
   "`/api/ee/ai-sql-fixer/` routes"
   (:require
-   [metabase-enterprise.ai-sql-fixer.query-analyzer :as query-analyzer]
    [metabase-enterprise.metabot-v3.core :as metabot-v3]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -71,7 +70,7 @@
                            :visibility_type nil
                            {:limit (inc all-tables-limit)})
          tables (if (> (count tables) all-tables-limit)
-                  (metabot-v3/used-tables query query-analyzer/tables-for-native)
+                  (metabot-v3/used-tables query)
                   tables)
          tables (t2/hydrate tables :fields)]
      (format-schema-ddl tables))))
