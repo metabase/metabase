@@ -1,7 +1,4 @@
-import {
-  AdminNavItem,
-  AdminNavWrapper,
-} from "metabase/admin/AdminNav";
+import { AdminNavItem, AdminNavWrapper } from "metabase/admin/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
