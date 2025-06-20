@@ -1,3 +1,5 @@
+import type { BaseRecentItem } from "metabase-types/api";
+
 export type SdkIframeEmbedSetupExperience =
   | "dashboard"
   | "chart"
@@ -8,3 +10,8 @@ export type SdkIframeEmbedSetupStep =
   | "select-embed-entity"
   | "select-embed-options"
   | "get-code";
+
+export type SdkIframeEmbedSetupRecentItem = Pick<
+  BaseRecentItem,
+  "name" | "description"
+> & { id: string | number };

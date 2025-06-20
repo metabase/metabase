@@ -8,6 +8,7 @@ import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
+import { useRecentItems } from "../hooks/use-recent-items";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
@@ -21,6 +22,8 @@ interface SdkIframeEmbedSetupProviderProps {
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const { recentDashboards, recentQuestions, addRecentItem } = useRecentItems();
+
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
   );
@@ -58,6 +61,9 @@ export const SdkIframeEmbedSetupProvider = ({
     settings,
     setSettings,
     updateSettings,
+    recentDashboards,
+    recentQuestions,
+    addRecentItem,
   };
 
   return (
