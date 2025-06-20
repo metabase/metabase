@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 
 import type { ColorPalette } from "metabase/lib/colors/types";
-
-import { useMantineTheme } from "../ui";
+import { useMantineTheme } from "metabase/ui";
 
 /**
  * Extracts a color palette from a subset of colors in the Mantine theme.
