@@ -27,7 +27,6 @@ describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
     cy.visit("/embed/new");
     cy.wait("@dashboard");
 
-    cy.log("clicking on Chart tab");
     getEmbedSidebar().findByText("Chart").click();
 
     const iframe = getPreviewIframe();
