@@ -1,0 +1,38 @@
+.root {
+  display: flex;
+  flex-direction: row;
+  overflow-x: hidden;
+  max-width: 388px;
+  background-color: var(--mb-color-text-dark);
+  padding: 16px;
+  border-radius: 6px;
+  align-items: center;
+  border: none;
+  box-shadow: none;
+  position: relative;
+  gap: 0;
+}
+
+.root::before {
+  display: none;
+}
+
+.body {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  width: auto;
+  padding-right: 0;
+}
+
+.title {
+  color: var(--mb-color-text-white);
+  width: 100%;
+  line-height: 24px;
+  font-size: 14px;
+  margin: 0;
+  font-weight: normal;
+  flex-shrink: 0;
+}

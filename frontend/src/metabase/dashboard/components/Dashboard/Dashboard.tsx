@@ -11,6 +11,7 @@ import { useDashboardContext } from "metabase/dashboard/context";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
+import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -285,6 +286,7 @@ function Dashboard() {
                 reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
                 handleSetEditing={handleSetEditing}
               />
+              <FilterApplyToast />
             </FullWidthContainer>
           )}
         </Box>
