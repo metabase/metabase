@@ -91,7 +91,7 @@ module.exports = (env) => {
               options: {
                 attributes: { "data-mb-styles": true },
                 insert: require.resolve(
-                  "./enterprise/frontend/src/embedding-sdk/lib/web-components/insert-styles",
+                  "./frontend/build/embedding-sdk/utils/insert-styles",
                 ),
               },
             },
