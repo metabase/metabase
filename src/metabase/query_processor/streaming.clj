@@ -189,13 +189,13 @@
                       (catch Throwable e
                         e))]
          ;; Handle cancellation - if QP returned ::cancel, the client has given up waiting
-         ;; Just log and exit gracefully without sending any response
+         ;; Create a cancelled result to trigger proper cleanup
          (when (= result ::qp.pipeline/cancel)
            (log/infof "Query was cancelled, exiting streaming response. Export format: %s, Thread: %s"
                       export-format (.getName (Thread/currentThread)))
-           ;; Early return - no need to write anything to the output stream
-           ;; The client that initiated the request has already disconnected
-           (reduced nil))
+           ;; Return a completed result with row count 0 to trigger cleanup
+           ;; The streaming response system will handle the rest
+           {:status :cancelled, :row_count 0, :data {:cols []}})
 
          (when (nil? result)
            (let [was-cancelled? (some-> canceled-chan clojure.core.async/poll!)]
