@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 
 import { useSetting, useUserSetting } from "metabase/common/hooks";
+import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { DevModeBanner } from "metabase/nav/components/DevModeBanner";
 import {
@@ -61,6 +62,7 @@ export const AppBanner = () => {
       tokenExpiryTimestamp,
       daysRemaining,
       lastDismissed,
+      isWithinIframe: isWithinIframe(),
     });
 
     if (showBanner) {

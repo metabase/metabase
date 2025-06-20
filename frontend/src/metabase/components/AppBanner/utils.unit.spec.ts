@@ -7,6 +7,7 @@ describe("app banner utils", () => {
     it("should return false if daysRemaining is less than 0", () => {
       expect(
         shouldShowTrialBanner({
+          isWithinIframe: false,
           tokenExpiryTimestamp: "2021-01-01",
           daysRemaining: -1,
         }),
@@ -18,6 +19,7 @@ describe("app banner utils", () => {
       (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
+            isWithinIframe: false,
             tokenExpiryTimestamp: "2021-11-27",
             daysRemaining,
           }),
@@ -32,6 +34,7 @@ describe("app banner utils", () => {
 
         expect(
           shouldShowTrialBanner({
+            isWithinIframe: false,
             tokenExpiryTimestamp,
             daysRemaining,
             lastDismissed: dayjs(tokenExpiryTimestamp)
@@ -50,6 +53,7 @@ describe("app banner utils", () => {
 
         expect(
           shouldShowTrialBanner({
+            isWithinIframe: false,
             tokenExpiryTimestamp,
             daysRemaining,
             lastDismissed: dayjs(tokenExpiryTimestamp)
@@ -65,6 +69,7 @@ describe("app banner utils", () => {
       (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
+            isWithinIframe: false,
             tokenExpiryTimestamp: "2021-11-27",
             daysRemaining,
             lastDismissed: "2021-11-15",
@@ -78,6 +83,7 @@ describe("app banner utils", () => {
       (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
+            isWithinIframe: false,
             tokenExpiryTimestamp: "2021-11-27",
             daysRemaining,
             lastDismissed: null,
@@ -91,6 +97,7 @@ describe("app banner utils", () => {
       (daysRemaining) => {
         expect(
           shouldShowTrialBanner({
+            isWithinIframe: false,
             tokenExpiryTimestamp: "2021-11-27",
             daysRemaining,
             lastDismissed: undefined,
@@ -98,6 +105,17 @@ describe("app banner utils", () => {
         ).toBe(true);
       },
     );
+
+    it("should return false if isWithinIframe is true", () => {
+      expect(
+        shouldShowTrialBanner({
+          isWithinIframe: true,
+          tokenExpiryTimestamp: "2021-11-27",
+          daysRemaining: 1,
+          lastDismissed: null,
+        }),
+      ).toBe(false);
+    });
   });
 
   describe("getCurrentUTCTimestamp", () => {
