@@ -458,6 +458,10 @@
   [_driver _special_type expr]
   expr)
 
+(defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/YYYYMMDDHHMMSSString->Temporal]
+  [_driver _coercion-strategy expr]
+  [:'parseDateTime expr (h2x/literal "%Y%m%d%H%i%S")])
+
 ;;; ------------------------------------------------------------------------------------
 ;;; JDBC-related functions
 ;;; ------------------------------------------------------------------------------------
