@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-505-scaffold-new-iframe-embedding-setup-route-with-context-and",
-    "hash": "b6c2cd17bf47738c257a053ff54a2c9695457e9a"
+    "hash": "44f3fe373edbc668f6be907edcf81e0d8aa81930"
   },
   "upstream": {
     "branch": "emb-506-live-previews-for-new-iframe-embed-flow"
