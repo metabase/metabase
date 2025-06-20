@@ -34,6 +34,7 @@
                   :from   [(keyword (liquibase/changelog-table-name (mdb/data-source)))]
                   :order-by [[:orderexecuted :desc]]
                   :limit 1})))
+
 (defn migrate!
   "Run migrations for the Metabase application database. Possible directions are `:up` (default), `:force`, `:down`, and
   `:release-locks`. When migrating `:down` pass along a version to migrate to (44+)."
@@ -87,6 +88,14 @@
                                                          :order-by [[:orderexecuted :desc]]
                                                          :limit    1}]})))))
 
+(defn reset-checksums!
+  []
+  (let [changelog-table (keyword (liquibase/changelog-table-name (mdb/data-source)))]
+    (t2/query {:update changelog-table
+               :set    {:md5sum nil}}))
+  (migrate! :up)
+  (println "Reset checksums"))
+
 (mu/defn rollback!
   "Rollback helper, can take a number of migrations to rollback or a specific migration ID(inclusive) or last-deployment.
 
@@ -128,7 +137,8 @@
     clojure -M:migrate rollback count 2           ;; rollback 2 migrations
     clojure -M:migrate rollback id \"v40.00.001\" ;; rollback to a specific migration with id
     clojure -M:migrate rollback last-deployment   ;; rollback the last deployment
-    clojure -M:migrate status                     ;; print the latest migration id"
+    clojure -M:migrate status                     ;; print the latest migration id
+    clojure -M:migrate reset-checksums.           ;; sets the checkums to what they would be if migrated from the current changelog"
 
   [& args]
   (let [[cmd & migration-args] args]
@@ -141,6 +151,9 @@
 
       "status"
       (migration-status)
+
+      "reset-checksums"
+      (reset-checksums!)
 
       (throw (ex-info "Invalid command" {:command cmd
                                          :args    args})))))
