@@ -1,14 +1,13 @@
 import { t } from "ttag";
 
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { Divider, Flex, Text } from "metabase/ui";
-
 import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
-} from "../AdminNav";
+} from "metabase/admin/AdminNav";
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { Divider, Flex, Text } from "metabase/ui";
 
 const NavDivider = () => <Divider my="sm" />;
 

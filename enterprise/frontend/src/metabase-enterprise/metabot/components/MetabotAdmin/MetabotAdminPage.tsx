@@ -6,10 +6,7 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import {
-  AdminNavItem,
-  AdminNavWrapper,
-} from "metabase/admin/settings/components/AdminNav";
+import { AdminNavItem, AdminNavWrapper } from "metabase/admin/AdminNav";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useGetCollectionQuery } from "metabase/api";

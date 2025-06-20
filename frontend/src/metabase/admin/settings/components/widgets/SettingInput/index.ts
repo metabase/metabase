@@ -1,1 +1,0 @@
-export { SettingInput } from "./SettingInput";

@@ -6,7 +6,7 @@ import Toggle from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Tooltip } from "metabase/ui";
 
-import type { SettingElement } from "../../types";
+import type { SettingElement } from "../../../types";
 
 type SettingToggleProps = {
   disabled: boolean;
