@@ -4,8 +4,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/common/components/Button";
-import CollapseSection from "metabase/components/CollapseSection";
-import UnstyledEmptyState from "metabase/components/EmptyState";
+import CollapseSection from "metabase/common/components/CollapseSection";
+import UnstyledEmptyState from "metabase/common/components/EmptyState";
 import { alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
