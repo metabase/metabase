@@ -58,17 +58,20 @@ export const SelectEmbedEntityStep = () => {
     }
   };
 
-  const handleEntitySelect = (item: SdkIframeEmbedSetupRecentItem) => {
-    const entityId =
+  const handlePickerModalEntitySelect = (
+    item: SdkIframeEmbedSetupRecentItem,
+  ) => {
+    // Resource picker modal returns numeric ids.
+    const resourceId =
       typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
 
     closePicker();
-    updateEmbedSettings(experience, entityId);
+    updateEmbedSettings(experience, resourceId);
 
-    // add the current entity to the top of the recent items list
+    // Add the current entity to the top of the recent items list
     const type = experience === "dashboard" ? "dashboard" : "question";
     addRecentItem(type, {
-      id: entityId,
+      id: resourceId,
       name: item.name,
       description: item.description,
     });
@@ -88,7 +91,7 @@ export const SelectEmbedEntityStep = () => {
               ? { id: settings.dashboardId, model: "dashboard" }
               : undefined
           }
-          onChange={handleEntitySelect}
+          onChange={handlePickerModalEntitySelect}
           onClose={closePicker}
           options={{
             showPersonalCollections: true,
@@ -108,7 +111,7 @@ export const SelectEmbedEntityStep = () => {
               ? { id: settings.questionId, model: "card" }
               : undefined
           }
-          onChange={handleEntitySelect}
+          onChange={handlePickerModalEntitySelect}
           onClose={closePicker}
           options={{
             showPersonalCollections: true,
