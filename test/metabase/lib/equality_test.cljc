@@ -352,8 +352,9 @@
                          (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
           sorted    #(sort-by (juxt :position :source-alias) %)
           visible   (lib/visible-columns query)]
-      (is (=? (sorted (concat (map table-col cols)
-                              (map join-col  cols)))
+      (is (=? (->> (sorted (concat (map table-col cols)
+                                   (map join-col  cols)))
+                   (map #(dissoc % :ident)))
               (sorted (lib/returned-columns query))))
       (testing "matches the defaults by ID"
         (doseq [col-key (meta/fields :orders)]

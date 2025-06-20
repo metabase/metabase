@@ -318,7 +318,7 @@
   This matches the logic in [[metabase.query-processor.middleware.resolve-joins/append-join-fields]] -- important to
   have the exact same behavior in both places."
   [query stage-number options field-cols join]
-  (let [join-cols      (lib.metadata.calculation/returned-columns query stage-number join options)
+  (let [join-cols      (lib.join/join-fields-to-add-to-parent-stage query stage-number join options)
         join-alias     (lib.join.util/current-join-alias join)
         existing-cols  (keep (fn [col]
                                (when (= (lib.join.util/current-join-alias col) join-alias)
@@ -381,7 +381,7 @@
               source-cols
               (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
               (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-              (lib.join/all-joins-expected-columns query stage-number options))))
+              (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
          #_(as-> cols (flow-previous-stage-metadata query stage-number cols options))
          lib.field.util/add-deduplicated-names))))
 

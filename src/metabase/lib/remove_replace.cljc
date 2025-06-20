@@ -706,7 +706,7 @@
 
     (lib.equality/matching-column-sets?
      query stage-number (:fields join)
-     (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+     (lib.join/join-fields-to-add-to-parent-stage query stage-number (assoc join :fields :all) {:unique-name-fn (lib.util/unique-name-generator)}))
     (assoc join :fields :all)
 
     :else join))

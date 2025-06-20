@@ -601,11 +601,15 @@
                                                       :target       x
                                                       :options      options})))))
 
-(defn remapped-columns
+(mu/defn remapped-columns
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
-  [query stage-number source-cols {:keys [include-remaps? unique-name-fn] :as _options}]
+  [query :- map?
+   stage-number
+   source-cols
+   {:keys [include-remaps? unique-name-fn] :as _options} :- [:map
+                                                             [:unique-name-fn ::unique-name-fn]]]
   (when (and include-remaps?
-             (= (lib.util/canonical-stage-index query stage-number) 0))
+             (lib.util/first-stage? query stage-number))
     (for [column source-cols
           :let [remapped (lib.metadata/remapped-field query column)]
           :when remapped]

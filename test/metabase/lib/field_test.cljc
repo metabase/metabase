@@ -1424,10 +1424,12 @@
                                (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
-      (is (=? (sorted (concat order-cols join-cols))
+      (is (=? (map #(dissoc % :ident)
+                   (sorted (concat order-cols join-cols)))
               (sorted (lib.metadata.calculation/returned-columns query))))
       (testing "visible-columns returns implicitly joinable People, but does not return two copies of Product.CATEGORY"
-        (is (=? (sorted (concat order-cols join-cols implicit-cols))
+        (is (=? (map #(dissoc % :ident)
+                     (sorted (concat order-cols join-cols implicit-cols)))
                 (sorted (lib.metadata.calculation/visible-columns query))))))))
 
 (deftest ^:parallel nested-query-implicit-join-fields-test

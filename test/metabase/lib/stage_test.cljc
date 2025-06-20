@@ -569,4 +569,38 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn identity}))))))))
+                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn
+                                                                                                      (fn identity-generator
+                                                                                                        ([]
+                                                                                                         identity-generator)
+                                                                                                        ([s]
+                                                                                                         s))}))))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-test
+  (testing "Remapped columns in joined source queries should work (#15578)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title $category]}))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= [[(meta/id :products :title)    "TITLE"         "TITLE"    "Title"]                     ; products.title
+                [(meta/id :products :category) "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
+                [(meta/id :products :title)    "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
+                [nil                           "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+               (map (juxt :id :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (lib.metadata.calculation/returned-columns
+                     query
+                     -1
+                     (lib.util/query-stage query -1)
+                     {:include-remaps? true}))))))))

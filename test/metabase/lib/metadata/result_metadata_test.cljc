@@ -785,3 +785,177 @@
                   (result-metadata/expected-cols (lib/query mp (:dataset-query (lib.metadata/card mp 3)))))
              (map #(select-keys % [:name :semantic-type])
                   (result-metadata/expected-cols (lib/query mp (lib.metadata/card mp 3)))))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-test
+  (testing "Remapped columns in joined source queries should work (#15578)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title $category]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]                     ; products.title
+              ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
+              ["TITLE_2"  "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
+              ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name) (result-metadata/expected-cols query))))
+      (testing "with disable-remaps option in the middleware"
+        (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]
+                ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]
+                ;; orders.title should get excluded since it is invalid without remaps being in play.
+                ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]]
+               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (result-metadata/expected-cols
+                     (assoc-in query [:middleware :disable-remaps?] true)))))))))
+
+(comment
+  (deftest ^:parallel temporal-unit-in-display-name-test
+    (let [mp meta/metadata-provider
+          single-stage-query (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                                 (lib/aggregate (lib/count))
+                                 (lib/breakout (lib/with-temporal-bucket
+                                                 (lib.metadata/field mp (meta/id :orders :created_at))
+                                                 :quarter))
+                                 (lib/breakout (lib/with-temporal-bucket
+                                                 (lib.metadata/field mp (meta/id :orders :created_at))
+                                                 :day-of-week)))
+          multi-stage-query (lib/append-stage single-stage-query)]
+      (letfn [(cols-display-name-by-index [results index]
+                (-> results mt/cols (nth index) :display_name))]
+        (testing "Single stage query results contain bucketing in display names"
+          (are [index expected-display-name] (= expected-display-name
+                                                (cols-display-name-by-index
+                                                 (qp/process-query single-stage-query)
+                                                 index))
+            0 "Created At: Quarter"
+            1 "Created At: Day of week"))
+        (testing "Columns bucketed on first stage have bucket in display name on following stage/s"
+          (are [index expected-display-name] (= expected-display-name
+                                                (cols-display-name-by-index
+                                                 (qp/process-query (-> single-stage-query (lib/append-stage)))
+                                                 index))
+            0 "Created At: Quarter"
+            1 "Created At: Day of week"))
+        (testing "When column is bucketed on first stage and again on second by same unit, display name is untouched"
+          (let [col (m/find-first (comp #{"Created At: Quarter"} :display-name)
+                                  (lib/breakoutable-columns multi-stage-query 1))]
+            (is (= "Created At: Quarter"
+                   (cols-display-name-by-index
+                    (qp/process-query (lib/breakout multi-stage-query 1 (lib/with-temporal-bucket col :quarter)))
+                    0)))))
+        (testing "Second bucketing of a column on a next stage by different unit appends it into displa_name"
+          (let [col (m/find-first (comp #{"Created At: Quarter"} :display-name)
+                                  (lib/breakoutable-columns multi-stage-query 1))]
+            (is (= "Created At: Quarter: Year"
+                   (cols-display-name-by-index
+                    (qp/process-query (lib/breakout multi-stage-query 1 (lib/with-temporal-bucket col :year)))
+                    0)))))))))
+
+(comment
+  (deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
+    (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
+      (let [query (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query orders
+                     {:source-query {:source-query {:source-table $$orders
+                                                    :filter       [:= $id 1]
+                                                    :aggregation  [[:sum $total]]
+                                                    :breakout     [!day.created-at
+                                                                   $product-id->products.title
+                                                                   $product-id->products.category]}
+                                     :filter       [:> *sum/Float 100]
+                                     :aggregation  [[:sum *sum/Float]]
+                                     :breakout     [*TITLE/Text]}
+                      :filter       [:> *sum/Float 100]}))]
+        ;; this should return a field literal ref because that's what we used in the query, even if that's not technically
+        ;; correct.
+        (is (= [[:field "TITLE" {:base-type :type/Text}]
+                [:aggregation 0]]
+               (map :field-ref (result-metadata/expected-cols query))))))))
+
+(comment
+  (deftest ^:parallel query->expected-cols-test
+    (testing "field_refs in expected columns have the original join aliases (#30648)"
+      (mt/dataset test-data
+        (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
+          (let [query
+                (lib.tu.macros/mbql-query
+                  products
+                  {:joins
+                   [{:source-query
+                     {:source-table $$orders
+                      :joins
+                      [{:source-table $$people
+                        :alias "People"
+                        :condition [:= $orders.user_id &People.people.id]
+                        :fields [&People.people.address]
+                        :strategy :left-join}]
+                      :fields [$orders.id &People.people.address]}
+                     :alias "Question 54"
+                     :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
+                     :fields [[:field %orders.id {:join-alias "Question 54"}]
+                              [:field %people.address {:join-alias "Question 54"}]]
+                     :strategy :left-join}]
+                   :fields
+                   [!default.created_at
+                    [:field %orders.id {:join-alias "Question 54"}]
+                    [:field %people.address {:join-alias "Question 54"}]]})]
+            (is (=? [{:name "CREATED_AT"
+                      :field_ref [:field (meta/id :products :created_at) {:temporal-unit :default}]
+                      :display_name "Created At"}
+                     {:name "ID"
+                      :field_ref [:field (meta/id :orders :id) {:join-alias "Question 54"}]
+                      :display_name "Question 54 → ID"}
+                     {:name "ADDRESS"
+                      :field_ref [:field (meta/id :people :address) {:join-alias "Question 54"}]
+                      :display_name "Question 54 → Address"}]
+                    (qp.preprocess/query->expected-cols query)))))))))
+
+(comment
+  (deftest ^:parallel query->expected-cols-test
+    (testing "field_refs in expected columns have the original join aliases (#30648)"
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
+          (let [query
+                (lib.tu.macros/mbql-query
+                  products
+                  {:joins
+                   [{:source-query
+                     {:source-table $$orders
+                      :joins
+                      [{:source-table $$people
+                        :alias        "People"
+                        :condition    [:= $orders.user-id &People.people.id]
+                        :fields       [&People.people.address]
+                        :strategy     :left-join}]
+                      :fields       [$orders.id &People.people.address]}
+                     :alias     "Question 54"
+                     :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
+                     :fields    [[:field %orders.id {:join-alias "Question 54"}]
+                                 [:field %people.address {:join-alias "Question 54"}]]
+                     :strategy  :left-join}]
+                   :fields
+                   [!default.created-at
+                    [:field %orders.id {:join-alias "Question 54"}]
+                    [:field %people.address {:join-alias "Question 54"}]]})]
+            (is (=? [{:name         "CREATED_AT"
+                      :field_ref    [:field (meta/id :products :created-at) {:temporal-unit :default}]
+                      :display_name "Created At"}
+                     {:name         "ID"
+                      :field_ref    [:field (meta/id :orders :id) {:join-alias "Question 54"}]
+                      :display_name "Question 54 → ID"}
+                     {:name         "ADDRESS"
+                      :field_ref    [:field (meta/id :people :address) {:join-alias "Question 54"}]
+                      :display_name "Question 54 → Address"}]
+                    (qp.preprocess/query->expected-cols query)))))))))
