@@ -912,12 +912,13 @@
                                :table-id   table-id})))))
 
         (= 1 before-count)
-        (assoc (row-update!* action database {:database   (u/the-id database)
-                                              :type       :query
-                                              :query      {:source-table table-id
-                                                           :filter       (row->mbql-filter-clause
-                                                                          (field-names->field-name->id table-id (keys row-key)) row-key)}
-                                              :update-row row})
+        (assoc (row-update!* action database
+                             {:database   (u/the-id database)
+                              :type       :query
+                              :query      {:source-table table-id
+                                           :filter       (row->mbql-filter-clause
+                                                          (field-names->field-name->id table-id (keys row-key)) row-key)}
+                              :update-row (apply dissoc row (keys row-key))})
                :op :updated)
 
         (> before-count 1)
