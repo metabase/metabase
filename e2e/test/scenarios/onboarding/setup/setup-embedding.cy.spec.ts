@@ -39,7 +39,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       .click();
 
     cy.findAllByTestId("main")
-      .eq(1)
+      .eq(0)
       .within(() => {
         cy.findByRole("heading", { name: "Welcome to Metabase" }).should(
           "be.visible",
