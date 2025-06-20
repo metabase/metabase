@@ -32,7 +32,7 @@ import type {
   ModelFilterSettings,
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/core/components/Link";
-import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DashCardMenuItem } from "metabase/dashboard/context/types/dashcard-menu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
@@ -710,10 +710,16 @@ type DashCardMenuItemGetter = (
 
 export type PluginDashcardMenu = {
   dashcardMenuItemGetters: DashCardMenuItemGetter[];
+  dashcardMenuItem: ({
+    dashcardId,
+  }: {
+    dashcardId: number | null;
+  }) => ReactNode;
 };
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+  dashcardMenuItem: () => null,
 };
 
 export const PLUGIN_CONTENT_TRANSLATION = {

@@ -25,6 +25,7 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import { EDITABLE_DASHCARD_MENU } from "metabase/dashboard/utils/default-dashcard-menus";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -208,6 +209,7 @@ export const EditableDashboard = ({
               drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
           })
         }
+        dashcardMenu={EDITABLE_DASHCARD_MENU}
       >
         {adhocQuestionUrl ? (
           <InteractiveAdHocQuestion

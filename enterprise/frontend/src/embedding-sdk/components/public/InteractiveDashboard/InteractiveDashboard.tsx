@@ -15,6 +15,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { renderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
 import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/InteractiveDashboard.styled";
+import { resolveSdkDashcardMenu } from "embedding-sdk/components/public/InteractiveDashboard/sdk-dashcard-menu-resolver";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
@@ -168,6 +169,10 @@ const InteractiveDashboardInner = ({
       </StyledPublicComponentWrapper>
     );
   }
+  const dashcardMenu = resolveSdkDashcardMenu(
+    plugins?.dashboard?.dashboardCardMenu,
+  );
+
   return (
     <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (
@@ -208,6 +213,7 @@ const InteractiveDashboardInner = ({
             isNightMode={false}
             onNightModeChange={_.noop}
             hasNightModeToggle={false}
+            dashcardMenu={dashcardMenu}
           />
         </InteractiveDashboardProvider>
       )}

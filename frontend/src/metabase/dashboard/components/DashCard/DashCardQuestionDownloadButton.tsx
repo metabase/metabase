@@ -1,63 +1,54 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
-import { useStore } from "metabase/lib/redux";
-import { exportFormatPng, exportFormats } from "metabase/lib/urls";
+import { useDashcardMenuState } from "metabase/dashboard/hooks/use-dashcard-menu-state";
+import { useDashCardSeries } from "metabase/dashboard/hooks/use-dashcard-series";
+import { getDashcardData } from "metabase/dashboard/selectors";
+import { isQuestionCard } from "metabase/dashboard/utils";
+import { getSeriesForDashcard } from "metabase/dashboard/utils/dashcard-series";
+import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
-import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import type Question from "metabase-lib/v1/Question";
-import type { DashCardId, DashboardId, Dataset } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 
 type DashCardQuestionDownloadButtonProps = {
-  question: Question;
-  result: Dataset;
-  dashboardId: DashboardId;
-  dashcardId: DashCardId;
-  uuid?: string;
-  token?: string;
+  dashboard: Dashboard;
+  dashcard: DashboardCard;
 };
 
-export const DashCardQuestionDownloadButton = ({
+export const DashCardQuestionDownloadButtonInner = ({
+  dashboard,
+  dashcard,
   question,
-  result,
-  dashboardId,
-  dashcardId,
-  uuid,
-  token,
-}: DashCardQuestionDownloadButtonProps) => {
-  const store = useStore();
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const canDownloadPng = canSavePng(question.display());
-  const formats = canDownloadPng
-    ? [...exportFormats, exportFormatPng]
-    : exportFormats;
+}: DashCardQuestionDownloadButtonProps & { question: Question }) => {
+  const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
-  const { value: formatPreference, setValue: setFormatPreference } =
-    useUserKeyValue({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      defaultValue: {
-        last_download_format: formats[0],
-        last_table_download_format: exportFormats[0],
-      },
-    });
+  const { series: untranslatedRawSeries } = useDashCardSeries(dashcard);
 
-  const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
-    question,
+  const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
+    untranslatedRawSeries,
+  );
+
+  const { series } = useMemo(
+    () => getSeriesForDashcard({ rawSeries, dashcard, datasets }),
+    [rawSeries, dashcard, datasets],
+  );
+
+  const {
+    formatPreference,
+    setFormatPreference,
+    isDownloadingData,
+    handleDownload,
     result,
-    dashboardId,
-    dashcardId,
-    uuid,
-    token,
-    params: getParameterValuesBySlugMap(store.getState()),
-  });
+  } = useDashcardMenuState({ question, dashboard, dashcard, series });
+
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   return (
     <Popover
@@ -94,5 +85,29 @@ export const DashCardQuestionDownloadButton = ({
         />
       </Popover.Dropdown>
     </Popover>
+  );
+};
+
+export const DashCardQuestionDownloadButton = ({
+  dashboard,
+  dashcard,
+}: DashCardQuestionDownloadButtonProps) => {
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+  }, [dashcard.card, metadata]);
+
+  if (!question) {
+    return null;
+  }
+
+  return (
+    <DashCardQuestionDownloadButtonInner
+      dashboard={dashboard}
+      dashcard={dashcard}
+      question={question}
+    />
   );
 };

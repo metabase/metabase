@@ -9,7 +9,11 @@ import { isActionCard } from "metabase/actions/utils";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
+import {
+  getDashcardData,
+  getDashcardHref,
+  getSlowCards,
+} from "metabase/dashboard/selectors";
 import {
   getDashcardResultsError,
   isDashcardLoading,
@@ -111,10 +115,54 @@ export interface DashCardProps {
   ) => void;
 }
 
+export const useDashCardSeries = (dashcard: DashboardCard) => {
+  const slowCards = useSelector(getSlowCards);
+
+  const dashcardData = useSelector((state) =>
+    getDashcardData(state, dashcard.id),
+  );
+  const mainCard: Card | VirtualCard = useMemo(
+    () =>
+      extendCardWithDashcardSettings(
+        dashcard.card,
+        dashcard.visualization_settings,
+      ),
+    [dashcard],
+  );
+
+  const cards = useMemo(() => {
+    if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
+      return [mainCard, ...dashcard.series];
+    }
+    return [mainCard];
+  }, [mainCard, dashcard]);
+
+  const series = useMemo(() => {
+    return cards.map((card) => {
+      const isSlow = card.id ? slowCards[card.id] : false;
+      const isUsuallyFast =
+        card.query_average_duration &&
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
+
+      if (!card.id) {
+        return { card, isSlow, isUsuallyFast };
+      }
+
+      return {
+        ...getIn(dashcardData, [card.id]),
+        card,
+        isSlow,
+        isUsuallyFast,
+      };
+    });
+  }, [cards, dashcardData, slowCards]);
+
+  return { mainCard, cards, series };
+};
+
 function DashCardInner({
   dashcard,
   dashboard,
-  slowCards,
   gridItemWidth,
   totalNumGridCols,
   getClickActionMode,
@@ -175,41 +223,7 @@ function DashCardInner({
     }
   }, [isEditing]);
 
-  const mainCard: Card | VirtualCard = useMemo(
-    () =>
-      extendCardWithDashcardSettings(
-        dashcard.card,
-        dashcard.visualization_settings,
-      ),
-    [dashcard],
-  );
-
-  const cards = useMemo(() => {
-    if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
-      return [mainCard, ...dashcard.series];
-    }
-    return [mainCard];
-  }, [mainCard, dashcard]);
-
-  const series = useMemo(() => {
-    return cards.map((card) => {
-      const isSlow = card.id ? slowCards[card.id] : false;
-      const isUsuallyFast =
-        card.query_average_duration &&
-        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
-
-      if (!card.id) {
-        return { card, isSlow, isUsuallyFast };
-      }
-
-      return {
-        ...getIn(dashcardData, [card.id]),
-        card,
-        isSlow,
-        isUsuallyFast,
-      };
-    });
-  }, [cards, dashcardData, slowCards]);
+  const { mainCard, series } = useDashCardSeries(dashcard);
 
   const isLoading = useMemo(
     () => isDashcardLoading(dashcard, dashcardData),

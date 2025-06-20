@@ -21,6 +21,7 @@ import {
   useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { DEFAULT_DASHCARD_MENU } from "metabase/dashboard/utils/default-dashcard-menus";
 import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -138,6 +139,7 @@ export const DashboardApp = ({
           dispatch(setEditingDashboard(dashboard));
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
+        dashcardMenu={DEFAULT_DASHCARD_MENU}
       >
         <DashboardTitle />
         <DashboardFavicon />

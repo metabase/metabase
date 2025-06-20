@@ -182,7 +182,13 @@ function Dashboard() {
           data-testid="dashboard-parameters-and-cards"
         >
           <DashboardParameterPanel isFullscreen={isFullscreen} />
-          <Box display="contents" data-element-id="dashboard-cards-container">
+          <Box
+            my={0}
+            mx="auto"
+            px={{ base: "1em", sm: "1.5rem", lg: "2rem" }}
+            w="100%"
+            data-element-id="dashboard-cards-container"
+          >
             <Grid />
           </Box>
         </Box>
