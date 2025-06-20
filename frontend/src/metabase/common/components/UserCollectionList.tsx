@@ -1,10 +1,10 @@
 import { useListUsersQuery } from "metabase/api";
+import Link from "metabase/common/components/Link";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";
 import { PaginationControls } from "metabase/components/PaginationControls";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   PERSONAL_COLLECTIONS,
