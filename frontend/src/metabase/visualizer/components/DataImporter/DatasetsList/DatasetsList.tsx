@@ -46,12 +46,18 @@ interface DatasetsListProps {
     collapsed: boolean,
   ) => void;
   style?: React.CSSProperties;
+  /**
+   * If true, the component will not render anything but simply load data
+   * so next time it is rendered, it will show the data immediately.
+   */
+  muted?: boolean;
 }
 
 export function DatasetsList({
   search,
   setDataSourceCollapsed,
   style,
+  muted,
 }: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
@@ -115,6 +121,12 @@ export function DatasetsList({
     return partitionTimeDimensions(visualizationColumns || []);
   }, [visualizationColumns]);
 
+  const required_non_temporal_dimension_ids = useMemo(() => {
+    return otherDimensions
+      .map((dim) => dim.id)
+      .filter((id) => id != null) as number[];
+  }, [otherDimensions]);
+
   const {
     data: visualizationSearchResult,
     isLoading: isVisualizationSearchLoading,
@@ -126,9 +138,7 @@ export function DatasetsList({
       include_dashboard_questions: true,
       include_metadata: true,
       has_temporal_dimensions: timeDimensions.length > 0,
-      required_non_temporal_dimension_ids: otherDimensions
-        .map((dim) => dim.id)
-        .filter((id) => id != null),
+      required_non_temporal_dimension_ids,
     },
     {
       skip: !visualizationType || !visualizationColumns,
@@ -222,6 +232,10 @@ export function DatasetsList({
         }
       : {};
 
+  if (muted) {
+    return null;
+  }
+
   return (
     <Flex
       gap="xs"
@@ -231,7 +245,7 @@ export function DatasetsList({
       style={{ overflow: "auto", ...style }}
     >
       {debouncedIsVisualizationSearchLoading && <Loader />}
-      {items.length === 0 && <p>{t`No results`}</p>}
+      {items.length === 0 && <p>{t`No compatible results`}</p>}
       {items.map((item, index) => (
         <DatasetsListItem
           key={index}

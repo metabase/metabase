@@ -139,7 +139,7 @@ describe("issue 44171", () => {
     H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset("Metric 44171-B");
+      H.selectDataset("Metric 44171-B");
       H.chartLegendItem("Metric 44171-A").should("exist");
       H.chartLegendItem("Metric 44171-B").should("exist");
     });
