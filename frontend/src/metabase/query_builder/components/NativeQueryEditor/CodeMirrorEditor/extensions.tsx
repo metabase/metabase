@@ -9,11 +9,12 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
-import { openSearchPanel } from "@codemirror/search";
+import { openSearchPanel, searchKeymap } from "@codemirror/search";
 import { Prec } from "@codemirror/state";
 import {
   Decoration,
   EditorView,
+  type KeyBinding,
   MatchDecorator,
   ViewPlugin,
   drawSelection,
@@ -106,23 +107,6 @@ export function useExtensions({
       highlightLines(),
       folds(),
       keyboardShortcuts({ onRunQuery, onFormatQuery }),
-      Prec.lowest(
-        keymap.of([
-          {
-            any: (view, error) => {
-              if (
-                !error.shiftKey &&
-                (error.ctrlKey || error.metaKey) &&
-                error.key.toLowerCase() === "f"
-              ) {
-                return openSearchPanel(view);
-              }
-
-              return false;
-            },
-          },
-        ]),
-      ),
     ]
       .flat()
       .filter(isNotNull);
@@ -182,6 +166,27 @@ function keyboardShortcuts({
           return true;
         },
       },
+      ...searchKeymap.map((binding) => {
+        if (binding.key === "Mod-f") {
+          const replace: KeyBinding = {
+            key: binding.key,
+            scope: binding.scope,
+            any(view, evt) {
+              if (
+                !evt.shiftKey &&
+                (evt.ctrlKey || evt.metaKey) &&
+                evt.key.toLowerCase() === "f"
+              ) {
+                return openSearchPanel(view);
+              }
+
+              return false;
+            },
+          };
+          return replace;
+        }
+        return binding;
+      }),
     ]),
   );
 }
