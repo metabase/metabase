@@ -17,13 +17,15 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { HAS_FIELD_VALUES_OPTIONS } from "metabase/lib/core";
 import { connect } from "metabase/lib/redux";
-import { SemanticTypeAndTargetPicker } from "metabase/metadata/components";
+import {
+  FieldVisibilityPicker,
+  SemanticTypeAndTargetPicker,
+} from "metabase/metadata/components";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { FieldValuesType } from "metabase-types/api";
 
 import FieldRemappingSettings from "../FieldRemappingSettings";
-import { FieldVisibilityPicker } from "../FieldVisibilityPicker";
 import MetadataSection from "../MetadataSection";
 import MetadataSectionHeader from "../MetadataSectionHeader";
 
@@ -145,7 +147,16 @@ const FieldVisibilitySection = ({
         description={t`Where this field will appear throughout Metabase`}
       />
       <div style={{ maxWidth: 400 }}>
-        <FieldVisibilityPicker field={field} onUpdateField={onUpdateField} />
+        <FieldVisibilityPicker
+          comboboxProps={{
+            width: 300,
+          }}
+          fw="bold"
+          value={field.visibility_type}
+          onChange={(visibilityType) => {
+            onUpdateField(field, { visibility_type: visibilityType });
+          }}
+        />
       </div>
     </MetadataSection>
   );
@@ -162,15 +173,33 @@ const FieldTypeSection = ({
   idFields,
   onUpdateField,
 }: FieldTypeSectionProps) => {
+  const rawField = useMemo(() => field.getPlainObject(), [field]);
+  const rawIdFields = useMemo(() => {
+    return idFields.map(
+      (field) => ({
+        ...field.getPlainObject(),
+        table: field.table?.getPlainObject(),
+      }),
+      [idFields],
+    );
+  }, [idFields]);
+
   return (
     <MetadataSection>
       <MetadataSectionHeader title={t`Field Type`} />
       <SemanticTypeAndTargetPicker
         className={cx(CS.flex, CS.alignCenter)}
-        field={field}
-        idFields={idFields}
-        onUpdateField={onUpdateField}
-        hasSeparator
+        field={rawField}
+        idFields={rawIdFields}
+        selectProps={{
+          comboboxProps: {
+            width: 300,
+          },
+          fw: "bold",
+        }}
+        onUpdateField={(_field, updates) => {
+          onUpdateField(field, updates);
+        }}
       />
     </MetadataSection>
   );
