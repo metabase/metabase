@@ -109,7 +109,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     sidebar().within(() => {
       cy.findByRole("listitem", { current: "step" }).should(
         "have.text",
-        "Create User",
+        "Set up your account",
       );
     });
     step().within(() => {

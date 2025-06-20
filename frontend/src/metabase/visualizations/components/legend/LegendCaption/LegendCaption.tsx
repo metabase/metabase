@@ -2,8 +2,8 @@ import cx from "classnames";
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Markdown from "metabase/core/components/Markdown";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Markdown from "metabase/common/components/Markdown";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -88,6 +88,7 @@ export const LegendCaption = ({
         DashboardS.fullscreenNormalText,
         DashboardS.fullscreenNightText,
         EmbedFrameS.fullscreenNightText,
+        CS.h3,
       )}
       href={hasTitleMenuItems ? undefined : href}
       onClick={hasTitleMenuItems ? undefined : onSelectTitle}

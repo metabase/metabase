@@ -30,7 +30,7 @@ export const STEPS = [
   {
     key: "user-creation",
     get title() {
-      return t`Create User`;
+      return t`Set up your account`;
     },
     icon: "person",
     visibleInSidebar: true,
@@ -48,7 +48,7 @@ export const STEPS = [
     get title() {
       return t`Generate starter content`;
     },
-    icon: "table2",
+    icon: "bolt_filled",
     visibleInSidebar: true,
   },
   {

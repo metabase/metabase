@@ -4,9 +4,9 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";

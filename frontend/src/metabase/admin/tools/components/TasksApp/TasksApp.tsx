@@ -8,8 +8,8 @@ import {
   SettingsSection,
 } from "metabase/admin/settings/components/SettingsSection";
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import { PaginationControls } from "metabase/components/PaginationControls";
 import { Flex, Icon, Title, Tooltip } from "metabase/ui";
 
 import { TaskPicker } from "../../components/TaskPicker";

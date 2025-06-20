@@ -12,6 +12,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { hasDbRoutingEnabled } from "metabase/admin/databases/utils";
 import { skipToken, useListUserAttributesQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -114,7 +115,7 @@ export const DatabaseRoutingSection = ({
           </Label>
           {error ? (
             <Error role="alert" color="error">
-              {String(error)}
+              {getErrorMessage(error)}
             </Error>
           ) : null}
         </Stack>

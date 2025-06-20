@@ -6,8 +6,8 @@ import type {
   CollectionOrTableIdProps,
   OnFileUpload,
 } from "metabase/collections/types";
-import { UploadInput } from "metabase/components/upload";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { UploadInput } from "metabase/common/components/upload";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import {

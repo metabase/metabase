@@ -2,7 +2,7 @@ import cx from "classnames";
 import type * as React from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import AccordionList from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import type { IconName } from "metabase/ui";

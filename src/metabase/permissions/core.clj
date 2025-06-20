@@ -57,7 +57,8 @@
  [metabase.permissions.models.data-permissions.sql
   UserInfo
   PermissionMapping
-  visible-table-filter-select]
+  visible-table-filter-select
+  select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   audit-namespace-clause
   can-read-audit-helper

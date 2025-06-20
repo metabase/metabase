@@ -39,7 +39,8 @@
                  :expressions/datetime
                  :expressions/date
                  :expressions/text
-                 :distinct-where]]
+                 :distinct-where
+                 :database-routing]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]

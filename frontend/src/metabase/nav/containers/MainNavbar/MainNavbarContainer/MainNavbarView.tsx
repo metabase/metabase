@@ -8,9 +8,9 @@ import {
   isExamplesCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { Tree } from "metabase/common/components/tree";
 import { useHasTokenFeature, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
-import { Tree } from "metabase/components/tree";
 import { getIsNewInstance } from "metabase/home/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";

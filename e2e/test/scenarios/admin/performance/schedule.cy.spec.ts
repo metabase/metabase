@@ -1,4 +1,4 @@
-import type { ScheduleComponentType } from "metabase/components/Schedule/strings";
+import type { ScheduleComponentType } from "metabase/common/components/Schedule/strings";
 import { checkNotNull } from "metabase/lib/types";
 import type { CacheableModel } from "metabase-types/api";
 

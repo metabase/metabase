@@ -66,7 +66,9 @@
   [perm-type      :- :keyword
    required-level :- :keyword
    most-or-least  :- [:enum :most :least]]
-  [:<=
+  [(case most-or-least
+     :most  :>=
+     :least :<=)
    (case most-or-least
      :most  (perm-type-to-most-int-case perm-type :dp.perm_value)
      :least (perm-type-to-least-int-case perm-type :dp.perm_value))
@@ -135,3 +137,34 @@
                              [(apply has-perms-for-table-as-honey-sql? user-id perm-type (cond-> perm-level
                                                                                            (not (sequential? perm-level)) vector))]))
                    permission-mapping))})
+
+(mu/defn select-tables-and-groups-granting-perm
+  "Selects table.id and the group.id of all permissions groups that give the provided user the provided permission level or a
+  permission level either more or less restrictive than the supplied level."
+  [{:keys [user-id is-superuser?]} :- UserInfo
+   permission-mapping              :- PermissionMapping]
+  {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
+   :from   [[:metabase_table :mt]]
+   :join   [[:data_permissions :dp] [:or
+                                     [:and
+                                      [:= :mt.db_id :dp.db_id]
+                                      [:= :dp.table_id nil]]
+                                     [:= :mt.id :dp.table_id]]
+            [:permissions_group :pg] [:= :pg.id :dp.group_id]
+            [:permissions_group_membership :pgm] [:and
+                                                  [:= :pgm.group_id :pg.id]
+                                                  [:= :pgm.user_id [:inline user-id]]]]
+   :where  (if is-superuser?
+             [:= [:inline 1] [:inline 1]]
+             (into [:or]
+                   (map (fn [[perm-type perm-level]]
+                          (let [[level most-or-least] (cond-> perm-level
+                                                        (not (sequential? perm-level)) vector)]
+                            [:and
+                             [:= :dp.perm_type (h2x/literal perm-type)]
+                             [(case most-or-least
+                                :most :<=
+                                (:least nil) :>=)
+                              (perm-type-to-int-inline perm-type level)
+                              (perm-type-to-int-case perm-type :dp.perm_value)]]))
+                        permission-mapping)))})

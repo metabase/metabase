@@ -1,4 +1,4 @@
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Button, Icon } from "metabase/ui";
 import type {
   Field,

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.database-routing.e2e-test
+(ns ^:mb/driver-tests metabase-enterprise.database-routing.e2e-test
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing]]
@@ -10,6 +10,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -195,3 +196,42 @@
                   (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
                            response))))))))))))
+
+;; used to be named table but that is reserved on bigquery
+(tx/defdataset router-data
+  [["t"
+    [{:field-name "f", :base-type :type/Text}]
+    [["original-foo"]
+     ["original-bar"]]]])
+
+(tx/defdataset routed-data
+  [["t"
+    [{:field-name "f", :base-type :type/Text}]
+    [["routed-foo"]
+     ["routed-bar"]]]])
+
+(deftest db-routing-e2e-test
+  ;; todo: this is to quickly get tests against all drivers right now. We probably want to extract the `wire-routing`
+  ;; funciton below, make a few more nice helpers, and remove some of the above tests which are duplicative of the
+  ;; below.
+  (mt/test-drivers (mt/normal-drivers-with-feature :database-routing)
+    (letfn [(wire-routing [{:keys [parent children]}]
+              (t2/update! :model/Database :id [:in (map :id children)]
+                          {:router_database_id (:id parent)})
+              (doseq [child children]
+                (t2/update! :model/Database :id (:id child)
+                            {:details (assoc (:details child) :destination-database true)})))]
+      (mt/with-premium-features #{:database-routing}
+        (mt/dataset routed-data
+          (let [routed (mt/db)]
+            (mt/dataset router-data
+              (let [router (mt/db)]
+                (wire-routing {:parent router :children [routed]})
+                (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router)
+                                                        :user_attribute "db_name"}]
+                  (met/with-user-attributes! :rasta {"db_name" (:name routed)}
+                    (let [crowberto (mt/with-current-user (mt/user->id :crowberto)
+                                      (mt/rows (mt/process-query (mt/query t))))
+                          rasta (mt/with-current-user (mt/user->id :rasta)
+                                  (mt/rows (mt/process-query (mt/query t))))]
+                      (is (not= crowberto rasta) "rows were identical meaning it did not route"))))))))))))

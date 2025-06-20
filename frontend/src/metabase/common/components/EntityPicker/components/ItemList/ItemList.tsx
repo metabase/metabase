@@ -2,7 +2,7 @@ import type React from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { VirtualizedList } from "metabase/components/VirtualizedList";
+import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import {

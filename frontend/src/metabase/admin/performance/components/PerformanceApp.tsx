@@ -2,7 +2,7 @@ import {
   AdminNavItem,
   AdminNavWrapper,
 } from "metabase/admin/settings/components/AdminNav";
-import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { PLUGIN_CACHING } from "metabase/plugins";
 
 import { PerformanceTabId } from "../types";

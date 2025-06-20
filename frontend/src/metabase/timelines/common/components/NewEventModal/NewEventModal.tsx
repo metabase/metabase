@@ -2,7 +2,7 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
 import type {
   Collection,

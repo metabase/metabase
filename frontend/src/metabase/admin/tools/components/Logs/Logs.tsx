@@ -9,8 +9,8 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/settings/components/SettingsSection";
+import Select, { Option } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
-import Select, { Option } from "metabase/core/components/Select";
 import { openSaveDialog } from "metabase/lib/dom";
 import { Button, Flex, Icon, TextInput } from "metabase/ui";
 

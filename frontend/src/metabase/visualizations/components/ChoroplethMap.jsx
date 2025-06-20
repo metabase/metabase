@@ -9,8 +9,8 @@ import _ from "underscore";
 
 // eslint-disable-next-line no-restricted-imports -- deprecated sdk import
 import { getMetabaseInstanceUrl } from "embedding-sdk/store/selectors";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { formatValue } from "metabase/lib/formatting";
 import { connect, useSelector } from "metabase/lib/redux";

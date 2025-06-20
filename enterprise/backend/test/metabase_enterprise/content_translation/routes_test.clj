@@ -67,7 +67,17 @@
                                         (= (nth % 1) "Hello")
                                         (= (nth % 2) "Bonjour"))
                                   data)]
-              (is (seq matches))))))))
+              (is (seq matches)))))))
+    (testing "returns sample translations when content-translation table is empty"
+      (ct-utils/with-clean-translations!
+        (mt/with-premium-features #{:content-translation}
+          (let [body (mt/user-http-request :crowberto :get 200 "ee/content-translation/csv" {})
+                data (with-open [reader (java.io.StringReader. body)]
+                       (doall (csv/read-csv reader)))
+                matches (filter #(and (= (nth % 0) "de")
+                                      (= (nth % 1) "Sample translation"))
+                                data)]
+            (is (seq matches)))))))
   (testing "POST /api/ee/content-translation/upload-dictionary"
     (testing "nonadmin cannot use"
       (ct-utils/with-clean-translations!

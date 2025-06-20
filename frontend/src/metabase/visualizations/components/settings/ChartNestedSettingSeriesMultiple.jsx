@@ -3,8 +3,8 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
-import IconWrapper from "metabase/components/IconWrapper";
-import { ColorSelector } from "metabase/core/components/ColorSelector";
+import { ColorSelector } from "metabase/common/components/ColorSelector";
+import IconWrapper from "metabase/common/components/IconWrapper";
 import CS from "metabase/css/core/index.css";
 import { getAccentColors } from "metabase/lib/colors/groups";
 

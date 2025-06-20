@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
-import { PaginationControls } from "metabase/components/PaginationControls";
-import { ForwardRefLink } from "metabase/core/components/Link";
-import { usePagination } from "metabase/hooks/use-pagination";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import {
   ActionIcon,
   Box,

@@ -2,13 +2,13 @@ import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import {
   Sidesheet,
   SidesheetCard,
   SidesheetCardTitle,
 } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
-import { EntityIdCard } from "metabase/components/EntityIdCard";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import type { Collection } from "metabase-types/api";

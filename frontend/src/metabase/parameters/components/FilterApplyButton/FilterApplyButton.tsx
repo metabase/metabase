@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import DeprecatedButton from "metabase/core/components/Button/Button";
+import DeprecatedButton from "metabase/common/components/Button/Button";
 import { applyDraftParameterValues } from "metabase/dashboard/actions";
 import {
   getHasUnappliedParameterValues,

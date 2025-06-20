@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import { FormFooter } from "metabase/core/components/FormFooter";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import Collections from "metabase/entities/collections";
 import {
   Form,

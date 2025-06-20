@@ -46,7 +46,8 @@
                               :expression-literals           true
                               :identifiers-with-spaces       false
                               :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false}]
+                              :test/jvm-timezone-setting     false
+                              :database-routing              false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

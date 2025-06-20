@@ -7,8 +7,8 @@ import type {
   UserGroupType,
   UserGroupsType,
 } from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Select from "metabase/core/components/Select";
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
+import Select from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   canEditMembership,

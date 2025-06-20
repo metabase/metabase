@@ -161,10 +161,6 @@ If you're having trouble with your BigQuery connection, you can check out this [
 
 There aren't (yet) any model features available for BigQuery.
 
-## Database routing
-
-See [Database routing](../../permissions/database-routing.md).
-
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

@@ -6,7 +6,7 @@ import {
   AdminMain,
   AdminSidebar,
   AdminWrapper,
-} from "metabase/components/AdminLayout";
+} from "metabase/common/components/AdminLayout";
 
 export const MetadataWrapper = styled(AdminWrapper)`
   /* 53px is the height of DataModelApp's NavBar */

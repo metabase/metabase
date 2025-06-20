@@ -6,16 +6,17 @@ import {
   PointerSensor,
   useSensor,
 } from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState } from "react";
+import { type MutableRefObject, useState } from "react";
 import { t } from "ttag";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Button, Text } from "metabase/ui";
 import { ChartSettingFieldPicker } from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -32,12 +33,16 @@ function DimensionPicker({
   value,
   options,
   showDragHandle,
+  dragHandleRef,
+  dragHandleListeners,
   onChange,
   onRemove,
 }: {
   value: string | undefined;
   options: { name: string; value: string }[];
   showDragHandle: boolean;
+  dragHandleRef?: MutableRefObject<HTMLElement | null>;
+  dragHandleListeners?: SyntheticListenerMap;
   onChange?: (value: string) => void;
   onRemove?: (() => void) | undefined;
 }) {
@@ -57,6 +62,8 @@ function DimensionPicker({
       onShowWidget={() => {}}
       onChangeSeriesColor={() => {}}
       showDragHandle={showDragHandle}
+      dragHandleListeners={dragHandleListeners}
+      dragHandleRef={dragHandleRef}
     />
   );
 }
@@ -183,14 +190,20 @@ export function DimensionsWidget({
                 disabled={dimensions.length === 1 || dimension == null}
                 draggingStyle={{ opacity: 0.5 }}
               >
-                <DimensionPicker
-                  key={dimension}
-                  value={dimension}
-                  onChange={onChangeDimension(index)}
-                  onRemove={dimensions.length > 1 ? onRemove(index) : undefined}
-                  options={getFilteredOptions(index)}
-                  showDragHandle={dimensions.length > 1 && dimension != null}
-                />
+                {({ dragHandleRef, dragHandleListeners }) => (
+                  <DimensionPicker
+                    key={dimension}
+                    value={dimension}
+                    onChange={onChangeDimension(index)}
+                    onRemove={
+                      dimensions.length > 1 ? onRemove(index) : undefined
+                    }
+                    options={getFilteredOptions(index)}
+                    showDragHandle={dimensions.length > 1 && dimension != null}
+                    dragHandleRef={dragHandleRef}
+                    dragHandleListeners={dragHandleListeners}
+                  />
+                )}
               </Sortable>
               {index === 0 && (
                 <PieRowsPicker
