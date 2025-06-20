@@ -1,41 +1,22 @@
-import {
-  acceptCompletion,
-  autocompletion,
-  moveCompletionSelection,
-} from "@codemirror/autocomplete";
-import { indentMore } from "@codemirror/commands";
-import {
-  foldService,
-  indentUnit,
-  syntaxHighlighting,
-} from "@codemirror/language";
-import { openSearchPanel, searchKeymap } from "@codemirror/search";
-import { Prec } from "@codemirror/state";
+import { autocompletion } from "@codemirror/autocomplete";
 import {
   Decoration,
   EditorView,
-  type KeyBinding,
   MatchDecorator,
   ViewPlugin,
-  drawSelection,
   keymap,
 } from "@codemirror/view";
 import {
-  type EditorState,
   type Extension,
   type Range,
   type ReactCodeMirrorRef,
   StateEffect,
   StateField,
-  type Transaction,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { getNonce } from "get-nonce";
 import { type RefObject, useEffect, useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
-import { monospaceFontFamily } from "metabase/styled-components/theme";
-import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 import * as Lib from "metabase-lib";
 
 import {
@@ -52,14 +33,9 @@ import { getReferencedCardIds } from "./util";
 type Options = {
   query: Lib.Query;
   onRunQuery?: () => void;
-  onFormatQuery?: () => void;
 };
 
-export function useExtensions({
-  query,
-  onRunQuery,
-  onFormatQuery,
-}: Options): Extension[] {
+export function useExtensions({ query, onRunQuery }: Options): Extension[] {
   const { databaseId, engine, referencedCardIds } = useMemo(
     () => ({
       databaseId: Lib.databaseID(query),
@@ -82,12 +58,6 @@ export function useExtensions({
 
   return useMemo(() => {
     return [
-      nonce(),
-      fonts(),
-      drawSelection({
-        cursorBlinkRate: 1000,
-        drawRangeCursor: false,
-      }),
       language({ engine }),
       autocompletion({
         closeOnBlur: false,
@@ -102,11 +72,17 @@ export function useExtensions({
           keywordsCompletion,
         ],
       }),
-      highlighting(),
       highlightTags(),
       highlightLines(),
-      folds(),
-      keyboardShortcuts({ onRunQuery, onFormatQuery }),
+      keymap.of([
+        {
+          key: "Mod-Enter",
+          run: () => {
+            onRunQuery?.();
+            return true;
+          },
+        },
+      ]),
     ]
       .flat()
       .filter(isNotNull);
@@ -119,167 +95,7 @@ export function useExtensions({
     localsCompletion,
     keywordsCompletion,
     onRunQuery,
-    onFormatQuery,
   ]);
-}
-
-type KeyboardShortcutOptions = {
-  onRunQuery?: () => void;
-  onFormatQuery?: () => void;
-};
-
-function keyboardShortcuts({
-  onRunQuery,
-  onFormatQuery,
-}: KeyboardShortcutOptions) {
-  // Stop Cmd+Enter in CodeMirror from inserting a newline
-  // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
-  return Prec.highest(
-    keymap.of([
-      {
-        key: "Mod-Enter",
-        run: () => {
-          onRunQuery?.();
-          return true;
-        },
-      },
-      {
-        key: "Tab",
-        run: acceptCompletion,
-      },
-      {
-        key: "Tab",
-        run: insertIndent,
-      },
-      {
-        key: "Mod-j",
-        run: moveCompletionSelection(true),
-      },
-      {
-        key: "Mod-k",
-        run: moveCompletionSelection(false),
-      },
-      {
-        key: "Shift-Mod-f",
-        run: () => {
-          onFormatQuery?.();
-          return true;
-        },
-      },
-      ...searchKeymap.map((binding) => {
-        if (binding.key === "Mod-f") {
-          const replace: KeyBinding = {
-            key: binding.key,
-            scope: binding.scope,
-            any(view, evt) {
-              if (
-                !evt.shiftKey &&
-                (evt.ctrlKey || evt.metaKey) &&
-                evt.key.toLowerCase() === "f"
-              ) {
-                return openSearchPanel(view);
-              }
-
-              return false;
-            },
-          };
-          return replace;
-        }
-        return binding;
-      }),
-    ]),
-  );
-}
-
-function nonce() {
-  // CodeMirror injects css into the DOM,
-  // to make this work, it needs the have the correct CSP nonce.
-  const nonce = getNonce();
-  if (!nonce) {
-    return null;
-  }
-  return EditorView.cspNonce.of(nonce);
-}
-
-/**
- * A CodeMirror service that folds code based on opening and closing pairs of parentheses, brackets, and braces.
- */
-function folds() {
-  const pairs = {
-    "(": ")",
-    "{": "}",
-    "[": "]",
-  };
-
-  return foldService.of(function (
-    state: EditorState,
-    from: number,
-    to: number,
-  ) {
-    const line = state.doc.sliceString(from, to);
-    const openIndex = line.search(/[({\[]/);
-    if (openIndex === -1) {
-      return null;
-    }
-
-    const left = line.at(openIndex);
-    if (!left || !(left in pairs)) {
-      return null;
-    }
-
-    const right = pairs[left as keyof typeof pairs];
-
-    const start = from + openIndex;
-    const doc = state.doc.sliceString(start);
-
-    let end = null;
-    let open = 0;
-    for (let idx = 1; idx < doc.length; idx++) {
-      const char = doc.charAt(idx);
-      if (char === left) {
-        open++;
-        continue;
-      }
-      if (char === right && open > 0) {
-        open--;
-        continue;
-      }
-      if (char === right && open === 0) {
-        end = start + idx;
-        break;
-      }
-    }
-
-    if (end === null) {
-      return null;
-    }
-
-    if (state.doc.lineAt(start + 1).number === state.doc.lineAt(end).number) {
-      return null;
-    }
-
-    return {
-      from: start + 1,
-      to: end,
-    };
-  });
-}
-
-function fonts() {
-  const shared = {
-    fontSize: "12px",
-    lineHeight: "normal",
-    fontFamily: monospaceFontFamily,
-  };
-
-  return EditorView.theme({
-    "&": shared,
-    ".cm-content": shared,
-  });
-}
-
-function highlighting() {
-  return syntaxHighlighting(metabaseSyntaxHighlighting);
 }
 
 function highlightTags() {
@@ -316,29 +132,6 @@ function highlightTags() {
       decorations: (instance) => instance.tags,
     },
   );
-}
-
-export function insertIndent({
-  state,
-  dispatch,
-}: {
-  state: EditorState;
-  dispatch: (tr: Transaction) => void;
-}) {
-  if (state.selection.ranges.some((r) => !r.empty)) {
-    return indentMore({ state, dispatch });
-  }
-
-  const indent = state.facet(indentUnit);
-
-  dispatch(
-    state.update(state.replaceSelection(indent), {
-      scrollIntoView: true,
-      userEvent: "input",
-    }),
-  );
-
-  return true;
 }
 
 const highlightLinesEffect = StateEffect.define<Range<Decoration>[]>();

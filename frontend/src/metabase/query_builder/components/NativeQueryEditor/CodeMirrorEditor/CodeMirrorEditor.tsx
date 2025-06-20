@@ -1,7 +1,4 @@
-import CodeMirror, {
-  type ReactCodeMirrorRef,
-  type ViewUpdate,
-} from "@uiw/react-codemirror";
+import type { ReactCodeMirrorRef, ViewUpdate } from "@uiw/react-codemirror";
 import {
   forwardRef,
   useCallback,
@@ -11,6 +8,7 @@ import {
 } from "react";
 import _ from "underscore";
 
+import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -60,7 +58,7 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<ReactCodeMirrorRef>(null);
-  const extensions = useExtensions({ query, onRunQuery, onFormatQuery });
+  const extensions = useExtensions({ query, onRunQuery });
   useHighlightLines(editorRef, highlightedLineNumbers);
 
   const engine = Lib.engine(query);
@@ -132,13 +130,11 @@ export const CodeMirrorEditor = forwardRef<
       value={Lib.rawNativeQuery(query)}
       readOnly={readOnly}
       onChange={onChange}
-      basicSetup={{
-        searchKeymap: false,
-      }}
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
       placeholder={placeholder}
+      onFormat={onFormatQuery}
     />
   );
 });
