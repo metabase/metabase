@@ -34,7 +34,7 @@ export interface NewItemMenuProps {
   onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
-const NewItemMenu = ({
+const NewItemMenuView = ({
   className,
   collectionId,
   trigger,
@@ -124,4 +124,4 @@ const NewItemMenu = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NewItemMenu;
+export default NewItemMenuView;

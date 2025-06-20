@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
 import { NumericInputBlurChange } from "./NumericInput.styled";
 
+/**
+ * @deprecated: use NumberInput from "metabase/ui"
+ * */
 const NumericInput = ({ value, onChange, ...props }) => (
   <NumericInputBlurChange
     value={value == null ? "" : String(value)}
