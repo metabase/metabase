@@ -1443,21 +1443,21 @@
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
    (driver-api/replace
-    form
-    [:field id-or-name opts]
-    [:field id-or-name (cond-> opts
-                         true
-                         (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
-                                driver-api/qp.add.source-table        driver-api/qp.add.none
+     form
+     [:field id-or-name opts]
+     [:field id-or-name (cond-> opts
+                          true
+                          (assoc driver-api/qp.add.source-alias        (get opts driver-api/qp.add.desired-alias)
+                                 driver-api/qp.add.source-table        driver-api/qp.add.none
                                  ;; this key will tell the SQL QP not to apply casting here either.
-                                :qp/ignore-coercion       true
+                                 :qp/ignore-coercion       true
                                  ;; used to indicate that this is a forced alias
-                                ::forced-alias            true)
+                                 ::forced-alias            true)
                           ;; don't want to do temporal bucketing or binning inside the order by only.
                           ;; That happens inside the `SELECT`
                           ;; (#22831) however, we do want it in breakout
-                         (not is-breakout)
-                         (dissoc :temporal-unit :binning))])))
+                          (not is-breakout)
+                          (dissoc :temporal-unit :binning))])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
