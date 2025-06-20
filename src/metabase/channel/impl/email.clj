@@ -15,6 +15,7 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
+   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.notification.models :as models.notification]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]
@@ -70,6 +71,10 @@
          (codec/form-encode {:hash     (messages/generate-pulse-unsubscribe-hash dashboard-subscription-id non-user-email)
                              :email    non-user-email
                              :pulse-id dashboard-subscription-id}))))
+
+;; TODO: reorganize to avoid this declare
+(declare render-filters)
+
 (defn- render-part
   [timezone part options]
   (case (:type part)
@@ -77,8 +82,10 @@
     (channel.render/render-pulse-section timezone (channel.shared/maybe-realize-data-rows part) options)
 
     :text
-    {:content (markdown/process-markdown (:text part) :html)}
-
+    (let [inline-params   (:inline_parameters part)
+          rendered-params (when (seq inline-params) (render-filters inline-params))]
+      {:content (str (markdown/process-markdown (:text part) :html)
+                     rendered-params)})
     :tab-title
     {:content (markdown/process-markdown (format "# %s\n---" (:text part)) :html)}))
 
@@ -267,13 +274,21 @@
       (for [row rows]
         [:tr {} row])])))
 
+(defn- remove-inline-parameters
+  [dashboard-parts parameters]
+  (let [inline-param-ids (->> dashboard-parts
+                              (mapcat :inline_parameters)
+                              (map :id)
+                              set)]
+    (filter #(not (inline-param-ids (:id %)))
+            parameters)))
+
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
                 dashboard_subscription
                 parameters
                 dashboard]} payload
-
         template            (or template (payload-type->default-template payload_type))
         timezone            (some->> dashboard_parts (some :card) channel.render/defaulted-timezone)
         ;; We want to walk dashboard_parts once and not retain Hiccup structures in memory to reduce memory water mark
@@ -307,7 +322,9 @@
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
                                                     :filters           (when (seq parameters)
-                                                                         (render-filters parameters))})
+                                                                         (some->> parameters
+                                                                                  (remove-inline-parameters dashboard_parts)
+                                                                                  (render-filters)))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 
