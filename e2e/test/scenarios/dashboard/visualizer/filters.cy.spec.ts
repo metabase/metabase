@@ -39,7 +39,7 @@ describe("scenarios > dashboard > visualizer > filters", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_AVERAGE_BY_CATEGORY.name);
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CATEGORY.name);
 
       H.assertWellItemsCount({
         vertical: 2,
