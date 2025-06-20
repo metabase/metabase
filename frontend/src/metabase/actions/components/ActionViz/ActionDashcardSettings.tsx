@@ -1,10 +1,23 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator";
+import { isModelAction } from "metabase/actions/utils";
 import EmptyState from "metabase/components/EmptyState";
+import LegacyModal from "metabase/components/Modal";
 import LegacyButton from "metabase/core/components/Button/Button";
 import CS from "metabase/css/core/index.css";
-import { Button, Divider, Icon, Modal, Stack } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Divider,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  Tooltip,
+  rem,
+} from "metabase/ui";
 import type {
   ActionDashboardCard,
   Dashboard,
@@ -32,6 +45,7 @@ interface Props {
   dashboard: Dashboard;
   dashcard: ActionDashboardCard;
   onChooseNewAction: () => void;
+  onChangeAction: (newAction: WritebackAction) => void;
   onClose: () => void;
 }
 
@@ -40,8 +54,11 @@ export function ActionDashcardSettings({
   dashboard,
   dashcard,
   onChooseNewAction,
+  onChangeAction,
   onClose,
 }: Props) {
+  const [showEditModal, setShowEditModal] = useState(false);
+
   const hasParameters = !!action.parameters?.length;
   const currentMappings = useMemo(
     () =>
@@ -65,49 +82,90 @@ export function ActionDashcardSettings({
     return isHidden && isRequired && !isParameterMapped && !hasDefaultValue;
   });
 
+  const handleEditAction = () => {
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+  };
+
   return (
-    <Modal.Content>
-      <Modal.Header p="2rem 1.5rem 0.5rem 1.2rem">
-        <Button
-          leftSection={<Icon name="chevronleft" />}
-          color="text-dark"
-          variant="subtle"
-          size="compact-md"
-          onClick={onChooseNewAction}
-        >{t`Choose a new action`}</Button>
-        <Modal.CloseButton />
-      </Modal.Header>
-      <Modal.Body p="1rem 2rem">
-        <Stack>
-          {hasParameters ? (
-            <>
-              <ActionSettingsHeader>
-                {t`Where should the values for '${action.name}' come from?`}
-              </ActionSettingsHeader>
-              <ExplainerText />
-            </>
-          ) : (
+    <>
+      <Modal.Content>
+        <Modal.Header p="2rem 1.5rem 0.5rem 1.2rem">
+          <Button
+            leftSection={<Icon name="chevronleft" />}
+            color="text-dark"
+            variant="subtle"
+            size="compact-md"
+            onClick={onChooseNewAction}
+          >{t`Choose a new action`}</Button>
+          <Group
+            gap="xs"
+            mr={rem(-5) /* aligns cross with modal right padding */}
+          >
+            {isModelAction(action) && (
+              <Tooltip label={t`Edit action`}>
+                <ActionIcon
+                  variant="transparent"
+                  color="var(--mb-color-text-tertiary)"
+                  onClick={handleEditAction}
+                >
+                  <Icon name="pencil" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+            <Modal.CloseButton />
+          </Group>
+        </Modal.Header>
+        <Modal.Body p="1rem 2rem">
+          <Stack>
+            {hasParameters ? (
+              <>
+                <ActionSettingsHeader>
+                  {t`Where should the values for '${action.name}' come from?`}
+                </ActionSettingsHeader>
+                <ExplainerText />
+              </>
+            ) : (
+              <ParameterMapperContainer>
+                <EmptyActionState />
+              </ParameterMapperContainer>
+            )}
             <ParameterMapperContainer>
-              <EmptyActionState />
+              <ActionParameterMappingForm
+                dashcard={dashcard}
+                dashboard={dashboard}
+                action={action}
+                currentMappings={currentMappings}
+              />
             </ParameterMapperContainer>
-          )}
-          <ParameterMapperContainer>
-            <ActionParameterMappingForm
-              dashcard={dashcard}
-              dashboard={dashboard}
-              action={action}
-              currentMappings={currentMappings}
-            />
-          </ParameterMapperContainer>
-          <Divider mx="-2rem" />
-          <ModalActions>
-            <LegacyButton primary onClick={onClose} disabled={isFormInvalid}>
-              {t`Done`}
-            </LegacyButton>
-          </ModalActions>
-        </Stack>
-      </Modal.Body>
-    </Modal.Content>
+            <Divider mx="-2rem" />
+            <ModalActions>
+              <LegacyButton primary onClick={onClose} disabled={isFormInvalid}>
+                {t`Done`}
+              </LegacyButton>
+            </ModalActions>
+          </Stack>
+        </Modal.Body>
+      </Modal.Content>
+      {showEditModal && (
+        <LegacyModal
+          wide
+          data-testid="action-editor-modal"
+          onClose={closeEditModal}
+        >
+          <ActionCreator
+            modelId={action.model_id}
+            databaseId={action.database_id}
+            actionId={action.id}
+            onClose={closeEditModal}
+            onSubmit={onChangeAction}
+          />
+        </LegacyModal>
+      )}
+    </>
   );
 }
 
