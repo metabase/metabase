@@ -28,7 +28,7 @@ export interface SdkIframeEmbedSetupContextType {
     recentItem: SdkIframeEmbedSetupRecentItem,
   ) => void;
 
-  isEmbedOptionsLoaded: boolean;
+  isEmbedSettingsLoaded: boolean;
 }
 
 export const SdkIframeEmbedSetupContext =
