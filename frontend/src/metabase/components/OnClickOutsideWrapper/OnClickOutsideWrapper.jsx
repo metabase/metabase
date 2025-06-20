@@ -5,7 +5,7 @@ import {
   RENDERED_POPOVERS,
   removePopoverData,
   shouldClosePopover,
-} from "metabase/hooks/use-sequenced-content-close-handler";
+} from "metabase/common/hooks/use-sequenced-content-close-handler";
 import { Box } from "metabase/ui";
 
 export default class OnClickOutsideWrapper extends Component {

@@ -15,11 +15,11 @@ import type {
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CollectionName from "metabase/containers/CollectionName";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";

@@ -4,7 +4,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 interface TabButtonProps {
   isSelected?: boolean;
@@ -18,6 +17,7 @@ export const TabButtonInputWrapper = styled.span<TabButtonProps>`
   padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 6px;
+  line-height: 1.15; /* Matches .tabLabel */
 `;
 
 export const TabButtonInputResizer = styled.span`
@@ -30,8 +30,8 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   position: absolute;
   width: 100%;
   left: 0;
-  bottom: 0;
-  padding: 0;
+  bottom: -1px; /* offsets 1px input border */
+  padding: 0.25rem;
   border: 1px solid transparent;
   border-radius: 4px;
   outline: none;
@@ -49,20 +49,18 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
 `;
 
 export const TabButtonRoot = styled.div<TabButtonProps>`
+  position: relative;
   display: flex;
-  height: 1.875rem;
-  padding: 0.25rem;
+  padding: calc(0.6875rem - 0.25rem - 1px) calc(0.5rem - 0.25rem - 2px); /* tab .list padding - input padding - borders/margins */
   color: ${(props) =>
     props.isSelected && !props.disabled
       ? "var(--mb-color-brand)"
       : "var(--mb-color-text-primary)"};
   opacity: ${(props) => (props.disabled ? 0.3 : 1)};
-  font-size: 0.75rem;
+  font-size: var(--mantine-font-size-md);
   font-weight: 700;
   cursor: ${(props) => (props.disabled ? "default" : "pointer")};
-  border-bottom: 0.125rem solid
-    ${(props) =>
-      props.isSelected && !props.disabled ? color("brand") : "transparent"};
+  border-bottom: 0.125rem solid transparent;
 
   :hover {
     ${(props) =>
@@ -71,13 +69,36 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
         color: var(--mb-color-brand);
       `}
   }
+
+  :before,
+  :after {
+    content: " ";
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    border-bottom: 0.125rem solid transparent;
+  }
+
+  :before {
+    transition: var(--transition-theme-change);
+    border-color: var(--mb-color-border);
+  }
+
+  ${(props) =>
+    props.isSelected &&
+    !props.disabled &&
+    css`
+      :after {
+        border-color: var(--mb-color-brand);
+      }
+    `}
 `;
 
 export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
   transition: background-color 0s;
   align-self: center;
   padding: 0.25rem;
-  margin-left: 0.25rem;
   color: inherit;
   border: none;
 

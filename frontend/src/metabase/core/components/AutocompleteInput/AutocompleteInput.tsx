@@ -1,9 +1,9 @@
 import type * as React from "react";
 import { useMemo, useRef } from "react";
 
+import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectList from "metabase/components/SelectList";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
 import type { InputProps } from "../Input";

@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 
 const EMPTY_ARRAY: string[] = [];
 
