@@ -1,6 +1,8 @@
-import { setupPropertiesEndpoints } from "__support__/server-mocks";
+import {
+  findRequests,
+  setupPropertiesEndpoints,
+} from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { useGetSettingsQuery } from "../session";
