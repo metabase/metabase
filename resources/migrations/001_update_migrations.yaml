@@ -11966,11 +11966,11 @@ databaseChangeLog:
         to prevent any changes in behavior.
       changes:
         - sql: >-
-            UPDATE metabase_field AS f1
+            UPDATE metabase_field AS fk
             SET has_field_values = (
-              SELECT f2.has_field_values
-              FROM metabase_fields AS f2
-              WHERE f2.id = f1.fk_target_field_id
+              SELECT pk.has_field_values
+              FROM metabase_fields AS pk
+              WHERE pk.id = fk.fk_target_field_id
             )
             WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK';
       rollback: # not necessary
