@@ -1,5 +1,5 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -25,7 +25,8 @@ export const SelectEmbedEntityStep = () => {
     addRecentItem,
   } = useSdkIframeEmbedSetupContext();
 
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isPickerOpen, { open: openPicker, close: closePicker }] =
+    useDisclosure(false);
 
   const isDashboard = experience === "dashboard";
   const recentItems = isDashboard ? recentDashboards : recentQuestions;
@@ -61,7 +62,7 @@ export const SelectEmbedEntityStep = () => {
     const entityId =
       typeof item.id === "string" ? parseInt(item.id, 10) : item.id;
 
-    setIsPickerOpen(false);
+    closePicker();
     updateEmbedSettings(experience, entityId);
 
     // add the current entity to the top of the recent items list
@@ -88,7 +89,7 @@ export const SelectEmbedEntityStep = () => {
               : undefined
           }
           onChange={handleEntitySelect}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={closePicker}
           options={{
             showPersonalCollections: true,
             showRootCollection: true,
@@ -108,7 +109,7 @@ export const SelectEmbedEntityStep = () => {
               : undefined
           }
           onChange={handleEntitySelect}
-          onClose={() => setIsPickerOpen(false)}
+          onClose={closePicker}
           options={{
             showPersonalCollections: true,
             showRootCollection: true,
@@ -138,7 +139,7 @@ export const SelectEmbedEntityStep = () => {
                   ? t`Browse dashboards`
                   : t`Browse questions`
               }
-              onClick={() => setIsPickerOpen(true)}
+              onClick={openPicker}
             >
               <Icon name="search" size={16} />
             </ActionIcon>
