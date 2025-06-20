@@ -4,7 +4,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/env";
-import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
+import { isMetabaseUrl, isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { getDataFromClicked } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isURL } from "metabase-lib/v1/types/utils/isa";
 
@@ -42,8 +42,12 @@ export function formatUrl(value: string, options: OptionsType = {}) {
     const text = getLinkText(value, options);
     const className = cx(CS.link, CS.linkWrappable);
 
-    // (metabase#51099) prevent url from being rendered as a link when in sdk
-    if (isEmbeddingSdk) {
+    const shouldNotRenderAsLinkOnSdk = isEmbeddingSdk && isMetabaseUrl(url);
+    /**
+     * (metabase#51099) prevent url from being rendered as a link when in sdk
+     * (metabase#59666) allow external links to be rendered as links
+     */
+    if (shouldNotRenderAsLinkOnSdk) {
       return url;
     }
 
