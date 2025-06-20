@@ -46,12 +46,18 @@ interface DatasetsListProps {
     collapsed: boolean,
   ) => void;
   style?: React.CSSProperties;
+  /**
+   * If true, the component will not render anything but simply load data
+   * so next time it is rendered, it will show the data immediately.
+   */
+  muted?: boolean;
 }
 
 export function DatasetsList({
   search,
   setDataSourceCollapsed,
   style,
+  muted,
 }: DatasetsListProps) {
   const dashboardId = useSelector(getDashboard)?.id;
   const dispatch = useDispatch();
@@ -225,6 +231,10 @@ export function DatasetsList({
           style: { height: "100%" },
         }
       : {};
+
+  if (muted) {
+    return null;
+  }
 
   return (
     <Flex

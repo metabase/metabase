@@ -1,4 +1,3 @@
-import ButtonGroup from "metabase/common/components/ButtonGroup";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Button, Icon } from "metabase/ui";
 import type {
@@ -24,22 +23,21 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
   const { selected, item, onToggle, onRemove } = props;
 
   return (
-    <ButtonGroup style={{ display: "flex", gap: "8px", width: "100%" }}>
-      <Button
-        fullWidth
-        data-testid="swap-dataset-button"
-        variant="visualizer"
-        aria-pressed={selected}
-        size="xs"
-        onClick={() => {
-          selected ? onRemove?.(item) : onToggle?.(item);
-        }}
-        leftSection={
-          <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
-        }
-      >
-        <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
-      </Button>
-    </ButtonGroup>
+    <Button
+      fullWidth
+      data-testid="swap-dataset-button"
+      variant="visualizer"
+      aria-pressed={selected}
+      size="xs"
+      onClick={() => {
+        selected ? onRemove?.(item) : onToggle?.(item);
+      }}
+      leftSection={
+        <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
+      }
+      style={{ flex: 0, minHeight: 30, paddingLeft: 8, paddingRight: 8 }}
+    >
+      <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
+    </Button>
   );
 };
