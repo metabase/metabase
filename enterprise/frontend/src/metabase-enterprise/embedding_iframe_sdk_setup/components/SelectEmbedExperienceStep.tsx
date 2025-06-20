@@ -23,11 +23,6 @@ export const SelectEmbedExperienceStep = () => {
     const defaultEntityId = 1;
 
     setSettings({
-      // clear other entity types
-      template: undefined,
-      questionId: undefined,
-      dashboardId: undefined,
-
       // these settings do not change when the embed type changes
       ...persistedSettings,
 
