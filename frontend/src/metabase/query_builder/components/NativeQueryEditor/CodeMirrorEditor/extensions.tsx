@@ -12,6 +12,7 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
+import S from "./CodeMirrorEditor.module.css";
 import {
   useCardTagCompletion,
   useKeywordsCompletion,
