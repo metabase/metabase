@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -8,26 +7,15 @@ import {
   trackExportDashboardToPDF,
 } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/lib/redux";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
-import type { Dashboard } from "metabase-types/api";
 
-import CS from "./ExportAsPdfButton.module.css";
-
-export const ExportAsPdfButton = ({
-  dashboard,
-
-  hasTitle,
-  hasVisibleParameters,
-}: {
-  dashboard: Dashboard;
-
-  hasTitle?: boolean;
-  hasVisibleParameters?: boolean;
-}) => {
+export const ExportAsPdfButton = (props: ActionIconProps) => {
+  const { dashboard } = useDashboardContext();
   const dispatch = useDispatch();
   const isWhitelabeled = useHasTokenFeature("whitelabel");
   const includeBranding = !isWhitelabeled;
@@ -46,25 +34,18 @@ export const ExportAsPdfButton = ({
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
     return saveDashboardPdf({
       selector: cardNodeSelector,
-      dashboardName: dashboard.name ?? t`Exported dashboard`,
+      dashboardName: dashboard?.name ?? t`Exported dashboard`,
       includeBranding,
     });
   };
-
-  const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;
 
   return (
     <Tooltip label={t`Download as PDF`}>
       <ActionIcon
         onClick={() => dispatch(saveAsPDF)}
-        className={cx({
-          [CS.CompactExportAsPdfButton]:
-            !hasTitle && (hasVisibleParameters || hasDashboardTabs),
-          [CS.ParametersVisibleWithNoTabs]:
-            hasVisibleParameters && !hasDashboardTabs,
-        })}
         aria-label={t`Download as PDF`}
         data-testid="export-as-pdf-button"
+        {...props}
       >
         <Icon name="download" />
       </ActionIcon>
