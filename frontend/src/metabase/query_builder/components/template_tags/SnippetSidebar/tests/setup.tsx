@@ -58,10 +58,15 @@ export async function setup({
     <SnippetSidebar
       onClose={() => null}
       setModalSnippet={() => null}
+      setSnippetCollectionId={() => null}
       openSnippetModalWithSelectedText={() => null}
       insertSnippet={() => null}
-      snippetCollectionId={null}
       user={createMockUser(user)}
+      snippets={[MOCK_SNIPPET]}
+      snippetCollectionId={ROOT_COLLECTION.id}
+      snippetCollections={[ROOT_COLLECTION]}
+      snippetCollection={ROOT_COLLECTION}
+      search={[]}
     />,
     {
       storeInitialState: state,
