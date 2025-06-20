@@ -16,7 +16,6 @@ import {
   StateField,
 } from "@uiw/react-codemirror";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
-import { getNonce } from "get-nonce";
 import { type RefObject, useEffect } from "react";
 
 import S from "./CodeEditor.module.css";
@@ -103,14 +102,4 @@ export function useHighlightText(
       effects: highlightTextEffect.of(ranges),
     });
   }, [editorRef, ranges]);
-}
-
-export function nonce() {
-  // CodeMirror injects css into the DOM,
-  // to make this work, it needs the have the correct CSP nonce.
-  const nonce = getNonce();
-  if (!nonce) {
-    return null;
-  }
-  return EditorView.cspNonce.of(nonce);
 }

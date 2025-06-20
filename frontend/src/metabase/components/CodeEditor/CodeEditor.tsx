@@ -1,19 +1,12 @@
-import { syntaxHighlighting } from "@codemirror/language";
-import CodeMirror, { type ReactCodeMirrorRef } from "@uiw/react-codemirror";
+import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useMemo, useRef } from "react";
 
-import { isNotNull } from "metabase/lib/types";
-import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
+import { CodeMirror } from "metabase/common/components/CodeMirror";
 
 import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
-import {
-  getLanguageExtension,
-  highlightText,
-  nonce,
-  useHighlightText,
-} from "./utils";
+import { getLanguageExtension, highlightText, useHighlightText } from "./utils";
 
 type Props = {
   className?: string;
@@ -38,13 +31,7 @@ export function CodeEditor({
 }: Props) {
   const ref = useRef<ReactCodeMirrorRef>(null);
   const extensions = useMemo(
-    () =>
-      [
-        nonce(),
-        syntaxHighlighting(metabaseSyntaxHighlighting),
-        getLanguageExtension(language),
-        highlightText(highlightRanges),
-      ].filter(isNotNull),
+    () => [getLanguageExtension(language), highlightText(highlightRanges)],
     [language, highlightRanges],
   );
 
