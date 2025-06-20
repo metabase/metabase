@@ -66,3 +66,7 @@
 (def default-metadata-sync-schedule-cron-strings
   "Default `:metadata_sync_schedule`s (two as application and db have different defaults)."
   #{"0 0 * * * ? *" "0 50 * * * ? *"})
+
+(def old-sample-metadata-sync-schedule-cron-string
+  "Before ADM-943, the default value for this sync string was 43 causing issues with stampedes."
+  "0 43 * * * ? *")

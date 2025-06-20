@@ -348,6 +348,8 @@
               {:select [:*]
                :from   [:metabase_database]
                :where  [:or
+                        [:and [:= :is_sample true]
+                         [:= :metadata_sync_schedule sync.schedules/old-sample-metadata-sync-schedule-cron-string]]
                         [:in
                          :metadata_sync_schedule
                          sync.schedules/default-metadata-sync-schedule-cron-strings]
