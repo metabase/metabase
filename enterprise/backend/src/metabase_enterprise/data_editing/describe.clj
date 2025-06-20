@@ -43,11 +43,13 @@
         "text"))))
 
 (defn- describe-table-action
-  [& {:keys [action-kw
-             table-id
-             param-map
-             dashcard-viz
-             row-data]}]
+  [{:keys [action-kw
+           table-id
+           param-map
+           dashcard-viz
+           row-data]}]
+  (when-not table-id
+    (throw (ex-info "Must provide table-id" {:status-code 400})))
   (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
         fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
@@ -99,7 +101,7 @@
                           ;; it would be much better if our mappings were based on field ids.
                           ;; probably not an issue in practice, because FE is writing the config AND calling tmp-modal
                           ;; with likely the same names for fields (fingers crossed)
-                          :value                   (get row-data (keyword (:name field)))}))
+                          :value                   (get row-data (:sourceValueTarget param-setting))}))
                       vec)}))
 
 (defn- saved-param-base-type
@@ -108,7 +110,7 @@
     :string/= :type/Text
     :number/= :type/Number
     :date/single (case (:inputType viz-field)
-                     ;; formatting needs thought
+                   ;; formatting needs thought
                    "datetime" :type/DateTime
                    :type/Date)
     (if (= "type" (namespace param-type))
@@ -135,34 +137,33 @@
       "text")))
 
 (defn- describe-saved-action
-  [& {:keys [action-id
-             ;; TODO: refactor to not relying on param-map
-             param-map
-             row-data]}]
+  [{:keys [action-id param-map row-data]}]
   (let [action              (-> (actions/select-action :id action-id
                                                        :archived false
                                                        {:where [:not [:= nil :model_id]]})
                                 api/read-check
                                 api/check-404)
-        param-id->viz-field (-> action :visualization_settings (:fields {}))
-        param-id->mapping   (u/index-by :parameterId param-map)]
+        param-id->viz-field (-> action :visualization_settings (:fields {}))]
     ;; TODO: this assumes this is a query action, we need to handle implicit actions as well
     {:title      (:name action)
      :parameters (->> (for [param (:parameters action)
                             ;; query type actions store most stuff in viz settings rather than the
                             ;; parameter
-                            :let [viz-field (param-id->viz-field (:id param))
-                                  param-map (param-id->mapping (:id param))]
+                            :let [viz-field     (param-id->viz-field (:id param))
+                                  param-mapping (get param-map (keyword (:id param)))]
                             :when (and (not (:hidden viz-field))
-                                       (not= "hidden" (:visibility param-map)))]
+                                       (not= "hidden" (:visibility param-mapping)))]
                         (u/remove-nils
                          {:id            (:id param)
                           :display_name  (or (:display-name param) (:name param))
                           :input_type    (saved-param-input-type (:type param) viz-field)
                           :optional      (and (not (:required param)) (not (:required viz-field)))
-                          :nullable      true ; is there a way to know this?
-                          :readonly      (= "readonly" (:visibility param-map))
-                          :value         (get row-data (keyword (:id param)))
+                          ;; TODO Ngoc: is there a way to know this?
+                          ;;      Chris: well the param would need to tell us.
+                          ;;             for now let's guess that anything required is not nullabe
+                          :nullable      (not (:required param))
+                          :readonly      (= "readonly" (:visibility param-mapping))
+                          :value         (get row-data (:sourceValueTarget param-mapping))
                           :value_options (:valueOptions viz-field)}))
                       vec)}))
 
@@ -175,7 +176,7 @@
     ;; hmm, having checked like this makes me insecure, what makes having an action-id enforces that this
     ;; is an saved question? what if put an aciton-id on a row action for some reasons?
     (:action-id unified)
-    (describe-saved-action :action-id (:action-id unified))
+    (describe-saved-action {:action-id (:action-id unified)})
 
     ;; table action
     ;; TODO remove assumption that all primitives are table actions
@@ -196,21 +197,20 @@
                            (t2/select-one-fn :visualization_settings :model/DashboardCard dashcard-id))
           saved-id    (:action-id inner)
           action-kw   (:action-kw inner)
-          table-id    (:table-id partial-input)
-          _           (when-not table-id
-                        (throw (ex-info "Must provide table-id" {:status-code 400})))]
+          table-id    (:table-id partial-input)]
       (cond
         saved-id
-        (describe-saved-action :action-id              saved-id
-                               :row-action-dashcard-id dashcard-id
-                               :param-map              param-map
-                               :row-data               row-data)
+        (describe-saved-action {:action-id              saved-id
+                                :row-action-dashcard-id dashcard-id
+                                :param-map              param-map
+                                :row-data               row-data})
         action-kw
-        (describe-table-action :action-kw     action-kw
-                               :table-id      table-id
-                               :param-map     param-map
-                               :dashcard-viz dashcard-viz
-                               :row-data      row-data)
+        ;; TODO remove assumption that all primitives are table actions
+        (describe-table-action {:action-kw    action-kw
+                                :table-id     table-id
+                                :param-map    param-map
+                                :dashcard-viz dashcard-viz
+                                :row-data     row-data})
         :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified unified})))
     :else
     (throw (ex-info "Not able to execute given action yet" {:status-code 500 :scope scope :unified unified}))))
