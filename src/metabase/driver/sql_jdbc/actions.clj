@@ -544,21 +544,20 @@
                     results)}))
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
+(mu/defn- table-id->pk-fields
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [table-id    :- driver-api/schema.id.table]
+  (driver-api/cached-value
+   [::table-id->pk-fields table-id]
+   (fn []
+     (filter #(isa? (:semantic_type %) :type/PK)
+             (t2/select :model/Field :table_id table-id)))))
 
 (mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
-  [database-id :- driver-api/schema.id.database
-   table-id    :- driver-api/schema.id.table]
-  (driver-api/cached-value
-   [::table-id->pk-field-name->id table-id]
-   #(into {}
-          (comp (filter (fn [{:keys [semantic-type], :as _field}]
-                          (isa? semantic-type :type/PK)))
-                (map (juxt :name :id)))
-          (driver-api/with-metadata-provider database-id
-            (driver-api/fields
-             (driver-api/metadata-provider)
-             table-id)))))
+  [table-id    :- driver-api/schema.id.table]
+  (u/for-map [field (table-id->pk-fields table-id)]
+    [(:name field) (:id field)]))
 
 (mu/defn- field-names->field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
@@ -686,7 +685,7 @@
                         (log/debugf "Cascade deleting %d rows of table %d" (count rows) table-id)
                         (let [rows-deleted (delete-rows-by-pk! database-id table-id rows)]
                           (log/debugf "Deleted %d rows of table %d" rows-deleted table-id))))
-        table-pks   (keys (table-id->pk-field-name->id database-id table-id))
+        table-pks   (keys (table-id->pk-field-name->id table-id))
         row-pk      (select-keys row table-pks)]
     (driver-api/delete-recursively table-id [row-pk] metadata-lookup children-fn delete-fn :max-queries 50)))
 
@@ -737,7 +736,7 @@
   [database-id table-id rows]
   (let [children-fn    (fn [relationship parent-rows]
                          (lookup-children-in-db relationship parent-rows database-id))
-        table-pks      (keys (table-id->pk-field-name->id database-id table-id))
+        table-pks      (keys (table-id->pk-field-name->id table-id))
         row-pks        (map #(select-keys % table-pks) rows)
         children-count (:counts (driver-api/count-descendants table-id row-pks metadata-lookup children-fn :max-queries 50))]
     (when-not (empty? (filter pos-int? (set (vals children-count))))
@@ -772,15 +771,14 @@
     (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
   (let [delete-children?  (some :delete-children inputs)
         table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
-                            (let [database       (driver-api/cached-database-via-table-id table-id)
-                                  field-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                            (let [field-name->id (table-id->pk-field-name->id table-id)]
                               [table-id (keys field-name->id)]))
         [errors results]  (batch-execution-by-table-id!
                            {:inputs       inputs
                             :row-action   :model.row/delete
                             :row-fn       (if delete-children? row-delete!*-with-children row-delete!*)
                             :validate-fn   (fn [database table-id rows]
-                                             (let [pk-name->id (table-id->pk-field-name->id (:id database) table-id)]
+                                             (let [pk-name->id (table-id->pk-field-name->id table-id)]
                                                (check-consistent-row-keys rows)
                                                (check-rows-have-expected-columns-and-no-other-keys rows (keys pk-name->id))
                                                (check-unique-rows rows)
@@ -791,7 +789,7 @@
                                               :type     :query
                                               :query    {:source-table table-id
                                                          :filter       (row->mbql-filter-clause
-                                                                        (table-id->pk-field-name->id db-id table-id) row)}})})]
+                                                                        (table-id->pk-field-name->id table-id) row)}})})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) deleting rows.")
                       {:status-code 400
@@ -834,7 +832,7 @@
   ;; We could optimize the worst case a bit by pre-validating all the rows.
   ;; But in the happy case, this saves a bit of memory (and some lines of code).
   (let [db-id            (:id database)
-        pk-name->id      (table-id->pk-field-name->id db-id table-id)
+        pk-name->id      (table-id->pk-field-name->id table-id)
         pk-names         (set (keys pk-name->id))
         pk-column->value (select-keys row pk-names)]
     {:database   db-id
@@ -852,7 +850,7 @@
           :row-fn     row-update!*
           :validate-fn (fn [database table-id rows]
                          (let [db-id            (:id database)
-                               pk-name->id      (table-id->pk-field-name->id db-id table-id)
+                               pk-name->id      (table-id->pk-field-name->id table-id)
                                pk-names         (set (keys pk-name->id))]
                            (doseq [row rows]
                              (check-row-has-all-pk-columns row pk-names)
@@ -947,7 +945,7 @@
                            :action   action
                            :proc     create-or-update!*
                            :rows     inputs
-                           :xform    (map (fn [{:keys [database row-key row table-id] :as input}]
+                           :xform    (map (fn [{:keys [_database row-key row table-id] :as input}]
                                             ;; Currently we do not have any UX to configure which columns to use for
                                             ;; the row key. To compensate for this, we fall back to using the pk for now.
                                             ;; Ideally, this would be explicitly configured in the future.
@@ -961,8 +959,12 @@
                                             ;; to using the database PK (but first we'll need to track which columns
                                             ;; those are).
                                             (if (empty? row-key)
-                                              (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
-                                                (assoc input :row-key (select-keys row pk-cols)))
+                                              (let [#_pk-cols #_(keys (table-id->pk-field-name->id table-id))
+                                                    pk-fields (table-id->pk-fields table-id)]
+                                                (-> input
+                                                    (assoc :row-key (select-keys row (map :name pk-fields)))
+                                                    ;; make sure the row don't include pk that's auto incremented
+                                                    (update :row (fn [row] (apply dissoc row (map :name (filter :database_is_auto_increment pk-fields)))))))
                                               input)))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) creating or updating rows.")

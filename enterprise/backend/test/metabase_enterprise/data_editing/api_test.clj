@@ -1201,28 +1201,61 @@
                           [2 "seeya, world!" nil nil                   nil]]
                          (->> (table-rows table-id)
                               (sort-by first)))))
-                ;; This is failing because id is auto-incremented and does not accept a value
-                ;; we need to change the tests so that the upsert is conditioned on columns other than PK
-                ;; This should match with how it's intended to use too. but we haven't made the mapping for row-key
-                ;; so this is commented out for now
-                #_(testing "insert"
-                    (execute! upsert-card {:id        3
-                                           :text      "hello, world!!!"
-                                           :int       45})
-                    (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
-                            [2 "seeya, world!"   nil nil                   nil]
-                            [3 "hello, world!!!" 45 nil                   nil]]
-                           (->> (table-rows @test-table)
-                                (sort-by first))))))
+                (testing "insert"
+                  (execute! upsert-card {:id        3
+                                         :text      "hello, world!!!"
+                                         :int       45})
+                  (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                          [2 "seeya, world!"   nil nil                   nil]
+                          [3 "hello, world!!!" 45 nil                   nil]]
+                         (->> (table-rows table-id)
+                              (sort-by first))))))
 
               (testing "delete"
                 (testing "prefill does not crash"
                   (is (= {} (prefill-values delete-card {})))
-                  (is (= {} (prefill-values delete-card {:id 2}))))
-                (execute! delete-card {:id 2})
-                (is (= [[1 "hello, world!" 44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
+                  (is (= {} (prefill-values delete-card {:id 3}))))
+                (execute! delete-card {:id 3})
+                (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                        [2 "seeya, world!"   nil nil                   nil]]
                        (->> (table-rows table-id)
                             (sort-by first))))))))))))
+
+(deftest create-or-update-on-table-where-pk-is-not-auto-incremented-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
+                                                     :int       [:int]}
+                                                    {:primary-key [:id]}]]
+        (let [table-actions (list-actions table-id)]
+          (mt/with-temp [:model/Dashboard dash {}]
+            (let [{upsert-action "table.row/create-or-update"} (u/index-by :kind table-actions)
+                  {:keys [dashcards]} (mt/user-http-request
+                                       :crowberto
+                                       :put
+                                       (str "dashboard/" (:id dash))
+                                       {:dashcards [{:id -1
+                                                     :size_x 1
+                                                     :size_y 1
+                                                     :row 0
+                                                     :col 0
+                                                     :action_id (:id upsert-action)}]})
+
+                  {upsert-card "table.row/create-or-update"} (u/index-by (comp :kind :action) dashcards)
+                  exec-url (format "dashboard/%d/dashcard/%d/execute" (:id dash) (:id upsert-card))]
+              (testing "create-or-update"
+                (testing "insert"
+                  (mt/user-http-request :crowberto :post 200 exec-url
+                                        {:parameters {:id 1, :int 41}})
+                  (is (= [[1 41]]
+                         (->> (table-rows table-id)
+                              (sort-by first)))))
+                (testing "update"
+                  (mt/user-http-request :crowberto :post 200 exec-url
+                                        {:parameters {:id 1, :int 42}})
+                  (is (= [[1 42]]
+                         (->> (table-rows table-id)
+                              (sort-by first)))))))))))))
 
 (deftest tmp-modal-saved-action-test
   (mt/with-premium-features #{:table-data-editing}
