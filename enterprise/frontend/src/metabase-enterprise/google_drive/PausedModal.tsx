@@ -4,6 +4,7 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { getStoreUrl } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import { Box, Button, Modal, Stack, Text } from "metabase/ui";
@@ -33,7 +34,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
               <Button
                 variant="filled"
                 component={ExternalLink}
-                href="https://store.metabase.com"
+                href={getStoreUrl()}
                 target="_blank"
               >
                 {t`Add more storage`}
