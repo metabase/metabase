@@ -432,7 +432,7 @@
 ;; TODO: Bring back this test. It doesn't work in CLJ due to the inconsistencies noted in #38558.
 #_(deftest ^:parallel leaky-model-ref-test
     (testing "input `:column-ref` must be used for the drill, in case a model leaks metadata like `:join-alias` (#38034)"
-      (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (lib.tu/mock-cards :model/products-and-reviews))
+      (let [query      (lib/query lib.tu/metadata-provider-with-mock-cards (:model/products-and-reviews (lib.tu/mock-cards)))
             retcols    (lib/returned-columns query)
             by-id      (m/index-by :id retcols)
             reviews-id (by-id (meta/id :reviews :id))

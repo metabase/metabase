@@ -330,7 +330,7 @@ describe("scenarios > home > custom homepage", () => {
         "Orders in a dashboard",
       );
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,

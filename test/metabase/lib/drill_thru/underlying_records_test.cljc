@@ -73,7 +73,7 @@
     :query-type   :aggregated
     :query-kinds [:mbql]
     :column-name  "count"
-    :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) ((lib.tu/mock-cards) :orders))
+    :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (:orders (lib.tu/mock-cards)))
                       (lib/aggregate (lib/count))
                       (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                         (meta/id :orders :created-at))))

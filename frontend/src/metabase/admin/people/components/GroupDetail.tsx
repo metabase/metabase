@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
@@ -16,9 +17,9 @@ import {
   isDefaultGroup,
 } from "metabase/lib/groups";
 import { useDispatch } from "metabase/lib/redux";
-import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
+import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
-import { Box } from "metabase/ui";
+import { Box, Button } from "metabase/ui";
 import type { Group, Member, Membership, User } from "metabase-types/api";
 
 import { GroupMembersTable } from "./GroupMembersTable";
@@ -113,39 +114,60 @@ export const GroupDetail = ({
   };
 
   return (
-    <AdminPaneLayout
-      title={
-        <Fragment>
-          {getGroupNameLocalized(group ?? {})}
-          <Box component="span" c="text-light" ms="sm">
-            {ngettext(
-              msgid`${group.members.length} member`,
-              `${group.members.length} members`,
-              group.members.length,
-            )}
-          </Box>
-        </Fragment>
-      }
-      buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
-      buttonDisabled={addUserVisible}
-    >
-      <GroupDescription group={group} />
-      <GroupMembersTable
-        group={group}
-        showAddUser={addUserVisible}
-        onAddUserCancel={onAddUserCanceled}
-        onAddUserDone={onAddUserDone}
-        onMembershipRemove={handleRemove}
-        onMembershipUpdate={handleChange}
-      />
-      <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
-      {modalContent}
-    </AdminPaneLayout>
+    <SettingsSection>
+      <AdminPaneLayout
+        title={
+          <Fragment>
+            {getGroupNameLocalized(group ?? {})}
+            <Box component="span" c="text-light" ms="sm">
+              {ngettext(
+                msgid`${group.members.length} member`,
+                `${group.members.length} members`,
+                group.members.length,
+              )}
+            </Box>
+          </Fragment>
+        }
+        titleActions={
+          canEditMembership(group) && (
+            <Button
+              variant="filled"
+              onClick={onAddUsersClicked}
+              disabled={addUserVisible}
+            >{t`Add members`}</Button>
+          )
+        }
+      >
+        <GroupDescription group={group} />
+        <GroupMembersTable
+          group={group}
+          showAddUser={addUserVisible}
+          onAddUserCancel={onAddUserCanceled}
+          onAddUserDone={onAddUserDone}
+          onMembershipRemove={handleRemove}
+          onMembershipUpdate={handleChange}
+        />
+        <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
+        {modalContent}
+      </AdminPaneLayout>
+    </SettingsSection>
   );
 };
 
 const GroupDescription = ({ group }: { group: Group }) => {
+  if (PLUGIN_TENANTS.isExternalUsersGroup(group)) {
+    return (
+      <Box maw="38rem" px="1rem">
+        <p>
+          {t`All external users belong to the ${getGroupNameLocalized(
+            group,
+          )} group and can't be removed from it. Setting permissions for this group is a great way to
+        make sure you know what new Metabase users will be able to see.`}
+        </p>
+      </Box>
+    );
+  }
+
   if (isDefaultGroup(group)) {
     return (
       <Box maw="38rem" px="1rem">

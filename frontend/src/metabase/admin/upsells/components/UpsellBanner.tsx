@@ -1,7 +1,10 @@
 import { useMount } from "react-use";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import Link from "metabase/core/components/Link";
 import { Box, Flex, Text, Title } from "metabase/ui";
+
+import { UPGRADE_URL } from "../constants";
 
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
@@ -9,27 +12,37 @@ import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
+type CardLinkProps =
+  | {
+      buttonLink: string;
+      internalLink?: never;
+    }
+  | {
+      internalLink: string;
+      buttonLink?: never;
+    };
+
 export type UpsellBannerProps = {
   title: string;
   buttonText: string;
-  buttonLink: string;
   campaign: string;
   source: string;
   children: React.ReactNode;
   style?: React.CSSProperties;
-};
+} & CardLinkProps;
 
 export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   title,
   buttonText,
   buttonLink,
+  internalLink,
   campaign,
   source,
   children,
   ...props
 }: UpsellBannerProps) => {
   const url = useUpsellLink({
-    url: buttonLink,
+    url: buttonLink ?? UPGRADE_URL,
     campaign,
     source,
   });
@@ -42,6 +55,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
     <Box
       className={S.UpsellBannerComponent}
       data-testid="upsell-banner"
+      bg="bg-white"
       {...props}
     >
       <Flex align="center" gap="md" wrap="nowrap">
@@ -56,13 +70,23 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
         </Box>
       </Flex>
 
-      <ExternalLink
-        className={S.UpsellCTALink}
-        href={url}
-        onClickCapture={() => trackUpsellClicked({ source, campaign })}
-      >
-        {buttonText}
-      </ExternalLink>
+      {buttonLink !== undefined ? (
+        <ExternalLink
+          onClickCapture={() => trackUpsellClicked({ source, campaign })}
+          href={url}
+          className={S.UpsellCTALink}
+        >
+          {buttonText}
+        </ExternalLink>
+      ) : (
+        <Link
+          onClickCapture={() => trackUpsellClicked({ source, campaign })}
+          to={internalLink}
+          className={S.UpsellCTALink}
+        >
+          {buttonText}
+        </Link>
+      )}
     </Box>
   );
 };

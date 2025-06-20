@@ -5,6 +5,7 @@ redirect_from:
   - /docs/latest/databases/connections/sql-server
   - /docs/latest/administration-guide/databases/h2
   - /docs/latest/databases/connections/h2
+  - /docs/latest/databases/connections
 ---
 
 # Adding and managing databases

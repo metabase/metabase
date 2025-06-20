@@ -1,0 +1,67 @@
+import { t } from "ttag";
+
+import { shouldNudgeToPro } from "metabase/admin/people/selectors";
+import {
+  AdminNavItem,
+  type AdminNavItemProps,
+  AdminNavWrapper,
+} from "metabase/admin/settings/components/AdminNav";
+import { UpsellSSO } from "metabase/admin/upsells";
+import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
+import { Divider, Stack } from "metabase/ui";
+
+export function PeopleNav() {
+  const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
+  const tenantEnabled = useSetting("use-tenants");
+
+  return (
+    <AdminNavWrapper justify="space-between">
+      <Stack gap="xs">
+        <PeopleNavItem
+          path="/admin/people"
+          data-testid="nav-item"
+          label={t`People`}
+          icon="person"
+        />
+        <PeopleNavItem
+          path="/admin/people/groups"
+          data-testid="nav-item"
+          label={t`Groups`}
+          icon="group"
+        />
+        {tenantEnabled && (
+          <>
+            <Divider my="sm" />
+            <PeopleNavItem
+              path="/admin/tenants"
+              data-testid="nav-item"
+              label={t`Tenants`}
+              icon="info"
+            />
+            <PeopleNavItem
+              path="/admin/tenants/people"
+              data-testid="nav-item"
+              label={t`External Users`}
+              icon="group"
+            />
+          </>
+        )}
+      </Stack>
+      {shouldNudge && <UpsellSSO source="people-groups-settings" />}
+    </AdminNavWrapper>
+  );
+}
+
+const PeopleNavItem = (props: AdminNavItemProps) => {
+  const location = useSelector(getLocation);
+  const subpath = location?.pathname;
+
+  // we want to highlight the groups nav item if it's showing a details subpage
+  const isActive =
+    (props.path.includes("groups") && subpath.includes(props.path)) ||
+    props.path === subpath;
+
+  return <AdminNavItem {...props} active={isActive} />;
+};

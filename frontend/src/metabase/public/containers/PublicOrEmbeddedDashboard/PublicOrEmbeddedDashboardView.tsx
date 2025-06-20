@@ -1,116 +1,65 @@
 import cx from "classnames";
 import { assoc } from "icepick";
 import { useCallback } from "react";
-import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import type {
-  setParameterValue as setParameterValueDashboardAction,
-  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
-} from "metabase/dashboard/actions";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import type {
-  DashboardFooterControls,
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
-  EmbedHideParameters,
-} from "metabase/dashboard/types";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { isActionDashCard } from "metabase/dashboard/utils";
+import { SetTitle } from "metabase/hoc/Title";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import type {
-  DisplayTheme,
-  EmbedResourceDownloadOptions,
-} from "metabase/public/lib/types";
+import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type {
-  Dashboard,
-  DashboardCard,
-  DashboardId,
-  ParameterValueOrArray,
-} from "metabase-types/api";
+import type { Dashboard, DashboardCard } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
 import { EmbedFrame } from "../../components/EmbedFrame";
 
-interface InnerPublicOrEmbeddedDashboardViewProps {
-  dashboard: Dashboard | null;
-  selectedTabId: SelectedTabId;
-  parameters: UiParameter[];
-  parameterValues: Record<string, ParameterValueOrArray>;
-  draftParameterValues: Record<string, ParameterValueOrArray | null>;
-  setParameterValue: HandleThunkActionCreator<
-    typeof setParameterValueDashboardAction
-  >;
-  setParameterValueToDefault: HandleThunkActionCreator<
-    typeof setParameterValueToDefaultDashboardAction
-  >;
-  dashboardId: DashboardId;
-  background: boolean;
-  bordered: boolean;
-  titled: boolean;
-  theme: DisplayTheme;
-  getClickActionMode?: ClickActionModeGetter;
-  hideParameters: EmbedHideParameters;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-  slowCards: Record<number, boolean>;
-  cardTitled: boolean;
-  downloadsEnabled: EmbedResourceDownloadOptions;
-}
+export function PublicOrEmbeddedDashboardView() {
+  const {
+    setParameterValue,
+    setParameterValueToDefault,
+    dashboard,
+    hasNightModeToggle,
+    isFullscreen,
+    isNightMode,
+    onFullscreenChange,
+    onNightModeChange,
+    onRefreshPeriodChange,
+    refreshPeriod,
+    setRefreshElapsedHook,
+    selectedTabId,
+    parameters,
+    parameterValues,
+    draftParameterValues,
+    dashboardId,
+    background,
+    bordered,
+    titled,
+    theme,
+    getClickActionMode: externalGetClickActionMode,
+    hideParameters,
+    withFooter,
+    navigateToNewCardFromDashboard,
+    slowCards,
+    cardTitled,
+    downloadsEnabled,
+  } = useDashboardContext();
 
-export type PublicOrEmbeddedDashboardViewProps =
-  InnerPublicOrEmbeddedDashboardViewProps &
-    DashboardRefreshPeriodControls &
-    DashboardNightModeControls &
-    DashboardFullscreenControls &
-    DashboardFooterControls;
-
-export function PublicOrEmbeddedDashboardView({
-  dashboard,
-  hasNightModeToggle,
-  isFullscreen,
-  isNightMode,
-  onFullscreenChange,
-  onNightModeChange,
-  onRefreshPeriodChange,
-  refreshPeriod,
-  setRefreshElapsedHook,
-  selectedTabId,
-  parameters,
-  parameterValues,
-  draftParameterValues,
-  setParameterValue,
-  setParameterValueToDefault,
-  dashboardId,
-  background,
-  bordered,
-  titled,
-  theme,
-  getClickActionMode: externalGetClickActionMode,
-  hideParameters,
-  withFooter,
-  navigateToNewCardFromDashboard,
-  slowCards,
-  cardTitled,
-  downloadsEnabled,
-}: PublicOrEmbeddedDashboardViewProps) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
       canResetFilters={false}
@@ -180,6 +129,7 @@ export function PublicOrEmbeddedDashboardView({
       enableParameterRequiredBehavior
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
+        dashboardId &&
         dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
       }
       background={background}
@@ -190,6 +140,7 @@ export function PublicOrEmbeddedDashboardView({
       pdfDownloadsEnabled={downloadsEnabled.pdf}
       withFooter={withFooter}
     >
+      {dashboard && <SetTitle title={dashboard.name} />}
       <LoadingAndErrorWrapper
         className={cx({
           [DashboardS.DashboardFullscreen]: isFullscreen,
@@ -237,8 +188,10 @@ export function PublicOrEmbeddedDashboardView({
                 isNightMode={isNightMode}
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
-                navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled.results}
+                navigateToNewCardFromDashboard={
+                  navigateToNewCardFromDashboard ?? null
+                }
+                downloadsEnabled={downloadsEnabled}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
               />

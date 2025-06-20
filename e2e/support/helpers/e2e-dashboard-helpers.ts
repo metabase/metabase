@@ -2,6 +2,8 @@ import type {
   DashCardId,
   DashboardCard,
   DashboardId,
+  DashboardTab,
+  VirtualDashboardCard,
   WritebackActionId,
 } from "metabase-types/api";
 
@@ -369,15 +371,6 @@ export function dashboardParametersPopover() {
   return popover({ testId: "parameter-value-dropdown" } as any);
 }
 
-/**
- * @param {Object} option
- * @param {number=} option.id
- * @param {number=} option.col
- * @param {number=} option.row
- * @param {number=} option.size_x
- * @param {number=} option.size_y
- * @param {string=} option.text
- */
 export function getTextCardDetails({
   id = getNextUnsavedDashboardCardId(),
   col = 0,
@@ -385,7 +378,10 @@ export function getTextCardDetails({
   size_x = 4,
   size_y = 6,
   text = "Text card",
-} = {}) {
+  ...cardDetails
+}: Partial<VirtualDashboardCard> & {
+  text?: string;
+} = {}): Partial<VirtualDashboardCard> {
   return {
     id,
     card_id: null,
@@ -403,7 +399,20 @@ export function getTextCardDetails({
       },
       text,
     },
-  } as const;
+    ...cardDetails,
+  };
+}
+export function getDashboardTabDetails({
+  id,
+  name,
+}: Pick<DashboardTab, "id" | "name" | "position">): Pick<
+  DashboardTab,
+  "id" | "name" | "position"
+> {
+  return {
+    id,
+    name,
+  };
 }
 
 export function getHeadingCardDetails({
@@ -413,7 +422,10 @@ export function getHeadingCardDetails({
   size_x = 24,
   size_y = 1,
   text = "Heading text details",
-} = {}) {
+  ...cardDetails
+}: Partial<VirtualDashboardCard> & {
+  text?: string;
+} = {}): Partial<VirtualDashboardCard> {
   return {
     id,
     card_id: null,
@@ -432,6 +444,7 @@ export function getHeadingCardDetails({
       "dashcard.background": false,
       text,
     },
+    ...cardDetails,
   };
 }
 

@@ -261,24 +261,29 @@
   (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
 
 (defn- describe-syncable-tables
-  [driver database]
+  [{driver :engine :as database}]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (reduce
-       rf
-       init
-       (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-         (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver database)]
-           (eduction
-            (comp (filter have-select-privilege?)
-                  (map #(dissoc % :type)))
-            (get-tables database syncable-schemas nil))))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               (get-tables database syncable-schemas nil))))))))))
 
 (defmethod driver/describe-database :postgres
-  [driver database]
+  [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables driver database))})
+  {:tables (into #{} (describe-syncable-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java

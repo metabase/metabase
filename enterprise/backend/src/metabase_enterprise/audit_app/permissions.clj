@@ -3,7 +3,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.store :as qp.store]
@@ -70,4 +70,4 @@
                                                           {:status-code 400})))
             view-tables         (t2/select :model/Table :db_id audit/audit-db-id :name [:in audit-db-view-names])]
         (doseq [table view-tables]
-          (data-perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))
+          (perms/set-table-permission! group-id table :perms/create-queries create-queries-value))))))

@@ -175,7 +175,7 @@
                     (when-not continue-on-error
                       (throw e))
                     ;; eschew big and scary stacktrace
-                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
+                    (log/warnf (u/strip-error e "Skipping deserialization error"))
                     (update ctx :errors conj e))))
               ctx
               contents))))

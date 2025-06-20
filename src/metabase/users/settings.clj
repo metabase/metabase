@@ -101,6 +101,14 @@
   :visibility :authenticated
   :type       :string)
 
+(defsetting license-token-missing-banner-dismissal-timestamp
+  (deferred-tru "The array of last two ISO8601 dates when an admin dismissed the license token missing banner.")
+  :encryption :no
+  :export?    false
+  :visibility :admin
+  :type       :csv
+  :default    [])
+
 (defsetting user-visibility
   (deferred-tru "Note: Sandboxed users will never see suggestions.")
   :visibility   :authenticated

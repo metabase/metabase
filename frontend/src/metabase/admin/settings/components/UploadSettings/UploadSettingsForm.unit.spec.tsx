@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
   setupSchemaEndpoints,
@@ -16,7 +17,6 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import { UndoListing } from "metabase/containers/UndoListing";
 import type { Database } from "metabase-types/api";
 import {
@@ -145,7 +145,7 @@ describe("Admin > Settings > UploadSettingsFormView", () => {
   it("should render a description", async () => {
     setup();
     expect(
-      screen.getByText("Allow people to upload data to Collections"),
+      screen.getByText("Allow people to upload data to collections"),
     ).toBeInTheDocument();
   });
 

@@ -22,7 +22,6 @@
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -49,17 +48,30 @@
 
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
-  themselves. Recipients that are plain email addresses are preserved."
+  themselves. Recipients that are plain email addresses are preserved.
+
+  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
   [pulses]
-  (if (perms/sandboxed-or-impersonated-user?)
-    (for [pulse pulses]
-      (assoc pulse :channels
-             (for [channel (:channels pulse)]
-               (assoc channel :recipients
-                      (filter (fn [recipient] (or (not (:id recipient))
-                                                  (= (:id recipient) api/*current-user-id*)))
-                              (:recipients channel))))))
-    pulses))
+  (cond->> pulses
+    (perms/sandboxed-or-impersonated-user?)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:id recipient) api/*current-user-id*)))
+                                   (:recipients channel)))))))
+
+    (not api/*is-superuser?*)
+    (map (fn [pulse]
+           (assoc pulse :channels
+                  (for [channel (:channels pulse)]
+                    (assoc channel :recipients
+                           (filter (fn [recipient]
+                                     (or (not (:id recipient))
+                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
+                                   (:recipients channel)))))))))
 
 (defn- maybe-filter-pulse-recipients
   [pulse]
@@ -133,7 +145,7 @@
        [:collection_position {:optional true} [:maybe ms/PositiveInt]]
        [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
        [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
-  (validation/check-has-application-permission :subscription false)
+  (perms/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
@@ -204,9 +216,9 @@
                                           [:parameters    {:optional true} [:maybe [:sequential ms/Map]]]]]
   ;; do various perms checks
   (try
-    (validation/check-has-application-permission :monitoring)
+    (perms/check-has-application-permission :monitoring)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-has-application-permission :subscription false)))
+      (perms/check-has-application-permission :subscription false)))
 
   (let [pulse-before-update (api/write-check (models.pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
@@ -244,7 +256,7 @@
 (api.macros/defendpoint :get "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
-  (validation/check-has-application-permission :subscription false)
+  (perms/check-has-application-permission :subscription false)
   (let [chan-types (-> pulse-channel/channel-types
                        (assoc-in [:slack :configured] (channel.slack/slack-configured?))
                        (assoc-in [:email :configured] (channel.settings/email-configured?))

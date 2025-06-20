@@ -31,7 +31,6 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   showSidebarTitle: false,
   modal: null,
   modalContext: null,
-  isNativeQueryFixApplied: false,
   highlightedNativeQueryLineNumbers: [],
 };
 

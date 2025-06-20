@@ -9,11 +9,255 @@ databaseChangeLog:
       author: edpaget
       comment: Placeholder migration that makes sure the downgrade check doesn't fail
       changes:
-        -  output:
-            message:  Placeholder until other changesets
-            target:  STDOUT
+        - output:
+            message: Placeholder until other changesets
+            target: STDOUT
       rollback:
 
+  - changeSet:
+      id: v56.2025-06-06T20:11:53
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_table
+            constraintName: fk_query_table_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:54
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+      rollback:
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:55
+      author: nvoxland
+      comment: Drop column query_table.analysis_id
+      changes:
+        - dropColumn:
+            tableName: query_table
+            columnName: analysis_id
+      rollback:
+        - addColumn:
+            tableName: query_table
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_analysis_id
+                    deleteCascade: true
+  - changeSet:
+      id: v56.2025-06-06T20:11:56
+      author: nvoxland
+      comment: Drop column query_field.analysis_id
+      changes:
+        - dropColumn:
+            tableName: query_field
+            columnName: analysis_id
+      rollback:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_analysis_id
+                    deleteCascade: true
+                    deleteCascadeForce: true
+
+  - changeSet:
+      id: v56.2025-06-06T20:11:58
+      author: nvoxland
+      comment: Drop now-unused query_analysis table
+      changes:
+        - dropTable:
+            tableName: query_analysis
+      rollback:
+        - createTable:
+            tableName: query_analysis
+            remarks: Parent node for query analysis records
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_analysis_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the analysis was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the analysis was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: ${text.type}
+                  remarks: running, failed, or completed
+
+  - changeSet:
+      id: v56.2025-06-13T15:00:00
+      author: rafpaf
+      comment: Create content translation table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: content_translation
+      changes:
+        - createTable:
+            tableName: content_translation
+            remarks: Content translations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: locale
+                  remarks: Locale
+                  type: varchar(5)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgid
+                  remarks: The raw string
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: msgstr
+                  remarks: The translation
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v56.2025-06-20T11:26:31
+      author: johnswanson
+      rollback:
+        - sql:
+            sql: >-
+              DELETE FROM permissions_group WHERE magic_group_type = 'all-external-users';
+      comment: Add All External Users group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions_group (name, magic_group_type, is_tenant_group)
+              VALUES
+              ('All External Users', 'all-external-users', true);
+
+  - changeSet:
+      id: v56.2025-06-20T11:28:59
+      author: johnswanson
+      comment: Create `tenant` table
+      preConditions: # not needed
+      changes:
+        - createTable:
+            tableName: tenant
+            remarks: |
+              Tenants (collections of external users). A user can be in exactly zero or one tenants.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: the ID of the tenant
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: "name"
+                  type: varchar(254)
+                  remarks: the unique name of the tenant
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: "slug"
+                  type: varchar(254)
+                  remarks: "the slugified version of this tenant's name"
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: "is_active"
+                  type: ${boolean.type}
+                  remarks: Whether the tenant is active or not
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v56.2025-06-20T11:34:30
+      author: johnswanson
+      comment: add an index for `core_user.tenant_id`
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+
+  - changeSet:
+      id: v56.2025-06-20T11:34:34
+      author: johnswanson
+      comment: Add foreign key for `core_user.tenant_id`
+      preConditions: # not needed
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: core_user
+            baseColumnNames: tenant_id
+            referencedTableName: tenant
+            referencedColumnNames: id
+            constraintName: fk_core_user_tenant_id
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v56.2025-06-20T12:59:31
+      author: johnswanson
+      comment: Rename any existing `@.+` user attributes to add a preceding underscore
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

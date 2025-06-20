@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { Box, Stack } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 
 import { EmbeddingSecretKeyWidget } from "./EmbeddingSecretKeyWidget";
@@ -14,18 +14,11 @@ export function StaticEmbeddingSettings() {
   const isStaticEmbeddingEnabled = useSetting("enable-embedding-static");
 
   return (
-    <Box p="0.5rem 1rem 0">
-      <Stack gap="2.5rem">
-        <Breadcrumbs
-          size="large"
-          crumbs={[
-            [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Static embedding`],
-          ]}
-        />
+    <SettingsPageWrapper title={t`Static embedding`}>
+      <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
-          label={t`Enable Static embedding`}
+          label={t`Enable static embedding`}
         />
         <EmbeddingSecretKeyWidget />
 
@@ -35,7 +28,7 @@ export function StaticEmbeddingSettings() {
             <EmbeddedResources />
           </Box>
         )}
-      </Stack>
-    </Box>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

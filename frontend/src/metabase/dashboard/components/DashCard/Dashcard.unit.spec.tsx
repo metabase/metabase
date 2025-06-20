@@ -100,7 +100,7 @@ function setup({
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
-      downloadsEnabled
+      downloadsEnabled={{ results: true }}
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
       onEditVisualization={jest.fn()}
@@ -244,6 +244,74 @@ describe("DashCard", () => {
     it("should show a 'replace card' action", async () => {
       setup({ isEditing: true });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should not show the chevron icon (VIZ-1111)", () => {
+      setup({
+        isEditing: true,
+        dashcard: createMockDashboardCard({
+          series: [
+            createMockCard({
+              id: 115,
+              display: "line",
+              visualization_settings: {
+                "graph.x_axis.scale": "timeseries",
+                "graph.dimensions": ["CREATED_AT"],
+                "graph.metrics": ["avg"],
+              },
+            }),
+          ],
+          card: createMockCard({
+            name: "Hello I'm a card",
+            type: "question",
+            id: 49,
+          }),
+          visualization_settings: {
+            visualization: {
+              display: "line",
+              columnValuesMapping: {
+                COLUMN_1: [
+                  {
+                    sourceId: "card:49",
+                    originalName: "DATE_RECEIVED",
+                    name: "COLUMN_1",
+                  },
+                ],
+                COLUMN_2: [
+                  {
+                    sourceId: "card:49",
+                    originalName: "avg",
+                    name: "COLUMN_2",
+                  },
+                ],
+                COLUMN_3: [
+                  {
+                    sourceId: "card:115",
+                    originalName: "avg",
+                    name: "COLUMN_3",
+                  },
+                ],
+                COLUMN_4: [
+                  {
+                    sourceId: "card:115",
+                    originalName: "CREATED_AT",
+                    name: "COLUMN_4",
+                  },
+                ],
+              },
+              settings: {
+                "graph.x_axis.scale": "timeseries",
+                "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
+                "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+                "card.title": "Oh my, another card",
+              },
+            },
+          },
+          dashboard_id: 21,
+        }),
+      });
+
+      expect(queryIcon("chevrondown")).not.toBeInTheDocument();
     });
 
     it("should show a 'replace card' action for erroring queries", async () => {

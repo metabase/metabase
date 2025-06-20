@@ -38,7 +38,7 @@ export function SiteUrlWidget() {
     <Box data-testid="site-url-setting">
       <SettingHeader
         id="site-url"
-        title={t`Site Url`}
+        title={t`Site url`}
         description={
           <>
             <strong>{t`Only change this if you know what you're doing!`}</strong>{" "}

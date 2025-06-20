@@ -17,6 +17,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -37,7 +38,7 @@
 (defn- powerset
   "Generate a powerset while maintaining the original ordering as much as possible"
   [xs]
-  (for [combo (reverse (range (int (Math/pow 2 (count xs)))))]
+  (for [combo (reverse (range (long (Math/pow 2 (count xs)))))]
     (for [item  (range 0 (count xs))
           :when (not (zero? (bit-and (bit-shift-left 1 item) combo)))]
       (nth xs item))))
@@ -73,7 +74,7 @@
   (transduce
    (map (partial bit-shift-left 1))
    (completing bit-xor)
-   (int (dec (Math/pow 2 num-breakouts)))
+   (long (dec (Math/pow 2 num-breakouts)))
    indexes))
 
 (mr/def ::breakout-combination
@@ -207,8 +208,10 @@
                               remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)
                               (add-pivot-group-breakout group-bitmask)))]
-      (conj (rest all-queries)
-            (assoc-in (first all-queries) [:info :pivot/original-query] query)))
+      (conj (rest (map #(assoc-in % [:info :pivot/result-metadata] :none) all-queries))
+            (->
+             (assoc-in (first all-queries) [:info :pivot/original-query] query)
+             (assoc-in [:info :pivot/result-metadata] (qp.metadata/result-metadata query)))))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}

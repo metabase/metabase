@@ -1,12 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
-import { findRequests } from "__support__/utils";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettings } from "metabase-types/api/mocks";
 
 import { EmbeddingSettingsPage } from "./EmbeddingSettingsPage";
@@ -19,13 +19,13 @@ const setup = async () => {
   setupUpdateSettingEndpoint();
 
   renderWithProviders(<EmbeddingSettingsPage />);
+  expect(await screen.findByText("Embedding")).toBeInTheDocument(); // title
 };
 
 describe("EmbeddingSettingsPage", () => {
   it("shows an index of embedding settings sections", async () => {
     await setup();
 
-    expect(await screen.findByText("Embedding")).toBeInTheDocument(); // title
     expect(await screen.findByText("Static embedding")).toBeInTheDocument();
     expect(
       await screen.findByText("Interactive embedding"),
@@ -38,11 +38,9 @@ describe("EmbeddingSettingsPage", () => {
   it("can toggle static embedding on", async () => {
     await setup();
 
-    const toggle = await within(
-      await screen.findByLabelText("Static embedding"),
-    ).findByText("Disabled");
+    const toggles = await screen.findAllByText("Disabled");
 
-    await userEvent.click(toggle);
+    await userEvent.click(toggles[0]);
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);

@@ -22,7 +22,6 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
    [metabase.query-processor.middleware.annotate :as qp.annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -184,11 +183,7 @@
     (-> dest-col
         (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref    [:field (:id dest-col) {:source-field (:id source-col)}]
-               :fk_field_id  (:id source-col)
-               :source_alias (let [table-name (if (qp.store/initialized?)
-                                                (:name (lib.metadata/table (qp.store/metadata-provider) (data/id dest-table-kw)))
-                                                (t2/select-one-fn :name :model/Table :id (data/id dest-table-kw)))]
-                               (#'qp.add-implicit-joins/join-alias table-name (:name source-col) nil))))))
+               :fk_field_id  (:id source-col)))))
 
 (declare cols)
 
@@ -366,7 +361,7 @@
 (defn cols
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   [results]
-  (or (some->> (data results) :cols (mapv #(into {} (dissoc % :position))))
+  (or (some->> (data results) :cols (mapv #(dissoc % :position)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols

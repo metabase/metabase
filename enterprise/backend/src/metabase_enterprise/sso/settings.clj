@@ -202,7 +202,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :audit      :getter)
 
 (defsetting jwt-identity-provider-uri
-  (deferred-tru "URL for JWT-based login page. Optional if using JWT SSO only with the embedded analytics SDK.")
+  (deferred-tru "URL for JWT-based login page.")
   :encryption :when-encryption-key-set
   :feature    :sso-jwt
   :audit      :getter)
@@ -234,6 +234,14 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru "Key to retrieve the JWT user''s last name")
   :encryption :when-encryption-key-set
   :default    "last_name"
+  :feature    :sso-jwt
+  :audit      :getter)
+
+(defsetting jwt-attribute-tenant
+  (deferred-tru "Key to retrieve the JWT user''s tenant")
+  :export?    false
+  :encryption :when-encryption-key-set
+  :default    "tenant"
   :feature    :sso-jwt
   :audit      :getter)
 
@@ -271,7 +279,8 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :default false
   :feature :sso-jwt
   :setter  :none
-  :getter  (fn [] (boolean (jwt-shared-secret))))
+  :getter  (fn [] (and (boolean (jwt-shared-secret))
+                       (boolean (jwt-identity-provider-uri)))))
 
 (defsetting jwt-enabled
   (deferred-tru "Is JWT authentication configured and enabled?")

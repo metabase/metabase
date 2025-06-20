@@ -11,9 +11,9 @@ import {
   getMessages,
   getMetabotId,
   getMetabotVisible,
-  resetConversation,
-  setVisible,
-  submitInput,
+  resetConversation as resetConversationAction,
+  setVisible as setVisibleAction,
+  submitInput as submitInputAction,
 } from "./state";
 
 export const useMetabotAgent = () => {
@@ -32,6 +32,48 @@ export const useMetabotAgent = () => {
     fixedCacheKey: METABOT_TAG,
   });
 
+  const setVisible = useCallback(
+    (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
+    [dispatch],
+  );
+
+  const resetConversation = useCallback(
+    () => dispatch(resetConversationAction()),
+    [dispatch],
+  );
+
+  const submitInput = useCallback(
+    async (message: string, metabotId?: string) => {
+      const context = await getChatContext();
+
+      return dispatch(
+        submitInputAction({
+          message,
+          context,
+          metabot_id: metabotId,
+        }),
+      );
+    },
+    [dispatch, getChatContext],
+  );
+
+  const startNewConversation = useCallback(
+    (message: string, metabotId?: string) => {
+      resetConversation();
+      setVisible(true);
+      if (message) {
+        submitInput(message, metabotId);
+      }
+
+      // HACK: if the user opens the command palette via the search button bar focus will be moved
+      // back to the search button bar if the metabot option is chosen, so a small delay is used
+      setTimeout(() => {
+        document.getElementById("metabot-chat-input")?.focus();
+      }, 100);
+    },
+    [submitInput, resetConversation, setVisible],
+  );
+
   return {
     metabotId: useSelector(getMetabotId as any) as ReturnType<
       typeof getMetabotId
@@ -39,10 +81,6 @@ export const useMetabotAgent = () => {
     visible: useSelector(getMetabotVisible as any) as ReturnType<
       typeof getMetabotVisible
     >,
-    setVisible: useCallback(
-      (isVisible: boolean) => dispatch(setVisible(isVisible)),
-      [dispatch],
-    ),
     messages,
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,
@@ -50,29 +88,10 @@ export const useMetabotAgent = () => {
     isLongConversation: useSelector(
       getIsLongMetabotConversation as any,
     ) as ReturnType<typeof getIsLongMetabotConversation>,
-    resetConversation: () => dispatch(resetConversation()),
-    submitInput: useCallback(
-      (message: string, metabotId?: string) => {
-        const context = getChatContext();
-        const history = sendMessageReq.data?.history || [];
-        const state = sendMessageReq.data?.state || {};
-        return dispatch(
-          submitInput({
-            message,
-            context,
-            history,
-            state,
-            metabot_id: metabotId,
-          }),
-        );
-      },
-      [
-        dispatch,
-        getChatContext,
-        sendMessageReq.data?.history,
-        sendMessageReq.data?.state,
-      ],
-    ),
+    resetConversation,
+    setVisible,
+    startNewConversation,
+    submitInput,
     isDoingScience: sendMessageReq.isLoading || isProcessing,
   };
 };

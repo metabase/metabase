@@ -110,6 +110,11 @@ describe("snapshots", () => {
     updateSetting("enable-embedding-static", true).then(() => {
       updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
     });
+    // dismiss the license token missing banner, not necessary to render it in every test
+    updateSetting(
+      "license-token-missing-banner-dismissal-timestamp",
+      new Date().toISOString(),
+    );
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then((response) => {
@@ -123,22 +128,22 @@ describe("snapshots", () => {
     // groups
     cy.request("POST", "/api/permissions/group", { name: "collection" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(COLLECTION_GROUP); // 3
+        expect(body.id).to.eq(COLLECTION_GROUP); // 4
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "data" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(DATA_GROUP); // 4
+        expect(body.id).to.eq(DATA_GROUP); // 5
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "readonly" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(READONLY_GROUP); // 5
+        expect(body.id).to.eq(READONLY_GROUP); // 6
       },
     );
     cy.request("POST", "/api/permissions/group", { name: "nosql" }).then(
       ({ body }) => {
-        expect(body.id).to.eq(NOSQL_GROUP); // 6
+        expect(body.id).to.eq(NOSQL_GROUP); // 7
       },
     );
 
@@ -361,6 +366,9 @@ describe("snapshots", () => {
 });
 
 function getDefaultInstanceData() {
+  cy.request("PUT", "/api/setting", {
+    "use-tenants": true,
+  });
   const instanceData = {};
 
   instanceData.loginCache = loginCache;
@@ -398,6 +406,10 @@ function getDefaultInstanceData() {
         }
       });
     }
+  });
+
+  cy.request("PUT", "/api/setting", {
+    "use-tenants": false,
   });
 
   return instanceData;

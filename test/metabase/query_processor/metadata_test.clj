@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -48,32 +47,26 @@
                     (assoc-in [:info :card-entity-id] eid))]
       (is (=? [{:lib/type      :metadata/column
                 :name          "ID"
-                :ident         (lib/native-ident "ID" eid)
                 :database-type "BIGINT"
                 :base-type     :type/BigInteger}
                {:lib/type      :metadata/column
                 :name          "NAME"
-                :ident         (lib/native-ident "NAME" eid)
                 :database-type "CHARACTER VARYING"
                 :base-type     :type/Text}
                {:lib/type      :metadata/column
                 :name          "CATEGORY_ID"
-                :ident         (lib/native-ident "CATEGORY_ID" eid)
                 :database-type "INTEGER"
                 :base-type     :type/Integer}
                {:lib/type      :metadata/column
                 :name          "LATITUDE"
-                :ident         (lib/native-ident "LATITUDE" eid)
                 :database-type "DOUBLE PRECISION"
                 :base-type     :type/Float}
                {:lib/type      :metadata/column
                 :name          "LONGITUDE"
-                :ident         (lib/native-ident "LONGITUDE" eid)
                 :database-type "DOUBLE PRECISION"
                 :base-type     :type/Float}
                {:lib/type      :metadata/column
                 :name          "PRICE"
-                :ident         (lib/native-ident "PRICE" eid)
                 :database-type "INTEGER"
                 :base-type     :type/Integer}]
               (qp.metadata/result-metadata query))))))

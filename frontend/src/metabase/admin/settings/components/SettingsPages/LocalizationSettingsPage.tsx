@@ -1,12 +1,15 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { Box, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
 
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { FormattingWidget } from "../widgets/FormattingWidget";
 
@@ -16,8 +19,8 @@ export function LocalizationSettingsPage() {
   const applicationName = useSelector(getApplicationName);
 
   return (
-    <Box w="36rem" p="0 2rem 2rem 1rem">
-      <Stack gap="xl">
+    <SettingsPageWrapper title={t`Localization`}>
+      <SettingsSection title={t`Instance settings`}>
         <AdminSettingInput
           name="site-locale"
           title={t`Instance language`}
@@ -32,10 +35,13 @@ export function LocalizationSettingsPage() {
             </Stack>
           }
         />
+        <ErrorBoundary>
+          <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
+        </ErrorBoundary>
         <AdminSettingInput
           name="report-timezone"
           searchable
-          title={t`Report Timezone`}
+          title={t`Report timezone`}
           description={
             <>
               <div>{t`Connection timezone to use when executing queries. Defaults to system timezone.`}</div>
@@ -43,7 +49,7 @@ export function LocalizationSettingsPage() {
             </>
           }
           options={[
-            { label: t`Database Default`, value: "" },
+            { label: t`Database default`, value: "" },
             ...(availableTimezones?.map((tz) => ({
               label: tz,
               value: tz,
@@ -65,8 +71,8 @@ export function LocalizationSettingsPage() {
           ]}
           inputType="select"
         />
-        <FormattingWidget />
-      </Stack>
-    </Box>
+      </SettingsSection>
+      <FormattingWidget />
+    </SettingsPageWrapper>
   );
 }
