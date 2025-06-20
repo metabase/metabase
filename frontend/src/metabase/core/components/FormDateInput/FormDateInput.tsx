@@ -4,10 +4,10 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import type { DateWidgetProps } from "metabase/core/components/DateWidget";
 import DateWidget from "metabase/core/components/DateWidget";
 import FormField from "metabase/core/components/FormField";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormDateInputProps
   extends Omit<

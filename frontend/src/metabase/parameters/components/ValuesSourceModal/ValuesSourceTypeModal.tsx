@@ -3,6 +3,7 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -13,7 +14,6 @@ import Select, { Option } from "metabase/core/components/Select";
 import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";

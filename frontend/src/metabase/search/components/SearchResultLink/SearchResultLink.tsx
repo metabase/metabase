@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import { useIsTruncated } from "metabase/hooks/use-is-truncated";
+import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Anchor, Text, Tooltip } from "metabase/ui";
 
 import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";

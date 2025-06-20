@@ -2,10 +2,10 @@ import { useField } from "formik";
 import type { ChangeEvent, ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import type { FileInputProps } from "metabase/core/components/FileInput";
 import FileInput from "metabase/core/components/FileInput";
 import FormField from "metabase/core/components/FormField";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export type FormFileInputEncoding = "base64";
 
