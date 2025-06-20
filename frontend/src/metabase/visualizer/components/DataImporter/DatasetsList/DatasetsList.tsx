@@ -115,6 +115,12 @@ export function DatasetsList({
     return partitionTimeDimensions(visualizationColumns || []);
   }, [visualizationColumns]);
 
+  const required_non_temporal_dimension_ids = useMemo(() => {
+    return otherDimensions
+      .map((dim) => dim.id)
+      .filter((id) => id != null) as number[];
+  }, [otherDimensions]);
+
   const {
     data: visualizationSearchResult,
     isLoading: isVisualizationSearchLoading,
@@ -126,9 +132,7 @@ export function DatasetsList({
       include_dashboard_questions: true,
       include_metadata: true,
       has_temporal_dimensions: timeDimensions.length > 0,
-      required_non_temporal_dimension_ids: otherDimensions
-        .map((dim) => dim.id)
-        .filter((id) => id != null),
+      required_non_temporal_dimension_ids,
     },
     {
       skip: !visualizationType || !visualizationColumns,
