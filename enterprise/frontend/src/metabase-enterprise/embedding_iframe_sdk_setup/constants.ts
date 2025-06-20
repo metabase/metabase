@@ -1,3 +1,4 @@
+import { SelectEmbedEntityStep } from "./components/SelectEmbedEntityStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import type {
   SdkIframeEmbedSetupExperience,
@@ -35,7 +36,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   },
   {
     id: "select-embed-entity",
-    component: () => "select entity placeholder",
+    component: SelectEmbedEntityStep,
     skipFor: ["exploration"],
   },
   {
