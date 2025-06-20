@@ -1,5 +1,4 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import type {
   Database,
   DatabaseId,
@@ -28,7 +27,13 @@ export function withDatabase(
       const fields: FieldsMap = {};
 
       for (const field of table.fields ?? []) {
-        fields[field.name.toUpperCase()] = getRawTableFieldId(field);
+        if (typeof field.id !== "number") {
+          throw new Error(
+            "Sanity check: raw db table field ids should always be numbers",
+          );
+        }
+
+        fields[field.name.toUpperCase()] = field.id;
       }
 
       database[table.name.toUpperCase()] = fields;
