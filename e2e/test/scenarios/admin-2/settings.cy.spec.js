@@ -198,9 +198,12 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       semantic_type: "type/Currency",
     });
 
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.TOTAL}/formatting`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.TOTAL,
+    });
 
     cy.findByTestId("admin-layout-content").within(() => {
       // Assert that this option now exists

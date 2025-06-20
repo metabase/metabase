@@ -43,10 +43,14 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table name", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
-      H.undoToast().should("contain.text", "Updated Table display_name");
+      H.undoToast().should("contain.text", "Table name updated");
       cy.findByDisplayValue("New orders").should("be.visible");
 
       H.startNewQuestion();
@@ -58,10 +62,14 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table description", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
       cy.wait("@updateTable");
-      H.undoToast().should("contain.text", "Updated Table description");
+      H.undoToast().should("contain.text", "Table description updated");
       cy.findByDisplayValue("New description").should("be.visible");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
@@ -72,10 +80,14 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow clearing the table description", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       clearAndBlurInput(ORDERS_DESCRIPTION);
       cy.wait("@updateTable");
-      H.undoToast().should("contain.text", "Updated Table description");
+      H.undoToast().should("contain.text", "Table description updated");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -85,9 +97,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the table visibility", () => {
-      visitTableMetadata();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Hidden").click();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
+      getTable("Orders").button("Hide table").click();
       cy.wait("@updateTable");
       H.undoToast()
         .findByText("Updated Table visibility_type")
@@ -102,7 +117,11 @@ describe("scenarios > admin > datamodel > editor", () => {
         cy.findByText("Orders").should("not.exist");
       });
 
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Queryable").click();
       cy.wait("@updateTable");
@@ -118,7 +137,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("TAX").within(() => {
         setValueAndBlurInput("Tax", "New tax");
       });
@@ -134,7 +157,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field description", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("TOTAL").within(() => {
         setValueAndBlurInput("The total billed amount.", "New description");
       });
@@ -154,7 +181,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow clearing the field description", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("TOTAL").within(() => {
         clearAndBlurInput("The total billed amount.");
       });
@@ -171,7 +202,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field visibility", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("TAX").findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
@@ -188,7 +223,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field semantic type and currency", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("TAX")
         .findByPlaceholderText("Select a semantic type")
         .should("have.value", "No semantic type")
@@ -214,7 +253,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field foreign key target", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("USER_ID")
         .findByPlaceholderText("Select a target")
         .should("have.value", "People → ID")
@@ -242,7 +285,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow sorting fields as in the database", () => {
-      visitTableMetadata({ tableId: PRODUCTS_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
       verifyTableOrder("Database");
       H.openProductsTable();
       assertTableHeader([
@@ -258,7 +305,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow sorting fields alphabetically", () => {
-      visitTableMetadata({ tableId: PRODUCTS_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
       cy.findByLabelText("Edit column order").click();
       setTableOrder("Alphabetical");
       H.openProductsTable();
@@ -275,7 +326,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow sorting fields smartly", () => {
-      visitTableMetadata({ tableId: PRODUCTS_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
       cy.findByLabelText("Edit column order").click();
       setTableOrder("Smart");
       H.openProductsTable();
@@ -292,7 +347,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow sorting fields in the custom order", () => {
-      visitTableMetadata({ tableId: PRODUCTS_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
       cy.findByLabelText("Edit column order").click();
       H.modal().findByLabelText("Sort").should("have.text", "Database");
       H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
@@ -318,7 +377,11 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
-      visitTableMetadata({ tableId: PRODUCTS_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: PRODUCTS_ID,
+      });
       cy.findByLabelText("Edit column order").click();
       H.modal().findByLabelText("Sort").should("have.text", "Database");
       H.moveDnDKitElement(H.modal().findByLabelText("ID"), {
@@ -368,13 +431,21 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow hiding and restoring all tables in a schema", () => {
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("4 Queryable Tables").should("be.visible");
       cy.findByLabelText("Hide all").click();
       cy.wait("@updateTables");
 
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("8 Hidden Tables").should("be.visible");
       cy.findByLabelText("Unhide all").click();
@@ -391,7 +462,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field name", () => {
-      visitFieldMetadata({ fieldId: ORDERS.TAX });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.TAX,
+      });
       setValueAndBlurInput("Tax", "New tax");
       cy.wait("@updateField");
       H.undoToast().should("contain.text", "Updated Tax");
@@ -405,7 +481,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field description", () => {
-      visitFieldMetadata({ fieldId: ORDERS.TOTAL });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.TOTAL,
+      });
       setValueAndBlurInput("The total billed amount.", "New description");
       cy.wait("@updateField");
       H.undoToast().should("contain.text", "Updated Total");
@@ -421,7 +502,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field visibility", () => {
-      visitFieldMetadata({ fieldId: ORDERS.TAX });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.TAX,
+      });
       cy.findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
@@ -436,7 +522,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field semantic type and currency", () => {
-      visitFieldMetadata({ fieldId: ORDERS.TAX });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.TAX,
+      });
       cy.findByPlaceholderText("Select a semantic type")
         .should("have.value", "No semantic type")
         .click();
@@ -457,7 +548,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow changing the field foreign key target", () => {
-      visitFieldMetadata({ fieldId: ORDERS.USER_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.USER_ID,
+      });
       cy.findByPlaceholderText("Select a target")
         .should("have.value", "People → ID")
         .click();
@@ -483,7 +579,12 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should allow you to cast a field to a data type", () => {
-      visitFieldMetadata({ fieldId: FEEDBACK.RATING });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: FEEDBACK_ID,
+        fieldId: FEEDBACK.RATING,
+      });
       cy.findByRole("button", { name: /Don't cast/ }).click();
 
       cy.log(
@@ -511,7 +612,11 @@ describe("scenarios > admin > datamodel > editor", () => {
       setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
       cy.signIn("none");
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       setValueAndBlurInput("Orders", "New orders");
       cy.findByDisplayValue("New orders").should("be.visible");
       H.undoToast().should("contain.text", "Updated Table display_name");
@@ -531,7 +636,11 @@ describe("scenarios > admin > datamodel > editor", () => {
       setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
       cy.signIn("none");
-      visitTableMetadata();
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
       getFieldSection("TAX").within(() =>
         setValueAndBlurInput("Tax", "New tax"),
       );
@@ -551,7 +660,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
       cy.signIn("none");
-      visitFieldMetadata({ fieldId: ORDERS.TOTAL });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.TOTAL,
+      });
       setValueAndBlurInput("Total", "New total");
       cy.wait("@updateField");
       H.undoToast().should("contain.text", "Updated Total");
@@ -571,7 +685,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
 
       cy.signIn("none");
-      visitFieldMetadata({ fieldId: ORDERS.USER_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.USER_ID,
+      });
       cy.findByPlaceholderText("Select a target")
         .should("have.value", "People → ID")
         .click();
@@ -606,7 +725,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
 
       cy.signIn("none");
-      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: REVIEWS_ID,
+        fieldId: REVIEWS.PRODUCT_ID,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       H.popover().findByText("Use foreign key").click();
@@ -623,7 +747,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
       cy.signIn("none");
-      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.PRODUCT_ID });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: REVIEWS_ID,
+        fieldId: REVIEWS.PRODUCT_ID,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       H.popover().within(() => {
@@ -636,7 +765,12 @@ describe("scenarios > admin > datamodel > editor", () => {
       setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
       cy.signIn("none");
-      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: REVIEWS_ID,
+        fieldId: REVIEWS.RATING,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       H.popover().within(() => {
@@ -645,14 +779,24 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
 
       cy.signInAsAdmin();
-      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: REVIEWS_ID,
+        fieldId: REVIEWS.RATING,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Use original value").click();
       H.popover().findByText("Custom mapping").click();
       cy.wait("@updateFieldDimension");
 
       cy.signIn("none");
-      visitFieldMetadata({ tableId: REVIEWS_ID, fieldId: REVIEWS.RATING });
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: REVIEWS_ID,
+        fieldId: REVIEWS.RATING,
+      });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom mapping").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -667,9 +811,9 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should be able to select and update a table in a database without schemas", () => {
-      visitTableMetadata({
+      H.DataModel.visit({
         databaseId: MYSQL_DB_SCHEMA_ID,
-        schemaId: MYSQL_DB_SCHEMA_ID,
+        schemaName: MYSQL_DB_SCHEMA_ID,
       });
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
@@ -677,9 +821,9 @@ describe("scenarios > admin > datamodel > editor", () => {
     });
 
     it("should be able to select and update a field in a database without schemas", () => {
-      visitTableMetadata({
+      H.DataModel.visit({
         databaseId: MYSQL_DB_SCHEMA_ID,
-        schemaId: MYSQL_DB_SCHEMA_ID,
+        schemaName: MYSQL_DB_SCHEMA_ID,
       });
       getFieldSection("TAX").findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
@@ -707,57 +851,34 @@ const setDataModelPermissions = ({ tableIds = [] }) => {
   });
 };
 
-const visitTableMetadata = ({
-  databaseId = SAMPLE_DB_ID,
-  schemaId = SAMPLE_DB_SCHEMA_ID,
-  tableId = ORDERS_ID,
-} = {}) => {
-  cy.visit(
-    `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`,
-  );
-  cy.wait("@fetchMetadata");
-};
-
-const visitFieldMetadata = ({
-  databaseId = SAMPLE_DB_ID,
-  schemaId = SAMPLE_DB_SCHEMA_ID,
-  tableId = ORDERS_ID,
-  fieldId,
-}) => {
-  cy.visit(
-    `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`,
-  );
-  cy.wait("@fetchMetadata");
-};
-
-const setValueAndBlurInput = (oldValue, newValue) => {
+const setValueAndBlurInput = (oldValue: string, newValue: string) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
 };
 
-const clearAndBlurInput = (oldValue) => {
+const clearAndBlurInput = (oldValue: string) => {
   cy.findByDisplayValue(oldValue).clear().blur();
 };
 
-const searchAndSelectValue = (newValue, searchText = newValue) => {
+const searchAndSelectValue = (newValue: string) => {
   H.popover().findByText(newValue).click();
 };
 
-const getFieldSection = (fieldName) => {
+const getFieldSection = (fieldName: string) => {
   return cy.findByLabelText(fieldName);
 };
 
-const verifyTableOrder = (order) => {
+const verifyTableOrder = (order: string) => {
   cy.findByLabelText("Edit column order").click();
   H.modal().findByLabelText("Sort").should("have.text", order);
 };
 
-const setTableOrder = (order) => {
+const setTableOrder = (order: string) => {
   H.modal().findByLabelText("Sort").click();
   H.popover().findByText(order).click();
   cy.wait("@updateTable");
 };
 
-const assertTableHeader = (columns) => {
+const assertTableHeader = (columns: string[]) => {
   cy.findAllByTestId("header-cell").should("have.length", columns.length);
 
   columns.forEach((column, index) => {
@@ -765,3 +886,7 @@ const assertTableHeader = (columns) => {
     cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
   });
 };
+
+function getTable(name: string) {
+  return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
+}

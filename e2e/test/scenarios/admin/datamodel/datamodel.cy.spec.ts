@@ -12,8 +12,6 @@ const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS, REVIEWS_ID, PRODUCTS_ID } =
   SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > field > field type", () => {
-  const ordersColumns: (keyof typeof ORDERS)[] = ["PRODUCT_ID", "QUANTITY"];
-
   function waitAndAssertOnResponse(alias: string) {
     cy.wait("@" + alias).then((request) => {
       expect(request.response?.body.errors).to.not.exist;
@@ -56,22 +54,20 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
-
     H.restore();
     cy.signInAsAdmin();
 
-    ordersColumns.forEach((column) => {
-      cy.wrap(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[column]}/general`,
-      ).as(`ORDERS_${column}_URL`);
-    });
-
+    cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
   });
 
   it("should let you change the type to 'No semantic type'", () => {
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
     cy.wait(["@metadata", "@metadata"]);
 
     setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
@@ -84,7 +80,12 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
-    H.visitAlias("@ORDERS_QUANTITY_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.QUANTITY,
+    });
     cy.wait("@metadata");
 
     setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
@@ -101,7 +102,12 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   });
 
   it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
     cy.wait(["@metadata", "@metadata"]);
 
     cy.findByPlaceholderText("Select a target").clear();
@@ -129,7 +135,12 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   });
 
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
     cy.wait(["@metadata", "@metadata"]);
 
     checkNoFieldType({ oldValue: "Foreign Key", newValue: "Number" });
@@ -137,21 +148,9 @@ describe("scenarios > admin > datamodel > field > field type", () => {
 });
 
 describe("scenarios > admin > datamodel > field", () => {
-  const ordersColumns: (keyof typeof ORDERS)[] = [
-    "CREATED_AT",
-    "PRODUCT_ID",
-    "QUANTITY",
-  ];
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-
-    ordersColumns.forEach((name) => {
-      cy.wrap(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
-      ).as(`ORDERS_${name}_URL`);
-    });
 
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept("POST", "/api/field/*/values").as("fieldValuesUpdate");
@@ -159,7 +158,12 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   it("lets you change field name and description", () => {
-    H.visitAlias("@ORDERS_CREATED_AT_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.CREATED_AT,
+    });
 
     // update the name
     cy.findByTestId("field-section")
@@ -190,7 +194,12 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   it("should allow you to change field formatting", () => {
-    H.visitAlias("@ORDERS_QUANTITY_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.QUANTITY,
+    });
 
     cy.findByLabelText("Style").click();
     H.popover().findByText("Percent").click();
@@ -202,7 +211,12 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   it("lets you change field visibility", () => {
-    H.visitAlias("@ORDERS_CREATED_AT_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.CREATED_AT,
+    });
 
     cy.findByPlaceholderText("Select a field visibility").click();
     H.popover().findByText("Do not include").click();
@@ -215,7 +229,12 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   it("lets you change to 'Search box'", () => {
-    H.visitAlias("@ORDERS_QUANTITY_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.QUANTITY,
+    });
 
     cy.findByPlaceholderText("Select field filtering").click();
     H.popover().findByText("Search box").click();
@@ -229,7 +248,12 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
 
     cy.findByPlaceholderText("Select display values").click();
     H.popover().findByText("Use foreign key").click();
@@ -247,22 +271,27 @@ describe("scenarios > admin > datamodel > field", () => {
   });
 
   it("allows 'Custom mapping' null values", () => {
-    const dbId = 2;
+    const databaseId = 2;
     const remappedNullValue = "nothin";
 
     H.restore("withSqlite");
     cy.signInAsAdmin();
 
     H.withDatabase(
-      dbId,
+      databaseId,
       ({ NUMBER_WITH_NULLS: { NUM }, NUMBER_WITH_NULLS_ID }) => {
-        cy.request("GET", `/api/database/${dbId}/schemas`).then(({ body }) => {
-          const [schema] = body;
+        cy.request("GET", `/api/database/${databaseId}/schemas`).then(
+          ({ body }) => {
+            const [schemaName] = body;
 
-          cy.visit(
-            `/admin/datamodel/database/${dbId}/schema/${dbId}:${schema}/table/${NUMBER_WITH_NULLS_ID}/field/${NUM}/general`,
-          );
-        });
+            H.DataModel.visit({
+              databaseId,
+              schemaName,
+              tableId: NUMBER_WITH_NULLS_ID,
+              fieldId: NUM,
+            });
+          },
+        );
 
         cy.log("Change `null` to custom mapping");
         cy.findByPlaceholderText("Select display values")
@@ -282,7 +311,7 @@ describe("scenarios > admin > datamodel > field", () => {
         cy.wait("@fieldValuesUpdate");
 
         cy.log("Make sure custom mapping appears in QB");
-        H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
+        H.openTable({ database: databaseId, table: NUMBER_WITH_NULLS_ID });
         cy.findAllByRole("gridcell", { name: remappedNullValue }).should(
           "be.visible",
         );
@@ -304,8 +333,8 @@ describe("Unfold JSON", { tags: "@external" }, () => {
 
   it("lets you enable/disable 'Unfold JSON' for JSON columns", () => {
     // Go to field settings
-    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
-    getTable("Many Data Types").click();
+    H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+    H.DataModel.TablePicker.getTable("Many Data Types").click();
 
     // Check json is unfolded initially
     cy.findByLabelText("Json → A").should("be.visible");
@@ -324,14 +353,14 @@ describe("Unfold JSON", { tags: "@external" }, () => {
     );
 
     // Sync database
-    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
     cy.button("Sync database schema").click();
     cy.wait("@sync_schema");
     cy.button(/Sync triggered!/).should("be.visible");
 
     // Check json field is not unfolded
-    cy.visit(`/admin/datamodel/database/${WRITABLE_DB_ID}`);
-    getTable("Many Data Types").click();
+    H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+    H.DataModel.TablePicker.getTable("Many Data Types").click();
     cy.findByLabelText("Json → A").should("not.exist");
   });
 });
@@ -346,10 +375,12 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     cy.signInAsAdmin();
 
     // Toggle the orders table to be hidden as admin user
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-    );
-    getTable("Orders").button("Hide table").click();
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
+    H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
     cy.wait("@tableUpdate");
 
     // Visit the main page, we shouldn't be able to see the table
@@ -390,9 +421,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("should remap FK display value from field section", () => {
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
 
     cy.findByTestId("field-section")
       .findByPlaceholderText("Give this field a name")
@@ -406,9 +440,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("should remap FK display value from the table section", () => {
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
 
     cy.findByTestId("table-section")
       .findByDisplayValue("Product ID")
@@ -422,11 +458,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("should correctly show remapped column value", () => {
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
     // edit "Product ID" column in "Orders" table
-    getTable("Orders").click();
-    clickField("Product ID");
+    H.DataModel.TablePicker.getTable("Orders").click();
+    H.DataModel.TableSection.clickField("Product ID");
 
     // remap its original value to use foreign key
     cy.findByPlaceholderText("Select display values").click();
@@ -454,10 +490,10 @@ describe("scenarios > admin > datamodel > metadata", () => {
       5: "Perfecto",
     };
 
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
     // edit "Rating" values in "Reviews" table
-    getTable("Reviews").click();
-    clickField("Rating");
+    H.DataModel.TablePicker.getTable("Reviews").click();
+    H.DataModel.TableSection.clickField("Rating");
 
     // apply custom remapping for "Rating" values 1-5
     cy.findByPlaceholderText("Select display values").click();
@@ -486,9 +522,9 @@ describe("scenarios > admin > datamodel > metadata", () => {
     const viewportHeight = 400;
 
     cy.viewport(1280, viewportHeight);
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
-    getTable("Reviews").scrollIntoView().click();
-    clickField("ID");
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
+    H.DataModel.TablePicker.getTable("Reviews").scrollIntoView().click();
+    H.DataModel.TableSection.clickField("ID");
     cy.findByPlaceholderText("Select a semantic type").click();
 
     H.popover().scrollTo("top");
@@ -509,9 +545,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("display value 'Custom mapping' should be available only for 'Search box' filtering type (metabase#16322)", () => {
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+      fieldId: REVIEWS.RATING,
+    });
 
     cy.findByPlaceholderText("Select field filtering").click();
     H.popover().findByText("Search box").click();
@@ -542,9 +581,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
   });
 
   it("allows to map FK to date fields (metabase#7108)", () => {
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.USER_ID}/general`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.USER_ID,
+    });
     cy.findByPlaceholderText("Select display values").click();
     H.popover().findByText("Use foreign key").click();
     cy.findByPlaceholderText("Choose a field").click();
@@ -570,9 +612,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
 
     it("should only show currency formatting options for currency fields", () => {
-      cy.visit(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.DISCOUNT}/formatting`,
-      );
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.DISCOUNT,
+      });
       cy.wait("@metadata");
 
       cy.findByTestId("column-settings")
@@ -582,9 +627,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
           cy.findByText("Currency label style").should("be.visible");
         });
 
-      cy.visit(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
-      );
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
       cy.wait("@metadata");
 
       cy.findByTestId("column-settings")
@@ -608,10 +656,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
 
     it("should save and obey field prefix formatting settings", () => {
-      cy.visit(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
-      );
-
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
       cy.wait("@metadata");
 
       cy.findByTestId("column-settings")
@@ -637,9 +687,12 @@ describe("scenarios > admin > datamodel > metadata", () => {
     });
 
     it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
-      cy.visit(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.QUANTITY}/formatting`,
-      );
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+        fieldId: ORDERS.QUANTITY,
+      });
       cy.wait("@metadata");
 
       cy.findByTestId("column-settings").findByTestId("prefix").focus().blur();
@@ -937,7 +990,7 @@ describe("scenarios > admin > databases > table", () => {
   });
 
   it("should see 8 tables in sample database", () => {
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
@@ -945,14 +998,14 @@ describe("scenarios > admin > databases > table", () => {
   });
 
   it("should be able to see details of each table", () => {
-    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
 
     cy.get("main")
       .findByText("Start by selecting data to model")
       .should("be.visible");
 
     // Orders
-    getTable("Orders").click();
+    H.DataModel.TablePicker.getTable("Orders").click();
     cy.get("main").findByText("Edit the table and fields").should("be.visible");
 
     cy.findByPlaceholderText("Give this table a description").should(
@@ -963,7 +1016,7 @@ describe("scenarios > admin > databases > table", () => {
 
   // https://linear.app/metabase/issue/SEM-423/data-loading-error-handling
   it.skip("should show 404 if database does not exist (metabase#14652)", () => {
-    cy.visit("/admin/datamodel/database/54321");
+    H.DataModel.visit({ databaseId: 54321 });
 
     cy.findAllByTestId("tree-item")
       .filter('[data-type="table"]')
@@ -977,13 +1030,15 @@ describe("scenarios > admin > databases > table", () => {
 
   describe("in orders table", () => {
     beforeEach(() => {
-      cy.visit(
-        `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-      );
+      H.DataModel.visit({
+        databaseId: SAMPLE_DB_ID,
+        schemaName: SAMPLE_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
+      });
     });
 
     it("should see multiple fields", () => {
-      clickField("ID");
+      H.DataModel.TableSection.clickField("ID");
       cy.findByLabelText("Data type")
         .should("be.visible")
         .and("have.value", "BIGINT");
@@ -992,7 +1047,7 @@ describe("scenarios > admin > databases > table", () => {
         "Entity Key",
       );
 
-      clickField("User ID");
+      H.DataModel.TableSection.clickField("User ID");
       cy.findByLabelText("Data type")
         .should("be.visible")
         .and("have.value", "INTEGER");
@@ -1005,7 +1060,7 @@ describe("scenarios > admin > databases > table", () => {
         "People → ID",
       );
 
-      clickField("Tax");
+      H.DataModel.TableSection.clickField("Tax");
       cy.findByLabelText("Data type")
         .should("be.visible")
         .and("have.value", "DOUBLE PRECISION");
@@ -1014,7 +1069,7 @@ describe("scenarios > admin > databases > table", () => {
         "No semantic type",
       );
 
-      clickField("Discount");
+      H.DataModel.TableSection.clickField("Discount");
       cy.findByLabelText("Data type")
         .should("be.visible")
         .and("have.value", "DOUBLE PRECISION");
@@ -1023,7 +1078,7 @@ describe("scenarios > admin > databases > table", () => {
         "Discount",
       );
 
-      clickField("Created At");
+      H.DataModel.TableSection.clickField("Created At");
       cy.findByLabelText("Data type")
         .should("be.visible")
         .and("have.value", "TIMESTAMP");
@@ -1082,25 +1137,12 @@ describe("scenarios > admin > databases > table", () => {
         H.queryBuilderHeader().findByText("View-only").should("be.visible");
       });
     });
+
+    function turnTableVisibilityOff(tableId: TableId) {
+      cy.request("PUT", "/api/table", {
+        ids: [tableId],
+        visibility_type: "hidden",
+      });
+    }
   });
 });
-
-function getTable(name: string) {
-  return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
-}
-
-function getField(name: string) {
-  return cy.findByTestId("table-section").get(`a[aria-label="${name}"]`);
-}
-
-function clickField(name: string) {
-  // clicks the icon specifically to avoid issues with clicking the name or description inputs
-  return getField(name).findByRole("img").scrollIntoView().click();
-}
-
-function turnTableVisibilityOff(tableId: TableId) {
-  cy.request("PUT", "/api/table", {
-    ids: [tableId],
-    visibility_type: "hidden",
-  });
-}

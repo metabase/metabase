@@ -494,8 +494,6 @@ describe("issue 22518", () => {
 });
 
 describe.skip("issue 22519", () => {
-  const ratingDataModelUrl = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}/field/${REVIEWS.RATING}/general`;
-
   const questionDetails = {
     query: {
       "source-table": REVIEWS_ID,
@@ -509,7 +507,12 @@ describe.skip("issue 22519", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit(ratingDataModelUrl);
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaName: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+      fieldId: REVIEWS.REVIEWS,
+    });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Don't cast").click();
