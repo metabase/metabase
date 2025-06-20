@@ -82,7 +82,9 @@ export function DashboardTabs({
       align="start"
       gap="lg"
       w="100%"
-      className={cx(S.dashboardTabs, isNightMode && S.isNightMode, className)}
+      className={cx(S.dashboardTabs, className, {
+        [S.isNightMode]: isNightMode,
+      })}
     >
       <TabRow<SelectedTabId>
         value={selectedTabId}
