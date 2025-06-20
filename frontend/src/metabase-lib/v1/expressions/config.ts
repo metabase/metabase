@@ -331,6 +331,14 @@ const CONVERSION = defineClauses(
           description: t`The string to convert to a datetime.`,
           example: "2025-03-20 12:45:04",
         },
+        {
+          name: t`mode`,
+          type: "string",
+          description: t`the mode.`,
+          example:
+            "one of: simple, iso, unixmilliseconds, unixseconds, unixmicroseconds, unixnanoseconds",
+          optional: true,
+        },
       ],
     },
     float: {

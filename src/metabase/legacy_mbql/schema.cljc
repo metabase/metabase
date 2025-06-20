@@ -734,7 +734,7 @@
    :unixnanoseconds])
 
 (defclause ^{:requires-features #{:expressions :expressions/datetime}} datetime
-  value  StringExpressionArg ;; normally a string, number, or bytes
+  value  :any ;;StringExpressionArg ;; normally a string, number, or bytes
   mode   (optional LiteralDatetimeModeString))
 
 (mr/def ::DatetimeExpression

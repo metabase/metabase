@@ -408,6 +408,18 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
+(comment
+
+  (binding [metabase.test.data.databricks/*allow-database-deletion* true]
+    (tx/destroy-db! :databricks metabase.query-processor-test.alternative-date-test/yyyymmddhhss-binary-times))
+
+  (toucan2.core/delete! 'Database :engine "databricks", :name "yyyymmddhhss-binary-times (databricks)")
+
+  (binding [metabase.test.data.databricks/*allow-database-creation* true]
+    (metabase.driver/with-driver :databricks
+      (metabase.test/dataset yyyymmddhhss-binary-times
+        (metabase.test/db)))))
+
 ;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
@@ -446,6 +458,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
     (mt/dataset yyyymmddhhss-binary-times
       (clojure.pprint/pprint (qp.compile/compile
+                              (assoc (mt/mbql-query times)
+                                     :middleware {:format-rows? false})))
+      (clojure.pprint/pprint (qp/process-query
                               (assoc (mt/mbql-query times)
                                      :middleware {:format-rows? false})))
       (is (= (yyyymmddhhmmss-binary-dates-expected-rows driver/*driver*)
