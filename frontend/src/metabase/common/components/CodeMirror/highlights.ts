@@ -2,6 +2,8 @@ import { type Range, StateEffect, StateField } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import { type RefObject, useEffect } from "react";
 
+import S from "./CodeMirror.module.css";
+
 import type { CodeMirrorRef } from ".";
 
 export type HighlightRange =
@@ -15,7 +17,7 @@ export type HighlightRange =
 
 const highlightRangeEffect = StateEffect.define<Range<Decoration>[]>();
 const highlightRangeDecoration = Decoration.mark({
-  class: "cm-highlight-range",
+  class: S.highlight,
   attributes: {
     "data-testid": "highlighted-text",
   },
