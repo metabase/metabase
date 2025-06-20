@@ -1,6 +1,6 @@
 import type { EditorState } from "@codemirror/state";
 import { useDisclosure } from "@mantine/hooks";
-import CodeMirror, {
+import {
   EditorSelection,
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
@@ -10,6 +10,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
@@ -121,8 +122,6 @@ export function Editor(props: EditorProps) {
     reportTimezone,
     metadata,
     extensions: [customTooltip],
-    formatExpression:
-      error === null && isValidated ? formatExpression : undefined,
   });
 
   const handleFunctionBrowserClauseClick = useCallback((name: string) => {
@@ -165,6 +164,9 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          onFormat={
+            error === null && isValidated ? formatExpression : undefined
+          }
         />
         <Errors error={error} />
 
