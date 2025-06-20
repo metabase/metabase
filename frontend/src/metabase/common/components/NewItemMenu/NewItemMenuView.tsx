@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/components/EntityMenu";
+import EntityMenu from "metabase/common/components/EntityMenu";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
