@@ -22,18 +22,14 @@
    :email-smtp-username :user
    :email-smtp-password :pass
    :email-smtp-port     :port
-   :email-smtp-security :security
-   :email-from-name     :sender-name
-   :email-from-address  :sender
-   :email-reply-to      :reply-to})
+   :email-smtp-security :security})
 
 (def ^:private cloud-mb-to-smtp-settings
   {:cloud-email-smtp-host     :host
    :cloud-email-smtp-username :user
    :cloud-email-smtp-password :pass
    :cloud-email-smtp-port     :port
-   :cloud-email-smtp-security :security
-   :cloud-email-from-address  :sender})
+   :cloud-email-smtp-security :security})
 
 (defn- smtp->mb-setting [smtp-setting mb-to-smtp-map]
   "Convert a SMTP setting to a Metabase setting name."
