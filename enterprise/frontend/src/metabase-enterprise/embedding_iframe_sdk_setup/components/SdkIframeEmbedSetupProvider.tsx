@@ -1,4 +1,10 @@
-import { type ReactNode, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { P, match } from "ts-pattern";
 
 import { useSetting } from "metabase/common/hooks";
@@ -8,19 +14,27 @@ import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
 } from "../context";
+import { useRecentItems } from "../hooks/use-recent-items";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
 } from "../types";
-import { DEFAULT_SDK_IFRAME_EMBED_SETTINGS } from "../utils/default-embed-setting";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
 }
 
+const DEFAULT_DASHBOARD_ID = 1;
+
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
+  const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
+
+  const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
+    useRecentItems();
+
   const [currentStep, setCurrentStep] = useState<SdkIframeEmbedSetupStep>(
     "select-embed-experience",
   );
@@ -28,9 +42,9 @@ export const SdkIframeEmbedSetupProvider = ({
   const instanceUrl = useSetting("site-url");
 
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
-    ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
     instanceUrl,
     apiKey: "",
+    dashboardId: DEFAULT_DASHBOARD_ID,
   });
 
   // Which embed experience are we setting up?
@@ -43,11 +57,31 @@ export const SdkIframeEmbedSetupProvider = ({
     [settings],
   );
 
-  const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) =>
-    setSettings({
-      ...settings,
-      ...nextSettings,
-    } as SdkIframeEmbedSettings);
+  const updateSettings = useCallback(
+    (nextSettings: Partial<SdkIframeEmbedSettings>) =>
+      setSettings({
+        ...settings,
+        ...nextSettings,
+      } as SdkIframeEmbedSettings),
+    [settings],
+  );
+
+  useEffect(() => {
+    if (!isEmbedSettingsLoaded && !isRecentsLoading) {
+      const defaultSettings = getDefaultSdkIframeEmbedSettings(
+        "dashboard",
+        recentDashboards[0]?.id ?? DEFAULT_DASHBOARD_ID,
+      );
+
+      updateSettings(defaultSettings);
+      setEmbedSettingsLoaded(true);
+    }
+  }, [
+    isRecentsLoading,
+    isEmbedSettingsLoaded,
+    recentDashboards,
+    updateSettings,
+  ]);
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
@@ -56,6 +90,10 @@ export const SdkIframeEmbedSetupProvider = ({
     settings,
     setSettings,
     updateSettings,
+    recentDashboards,
+    recentQuestions,
+    addRecentItem,
+    isEmbedSettingsLoaded: isEmbedSettingsLoaded,
   };
 
   return (

@@ -1,4 +1,11 @@
+import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import type { RecentItem } from "metabase-types/api";
+
 const { H } = cy;
+
+type RecentActivityIntercept = {
+  response: { body: { recents: RecentItem[] } };
+};
 
 describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
   beforeEach(() => {
@@ -7,45 +14,99 @@ describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
     H.setTokenFeatures("all");
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("shows dashboard experience by default", () => {
-    cy.visit("/embed/new");
-    cy.wait("@dashboard");
+  describe("select embed experiences with a non-empty activity log", () => {
+    it("shows the most recent dashboard from the activity log by default", () => {
+      const dashboardName = "Orders in a dashboard";
 
-    const iframe = getPreviewIframe();
-    iframe.within(() => {
-      cy.log("dashboard title is visible");
-      cy.findByText("Person overview").should("be.visible");
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
 
-      cy.log("dashboard card is visible");
-      cy.findByText("Person detail").should("be.visible");
+      cy.log("assert that the most recent dashboard is the one we expect");
+      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
+        const recentItem = intercept.response?.body.recents?.filter(
+          (recent) => recent.model === "dashboard",
+        )?.[0];
+
+        expect(recentItem.name).to.be.equal(dashboardName);
+      });
+
+      const iframe = getPreviewIframe();
+      iframe.within(() => {
+        cy.log("dashboard title is visible");
+        cy.findByText(dashboardName).should("be.visible");
+
+        cy.log("dashboard card is visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+    });
+
+    it("shows the most recent question from the activity log when selected", () => {
+      cy.log("go to a question to add to the activity log");
+      cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
+      cy.wait("@cardQuery");
+
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+
+      getEmbedSidebar().findByText("Chart").click();
+      cy.wait("@cardQuery");
+
+      const iframe = getPreviewIframe();
+      iframe.within(() => {
+        cy.log("question title is visible");
+        cy.findByText("Orders, Count").should("be.visible");
+      });
+    });
+
+    it("shows exploration template when selected", () => {
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+
+      getEmbedSidebar().findByText("Exploration").click();
+
+      const iframe = getPreviewIframe();
+      iframe.within(() => {
+        cy.log("data picker is visible");
+        cy.findByText("Pick your starting data").should("be.visible");
+      });
     });
   });
 
-  it("shows chart experience when selected", () => {
-    cy.visit("/embed/new");
-    cy.wait("@dashboard");
-
-    getEmbedSidebar().findByText("Chart").click();
-
-    const iframe = getPreviewIframe();
-    iframe.within(() => {
-      cy.log("question title is visible");
-      cy.findByText("Query log").should("be.visible");
+  describe("select embed experiences with an empty activity log", () => {
+    beforeEach(() => {
+      // simulate a totally empty activity log
+      cy.intercept("GET", "/api/activity/recents?*", {
+        recents: [],
+      }).as("emptyRecentItems");
     });
-  });
 
-  it("shows exploration template when selected", () => {
-    cy.visit("/embed/new");
-    cy.wait("@dashboard");
+    it("shows dashboard of id=1 when activity log is empty", () => {
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+      cy.wait("@emptyRecentItems");
 
-    getEmbedSidebar().findByText("Exploration").click();
+      cy.log("dashboard title and card of id=1 should be visible");
+      getPreviewIframe().within(() => {
+        cy.findByText("Person overview").should("be.visible");
+        cy.findByText("Person detail").should("be.visible");
+      });
+    });
 
-    const iframe = getPreviewIframe();
-    iframe.within(() => {
-      cy.log("data picker is visible");
-      cy.findByText("Pick your starting data").should("be.visible");
+    it("shows question of id=1 when activity log is empty and chart is selected", () => {
+      cy.visit("/embed/new");
+      cy.wait("@dashboard");
+      cy.wait("@emptyRecentItems");
+
+      getEmbedSidebar().findByText("Chart").click();
+
+      getPreviewIframe().within(() => {
+        cy.log("question title of id=1 is visible");
+        cy.findByText("Query log").should("be.visible");
+      });
     });
   });
 });

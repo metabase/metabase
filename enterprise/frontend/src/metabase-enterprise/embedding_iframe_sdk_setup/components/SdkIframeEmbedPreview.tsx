@@ -1,11 +1,9 @@
 import { useEffect, useRef } from "react";
 
-import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { DEFAULT_SDK_IFRAME_EMBED_SETTINGS } from "../utils/default-embed-setting";
 
 import S from "./SdkIframeEmbedSetup.module.css";
 
@@ -16,36 +14,44 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
-  const instanceUrl = useSetting("site-url");
+  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
 
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "/app/embed.js";
-    document.body.appendChild(script);
+  useEffect(
+    () => {
+      if (isEmbedSettingsLoaded) {
+        const script = document.createElement("script");
 
-    script.onload = () => {
-      const { MetabaseEmbed } = window["metabase.embed"];
+        script.src = "/app/embed.js";
+        document.body.appendChild(script);
 
-      embedJsRef.current = new MetabaseEmbed({
-        ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
+        script.onload = () => {
+          const { MetabaseEmbed } = window["metabase.embed"];
 
-        instanceUrl,
-        target: "#iframe-embed-container",
-        iframeClassName: S.EmbedPreviewIframe,
+          embedJsRef.current = new MetabaseEmbed({
+            ...settings,
+            target: "#iframe-embed-container",
+            iframeClassName: S.EmbedPreviewIframe,
 
-        // TODO: replace with `useExistingUserSession: true` once EMB-507 is merged.
-        apiKey: "will-be-replaced-with-user-session-flag",
-      });
-    };
+            // TODO: replace with `useExistingUserSession: true` once EMB-507 is merged.
+            apiKey: "will-be-replaced-with-user-session-flag",
+          });
+        };
 
-    return () => {
-      embedJsRef.current?.destroy();
-      script.remove();
-    };
-  }, [instanceUrl]);
+        scriptRef.current = script;
+      }
+
+      return () => {
+        embedJsRef.current?.destroy();
+        scriptRef.current?.remove();
+      };
+    },
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
+    [isEmbedSettingsLoaded],
+  );
 
   useEffect(() => {
     if (embedJsRef.current) {
