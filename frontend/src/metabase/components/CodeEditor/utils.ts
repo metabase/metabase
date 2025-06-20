@@ -8,8 +8,13 @@ import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
 import type { Extension } from "@codemirror/state";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
+import { useMemo } from "react";
 
 import type { CodeLanguage } from "./types";
+
+export function useExtensions({ language }: { language: CodeLanguage }) {
+  return useMemo(() => [getLanguageExtension(language)], [language]);
+}
 
 export function getLanguageExtension(language: CodeLanguage): Extension {
   switch (language) {
