@@ -228,6 +228,69 @@
             (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
             [{"$project" {"_id" 0, "path" "$path", "type" "$type", "index" "$index"}}])))
 
+(def describe-table-query-depth
+  "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
+  fields at the root level of the document. If set to K, the query will return fields at K levels of nesting beyond that.
+  Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but the more queries we might
+  have to execute."
+  ;; Cal 2024-09-15: I chose 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
+  ;; seen on cloud are all <20 levels deep)
+  ;; Case 2024-10-04: Sharded clusters seem to run into exponentially more work the bigger this is. Over 20 and this
+  ;; risks never finishing.
+  ;; From arakaki:
+  ;;  > I think we can pick a max-depth that works well. I know that some other related tools set limits of 7 nested levels.
+  ;;  > And that would be definitely ok for most.
+  ;;  > If people have problems with that, I think we can make it configurable.
+  7)
+
+(def ^:private leaf-fields-limit
+  "Consider at most 50K leaf fields. That combined with [[describe-table-query-depth]] (= 7) gives at most 350K app-db
+  fields."
+  50000)
+
+(def ^:private unwind-stages
+  [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]}
+                                  {"$objectToArray" "$val"}
+                                  nil]}}}
+   {"$unwind" {"path" "$kvs" "preserveNullAndEmptyArrays" true}}
+   {"$project" {"path" {"$cond" [{"$and" ["$path" "$kvs.k"]}
+                                 {"$concat" ["$path" "." "$kvs.k"]}
+                                 {"$ifNull" ["$kvs.k" "$path"]}]}
+                "val" {"$ifNull" ["$kvs.v" "$val"]}}}])
+
+(defn- describe-table-query-3
+  [& {:keys [collection-name sample-size]}]
+  (let [start-n       (quot sample-size 2)
+        end-n         (- sample-size start-n)]
+    (into []
+          cat
+          [;; Initialization phase
+           [{"$sort" {"_id" 1}}
+            {"$limit" start-n}
+            {"$unionWith"
+             {"coll" collection-name
+              "pipeline" [{"$sort" {"_id" -1}}
+                          {"$limit" end-n}]}}
+                      ;; TODO: path may be redundant
+            {"$project" {"path" {"$literal" nil}
+                         "val" "$$ROOT"}}]
+           ;; Unwind phase: depth first document traversal
+           (apply concat (repeat describe-table-query-depth unwind-stages))
+           ;; Results phase
+           ;; TODO: Consider ignoring type with most occurrences. Instead machinery as with nested field columns
+           ;;       should be introduced.
+           [{"$group" {"_id" {"path" "$path"
+                              "type" {"$type" "$val"}}
+                       "count" {"$count" {}}}}
+            ;; TODO: Double check. Eg. leaf fields of object type could be filtered out prior groupping.
+            {"$group" {"_id" "$_id.path"
+                       "type" {"$top" {"sortBy" {"count" -1}
+                                       "output" "$_id.type"}}}}
+            {"$project" {"path" "$_id.path"
+                         "type" "$type"}}
+            {"$sort" {"count" -1}}
+            {"$limit" leaf-fields-limit}]])))
+
 (comment
   ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
   ;; It is almost logically equivalent, excluding minor details like how the sample is taken, and dealing with null
@@ -274,22 +337,6 @@
   ;;     {:path ".c", :type java.lang.String, :index 0}
   ;;     {:path ".d", :type clojure.lang.PersistentVector, :index 1})
   )
-
-(def describe-table-query-depth
-  "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
-  fields at the root level of the document. If set to K, the query will return fields at K levels of nesting beyond that.
-  Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but the more queries we might
-  have to execute."
-  ;; Cal 2024-09-15: I chose 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
-  ;; seen on cloud are all <20 levels deep)
-  ;; Case 2024-10-04: Sharded clusters seem to run into exponentially more work the bigger this is. Over 20 and this
-  ;; risks never finishing.
-  ;; From arakaki:
-  ;;  > I think we can pick a max-depth that works well. I know that some other related tools set limits of 7 nested levels.
-  ;;  > And that would be definitely ok for most.
-  ;;  > If people have problems with that, I think we can make it configurable.
-  7)
-
 (mu/defn- describe-table :- [:sequential
                              [:map {:closed true}
                               [:path  driver-api/schema.common.non-blank-string]
@@ -301,6 +348,8 @@
   (let [query (describe-table-query {:collection-name (:name table)
                                      :sample-size     (* table-rows-sample/nested-field-sample-limit 2)
                                      :max-depth       describe-table-query-depth})
+        ;; This will return at most 50K rows with new query implementation. Safe to operate all in mem. Alternatively
+        ;; special rf for qp could handle that.
         data  (:data (driver-api/process-query {:database (:id db)
                                                 :type     "native"
                                                 :native   {:collection (:name table)
@@ -335,6 +384,7 @@
         "decimal"    :type/Decimal}
        db-type :type/*))
 
+;; TODO: The field order will change! Presumably safe.
 (defn- add-database-position
   "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
   [fields i]
@@ -366,6 +416,8 @@
                    [(conj fields field) i]))
                [#{} i])))
 
+;; TODO: Instead of :nested-fields tricks single tree could be used to store the progress 
+;;       on inserting fields to app-db.
 (defmethod driver/describe-table :mongo
   [_driver database table]
   (let [fields (->> (describe-table database table)
