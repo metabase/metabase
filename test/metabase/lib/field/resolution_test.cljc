@@ -298,7 +298,7 @@
                 #_"Example Week: Week"]
                (map :display-name (lib/returned-columns (lib/query mp query)))))))))
 
-(deftest ^:parallel col-info-combine-parent-field-names-test
+(deftest ^:parallel col-info-combine-parent-field-names-test-2
   (testing "For fields with parents we should return them with a combined name including parent's name"
     (let [metadata-provider metabase.lib.metadata.result-metadata-test/child-parent-grandparent-metadata-provider
           query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
