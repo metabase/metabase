@@ -10,7 +10,7 @@ export const PageRoot = styled.div`
   min-height: 100vh;
 `;
 
-export const PageMain = styled.main`
+export const PageMain = styled.div`
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
