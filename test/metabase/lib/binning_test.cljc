@@ -109,8 +109,8 @@
                                   (lib.stage/append-stage query))))))
       (testing "Application of same binning on next stage does not modify display name"
         (is (some? (m/find-first (comp #{expected-display-name} :display-name)
-                                 (let [first-stage-binned-column (m/find-first (comp #{expected-display-name} :display-name)
-                                                                               (lib/visible-columns query))]
+                                 (when-let [first-stage-binned-column (m/find-first (comp #{expected-display-name} :display-name)
+                                                                                    (lib/visible-columns query))]
                                    (lib/visible-columns
                                     (as-> query $
                                       (lib/breakout $ (lib/with-binning

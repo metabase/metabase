@@ -17,7 +17,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [potemkin :as p]))
+   [potemkin :as p]
+   [clojure.set :as set]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
 
@@ -59,6 +60,11 @@
 ;;; right?)
 (defn- ->snake_case [col]
   (as-> col col
+    (set/rename-keys col {::lib.metadata.result-metadata/binning-info       :binning_info
+                          ::lib.metadata.result-metadata/converted-timezone :converted_timezone
+                          ::lib.metadata.result-metadata/field-ref          :field_ref
+                          ::lib.metadata.result-metadata/source             :source
+                          ::lib.metadata.result-metadata/unit               :unit})
     (update-keys col u/->snake_case_en)
     (m/update-existing col :binning_info update-keys u/->snake_case_en)))
 

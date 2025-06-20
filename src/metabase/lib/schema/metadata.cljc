@@ -4,27 +4,13 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.util.malli.registry :as mr]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.lib.schema.binning :as lib.schema.binning]
+   [clojure.set :as set]))
 
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (or (contains? lib.schema.common/HORRIBLE-keys k)
-           (not (str/includes? k "_")))))
 
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (filter #(str/includes? % "_") (keys value))))))}
-   kebab-cased-map?])
 
 ;;; Column vs Field?
 ;;;
@@ -167,6 +153,19 @@
   `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
   [:maybe :string])
 
+(def ^:private column-renamed-keys
+  "Map of QP results/old key name to Lib key name."
+  {:binning       :metabase.lib.field/binning
+   :source-alias  :metabase.lib.join/join-alias
+   :unit          :metabase.lib.field/temporal-unit
+   ;; :temporal-unit :metabase.lib.field/temporal-unit
+   })
+
+(def ^:private column-metadata-disallowed-keys
+  (cons
+   :source ; use lib/source instead
+   (keys column-renamed-keys)))
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -183,7 +182,12 @@
   [:and
    [:map
     {:error/message    "Valid column metadata"
-     :decode/normalize lib.schema.common/normalize-map}
+     :decode/normalize (fn [m]
+                         (-> m
+                             lib.schema.common/normalize-map
+                             ;; TODO (Cam 6/18/25) -- we COULD map this to the lib equivalent if we wanted
+                             (dissoc :source)
+                             (set/rename-keys column-renamed-keys)))}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
     ;;
     ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
@@ -222,35 +226,8 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;;
-    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-    ;; remove it.
-    ;;
-    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
-    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
-    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
-    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
-    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
-    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-    ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
-    ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
-    ;; allowed to join on the results of something else)
-    ;;
-    ;; TODO (Cam 6/19/25) -- rename this key to `:lib/join-alias` since we're not really good about only using the
-    ;; special getter and setter functions to get at this key
+    ;; Join alias of the table we're joining against, if any.
     [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
-    ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
-    ;; from a previous stage.
-    ;;
-    ;; What about when the column comes from join `X`, but inside `X` itself it comes from join `Y`? I think in this
-    ;; case we want the outside world to see `X` since `Y` is not visible outside of `X`.
-    ;;
-    ;;    original join alias = X
-    ;;    column => [join X => join Y]
-    ;;
-    [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; other misc namespaced keys
     [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
@@ -306,7 +283,8 @@
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
     [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
    ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map])
+   ::lib.schema.common/kebab-cased-map
+   (lib.schema.common/map-without-keys column-metadata-disallowed-keys)])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."

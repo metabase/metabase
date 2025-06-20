@@ -123,9 +123,8 @@
 
 (mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
-  ;; TODO (Cam 6/19/25) -- seems busted to be using joins that happened at ANY LEVEL previously for equality purposes
-  ;; so lightly but removing this breaks stuff.
-  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) column))
+  ;;; TODO (Cam 6/18/25) -- it seems wrong to use `:lib/previous-stage-join-alias` here so generally
+  ((some-fn :metabase.lib.join/join-alias :lib/previous-stage-join-alias) column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name

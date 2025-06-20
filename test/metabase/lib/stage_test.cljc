@@ -177,14 +177,14 @@
                  {:id                       (meta/id :categories :id)
                   :name                     "ID"
                   :lib/source               :source/joins
-                  :source-alias             "Cat"
+                  :metabase.lib.join/join-alias "Cat"
                   :display-name             "ID"
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "Cat__ID"}
                  {:id                       (meta/id :categories :name)
                   :name                     "NAME"
                   :lib/source               :source/joins
-                  :source-alias             "Cat"
+                  :metabase.lib.join/join-alias "Cat"
                   :display-name             "Name"
                   :lib/source-column-alias  "NAME"
                   :lib/desired-column-alias "Cat__NAME"}]
