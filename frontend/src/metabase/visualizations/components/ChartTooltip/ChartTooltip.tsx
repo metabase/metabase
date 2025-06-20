@@ -3,6 +3,7 @@ import _ from "underscore";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import { getEventTarget } from "metabase/lib/dom";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type {
   HoveredObject,
   HoveredTimelineEvent,
@@ -36,7 +37,15 @@ export const ChartTooltipContent = ({
   return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
 };
 
-const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
+const ChartTooltip = ({
+  hovered: untranslatedHoveredObject,
+  settings,
+}: ChartTooltipProps) => {
+  const hovered =
+    PLUGIN_CONTENT_TRANSLATION.useTranslateFieldValuesInHoveredObject(
+      untranslatedHoveredObject,
+    );
+
   const tooltip = <ChartTooltipContent hovered={hovered} settings={settings} />;
 
   const isNotEmpty = useMemo(() => {

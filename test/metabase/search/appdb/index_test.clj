@@ -517,7 +517,7 @@
 
 (deftest search-model-cascade-test
   (is (= model->deleted-descendants
-         (mt/with-empty-h2-app-db
+         (mt/with-empty-h2-app-db!
            (let [table->children    (u.conn/app-db-cascading-deletes (mdb/app-db) (map t2/table-name (descendants :metabase/model)))
                  table->sub-tables  (into {} (for [[t cs] table->children] [t (map :child-table cs)]))
                  table->descendants (mt/transitive table->sub-tables)

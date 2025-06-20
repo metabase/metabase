@@ -11,6 +11,7 @@ import {
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk/types/question";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import {
   Box,
@@ -58,6 +59,7 @@ export const InteractiveQuestionDefaultView = ({
   withResetButton,
   withChartTypeSelector,
 }: InteractiveQuestionDefaultViewProps): ReactElement => {
+  const { isLocaleLoading } = useLocale();
   const {
     originalId,
     question,
@@ -81,11 +83,14 @@ export const InteractiveQuestionDefaultView = ({
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (!isEditorOpen && (isQuestionLoading || isQueryResultLoading)) {
+  if (
+    !isEditorOpen &&
+    (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
+  ) {
     return <SdkLoader />;
   }
 
-  if (!question) {
+  if (!isEditorOpen && !question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {

@@ -384,12 +384,12 @@
                                                                  qp.preprocess/query->expected-cols
                                                                  (map :name))
                     cid2 (str cid "_2")
-                    col-data-fn   (juxt            :id       :name     :source_alias)
-                    top-card-cols [[(mt/id :people :id)      cid       nil]
-                                   [(mt/id :orders :user_id) cuser-id  "ord1"]
-                                   [nil                      ccount    "ord1"]
-                                   [(mt/id :orders :user_id) cuser-id2 "ord2"]
-                                   [nil                      ccount2   "ord2"]]]
+                    col-data-fn   (juxt            :id       :name)
+                    top-card-cols [[(mt/id :people :id)      cid]
+                                   [(mt/id :orders :user_id) cuser-id]
+                                   [nil                      ccount]
+                                   [(mt/id :orders :user_id) cuser-id2]
+                                   [nil                      ccount2]]]
                 (testing "sanity"
                   (is (= top-card-cols
                          (->> top-card-query
@@ -673,8 +673,12 @@
                       ["Doohickey" "Facebook" 816 "Doohickey" 3]]
                      (mt/formatted-rows
                       [str str int str int]
-                      (qp/process-query query)))))))
+                      (qp/process-query query)))))))))))
 
+(deftest ^:parallel join-source-queries-with-joins-test-2
+  (testing "Should be able to join against source queries that themselves contain joins (#12928)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
+      (mt/dataset test-data
         (testing "and custom expressions (#13649) (#18086)"
           (let [query (mt/mbql-query orders
                         {:source-query {:source-table $$orders

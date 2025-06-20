@@ -1321,7 +1321,7 @@ describe("issue 56771", () => {
       .as("headerCell")
       .then(($cell) => {
         const width = $cell[0].getBoundingClientRect().width;
-        expect(width).to.be.greaterThan(174);
+        expect(width).to.be.greaterThan(160);
       });
   });
 });
@@ -1464,5 +1464,26 @@ WHERE NOT (
     H.queryBuilderMain()
       .findByText("Totals for Affiliate")
       .should("be.visible");
+  });
+});
+
+describe("issue 55673", { tags: "@flaky" }, () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
   });
 });

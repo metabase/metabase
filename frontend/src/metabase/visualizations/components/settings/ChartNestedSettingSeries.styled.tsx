@@ -17,8 +17,8 @@ export const OptionsIcon = styled(Icon)`
 export const SeriesNameInput = styled(InputBlurChange)`
   width: auto;
 
-  ${({ subtitle }) =>
-    subtitle &&
+  ${({ description }) =>
+    description &&
     `
     ${Input.Field} {
       padding-top: 1rem;

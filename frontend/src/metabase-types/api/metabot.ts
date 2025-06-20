@@ -1,9 +1,12 @@
 import type {
+  CardDisplayType,
   CardId,
   CardType,
   CollectionId,
   DashboardId,
   DatasetQuery,
+  PaginationResponse,
+  RowValue,
   SearchModel,
 } from ".";
 
@@ -62,9 +65,51 @@ export type MetabotRedirectReaction = {
 
 export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
+export type MetabotColumnType =
+  | "number"
+  | "string"
+  | "date"
+  | "datetime"
+  | "time"
+  | "boolean"
+  | "null";
+export type MetabotColumnInfo = {
+  name: string;
+  type?: MetabotColumnType;
+};
+
+export type MetabotSeriesConfig = {
+  x: MetabotColumnInfo;
+  y?: MetabotColumnInfo;
+  x_values?: RowValue[];
+  y_values?: RowValue[];
+  display_name: string;
+  chart_type: CardDisplayType;
+  stacked?: boolean;
+};
+
+export type MetabotChartConfig = {
+  image_base_64?: string;
+  title?: string | null;
+  description?: string | null;
+  data?: Array<{
+    columns: Array<MetabotColumnInfo>;
+    rows: Array<Array<string | number>>;
+  }>;
+  series?: Record<string, MetabotSeriesConfig>;
+  timeline_events?: Array<{
+    name: string;
+    description?: string;
+    timestamp: string;
+  }>;
+};
+
 export type MetabotCardInfo = {
   type: CardType;
   id: CardId;
+  chart_configs?: Array<MetabotChartConfig>;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotDashboardInfo = {
@@ -74,7 +119,9 @@ export type MetabotDashboardInfo = {
 
 export type MetabotAdhocQueryInfo = {
   type: "adhoc";
-  query: DatasetQuery;
+  chart_configs?: Array<MetabotChartConfig>;
+  query?: DatasetQuery;
+  error?: any;
 };
 
 export type MetabotEntityInfo =
@@ -99,9 +146,43 @@ export type MetabotAgentResponse = {
   state: any;
 };
 
-export interface MetabotPromptSuggestions {
-  prompts: Array<{ prompt: string }>;
-}
+/* Metabot - Suggested Prompts */
+
+export type SuggestedMetabotPrompt = {
+  id: number;
+  metabot_id: MetabotId;
+  prompt: string;
+  model: "metric" | "model";
+  model_id: CardId;
+  model_name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type BaseSuggestedMetabotPromptsRequest = {
+  metabot_id: MetabotId;
+  model?: string;
+  model_id?: number;
+};
+
+export type SuggestedMetabotPromptsRequest =
+  BaseSuggestedMetabotPromptsRequest & {
+    metabot_id: MetabotId;
+    model?: string;
+    model_id?: number;
+  } & (
+      | { sample?: void; limit?: number | null; offset?: number | null }
+      | { sample: true; limit?: number | null; offset?: void }
+    );
+
+export type SuggestedMetabotPromptsResponse = {
+  prompts: SuggestedMetabotPrompt[];
+} & PaginationResponse;
+
+export type DeleteSuggestedMetabotPromptRequest = {
+  metabot_id: MetabotId;
+  prompt_id: SuggestedMetabotPrompt["id"];
+};
 
 /* Metabot v3 - Type Guards */
 

@@ -32,16 +32,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       .should("have.text", "Appearance")
       .and("not.have.descendants", ".Icon-gem");
 
-    cy.log("By default shows the branding tab");
-    cy.findByRole("tab", { name: "Branding" }).should(
-      "have.attr",
-      "aria-selected",
-      "true",
-    );
-    cy.findByRole("tab", { name: "Conceal Metabase" })
-      .should("be.visible")
-      .and("have.attr", "aria-selected", "false");
-
     cy.log("Should show the upsell if the feature is missing");
     H.deleteToken();
     cy.visit("/admin/settings/appearance");
@@ -72,7 +62,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
     beforeEach(() => {
       cy.visit("/admin/settings/whitelabel/conceal-metabase");
-      cy.findByLabelText("Application Name")
+      cy.findByLabelText("Application name")
         .clear()
         .type(NEW_COMPANY_NAME)
         .blur();
@@ -474,7 +464,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
           cy.log("test custom illustration");
 
-          cy.findByRole("navigation").findByText("Exit admin").click();
+          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -507,7 +497,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
           }).click();
           H.selectDropdown().findByText("No illustration").click();
 
-          cy.findByRole("navigation").findByText("Exit admin").click();
+          cy.findByTestId("admin-navbar").findByText("Exit admin").click();
           H.appBar().findByText("New").click();
           H.popover().findByText("Dashboard").click();
           H.modal().findByTestId("collection-picker-button").click();
@@ -745,7 +735,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .blur();
       H.undoToast().findByText("Changes saved").should("be.visible");
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.url().should("include", "/test-1");
     });
 
@@ -767,7 +757,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
         .findByText("This field must be a relative URL.")
         .should("be.visible");
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.url().should("include", "/test-2");
     });
   });
@@ -775,7 +765,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
 
 function changeLoadingMessage(message) {
   cy.visit("/admin/settings/whitelabel");
-  cy.findByLabelText("Loading Message").click();
+  cy.findByLabelText("Loading message").click();
   H.selectDropdown().findByText(message).click();
   cy.wait("@putLoadingMessage");
 }

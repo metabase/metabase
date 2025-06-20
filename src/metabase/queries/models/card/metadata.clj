@@ -255,42 +255,39 @@ saved later when it is ready."
 (defn populate-result-metadata
   "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
   metadata from the query."
-  [{query :dataset_query, metadata :result_metadata, existing-card-id :id, :as card}]
-  (cond
-    ;; not updating the query => no-op
-    (not query)
-    (do
-      (log/debug "Not inferring result metadata for Card: query was not updated")
-      (m/update-existing card :result_metadata fix-incoming-idents card))
+  ([card]
+   (populate-result-metadata card nil))
+  ([{query :dataset_query metadata :result_metadata :as card} changes]
+   (cond
+     ;; not updating the query => no-op
+     (and (not-empty changes)
+          (not (contains? changes :dataset_query)))
+     (do
+       (log/debug "Not inferring result metadata for Card: query was not updated")
+       (m/update-existing card :result_metadata fix-incoming-idents card))
 
-    ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
-    metadata
-    (do
-      (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-      (update card :result_metadata fix-incoming-idents card))
+     ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
+     (or (and (not-empty changes) (contains? changes :result_metadata))
+         (and (empty? changes) metadata))
+     (do
+       (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
+       (update card :result_metadata fix-incoming-idents card))
 
-    ;; this is an update, and dataset_query hasn't changed => no-op
-    (and existing-card-id
-         (= query (t2/select-one-fn :dataset_query :model/Card :id existing-card-id)))
-    (do
-      (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
-      card)
+     ;; query has changed (or new Card) and this is a native query => set metadata to nil
+     ;;
+     ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
+     ;; possibly incorrect metadata.
+     (= (:type query) :native)
+     (do
+       (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
+       (assoc card :result_metadata nil))
 
-    ;; query has changed (or new Card) and this is a native query => set metadata to nil
-    ;;
-    ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
-    ;; possibly incorrect metadata.
-    (= (:type query) :native)
-    (do
-      (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
-      (assoc card :result_metadata nil))
-
-    ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
-    ;; nil.
-    :else
-    (do
-      (log/debug "Attempting to infer result metadata for Card")
-      (assoc card :result_metadata (infer-metadata-with-model-overrides query card)))))
+     ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
+     ;; nil.
+     :else
+     (do
+       (log/debug "Attempting to infer result metadata for Card")
+       (assoc card :result_metadata (infer-metadata-with-model-overrides query card))))))
 
 (defn assert-valid-idents!
   "Given a card (or updates being made to a card) check the `:result_metadata` has correctly formed idents."
