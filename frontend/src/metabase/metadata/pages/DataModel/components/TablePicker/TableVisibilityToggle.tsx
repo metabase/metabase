@@ -64,6 +64,7 @@ export function TableVisibilityToggle({
   return (
     <Tooltip label={isHidden ? t`Unhide table` : t`Hide table`}>
       <ActionIcon
+        aria-label={isHidden ? t`Unhide table` : t`Hide table`}
         className={className}
         variant="transparent"
         onClick={(event) => {

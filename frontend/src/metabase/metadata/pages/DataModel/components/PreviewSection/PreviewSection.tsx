@@ -52,7 +52,14 @@ const PreviewSectionBase = ({
   const data = useMemo(() => getPreviewTypeData(), []);
 
   return (
-    <Card bg="white" className={className} h="100%" px="lg" py="md">
+    <Card
+      bg="white"
+      className={className}
+      data-testid="preview-section"
+      h="100%"
+      px="lg"
+      py="md"
+    >
       <Group justify="space-between">
         <Text fw="bold">{t`Field preview`}</Text>
 

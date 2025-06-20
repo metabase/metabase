@@ -6,7 +6,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 39487", () => {
   const CREATED_AT_FIELD: LocalFieldReference = [
@@ -240,6 +240,92 @@ describe("issue 39487", () => {
   function previousButton() {
     return H.popover().get("button[data-direction=previous]");
   }
+});
+
+describe("issue 14124", () => {
+  it("should not include date when metric is binned by hour of day (metabase#14124)", () => {
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: null,
+    });
+
+    H.createQuestion(
+      {
+        name: "14124",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findAllByRole("columnheader", {
+      name: "Created At: Hour of day",
+    }).should("be.visible");
+
+    cy.log("Reported failing in v0.37.2");
+    cy.findAllByRole("gridcell", { name: "3:00 AM" }).should("be.visible");
+  });
+});
+
+describe("issue 15563", () => {
+  it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
+    // Remap fields
+    cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
+      semantic_type: "type/PK",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.CREATED_AT}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: ORDERS.CREATED_AT,
+    });
+
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Count of rows").click();
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    cy.get("[data-element-id=list-section-header]")
+      .contains("Created At")
+      .click();
+    cy.get("[data-element-id=list-section] [data-element-id=list-item-title]")
+      .contains("Created At")
+      .should("have.length", 1);
+  });
+});
+
+describe("issue 36122", () => {
+  it("should display breakouts group for all FKs (metabase#36122)", () => {
+    cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: PRODUCTS.ID,
+    });
+
+    H.openReviewsTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    H.popover().within(() => {
+      cy.findAllByTestId("dimension-list-item")
+        .eq(3)
+        .should("have.text", "Rating");
+      cy.get("[data-element-id=list-section-header]").should("have.length", 3);
+      cy.get("[data-element-id=list-section-header]")
+        .eq(0)
+        .should("have.text", "Reviews");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(1)
+        .should("have.text", "Product");
+      cy.get("[data-element-id=list-section-header]")
+        .eq(2)
+        .should("have.text", "Rating");
+    });
+  });
 });
 
 const MONGO_DB_ID = 2;

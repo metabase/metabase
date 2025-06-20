@@ -35,7 +35,7 @@ const TableSectionBase = ({ params, table }: Props) => {
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   return (
-    <Stack gap={0} p="xl" pt={0}>
+    <Stack data-testid="table-section" gap={0} p="xl" pt={0}>
       <Box
         bg="bg-white"
         className={S.header}

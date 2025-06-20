@@ -65,12 +65,12 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key === "Escape") {
+      if (resetOnEsc && event.key === "Escape") {
         flushSync(() => setInternalValue(value));
         ref.current?.blur();
       }
     },
-    [ref, value],
+    [ref, resetOnEsc, value],
   );
 
   useUnmountLayout(() => {

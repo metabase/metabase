@@ -2,10 +2,7 @@ import cx from "classnames";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Sortable } from "metabase/core/components/Sortable";
-import {
-  getFieldDisplayName,
-  getRawTableFieldId,
-} from "metabase/metadata/utils/field";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Flex, Group, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
@@ -21,7 +18,7 @@ interface Props {
 export const SortableFieldItem = ({ active, disabled, field }: Props) => {
   const id = getRawTableFieldId(field);
   const icon = getColumnIcon(Lib.legacyColumnTypeInfo(field));
-  const label = getFieldDisplayName(field);
+  const label = field.display_name;
   const draggable = !disabled;
 
   return (

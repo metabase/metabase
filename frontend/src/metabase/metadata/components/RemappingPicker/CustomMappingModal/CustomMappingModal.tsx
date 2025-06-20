@@ -33,6 +33,7 @@ export const CustomMappingModal = ({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     onChange(mapping);
+    onClose();
   };
 
   const handleClose = () => {

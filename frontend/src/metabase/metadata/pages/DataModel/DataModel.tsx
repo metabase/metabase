@@ -31,12 +31,12 @@ import type { RouteParams } from "./types";
 import { clamp, getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
-  params: RouteParams;
-  location: Location;
   children: ReactNode;
+  location: Location;
+  params: RouteParams;
 }
 
-export const DataModel = ({ params, location, children }: Props) => {
+export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, tableId, schemaId } = parseRouteParams(params);
   const previousTableId = usePrevious(tableId);
   const previousFieldId = usePrevious(fieldId);
