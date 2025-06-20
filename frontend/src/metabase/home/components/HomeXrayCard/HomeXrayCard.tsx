@@ -1,11 +1,8 @@
-import { HomeCard } from "../HomeCard";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { color } from "metabase/lib/colors";
+import { Box, Group, Icon, Text } from "metabase/ui";
 
-import {
-  CardIcon,
-  CardTitle,
-  CardTitlePrimary,
-  CardTitleSecondary,
-} from "./HomeXrayCard.styled";
+import { HomeCard } from "../HomeCard";
 
 interface HomeXrayCardProps {
   title: string;
@@ -20,11 +17,21 @@ export const HomeXrayCard = ({
 }: HomeXrayCardProps): JSX.Element => {
   return (
     <HomeCard url={url}>
-      <CardIcon name="bolt_filled" />
-      <CardTitle>
-        <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
-        <CardTitlePrimary>{title}</CardTitlePrimary>
-      </CardTitle>
+      <Icon name="bolt_filled" c={color("accent4")} w="1.5rem" h="1.25rem" />
+      <Box
+        component={Ellipsified}
+        tooltip={[message, title].join(" ")}
+        fz="1rem"
+        fw="bold"
+        ms="md"
+        pe=".2rem"
+      >
+        <Group gap={0}>
+          <Text c="text-medium">{message}</Text>
+          <Text>&nbsp;</Text>
+          <Text c="text-dark">{title}</Text>
+        </Group>
+      </Box>
     </HomeCard>
   );
 };
