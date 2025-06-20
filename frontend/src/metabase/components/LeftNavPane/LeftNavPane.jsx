@@ -1,11 +1,13 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import { IndexLink, Link } from "react-router";
-import { t } from "ttag";
 
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 
+/**
+ * @deprecated use frontend/src/metabase/admin/settings/components/AdminNav instead
+ */
 export function LeftNavPaneItem({ name, path, index = false }) {
   const isSelected = path === window.location.pathname;
   return (
@@ -45,26 +47,9 @@ export function LeftNavPaneItem({ name, path, index = false }) {
   );
 }
 
-export function LeftNavPaneItemBack({ path }) {
-  return (
-    <li>
-      <Link
-        to={path}
-        className={cx(
-          AdminS.AdminListItem,
-          CS.flex,
-          CS.alignCenter,
-          CS.textBold,
-          CS.justifyBetween,
-          CS.link,
-        )}
-      >
-        &lt; {t`Back`}
-      </Link>
-    </li>
-  );
-}
-
+/**
+ * @deprecated use frontend/src/metabase/admin/settings/components/AdminNav instead
+ */
 export function LeftNavPane({ children }) {
   return (
     <aside
