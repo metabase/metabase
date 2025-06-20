@@ -367,18 +367,16 @@
   (metabase.premium-features.test-util/with-premium-features [:cloud-custom-smtp]
     (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                        email-from-name "Standard"
-                                       email-reply-to ["reply-to-standard@metabase.com" "reply-to-me-too@metabase.com"]
+                                       email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
                                        cloud-email-smtp-host "cloud.metabase.com"
                                        cloud-email-from-address "cloud@metabase.com"
-                                       cloud-email-from-name "Cloud"
-                                       cloud-email-reply-to ["reply-to-cloud@metabase.com" "reply-to-me-too@metabase.com"]
                                        cloud-smtp-enabled true]
       (testing "Sends to cloud email settings when enabled"
         (is (=
-             [{:from     "Cloud <cloud@metabase.com>"
+             [{:from     "Standard <cloud@metabase.com>"
                :to       ["test@test.com"]
                :subject  "101 Reasons to use Metabase"
-               :reply-to ["reply-to-cloud@metabase.com" "reply-to-me-too@metabase.com"]
+               :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
                :body     [{:type    "text/html; charset=utf-8"
                            :content "101. Metabase will make you a better person"}]}]
              (with-fake-inbox
@@ -394,7 +392,7 @@
                [{:from     "Standard <standard@metabase.com>"
                  :to       ["test@test.com"]
                  :subject  "101 Reasons to use Metabase"
-                 :reply-to ["reply-to-standard@metabase.com" "reply-to-me-too@metabase.com"]
+                 :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
                  :body     [{:type    "text/html; charset=utf-8"
                              :content "101. Metabase will make you a better person"}]}]
                (with-fake-inbox
@@ -410,7 +408,7 @@
                [{:from     "Standard <standard@metabase.com>"
                  :to       ["test@test.com"]
                  :subject  "101 Reasons to use Metabase"
-                 :reply-to ["reply-to-standard@metabase.com" "reply-to-me-too@metabase.com"]
+                 :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
                  :body     [{:type    "text/html; charset=utf-8"
                              :content "101. Metabase will make you a better person"}]}]
                (with-fake-inbox
@@ -424,10 +422,10 @@
       (testing "Can explicitly send to :cloud, even when cloud-smtp is disabled"
         (tu/with-temporary-setting-values [cloud-smtp-enabled false]
           (is (=
-               [{:from     "Cloud <cloud@metabase.com>"
+               [{:from     "Standard <cloud@metabase.com>"
                  :to       ["test@test.com"]
                  :subject  "101 Reasons to use Metabase"
-                 :reply-to ["reply-to-cloud@metabase.com" "reply-to-me-too@metabase.com"]
+                 :reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
                  :body     [{:type    "text/html; charset=utf-8"
                              :content "101. Metabase will make you a better person"}]}]
                (with-fake-inbox

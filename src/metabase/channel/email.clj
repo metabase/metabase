@@ -137,15 +137,11 @@
                               (add-ssl-settings (channel.settings/email-smtp-security)))
                           :else (throw (ex-info (tru "Invalid SMTP configuration: {0}" smtp-config)
                                                 {:cause :invalid-smtp-config})))
-          from-name (if (= :cloud smtp-config)
-                      (channel.settings/cloud-email-from-name)
-                      (channel.settings/email-from-name))
+          from-name (channel.settings/email-from-name)
           from-address (if (= :cloud smtp-config)
                          (channel.settings/cloud-email-from-address)
                          (channel.settings/email-from-address))
-          reply-to (if (= :cloud smtp-config)
-                     (channel.settings/cloud-email-reply-to)
-                     (channel.settings/email-reply-to))
+          reply-to (channel.settings/email-reply-to)
           to-type (if bcc? :bcc :to)]
       (send-email! smtp-settings
                    (merge

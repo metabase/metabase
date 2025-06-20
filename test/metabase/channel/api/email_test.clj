@@ -52,9 +52,7 @@
    :cloud-email-smtp-security (setting/get :cloud-email-smtp-security)
    :cloud-email-smtp-username (setting/get :cloud-email-smtp-username)
    :cloud-email-smtp-password (setting/get :cloud-email-smtp-password)
-   :cloud-email-from-address  (setting/get :cloud-email-from-address)
-   :cloud-email-from-name     (setting/get :cloud-email-from-name)
-   :cloud-email-reply-to      (setting/get :cloud-email-reply-to)})
+   :cloud-email-from-address  (setting/get :cloud-email-from-address)})
 
 (def ^:private default-email-settings
   {:email-smtp-host     "foobar"
@@ -72,9 +70,7 @@
    :cloud-email-smtp-security :tls
    :cloud-email-smtp-username "munchkin"
    :cloud-email-smtp-password "gobble gobble"
-   :cloud-email-from-address  "eating@hungry.com"
-   :cloud-email-from-name     "Eating"
-   :cloud-email-reply-to      ["reply-to@hungry.com"]})
+   :cloud-email-from-address  "eating@hungry.com"})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
@@ -225,7 +221,7 @@
                                         (with-redefs [email/retry-delay-ms 0]
                                           (thunk)))}]
             (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
-                                         cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to cloud-smtp-enabled]
+                                         cloud-email-smtp-password cloud-email-from-address cloud-smtp-enabled]
               (testing (format "SMTP connection is valid? %b\n" success?)
                 (f (fn []
                      (testing "API request"
@@ -252,7 +248,7 @@
                                :cloud-email-smtp-password
                                :cloud-email-from-address)]
               (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
-                                           cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
+                                           cloud-email-smtp-password cloud-email-from-address]
                 (mt/with-temp-env-var-value! [mb-cloud-email-smtp-port (:cloud-email-smtp-port default-cloud-email-settings)
                                               mb-cloud-email-smtp-host (:cloud-email-smtp-host default-cloud-email-settings)
                                               mb-cloud-email-smtp-security (name (:cloud-email-smtp-security default-cloud-email-settings))
@@ -277,8 +273,6 @@
                  "Invalid cloud-email-smtp-port value")))
         (testing "Updating values with obfuscated password (#23919)"
           (mt/with-temporary-setting-values [cloud-email-from-address "notifications@metabase.com"
-                                             cloud-email-from-name "Sender Name"
-                                             cloud-email-reply-to ["reply-to@metabase.com"]
                                              cloud-email-smtp-host "www.test.com"
                                              cloud-email-smtp-password "preexisting"]
             (with-redefs [email/test-smtp-connection (fn [settings]
@@ -290,7 +284,7 @@
               (testing "If we don't change the password we don't see the password"
                 (let [payload (-> (cloud-email-settings)
                                 ;; user changes one property
-                                  (assoc :cloud-email-from-name "notifications")
+                                  (assoc :email-from-name "notifications")
                                 ;; the FE will have an obfuscated value
                                   (update :cloud-email-smtp-password setting/obfuscate-value))
                       response (mt/user-http-request :crowberto :put 200 "email/cloud" payload)]
@@ -342,7 +336,7 @@
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (mt/with-premium-features [:cloud-custom-smtp]
         (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security cloud-email-smtp-username
-                                     cloud-email-smtp-password cloud-email-from-address cloud-email-from-name cloud-email-reply-to]
+                                     cloud-email-smtp-password cloud-email-from-address]
           (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
             (is (= (-> default-cloud-email-settings
                        (assoc :with-corrections {})
@@ -357,7 +351,5 @@
                       :cloud-email-smtp-security :ssl
                       :cloud-email-smtp-username nil
                       :cloud-email-smtp-password nil
-                      :cloud-email-from-address  "notifications@metabase.com"
-                      :cloud-email-from-name     nil
-                      :cloud-email-reply-to      nil}
+                      :cloud-email-from-address  "notifications@metabase.com"}
                      (cloud-email-settings))))))))))

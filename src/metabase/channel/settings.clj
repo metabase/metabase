@@ -149,13 +149,6 @@
                   (throw (ex-info (tru "Invalid special character included.") {:status-code 400})))
                 (setting/set-value-of-type! :string :email-from-name new-value)))
 
-(defsetting cloud-email-from-name
-  (deferred-tru "The name you want to use for the sender of emails from your custom SMTP server.")
-  :encryption :no
-  :feature   :cloud-custom-smtp
-  :visibility :settings-manager
-  :audit      :getter)
-
 (defsetting bcc-enabled?
   (deferred-tru "Whether or not bcc emails are enabled, default behavior is that it is")
   :visibility :settings-manager
@@ -177,18 +170,6 @@
   :setter     (fn [new-value]
                 (if (validate-reply-to-addresses new-value)
                   (setting/set-value-of-type! :json :email-reply-to new-value)
-                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
-
-(defsetting cloud-email-reply-to
-  (deferred-tru "The email address you want the replies to go to from your custom SMTP server, if different from the from address.")
-  :encryption :no
-  :type       :json
-  :feature   :cloud-custom-smtp
-  :visibility :settings-manager
-  :audit      :getter
-  :setter     (fn [new-value]
-                (if (validate-reply-to-addresses new-value)
-                  (setting/set-value-of-type! :json :cloud-email-reply-to new-value)
                   (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
