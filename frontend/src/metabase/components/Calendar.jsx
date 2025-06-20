@@ -60,10 +60,18 @@ export default class Calendar extends Component {
   }
 
   onClickDay = date => {
-    const { selected, selectedEnd, isRangePicker } = this.props;
+    const { selected, selectedEnd, isRangePicker, maxRangeDays } = this.props;
     if (!isRangePicker || !selected || selectedEnd) {
       this.props.onChange(date.format("YYYY-MM-DD"), null);
     } else if (!selectedEnd) {
+      const diff = Math.abs(date.diff(selected, "days"));
+  
+      if (maxRangeDays && diff > maxRangeDays) {
+        // Do not allow selection if range exceeds allowed days
+        alert(`You can only select up to ${maxRangeDays} days.`);
+        return;
+      }
+  
       if (date.isAfter(selected)) {
         this.props.onChange(
           selected.format("YYYY-MM-DD"),
