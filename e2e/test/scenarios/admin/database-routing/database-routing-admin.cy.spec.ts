@@ -247,7 +247,7 @@ describe("admin > database > database routing", () => {
         .should("exist");
 
       cy.log("should not see database in table metadata db list");
-      cy.visit("/admin/datamodel");
+      H.DataModel.visit();
       cy.findByTestId("selected-database").click();
       H.popover()
         .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)

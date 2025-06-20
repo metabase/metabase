@@ -467,7 +467,7 @@ describe("scenarios > question > saved", () => {
     const HIDDEN_TYPES = ["hidden", "technical", "cruft"];
 
     function hideTable(name, visibilityType) {
-      cy.visit("/admin/datamodel");
+      H.DataModel.visit();
       H.sidebar().findByText(name).click();
       H.main().findByText("Hidden").click();
 

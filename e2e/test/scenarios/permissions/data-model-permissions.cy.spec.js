@@ -114,9 +114,11 @@ describe("scenarios > admin > permissions", () => {
 
     // Check limited access as a non-admin user
     cy.signIn("none");
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+    });
 
     // Find foreign key from table the user does not have access to
     cy.findByTestId("column-USER_ID").within(() => {

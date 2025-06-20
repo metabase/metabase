@@ -60,9 +60,11 @@ describe("issue 18384", () => {
   });
 
   it("should be able to open field properties even when one of the tables is hidden (metabase#18384)", () => {
-    cy.visit(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${PEOPLE_ID}`,
-    );
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: PEOPLE_ID,
+    });
 
     cy.findByTestId("column-ADDRESS").find(".Icon-gear").click();
 
@@ -77,15 +79,17 @@ describe("issue 18384", () => {
 });
 
 describe("issue 21984", () => {
-  const reviewsDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${REVIEWS_ID}`;
-
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata?**").as("tableMetadata");
 
     H.restore();
     cy.signInAsAdmin();
 
-    cy.visit(reviewsDataModelPage);
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: REVIEWS_ID,
+    });
     cy.wait("@tableMetadata");
 
     cy.findByDisplayValue("ID");
@@ -111,9 +115,6 @@ describe("issue 15542", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.wrap(
-      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS.PRODUCT_ID}/general`,
-    ).as("ORDERS_PRODUCT_ID_URL");
     cy.intercept("POST", "/api/field/*/dimension").as("fieldDimensionUpdate");
   });
 
@@ -153,8 +154,12 @@ describe("issue 15542", () => {
     // This test does manual naviation instead of using openOrdersTable and similar
     // helpers because they use cy.visit under the hood and that reloads the page,
     // clearing the in-browser cache, which is what we are testing here.
-
-    H.visitAlias("@ORDERS_PRODUCT_ID_URL");
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
 
     select("Plain input box").click();
     H.popover().findByText("A list of all values").click();
@@ -224,7 +229,7 @@ describe("issue 53595", () => {
   });
 
   it("all options are visibile while filtering the list of entity types (metabase#53595)", () => {
-    cy.visit("/admin/datamodel");
+    H.DataModel.visit();
     cy.wait("@getSchema");
     cy.findAllByTestId("admin-metadata-table-list-item").eq(0).click();
 
