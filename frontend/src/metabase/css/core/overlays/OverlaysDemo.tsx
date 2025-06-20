@@ -9,10 +9,10 @@ import _ from "underscore";
 
 import { EntityPickerModal } from "metabase/common/components/EntityPicker";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
+import { UndoListOverlay } from "metabase/common/components/UndoListing";
 import LegacyModal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Toaster from "metabase/components/Toaster";
-import { UndoListOverlay } from "metabase/containers/UndoListing";
 import LegacySelect, { Option } from "metabase/core/components/Select";
 import { PaletteCard } from "metabase/palette/components/Palette";
 import {
