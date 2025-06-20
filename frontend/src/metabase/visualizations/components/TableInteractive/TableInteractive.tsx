@@ -17,6 +17,10 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/common/hooks/use-memoized-callback";
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import ExternalLink from "metabase/core/components/ExternalLink";
@@ -36,10 +40,6 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/hooks/use-memoized-callback";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
