@@ -36,6 +36,10 @@
   mbql.s/Reference)
 
 (mr/def ::col
+  ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
+  ;; came from) and then have the `annotate` middleware convert them to something else for QP results purposes. Then
+  ;; we can 'ban' stuff like `:source-alias` and `:source` within Lib itself. See #59772 for some experimental work
+  ;; there.
   [:map
    [::source    {:optional true} ::legacy-source]
    [::field-ref {:optional true} ::super-broken-legacy-field-ref]])
@@ -287,10 +291,7 @@
   I guess. -- Cam"
   [query        :- ::lib.schema/query
    initial-cols :- ::cols]
-  (let [lib-cols (binding [lib.metadata.calculation/*display-name-style* :long
-                           ;; TODO -- this is supposed to mean `:inherited-temporal-unit` is included in the output
-                           ;; but doesn't seem to be working?
-                           lib.metadata.calculation/*propagate-binning-and-bucketing* true]
+  (let [lib-cols (binding [lib.metadata.calculation/*display-name-style* :long]
                    (doall (lib.metadata.calculation/returned-columns
                            query
                            -1
@@ -298,7 +299,8 @@
                            ;; TODO (Cam 6/12/25) -- not 100% sure about using different unique name generation logic
                            ;; here versus what is normally done in Lib -- I guess it should mean joins don't get
                            ;; truncated, but don't we want desired column aliases to match what lib generates?
-                           {:unique-name-fn (lib.util/non-truncating-unique-name-generator)})))
+                           {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
+                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))})))
         ;; generate barebones cols if lib was unable to calculate metadata here.
         lib-cols (if (empty? lib-cols)
                    (mapv basic-native-col initial-cols)

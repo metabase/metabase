@@ -583,6 +583,15 @@
   results metadata."
   (unique-name-generator-factory {::truncate? false}))
 
+(mu/defn identity-generator :- ::unique-name-generator
+  "Identity unique name generator that just returns strings as-is."
+  ([]
+   identity-generator)
+  ([s]
+   s)
+  ([_id s]
+   s))
+
 (def ^:private strip-id-regex
   #?(:cljs (js/RegExp. " id$" "i")
      ;; `(?i)` is JVM-specific magic to turn on the `i` case-insensitive flag.

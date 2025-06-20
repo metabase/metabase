@@ -17,6 +17,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -76,21 +77,25 @@
     query))
 
 (defn- update-stale-references-in-stage
-  "Fix stale references in `stage-number` stage of `query-modfied`. `stage-number` should not be 0."
+  "Fix stale references in `stage-number` stage of `query-modfied`.
+
+  `stage-number` should not be 0; [[update-stale-references]] is about fixing subsequent stages."
   [query-modified stage-number query-original]
-  (let [old-previous-stage-columns (lib.metadata.calculation/returned-columns query-original (dec stage-number))
-        new-previous-stage-columns (lib.metadata.calculation/returned-columns query-modified (dec stage-number))
-        source-uuid->new-column (m/index-by :lib/source-uuid new-previous-stage-columns)]
+  (let [old-columns (lib.metadata.calculation/visible-columns query-original stage-number)
+        new-columns (lib.metadata.calculation/visible-columns query-modified stage-number)
+        source-uuid->new-column (m/index-by :lib/source-uuid new-columns)]
     (lib.util/update-query-stage
      query-modified stage-number
      #(lib.util.match/replace
         %
         #{:field}
-        (let [old-matching-column (lib.equality/find-matching-column &match old-previous-stage-columns)
-              source-uuid (:lib/source-uuid old-matching-column)
-              new-column  (source-uuid->new-column source-uuid)
-              new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
-          (assoc &match 2 new-name))))))
+        (let [old-matching-column (lib.equality/find-matching-column &match old-columns)]
+          (if-let [new-column (some-> old-matching-column :lib/source-uuid source-uuid->new-column)]
+            (assoc &match 2 ((some-fn :lib/desired-column-alias :name) new-column))
+            (do
+              (log/warnf "Failed to match downstream ref %s against visible columns, ref is on stage %d at %s"
+                         &match stage-number &parents)
+              &match)))))))
 
 (defn update-stale-references
   "Update stale refs in query after clause removal.
@@ -706,7 +711,7 @@
 
     (lib.equality/matching-column-sets?
      query stage-number (:fields join)
-     (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+     (lib.join/join-fields-to-add-to-parent-stage query stage-number (assoc join :fields :all) {:unique-name-fn (lib.util/unique-name-generator)}))
     (assoc join :fields :all)
 
     :else join))

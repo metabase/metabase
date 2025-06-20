@@ -543,6 +543,8 @@
 (defmethod ->legacy-MBQL :value
   [[_tag opts value]]
   (let [opts (-> opts
+                 ;; remove effective type since it's not used/allowed in legacy MBQL
+                 (dissoc :effective-type)
                  ;; as mentioned above, `:value` in legacy MBQL expects `snake_case` keys for type info keys.
                  (set/rename-keys  {:base-type      :base_type
                                     :semantic-type  :semantic_type

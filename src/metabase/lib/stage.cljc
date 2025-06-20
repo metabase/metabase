@@ -9,7 +9,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
@@ -166,7 +165,7 @@
            ;; to generate `:expression` or `:field` refs.
            (dissoc ::lib.field/temporal-unit :lib/expression-name :metabase.lib.join/join-alias))))))
 
-(mu/defn- saved-question-metadata :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
+(mu/defn- saved-question-visible-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
   [query          :- ::lib.schema/query
    stage-number   :- :int
@@ -258,7 +257,7 @@
              (metric-metadata query stage-number card options))
            ;; 1c. Metadata associated with a saved Question
            (when source-card
-             (saved-question-metadata query stage-number source-card (assoc options :include-implicitly-joinable? false)))
+             (saved-question-visible-columns query stage-number source-card (assoc options :include-implicitly-joinable? false)))
            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
            (for [col (:columns (:lib/stage-metadata this-stage))]
              (assoc col
@@ -298,21 +297,6 @@
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
-;;; TODO (Cam 6/12/25) -- we should just make sure [[fields-columns]] and `returned-columns` for a join comes back
-;;; with IDs (and does name resolution) in those methods instead of doing it here
-;;;
-;;; TODO (Cam 6/17/25) -- 80% sure this doesn't do anything useful and we can remove it
-(defn- resolve-id
-  "Try to make sure we can have an ID for this column so we can use that for deduplication purposes."
-  [query stage-number col]
-  (merge
-   (when-not (:id col)
-     (lib.field.resolution/resolve-column-name
-      query
-      stage-number
-      ((some-fn :lib/source-column-alias :lib/deduplicated-name :lib/original-name :name) col)))
-   col))
-
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
   to make sure not to include them twice! We de-duplicate them here.
@@ -320,13 +304,10 @@
   This matches the logic in [[metabase.query-processor.middleware.resolve-joins/append-join-fields]] -- important to
   have the exact same behavior in both places."
   [query stage-number options field-cols join]
-  (let [join-cols      (lib.metadata.calculation/returned-columns query stage-number join options)
+  (let [join-cols      (lib.join/join-fields-to-add-to-parent-stage query stage-number join options)
         join-alias     (lib.join.util/current-join-alias join)
-        existing-cols  (keep (fn [col]
-                               (when (= (lib.join.util/current-join-alias col) join-alias)
-                                 (resolve-id query stage-number col)))
-                             field-cols)
-        join-cols  (mapv #(resolve-id query stage-number %) join-cols)
+        existing-cols  (filter #(= (lib.join.util/current-join-alias %) join-alias)
+                               field-cols)
         duplicate-col? (fn [join-col]
                          (some (fn [existing-col]
                                  ;; columns that don't have the same binning or temporal bucketing are never the same.
@@ -345,11 +326,6 @@
     (into (vec field-cols)
           (remove duplicate-col?)
           join-cols)))
-
-#_(defn- flow-previous-stage-metadata [query stage-number cols options]
-    (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-      (let [previous-stage (lib.util/query-stage query previous-stage-number)]
-        (when-let [cols (lib.metadata.calculation/returned-columns query previous-stage-number previous-stage)]))))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
 ;;; aggregations/breakouts, then return those and the fields columns. Otherwise if there are fields columns return
@@ -388,7 +364,7 @@
               source-cols
               (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
               (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
-              (lib.join/all-joins-expected-columns query stage-number options))))
+              (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
          #_(as-> cols (flow-previous-stage-metadata query stage-number cols options))
          lib.field.util/add-deduplicated-names))))
 

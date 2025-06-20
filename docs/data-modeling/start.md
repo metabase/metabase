@@ -1,5 +1,7 @@
 ---
 title: "Data modeling overview"
+redirect_from:
+  - /docs/latest/data-modeling
 ---
 
 # Data modeling overview

@@ -783,3 +783,55 @@
                   (result-metadata/expected-cols (lib/query mp (:dataset-query (lib.metadata/card mp 3)))))
              (map #(select-keys % [:name :semantic-type])
                   (result-metadata/expected-cols (lib/query mp (lib.metadata/card mp 3)))))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-test
+  (testing "Remapped columns in joined source queries should work (#15578)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title $category]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]                     ; products.title
+              ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
+              ["TITLE_2"  "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
+              ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name) (result-metadata/expected-cols query))))
+      (testing "with disable-remaps option in the middleware"
+        (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]
+                ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]
+                ;; orders.title should get excluded since it is invalid without remaps being in play.
+                ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]]
+               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (result-metadata/expected-cols
+                     (assoc-in query [:middleware :disable-remaps?] true)))))))))
+
+(deftest ^:parallel correct-legacy-refs-test
+  (testing "broken field refs should use names if they used names in the source query, regardless of whether it makes sense"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-query {:source-table $$orders
+                                                  :aggregation  [[:sum $total]]
+                                                  :breakout     [!day.created-at
+                                                                 $product-id->products.title
+                                                                 $product-id->products.category]}
+                                   :aggregation  [[:sum *sum/Float]]
+                                   :breakout     [*TITLE/Text]}
+                    :filter       [:> *sum/Float 100]}))]
+      ;; this should return a field literal ref because that's what we used in the query, even if that's not technically
+      ;; correct.
+      (is (= [[:field "TITLE" {:base-type :type/Text}]
+              [:field "sum"   {:base-type :type/Float}]]
+             (map :field-ref (result-metadata/expected-cols query)))))))

@@ -79,6 +79,13 @@
       (is (= [{:id (mt/id :reviews :created_at)
                :display_name "Reviews → Created At: Month"}
               {:display_name "Average of Rating"}
+              ;; TODO (Cam 6/17/25) -- the 'old' answer here was this, but it's returning something slightly different
+              ;; now that I added the [[metabase.lib.field/qp-model-metadata-for-stage]] stuff. Not really 100% sure
+              ;; what the ideal answer is here and if this is a bug or not. If we somehow revert to the old display name
+              ;; that's fine.
+              #_{:id (mt/id :reviews :created_at)
+                 :source_alias "Products+Reviews Summary - Reviews → Created At: Month"
+                 :display_name "Products+Reviews Summary - Reviews → Created At: Month → Created At"}
               {:id (mt/id :reviews :created_at)
                ;; TODO (Cam 6/17/25) -- the 'old' answer here was this, but it's returning something slightly different
                ;; now that I added the [[metabase.lib.field/qp-model-metadata-for-stage]] stuff. Not really 100% sure

@@ -11,7 +11,6 @@
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
-   [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
@@ -78,20 +77,27 @@
 ;;; this lives here as opposed to [[metabase.lib.metadata]] because that namespace is more of an interface namespace
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
-  [query stage-number {field-display-name  :display-name
-                       field-name          :name
-                       temporal-unit       ::temporal-unit
-                       binning             ::binning
-                       join-alias          :metabase.lib.join/join-alias
-                       fk-field-id         :fk-field-id
-                       table-id            :table-id
-                       parent-id           :parent-id
-                       simple-display-name ::simple-display-name
-                       hide-bin-bucket?    :lib/hide-bin-bucket?
-                       source              :lib/source
-                       source-uuid         :lib/source-uuid
-                       :as                 field-metadata} style]
+  [query stage-number {field-display-name    :display-name
+                       field-name            :name
+                       temporal-unit         ::temporal-unit
+                       binning               ::binning
+                       join-alias            :metabase.lib.join/join-alias
+                       original-join-alias   :lib/original-join-alias
+                       ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
+                       ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
+                       source-alias          :source-alias
+                       fk-field-id           :fk-field-id
+                       table-id              :table-id
+                       parent-id             :parent-id
+                       ;; TODO (Cam 6/19/25) -- not sure why we need both. QUE-1408
+                       simple-display-name   ::simple-display-name
+                       original-display-name :lib/original-display-name
+                       hide-bin-bucket?      :lib/hide-bin-bucket?
+                       source                :lib/source
+                       source-uuid           :lib/source-uuid
+                       :as                   field-metadata} style]
   (let [humanized-name (u.humanization/name->human-readable-name :simple field-name)
+        join-alias     (or join-alias original-join-alias source-alias)
         field-display-name (or simple-display-name
                                (when (and parent-id
                                           ;; check that we haven't nested yet
@@ -119,29 +125,31 @@
                                (if (string? field-name)
                                  humanized-name
                                  (str field-name)))
-        join-display-name  (when (and (= style :long)
-                                      ;; don't prepend a join display name if `:display-name` already contains one!
-                                      ;; Legacy result metadata might include it for joined Fields, don't want to add
-                                      ;; it twice. Otherwise we'll end up with display names like
-                                      ;;
-                                      ;;    Products → Products → Category
-                                      (not (str/includes? field-display-name " → ")))
-                             (or
-                              (when fk-field-id
-                                ;; Implicitly joined column pickers don't use the target table's name, they use the FK field's name with
-                                ;; "ID" dropped instead.
-                                ;; This is very intentional: one table might have several FKs to one foreign table, each with different
-                                ;; meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both linking to a PEOPLE table).
-                                ;; See #30109 for more details.
-                                (if-let [field (lib.metadata/field query fk-field-id)]
-                                  (-> (lib.metadata.calculation/display-info query stage-number field)
-                                      :display-name
-                                      lib.util/strip-id)
-                                  (let [table (lib.metadata/table-or-card query table-id)]
-                                    (lib.metadata.calculation/display-name query stage-number table style))))
-                              join-alias))
+        join-display-name  (when (= style :long)
+                             (let [field-display-name (or original-display-name field-display-name)]
+                               ;; don't prepend a join display name if `:display-name` already contains one! Legacy
+                               ;; result metadata might include it for joined Fields, don't want to add it twice.
+                               ;; Otherwise we'll end up with display names like
+                               ;;
+                               ;;    Products → Products → Category
+                               (when (not (str/includes? field-display-name " → "))
+                                 (or
+                                  (when fk-field-id
+                                    ;; Implicitly joined column pickers don't use the target table's name, they use the
+                                    ;; FK field's name with "ID" dropped instead.
+                                    ;;
+                                    ;; This is very intentional: one table might have several FKs to one foreign table,
+                                    ;; each with different meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both
+                                    ;; linking to a PEOPLE table). See #30109 for more details.
+                                    (if-let [field (lib.metadata/field query fk-field-id)]
+                                      (-> (lib.metadata.calculation/display-info query stage-number field)
+                                          :display-name
+                                          lib.util/strip-id)
+                                      (let [table (lib.metadata/table-or-card query table-id)]
+                                        (lib.metadata.calculation/display-name query stage-number table style))))
+                                  join-alias))))
         display-name       (if join-display-name
-                             (str join-display-name " → " field-display-name)
+                             (str join-display-name " → " (or original-display-name field-display-name))
                              field-display-name)
         temporal-format    #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
         bin-format         #(lib.binning/ensure-ends-with-binning % binning (:semantic-type field-metadata))
@@ -246,7 +254,7 @@
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
   (lib.temporal-bucket/available-temporal-buckets-for-type
-   ((some-fn :effective-type :base-type) field-metadata)
+   ((some-fn ::original-effective-type :effective-type :base-type) field-metadata)
    ;; `:inherited-temporal-unit` being set means field was bucketed on former stage. For this case, make the default nil
    ;; for next bucketing attempt (of already bucketed) field eg. through BreakoutPopover on FE, by setting `:inherited`
    ;; default unit.
@@ -328,10 +336,7 @@
           ::original-effective-type
           ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
-    :metabase.lib.field/temporal-unit :temporal-unit
-    ;; NOCOMMIT
-    :metabase.lib.join/join-alias :join-alias
-    }))
+    :metabase.lib.field/temporal-unit :temporal-unit}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-colums
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
@@ -364,6 +369,17 @@
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
                                  (select-renamed-keys metadata field-ref-propagated-keys)
+                                 ;; MEGA HACK! If the QP result metadata included `:source-alias` use that as a join
+                                 ;; alias! We should only do this for metadata that came from the QP results metadata!
+                                 ;;
+                                 ;; TODO (Cam 6/19/25) -- need a way to determine if this metadata came from the QP or
+                                 ;; not!
+                                 (when-let [source-alias (and (not inherited-column?)
+                                                              (not (:fk-field-id metadata))
+                                                              (not= :source/implicitly-joinable
+                                                                    (:lib/source metadata))
+                                                              (:source-alias metadata))]
+                                   {:join-alias source-alias})
                                  (when-not inherited-column?
                                    (select-renamed-keys metadata field-ref-propagated-keys-for-non-inherited-colums)))
         id-or-name        (or (lib.field.util/inherited-column-name metadata)

@@ -1114,7 +1114,7 @@
     :else
     x))
 
-(defn call-with-locale
+(defn call-with-locale!
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"
   [locale-tag f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-locale")
@@ -1125,7 +1125,7 @@
       (finally
         (Locale/setDefault current-locale)))))
 
-(defmacro with-locale
+(defmacro with-locale!
   "Allows a test to override the locale temporarily"
   [locale-tag & body]
   `(call-with-locale ~locale-tag (fn [] ~@body)))

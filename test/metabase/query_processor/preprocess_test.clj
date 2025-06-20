@@ -175,3 +175,20 @@
       (testing "Ad-hoc Query with Model => Model (Card 3) as source result metadata"
         (is (= expected-display-names
                (map :display_name (qp.preprocess/query->expected-cols (lib/query mp (lib.metadata/card mp 3))))))))))
+
+(deftest ^:parallel temporal-unit-in-display-name-test
+  (testing "Columns bucketed on first stage have bucket in display name on following stage/s"
+    (let [mp meta/metadata-provider
+          q1 (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                 (lib/aggregate (lib/count))
+                 (lib/breakout (lib/with-temporal-bucket
+                                 (lib.metadata/field mp (meta/id :orders :created-at))
+                                 :quarter))
+                 (lib/breakout (lib/with-temporal-bucket
+                                 (lib.metadata/field mp (meta/id :orders :created-at))
+                                 :day-of-week)))
+          q2 (lib/append-stage q1)]
+      (is (= ["Created At: Quarter"
+              "Created At: Day of week"
+              "Count"]
+             (map :display_name (qp.preprocess/query->expected-cols q2)))))))

@@ -275,11 +275,11 @@
         ;; otherwise we failed to find a match! This is expected for native queries but if the source query was MBQL
         ;; there's probably something wrong.
         (when-not (:native source-query)
-          (log/errorf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
-                      (pr-str field-clause)
-                      (u/pprint-to-str (into #{}
-                                             (map (some-fn ::desired-alias :name identity))
-                                             all-exports)))))))
+          (log/warnf "Failed to find matching field for\n\n%s\n\nin MBQL source query, query may not work! Found:\n\n%s"
+                     (pr-str field-clause)
+                     (u/pprint-to-str (into #{}
+                                            (map (some-fn ::desired-alias :name identity))
+                                            all-exports)))))))
 
 (defn- matching-field-in-join-at-this-level
   "If `field-clause` is the result of a join *at this level* with a `:source-query`, return the 'source' `:field` clause

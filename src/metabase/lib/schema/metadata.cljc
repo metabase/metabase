@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.metadata
   (:require
    [clojure.string :as str]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli.registry :as mr]
@@ -188,6 +189,10 @@
                              (dissoc :source)
                              (set/rename-keys column-renamed-keys)))}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
+    ;;
+    ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
+    ;; in [[metabase.legacy-mbql.schema]] so we can generate this documentation from this schema or whatever.
+    ;;
     ;; column names are allowed to be empty strings in SQL Server :/
     ;;
     ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's
@@ -248,8 +253,14 @@
     ;;
     ;; see description in schemas above
     ;;
-    [:lib/original-name        {:optional true} ::original-name]
-    [:lib/deduplicated-name    {:optional true} ::deduplicated-name]
+    [:lib/original-name     {:optional true} ::original-name]
+    [:lib/deduplicated-name {:optional true} ::deduplicated-name]
+    ;; appears to serve the same purpose as `:lib/original-name` but it's unclear where or why it is
+    ;; used. https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589
+    ;;
+    ;; TODO (Cam 6/19/25) -- can we remove this entirely?
+    [:lib/hack-original-name {:optional true} ::original-name]
+    ;;
     ;; when column metadata is returned by certain things
     ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
     ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.

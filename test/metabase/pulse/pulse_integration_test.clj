@@ -333,7 +333,7 @@
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
    :source-table (format "card__%s" base-card-id)})
 
-#_{:clj-kondo/ignore [metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest consistent-date-formatting-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]
@@ -441,8 +441,7 @@
                        (sort (keys metamodel-results))))))
             ;; Note that these values are obtained by inspection since the UI formats are in the FE code.
             ;;
-            ;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see
-            ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1750288689214359
+            ;; TODO (Cam 6/18/25) -- these fail for me locally with `Dec` instead of `December` -- see #59803
             (testing "The default export formats conform to the default UI formats"
               (is (= {"FULL_DATETIME_UTC"                "December 11, 2023, 3:30 PM"
                       "FULL_DATETIME_PACIFIC"            "December 11, 2023, 3:30 PM"

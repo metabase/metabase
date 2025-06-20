@@ -601,21 +601,27 @@
                                                       :target       x
                                                       :options      options})))))
 
-(defn remapped-columns
+(mu/defn remapped-columns
   "Given a seq of columns, return metadata for any remapped columns, if the `:include-remaps?` option is set."
-  [query stage-number source-cols {:keys [include-remaps? unique-name-fn] :as _options}]
+  [query :- map?
+   stage-number
+   source-cols
+   {:keys [include-remaps? unique-name-fn] :as _options} :- [:map
+                                                             [:unique-name-fn ::unique-name-fn]]]
   (when (and include-remaps?
-             (= (lib.util/canonical-stage-index query stage-number) 0))
-    (for [column source-cols
-          :let [remapped (lib.metadata/remapped-field query column)]
-          :when remapped]
-      (assoc remapped
-             :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
-             :lib/source-column-alias  (column-name query stage-number remapped)
-             :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
-                                           (:name remapped))
-             :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
-             :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column))))))
+             (lib.util/first-stage? query stage-number))
+    (let [existing-ids (into #{} (keep :id) source-cols)]
+      (for [column source-cols
+            :let   [remapped (lib.metadata/remapped-field query column)]
+            :when  (and remapped
+                        (not (existing-ids (:id remapped))))]
+        (assoc remapped
+               :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
+               :lib/source-column-alias  (column-name query stage-number remapped)
+               :lib/hack-original-name   (or ((some-fn :lib/hack-original-name :name) column)
+                                             (:name remapped))
+               :lib/desired-column-alias (unique-name-fn (lib.join.util/desired-alias query remapped))
+               :ident                    (lib.metadata.ident/remap-ident (:ident remapped) (:ident column)))))))
 
 (mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
   "Returns a list of primary keys for the source table of this query."
