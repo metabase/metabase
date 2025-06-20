@@ -502,7 +502,6 @@
           (let [db-id             (mt/id)
                 user-name-col     (field-id->name (mt/id :user :name))
                 user-group-id-col (field-id->name (mt/id :user :group-id))]
-
             (testing "concurrent creation that result in more than 1 row throw an error and rollback"
               (let [original-row-create!* @#'sql-jdbc.actions/row-create!*
                     error-thrown? (atom false)]
@@ -511,13 +510,14 @@
                                                                 (last (for [_ (range 2)]
                                                                         (apply original-row-create!* args))))]
 
-                    (actions/perform-action-with-single-input-and-output
-                     :table.row/create-or-update
-                     {:database db-id
-                      :table-id (mt/id :user)
-                      :row      {user-name-col     "New User"
-                                 user-group-id-col 1}
-                      :row-key  {user-name-col "New User"}}))
+                    (mt/with-current-user (mt/user->id :crowberto)
+                      (actions/perform-action-with-single-input-and-output
+                       :table.row/create-or-update
+                       {:database db-id
+                        :table-id (mt/id :user)
+                        :row      {user-name-col     "New User"
+                                   user-group-id-col 1}
+                        :row-key  {user-name-col "New User"}})))
                   (catch Throwable e
                     (reset! error-thrown? true)
                     (is (= (str "unintentionally created 2 duplicate rows for key: table \"public\".\"user\" with name = \"new user\". "
@@ -528,12 +528,13 @@
             (testing "Update more than 1 row"
               (let [error-thrown? (atom false)]
                 (try
-                  (actions/perform-action-with-single-input-and-output
-                   :table.row/create-or-update
-                   {:database db-id
-                    :table-id (mt/id :user)
-                    :row      {user-name-col "New User"}
-                    :row-key  {user-group-id-col 1}})
+                  (mt/with-current-user (mt/user->id :crowberto)
+                    (actions/perform-action-with-single-input-and-output
+                     :table.row/create-or-update
+                     {:database db-id
+                      :table-id (mt/id :user)
+                      :row      {user-name-col "New User"}
+                      :row-key  {user-group-id-col 1}}))
                   (catch Throwable e
                     (reset! error-thrown? true)
                     (is (= (str "found 2 duplicate rows in table \"public\".\"user\" with group-id = 1. unsure which row to update. "

@@ -56,6 +56,8 @@
           (doseq [[id settings] *initial-db-settings*]
             (t2/update! :model/Database id {:settings settings})))))))
 
+;; TODO: this is an anti pattern to modify the test db (mt/id)
+;; it can mess up with other tests if we make desctructive changes, we should really just create a new db
 (defn alter-db-settings! [f & args]
   (let [id           (mt/id)
         settings     (t2/select-one-fn :settings :model/Database id)
@@ -97,6 +99,7 @@
      :name  [:text]
      :song  [:text]}
     {:primary-key [:id]}))
+
   (^Closeable [column-map create-table-opts]
    (let [db            (t2/select-one :model/Database (mt/id))
          driver        (:engine db)
@@ -115,6 +118,59 @@
        (catch Exception e
          (try (cleanup) (catch Exception cleanup-ex (.addSuppressed e cleanup-ex)))
          (throw e))))))
+
+(def default-test-table
+  "The default test table config."
+  [{:id    'auto-inc-type
+    :name  [:text]
+    :song  [:text]}
+   {:primary-key [:id]}])
+
+(defn do-with-test-tables!
+  "Impl of [[with-test-tables!]]."
+  [[column-map create-table-opts] thunk]
+  (let [db            (t2/select-one :model/Database (mt/id))
+        driver        (:engine db)
+        auto-inc-type (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
+        column-map    (walk/postwalk-replace {'auto-inc-type auto-inc-type} column-map)
+        table-name    (str "temp_table_" (str/replace (random-uuid) "-" "_"))
+        cleanup       (fn []
+                        (driver/drop-table! driver (mt/id) table-name)
+                        (t2/delete! :model/Table :name table-name))]
+    (try
+      (thunk (create-test-table! db table-name column-map create-table-opts))
+      (catch Exception e
+        (try (cleanup) (catch Exception cleanup-ex (.addSuppressed e cleanup-ex)))
+        (throw e)))))
+
+(defmacro with-test-tables!
+  "Execute `body` with temporary table(s) created in the test database. You may specify multiple table specifications
+  to create multiple tables. Each table specification should be a vector containing `[column-map create-table-opts]`.
+  The symbol `auto-inc-type` can be used in column maps to denote the driver-specific auto-incrementing type for
+  primary keys.
+
+  Each table is created with a unique name and is automatically cleaned up after the body concludes. The body is
+  executed within an empty database context (mt/with-empty-db).
+
+  DOES NOT CREATE TABLES UNTIL THE BODY IS EXECUTED!
+
+    ;; create a single table with default schema
+    (with-test-tables! [table-id [{:id 'auto-inc-type, :name [:text], :song [:text]}
+                                  {:primary-key [:id]}]]
+      ...)
+
+    ;; create multiple tables
+    (with-test-tables! [users-table [{:id 'auto-inc-type, :name [:text]} {:primary-key [:id]}]
+                        posts-table [{:id 'auto-inc-type, :user_id [:int], :content [:text]} {:primary-key [:id]}]]
+      ...)"
+  [[table-binding table-spec & more] & body]
+  `(mt/with-empty-db
+     (do-with-test-tables!
+      ~table-spec
+      (fn [~table-binding]
+        ~@(if (seq more)
+            [`(with-test-tables! ~(vec more) ~@body)]
+            body)))))
 
 (defmacro with-temp-test-db!
   "Sets up a temporary database in the appdb to do destrcutive tests.
