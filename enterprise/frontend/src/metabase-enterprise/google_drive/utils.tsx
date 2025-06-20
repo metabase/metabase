@@ -1,5 +1,4 @@
 import { P, match } from "ts-pattern";
-import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
@@ -45,31 +44,3 @@ export const getStatus = ({
     .with({ error: true }, () => "error")
     .with({ status: P.string.minLength(1) }, ({ status }) => status)
     .otherwise(() => "not-connected");
-
-export const getErrorMessage = (
-  payload: ErrorPayload,
-  // eslint-disable-next-line no-literal-metabase-strings -- admin UI
-  fallback: string = t`Please check that the folder is shared with the Metabase Service Account.`,
-): string => {
-  if (typeof payload === "string") {
-    return payload;
-  }
-
-  if (!payload || typeof payload !== "object") {
-    return fallback;
-  }
-
-  if ("message" in payload && typeof payload.message === "string") {
-    return payload.message;
-  }
-
-  if ("error_message" in payload && typeof payload.error_message === "string") {
-    return payload.error_message;
-  }
-
-  if ("data" in payload) {
-    return getErrorMessage(payload.data, fallback);
-  }
-
-  return fallback;
-};
