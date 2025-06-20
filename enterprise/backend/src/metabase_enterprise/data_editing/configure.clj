@@ -77,7 +77,9 @@
   (for [[k p _s] (mc/children (mr/resolve-schema ::param-configuration))
         :let    [namespaced-opts (m/filter-keys namespace p)]
         :when   (seq namespaced-opts)]
-    [k (update-keys namespaced-opts (comp keyword name))]))
+    (-> namespaced-opts
+        (update-keys (comp keyword name))
+        (assoc :id k))))
 
 (mr/def ::action-configuration
   [:map {:closed true}
