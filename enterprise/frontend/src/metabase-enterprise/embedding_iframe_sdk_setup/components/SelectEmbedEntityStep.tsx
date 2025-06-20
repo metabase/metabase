@@ -13,9 +13,9 @@ import type {
   SdkIframeEmbedSetupRecentItem,
 } from "../types";
 
-import S from "./SelectEntityStep.module.css";
+import S from "./SelectEmbedEntityStep.module.css";
 
-export const SelectEntityStep = () => {
+export const SelectEmbedEntityStep = () => {
   const {
     experience,
     settings,
@@ -46,10 +46,6 @@ export const SelectEntityStep = () => {
         // Clear parameters
         initialParameters: {},
         hiddenParameters: [],
-
-        // Clear other entity types
-        template: undefined,
-        questionId: undefined,
       });
     } else if (type === "chart") {
       updateSettings({
@@ -57,10 +53,6 @@ export const SelectEntityStep = () => {
 
         // Clear parameters
         initialSqlParameters: {},
-
-        // Clear other entity types
-        template: undefined,
-        dashboardId: undefined,
       });
     }
   };
@@ -169,7 +161,7 @@ export const SelectEntityStep = () => {
                 })}
               >
                 <Group align="start" gap="sm">
-                  <Icon name={embedIcon} size={20} color="brand" />
+                  <Icon name={embedIcon} size={20} c="brand" />
 
                   <Stack gap="xs" flex={1}>
                     <Text fw="bold">{recentItem.name}</Text>
