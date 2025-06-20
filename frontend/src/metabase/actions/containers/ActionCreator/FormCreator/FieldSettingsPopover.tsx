@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getInputTypes } from "metabase/actions/constants";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Input from "metabase/core/components/Input";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import type {
   FieldSettings,
   FieldType,

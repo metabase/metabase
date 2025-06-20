@@ -4,10 +4,10 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useUserSetting } from "metabase/common/hooks";
+import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
-import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";

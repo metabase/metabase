@@ -2,10 +2,10 @@ import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import FormField from "metabase/core/components/FormField";
 import type { NumericInputProps } from "metabase/core/components/NumericInput";
 import NumericInput from "metabase/core/components/NumericInput";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 
 export interface FormNumericInputProps
   extends Omit<
