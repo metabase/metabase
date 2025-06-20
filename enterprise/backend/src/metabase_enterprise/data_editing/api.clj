@@ -266,7 +266,7 @@
    [:map {:closed true}
     [:inner-action ::unified-action.base]
     [:mapping {:optional true} [:maybe ::action.config.mappings]]
-    [:param-map ::action.config.param-map]
+    [:param-map [:maybe ::action.config.param-map]]
     ;; We will eventually want to generalize to support grids outside of dashboards.
     [:dashcard-id {:optional true} ms/PositiveInt]
     [:configurable {:optional true} :boolean]]])
