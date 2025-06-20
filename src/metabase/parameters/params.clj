@@ -152,7 +152,7 @@
   (let [field-ids       (into #{} cat (vals param-id->field-ids))
         field-id->field (when (seq field-ids)
                           (m/index-by :id (-> (t2/select Field:params-columns-only :id [:in field-ids])
-                                              (t2/hydrate :has_field_values :name_field :target
+                                              (t2/hydrate :has_field_values :name_field [:target :name_field]
                                                           [:dimensions :human_readable_field])
                                               remove-dimensions-nonpublic-columns)))]
     (->> param-id->field-ids
