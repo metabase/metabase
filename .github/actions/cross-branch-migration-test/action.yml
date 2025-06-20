@@ -9,6 +9,7 @@ inputs:
 runs:
   using: "composite"
   steps:
+    ## First we deploy the base branch
     - name: Check out base branch
       uses: actions/checkout@v4
       with:
@@ -41,6 +42,7 @@ runs:
       run: kill $(cat metabase_pid)
       shell: bash
 
+    ## Then we deploy the PR branch to ensure it migrates up successfully
     - name: Check out pull request branch
       uses: actions/checkout@v4
       with:
@@ -68,35 +70,36 @@ runs:
       run: kill $(cat metabase_pid)
       shell: bash
 
-#    - name: Migrate down a version to test going back to the previous state
-#      run: |
-#        clojure -M:dev:ee:migrate rollback last-deployment
-#      shell: bash
+    ## Reset the checksums so that we can when we go back to the base branch, it's as if the PR branch was what was originally deployed
+    - name: Reset the checksums as if the PR branch was what was originally deployed
+      run: |
+        clojure -M:dev:ee:migrate reset-checksums
+      shell: bash
+
+    - name: Test rollback of last migrations
+      run: |
+        clojure -M:dev:ee:migrate rollback last-deployment
+      shell: bash
 
     - name: (Re)check out base branch
       uses: actions/checkout@v4
       with:
         ref: ${{ inputs.base-ref }}
 
-    - name: Check migrate successfully runs
+    - name: (Re)run backend on base branch
       run: |
-        clojure -M:dev:ee:migrate up
+        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+        tail -F metabase.log &
       shell: bash
 
-#    - name: Run backend on base branch
-#      run: |
-#        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
-#        tail metabase.log &
-#      shell: bash
-
-#    - name: Wait for Metabase to start
-#      run: |
-#        while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
-#          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
-#            cat metabase.log
-#            echo "Metabase process has exited."
-#            exit 1
-#          fi
-#          sleep 1
-#        done
-#      shell: bash
+    - name: Wait for Metabase to start
+      run: |
+        while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
+          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            cat metabase.log
+            echo "Metabase process has exited."
+            exit 1
+          fi
+          sleep 1
+        done
+      shell: bash
