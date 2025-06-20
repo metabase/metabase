@@ -28,17 +28,36 @@ export const getMessages = createSelector(
   (metabot) => metabot.messages,
 );
 
+// if the message id provided is an agent id the first user message
+// that precedes it will be returned. if a user message id is provided
+// that exact message will be returned.
+export const getUserPromptForMessageId = createSelector(
+  [getMessages, (_, messageId: string) => messageId],
+  (messages, messageId) => {
+    const messageIndex = messages.findLastIndex((m) => m.id === messageId);
+    const message = messages[messageIndex];
+    if (!message) {
+      return undefined;
+    }
+
+    if (message.role === "user") {
+      return message;
+    } else {
+      return messages.slice(0, messageIndex).findLast((m) => m.role === "user");
+    }
+  },
+);
 export const getLastAgentMessagesByType = createSelector(
   getMessages,
   (messages) => {
     const lastMessage = _.last(messages);
-    if (!lastMessage || lastMessage.actor === "user") {
+    if (!lastMessage || lastMessage.role === "user") {
       return [];
     }
 
     const start =
       messages.findLastIndex(
-        (msg) => msg.actor !== "agent" || msg.type !== lastMessage.type,
+        (msg) => msg.role !== "agent" || msg.type !== lastMessage.type,
       ) + 1;
     return messages.slice(start).map(({ message }) => message);
   },
@@ -88,6 +107,7 @@ export const getAgentRequestMetadata = createSelector(
   getMetabotState,
   (history, state) => ({
     state,
-    history,
+    // NOTE: need end to end support for ids on messages as BE will error if ids are present
+    history: history.map(({ id, ...h }) => h),
   }),
 );

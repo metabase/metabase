@@ -1,4 +1,5 @@
-import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
+import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
@@ -7,10 +8,14 @@ import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
 import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
 
 export type MetabotAgentChatMessage =
-  | { actor: "agent"; message: string; type: "reply" }
-  | { actor: "agent"; message: string; type: "error" };
+  | { id: string; role: "agent"; message: string; type: "reply" }
+  | { id: string; role: "agent"; message: string; type: "error" };
 
-export type MetabotUserChatMessage = { actor: "user"; message: string };
+export type MetabotUserChatMessage = {
+  id: string;
+  role: "user";
+  message: string;
+};
 
 export type MetabotChatMessage =
   | MetabotAgentChatMessage
@@ -28,7 +33,7 @@ export interface MetabotState {
 }
 
 export const metabotInitialState: MetabotState = {
-  useStreaming: false,
+  useStreaming: true,
   isProcessing: false,
   conversationId: undefined,
   messages: [],
@@ -45,19 +50,29 @@ export const metabot = createSlice({
     toggleStreaming: (state) => {
       state.useStreaming = !state.useStreaming;
     },
-    addUserMessage: (state, action: PayloadAction<string>) => {
-      state.messages.push({ actor: "user", message: action.payload });
+    addUserMessage: (
+      state,
+      action: PayloadAction<Omit<MetabotUserChatMessage, "role">>,
+    ) => {
+      const { id, message } = action.payload;
 
+      const lastMessage = _.last(state.messages);
+      if (lastMessage?.role === "agent" && lastMessage?.type === "error") {
+        state.messages.pop();
+      }
+
+      state.messages.push({ id, role: "user", message });
       if (state.useStreaming) {
-        state.history.push({ role: "user", content: action.payload });
+        state.history.push({ id, role: "user", content: message });
       }
     },
     addAgentMessage: (
       state,
-      action: PayloadAction<Omit<MetabotAgentChatMessage, "actor">>,
+      action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
       state.messages.push({
-        actor: "agent",
+        id: nanoid(),
+        role: "agent",
         message: action.payload.message,
         type: action.payload.type,
       });
@@ -74,6 +89,21 @@ export const metabot = createSlice({
     },
     toolCallEnd: (state) => {
       state.activeToolCall = undefined;
+    },
+    // NOTE: this reducer fn should be made smarter if/when we want to have
+    // metabot's `state` object be able to remove / forget values. currently
+    // we do not rewind the state to the point in time of the original prompt
+    // so if / when this becomes expected, we'll need to do some extra work here
+    // NOTE: this doesn't work in non-streaming contexts right now
+    rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
+      if (state.useStreaming) {
+        const messageIndex = state.messages.findLastIndex((m) => id === m.id);
+        const historyIndex = state.history.findLastIndex((h) => id === h.id);
+        if (historyIndex > -1 && messageIndex > -1) {
+          state.messages = state.messages.slice(0, messageIndex);
+          state.history = state.history.slice(0, historyIndex);
+        }
+      }
     },
     resetConversation: (state) => {
       state.messages = [];

@@ -33,16 +33,16 @@ describe("metabot selectors", () => {
     });
 
     it("should not return any messages if latest message is from a user", () => {
-      const state = setup([{ actor: "user", message: "bleh" }]);
+      const state = setup([{ id: "1", role: "user", message: "bleh" }]);
       const messages = getLastAgentMessagesByType(state as any);
       expect(messages).toEqual([]);
     });
 
     it("should return latest agent reply messages only", () => {
       const state = setup([
-        { actor: "user", message: "bleh" },
-        { actor: "agent", type: "reply", message: "blah" },
-        { actor: "agent", type: "reply", message: "blah" },
+        { id: "1", role: "user", message: "bleh" },
+        { id: "2", role: "agent", type: "reply", message: "blah" },
+        { id: "3", role: "agent", type: "reply", message: "blah" },
       ]);
       const messages = getLastAgentMessagesByType(state as any);
       expect(messages).toEqual(["blah", "blah"]);
@@ -50,9 +50,9 @@ describe("metabot selectors", () => {
 
     it("should return latest agent error messages only", () => {
       const state = setup([
-        { actor: "agent", type: "reply", message: "blah" },
-        { actor: "agent", type: "error", message: "BLAH" },
-        { actor: "agent", type: "error", message: "BLAH" },
+        { id: "1", role: "agent", type: "reply", message: "blah" },
+        { id: "2", role: "agent", type: "error", message: "BLAH" },
+        { id: "3", role: "agent", type: "error", message: "BLAH" },
       ]);
       const messages = getLastAgentMessagesByType(state as any);
       expect(messages).toEqual(["BLAH", "BLAH"]);

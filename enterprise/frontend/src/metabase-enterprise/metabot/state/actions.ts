@@ -1,4 +1,4 @@
-import type { UnknownAction } from "@reduxjs/toolkit";
+import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, isMatching, match } from "ts-pattern";
 import { t } from "ttag";
@@ -31,6 +31,7 @@ import {
   getIsProcessing,
   getMetabotConversationId,
   getUseStreaming,
+  getUserPromptForMessageId,
 } from "./selectors";
 
 const isAbortError = isMatching({ name: "AbortError" });
@@ -62,26 +63,33 @@ export const setVisible =
     dispatch(metabot.actions.setVisible(isVisible));
   };
 
-export const submitInput = createAsyncThunk(
+export type MetabotPromptSubmissionResult =
+  | { prompt: string; success: true; shouldRetry?: void }
+  | { prompt: string; success: false; shouldRetry: false }
+  | { prompt: string; success: false; shouldRetry: true };
+
+export const submitInput = createAsyncThunk<
+  MetabotPromptSubmissionResult,
+  {
+    message: string;
+    context: MetabotChatContext;
+    metabot_id?: string;
+  }
+>(
   "metabase-enterprise/metabot/submitInput",
-  async (
-    data: {
-      message: string;
-      context: MetabotChatContext;
-      metabot_id?: string;
-    },
-    { dispatch, getState, signal },
-  ) => {
+  async (data, { dispatch, getState, signal }) => {
     const state = getState() as any;
     const isProcessing = getIsProcessing(state);
     if (isProcessing) {
-      return console.error("Metabot is actively serving a request");
+      console.error("Metabot is actively serving a request");
+      return { prompt: data.message, success: false, shouldRetry: false };
     }
 
     // it's important that we get the current metadata containing the history before
     // altering it by adding the current message the user is wanting to send
     const agentMetadata = getAgentRequestMetadata(getState() as any);
-    dispatch(addUserMessage(data.message));
+    const messageId = nanoid();
+    dispatch(addUserMessage({ id: messageId, message: data.message }));
 
     const useStreaming = getUseStreaming(getState() as any);
     const sendRequestAction = useStreaming
@@ -93,7 +101,19 @@ export const submitInput = createAsyncThunk(
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
     });
-    return sendMessageRequestPromise;
+
+    const result = await sendMessageRequestPromise;
+
+    // TODO:
+    if (isRejected(result)) {
+      const shouldRetry = !!result.error;
+      dispatch(rewindConversation(messageId));
+      dispatch(stopProcessingAndNotify(t`Something went wrong, try again.`));
+      console.error(result.error);
+      return { prompt: data.message, success: false, shouldRetry };
+    }
+
+    return { prompt: data.message, success: true };
   },
 );
 
@@ -162,6 +182,7 @@ export const sendStreamedAgentRequest = createAsyncThunk(
     try {
       const body = { ...req, conversation_id: sessionId };
       const state = { ...body.state };
+      let error: unknown = undefined;
 
       const response = await aiStreamingQuery(
         {
@@ -187,8 +208,13 @@ export const sendStreamedAgentRequest = createAsyncThunk(
           },
           onToolCallPart: (part) => dispatch(toolCallStart(part)),
           onToolResultPart: () => dispatch(toolCallEnd()),
+          onError: (part) => (error = part),
         },
       );
+
+      if (error) {
+        throw error;
+      }
 
       return {
         data: {
@@ -204,7 +230,7 @@ export const sendStreamedAgentRequest = createAsyncThunk(
       const notification = match(error)
         .with({ name: "AbortError" }, () => false as const)
         .with({ status: P.number.gte(500) }, getAgentOfflineError)
-        .otherwise(() => t`I can’t do that, unfortunately.`);
+        .otherwise(() => t`Something went wrong.`);
 
       if (notification !== false) {
         dispatch(addAgentMessage({ type: "error", message: notification }));
@@ -232,9 +258,45 @@ export const cancelInflightAgentRequests = createAsyncThunk(
   },
 );
 
+export const rewindConversation = createAsyncThunk(
+  "metabase-enterprise/metabot/rewindConversation",
+  (messageId: string, { dispatch }) => {
+    dispatch(setIsProcessing(false));
+
+    dispatch(cancelInflightAgentRequests());
+
+    dispatch(metabot.actions.rewindStateToMessageId(messageId));
+  },
+);
+
+export const retryPrompt = createAsyncThunk<
+  MetabotPromptSubmissionResult & { prompt: string },
+  {
+    messageId: string;
+    context: MetabotChatContext;
+    metabot_id?: string;
+  }
+>(
+  "metabase-enterprise/metabot/retryPrompt",
+  async ({ messageId, context, metabot_id }, { getState, dispatch }) => {
+    const prompt = getUserPromptForMessageId(getState() as any, messageId);
+    if (!prompt) {
+      throw new Error("Agent message was not proceeded by a user message");
+    }
+
+    dispatch(rewindConversation(prompt.id));
+
+    return await dispatch(
+      submitInput({ message: prompt.message, context, metabot_id }),
+    ).unwrap();
+  },
+);
+
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
   (_args, { dispatch }) => {
+    dispatch(setIsProcessing(false));
+
     dispatch(cancelInflightAgentRequests());
 
     // clear out suggested prompts so the user is shown something fresh
@@ -285,7 +347,7 @@ export const stopProcessingAndNotify =
     dispatch(
       addAgentMessage({
         type: "error",
-        message: message || t`I can’t do that, unfortunately.`,
+        message: message || t`Something went wrong, try again.`,
       }),
     );
   };

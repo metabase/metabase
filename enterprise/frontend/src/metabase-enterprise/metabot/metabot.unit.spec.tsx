@@ -476,9 +476,9 @@ describe("metabot", () => {
       const beforeResetState = getMetabotState(store);
       expect(beforeResetState.conversationId).not.toBe(null);
       expect(beforeResetState.messages).toStrictEqual([
-        { actor: "user", message: "Who is your favorite?" },
+        { role: "user", message: "Who is your favorite?" },
         {
-          actor: "agent",
+          role: "agent",
           message: "You are... but don't tell anyone!",
           type: "reply",
         },
@@ -499,7 +499,7 @@ describe("metabot", () => {
 
       // adding messages this long via the ui's input makes the test hang
       act(() => {
-        store.dispatch(addUserMessage(longMsg));
+        store.dispatch(addUserMessage({ id: "1", message: longMsg }));
       });
       expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
       expect(
@@ -507,7 +507,7 @@ describe("metabot", () => {
       ).not.toBeInTheDocument();
 
       act(() => {
-        store.dispatch(addUserMessage(longMsg));
+        store.dispatch(addUserMessage({ id: "2", message: longMsg }));
       });
       expect(
         await screen.findByText(/This chat is getting long/),
