@@ -52,9 +52,24 @@ export function NumberFilterPicker({
     filter,
   });
 
+  const [chevronState, setChevronState] = useState({
+    leftInclusive: true,
+    rightInclusive: true,
+  });
+
+  const handleChevronChange = (side: "left" | "right", value: boolean) => {
+    setChevronState((prev) => ({
+      ...prev,
+      [side === "left" ? "leftInclusive" : "rightInclusive"]: value,
+    }));
+  };
+
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
+    if (newOperator === "between") {
+      setChevronState({ leftInclusive: true, rightInclusive: true });
+    }
   };
 
   const handleFilterChange = (opts: FilterChangeOpts) => {
@@ -99,6 +114,10 @@ export function NumberFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
+          chevronState={operator === "between" ? chevronState : undefined}
+          onChevronChange={
+            operator === "between" ? handleChevronChange : undefined
+          }
         />
         <FilterPickerFooter
           isNew={isNew}
@@ -122,6 +141,11 @@ interface NumberValueInputProps {
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
+const GREATER_THAN_OR_EQUAL_TO = "≥";
+const GREATER_THAN = ">";
+const LESS_THAN_OR_EQUAL_TO = "≤";
+const LESS_THAN = "<";
+
 function NumberValueInput({
   query,
   stageIndex,
@@ -130,7 +154,12 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-}: NumberValueInputProps) {
+  chevronState,
+  onChevronChange,
+}: NumberValueInputProps & {
+  chevronState?: { leftInclusive: boolean; rightInclusive: boolean };
+  onChevronChange?: (side: "left" | "right", value: boolean) => void;
+}) {
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
@@ -163,6 +192,8 @@ function NumberValueInput({
   }
 
   if (valueCount === 2) {
+    const leftInclusive = chevronState?.leftInclusive ?? true;
+    const rightInclusive = chevronState?.rightInclusive ?? true;
     return (
       <Flex direction="column" p="md" gap="md">
         <NumberFilterInput
@@ -171,7 +202,13 @@ function NumberValueInput({
           placeholder={t`Start of range`}
           autoFocus
           onChange={(newValue) => onChange([newValue, values[1]])}
-          leftSection={<GreaterChevronToggleButton />}
+          leftSection={
+            <ToggleButton
+              onClick={() => onChevronChange?.("left", !leftInclusive)}
+            >
+              {leftInclusive ? GREATER_THAN_OR_EQUAL_TO : GREATER_THAN}
+            </ToggleButton>
+          }
           classNames={{
             root: S.root,
             input: S.input,
@@ -181,48 +218,26 @@ function NumberValueInput({
           value={values[1]}
           placeholder={t`End of range`}
           onChange={(newValue) => onChange([values[0], newValue])}
-          leftSection={<LessChevronToggleButton />}
+          leftSection={
+            <ToggleButton
+              onClick={() => onChevronChange?.("right", !rightInclusive)}
+            >
+              {rightInclusive ? LESS_THAN_OR_EQUAL_TO : LESS_THAN}
+            </ToggleButton>
+          }
           classNames={{
             root: S.root,
             input: S.input,
           }}
         />
-        <Text
-          size="sm"
-          c="text-secondary"
-        >{t`You can leave one of these fields blank`}</Text>
+        <Text size="sm" c="text-secondary">
+          {t`You can leave one of these fields blank`}
+        </Text>
       </Flex>
     );
   }
 
   return null;
-}
-
-const GREATER_THAN_OR_EQUAL_TO = "≥";
-const GREATER_THAN = ">";
-const LESS_THAN_OR_EQUAL_TO = "≤";
-const LESS_THAN = "<";
-
-function GreaterChevronToggleButton() {
-  const [isOrEqual, setIsOrEqual] = useState(true);
-  const handleClick = () => setIsOrEqual((prev) => !prev);
-
-  return (
-    <ToggleButton onClick={handleClick}>
-      {isOrEqual ? GREATER_THAN_OR_EQUAL_TO : GREATER_THAN}
-    </ToggleButton>
-  );
-}
-
-function LessChevronToggleButton() {
-  const [isOrEqual, setIsOrEqual] = useState(true);
-  const handleClick = () => setIsOrEqual((prev) => !prev);
-
-  return (
-    <ToggleButton onClick={handleClick}>
-      {isOrEqual ? LESS_THAN_OR_EQUAL_TO : LESS_THAN}
-    </ToggleButton>
-  );
 }
 
 function ToggleButton({
