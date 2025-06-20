@@ -272,10 +272,13 @@
 (mu/defn- adjust-ident :- :map
   [join :- [:map
             [:ident
-             {:error/message "Join must have an ident to determine column idents"}
+             {:error/message "Join must have an ident to determine column idents"
+              :optional true}
              ::lib.schema.common/non-blank-string]]
    col  :- :map]
-  (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
+  (cond-> col
+    (:ident join)
+    (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))))
 
 ;;; this returns ALL the columns 'visible' within the join, regardless of `:fields` ! `:fields` is only the list of
 ;;; things to get added to the parent stage `:fields`! See QUE-1380

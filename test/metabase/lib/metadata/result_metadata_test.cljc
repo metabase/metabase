@@ -11,6 +11,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -825,10 +826,10 @@
           single-stage-query (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
                                  (lib/aggregate (lib/count))
                                  (lib/breakout (lib/with-temporal-bucket
-                                                 (lib.metadata/field mp (meta/id :orders :created_at))
+                                                 (lib.metadata/field mp (meta/id :orders :created-at))
                                                  :quarter))
                                  (lib/breakout (lib/with-temporal-bucket
-                                                 (lib.metadata/field mp (meta/id :orders :created_at))
+                                                 (lib.metadata/field mp (meta/id :orders :created-at))
                                                  :day-of-week)))
           multi-stage-query (lib/append-stage single-stage-query)]
       (letfn [(cols-display-name-by-index [results index]
@@ -883,79 +884,3 @@
         (is (= [[:field "TITLE" {:base-type :type/Text}]
                 [:aggregation 0]]
                (map :field-ref (result-metadata/expected-cols query))))))))
-
-(comment
-  (deftest ^:parallel query->expected-cols-test
-    (testing "field_refs in expected columns have the original join aliases (#30648)"
-      (mt/dataset test-data
-        (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
-          (let [query
-                (lib.tu.macros/mbql-query
-                  products
-                  {:joins
-                   [{:source-query
-                     {:source-table $$orders
-                      :joins
-                      [{:source-table $$people
-                        :alias "People"
-                        :condition [:= $orders.user_id &People.people.id]
-                        :fields [&People.people.address]
-                        :strategy :left-join}]
-                      :fields [$orders.id &People.people.address]}
-                     :alias "Question 54"
-                     :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
-                     :fields [[:field %orders.id {:join-alias "Question 54"}]
-                              [:field %people.address {:join-alias "Question 54"}]]
-                     :strategy :left-join}]
-                   :fields
-                   [!default.created_at
-                    [:field %orders.id {:join-alias "Question 54"}]
-                    [:field %people.address {:join-alias "Question 54"}]]})]
-            (is (=? [{:name "CREATED_AT"
-                      :field_ref [:field (meta/id :products :created_at) {:temporal-unit :default}]
-                      :display_name "Created At"}
-                     {:name "ID"
-                      :field_ref [:field (meta/id :orders :id) {:join-alias "Question 54"}]
-                      :display_name "Question 54 → ID"}
-                     {:name "ADDRESS"
-                      :field_ref [:field (meta/id :people :address) {:join-alias "Question 54"}]
-                      :display_name "Question 54 → Address"}]
-                    (qp.preprocess/query->expected-cols query)))))))))
-
-(comment
-  (deftest ^:parallel query->expected-cols-test
-    (testing "field_refs in expected columns have the original join aliases (#30648)"
-      (qp.store/with-metadata-provider meta/metadata-provider
-        (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
-          (let [query
-                (lib.tu.macros/mbql-query
-                  products
-                  {:joins
-                   [{:source-query
-                     {:source-table $$orders
-                      :joins
-                      [{:source-table $$people
-                        :alias        "People"
-                        :condition    [:= $orders.user-id &People.people.id]
-                        :fields       [&People.people.address]
-                        :strategy     :left-join}]
-                      :fields       [$orders.id &People.people.address]}
-                     :alias     "Question 54"
-                     :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
-                     :fields    [[:field %orders.id {:join-alias "Question 54"}]
-                                 [:field %people.address {:join-alias "Question 54"}]]
-                     :strategy  :left-join}]
-                   :fields
-                   [!default.created-at
-                    [:field %orders.id {:join-alias "Question 54"}]
-                    [:field %people.address {:join-alias "Question 54"}]]})]
-            (is (=? [{:name         "CREATED_AT"
-                      :field_ref    [:field (meta/id :products :created-at) {:temporal-unit :default}]
-                      :display_name "Created At"}
-                     {:name         "ID"
-                      :field_ref    [:field (meta/id :orders :id) {:join-alias "Question 54"}]
-                      :display_name "Question 54 → ID"}
-                     {:name         "ADDRESS"
-                      :field_ref    [:field (meta/id :people :address) {:join-alias "Question 54"}]
-                      :display_name "Question 54 → Address"}]
-                    (qp.preprocess/query->expected-cols query)))))))))

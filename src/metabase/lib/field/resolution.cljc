@@ -21,7 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(def ^:dynamic *debug* false)
+(def ^:dynamic ^:private *debug* false)
 
 ;;; TODO (Cam 6/17/25) -- move this into `lib.util` so we can use it elsewhere
 (defn- merge-metadata

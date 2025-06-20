@@ -546,7 +546,6 @@
                                   "Doohickey"
                                   {:base_type         :type/Text
                                    :database_type     "CHARACTER VARYING"
-                                   :effective_type    :type/Text
                                    :name              "CATEGORY"
                                    :semantic_type     :type/Category}]]}
                  :fields       [[:field
