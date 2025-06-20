@@ -72,13 +72,6 @@
       (cond->> cols
         model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
 
-(def ^:private CardWithDatasetQuery
-  [:merge
-   ::lib.schema.metadata/card
-   [:map
-    {:error/message "Card with :dataset-query"}
-    [:dataset-query :map]]])
-
 (mu/defn- ->card-metadata-column :- ::lib.schema.metadata/column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
   accept both `card-id` and `card`.
@@ -154,7 +147,7 @@
 
 (mu/defn- card-cols* :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- CardWithDatasetQuery]
+   card                  :- ::lib.schema.metadata/card]
   (when-let [cols (or (:fields card)
                       (:result-metadata card)
                       (infer-returned-columns metadata-providerable card))]
@@ -162,8 +155,8 @@
 
 (mu/defn- source-model-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- CardWithDatasetQuery]
-  (let [card-query (lib.query/query metadata-providerable (:dataset-query card))]
+   card                  :- ::lib.schema.metadata/card]
+  (when-let [card-query (some->> (:dataset-query card) (lib.query/query metadata-providerable))]
     (when-let [source-card-id (lib.util/source-card-id card-query)]
       (when-not (= source-card-id (:id card))
         (let [source-card (lib.metadata/card metadata-providerable source-card-id)]
@@ -203,7 +196,7 @@
 (mu/defn card-metadata-columns :- CardColumns
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card                  :- CardWithDatasetQuery]
+   card                  :- ::lib.schema.metadata/card]
   (when-not (contains? *card-metadata-columns-card-ids* (:id card))
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
       (let [result-cols (card-cols* metadata-providerable card)

@@ -407,3 +407,10 @@
                                    (as-> query query
                                      (lib/expression query "ID" 1)
                                      (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))
+
+(deftest ^:parallel source-model-cols-test
+  (testing "source-model-cols should not fail in FE usage where Card metadata may not have a query"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
+      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
