@@ -45,8 +45,6 @@ export const SdkIframeEmbedPreview = () => {
       embedJsRef.current?.destroy();
       script.remove();
     };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are updated in the useEffect below
   }, [instanceUrl]);
 
   useEffect(() => {
