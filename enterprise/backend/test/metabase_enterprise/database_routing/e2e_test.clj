@@ -197,15 +197,16 @@
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
                            response))))))))))))
 
+;; used to be named table but that is reserved on bigquery
 (tx/defdataset router-data
-  [["table"
-    [{:field-name "t", :base-type :type/Text}]
+  [["t"
+    [{:field-name "f", :base-type :type/Text}]
     [["original-foo"]
      ["original-bar"]]]])
 
 (tx/defdataset routed-data
-  [["table"
-    [{:field-name "t", :base-type :type/Text}]
+  [["t"
+    [{:field-name "f", :base-type :type/Text}]
     [["routed-foo"]
      ["routed-bar"]]]])
 
@@ -230,7 +231,7 @@
                                                         :user_attribute "db_name"}]
                   (met/with-user-attributes! :rasta {"db_name" (:name routed)}
                     (let [crowberto (mt/with-current-user (mt/user->id :crowberto)
-                                      (mt/rows (mt/process-query (mt/query table))))
+                                      (mt/rows (mt/process-query (mt/query t))))
                           rasta (mt/with-current-user (mt/user->id :rasta)
-                                  (mt/rows (mt/process-query (mt/query table))))]
+                                  (mt/rows (mt/process-query (mt/query t))))]
                       (is (not= crowberto rasta) "rows were identical meaning it did not route"))))))))))))
