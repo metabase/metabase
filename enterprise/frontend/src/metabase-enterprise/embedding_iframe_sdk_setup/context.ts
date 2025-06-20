@@ -4,6 +4,7 @@ import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_ifram
 
 import type {
   SdkIframeEmbedSetupExperience,
+  SdkIframeEmbedSetupRecentItem,
   SdkIframeEmbedSetupStep,
 } from "./types";
 
@@ -15,6 +16,15 @@ export interface SdkIframeEmbedSetupContextType {
   settings: SdkIframeEmbedSettings;
   setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
+
+  // Recent dashboards and questions
+  recentDashboards: SdkIframeEmbedSetupRecentItem[];
+  recentQuestions: SdkIframeEmbedSetupRecentItem[];
+
+  addRecentItem: (
+    type: "dashboard" | "question",
+    recentItem: SdkIframeEmbedSetupRecentItem,
+  ) => void;
 }
 
 export const SdkIframeEmbedSetupContext =

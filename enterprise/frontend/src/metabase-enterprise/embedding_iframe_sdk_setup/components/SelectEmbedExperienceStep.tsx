@@ -10,7 +10,13 @@ import type { SdkIframeEmbedSetupExperience } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 export const SelectEmbedExperienceStep = () => {
-  const { experience, settings, setSettings } = useSdkIframeEmbedSetupContext();
+  const {
+    experience,
+    settings,
+    setSettings,
+    recentDashboards,
+    recentQuestions,
+  } = useSdkIframeEmbedSetupContext();
 
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
@@ -21,8 +27,11 @@ export const SelectEmbedExperienceStep = () => {
       "apiKey",
     ]);
 
-    // TODO(EMB-508): use the most recent question or dashboard.
-    const defaultResourceId = 1;
+    // Use the most recent item for the selected type
+    const defaultResourceId =
+      type === "chart"
+        ? (recentQuestions[0]?.id ?? 1)
+        : (recentDashboards[0]?.id ?? 1);
 
     setSettings({
       // these settings do not change when the embed type changes
