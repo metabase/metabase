@@ -6,12 +6,12 @@ import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import QuestionLoader from "metabase/common/components/QuestionLoader";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
-import QuestionLoader from "metabase/containers/QuestionLoader";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
