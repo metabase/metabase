@@ -911,6 +911,24 @@ describe("scenarios > question > native", () => {
     cy.get(".cm-lineNumbers").should("contain", "1").should("not.contain", "2");
   });
 
+  it("should be possible to format the native query using the keyboard shortcut", () => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.startNewNativeQuestion({
+      query: "SELECT COUNT(*) FROM ORDERS",
+    });
+    H.NativeEditor.focus();
+
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress(["Shift", metaKey, "f"]);
+
+    H.NativeEditor.value().should(
+      "contain",
+      "SELECT\n  COUNT(*)\nFROM\n  ORDERS",
+    );
+  });
+
   it("should add tab at the end of the query", () => {
     H.startNewNativeQuestion({
       query: "SELECT",

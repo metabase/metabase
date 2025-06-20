@@ -182,4 +182,14 @@ export const questionShortcuts = {
       return t`Native Editor`;
     },
   },
+  "auto-format-expression": {
+    get name() {
+      return t`Format custom expression or native query`;
+    },
+    shortcut: ["Shift+$mod+f"],
+    shortcutGroup: "question" as const,
+    get shortcutContext() {
+      return t`Native Editor`;
+    },
+  },
 };

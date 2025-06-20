@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { getEngineNativeType } from "metabase/lib/engine";
 import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
-import { canFormatForEngine } from "metabase/query_builder/components/NativeQueryEditor/utils";
 import { DataReferenceButton } from "metabase/query_builder/components/view/DataReferenceButton";
 import { NativeVariablesButton } from "metabase/query_builder/components/view/NativeVariablesButton";
 import { PreviewQueryButton } from "metabase/query_builder/components/view/PreviewQueryButton";
@@ -33,7 +32,7 @@ interface NativeQueryEditorActionButtonsProps {
   runQuery?: () => void;
   cancelQuery?: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  onFormatQuery: () => void;
+  onFormatQuery?: () => void;
   onGenerateQuery: (queryText: string) => void;
 }
 
@@ -60,7 +59,6 @@ export const NativeQueryEditorActionButtons = (
 
   const query = question.query();
   const engine = question.database?.()?.engine;
-  const canFormatQuery = engine != null && canFormatForEngine(engine);
   const canGenerateQuery =
     engine != null && getEngineNativeType(engine) === "sql";
 
@@ -83,7 +81,7 @@ export const NativeQueryEditorActionButtons = (
       {features.variables && (
         <NativeVariablesButton {...props} size={ICON_SIZE} />
       )}
-      {canFormatQuery && (
+      {onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
           <Button
             variant="subtle"
