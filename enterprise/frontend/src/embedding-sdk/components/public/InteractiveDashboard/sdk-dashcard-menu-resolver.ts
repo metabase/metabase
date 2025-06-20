@@ -1,3 +1,4 @@
+import { isValidElement } from "react";
 import { P, match } from "ts-pattern";
 
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
@@ -21,7 +22,7 @@ export const isSdkCustomMenuConfig = (
   return (
     typeof menu === "object" &&
     menu !== null &&
-    !React.isValidElement(menu) &&
+    !isValidElement(menu) &&
     ("withDownloads" in menu || "withEditLink" in menu || "customItems" in menu)
   );
 };
