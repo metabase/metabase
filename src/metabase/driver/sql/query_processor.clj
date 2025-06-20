@@ -17,7 +17,8 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time
     LocalDate
@@ -264,7 +265,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defn- sqlize-value [x]
-  (if driver/*driver*
+  ;; only do this when we're inside a QP context! Don't do this inside of Toucan query compilation!
+  (if (and driver/*driver* (not t2.pipeline/*resolved-query*))
     (inline-value driver/*driver* x)
     (honey.sql.protocols/sqlize x)))
 
@@ -580,6 +582,7 @@
 
 (defmethod inline-value :default
   [driver object]
+  (assert (not= driver :mongo) "We SHOULD NOT be calling into the SQL QP code with MongoDB!!")
   ;; default implementation of [[honey.sql.protocols/sqlize]] is just [[clojure.core/str]], that is almost certainly not
   ;; what we want to do, so log a warning
   (log/warnf "No implementation of %s for [%s %s], falling back to default implementation of %s"
