@@ -29,16 +29,17 @@
     :model/CacheConfig
     :model/CardFavorite
     :model/CloudMigration
+    :model/ContentTranslation
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Query
-    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
     :model/QueryTable
     :model/SearchIndexMetadata
     :model/TaskHistory
+    :model/Undo
     :model/UserKeyValue})
 
 (defn- all-model-names []

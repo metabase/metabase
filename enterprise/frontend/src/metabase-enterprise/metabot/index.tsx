@@ -10,6 +10,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
+import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { MetabotSearchButton } from "./components/MetabotSearchButton";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { useMetabotAgent } from "./hooks";
@@ -25,6 +26,8 @@ if (hasPremiumFeature("metabot_v3")) {
       key: "metabot",
     },
   ];
+
+  PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
   PLUGIN_METABOT.AdminRoute = (
     <Route
@@ -44,7 +47,7 @@ if (hasPremiumFeature("metabot_v3")) {
   PLUGIN_METABOT.getMetabotVisible =
     getMetabotVisible as unknown as typeof PLUGIN_METABOT.getMetabotVisible;
   PLUGIN_METABOT.useMetabotPalletteActions = (searchText: string) => {
-    const { submitInput, setVisible } = useMetabotAgent();
+    const { startNewConversation } = useMetabotAgent();
 
     return useMemo(() => {
       const ret: PaletteAction[] = [
@@ -56,21 +59,11 @@ if (hasPremiumFeature("metabot_v3")) {
           section: "metabot",
           keywords: searchText,
           icon: "metabot",
-          perform: (_currentActionImpl) => {
-            setVisible(true);
-            if (searchText) {
-              submitInput(searchText);
-            }
-            // HACK: if the user opens the command palette via the search button bar focus
-            // will be moved back to the search button bar if the metabot option is chosen
-            setTimeout(() => {
-              document.getElementById("metabot-chat-input")?.focus();
-            }, 100);
-          },
+          perform: () => startNewConversation(searchText),
         },
       ];
       return ret;
-    }, [searchText, submitInput, setVisible]);
+    }, [searchText, startNewConversation]);
   };
 
   PLUGIN_METABOT.SearchButton = MetabotSearchButton;

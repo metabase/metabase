@@ -57,8 +57,12 @@
 
 (mr/def ::join
   [:map
-   {:decode/normalize common/normalize-map}
-   [:lib/type    [:= {:decode/normalize common/normalize-keyword} :mbql/join]]
+   {:default {}, :decode/normalize (fn [join]
+                                     (let [{:keys [fields], :as join} (common/normalize-map join)]
+                                       (cond-> join
+                                         (and (not (keyword? fields)) (empty? fields))
+                                         (dissoc :fields))))}
+   [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
    [:lib/options ::common/options]
    [:stages      [:ref :metabase.lib.schema/stages]]
    [:conditions  ::conditions]

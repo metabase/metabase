@@ -20,6 +20,7 @@ import { color } from "metabase/lib/colors";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { Box } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
@@ -81,9 +82,9 @@ export interface DashCardProps {
   onRemove: (dashcard: StoreDashcard) => void;
   onReplaceCard: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
   onReplaceAllDashCardVisualizationSettings: (
     dashcardId: DashCardId,
     settings: VisualizationSettings,
@@ -95,7 +96,7 @@ export interface DashCardProps {
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
 
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 
   /** Auto-scroll to this card on mount */
   autoScroll: boolean;
@@ -129,7 +130,7 @@ function DashCardInner({
   isTrashedOnRemove,
   onRemove,
   onReplaceCard,
-  navigateToNewCardFromDashboard,
+  navigateToNewCardFromDashboard: navigateToNewCardFromDashboardProp,
   markNewCardSeen,
   showClickBehaviorSidebar,
   onChangeLocation,
@@ -144,11 +145,13 @@ function DashCardInner({
   const dashcardData = useSelector((state) =>
     getDashcardData(state, dashcard.id),
   );
+
   const store = useStore();
-  const getHref = useCallback(
-    () => getDashcardHref(store.getState(), dashcard.id),
-    [store, dashcard.id],
-  );
+  const getHref = useCallback(() => {
+    const result = getDashcardHref(store.getState(), dashcard.id);
+
+    return result;
+  }, [store, dashcard.id]);
   const [isPreviewingCard, setIsPreviewingCard] = useState(!dashcard.justAdded);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -209,6 +212,12 @@ function DashCardInner({
       };
     });
   }, [cards, dashcardData, slowCards]);
+
+  const { supportPreviewing, disableNavigateToNewCardFromDashboard } =
+    getVisualizationRaw(series) ?? {};
+  const navigateToNewCardFromDashboard = !disableNavigateToNewCardFromDashboard
+    ? navigateToNewCardFromDashboardProp
+    : undefined;
 
   const isLoading = useMemo(
     () => isDashcardLoading(dashcard, dashcardData),
@@ -286,7 +295,6 @@ function DashCardInner({
     }
   }, [dashcard, dashboard.collection_authority_level]);
 
-  const { supportPreviewing } = getVisualizationRaw(series) ?? {};
   const isEditingCardContent = supportPreviewing && !isPreviewingCard;
 
   const isEditingDashboardLayout =
@@ -346,7 +354,8 @@ function DashCardInner({
           DashboardS.Card,
           EmbedFrameS.Card,
           CS.relative,
-          CS.rounded,
+          CS.roundedSm,
+          !isAction && CS.bordered,
           CS.flex,
           CS.flexColumn,
           CS.hoverParent,
@@ -366,9 +375,6 @@ function DashCardInner({
           return {
             "--slow-card-border-color": theme.fn.themeColor("accent4"),
             ...(border && { border }),
-            ...(!border && {
-              boxShadow: "0 1px 3px var(--mb-color-shadow)",
-            }),
           };
         }}
         ref={cardRootRef}

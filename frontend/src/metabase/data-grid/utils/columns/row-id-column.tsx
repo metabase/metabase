@@ -14,13 +14,14 @@ export const getRowIdColumnSize = (variant: RowIdVariant) =>
 export const getRowIdColumn = <TRow, TValue>({
   variant,
   getBackgroundColor,
+  onRowExpandClick,
 }: RowIdColumnOptions): ColumnDef<TRow, TValue> => {
   const shouldShowIndex = ["index", "indexExpand"].includes(variant);
   const canExpand = variant !== "index";
   return {
     accessorFn: (_row, index) => index as TValue,
     id: ROW_ID_COLUMN_ID,
-    size: getRowIdColumnSize(variant),
+    minSize: getRowIdColumnSize(variant),
     enableSorting: false,
     enableResizing: false,
     enablePinning: true,
@@ -37,6 +38,7 @@ export const getRowIdColumn = <TRow, TValue>({
           canExpand={canExpand}
           value={value}
           backgroundColor={getBackgroundColor?.(row.index)}
+          onRowExpandClick={() => onRowExpandClick?.(row.index)}
         />
       );
     },

@@ -15,8 +15,9 @@ export const isVirtualCardDisplayType = (
   typeof value === "string" &&
   virtualCardDisplayTypes.includes(value as VirtualCardDisplay);
 
-const cardDisplayTypes = [
+export const cardDisplayTypes = [
   "table",
+  "table-editable",
   "bar",
   "line",
   "pie",

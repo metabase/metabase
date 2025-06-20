@@ -93,7 +93,8 @@ export function isQuestionDashCard(
     "card_id" in dashcard &&
     "card" in dashcard &&
     !isVirtualDashCard(dashcard) &&
-    !isActionDashCard(dashcard)
+    !isActionDashCard(dashcard) &&
+    !isEditableTableDashCard(dashcard)
   );
 }
 
@@ -107,6 +108,12 @@ export function isVirtualDashCard(
   dashcard: Pick<BaseDashboardCard, "visualization_settings">,
 ): dashcard is VirtualDashboardCard {
   return _.isObject(dashcard?.visualization_settings?.virtual_card);
+}
+
+export function isEditableTableDashCard(dashcard: BaseDashboardCard): boolean {
+  return (
+    "table_id" in dashcard.card && dashcard.card.display === "table-editable"
+  );
 }
 
 export function getVirtualCardType(dashcard: BaseDashboardCard) {
@@ -167,6 +174,10 @@ export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
 
+export function isTransientId(id: unknown) {
+  return typeof id === "string" && /\/auto\/dashboard/.test(id);
+}
+
 export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
@@ -175,7 +186,7 @@ export function getDashboardType(id: unknown) {
     return "public";
   } else if (isJWT(id)) {
     return "embed";
-  } else if (typeof id === "string" && /\/auto\/dashboard/.test(id)) {
+  } else if (isTransientId(id)) {
     return "transient";
   } else {
     return "normal";

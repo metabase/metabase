@@ -1152,8 +1152,8 @@
                       :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                       :database (meta/id)
                       :stages [{:lib/type :mbql.stage/mbql
-                                :source-card (:id ((lib.tu/mock-cards) :orders))}]}
-          product-card ((lib.tu/mock-cards) :products)
+                                :source-card (:id (:orders (lib.tu/mock-cards)))}]}
+          product-card (:products (lib.tu/mock-cards))
           [orders-id orders-product-id] (lib/join-condition-lhs-columns base-query product-card nil nil)
           [products-id] (lib/join-condition-rhs-columns base-query product-card orders-product-id nil)
           query (lib/join base-query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))

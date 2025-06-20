@@ -1,11 +1,16 @@
+import type { Row } from "@tanstack/react-table";
+import type { Location } from "history";
 import React, {
   type ComponentType,
+  type Dispatch,
   type HTMLAttributes,
   type ReactNode,
   type SetStateAction,
+  useCallback,
   useMemo,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -32,6 +37,7 @@ import type {
 import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
 import type { MetabotContext } from "metabase/metabot";
 import { SearchButton } from "metabase/nav/components/search/SearchButton";
@@ -40,14 +46,21 @@ import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
+import type { HoveredObject } from "metabase/visualizations/types";
+import type {
+  BasicTableViewColumn,
+  SelectedTableActionState,
+} from "metabase/visualizations/types/table-actions";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  ActionScope,
   BaseEntityId,
   BaseUser,
   Bookmark,
@@ -58,13 +71,16 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   DashCardId,
   Dashboard,
   DashboardId,
+  DataGridWritebackAction,
   Database as DatabaseType,
   Dataset,
-  DatasetError,
-  DatasetErrorType,
+  DatasetData,
+  EditableTableActionsDisplaySettings,
+  EditableTableBuiltInActionDisplaySettings,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -72,15 +88,20 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  RowValues,
+  Series,
+  TableActionDisplaySettings,
   TableId,
   Timeline,
   TimelineEvent,
   User,
+  VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   AdminPath,
   AdminPathKey,
-  Dispatch,
+  Dispatch as ReduxDispatch,
   State,
 } from "metabase-types/store";
 import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
@@ -110,12 +131,8 @@ export const PLUGIN_ADMIN_TOOLS = {
 };
 
 export const PLUGIN_WHITELABEL = {
-  WhiteLabelSettingsPage: PluginPlaceholder,
-};
-
-export const PLUGIN_ADMIN_TROUBLESHOOTING = {
-  EXTRA_ROUTES: [] as ReactNode[],
-  GET_EXTRA_NAV: (): ReactNode[] => [],
+  WhiteLabelBrandingSettingsPage: PluginPlaceholder,
+  WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
 export const PLUGIN_ADMIN_SETTINGS = {
@@ -608,7 +625,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
   /**
    * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
    */
-  areDownloadsEnabled: (_args: { downloads?: string | boolean | null }) => ({
+  areDownloadsEnabled: (_args: {
+    downloads?: string | boolean | null;
+  }): EmbedResourceDownloadOptions => ({
     pdf: true,
     results: true,
   }),
@@ -619,16 +638,8 @@ const defaultMetabotContextValue: MetabotContext = {
   registerChatContextProvider: () => () => {},
 };
 
-export type FixSqlQueryButtonProps = {
-  query: Lib.Query;
-  queryError: DatasetError;
-  queryErrorType: DatasetErrorType | undefined;
-  onQueryFix: (fixedQuery: Lib.Query, fixedLineNumbers: number[]) => void;
-  onHighlightLines: (fixedLineNumbers: number[]) => void;
-};
-
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<FixSqlQueryButtonProps>;
+  FixSqlQueryButton: ComponentType<Record<string, never>>;
 };
 
 export const PLUGIN_AI_SQL_FIXER: PluginAiSqlFixer = {
@@ -672,6 +683,9 @@ export type PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: ComponentType<AIQuestionAnalysisSidebarProps>;
   AIDashboardAnalysisSidebar: ComponentType<AIDashboardAnalysisSidebarProps>;
   canAnalyzeQuestion: (question: Question) => boolean;
+  chartAnalysisRenderFormats: {
+    [display in VisualizationDisplay]?: "png" | "svg" | "none";
+  };
 };
 
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
@@ -679,6 +693,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis = {
   AIQuestionAnalysisSidebar: PluginPlaceholder,
   AIDashboardAnalysisSidebar: PluginPlaceholder,
   canAnalyzeQuestion: () => false,
+  chartAnalysisRenderFormats: {},
 };
 
 export const PLUGIN_METABOT = {
@@ -697,6 +712,7 @@ export const PLUGIN_METABOT = {
     useMemo(() => [] as PaletteAction[], []),
   adminNavItem: [] as AdminPath[],
   AdminRoute: PluginPlaceholder as unknown as React.ReactElement,
+  getMetabotRoutes: () => null as React.ReactElement | null,
   MetabotAdminPage: () => `placeholder`,
   getMetabotVisible: (_state: State) => false,
   SearchButton: SearchButton,
@@ -705,7 +721,7 @@ export const PLUGIN_METABOT = {
 type DashCardMenuItemGetter = (
   question: Question,
   dashcardId: DashCardId | undefined,
-  dispatch: Dispatch,
+  dispatch: ReduxDispatch,
 ) => (DashCardMenuItem & { key: string }) | null;
 
 export type PluginDashcardMenu = {
@@ -714,6 +730,26 @@ export type PluginDashcardMenu = {
 
 export const PLUGIN_DASHCARD_MENU: PluginDashcardMenu = {
   dashcardMenuItemGetters: [],
+};
+
+export const PLUGIN_CONTENT_TRANSLATION = {
+  isEnabled: false,
+  setEndpointsForStaticEmbedding: (_encodedToken: string) => {},
+  ContentTranslationConfiguration: PluginPlaceholder,
+  useTranslateContent: <
+    T = string | null | undefined,
+  >(): ContentTranslationFunction => {
+    // In OSS, the input is not translated
+    return useCallback(<U = T>(arg: U) => arg, []);
+  },
+  translateDisplayNames: <T extends object>(
+    obj: T,
+    _tc: ContentTranslationFunction,
+  ) => obj,
+  useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
+  useTranslateSeries: (obj: Series) => obj,
+  useSortByContentTranslation: () => (a: string, b: string) =>
+    a.localeCompare(b),
 };
 
 export const PLUGIN_DB_ROUTING = {
@@ -729,6 +765,72 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+    location: Location<{ filter?: string }>;
+  }>,
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
+    dashcardId: number;
+    cardId: number;
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    className?: string;
+    visualizationSettings?: VisualizationSettings;
+    question: Question;
+    isEditing?: boolean;
+  }>,
+};
+
+export const PLUGIN_TABLE_ACTIONS = {
+  isEnabled: () => false,
+  isBuiltInEditableTableAction: (
+    _action: EditableTableActionsDisplaySettings,
+  ): _action is EditableTableBuiltInActionDisplaySettings => false,
+  useTableActionsExecute: (_params: {
+    actionsVizSettings: TableActionDisplaySettings[] | undefined;
+    datasetData: DatasetData | null | undefined;
+  }) =>
+    ({
+      tableActions: [],
+      selectedTableActionState: null,
+      handleTableActionRun: _.noop,
+      handleExecuteActionModalClose: _.noop,
+    }) as {
+      tableActions: DataGridWritebackAction[];
+      selectedTableActionState: SelectedTableActionState | null;
+      handleTableActionRun: (
+        action: DataGridWritebackAction,
+        row: Row<RowValues>,
+      ) => void;
+      handleExecuteActionModalClose: () => void;
+    },
+  TableActionExecuteModal: PluginPlaceholder as ComponentType<{
+    scope: ActionScope;
+    selectedTableActionState: SelectedTableActionState | null;
+    onClose: () => void;
+  }>,
+  ConfigureTableActions: PluginPlaceholder as ComponentType<{
+    value: TableActionDisplaySettings[] | undefined;
+    cols: BasicTableViewColumn[];
+    onChange: (newValue: TableActionDisplaySettings[]) => void;
+  }>,
 };
 
 export const PLUGIN_API = {

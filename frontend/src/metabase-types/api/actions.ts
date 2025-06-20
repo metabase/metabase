@@ -109,6 +109,37 @@ export type WritebackQueryAction = WritebackActionBase & QueryAction;
 export type WritebackImplicitQueryAction = WritebackActionBase &
   ImplicitQueryAction;
 export type WritebackHttpAction = WritebackActionBase & HttpAction;
+
+export interface TableActionParameter extends Omit<Parameter, "name"> {
+  id: string;
+  "display-name": string;
+  type: string;
+  target: ParameterTarget;
+  slug: string;
+  required: boolean;
+  "is-auto-increment": boolean;
+}
+
+// TableAction represents actions that operate on database tables
+export interface TableAction
+  extends Omit<
+    WritebackActionBase,
+    | "type"
+    | "model_id"
+    | "parameters"
+    | "visualization_settings"
+    | "database_id"
+  > {
+  table_id: number;
+  table_name: string;
+  name: string;
+  database_id?: DatabaseId;
+  database_enabled_actions: boolean;
+  kind: string;
+  visualization_settings: ActionFormSettings;
+  parameters: TableActionParameter[];
+}
+
 export type WritebackAction = WritebackActionBase &
   (QueryAction | ImplicitQueryAction | HttpAction);
 
@@ -183,6 +214,7 @@ export interface FieldSettings {
   width?: Size;
   height?: number;
   hasSearch?: boolean;
+  readonly?: boolean;
 }
 
 export type FieldSettingsMap = Record<ParameterId, FieldSettings>;
@@ -214,3 +246,40 @@ export type GetPublicAction = Pick<
   WritebackActionBase,
   "id" | "name" | "public_uuid" | "model_id"
 >;
+
+type RowActionFieldSettingsBase = {
+  parameterId: ParameterId;
+  visibility?: "readonly" | "hidden";
+};
+
+export type UserProvidedRowActionFieldSettings = RowActionFieldSettingsBase & {
+  sourceType: "ask-user"; // default - ask user, cannot be hidden
+};
+
+export type RowDataRowActionFieldSettings = RowActionFieldSettingsBase & {
+  sourceType: "row-data"; // get data from row
+  sourceValueTarget: string; // DatasetColumn.name
+};
+
+export type ConstantRowActionFieldSettings = RowActionFieldSettingsBase & {
+  sourceType: "constant";
+  value: string;
+};
+
+export type RowActionFieldSettings =
+  | UserProvidedRowActionFieldSettings
+  | RowDataRowActionFieldSettings
+  | ConstantRowActionFieldSettings;
+
+export type RowActionFieldSourceType = RowActionFieldSettings["sourceType"];
+
+export type PartialRowActionFieldSettings = RowActionFieldSettingsBase &
+  Partial<RowActionFieldSettings>;
+
+export type DataGridWritebackAction = WritebackAction | TableAction;
+export type DataGridWritebackActionId = DataGridWritebackAction["id"];
+
+export type ActionScope =
+  | { "table-id": number } // table actions
+  | { "dashcard-id": number } // dashboard actions
+  | { "card-id": number }; // question actions (non dashboard context)

@@ -25,7 +25,6 @@ export const setEditingDashboard = (dashboard: Dashboard | null) => {
     if (dashboard === null) {
       const location = getLocation(getState());
       const locationWithoutEditHash = { ...location, hash: "" };
-
       dispatch(push(locationWithoutEditHash));
     }
 

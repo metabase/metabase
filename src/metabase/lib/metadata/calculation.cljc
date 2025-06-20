@@ -423,8 +423,8 @@
     [:merge
      ColumnMetadataWithSource
      [:map
-      [:lib/source-column-alias  ::lib.schema.common/non-blank-string]
-      [:lib/desired-column-alias [:string {:min 1, :max 60}]]]]]
+      [:lib/source-column-alias  ::lib.schema.metadata/source-column-alias]
+      [:lib/desired-column-alias ::lib.schema.metadata/desired-column-alias]]]]
    [:fn
     ;; should be dev-facing only, so don't need to i18n
     {:error/message "Column :lib/desired-column-alias values must be distinct, regardless of case, for each stage!"
@@ -434,7 +434,7 @@
     (fn [columns]
       (or
        (empty? columns)
-       (apply distinct? (map (comp u/lower-case-en :lib/desired-column-alias) columns))))]])
+       (apply distinct? (map :lib/desired-column-alias columns))))]])
 
 (mr/def ::unique-name-fn
   "Stateful function with the signature
@@ -449,7 +449,7 @@
 (def ReturnedColumnsOptions
   "Schema for options passed to [[returned-columns]] and [[returned-columns-method]]."
   [:map
-   [:include-remaps? {:optional true} :boolean]
+   [:include-remaps? {:optional true, :default false} :boolean]
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 

@@ -18,6 +18,7 @@ import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import {
@@ -32,9 +33,11 @@ import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
+  Card,
   DashCardId,
   DashboardId,
   Dataset,
+  VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -48,7 +51,7 @@ interface DashCardMenuProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
   onEditVisualization?: () => void;
   openUnderlyingQuestionItems?: React.ReactNode;
 }
@@ -218,7 +221,8 @@ interface ShouldRenderDashcardMenuProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
-  downloadsEnabled: boolean;
+  card?: Card | VirtualCard;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 DashCardMenu.shouldRender = ({
@@ -228,6 +232,7 @@ DashCardMenu.shouldRender = ({
   isPublicOrEmbedded,
   isEditing,
   downloadsEnabled,
+  card,
 }: ShouldRenderDashcardMenuProps) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
@@ -235,9 +240,15 @@ DashCardMenu.shouldRender = ({
     question.datasetQuery(),
   );
 
-  if (isPublicOrEmbedded) {
-    return downloadsEnabled && !!result?.data && !result?.error;
+  // TODO [WRK]: not the best solution
+  if (card?.display === "table-editable") {
+    return false;
   }
+
+  if (isPublicOrEmbedded) {
+    return downloadsEnabled.results && !!result?.data && !result?.error;
+  }
+
   return (
     !isInternalQuery &&
     !isEditing &&

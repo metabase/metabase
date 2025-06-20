@@ -19,6 +19,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -162,6 +163,7 @@ type VisualizationOwnProps = {
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
   onOpenChartSettings?: (data: {
@@ -215,7 +217,10 @@ const isLoading = (series: Series | null) => {
     series.length > 0 &&
     _.every(
       series,
-      (s) => !!s.data || _.isObject(s.card.visualization_settings.virtual_card),
+      (s) =>
+        !!s.data ||
+        _.isObject(s.card.visualization_settings.virtual_card) ||
+        s.card.display === "table-editable", // TODO [WRK]: refactor this after we add saved editable table view entity
     )
   );
 };
@@ -639,6 +644,7 @@ class Visualization extends PureComponent<
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
+
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -693,10 +699,13 @@ class Visualization extends PureComponent<
     }
 
     if (!error && !genericError && series) {
-      noResults = _.every(
-        series,
-        (s) => s && s.data && datasetContainsNoResults(s.data),
-      );
+      const isNoResultsDisabled = !!visualization?.noResults;
+      noResults = isNoResultsDisabled
+        ? false
+        : _.every(
+            series,
+            (s) => s && s.data && datasetContainsNoResults(s.data),
+          );
     }
 
     const extra = (
@@ -733,7 +742,7 @@ class Visualization extends PureComponent<
 
     const title = settings["card.title"];
     const hasHeaderContent = title || extra;
-    const isHeaderEnabled = !(visualization && visualization.noHeader);
+    const isHeaderEnabled = !visualization?.noHeader;
 
     const hasHeader =
       (showTitle &&

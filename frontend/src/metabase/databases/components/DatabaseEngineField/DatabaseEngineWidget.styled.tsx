@@ -26,7 +26,7 @@ interface EngineCardRootProps {
   isActive: boolean;
 }
 
-export const EngineCardRoot = styled.li<EngineCardRootProps>`
+export const EngineCardRoot = styled.button<EngineCardRootProps>`
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;

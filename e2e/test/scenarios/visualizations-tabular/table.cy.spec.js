@@ -623,7 +623,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
   it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
     const sideColumnsWidth = 200;
     const expandedSideColumnsWidth = 2 * sideColumnsWidth;
-    const idColumnWidth = 60;
+    const idColumnWidth = 54;
     const idExpandedWidth = 2 * idColumnWidth;
 
     H.createQuestionAndDashboard({

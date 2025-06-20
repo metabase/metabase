@@ -70,7 +70,7 @@
                 [:engine   :keyword]
                 [:name     :string]
                 [:settings [:map
-                            [:database-source-dataset-name :string]]]]
+                            [:database-source-dataset-name {:optional true} :string]]]]
   "Return the current database.
    Relies on the dynamic variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   []
@@ -303,9 +303,7 @@
           (next.jdbc/execute! conn ["SCRIPT TO ?" (str f)])
           f)))))
 
-;;; TODO FIXME -- rename this to `with-empty-h2-app-db!`
-#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-empty-h2-app-db
+(defmacro with-empty-h2-app-db!
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
   created from `h2-app-db-script`. After `body` is finished, the original app DB bindings are restored.
 

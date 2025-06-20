@@ -827,6 +827,9 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
+    });
+    H.selectFilterOperator("Is");
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Other");
       cy.button("Add filter").click();
     });

@@ -236,6 +236,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           card: undefined,
           dimension: undefined,
           snippet: undefined,
+          "temporal-unit": undefined,
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,

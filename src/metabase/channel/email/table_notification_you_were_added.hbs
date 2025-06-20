@@ -1,0 +1,5 @@
+{{> metabase/channel/email/_header.hbs }}
+    <p>You're now getting notifications about changes to the <a href="{{{table-url payload.table.db_id payload.table.id}}}">{{payload.table.display_name}}</a> table.</p>
+    <p>We'll send you an email when {{#if (eq payload.event_name "event/row.created")}}new rows are created{{else if (eq payload.event_name "event/row.updated")}}existing rows are updated{{else if (eq payload.event_name "event/row.deleted")}}rows are deleted{{else}}changes occur{{/if}} in this table.</p>
+    <p>If you don't want to receive these notifications, you can <a href="{{{table-url payload.table.db_id payload.table.id}}}">go to this table</a> and unsubscribe by clicking the sharing icon on the top right.</p>
+{{> metabase/channel/email/_footer.hbs }}

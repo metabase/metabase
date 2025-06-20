@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
-import TitleAndDescription from "metabase/components/TitleAndDescription";
+import { TitleAndDescription } from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
@@ -22,6 +22,7 @@ import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
+import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-parameters";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -116,9 +117,12 @@ export const EmbedFrame = ({
     dashboard && getDashboardType(dashboard.id) === "public",
   );
 
+  const isQuestion = question != null;
+  const isDashboard = dashboard != null;
   const ParametersListComponent = getParametersListComponent({
+    isQuestion,
+    isDashboard,
     isEmbeddingSdk,
-    isDashboard: !!dashboard,
   });
 
   const [hasFrameScroll, setHasFrameScroll] = useState(!isEmbeddingSdk);
@@ -154,6 +158,24 @@ export const EmbedFrame = ({
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
   const shouldApplyParameterPanelThemeChangeTransition =
     !isParameterPanelStickyStateChanging && isParameterPanelSticky;
+
+  const valuePopulatedParameters = parameters
+    ? getValuePopulatedParameters({
+        parameters,
+        values: _.isEmpty(draftParameterValues)
+          ? parameterValues
+          : draftParameterValues,
+      })
+    : [];
+
+  useSyncUrlParameters({
+    parameters: valuePopulatedParameters,
+    enabled: shouldSyncUrlParameters({
+      isQuestion,
+      isDashboard,
+      isEmbeddingSdk,
+    }),
+  });
 
   return (
     <Root
@@ -250,12 +272,7 @@ export const EmbedFrame = ({
               <ParametersListComponent
                 question={question}
                 dashboard={dashboard}
-                parameters={getValuePopulatedParameters({
-                  parameters,
-                  values: _.isEmpty(draftParameterValues)
-                    ? parameterValues
-                    : draftParameterValues,
-                })}
+                parameters={valuePopulatedParameters}
                 setParameterValue={setParameterValue}
                 hideParameters={hideParameters}
                 setParameterValueToDefault={setParameterValueToDefault}
@@ -322,15 +339,41 @@ function isParametersWidgetContainersSticky(parameterCount: number) {
 }
 
 function getParametersListComponent({
-  isEmbeddingSdk,
+  isQuestion,
   isDashboard,
+  isEmbeddingSdk,
 }: {
-  isEmbeddingSdk: boolean;
+  isQuestion: boolean;
   isDashboard: boolean;
+  isEmbeddingSdk: boolean;
 }) {
+  return shouldSyncUrlParameters({ isQuestion, isDashboard, isEmbeddingSdk })
+    ? SyncedParametersList
+    : ParametersList;
+}
+
+function shouldSyncUrlParameters({
+  isQuestion,
+  isDashboard,
+  isEmbeddingSdk,
+}: {
+  isQuestion: boolean;
+  isDashboard: boolean;
+  isEmbeddingSdk: boolean;
+}) {
+  // Couldn't determine if it's a question or a dashboard until one becomes true.
+  if (!isQuestion && !isDashboard) {
+    return false;
+  }
+
   if (isDashboard) {
     // Dashboards manage parameters themselves
-    return ParametersList;
+    return false;
+  } else {
+    /**
+     * We don't want to sync the query string to the URL when using the embedding SDK,
+     * because it would change the URL of users' apps.
+     */
+    return !isEmbeddingSdk;
   }
-  return isEmbeddingSdk ? ParametersList : SyncedParametersList;
 }

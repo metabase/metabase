@@ -11,6 +11,7 @@ import { createPortal } from "react-dom";
 import _ from "underscore";
 
 import GrabberS from "metabase/css/components/grabber.module.css";
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import { isNotNull } from "metabase/lib/types";
 
 export type SortableDivider = {
@@ -141,7 +142,10 @@ export const SortableList = <T,>({
         // we need to render the DragOverlay in a separate portal
         // (https://docs.dndkit.com/api-documentation/draggable/drag-overlay#portals)
         createPortal(
-          <DragOverlay>
+          <DragOverlay
+            // Used in e2e, because can't pass data-testid
+            className="drag-overlay"
+          >
             {activeItem
               ? renderItem({
                   item: activeItem,
@@ -150,7 +154,7 @@ export const SortableList = <T,>({
                 })
               : null}
           </DragOverlay>,
-          document.body,
+          getPortalRootElement(),
         )}
     </DndContext>
   );

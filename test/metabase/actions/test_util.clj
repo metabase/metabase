@@ -80,6 +80,7 @@
   You can use [[with-actions-test-data-tables]] if you need something other than the `categories` table, e.g. for
   testing FK constraints."
   (ActionsTestDatasetDefinition.))
+(map :table-name actions-test-data)
 
 (defn do-with-dataset-definition
   "Impl for [[with-temp-test-data]] and [[with-actions-test-data]] macros."
@@ -103,6 +104,12 @@
   {:style/indent :defn}
   [& body]
   `(do-with-dataset-definition actions-test-data (fn [] ~@body)))
+
+(defmacro with-actions-temp-db
+  "Sets the current dataset to a freshly-loaded [[dataset-definition]] that gets destroyed at the conclusion of `body`."
+  {:style/indent 1}
+  [dataset-definition & body]
+  `(do-with-dataset-definition ~dataset-definition (fn [] ~@body)))
 
 (defmacro with-temp-test-data
   "Sets the current dataset to a freshly created table-definitions that gets destroyed at the conclusion of `body`.

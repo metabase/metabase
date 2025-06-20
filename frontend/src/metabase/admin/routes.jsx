@@ -22,25 +22,23 @@ import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPas
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
-import { Help } from "metabase/admin/tasks/components/Help";
-import { LogLevelsModal } from "metabase/admin/tasks/components/LogLevelsModal";
-import { Logs } from "metabase/admin/tasks/components/Logs";
-import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
-import { JobTriggersModal } from "metabase/admin/tasks/containers/JobTriggersModal";
+import { Help } from "metabase/admin/tools/components/Help";
+import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
+import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
+import { LogLevelsModal } from "metabase/admin/tools/components/LogLevelsModal";
+import { Logs } from "metabase/admin/tools/components/Logs";
 import {
+  ModelCachePage,
   ModelCacheRefreshJobModal,
-  ModelCacheRefreshJobs,
-} from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
-import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
-import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
-import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
-import Tools from "metabase/admin/tools/containers/Tools";
+} from "metabase/admin/tools/components/ModelCacheRefreshJobs";
+import { TaskModal } from "metabase/admin/tools/components/TaskModal";
+import { TasksApp } from "metabase/admin/tools/components/TasksApp";
+import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_TOOLS,
-  PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
@@ -109,44 +107,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
-      {/* Troubleshooting */}
-      <Route
-        path="troubleshooting"
-        component={createAdminRouteGuard("troubleshooting")}
-      >
-        <Route title={t`Troubleshooting`} component={TroubleshootingApp}>
-          <IndexRedirect to="help" />
-          <Route path="help" component={Help} />
-          <Route path="tasks" component={TasksApp}>
-            <ModalRoute
-              path=":taskId"
-              modal={TaskModal}
-              modalProps={{
-                // EventSandbox interferes with mouse text selection in CodeMirror editor
-                disableEventSandbox: true,
-              }}
-            />
-          </Route>
-          <Route path="jobs" component={JobInfoApp}>
-            <ModalRoute
-              path=":jobKey"
-              modal={JobTriggersModal}
-              modalProps={{ wide: true }}
-            />
-          </Route>
-          <Route path="logs" component={Logs}>
-            <ModalRoute
-              path="levels"
-              modal={LogLevelsModal}
-              modalProps={{
-                // EventSandbox interferes with mouse text selection in CodeMirror editor
-                disableEventSandbox: true,
-              }}
-            />
-          </Route>
-          {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
-        </Route>
-      </Route>
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
         {getSettingsRoutes()}
@@ -176,8 +136,8 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       {PLUGIN_METABOT.AdminRoute}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
-        <Route title={t`Tools`} component={Tools}>
-          <IndexRedirect to="errors" />
+        <Route title={t`Tools`} component={ToolsApp}>
+          <IndexRedirect to="help" />
           <Route
             key="error-overview"
             path="errors"
@@ -189,9 +149,37 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route
             path="model-caching"
             title={t`Model Caching Log`}
-            component={ModelCacheRefreshJobs}
+            component={ModelCachePage}
           >
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
+          </Route>
+          <Route path="help" component={Help} />
+          <Route path="tasks" component={TasksApp}>
+            <ModalRoute
+              path=":taskId"
+              modal={TaskModal}
+              modalProps={{
+                // EventSandbox interferes with mouse text selection in CodeMirror editor
+                disableEventSandbox: true,
+              }}
+            />
+          </Route>
+          <Route path="jobs" component={JobInfoApp}>
+            <ModalRoute
+              path=":jobKey"
+              modal={JobTriggersModal}
+              modalProps={{ wide: true }}
+            />
+          </Route>
+          <Route path="logs" component={Logs}>
+            <ModalRoute
+              path="levels"
+              modal={LogLevelsModal}
+              modalProps={{
+                // EventSandbox interferes with mouse text selection in CodeMirror editor
+                disableEventSandbox: true,
+              }}
+            />
           </Route>
         </Route>
       </Route>

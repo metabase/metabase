@@ -3,13 +3,13 @@
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli :as mu]
    [potemkin :as p]))
 
@@ -34,6 +34,8 @@
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset
+                 :distinct-where
+                 :native-temporal-units
                  :expressions/datetime
                  :expressions/date
                  :expressions/text
@@ -55,7 +57,7 @@
   (sql.u/format-sql-and-fix-params driver native-form))
 
 (mu/defmethod driver/substitute-native-parameters :sql
-  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query ::lib.schema.common/non-blank-string}]]]
+  [_driver {:keys [query] :as inner-query} :- [:and [:map-of :keyword :any] [:map {:query driver-api/schema.common.non-blank-string}]]]
   (let [params-map          (params.values/query->params-map inner-query)
         referenced-card-ids (params.values/referenced-card-ids params-map)
         [query params]      (-> query

@@ -44,7 +44,8 @@
      (fn [_query _path stage]
        (lib.util.match/match stage
          [macro-type _opts (id :guard pos-int?)]
-         (conj! ids id))))
+         (conj! ids id))
+       nil))
     (not-empty (persistent! ids))))
 
 ;;; a legacy Segment has one or more filter clauses.

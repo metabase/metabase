@@ -15,7 +15,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.underlying :as lib.underlying]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -72,7 +73,7 @@
     :query-type   :aggregated
     :query-kinds [:mbql]
     :column-name  "count"
-    :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) ((lib.tu/mock-cards) :orders))
+    :custom-query (-> (lib/query (lib.tu/metadata-provider-with-mock-cards) (:orders (lib.tu/mock-cards)))
                       (lib/aggregate (lib/count))
                       (lib/breakout (lib.metadata/field (lib.tu/metadata-provider-with-mock-cards)
                                                         (meta/id :orders :created-at))))
@@ -557,3 +558,32 @@
                   lib.join/joins
                   first
                   lib.join/join-fields))))))
+
+(deftest ^:parallel breakout-by-expression-test
+  (testing "underlying records for a query with a breakout on an expression should produce a correct ref (#59005)"
+    (let [base               (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                 (lib/expression "cost bucket" (lib/floor (lib// (meta/field-metadata :orders :subtotal) 10)))
+                                 (lib/aggregate (lib/count)))
+          cols               (lib/breakoutable-columns base)
+          bucket-expr        (m/find-first #(= (:name %) "cost bucket") cols)
+          query              (lib/breakout base bucket-expr)
+          [bucket count-col] (lib/returned-columns query)
+          bucket-dim         {:column     (dissoc bucket :lib/expression-name)
+                              :column-ref (lib/ref bucket)
+                              :value      "12"}
+          count-dim          {:column     count-col
+                              :column-ref (lib/ref count-col)
+                              :value      81}
+          context            (assoc count-dim
+                                    :row [bucket-dim count-dim]
+                                    :dimensions [bucket-dim])
+          drill              (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                           (lib/available-drill-thrus query context))]
+      (is (some? drill))
+      (testing "top-level-query is a no-op for a one-stage query"
+        (is (identical? query (lib.underlying/top-level-query query))))
+      (testing "top-level-column is a no-op for a top-level breakout"
+        (is (identical? (:column bucket-dim)
+                        (lib.underlying/top-level-column query (:column bucket-dim)))))
+      (is (=? [[:= {} [:expression {} "cost bucket"] "12"]]
+              (lib/filters (lib/drill-thru query drill)))))))

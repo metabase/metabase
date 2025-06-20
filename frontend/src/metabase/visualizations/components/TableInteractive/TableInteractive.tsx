@@ -40,9 +40,12 @@ import {
   memoize,
   useMemoizedCallback,
 } from "metabase/hooks/use-memoized-callback";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { TABLE_ACTIONS_SETTING } from "metabase/lib/data_grid";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { useDispatch } from "metabase/lib/redux";
+import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { setUIControls } from "metabase/query_builder/actions";
 import { Flex, type MantineTheme } from "metabase/ui";
@@ -60,6 +63,7 @@ import type { ClickObject, OrderByDirection } from "metabase-lib/types";
 import type Question from "metabase-lib/v1/Question";
 import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import type {
+  ActionScope,
   DatasetColumn,
   RowValue,
   RowValues,
@@ -133,6 +137,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   {
     className,
     data,
+    dashcard,
     series,
     height,
     settings,
@@ -168,6 +173,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isClientSideSortingEnabled = isDashboard;
   const isDashcardViewTable = isDashboard && !isSettings;
   const [sorting, setSorting] = useState<SortingState>([]);
+
+  const tc = useTranslateContent();
 
   const { rows, cols } = data;
 
@@ -234,8 +241,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const columnSettings = settings.column?.(col);
       const columnIndex = cols.findIndex((c) => c.name === col.name);
 
-      return memoize((value, rowIndex) => {
+      return memoize((untranslatedValue, rowIndex) => {
         const clicked = getCellClickedObject(columnIndex, rowIndex);
+
+        const value = tc(untranslatedValue);
+
         return formatValue(value, {
           ...columnSettings,
           type: "cell",
@@ -245,13 +255,29 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         });
       });
     });
-  }, [cols, settings, getCellClickedObject]);
+  }, [cols, settings, getCellClickedObject, tc]);
+
+  const {
+    tableActions,
+    selectedTableActionState,
+    handleTableActionRun,
+    handleExecuteActionModalClose,
+  } = PLUGIN_TABLE_ACTIONS.useTableActionsExecute({
+    actionsVizSettings: settings[TABLE_ACTIONS_SETTING],
+    datasetData: data,
+  });
 
   const handleBodyCellClick = useCallback(
     (
       event: React.MouseEvent<HTMLDivElement, MouseEvent>,
-      rowIndex: number,
-      columnId: string,
+      {
+        rowIndex,
+        columnId,
+      }: {
+        rowIndex: number;
+        columnId: string;
+        cellId: string;
+      },
     ) => {
       if (columnId === ROW_ID_COLUMN_ID) {
         if (!isDashboard) {
@@ -463,9 +489,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         sortDirection = getColumnSortDirection(columnIndex);
       }
 
+      const translatedColumnName = tc(columnName);
+
       const options: ColumnOptions<RowValues, RowValue> = {
         id,
-        name: columnName,
+        name: translatedColumnName,
         accessorFn: (row: RowValues) => row[columnIndex],
         cellVariant,
         getCellClassName: (value) =>
@@ -489,7 +517,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               timezone={data.results_timezone}
               question={question}
               column={col}
-              name={columnName}
+              name={translatedColumnName}
               align={align}
               sort={sortDirection}
               variant={headerVariant}
@@ -550,6 +578,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     settings,
     tableTheme,
     isDashboard,
+    tc,
   ]);
 
   const handleColumnResize = useCallback(
@@ -667,6 +696,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     return isDashcardViewTable ? width : undefined;
   }, [isDashcardViewTable, width]);
 
+  const rowActionsColumn = useMemo(() => {
+    return tableActions?.length && handleTableActionRun
+      ? { actions: tableActions, onActionRun: handleTableActionRun }
+      : undefined;
+  }, [handleTableActionRun, tableActions]);
+
   const tableProps = useDataGridInstance({
     data: rows,
     rowId,
@@ -679,6 +714,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    rowActionsColumn,
   });
   const { virtualGrid } = tableProps;
 
@@ -735,12 +771,20 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [renderEmptyMessage],
   );
 
+  const actionScope = useMemo<ActionScope>(() => {
+    return dashcard
+      ? { "dashcard-id": dashcard.id }
+      : { "card-id": question.card().id ?? -1 };
+  }, [question, dashcard]);
+
   if (!width || !height) {
     return <div ref={ref} className={className} />;
   }
 
   const isColumnReorderingDisabled =
     (isDashboard || mode == null || isRawTable) && !isSettings;
+
+  const TableActionExecuteModal = PLUGIN_TABLE_ACTIONS.TableActionExecuteModal;
 
   return (
     <div
@@ -763,6 +807,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onAddColumnClick={handleAddColumnButtonClick}
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
+      />
+      <TableActionExecuteModal
+        scope={actionScope}
+        selectedTableActionState={selectedTableActionState}
+        onClose={handleExecuteActionModalClose}
       />
     </div>
   );

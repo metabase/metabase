@@ -31,7 +31,7 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  queryQuestion(): Promise<void>;
+  queryQuestion(): Promise<Question | undefined>;
 
   loadAndQueryQuestion(): LoadQuestionResult;
 
@@ -141,6 +141,8 @@ export function useLoadQuestion({
     });
 
     mergeQuestionState(state);
+
+    return state.question;
   }, [dispatch, question, originalQuestion]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(

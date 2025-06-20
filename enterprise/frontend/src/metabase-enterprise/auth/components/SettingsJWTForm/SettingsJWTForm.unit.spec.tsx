@@ -2,12 +2,12 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import { createMockGroup, createMockSettings } from "metabase-types/api/mocks";
 
 import { type JWTFormValues, SettingsJWTForm } from "./SettingsJWTForm";

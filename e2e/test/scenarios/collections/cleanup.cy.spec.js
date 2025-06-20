@@ -290,7 +290,9 @@ describe("scenarios > collections > clean up", () => {
 
           makeItemStale(ORDERS_QUESTION_ID, "card");
 
-          cy.findByRole("navigation").findByText("Our analytics").click();
+          cy.findByTestId("main-navbar-root")
+            .findByText("Our analytics")
+            .click();
           selectCleanThingsUpCollectionAction();
           cy.url().should("include", "cleanup");
 

@@ -1,4 +1,5 @@
 export * from "./actions";
+export * from "./actionV2";
 export * from "./activity";
 export * from "./admin";
 export * from "./ai-sql-fixer";
@@ -12,6 +13,7 @@ export * from "./bug-report";
 export * from "./card";
 export * from "./click-behavior";
 export * from "./collection";
+export * from "./content-translation";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";

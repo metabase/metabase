@@ -54,10 +54,11 @@
   ([connection-spec]
    (handle-additional-options connection-spec connection-spec))
   ;; two-arity+options version provided for when `connection-spec` is being built up separately from `details` source
-  ([{connection-string :subname, :as connection-spec} {additional-options :additional-options, :as _details} & {:keys [seperator-style]
-                                                                                                                :or   {seperator-style :url}}]
-   (-> (dissoc connection-spec :additional-options)
-       (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
+  ([{connection-string :subname, uri :connection-uri :as connection-spec}
+    {additional-options :additional-options, :as _details} & {:keys [seperator-style] :or {seperator-style :url}}]
+   (cond-> (dissoc connection-spec :additional-options)
+     uri (assoc :connection-uri (conn-str-with-additional-opts uri seperator-style additional-options))
+     :always (assoc :subname (conn-str-with-additional-opts connection-string seperator-style additional-options)))))
 
 (defn additional-options->map
   "Attempts to parse the entires within the `additional-options` string into a map of keys to values. `separator-style`

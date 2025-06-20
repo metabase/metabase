@@ -366,7 +366,7 @@ describe("issue 22230", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Max of Name").click();
-      cy.findByText("Is").click();
+      cy.findByText("Contains").click();
     });
     cy.findByRole("menu").findByText("Starts with").click();
 

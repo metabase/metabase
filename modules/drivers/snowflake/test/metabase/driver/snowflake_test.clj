@@ -259,6 +259,34 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
+(deftest additional-options-test
+  (mt/test-driver
+    :snowflake
+    (let [existing-details (dissoc (:details (mt/db)) :password)]
+      (testing "By default no subname"
+        (is (=? {:subname complement :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec :snowflake existing-details))))
+      (testing "add additional-options to subname"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details :additional-options "foo=bar")))))
+      (testing "role has no affect if private-key is missing"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details
+                        :role "test-role"
+                        :additional-options "foo=bar")))))
+      (testing "private-key-value sets connection-uri and so make sure it doesn't clobber additional-options or role"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri #".*foo=bar.*role=test-role"}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details
+                        :role "test-role"
+                        :private-key-value "pk"
+                        :additional-options "foo=bar"))))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -417,6 +445,8 @@
                          :pk?               true
                          :database-position 0
                          :database-is-auto-increment true
+                         :database-is-generated false
+                         :database-is-nullable false
                          :database-required false
                          :json-unfolding    false}
                         {:name              "name"
@@ -424,6 +454,8 @@
                          :base-type         :type/Text
                          :database-position 1
                          :database-is-auto-increment false
+                         :database-is-generated false
+                         :database-is-nullable false
                          :database-required true
                          :json-unfolding    false}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
