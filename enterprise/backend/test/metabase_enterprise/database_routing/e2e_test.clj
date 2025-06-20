@@ -213,7 +213,7 @@
   ;; todo: this is to quickly get tests against all drivers right now. We probably want to extract the `wire-routing`
   ;; funciton below, make a few more nice helpers, and remove some of the above tests which are duplicative of the
   ;; below.
-  (mt/test-drivers (conj (mt/normal-drivers-with-feature :database-routing) :clickhouse)
+  (mt/test-drivers (mt/normal-drivers-with-feature :database-routing)
     (letfn [(wire-routing [{:keys [parent children]}]
               (t2/update! :model/Database :id [:in (map :id children)]
                           {:router_database_id (:id parent)})
