@@ -15,15 +15,15 @@
   ;; We could do something like that with malli... but once this stuff is opaque to the frontend, we can go wild and
   ;; make the shape more idiomatically Clojure, and maybe we should just wait until we've finalized the shape.
   [:map {:closed true}
-   [:id                                :string]
+   [:id                                 :string]
    ;; omitted if we have visibility != null
-   [:sourceType       {:optional true} [:enum "ask-user" "row-data" "constant"]]
+   [:sourceType       {:optional true}  [:enum "ask-user" "row-data" "constant"]]
    ;; omitted if we have visibility != null
    [:sourceValueTarget {:optional true} :string]
    ;; would be much nicer if we have a "visible" option rather than this being optional, but just tracking FE
-   [:visibility       {:optional true} [:enum "readonly" "hidden"]]
+   [:visibility       {:optional true}  [:enum "readonly" "hidden"]]
    ;; should be present if and only if "sourceType" is "constant"
-   [:value            {:optional true} [:or :string :int :boolean]]])
+   [:value            {:optional true}  [:or :string :int :boolean]]])
 
 (mr/def ::action-configuration
   [:map {:closed true}
@@ -39,11 +39,10 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id               (:id param)
-                    :sourceType       "ask-user"
-                    :sourceValueTarget (case (:type action)
-                                         :query (:slug param)
-                                         :implicit (:id param))})}))
+                   {:id               (case (:type action)
+                                        :query (:slug param)
+                                        :implicit (:id param))
+                    :sourceType       "ask-user"})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
 (defn- configuration-for-pending-action [{:keys [param-map] :as _action}]
@@ -62,9 +61,8 @@
                                :table.row/create (not (:database_is_auto_increment field))
                                :table.row/update true
                                :table.row/delete (isa? (:semantic_type field) :type/PK))]
-                   {:id               (format "field-%s" (:name field))
-                    :sourceType       "ask-user"
-                    :sourceValueTarget (:name field)})}))
+                   {:id               (:name field)
+                    :sourceType       "ask-user"})}))
 
 (mu/defn configuration :- [:or ::action-configuration [:map [:status ms/PositiveInt]]]
   "Returns configuration needed for a given action."
