@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-505-scaffold-new-iframe-embedding-setup-route-with-context-and"
+    }
+  ]
 }
