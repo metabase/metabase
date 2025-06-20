@@ -3,8 +3,8 @@ import { c, t } from "ttag";
 
 import { FormCollectionAndDashboardPicker } from "metabase/collections/containers/FormCollectionAndDashboardPicker";
 import type { CollectionPickerModel } from "metabase/common/components/CollectionPicker";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
-import { FormFooter } from "metabase/core/components/FormFooter";
 import { FormDashboardTabSelect } from "metabase/dashboard/components/FormDashboardTabSelect";
 import {
   Form,

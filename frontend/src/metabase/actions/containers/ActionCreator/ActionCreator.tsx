@@ -4,7 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
+import useBeforeUnload from "metabase/common/hooks/use-before-unload";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Modal from "metabase/components/Modal";
 import type {
   CreateActionParams,
@@ -13,8 +15,6 @@ import type {
 import Actions from "metabase/entities/actions";
 import Database from "metabase/entities/databases";
 import Questions from "metabase/entities/questions";
-import useBeforeUnload from "metabase/hooks/use-before-unload";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -192,7 +192,7 @@ function ActionCreator({
       )}
 
       {route && (
-        <LeaveConfirmationModal
+        <LeaveRouteConfirmModal
           isEnabled={showUnsavedChangesWarning}
           route={route}
         />

@@ -4,9 +4,9 @@ import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchListQuery } from "metabase/common/hooks";
+import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import EmptyState from "metabase/components/EmptyState";
 import Search from "metabase/entities/search";
-import { useListKeyboardNavigation } from "metabase/hooks/use-list-keyboard-navigation";
 import {
   DEFAULT_SEARCH_LIMIT,
   SEARCH_DEBOUNCE_DURATION,

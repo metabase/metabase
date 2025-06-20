@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -40,7 +40,7 @@ const setup = () => {
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
     setup();
-    expect(await screen.findByText("Site Url")).toBeInTheDocument();
+    expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {

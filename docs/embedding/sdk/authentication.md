@@ -179,6 +179,10 @@ Additionally, if you have SAML set up, but you'd prefer to use JWT SSO, you'll n
 
 `defineMetabaseAuthConfig` no longer accepts an `authProviderUri` parameter, so you'll need to remove it.
 
+**Admin setting changes in Metabase**:
+
+In **Admin Settings** > **Authentication** > **JWT SSO**, set the `JWT Identity Provider URI` to the URL of your JWT SSO endpoint, e.g., `http://localhost:9090/sso/metabase`.
+
 **Before:**
 
 ```jsx

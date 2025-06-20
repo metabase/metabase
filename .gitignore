@@ -149,3 +149,5 @@ CLAUDE.local.md
 
 .wireit/
 .eslintcache
+
+/logs

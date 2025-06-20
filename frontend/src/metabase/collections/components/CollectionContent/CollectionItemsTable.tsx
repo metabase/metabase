@@ -19,12 +19,12 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { ItemsTable } from "metabase/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
-import { usePagination } from "metabase/hooks/use-pagination";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type Database from "metabase-lib/v1/metadata/Database";

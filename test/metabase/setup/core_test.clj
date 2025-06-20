@@ -20,7 +20,7 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest has-user-setup-ignores-internal-user-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (is (t2/exists? :model/User :id config/internal-mb-user-id)
         "Sense check the internal user exists")
     (testing "`has-user-setup` should return false for an empty instance with only an internal user"

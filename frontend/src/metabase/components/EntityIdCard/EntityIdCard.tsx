@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import Link from "metabase/common/components/Link";
 import {
   SidesheetCard,
   type SidesheetCardProps,
@@ -8,7 +9,6 @@ import {
 } from "metabase/common/components/Sidesheet";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import { COPY_BUTTON_ICON, CopyButton } from "metabase/components/CopyButton";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   Flex,
