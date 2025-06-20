@@ -43,9 +43,12 @@
   The implementation should call `respond` with this information once it is available. `response` MUST BE CALLED
   SYNCHRONOUSLY, and [[*execute*]] should ultimately return whatever it returns."
   [driver query respond]
-  (when-not (canceled?)
-    ;; the context map that gets passed to [[driver/execute-reducible-query]] is for backwards compatibility for
-    ;; pre-#35465 code
+  (if (canceled?)
+    ;; FIX: Return proper cancellation result instead of nil
+    (do
+      (log/trace "Query was cancelled before driver execution started")
+      ::cancel)
+    ;; Normal execution path
     (let [context {:canceled-chan *canceled-chan*}]
       (driver/execute-reducible-query driver query context respond))))
 
@@ -53,7 +56,12 @@
   "Called by [[*run*]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
   calls [[*result*]] with the reduced results."
   [rff metadata reducible-rows]
-  (when-not (canceled?)
+  (if (canceled?)
+    ;; FIX: Return proper cancellation result instead of nil
+    (do
+      (log/trace "Query was cancelled before reduction started")
+      ::cancel)
+    ;; Normal execution path
     (let [[status rf-or-e] (try
                              [::ready-to-reduce (rff metadata)]
                              (catch Throwable e
@@ -93,7 +101,12 @@
 (defn ^:dynamic *run*
   "Function for running the query. Calls [[*execute*]], then [[*reduce*]] on the results."
   [query rff]
-  (when-not (canceled?)
+  (if (canceled?)
+    ;; FIX: Return proper cancellation result instead of nil
+    (do
+      (log/trace "Query was cancelled before execution started")
+      ::cancel)
+    ;; Normal execution path
     (letfn [(respond [metadata reducible-rows]
               (*reduce* rff metadata reducible-rows))]
       (try

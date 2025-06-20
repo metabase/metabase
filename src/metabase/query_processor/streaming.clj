@@ -188,6 +188,23 @@
                         (f rff))
                       (catch Throwable e
                         e))]
+         ;; Handle cancellation - if QP returned ::cancel, the client has given up waiting
+         ;; Just log and exit gracefully without sending any response
+         (when (= result ::qp.pipeline/cancel)
+           (log/infof "Query was cancelled, exiting streaming response. Export format: %s, Thread: %s"
+                      export-format (.getName (Thread/currentThread)))
+           ;; Early return - no need to write anything to the output stream
+           ;; The client that initiated the request has already disconnected
+           (reduced nil))
+
+         (when (nil? result)
+           (let [was-cancelled? (some-> canceled-chan clojure.core.async/poll!)]
+             (log/errorf "QP returned nil. Cancelled: %s, Export format: %s, Thread: %s"
+                         was-cancelled? export-format (.getName (Thread/currentThread)))
+             (throw (ex-info "QP unexpectedly returned nil"
+                             {:cancelled? was-cancelled?
+                              :export-format export-format
+                              :thread (.getName (Thread/currentThread))}))))
          (assert (some? result) "QP unexpectedly returned nil.")
         ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
         ;; question to return a response directly instead of a core.async channel
