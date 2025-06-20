@@ -29,7 +29,7 @@ export const SelectEmbedExperienceStep = () => {
 
     // Use the most recent item for the selected type
     const defaultResourceId =
-      type === "chart"
+      experience === "chart"
         ? (recentQuestions[0]?.id ?? 1)
         : (recentDashboards[0]?.id ?? 1);
 
