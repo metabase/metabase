@@ -12,7 +12,9 @@ import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting
 export const SelectEmbedExperienceStep = () => {
   const { experience, settings, setSettings } = useSdkIframeEmbedSetupContext();
 
-  const handleEmbedExperienceChange = (type: SdkIframeEmbedSetupExperience) => {
+  const handleEmbedExperienceChange = (
+    experience: SdkIframeEmbedSetupExperience,
+  ) => {
     const persistedSettings = _.pick(settings, [
       "theme",
       "instanceUrl",
@@ -27,7 +29,7 @@ export const SelectEmbedExperienceStep = () => {
       ...persistedSettings,
 
       // these settings are overridden when the embed type changes
-      ...getDefaultSdkIframeEmbedSettings(type, defaultEntityId),
+      ...getDefaultSdkIframeEmbedSettings(experience, defaultEntityId),
     } as SdkIframeEmbedSettings);
   };
 
@@ -39,17 +41,19 @@ export const SelectEmbedExperienceStep = () => {
 
       <Radio.Group
         value={experience}
-        onChange={(value) =>
-          handleEmbedExperienceChange(value as SdkIframeEmbedSetupExperience)
+        onChange={(experience) =>
+          handleEmbedExperienceChange(
+            experience as SdkIframeEmbedSetupExperience,
+          )
         }
       >
         <Stack gap="md">
-          {EMBED_EXPERIENCES.map((type) => (
+          {EMBED_EXPERIENCES.map((experience) => (
             <Radio
-              key={type.value}
-              value={type.value}
-              label={type.title}
-              description={type.description}
+              key={experience.value}
+              value={experience.value}
+              label={experience.title}
+              description={experience.description}
             />
           ))}
         </Stack>
