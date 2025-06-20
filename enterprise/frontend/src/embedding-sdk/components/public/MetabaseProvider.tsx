@@ -20,6 +20,8 @@ import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { SdkErrorComponent } from "embedding-sdk/types/ui";
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
+import { useRootElement } from "metabase/hooks/use-root-element";
+import { isWithinShadowRoot } from "metabase/lib/dom";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
@@ -110,6 +112,9 @@ export const MetabaseProviderInternal = ({
   loaderComponent,
   allowConsoleLog,
 }: InternalMetabaseProviderProps): JSX.Element => {
+  const rootElement = useRootElement();
+  const isShadowRoot = isWithinShadowRoot(rootElement);
+
   const { fontFamily } = theme ?? {};
 
   const emotionStyleContainerRef = useRef<HTMLDivElement>(null);
@@ -147,16 +152,21 @@ export const MetabaseProviderInternal = ({
   return (
     <SdkContextProvider>
       <EmotionCacheProvider
-        container={emotionStyleContainerRef.current as Node}
+        container={isShadowRoot ? emotionStyleContainerRef.current : undefined}
       >
         <Global styles={SCOPED_CSS_RESET} />
         <SdkThemeProvider theme={theme}>
-          <Box data-style-container="css-modules"></Box>
+          {isShadowRoot && (
+            <>
+              <Box display="contents" data-style-container="css-modules"></Box>
 
-          <Box
-            ref={emotionStyleContainerRef}
-            data-style-container="emotion"
-          ></Box>
+              <Box
+                ref={emotionStyleContainerRef}
+                display="contents"
+                data-style-container="emotion"
+              ></Box>
+            </>
+          )}
 
           <SdkFontsGlobalStyles baseUrl={authConfig.metabaseInstanceUrl} />
 

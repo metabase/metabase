@@ -8,7 +8,7 @@ import { isCypressActive } from "metabase/env";
 
 interface EmotionCacheProviderProps {
   cacheKey?: string;
-  container?: Node;
+  container?: HTMLElement | null;
   children?: ReactNode;
 }
 
@@ -20,7 +20,7 @@ export const EmotionCacheProvider = ({
   const emotionCache = useMemo(() => {
     const cache = createCache({
       key: cacheKey ?? "emotion",
-      container,
+      container: container as Node,
       nonce: window.MetabaseNonce,
       ...(isCypressActive && { speedy: true }),
     });

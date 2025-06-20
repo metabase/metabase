@@ -1,3 +1,5 @@
+import { isWithinShadowRoot } from "metabase/lib/dom";
+
 const appendedHeadStylesSet = new Set();
 
 // Used in webpack.embedding-sdk.config.js
@@ -5,7 +7,7 @@ const appendedHeadStylesSet = new Set();
 export default function insertIntoTarget(element) {
   document.addEventListener("rootElementSet", (event) => {
     const rootElement = event.detail.rootElement;
-    const isShadowRoot = rootElement !== document.body;
+    const isShadowRoot = isWithinShadowRoot(rootElement);
 
     if (!isShadowRoot && appendedHeadStylesSet.has(element)) {
       return;

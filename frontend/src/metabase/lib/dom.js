@@ -30,6 +30,9 @@ export const isWithinIframe = function () {
   }
 };
 
+export const isWithinShadowRoot = (element) =>
+  element.getRootNode() instanceof ShadowRoot;
+
 // add a global so we can check if the parent iframe is Metabase
 window.METABASE = true;
 
