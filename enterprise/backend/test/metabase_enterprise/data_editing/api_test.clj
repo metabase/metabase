@@ -118,7 +118,7 @@
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/with-test-tables! [table-id data-editing.tu/default-test-table]
-        (let [url      "action/v2/execute-bulk"]
+        (let [url "action/v2/execute-bulk"]
           (testing "Initially the table is empty"
             (is (= [] (table-rows table-id))))
 
@@ -533,34 +533,34 @@
             {:name "a_b1 -"
              :columns [{:name "id", :type "int"}]
              :primary_key ["id"]}
-;; =>
+            ;; =>
             {:status 200
              :name "a_b1 -"
              :fields [{:name "id"
                        :base-type :type/BigInteger
                        :pk? true}]}
 
-;; if not admin, denied
+            ;; if not admin, denied
             #{:d}
             {:name        "a"
              :columns     [{:name "id", :type "int"}]
              :primary_key ["id"]}
             403
 
-;; data editing disabled, denied
+            ;; data editing disabled, denied
             #{:s}
             {:name        "a"
              :columns     [{:name "id", :type "int"}]
              :primary_key ["id"]}
             400
 
-;; compound pk
+            ;; compound pk
             #{:s :d}
             {:name "a"
              :columns [{:name "id_p1", :type "int"}
                        {:name "id_p2", :type "int"}]
              :primary_key ["id_p1" "id_p2"]}
-;; =>
+            ;; =>
             {:status 200
              :name "a"
              :fields [{:name "id_p1"
@@ -582,14 +582,13 @@
               req-body   {:name table-name
                           :columns [{:name "id", :type "auto_incrementing_int_pk"}
                                     {:name "n",  :type "int"}]
-                          :primary_key ["id"]}]
-
-          (let [_          (mt/user-http-request user :post 200 url req-body)
-                db         (t2/select-one :model/Database db-id)
-                table-id   (data-editing.tu/sync-new-table! db table-name)
-                create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
-            (create! [{:n 1} {:n 2}])
-            (is (= [[1 1] [2 2]] (table-rows table-id)))))))))
+                          :primary_key ["id"]}
+              _          (mt/user-http-request user :post 200 url req-body)
+              db         (t2/select-one :model/Database db-id)
+              table-id   (data-editing.tu/sync-new-table! db table-name)
+              create!    #(mt/user-http-request user :post 200 (table-url table-id) {:rows %})]
+          (create! [{:n 1} {:n 2}])
+          (is (= [[1 1] [2 2]] (table-rows table-id))))))))
 
 (deftest coercion-test
   (mt/with-premium-features #{:table-data-editing}

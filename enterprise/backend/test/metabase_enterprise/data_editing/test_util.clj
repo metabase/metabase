@@ -120,4 +120,3 @@
      (t2/update! :model/Database (mt/id) {:settings {:database-enable-table-editing true
                                                      :database-enable-actions       true}})
      ~@body))
-
