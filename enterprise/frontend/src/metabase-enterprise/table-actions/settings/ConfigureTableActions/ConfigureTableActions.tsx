@@ -122,7 +122,7 @@ export const ConfigureTableActions = ({
   );
 
   return (
-    <Stack gap="sm">
+    <Stack gap="sm" data-testid="editable-table-connected-actions-list">
       <Text fw={700}>{t`Connected actions`}</Text>
       <Stack gap="sm" mb="lg">
         {tableActions?.length ? (
