@@ -92,7 +92,7 @@
                :display_name "Reviews → Created At: Month"
                :source_alias "Products+Reviews Summary - Reviews → Created At"}
               #_{:source_alias "Products+Reviews Summary - Reviews → Created At: Month"
-               :display_name "Products+Reviews Summary - Reviews → Created At: Month → Sum"}
+                 :display_name "Products+Reviews Summary - Reviews → Created At: Month → Sum"}
               {:display_name "Products+Reviews Summary - Reviews → Created At → Sum of Price",
                :source_alias "Products+Reviews Summary - Reviews → Created At"}]
              (->> (qp/process-query question)

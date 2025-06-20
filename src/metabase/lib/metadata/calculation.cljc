@@ -614,7 +614,7 @@
       (for [column source-cols
             :let   [remapped (lib.metadata/remapped-field query column)]
             :when  (and remapped
-                       (not (existing-ids (:id remapped))))]
+                        (not (existing-ids (:id remapped))))]
         (assoc remapped
                :lib/source               (:lib/source column) ;; TODO: What's the right source for a remap?
                :lib/source-column-alias  (column-name query stage-number remapped)

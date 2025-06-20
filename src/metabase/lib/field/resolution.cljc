@@ -14,14 +14,14 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.lib.schema.common :as lib.schema.common]))
+   [metabase.util.malli :as mu]))
 
 (def ^:dynamic ^:private *debug* false)
 
@@ -141,7 +141,7 @@
         (dissoc :metabase.lib.field/binning
                 :metabase.lib.field/temporal-unit))))
 
-(mu/defn resolve-column-name :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query

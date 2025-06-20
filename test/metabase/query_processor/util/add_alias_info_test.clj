@@ -786,7 +786,7 @@
               (#'add/matching-field-in-join-at-this-level source-query field-clause))))))
 
 (defn- metadata-provider-with-two-models []
-  (let [result-metadata-for (fn [card-eid column-name]
+  (let [result-metadata-for (fn [column-name]
                               {:display_name   column-name
                                :field_ref      [:field column-name {:base-type :type/Integer}]
                                :name           column-name
@@ -799,31 +799,26 @@
     (lib/composed-metadata-provider
      meta/metadata-provider
      (providers.mock/mock-metadata-provider
-      {:cards [(let [eid (u/generate-nano-id)]
-                 {:name            "Model A"
-                  :id              1
-                  :entity-id       eid
-                  :database-id     (meta/id)
-                  :type            :model
-                  :dataset-query   {:database (mt/id)
-                                    :type     :native
-                                    :native   {:template-tags {} :query "select 1 as a1, 2 as a2;"}}
-                  :result-metadata [(result-metadata-for eid "A1")
-                                    (result-metadata-for eid "A2")]})
-               (let [eid (u/generate-nano-id)]
-                 {:name            "Model B"
-                  :id              2
-                  :entity-id       eid
-                  :database-id     (meta/id)
-                  :type            :model
-                  :dataset-query   {:database (mt/id)
-                                    :type     :native
-                                    :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
-                  :result-metadata [(result-metadata-for eid "B1")
-                                    (result-metadata-for eid "B2")]})
+      {:cards [{:name            "Model A"
+                :id              1
+                :database-id     (meta/id)
+                :type            :model
+                :dataset-query   {:database (mt/id)
+                                  :type     :native
+                                  :native   {:template-tags {} :query "select 1 as a1, 2 as a2;"}}
+                :result-metadata [(result-metadata-for "A1")
+                                  (result-metadata-for "A2")]}
+               {:name            "Model B"
+                :id              2
+                :database-id     (meta/id)
+                :type            :model
+                :dataset-query   {:database (mt/id)
+                                  :type     :native
+                                  :native   {:template-tags {} :query "select 1 as b1, 2 as b2;"}}
+                :result-metadata [(result-metadata-for "B1")
+                                  (result-metadata-for "B2")]}
                {:name            "Joined"
                 :id              3
-                :entity-id       (u/generate-nano-id)
                 :database-id     (meta/id)
                 :type            :model
                 :dataset-query   {:database (meta/id)

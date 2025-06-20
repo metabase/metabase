@@ -333,7 +333,7 @@
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
    :source-table (format "card__%s" base-card-id)})
 
-#_{:clj-kondo/ignore [metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest consistent-date-formatting-test
   (mt/with-temporary-setting-values [custom-formatting nil]
     (let [q (sql-time-query "2023-12-11 15:30:45.123" 20)]

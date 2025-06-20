@@ -16,12 +16,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.pipeline :as t2.pipeline]
-   [metabase.lib.test-util.macros :as lib.tu.macros]
-   [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.test-metadata :as meta]
-   [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util])
+   [toucan2.pipeline :as t2.pipeline])
   (:import
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)))

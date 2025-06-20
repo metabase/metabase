@@ -9,7 +9,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field :as lib.field]
-   [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
