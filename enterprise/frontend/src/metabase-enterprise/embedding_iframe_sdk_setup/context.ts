@@ -9,18 +9,20 @@ import type {
 } from "./types";
 
 export interface SdkIframeEmbedSetupContextType {
+  // Navigation
   currentStep: SdkIframeEmbedSetupStep;
   setCurrentStep: (step: SdkIframeEmbedSetupStep) => void;
 
   experience: SdkIframeEmbedSetupExperience;
+
+  // Embed settings
   settings: SdkIframeEmbedSettings;
   setSettings: (settings: SdkIframeEmbedSettings) => void;
   updateSettings: (nextSettings: Partial<SdkIframeEmbedSettings>) => void;
 
-  // Recent dashboards and questions
+  // Recent items
   recentDashboards: SdkIframeEmbedSetupRecentItem[];
   recentQuestions: SdkIframeEmbedSetupRecentItem[];
-
   addRecentItem: (
     type: "dashboard" | "question",
     recentItem: SdkIframeEmbedSetupRecentItem,
