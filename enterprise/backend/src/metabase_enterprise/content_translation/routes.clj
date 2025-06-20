@@ -21,11 +21,19 @@
 (def ^:private max-content-translation-dictionary-size-mib 1.5)
 (def ^:private max-content-translation-dictionary-size-bytes (* max-content-translation-dictionary-size-mib 1024 1024))
 
+(def ^:private sample-translations [{:locale "de" :msgid "Sample translation" :msgstr "Musterübersetzung"}
+                                    {:locale "pt_BR" :msgid "Sample translation" :msgstr "Tradução de exemplo"}
+                                    {:locale "ja" :msgid "Sample translation" :msgstr "サンプル翻訳"}
+                                    {:locale "ko" :msgid "Sample translation" :msgstr "샘플 번역"}])
+
 (api.macros/defendpoint :get "/csv"
   "Provides content translation dictionary in CSV"
   []
   (api/check-superuser)
   (let [translations (ct/get-translations)
+        translations (if (empty? translations)
+                       sample-translations
+                       translations)
         csv-data (cons ["Language" "String" "Translation"]
                        (map (fn [{:keys [locale msgid msgstr]}]
                               [locale msgid msgstr])
