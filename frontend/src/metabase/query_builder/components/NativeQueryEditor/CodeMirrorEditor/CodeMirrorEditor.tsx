@@ -132,6 +132,9 @@ export const CodeMirrorEditor = forwardRef<
       value={Lib.rawNativeQuery(query)}
       readOnly={readOnly}
       onChange={onChange}
+      basicSetup={{
+        searchKeymap: false,
+      }}
       height="100%"
       onUpdate={handleUpdate}
       autoFocus

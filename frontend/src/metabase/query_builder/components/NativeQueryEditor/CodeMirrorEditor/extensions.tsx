@@ -9,6 +9,7 @@ import {
   indentUnit,
   syntaxHighlighting,
 } from "@codemirror/language";
+import { openSearchPanel } from "@codemirror/search";
 import { Prec } from "@codemirror/state";
 import {
   Decoration,
@@ -105,6 +106,23 @@ export function useExtensions({
       highlightLines(),
       folds(),
       keyboardShortcuts({ onRunQuery, onFormatQuery }),
+      Prec.lowest(
+        keymap.of([
+          {
+            any: (view, error) => {
+              if (
+                !error.shiftKey &&
+                (error.ctrlKey || error.metaKey) &&
+                error.key.toLowerCase() === "f"
+              ) {
+                return openSearchPanel(view);
+              }
+
+              return false;
+            },
+          },
+        ]),
+      ),
     ]
       .flat()
       .filter(isNotNull);
