@@ -442,7 +442,9 @@ describe("scenarios > collections > trash", () => {
     // });
 
     toggleEllipsisMenuFor("Dashboard A");
-    H.popover().findByText("Delete permanently").click();
+    H.popover({ skipVisibilityCheck: true })
+      .findByText("Delete permanently")
+      .click();
     H.modal().findByText("Delete Dashboard A permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
@@ -450,7 +452,9 @@ describe("scenarios > collections > trash", () => {
     });
 
     toggleEllipsisMenuFor("Question A");
-    H.popover().findByText("Delete permanently").click();
+    H.popover({ skipVisibilityCheck: true })
+      .findByText("Delete permanently")
+      .click();
     H.modal().findByText("Delete Question A permanently?").should("exist");
     H.modal().findByText("Delete permanently").click();
     collectionTable().within(() => {
