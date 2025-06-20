@@ -785,7 +785,7 @@
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
   {:extra-paths ["dev/src"]
-   :exec-fn     dev.h2-shell/shell
+   :exec-fn     dev.h2/shell
    :jvm-opts    ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot
