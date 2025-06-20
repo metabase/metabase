@@ -11957,6 +11957,24 @@ databaseChangeLog:
                            'v54.2025-02-14T08:05:00'
                   );
 
+  - changeSet:
+      id: v55.2025-06-22T10:00:00
+      author: ranquild
+      comment: |
+        Update `has_field_values` on FK fields to match PKs. Before this change, the FE always used the corresponding
+        PKs fields for FKs fields in dashboards. Now the FE does not swap fields, and we need to set `has_field_values`
+        to prevent any changes in behavior.
+      changes:
+        - sql: >-
+            UPDATE metabase_field AS f1
+            WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK'
+            SET has_field_values = (
+              SELECT has_field_values
+              FROM metabase_fields AS f2
+              WHERE id = f1.fk_target_field_id
+            );
+      rollback: # not necessary
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
