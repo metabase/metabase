@@ -1,4 +1,10 @@
+import type { RecentItem } from "metabase-types/api";
+
 const { H } = cy;
+
+type RecentActivityIntercept = {
+  response: { body: { recents: RecentItem[] } };
+};
 
 describe("scenarios > embedding > sdk iframe embed setup > select embed experience", () => {
   beforeEach(() => {
@@ -7,20 +13,30 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     H.setTokenFeatures("all");
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentItems");
+    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("shows dashboard experience by default", () => {
+  it("shows most recent dashboard from the activity log", () => {
+    const dashboardName = "Orders in a dashboard";
+
     cy.visit("/embed/new");
     cy.wait("@dashboard");
 
-    const iframe = H.getIframeBody();
-    iframe.within(() => {
+    cy.log("assert that the most recent dashboard is the one we expect");
+    cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
+      const mostRecentDashboard = intercept.response?.body.recents?.filter(
+        (recent) => recent.model === "dashboard",
+      )?.[0];
+
+      expect(mostRecentDashboard.name).to.be.equal(dashboardName);
+    });
+
+    H.getIframeBody().within(() => {
       cy.log("dashboard title is visible");
-      cy.findByText("Person overview").should("be.visible");
+      cy.findByText(dashboardName).should("be.visible");
 
       cy.log("dashboard card is visible");
-      cy.findByText("Person detail").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
     });
   });
 
