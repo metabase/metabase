@@ -1,4 +1,7 @@
-import type { DashboardContextProps } from "metabase/dashboard/context";
+import type { ReactNode } from "react";
+
+import type { DashCardMenuItem } from "./dashboard";
+import type { MetabaseQuestion } from "./question";
 
 export type MetabaseClickAction = {
   name: string;
@@ -19,8 +22,28 @@ export type MetabaseClickActionPluginsConfig = (
   clickedDataPoint: MetabaseDataPointObject,
 ) => MetabaseClickAction[];
 
+export type DashboardCardMenuCustomElement = ({
+  question,
+}: {
+  question: MetabaseQuestion;
+}) => ReactNode;
+
+export type CustomDashboardCardMenuItem = ({
+  question,
+}: {
+  question?: MetabaseQuestion;
+}) => DashCardMenuItem;
+
+export type DashboardCardCustomMenuItem = {
+  withDownloads?: boolean;
+  withEditLink?: boolean;
+  customItems?: (DashCardMenuItem | CustomDashboardCardMenuItem)[];
+};
+
 export type MetabaseDashboardPluginsConfig = {
-  dashboardCardMenu?: DashboardContextProps["dashcardMenu"];
+  dashboardCardMenu?:
+    | DashboardCardMenuCustomElement
+    | DashboardCardCustomMenuItem;
 };
 
 export type MetabasePluginsConfig = {

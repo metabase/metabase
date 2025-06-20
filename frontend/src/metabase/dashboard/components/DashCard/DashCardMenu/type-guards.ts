@@ -1,18 +1,16 @@
 import React, { type ReactNode } from "react";
 
+import type { DashboardContextProps } from "metabase/dashboard/context";
 import type {
-  type DashboardCardCustomMenuItem,
-  type DashboardCardMenuCustomElement,
-  DashboardContextProps,
-} from "metabase/dashboard/context";
-
-import { undefined } from "./DashCardMenu";
+  DashboardCardMenuCustomElement,
+  DashboardCardMenuObject,
+} from "metabase/dashboard/context/types/dashcard-menu";
 
 export const isReactNode = (
   menu: DashboardContextProps["dashcardMenu"],
 ): menu is Exclude<
   ReactNode,
-  DashboardCardMenuCustomElement | DashboardCardCustomMenuItem
+  DashboardCardMenuCustomElement | DashboardCardMenuObject
 > => {
   const isFunction = typeof menu === "function";
   const isObjectButNotValidElement =
@@ -27,6 +25,6 @@ export const isCustomElementFn = (
 };
 export const isCustomMenuConfig = (
   menu: DashboardContextProps["dashcardMenu"],
-): menu is DashboardCardCustomMenuItem => {
+): menu is DashboardCardMenuObject => {
   return typeof menu === "object" && menu !== null;
 };

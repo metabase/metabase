@@ -5,6 +5,7 @@ import { type ReactNode, useMemo, useState } from "react";
 import CS from "metabase/css/core/index.css";
 import type {
   DashboardCardCustomMenuItem,
+  DashboardCardMenuObject,
   DashcardMenuItems,
 } from "metabase/dashboard/context/types/dashcard-menu";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
@@ -44,7 +45,7 @@ function renderBaseMenuItems({
   onEditVisualization,
   isDownloadingData,
   onDownload,
-}: { dashcardMenu: DashboardCardCustomMenuItem } & UseDashcardMenuItemsProps) {
+}: { dashcardMenu: DashboardCardMenuObject } & UseDashcardMenuItemsProps) {
   return (
     <>
       {BASE_MENU_KEYS.flatMap((key) => {
@@ -103,37 +104,39 @@ function renderCustomMenuItems({
   dashcard,
   series,
 }: {
-  dashcardMenu: DashboardCardCustomMenuItem;
+  dashcardMenu: DashboardCardMenuObject;
 } & UseDashcardMenuItemsProps) {
-  return (dashcardMenu?.customItems ?? []).map((item) => {
-    const {
-      label,
-      color,
-      leftSection,
-      iconName,
-      rightSection,
-      onClick,
-      closeMenuOnClick,
-      disabled,
-    } =
-      typeof item === "function"
-        ? item({ question, dashboard, dashcard, series })
-        : item;
+  return (dashcardMenu?.customItems ?? []).map(
+    (item: DashboardCardCustomMenuItem) => {
+      const {
+        label,
+        color,
+        leftSection,
+        iconName,
+        rightSection,
+        onClick,
+        closeMenuOnClick,
+        disabled,
+      } =
+        typeof item === "function"
+          ? item({ question, dashboard, dashcard, series })
+          : item;
 
-    return (
-      <Menu.Item
-        key={`MB_CUSTOM_${label}`}
-        color={color}
-        leftSection={leftSection ?? <Icon name={iconName} />}
-        rightSection={rightSection}
-        onClick={onClick}
-        closeMenuOnClick={closeMenuOnClick}
-        disabled={disabled}
-      >
-        {label}
-      </Menu.Item>
-    );
-  });
+      return (
+        <Menu.Item
+          key={`MB_CUSTOM_${label}`}
+          color={color}
+          leftSection={leftSection ?? <Icon name={iconName} />}
+          rightSection={rightSection}
+          onClick={onClick}
+          closeMenuOnClick={closeMenuOnClick}
+          disabled={disabled}
+        >
+          {label}
+        </Menu.Item>
+      );
+    },
+  );
 }
 
 export const DefaultDashCardMenu = ({
@@ -144,7 +147,7 @@ export const DefaultDashCardMenu = ({
   series,
   onEditVisualization,
 }: {
-  dashcardMenu: DashboardCardCustomMenuItem;
+  dashcardMenu: DashboardCardMenuObject;
 } & UseDashcardMenuItemsProps) => {
   const store = useStore();
 

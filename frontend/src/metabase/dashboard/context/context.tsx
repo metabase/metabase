@@ -33,8 +33,8 @@ import type {
 
 import { type ReduxProps, connector } from "./context.redux";
 import type {
-  DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
+  DashboardCardMenuObject,
 } from "./types/dashcard-menu";
 
 export type DashboardContextErrorState = {
@@ -44,7 +44,7 @@ export type DashboardContextErrorState = {
 export type DashcardMenu =
   | ReactNode
   | DashboardCardMenuCustomElement
-  | DashboardCardCustomMenuItem;
+  | DashboardCardMenuObject;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;

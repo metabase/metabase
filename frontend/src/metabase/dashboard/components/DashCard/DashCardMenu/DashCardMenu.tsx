@@ -5,6 +5,10 @@ import {
   type DashboardContextProps,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import type {
+  DashboardCardMenuCustomElement,
+  DashboardCardMenuObject,
+} from "metabase/dashboard/context/types/dashcard-menu";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
@@ -42,7 +46,7 @@ const getDashcardMenuItems = ({
 
     .with(P.when(isReactNode), (node) => node)
 
-    .with(P.when(isCustomElementFn), (fn) => {
+    .with(P.when(isCustomElementFn), (fn: DashboardCardMenuCustomElement) => {
       return fn({
         question,
         dashboard,
@@ -51,7 +55,7 @@ const getDashcardMenuItems = ({
       });
     })
 
-    .with(P.when(isCustomMenuConfig), (menu) => (
+    .with(P.when(isCustomMenuConfig), (menu: DashboardCardMenuObject) => (
       <DefaultDashCardMenu
         dashcardMenu={menu}
         question={question}
@@ -95,14 +99,16 @@ export const DashCardMenu = ({
 
   const menuItems = useMemo(
     () =>
-      getDashcardMenuItems({
-        dashcardMenu,
-        question,
-        dashboard,
-        dashcard,
-        series: series as Series,
-        onEditVisualization,
-      }),
+      dashboard && question
+        ? getDashcardMenuItems({
+            dashcardMenu,
+            question,
+            dashboard,
+            dashcard,
+            series: series as Series,
+            onEditVisualization,
+          })
+        : null,
     [dashboard, dashcard, dashcardMenu, onEditVisualization, question, series],
   );
 

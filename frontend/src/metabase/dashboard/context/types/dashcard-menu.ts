@@ -48,8 +48,8 @@ export type DashCardMenuItem = PropsWithChildren<{
 }>;
 
 export type DashboardCardMenuProps = {
-  question: Question | null;
-  dashboard: Dashboard | null;
+  question: Question;
+  dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
 };
@@ -69,11 +69,15 @@ export type DashcardMenuItems =
   | "metabot"
   | "view-underlying-question";
 
-export type DashboardCardCustomMenuItem = Partial<
+export type DashboardCardCustomMenuItem =
+  | DashCardMenuItem
+  | CustomDashboardCardMenuItem;
+
+export type DashboardCardMenuObject = Partial<
   Record<
     DashcardMenuItems,
     boolean | ((props: DashboardCardMenuProps) => boolean)
   > & {
-    customItems?: (DashCardMenuItem | CustomDashboardCardMenuItem)[];
+    customItems?: DashboardCardCustomMenuItem[];
   }
 >;

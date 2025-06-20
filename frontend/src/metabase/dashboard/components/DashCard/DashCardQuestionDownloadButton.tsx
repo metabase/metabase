@@ -21,30 +21,25 @@ import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
-import type { Dashboard, DashboardCard } from "metabase-types/api";
+import type { Dashboard, DashboardCard, Dataset } from "metabase-types/api";
 
 import { useDashCardSeries } from "./DashCard";
 import { getSeriesForDashcard } from "./DashCardVisualization";
 
 type DashCardQuestionDownloadButtonProps = {
-  dashboard?: Dashboard;
-  dashcard?: DashboardCard;
+  dashboard: Dashboard;
+  dashcard: DashboardCard;
 };
 
-export const DashCardQuestionDownloadButton = ({
+export const DashCardQuestionDownloadButtonInner = ({
   dashboard,
   dashcard,
-}: DashCardQuestionDownloadButtonProps) => {
+  question,
+}: DashCardQuestionDownloadButtonProps & { question: Question }) => {
   const store = useStore();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
-  const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
   const { series: untranslatedRawSeries } = useDashCardSeries(dashcard);
 
   const rawSeries = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries(
@@ -56,7 +51,7 @@ export const DashCardQuestionDownloadButton = ({
     [rawSeries, dashcard, datasets],
   );
 
-  const result = series[0];
+  const result = series[0] as unknown as Dataset;
 
   const token = useMemo(
     () =>
@@ -70,7 +65,7 @@ export const DashCardQuestionDownloadButton = ({
   );
 
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const canDownloadPng = canSavePng(question.display());
+  const canDownloadPng = question && canSavePng(question.display());
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
@@ -130,5 +125,29 @@ export const DashCardQuestionDownloadButton = ({
         />
       </Popover.Dropdown>
     </Popover>
+  );
+};
+
+export const DashCardQuestionDownloadButton = ({
+  dashboard,
+  dashcard,
+}: DashCardQuestionDownloadButtonProps) => {
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+  }, [dashcard.card, metadata]);
+
+  if (!question) {
+    return null;
+  }
+
+  return (
+    <DashCardQuestionDownloadButtonInner
+      dashboard={dashboard}
+      dashcard={dashcard}
+      question={question}
+    />
   );
 };

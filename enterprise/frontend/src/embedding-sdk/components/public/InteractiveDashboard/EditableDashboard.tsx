@@ -65,6 +65,7 @@ export type EditableDashboardProps = {
 
 const EditableDashboardInner = ({
   drillThroughQuestionProps,
+  onEditQuestion,
 }: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
   Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
   const { isEditing } = useDashboardContext();
@@ -76,6 +77,7 @@ const EditableDashboardInner = ({
   return (
     <InteractiveDashboardProvider
       plugins={drillThroughQuestionProps?.plugins}
+      onEditQuestion={onEditQuestion}
       dashboardActions={dashboardActions}
     >
       <Dashboard />
@@ -206,7 +208,31 @@ export const EditableDashboard = ({
               drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
           })
         }
-        onEditQuestion={onEditQuestion}
+        dashcardMenu={{
+          "edit-visualization": ({ dashcard }) =>
+            isVisualizerSupportedVisualization(dashcard.card.display),
+          "edit-link": ({ dashcard, question }) =>
+            !isVisualizerSupportedVisualization(dashcard.card.display) &&
+            !!question &&
+            canEditQuestion(question),
+          download: ({ series }) => !!series[0]?.data && !series[0]?.error,
+          metabot: ({ question }) =>
+            !!question &&
+            PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question),
+          "view-underlying-question": ({
+            dashboard: _dashboard,
+            dashcard,
+            question: _question,
+            series,
+          }) => {
+            const settings = getComputedSettingsForSeries(
+              series,
+            ) as ComputedVisualizationSettings;
+            const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+
+            return !title && isVisualizerDashboardCard(dashcard);
+          },
+        }}
       >
         {adhocQuestionUrl ? (
           <InteractiveAdHocQuestion
@@ -217,6 +243,7 @@ export const EditableDashboard = ({
         ) : (
           <EditableDashboardInner
             drillThroughQuestionProps={drillThroughQuestionProps}
+            onEditQuestion={onEditQuestion}
           />
         )}
       </DashboardContextProvider>
