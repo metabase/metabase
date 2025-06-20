@@ -2,10 +2,10 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SendTestPulse from "metabase/components/SendTestPulse";
 import SchedulePicker, {
   type ScheduleChangeProp,
-} from "metabase/containers/SchedulePicker";
+} from "metabase/common/components/SchedulePicker";
+import SendTestPulse from "metabase/components/SendTestPulse";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";

@@ -15,12 +15,12 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";

@@ -6,14 +6,6 @@ import { jt, t } from "ttag";
 import { NotFound } from "metabase/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/components/LogoIcon";
-import {
-  CheckmarkIcon,
-  LayoutBody,
-  LayoutCard,
-  LayoutIllustration,
-  LayoutRoot,
-  StyledMetabotLogo,
-} from "metabase/containers/Unsubscribe.styled";
 import Button from "metabase/core/components/Button";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
@@ -24,6 +16,15 @@ import {
   PulseUnsubscribeApi,
 } from "metabase/services";
 import { Center, Stack, Text } from "metabase/ui";
+
+import {
+  CheckmarkIcon,
+  LayoutBody,
+  LayoutCard,
+  LayoutIllustration,
+  LayoutRoot,
+  StyledMetabotLogo,
+} from "./Unsubscribe.styled";
 
 const ERRORS = {
   MISSING_REQUIRED_PARAMETERS: "missing required parameters",

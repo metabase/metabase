@@ -2,11 +2,11 @@ import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { archiveAndTrack } from "metabase/archive/analytics";
+import { UndoListOverlay } from "metabase/common/components/UndoListing";
 import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { UndoListOverlay } from "metabase/containers/UndoListing";
 import type { CollectionItem } from "metabase-types/api";
 import type { Undo } from "metabase-types/store/undo";
 

@@ -4,11 +4,11 @@ import { merge } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
+import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
 import EventSandbox from "metabase/components/EventSandbox";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
-import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 
 import type { SizeToFitOptions } from "./SizeToFitModifier";
