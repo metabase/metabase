@@ -101,7 +101,7 @@
                           ;; it would be much better if our mappings were based on field ids.
                           ;; probably not an issue in practice, because FE is writing the config AND calling tmp-modal
                           ;; with likely the same names for fields (fingers crossed)
-                          :value                   (get row-data (keyword (:name field)))}))
+                          :value                   (get row-data (:sourceValueTarget param-setting))}))
                       vec)}))
 
 (defn- saved-param-base-type
@@ -110,7 +110,7 @@
     :string/= :type/Text
     :number/= :type/Number
     :date/single (case (:inputType viz-field)
-                     ;; formatting needs thought
+                   ;; formatting needs thought
                    "datetime" :type/DateTime
                    :type/Date)
     (if (= "type" (namespace param-type))
