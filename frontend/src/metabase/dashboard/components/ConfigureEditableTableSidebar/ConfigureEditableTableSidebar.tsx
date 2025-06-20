@@ -32,7 +32,7 @@ export function ConfigureEditableTableSidebar({
 
   return (
     <>
-      <Sidebar data-testid="add-table-sidebar">
+      <Sidebar data-testid="configure-editable-table-sidebar">
         <Tabs defaultValue="columns">
           <Tabs.List px="md" pt="sm">
             <Tabs.Tab value="columns">{t`Columns`}</Tabs.Tab>

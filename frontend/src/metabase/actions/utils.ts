@@ -10,12 +10,14 @@ import type {
   ActionFormSettings,
   BaseDashboardCard,
   Card,
+  DataGridWritebackAction,
   FieldSettings,
   FieldSettingsMap,
   FieldType,
   InputComponentType,
   InputSettingType,
   Parameter,
+  TableAction,
   TableActionParameter,
   VirtualCard,
   WritebackAction,
@@ -168,7 +170,7 @@ export function isActionDashCard(
 export const isActionCard = (card?: Card | VirtualCard) =>
   card?.display === "action";
 
-export const getFormTitle = (action: WritebackAction): string => {
+export const getFormTitle = (action: DataGridWritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
 
@@ -352,3 +354,15 @@ export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
 
 export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
   action.type === "implicit" && action.kind === "row/update";
+
+export const isModelAction = (
+  action: DataGridWritebackAction | undefined | null,
+): action is WritebackAction => {
+  return action != null && "model_id" in action;
+};
+
+export const isTableAction = (
+  action: DataGridWritebackAction | undefined | null,
+): action is TableAction => {
+  return action != null && "table_id" in action;
+};

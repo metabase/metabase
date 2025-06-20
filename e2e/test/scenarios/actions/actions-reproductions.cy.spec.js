@@ -252,6 +252,7 @@ describe("issue 51020", () => {
     cy.findByLabelText("Add action").click();
     cy.button("Pick an action").click();
     H.modal().within(() => {
+      cy.findByText("Models").click();
       cy.findByText(modelName).click();
       cy.findByText("Update").click();
       cy.findAllByText("Ask the user").eq(0).click();

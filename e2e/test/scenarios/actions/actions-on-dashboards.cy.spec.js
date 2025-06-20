@@ -1221,6 +1221,7 @@ describe(
         waitForValidActions();
 
         cy.findByRole("dialog").within(() => {
+          cy.findByText("Models").click();
           cy.findByText(MODEL_NAME).click();
           cy.findByText(ACTION_NAME).click();
 
@@ -1283,6 +1284,7 @@ function createDashboardWithActionButton({
   waitForValidActions();
 
   cy.findByRole("dialog").within(() => {
+    cy.findByText("Models").click();
     cy.findByText(modelName).click();
     cy.findByText(actionName).click();
   });
