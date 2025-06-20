@@ -114,6 +114,10 @@
   opacity: 1;
 }
 
+.promptSuggestionsContainer {
+  min-height: 106px; /* height if there's 3 suggestions */
+}
+
 .textInputContainer {
   padding: 0 1rem 1rem;
 }

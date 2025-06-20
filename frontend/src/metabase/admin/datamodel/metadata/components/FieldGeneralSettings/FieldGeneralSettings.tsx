@@ -8,10 +8,10 @@ import {
   useDiscardFieldValuesMutation,
   useRescanFieldValuesMutation,
 } from "metabase/api";
-import ActionButton from "metabase/components/ActionButton";
-import InputBlurChange from "metabase/components/InputBlurChange";
-import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
-import Select from "metabase/core/components/Select/Select";
+import ActionButton from "metabase/common/components/ActionButton";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
+import type { SelectChangeEvent } from "metabase/common/components/Select/Select";
+import Select from "metabase/common/components/Select/Select";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
@@ -123,7 +123,6 @@ const FieldHeaderSection = ({
         name="description"
         value={field.description ?? ""}
         placeholder={t`No description for this field yet`}
-        fullWidth
         onBlurChange={handleChangeDescription}
       />
     </MetadataSection>

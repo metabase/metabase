@@ -148,3 +148,5 @@ llm-payloads
 CLAUDE.local.md
 
 .eslintcache
+
+/logs

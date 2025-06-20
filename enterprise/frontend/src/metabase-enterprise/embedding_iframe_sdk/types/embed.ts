@@ -1,5 +1,3 @@
-import type { Query } from "history";
-
 import type {
   EntityTypeFilterKeys,
   MetabaseTheme,
@@ -8,6 +6,7 @@ import type {
 import type { MetabaseError } from "embedding-sdk/errors";
 import type { MetabaseAuthMethod } from "embedding-sdk/types";
 import type { MetabaseEmbeddingSessionToken } from "embedding-sdk/types/refresh-token";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CollectionId } from "metabase-types/api";
 
 /** Events that the embed.js script listens for */
@@ -45,7 +44,7 @@ export interface DashboardEmbedOptions {
   withDownloads?: boolean;
 
   // parameters
-  initialParameters?: Query;
+  initialParameters?: ParameterValues;
   hiddenParameters?: string[];
 
   // incompatible options
@@ -106,7 +105,7 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
+export type SdkIframeEmbedBaseSettings = {
   apiKey: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
@@ -132,3 +131,12 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;

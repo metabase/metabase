@@ -269,6 +269,7 @@
       :database-id   (:id (lib.metadata/database metadata-provider))
       :name          "Mock model - Products and Reviews"
       :type          :model
+      :entity-id     (lib/random-ident)
       :dataset-query
       {:database (:id (lib.metadata/database metadata-provider))
        :type     :query
@@ -276,6 +277,7 @@
                   :joins        [{:fields       :all
                                   :alias        "Reviews"
                                   :source-table (:id reviews)
+                                  :ident        (lib/random-ident)
                                   :condition    [:=
                                                  [:field (:id pk) {:base-type :type/BigInteger}]
                                                  [:field (:id fk)

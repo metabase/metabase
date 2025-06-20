@@ -589,6 +589,15 @@ describe("scenarios > dashboard", () => {
             });
         });
       });
+
+      const longTitle =
+        "a really really really really really really really really really really really really really really really really long title";
+
+      it("should prevent entering a title longer than 100 chars", () => {
+        const dashboardNameInput = cy.findByTestId("dashboard-name-heading");
+        dashboardNameInput.clear().type(longTitle).blur();
+        dashboardNameInput.invoke("text").should("have.length", 100);
+      });
     });
 
     it(
@@ -1203,7 +1212,7 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", () => {
+  describe("warn before leave", { tags: "@flaky" }, () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });

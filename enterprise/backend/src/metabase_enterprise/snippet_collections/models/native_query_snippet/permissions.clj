@@ -3,8 +3,7 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as snippets]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.util :as perms-util]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,7 +19,7 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (perms-util/sandboxed-user?))
+    (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
@@ -31,7 +30,7 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (perms-util/sandboxed-user?))
+    (not (perms/sandboxed-user?))
     (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
@@ -42,7 +41,7 @@
   :feature :snippet-collections
   [_model m]
   (and
-   (not (perms-util/sandboxed-user?))
+   (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)))
 
@@ -51,7 +50,7 @@
   :feature :snippet-collections
   [snippet changes]
   (and
-   (not (perms-util/sandboxed-user?))
+   (not (perms/sandboxed-user?))
    (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))

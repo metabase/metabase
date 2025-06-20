@@ -165,6 +165,7 @@ const tokenStatusFeatures = [
   "collection-cleanup",
   "config-text-file",
   "content-management",
+  "content-translation",
   "content-verification",
   "dashboard-subscription-filters",
   "database-auth-providers",
@@ -221,8 +222,9 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
-  "disable_password_login",
+  "content_translation",
   "content_verification",
+  "disable_password_login",
   "embedding",
   "embedding_sdk",
   "embedding_iframe_sdk",
@@ -243,11 +245,11 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
-  "query_reference_validation",
   "cache_preemptive",
   "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
+  "ai_entity_analysis",
   "database_routing",
   "development-mode",
 ] as const;
@@ -371,6 +373,7 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
+  "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;

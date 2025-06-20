@@ -20,7 +20,7 @@ type SetupOpts = {
 function setup({
   value = [],
   options = [],
-  optionRenderer = ([value]) => value,
+  optionRenderer = ([value]) => <>{value}</>,
   placeholder = "Search the list",
   checkedColor,
   isDashboardFilter,
@@ -148,5 +148,17 @@ describe("ListField", () => {
     await waitFor(() =>
       expect(screen.queryByLabelText("Select all")).not.toBeInTheDocument(),
     );
+  });
+
+  it("should not create duplicate options on pressing Enter for non-string values", async () => {
+    setup({
+      value: [],
+      options: [[true], [false]],
+      placeholder: "Find...",
+      optionRenderer: ([value]) => <span>{String(value)}</span>,
+    });
+    const input = screen.getByPlaceholderText("Find...");
+    await userEvent.type(input, "false");
+    expect(screen.getAllByText("false")).toHaveLength(1);
   });
 });

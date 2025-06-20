@@ -1,8 +1,11 @@
 ---
 title: Database routing
+summary: Route queries to different databases based on who's viewing them. Great for multi-tenant setups where each customer has their own database.
 ---
 
 # Database routing
+
+{% include plans-blockquote.html feature="Database routing" %}
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
@@ -11,7 +14,17 @@ Database routing is useful for:
 - Managing embedding setups where each customer has their own database with identical schemas.
 - Switching between dev and prod data warehouses.
 - Changing the target data warehouse for certain teams.
-- Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles (e.g., to BigQuery, Athena, Databricks).
+- Managing separate connections to the same data warehouse, with each connection having separate privileges. This connection management is akin to [connection impersonation](./impersonation.md) for databases that prevent the same connection from changing roles.
+
+## Databases that support database routing
+
+- [Druid](../databases/connections/druid.md)
+- [MongoDB](../databases/connections/mongodb.md)
+- [MariaDB](../databases/connections/mariadb.md)
+- [MySQL](../databases/connections/mysql.md)
+- [PostgreSQL](../databases/connections/postgresql.md)
+- [SQL Server](../databases/connections/sql-server.md)
+- [SQLite](../databases/connections/sqlite.md)
 
 ## How database routing works
 
@@ -34,7 +47,7 @@ For database routing to work, your users must have a user attribute that Metabas
 
 You can add user attributes manually, or via Single Sign-On (SSO) via [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md).
 
-If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins (or any user) to `__METABASE_PRIMARY_DB__`.
+If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins (or any user) to `__METABASE_ROUTER__`.
 
 If a non-admin user account lacks a valid value for the user attribute, they won't be able to view the question at all.
 

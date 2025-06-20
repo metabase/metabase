@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
-import Input from "metabase/core/components/Input/Input";
+import Input from "metabase/common/components/Input/Input";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 import { color } from "metabase/lib/colors";
 
 export const TableName = styled.div`

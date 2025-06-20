@@ -6,13 +6,13 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
+import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
@@ -28,6 +28,7 @@ import {
 } from "metabase/lib/dashboard_grid";
 import { connect } from "metabase/lib/redux";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex } from "metabase/ui";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
@@ -156,10 +157,10 @@ export type DashboardGridProps = {
   // public dashboard passes it explicitly
   width?: number;
   // public or embedded dashboard passes it as noop
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-  downloadsEnabled: boolean;
+  navigateToNewCardFromDashboard:
+    | ((opts: NavigateToNewCardFromDashboardOpts) => void)
+    | null;
+  downloadsEnabled: EmbedResourceDownloadOptions;
   autoScrollToDashcardId?: DashCardId;
   reportAutoScrolledToDashcard?: () => void;
   handleSetEditing?: (dashboard: Dashboard | null) => void;
@@ -508,7 +509,7 @@ class DashboardGridInner extends Component<
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
-      downloadsEnabled: boolean;
+      downloadsEnabled: EmbedResourceDownloadOptions;
       shouldAutoScrollTo: boolean;
       reportAutoScrolledToDashcard?: () => void;
     },
