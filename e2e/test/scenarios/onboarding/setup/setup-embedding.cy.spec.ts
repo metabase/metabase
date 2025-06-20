@@ -193,8 +193,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       })
       .should("be.visible");
 
-    cy.log("Ensure the database sync status is not shown");
-    cy.findByRole("status").should("not.exist");
+    expectNoDatabaseStatus();
 
     step().within(() => {
       cy.findByRole("checkbox", { name: "feedback" })
@@ -295,8 +294,14 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
 
     cy.log("5: Metabase");
     cy.button("New").should("be.visible");
+    expectNoDatabaseStatus();
   });
 });
+
+function expectNoDatabaseStatus() {
+  cy.log("Ensure the database sync status is not shown");
+  cy.findByRole("status").should("not.exist");
+}
 
 function assertEmbeddingOnboardingPageLoaded() {
   cy.findByLabelText("Embedding Setup Sidebar")
