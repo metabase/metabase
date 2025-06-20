@@ -15,7 +15,7 @@ export const getDisabledFeatureMessage = (database: Database) => {
   })
     .with(
       { supportsRouting: false },
-      () => t`Database routing is not supported for this databases type.`,
+      () => t`Database routing is not supported for this database type.`,
     )
     .with(
       { hasActionsEnabled: true, isPersisted: true },
