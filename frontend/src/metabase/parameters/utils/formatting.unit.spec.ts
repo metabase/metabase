@@ -1,7 +1,10 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
-import { createMockField } from "metabase-types/api/mocks";
+import {
+  createMockField,
+  createMockFieldDimension,
+} from "metabase-types/api/mocks";
 import {
   ORDERS,
   PRODUCTS,
@@ -17,8 +20,13 @@ const metadata = createMockMetadata({
   fields: [
     createMockField({
       id: REMAPPED_FIELD_ID,
-      base_type: "type/Text",
+      base_type: "type/Integer",
       remappings: [[123456789, "A"]],
+      dimensions: [
+        createMockFieldDimension({
+          type: "internal",
+        }),
+      ],
     }),
   ],
 });

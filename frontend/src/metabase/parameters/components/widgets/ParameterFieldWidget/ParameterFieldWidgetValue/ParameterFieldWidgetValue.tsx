@@ -24,7 +24,8 @@ export function ParameterFieldWidgetValue({
 }: ParameterFieldWidgetValueProps) {
   const values = normalizeValue(value);
   const numberOfValues = values.length;
-  const shouldRemap = Field.remappedField(fields) != null;
+  const shouldRemap =
+    Field.remappedField(fields) != null || displayValue != null;
 
   return numberOfValues > 1 ? (
     <>{renderNumberOfSelections(numberOfValues)}</>
