@@ -12,7 +12,7 @@ export * from "./RescanFieldButton";
 export * from "./RescanTableFieldsButton";
 export * from "./SemanticTypeAndTargetPicker";
 export * from "./SemanticTypePicker";
-export * from "./SortableField";
+export * from "./SortableFieldItem";
 export * from "./SortableFieldList";
 export * from "./SyncTableSchemaButton";
 export * from "./TableBreadcrumbs";

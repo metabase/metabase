@@ -1,61 +1,56 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useMemo } from "react";
+import _ from "underscore";
 
 import {
   type DragEndEvent,
   SortableList,
 } from "metabase/core/components/Sortable";
-import { Flex } from "metabase/ui";
-import type { FieldId, Table } from "metabase-types/api";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { Stack, rem } from "metabase/ui";
+import type { Field, FieldId, Table } from "metabase-types/api";
 
-import { SortableField } from "../SortableField";
-
-import { getId, getItems, getItemsOrder, sortItems } from "./utils";
+import { SortableFieldItem } from "../SortableFieldItem";
 
 interface Props {
   activeFieldId?: FieldId;
-  getFieldHref?: (fieldId: FieldId) => string;
   table: Table;
   onChange: (fieldOrder: DragEndEvent["itemIds"]) => void;
 }
 
 export const SortableFieldList = ({
   activeFieldId,
-  getFieldHref,
   table,
   onChange,
 }: Props) => {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const items = useMemo(() => getItems(table), [table]);
-  const order = useMemo(() => getItemsOrder(items), [items]);
-  const sortedItems = useMemo(() => sortItems(items, order), [items, order]);
-  const isDragDisabled = sortedItems.length <= 1;
+  const fields = useMemo(() => {
+    return _.sortBy(table.fields ?? [], (item) => item.position);
+  }, [table.fields]);
+  const isDragDisabled = fields.length <= 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
     onChange(itemIds);
   };
 
   return (
-    <Flex direction="column" gap="sm">
-      <SortableList
-        getId={getId}
-        items={sortedItems}
-        renderItem={({ item, id }) => (
-          <SortableField
-            active={item.id === activeFieldId}
+    <Stack gap={rem(12)}>
+      <SortableList<Field>
+        getId={getRawTableFieldId}
+        items={fields}
+        renderItem={({ id, item: field }) => (
+          <SortableFieldItem
+            active={id === activeFieldId}
             disabled={isDragDisabled}
-            href={getFieldHref?.(item.id)}
-            icon={item.icon}
-            id={id}
+            field={field}
             key={id}
-            label={item.label}
           />
         )}
         sensors={[pointerSensor]}
         onSortEnd={handleSortEnd}
       />
-    </Flex>
+    </Stack>
   );
 };

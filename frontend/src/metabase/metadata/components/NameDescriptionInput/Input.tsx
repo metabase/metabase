@@ -26,6 +26,7 @@ export const Input = ({
     <TextInputBlurChange
       normalize={normalize}
       required={required}
+      resetOnEsc
       value={value}
       onBlurChange={(event) => {
         const newValue = event.target.value;

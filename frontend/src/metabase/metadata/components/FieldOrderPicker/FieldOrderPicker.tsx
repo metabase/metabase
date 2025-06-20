@@ -1,74 +1,41 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Button,
-  Combobox,
-  Icon,
-  Select,
-  type SelectProps,
-  useCombobox,
-} from "metabase/ui";
+import { SegmentedControl, type SegmentedControlProps } from "metabase/ui";
 import type { TableFieldOrder } from "metabase-types/api";
 
-import S from "./FieldOrderPicker.module.css";
+import { Label } from "./Label";
 
-interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+interface Props
+  extends Omit<
+    SegmentedControlProps<TableFieldOrder>,
+    "data" | "value" | "onChange"
+  > {
   value: TableFieldOrder;
   onChange: (value: TableFieldOrder) => void;
 }
 
-export const FieldOrderPicker = ({
-  comboboxProps,
-  value,
-  onChange,
-  ...props
-}: Props) => {
-  const combobox = useCombobox();
+export const FieldOrderPicker = ({ value, onChange, ...props }: Props) => {
   const data = useMemo(() => getData(), []);
-  const label = data.find((option) => option.value === value)?.label;
+  // State is managed internally for instant visual feedback
+  // in case onChange handler is asynchronous.
+  const [localValue, setLocalValue] = useState(value);
 
-  const handleChange = (value: TableFieldOrder) => {
-    onChange(value);
-    combobox.closeDropdown();
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = (newValue: TableFieldOrder) => {
+    setLocalValue(newValue);
+    onChange(newValue);
   };
 
   return (
-    <Select
-      classNames={{
-        root: S.root,
-      }}
-      comboboxProps={{
-        middlewares: {
-          flip: true,
-          size: {
-            padding: 6,
-          },
-        },
-        position: "bottom-start",
-        store: combobox,
-        width: 300,
-        ...comboboxProps,
-      }}
+    <SegmentedControl
       data={data}
-      fw="bold"
-      inputContainer={() => (
-        <Combobox.Target>
-          <Button
-            aria-label={t`Sort`}
-            h="100%"
-            leftSection={<Icon name="sort_arrows" />}
-            p={0}
-            variant="subtle"
-            onClick={() => combobox.toggleDropdown()}
-          >
-            {label}
-          </Button>
-        </Combobox.Target>
-      )}
-      value={value}
+      size="sm"
+      value={localValue}
       onChange={handleChange}
-      onOptionSubmit={() => combobox.closeDropdown()}
       {...props}
     />
   );
@@ -76,9 +43,21 @@ export const FieldOrderPicker = ({
 
 function getData() {
   return [
-    { label: t`Database`, value: "database" as const },
-    { label: t`Alphabetical`, value: "alphabetical" as const },
-    { label: t`Custom`, value: "custom" as const },
-    { label: t`Smart`, value: "smart" as const },
+    {
+      value: "smart" as const,
+      label: <Label icon="sparkles" tooltip={t`Auto order`} />,
+    },
+    {
+      value: "database" as const,
+      label: <Label icon="database" tooltip={t`Database order`} />,
+    },
+    {
+      value: "alphabetical" as const,
+      label: <Label icon="string" tooltip={t`Alphabetical order`} />,
+    },
+    {
+      value: "custom" as const,
+      label: <Label icon="palette" tooltip={t`Custom order`} />,
+    },
   ];
 }

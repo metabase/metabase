@@ -1,6 +1,7 @@
 import type { TextareaProps } from "@mantine/core";
-import type { ChangeEvent, FocusEvent } from "react";
+import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
 
@@ -12,6 +13,7 @@ export type TextareaBlurChangeProps<
   T extends TextareaRestProps = TextareaRestProps,
 > = T & {
   normalize?: (value?: T["value"] | undefined) => T["value"] | undefined;
+  resetOnEsc?: boolean;
   value: T["value"] | undefined;
   onBlurChange: (event: { target: HTMLTextAreaElement }) => void;
 };
@@ -25,6 +27,7 @@ export type TextareaBlurChangeProps<
  */
 export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
   normalize = (value) => value,
+  resetOnEsc,
   value,
   onBlur,
   onBlurChange,
@@ -60,6 +63,16 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
     [normalize, onBlur, onBlurChange, value],
   );
 
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Escape") {
+        flushSync(() => setInternalValue(value));
+        ref.current?.blur();
+      }
+    },
+    [ref, value],
+  );
+
   useUnmountLayout(() => {
     const lastPropsValue = value || "";
     const currentValue = ref.current?.value || "";
@@ -78,6 +91,7 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
     />
   );
 }
