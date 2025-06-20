@@ -306,12 +306,13 @@ export default class Field extends Base {
 
   // REMAPPINGS
 
-  static remappedField(fields: Field[]) {
+  static remappedField(fields: Field[]): Field | null {
     const remappedFields = fields.map((field) => field.remappedField());
     const remappedFieldIds = new Set(remappedFields.map((field) => field?.id));
     if (remappedFields[0] != null && remappedFieldIds.size === 1) {
       return remappedFields[0];
     }
+    return null;
   }
 
   remappedField() {
