@@ -819,7 +819,13 @@ export const getTransformedTimelines = createSelector(
       timelines.map((timeline) =>
         updateIn(timeline, ["events"], (events = []) =>
           _.chain(events)
-            .map((event) => updateIn(event, ["timestamp"], parseTimestamp))
+            .map((event) => {
+              let timestamp = parseTimestamp(event.timestamp);
+              if (event.timezone) {
+                timestamp = timestamp.tz(event.timezone);
+              }
+              return { ...event, timestamp };
+            })
             .filter((event) => !event.archived)
             .value(),
         ),
