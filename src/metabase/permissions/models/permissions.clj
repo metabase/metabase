@@ -105,15 +105,6 @@
   [[metabase.api.common/*current-user-permissions-set*]] includes permissions for a given path (action)
   using [[set-has-full-permissions?]], or for a set of paths using [[set-has-full-permissions-for-set?]].
 
-  Other implementations check whether a user has _partial permissions_ for a path or set
-  using [[set-has-partial-permissions?]] or [[set-has-partial-permissions-for-set?]]. Partial permissions means that
-  the User has permissions for some subpath of the path in question, e.g. `/db/1/read/` is considered to be partial
-  permissions for `/db/1/`. For example the [[metabase.models.interface/can-read?]] implementation for Database checks
-  whether the current User has *any* permissions for that Database; a User can fetch Database 1 from API
-  endpoints (\"read\" it) if they have any permissions starting with `/db/1/`, for example `/db/1/` itself (full
-  permissions) `/db/1/native/` (ad-hoc SQL query permissions) or permissions, or
-  `/db/1/schema/PUBLIC/table/2/query/` (run ad-hoc queries against Table 2 permissions).
-
   ### Determining query permissions
 
   Normally, a User is allowed to view (i.e., run the query for) a Saved Question if they have read permissions for the
@@ -242,21 +233,10 @@
   [permissions-path path]
   (str/starts-with? path permissions-path))
 
-(defn is-partial-permissions-for-object?
-  "Does `permissions-path` grant access full access for `path` *or* for a descendant of `path`?"
-  [permissions-path path]
-  (or (is-permissions-for-object? permissions-path path)
-      (str/starts-with? permissions-path path)))
-
 (defn set-has-full-permissions?
   "Does `permissions-set` grant *full* access to object with `path`?"
   ^Boolean [permissions-set path]
   (boolean (perf/some #(is-permissions-for-object? % path) permissions-set)))
-
-(defn set-has-partial-permissions?
-  "Does `permissions-set` grant access full access to object with `path` *or* to a descendant of it?"
-  ^Boolean [permissions-set path]
-  (boolean (perf/some #(is-partial-permissions-for-object? % path) permissions-set)))
 
 (mu/defn set-has-full-permissions-for-set? :- :boolean
   "Do the permissions paths in `permissions-set` grant *full* access to all the object paths in `paths-set`?"
@@ -264,14 +244,6 @@
   (let [permissions (or (:as-vec (meta permissions-set))
                         permissions-set)]
     (every? (partial set-has-full-permissions? permissions) paths-set)))
-
-(mu/defn set-has-partial-permissions-for-set? :- :boolean
-  "Do the permissions paths in `permissions-set` grant *partial* access to all the object paths in `paths-set`?
-   (`permissions-set` must grant partial access to *every* object in `paths-set` set)."
-  [permissions-set paths-set]
-  (let [permissions (or (:as-vec (meta permissions-set))
-                        permissions-set)]
-    (every? (partial set-has-partial-permissions? permissions) paths-set)))
 
 (mu/defn set-has-application-permission-of-type? :- :boolean
   "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"

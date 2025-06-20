@@ -3,10 +3,12 @@ import { t } from "ttag";
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import {
   AdminNavItem,
+  type AdminNavItemProps,
   AdminNavWrapper,
 } from "metabase/admin/settings/components/AdminNav";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
 import { Stack } from "metabase/ui";
 
 export function PeopleNav() {
@@ -15,13 +17,13 @@ export function PeopleNav() {
   return (
     <AdminNavWrapper justify="space-between">
       <Stack gap="xs">
-        <AdminNavItem
+        <PeopleNavItem
           path="/admin/people"
           data-testid="nav-item"
           label={t`People`}
           icon="person"
         />
-        <AdminNavItem
+        <PeopleNavItem
           path="/admin/people/groups"
           data-testid="nav-item"
           label={t`Groups`}
@@ -32,3 +34,15 @@ export function PeopleNav() {
     </AdminNavWrapper>
   );
 }
+
+const PeopleNavItem = (props: AdminNavItemProps) => {
+  const location = useSelector(getLocation);
+  const subpath = location?.pathname;
+
+  // we want to highlight the groups nav item if it's showing a details subpage
+  const isActive =
+    (props.path.includes("groups") && subpath.includes(props.path)) ||
+    props.path === subpath;
+
+  return <AdminNavItem {...props} active={isActive} />;
+};

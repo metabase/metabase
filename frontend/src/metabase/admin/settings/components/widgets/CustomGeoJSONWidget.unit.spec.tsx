@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import {
+  findRequests,
   setupGeoJSONEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { findRequests } from "__support__/utils";
 import { UndoListing } from "metabase/containers/UndoListing";
 import type { CustomGeoJSONMap } from "metabase-types/api";
 import {

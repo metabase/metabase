@@ -1,15 +1,28 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import cx from "classnames";
-import type { CSSProperties, ElementType, ReactNode } from "react";
+import {
+  type CSSProperties,
+  type ElementType,
+  type MutableRefObject,
+  type ReactNode,
+  useEffect,
+  useRef,
+} from "react";
 
 import S from "./Sortable.module.css";
 
 export interface SortableProps {
   id: UniqueIdentifier;
   as?: ElementType;
-  children: ReactNode;
+  children:
+    | ReactNode
+    | ((data: {
+        dragHandleRef: MutableRefObject<HTMLElement | null>;
+        dragHandleListeners: SyntheticListenerMap | undefined;
+      }) => ReactNode);
   disabled?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -31,6 +44,8 @@ export function Sortable({
   draggingStyle,
   role = "button",
 }: SortableProps) {
+  const dragHandleRef = useRef(null);
+
   const {
     attributes,
     listeners,
@@ -38,11 +53,20 @@ export function Sortable({
     transform,
     transition,
     isDragging,
+    setActivatorNodeRef,
   } = useSortable({
     id,
     disabled,
     animateLayoutChanges: () => false,
   });
+
+  useEffect(() => {
+    if (dragHandleRef?.current) {
+      setActivatorNodeRef(dragHandleRef.current);
+    }
+  }, [dragHandleRef, setActivatorNodeRef]);
+
+  const childrenAsFunction = typeof children === "function";
 
   return (
     <Component
@@ -56,10 +80,12 @@ export function Sortable({
       data-is-dragging={isDragging}
       ref={setNodeRef}
       {...attributes}
-      {...listeners}
+      {...(!childrenAsFunction && listeners)}
       role={role}
     >
-      {children}
+      {childrenAsFunction
+        ? children({ dragHandleRef, dragHandleListeners: listeners })
+        : children}
     </Component>
   );
 }

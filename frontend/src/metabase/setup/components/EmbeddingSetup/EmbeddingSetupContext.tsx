@@ -1,5 +1,12 @@
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
+import { trackSimpleEvent } from "metabase/lib/analytics";
 import type { DatabaseData, Table } from "metabase-types/api";
 
 import { DataConnectionStep } from "./steps/DataConnectionStep";
@@ -9,7 +16,10 @@ import { ProcessingStep } from "./steps/ProcessingStep";
 import { TableSelectionStep } from "./steps/TableSelectionStep";
 import { UserCreationStep } from "./steps/UserCreationStep";
 import { WelcomeStep } from "./steps/WelcomeStep";
-import type { StepDefinition } from "./steps/embeddingSetupSteps";
+import type {
+  EmbeddingSetupStepKey,
+  StepDefinition,
+} from "./steps/embeddingSetupSteps";
 import { STEPS, getStepIndexByKey } from "./steps/embeddingSetupSteps";
 import { useForceLocaleRefresh } from "./useForceLocaleRefresh";
 
@@ -34,8 +44,8 @@ type EmbeddingSetupContextType = {
   setSelectedTables: (tables: Table[]) => void;
   createdDashboardIds: number[];
   setCreatedDashboardIds: (ids: number[]) => void;
-  stepKey: string;
-  goToStep: (key: string) => void;
+  stepKey: EmbeddingSetupStepKey;
+  goToStep: (key: EmbeddingSetupStepKey) => void;
   steps: StepDefinition[];
   stepIndex: number;
   totalSteps: number;
@@ -70,7 +80,7 @@ export const EmbeddingSetupProvider = ({
   const [error, setError] = useState("");
   const [selectedTables, setSelectedTables] = useState<Table[]>([]);
   const [createdDashboardIds, setCreatedDashboardIds] = useState<number[]>([]);
-  const [stepKey, goToStep] = useState(STEPS[0].key);
+  const [stepKey, goToStep] = useState<EmbeddingSetupStepKey>(STEPS[0].key);
 
   const stepIndex = getStepIndexByKey(stepKey);
   const totalSteps = STEP_COMPONENTS.length;
@@ -82,6 +92,13 @@ export const EmbeddingSetupProvider = ({
       goToStep(nextKey);
     }
   }, [stepIndex, goToStep]);
+
+  useEffect(() => {
+    trackSimpleEvent({
+      event: "embedding_setup_step_seen",
+      event_detail: stepKey,
+    });
+  }, [stepKey]);
 
   return (
     <EmbeddingSetupContext.Provider

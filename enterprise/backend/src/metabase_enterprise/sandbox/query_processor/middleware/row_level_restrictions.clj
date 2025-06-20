@@ -18,7 +18,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -272,7 +272,7 @@
 
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
-          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+          unblocked-table-ids (filter (fn [table-id] (perms/user-has-permission-for-table?
                                                       api/*current-user-id*
                                                       :perms/view-data
                                                       :unrestricted

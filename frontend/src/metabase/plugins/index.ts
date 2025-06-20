@@ -119,11 +119,6 @@ export const PLUGIN_WHITELABEL = {
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
 };
 
-export const PLUGIN_ADMIN_TROUBLESHOOTING = {
-  EXTRA_ROUTES: [] as ReactNode[],
-  GET_EXTRA_NAV: (): ReactNode[] => [],
-};
-
 export const PLUGIN_ADMIN_SETTINGS = {
   InteractiveEmbeddingSettings: NotFoundPlaceholder,
   LicenseAndBillingSettings: PluginPlaceholder,

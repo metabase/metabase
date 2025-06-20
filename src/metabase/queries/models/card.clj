@@ -460,14 +460,6 @@
 (defn- dashboard-internal-card? [card]
   (boolean (:dashboard_id card)))
 
-(def ^:dynamic ^:private *updating-dashboard* false)
-
-(defmacro with-allowed-changes-to-internal-dashboard-card
-  "Allow making changes to dashboard-internal cards that would not normally be allowed."
-  [& body]
-  `(binding [*updating-dashboard* true]
-     ~@body))
-
 (defn- invalid-dashboard-internal-card-update-reason?
   "Returns the reason, if any, why this card is an invalid Dashboard Question"
   [card changes]
@@ -478,10 +470,7 @@
                              (:dashboard_id changes)))]
     (when will-be-dq?
       (cond
-        (not (or *updating-dashboard*
-                 ;; if the `dashboard_id` is changing, allow specifying a `collection_id`. Note that if it's different
-                 ;; than the actual `collection_id` of the new dashboard we're moving to, it will be ignored.
-                 dq-will-change?
+        (not (or dq-will-change?
                  (not (api/column-will-change? :collection_id card changes))))
         (tru "Invalid Dashboard Question: Cannot manually set `collection_id` on a Dashboard Question")
         (api/column-will-change? :collection_position card changes)

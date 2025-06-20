@@ -16,6 +16,8 @@ import {
   createQuestion,
   getDashboardCard,
   modal,
+  moveDnDKitElement,
+  openVizSettingsSidebar,
   tooltip,
   updateSetting,
 } from "e2e/support/helpers";
@@ -369,7 +371,7 @@ describe("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
-    describe("tooltips styles", () => {
+    describe("tooltips/overlays styles", () => {
       beforeEach(() => {
         signInAsAdminAndEnableEmbeddingSdk();
 
@@ -426,14 +428,7 @@ describe("scenarios > embedding-sdk > styles", () => {
 
         tooltip()
           .findByText("Back to Test Dashboard")
-          .then(($tooltip) => {
-            const tooltipElement = $tooltip[0];
-
-            const tooltipContainerStyle =
-              window.getComputedStyle(tooltipElement);
-
-            expect(tooltipContainerStyle.fontFamily).to.equal("Impact");
-          });
+          .should("have.css", "font-family", "Impact");
       });
 
       it("should render echarts tooltip with our styles", () => {
@@ -454,21 +449,36 @@ describe("scenarios > embedding-sdk > styles", () => {
         cy.findAllByTestId("echarts-tooltip")
           .eq(0)
           .should("exist")
-          .then(($tooltip) => {
-            const tooltipElement = $tooltip[0];
+          .get(".echarts-tooltip-container")
+          .should("have.css", "font-family", "Impact");
+      });
 
-            const tooltipContainer = tooltipElement.closest(
-              ".echarts-tooltip-container",
-            );
+      it("should render DragOverlay of SortableList with our styles", () => {
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          },
+        );
 
-            expect(tooltipContainer).to.exist;
+        openVizSettingsSidebar();
 
-            const tooltipContainerStyle = window.getComputedStyle(
-              tooltipContainer!,
-            );
-
-            expect(tooltipContainerStyle.fontFamily).to.equal("Impact");
-          });
+        moveDnDKitElement(cy.findByTestId("draggable-item-ID"), {
+          vertical: -100,
+          onBeforeDragEnd: () => {
+            cy.get(".drag-overlay").within(() => {
+              cy.findByTestId("draggable-item-ID").should(
+                "have.css",
+                "font-family",
+                "Impact",
+              );
+            });
+          },
+        });
       });
     });
   });

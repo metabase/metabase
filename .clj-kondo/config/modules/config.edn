@@ -755,17 +755,7 @@
   {:team "Admin Webapp"
    :api  #{metabase.permissions.api
            metabase.permissions.core
-           metabase.permissions.init
-           ;; TODO -- move these into the API namespace.
-           metabase.permissions.models.application-permissions-revision
-           metabase.permissions.models.collection-permission-graph-revision
-           metabase.permissions.models.collection.graph
-           metabase.permissions.models.data-permissions
-           metabase.permissions.models.permissions
-           metabase.permissions.models.permissions-group
-           metabase.permissions.path
-           metabase.permissions.util
-           metabase.permissions.validation}
+           metabase.permissions.init}
    :uses #{api
            app-db
            audit-app
@@ -1593,6 +1583,7 @@
    :uses #{api
            config
            database-routing
+           driver
            events
            lib
            models
@@ -1663,6 +1654,7 @@
            app-db
            collections
            config
+           driver
            legacy-mbql
            lib
            lib-be
@@ -1677,6 +1669,16 @@
            users
            util
            warehouse-schema}}
+
+  enterprise/permission-debug
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}}
 
   enterprise/premium-features
   {:team "Admin Webapp"

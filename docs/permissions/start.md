@@ -1,5 +1,7 @@
 ---
 title: Permissions overview
+redirect_from:
+  - /docs/latest/permissions
 ---
 
 # Permissions overview

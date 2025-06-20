@@ -36,16 +36,13 @@ export const log = (message: string) => {
   console.log(message);
 };
 
-export const databaseCachingPage = () =>
-  cy.findByRole("tabpanel", { name: "Database caching" });
-
-export const visitDashboardAndQuestionCachingTab = () => {
-  cy.visit("/admin/performance");
-  cy.findByRole("tablist")
-    .get("[aria-selected]")
-    .contains("Database caching")
-    .should("be.visible");
-  cy.findByRole("tab", { name: "Dashboard and question caching" }).click();
+export const goToPerformancePage = (
+  name:
+    | "Database caching"
+    | "Dashboard and question caching"
+    | "Model persistence",
+) => {
+  cy.findByTestId("admin-layout-sidebar").findByText(name).click();
 };
 
 export const setupQuestionTest = (

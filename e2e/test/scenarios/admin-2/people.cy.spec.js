@@ -51,7 +51,7 @@ describe("scenarios > admin > people", () => {
         cy.findByText("Groups").click();
         cy.contains("Groups").should("have.attr", "data-active", "true");
       });
-      cy.findByTestId("admin-pane-page-title").contains("Groups");
+      cy.findByTestId("admin-layout-content").findByText("Groups");
       assertTableRowsCount(TOTAL_GROUPS);
 
       cy.log(

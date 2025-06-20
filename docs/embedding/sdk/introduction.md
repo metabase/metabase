@@ -1,5 +1,7 @@
 ---
 title: Embedded analytics SDK
+redirect_from:
+  - /docs/latest/embedding/sdk
 ---
 
 # Embedded analytics SDK
@@ -98,9 +100,9 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 
 View the SDK's changelog:
 
-* [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-* [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-* [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## Embedded analytics SDK on NPM
 

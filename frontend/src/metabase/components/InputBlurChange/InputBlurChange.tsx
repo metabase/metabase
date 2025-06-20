@@ -20,6 +20,7 @@ export interface InputBlurChangeProps
   normalize?: (value: Value) => Value;
 }
 
+/** see also: metabase/ui/components/inputs/TextInputBlurChange 🤦‍♀️ */
 const InputBlurChange = (props: InputBlurChangeProps) => {
   const {
     value,
@@ -77,7 +78,9 @@ const InputBlurChange = (props: InputBlurChangeProps) => {
       value={internalValue}
       onBlur={handleBlur}
       onChange={handleChange}
-      w="100%"
+      styles={{
+        input: { width: "100%" },
+      }}
     />
   );
 };

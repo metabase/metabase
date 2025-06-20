@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import {
   useCreateMembershipMutation,
   useDeleteMembershipMutation,
@@ -113,35 +114,37 @@ export const GroupDetail = ({
   };
 
   return (
-    <AdminPaneLayout
-      title={
-        <Fragment>
-          {getGroupNameLocalized(group ?? {})}
-          <Box component="span" c="text-light" ms="sm">
-            {ngettext(
-              msgid`${group.members.length} member`,
-              `${group.members.length} members`,
-              group.members.length,
-            )}
-          </Box>
-        </Fragment>
-      }
-      buttonText={t`Add members`}
-      buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
-      buttonDisabled={addUserVisible}
-    >
-      <GroupDescription group={group} />
-      <GroupMembersTable
-        group={group}
-        showAddUser={addUserVisible}
-        onAddUserCancel={onAddUserCanceled}
-        onAddUserDone={onAddUserDone}
-        onMembershipRemove={handleRemove}
-        onMembershipUpdate={handleChange}
-      />
-      <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
-      {modalContent}
-    </AdminPaneLayout>
+    <SettingsSection>
+      <AdminPaneLayout
+        title={
+          <Fragment>
+            {getGroupNameLocalized(group ?? {})}
+            <Box component="span" c="text-light" ms="sm">
+              {ngettext(
+                msgid`${group.members.length} member`,
+                `${group.members.length} members`,
+                group.members.length,
+              )}
+            </Box>
+          </Fragment>
+        }
+        buttonText={t`Add members`}
+        buttonAction={canEditMembership(group) ? onAddUsersClicked : undefined}
+        buttonDisabled={addUserVisible}
+      >
+        <GroupDescription group={group} />
+        <GroupMembersTable
+          group={group}
+          showAddUser={addUserVisible}
+          onAddUserCancel={onAddUserCanceled}
+          onAddUserDone={onAddUserDone}
+          onMembershipRemove={handleRemove}
+          onMembershipUpdate={handleChange}
+        />
+        <Alert message={alertMessage} onClose={() => setAlertMessage(null)} />
+        {modalContent}
+      </AdminPaneLayout>
+    </SettingsSection>
   );
 };
 
