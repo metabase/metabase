@@ -37,9 +37,9 @@ export const SdkIframeEmbedPreview = () => {
           // TODO: replace with `useExistingUserSession: true` once EMB-507 is merged.
           apiKey: "will-be-replaced-with-user-session-flag",
         });
-
-        scriptRef.current = script;
       };
+
+      scriptRef.current = script;
     }
 
     return () => {
