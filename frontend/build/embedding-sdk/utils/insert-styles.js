@@ -1,26 +1,21 @@
-import { isWithinShadowRoot } from "metabase/lib/dom";
-
-const appendedHeadStylesSet = new Set();
-
 // Used in webpack.embedding-sdk.config.js
 // Executed at runtime
+// DO NOT IMPORT ANYTHING TO THIS FILE, IT SHOULD BE SELF CONTAINED
 export default function insertIntoTarget(element) {
   document.addEventListener("rootElementSet", (event) => {
     const rootElement = event.detail.rootElement;
-    const isShadowRoot = isWithinShadowRoot(rootElement);
+    const isShadowRoot = rootElement !== document.body;
 
-    if (!isShadowRoot && appendedHeadStylesSet.has(element)) {
-      return;
-    }
+    const parent = rootElement.querySelector(
+      '[data-style-container="css-modules"]',
+    );
 
-    const parent = isShadowRoot
-      ? rootElement.querySelector('[data-style-container="css-modules"]')
-      : document.head;
-
-    parent.appendChild(element.cloneNode(true));
-
-    if (!isShadowRoot) {
-      appendedHeadStylesSet.add(element);
-    }
+    // The element is appended to the document.head to re-append it if multiple
+    // <MetabaseProvider/> components are used in the same page,
+    // or if the <MetabaseProvider/> is re-mounted
+    //
+    // For Shadow Root case we clone the element, to properly append its different
+    // copies for all Shadow Roots
+    parent.appendChild(!isShadowRoot ? element : element.cloneNode(true));
   });
 }
