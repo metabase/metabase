@@ -6,15 +6,17 @@ import { Flex, Group, Icon } from "metabase/ui";
 
 interface BaseBannerProps extends FlexProps {
   icon?: IconName;
+  iconColor?: string;
   body: ReactNode;
 }
 
-type BannerProps =
+export type BannerProps =
   | (BaseBannerProps & { closable: true; onClose: () => void })
   | (BaseBannerProps & { closable?: false; onClose?: never });
 
 export const Banner = ({
   icon,
+  iconColor,
   body,
   closable,
   onClose,
@@ -33,7 +35,7 @@ export const Banner = ({
       {...flexProps}
     >
       <Group gap="xs">
-        {icon && <Icon name={icon} w={36} />}
+        {icon && <Icon name={icon} w={36} color={iconColor} />}
         {body}
       </Group>
       {closable && (
@@ -42,6 +44,7 @@ export const Banner = ({
           name="close"
           onClick={onClose}
           w={36}
+          color={iconColor}
         />
       )}
     </Flex>

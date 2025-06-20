@@ -317,7 +317,7 @@
               :card              (:categories (lib.tu/mock-cards))
               :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}
              {:message           "Native Card"
-              :card              ((lib.tu/mock-cards) :categories/native)
+              :card              (:categories/native (lib.tu/mock-cards))
               :metadata-provider (lib.tu/metadata-provider-with-mock-cards)}]]
       (testing message
         (let [cols   (rhs-columns (lib.tu/venues-query) card)

@@ -1,5 +1,7 @@
 ---
 title: Embedded analytics SDK
+redirect_from:
+  - /docs/latest/embedding/sdk
 ---
 
 # Embedded analytics SDK
@@ -50,6 +52,32 @@ or with yarn:
 yarn add @metabase/embedding-sdk-react@53-stable
 ```
 
+### Resolving `@types/react` version mismatches
+
+In rare scenarios, the Embedding SDK and your application may use different major versions of `@types/react`, causing TypeScript conflicts.
+
+To enforce a single `@types/react` version across all dependencies, add an `overrides` (npm) or `resolutions` (Yarn) section to your `package.json` and specify the `@types/react` version your application uses.
+
+#### NPM set @types/react version
+
+```json
+{
+  "overrides": {
+    "@types/react": "..."
+  }
+}
+```
+
+#### Yarn set @types/react version
+
+```json
+{
+  "resolutions": {
+    "@types/react": "..."
+  }
+}
+```
+
 ## Developing with the Embedded analytics SDK
 
 Start with one of the quickstarts, then see these pages for more info on components, theming, and more.
@@ -72,9 +100,9 @@ You can find the [Embedded analytics SDK source code in the Metabase repo](https
 
 View the SDK's changelog:
 
-* [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-* [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-* [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [54-nightly](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
+- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## Embedded analytics SDK on NPM
 

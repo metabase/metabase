@@ -49,7 +49,6 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor.deprecated :as sql.qp.deprecated]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -90,8 +89,7 @@
   (when options
     (not-empty (into {}
                      (remove (fn [[k _]]
-                               (when (keyword? k)
-                                 (namespace k))))
+                               (qualified-keyword? k)))
                      options))))
 
 (defn normalize-clause
@@ -329,7 +327,8 @@
   #_{:clj-kondo/ignore [:deprecated-var]}
   (if (get-method field-reference driver)
     (do
-      (sql.qp.deprecated/log-deprecation-warning
+      ;; We should not be reaching into driver implementations
+      ((requiring-resolve 'metabase.driver.sql.query-processor.deprecated/log-deprecation-warning)
        driver
        `field-reference
        "0.48.0")

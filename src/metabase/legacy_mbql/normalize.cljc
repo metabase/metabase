@@ -96,13 +96,13 @@
 (defn- normalize-ref-opts [opts]
   (let [opts (normalize-tokens opts :ignore-path)]
     (cond-> opts
-      (:base-type opts)      (update :base-type keyword)
-      (:effective-type opts) (update :effective-type keyword)
-      (:temporal-unit opts)  (update :temporal-unit keyword)
-      (:inherited-temporal-unit opts)  (update :inherited-temporal-unit keyword)
-      (:binning opts)        (update :binning (fn [binning]
-                                                (cond-> binning
-                                                  (:strategy binning) (update :strategy keyword)))))))
+      (:base-type opts)               (update :base-type keyword)
+      (:effective-type opts)          (update :effective-type keyword)
+      (:temporal-unit opts)           (update :temporal-unit keyword)
+      (:inherited-temporal-unit opts) (update :inherited-temporal-unit keyword)
+      (:binning opts)                 (update :binning (fn [binning]
+                                                         (cond-> binning
+                                                           (:strategy binning) (update :strategy keyword)))))))
 
 (defmethod normalize-mbql-clause-tokens :expression
   ;; For expression references (`[:expression \"my_expression\"]`) keep the arg as is but make sure it is a string.
@@ -440,8 +440,10 @@
    :info            {:metadata/model-metadata identity
                      ;; the original query that runs through qp.pivot should be ignored here entirely
                      :pivot/original-query    (fn [_] nil)
-                     ;; don't try to normalize the keys in viz-settings passed in as part of `:info`.
+                     ;; don't try to normalize the keys in viz-settings or `:alias/escaped->original` passed in as
+                     ;; part of `:info`.
                      :visualization-settings  identity
+                     :alias/escaped->original identity
                      :context                 maybe-normalize-token}
    :parameters      {::sequence normalize-query-parameter}
    ;; TODO -- when does query ever have a top-level `:context` key??

@@ -20,6 +20,8 @@ docs/developers-guide # exclude from tech-writer ownership
 #
 
 # modules/drivers @metabase/drivers
+src/metabase/driver/sql_jdbc/actions.clj       @metabase/core-workflows
+test/metabase/driver/sql_jdbc/actions_test.clj @metabase/core-workflows
 
 # enterprise/backend/src/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
 # enterprise/backend/test/metabase_enterprise/advanced_config @metabase/core-backend-admin-webapp
@@ -93,8 +95,8 @@ docs/developers-guide # exclude from tech-writer ownership
 # enterprise/backend/src/metabase_enterprise/upload_management @metabase/core-backend-admin-webapp
 # enterprise/backend/test/metabase_enterprise/upload_management @metabase/core-backend-admin-webapp
 
-# src/metabase/actions @metabase/core-backend-admin-webapp
-# test/metabase/actions @metabase/core-backend-admin-webapp
+src/metabase/actions @metabase/core-backend-admin-webapp
+test/metabase/actions @metabase/core-backend-admin-webapp
 
 # src/metabase/activity_feed @metabase/core-backend-admin-webapp
 # test/metabase/activity_feed @metabase/core-backend-admin-webapp

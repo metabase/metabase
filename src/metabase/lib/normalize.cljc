@@ -55,7 +55,7 @@
              (fn []
                (let [respond identity
                      raise   #'*error-fn*] ; capture var rather than the bound value at the time this is eval'ed
-                 (mc/coercer schema (mtx/transformer {:name :normalize}) respond raise)))))
+                 (mc/coercer schema (mtx/transformer mtx/default-value-transformer {:name :normalize}) respond raise)))))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or

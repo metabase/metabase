@@ -139,6 +139,8 @@ function tagFilterForParameter(
       return (tag) => tag.type === "number";
     case "string":
       return (tag) => tag.type === "text";
+    case "temporal-unit":
+      return (tag) => tag.type === "temporal-unit";
   }
   return () => false;
 }

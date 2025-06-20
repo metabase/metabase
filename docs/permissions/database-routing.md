@@ -1,8 +1,11 @@
 ---
 title: Database routing
+summary: Route queries to different databases based on who's viewing them. Great for multi-tenant setups where each customer has their own database.
 ---
 
 # Database routing
+
+{% include plans-blockquote.html feature="Database routing" %}
 
 With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
@@ -34,7 +37,7 @@ For database routing to work, your users must have a user attribute that Metabas
 
 You can add user attributes manually, or via Single Sign-On (SSO) via [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md).
 
-If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins (or any user) to `__METABASE_PRIMARY_DB__`.
+If an admin user lacks a value for the user attribute, they'll see the router database. You can also explicitly set the value for admins (or any user) to `__METABASE_ROUTER__`.
 
 If a non-admin user account lacks a valid value for the user attribute, they won't be able to view the question at all.
 
