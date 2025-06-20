@@ -4,7 +4,7 @@ import _ from "underscore";
 import type { TestConfig } from "yup";
 import * as Yup from "yup";
 
-import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMappingsWidget";
+import { GroupMappingsWidget } from "metabase/admin/settings/components/widgets/GroupMappingsWidget";
 import { getExtraFormFieldProps } from "metabase/admin/settings/utils";
 import {
   useGetAdminSettingsDetailsQuery,

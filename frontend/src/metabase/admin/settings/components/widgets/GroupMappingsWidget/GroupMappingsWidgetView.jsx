@@ -10,8 +10,6 @@ import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
 import { Icon, Tooltip } from "metabase/ui";
 
-import { SettingToggle } from "../SettingToggle";
-
 import AddMappingRow from "./AddMappingRow";
 import {
   GroupMappingsWidgetAbout as About,
@@ -23,10 +21,11 @@ import {
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
 import { MappingRow } from "./MappingRow";
+import { SettingToggle } from "./SettingToggle";
 
 const groupIsMappable = (group) => !isDefaultGroup(group);
 
-function GroupMappingsWidget({
+export function GroupMappingsWidgetView({
   groupHeading,
   groupPlaceholder,
   allGroups = [],
@@ -180,5 +179,3 @@ function GroupMappingsWidget({
     </WidgetAndErrorRoot>
   );
 }
-
-export default GroupMappingsWidget;
