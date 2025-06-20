@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-506-live-previews-for-new-iframe-embed-flow",
     "hash": "a071138bd76c56363aab80158c9c980414562ab8"
+  },
+  "upstream": {
+    "branch": "emb-508-select-dashboards-and-questions-for-new-iframe-embedding"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 59884,
+        "gqlID": "PR_kwDOAczgH86beDrQ"
+      }
+    }
   }
 }
