@@ -98,7 +98,7 @@ function newNativeCardHash(
  * @example
  * H.startNewNativeQuestion({ query: "SELECT * FROM ORDERS" });
  * @param {object} [config]
- * @param {number} [config.database]
+ * @param {number | null} [config.database]
  * @param {string} config.query
  * @param {number} [config.collection_id]
  * @param {string} [config.display]
@@ -122,7 +122,7 @@ export function startNewNativeModel(config) {
 /**
  * Visit any valid query in an ad-hoc manner.
  *
- * @param {object} question
+ * @param {import("./api").QuestionDetails} question
  * @param {{callback?: function, mode: (undefined|"notebook")}} config
  */
 export function visitQuestionAdhoc(

@@ -23,7 +23,7 @@
                                          :enabled true}]
     (testing "do not try to delete pulse-channel if active doesn't change"
       (is (pos? (t2/update! :model/Channel id {:name "New name"})))
-      (is (pos? (t2/update! :model/Channel id {:active true})))
+      (is (zero? (t2/update! :model/Channel id {:active true})))
       (is (t2/exists? :model/PulseChannel pc-id)))
 
     (testing "deactivate channel"

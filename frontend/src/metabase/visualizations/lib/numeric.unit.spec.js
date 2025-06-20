@@ -1,6 +1,6 @@
 import {
   computeChange,
-  computeNumericDataInverval,
+  computeNumericDataInterval,
   isMultipleOf,
   precision,
 } from "metabase/visualizations/lib/numeric";
@@ -46,7 +46,7 @@ describe("visualization.lib.numeric", () => {
     }
   });
 
-  describe("computeNumericDataInverval", () => {
+  describe("computeNumericDataInterval", () => {
     const CASES = [
       [[0], 1],
       [[1], 1],
@@ -58,7 +58,7 @@ describe("visualization.lib.numeric", () => {
     ];
     for (const c of CASES) {
       it("precision of " + c[0] + " should be " + c[1], () => {
-        expect(computeNumericDataInverval(c[0])).toEqual(c[1]);
+        expect(computeNumericDataInterval(c[0])).toEqual(c[1]);
       });
     }
   });

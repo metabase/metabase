@@ -250,11 +250,14 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("new question", () => {
-    it("should suggest a name for structured queries", async () => {
-      await setup(getQuestion());
+    it("should suggest a name for structured queries and pressing enter should submit the form", async () => {
+      const { onCreateMock } = await setup(getQuestion());
       expect(screen.getByLabelText("Name")).toHaveValue(
         EXPECTED_SUGGESTED_NAME,
       );
+      expect(await screen.findByRole("button", { name: "Save" })).toHaveFocus();
+      await userEvent.keyboard("{Enter}");
+      expect(onCreateMock).toHaveBeenCalled();
     });
 
     it("should not suggest a name for native queries", async () => {

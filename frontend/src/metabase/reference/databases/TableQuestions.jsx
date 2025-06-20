@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
@@ -86,7 +86,7 @@ class TableQuestions extends Component {
                         <ListItem
                           key={entity.id}
                           name={entity.display_name || entity.name}
-                          description={t`Created ${moment(
+                          description={t`Created ${dayjs(
                             entity.created_at,
                           ).fromNow()} by ${entity.creator.common_name}`}
                           url={Urls.question(entity)}

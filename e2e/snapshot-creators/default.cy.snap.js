@@ -110,6 +110,11 @@ describe("snapshots", () => {
     updateSetting("enable-embedding-static", true).then(() => {
       updateSetting("embedding-secret-key", METABASE_SECRET_KEY);
     });
+    // dismiss the license token missing banner, not necessary to render it in every test
+    updateSetting(
+      "license-token-missing-banner-dismissal-timestamp",
+      new Date().toISOString(),
+    );
 
     // update the Sample db connection string so it is valid in both CI and locally
     cy.request("GET", `/api/database/${SAMPLE_DB_ID}`).then((response) => {

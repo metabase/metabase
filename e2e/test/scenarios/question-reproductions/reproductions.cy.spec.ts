@@ -1,4 +1,6 @@
 const { H } = cy;
+
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import type { NativeQuestionDetails } from "e2e/support/helpers";
@@ -514,5 +516,134 @@ describe("issue 46845", () => {
     });
     H.visualize();
     H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 58829", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to use join native models when SQL column names do not match the names of the mapped fields (metabase#58829)", () => {
+    cy.log("create a native model mapped columns");
+    H.createNativeQuestion(
+      {
+        name: "M1",
+        type: "model",
+        native: {
+          query: "SELECT 1 AS ID, 2 AS _USER_ID",
+        },
+      },
+      { visitQuestion: true },
+    );
+    H.openQuestionActions("Edit metadata");
+    H.openColumnOptions("ID");
+    H.mapColumnTo({ table: "Orders", column: "ID" });
+    H.openColumnOptions("_USER_ID");
+    H.mapColumnTo({ table: "Orders", column: "User ID" });
+    H.saveMetadataChanges();
+
+    cy.log("verify it can be joined");
+    H.openProductsTable({ mode: "notebook" });
+    H.join();
+    H.entityPickerModal().within(() => {
+      H.entityPickerModalTab("Collections").click();
+      cy.findByText("M1").click();
+    });
+    H.popover().findByText("ID").click();
+    H.popover().findByText("ID").click();
+    H.visualize();
+    H.assertQueryBuilderRowCount(200);
+  });
+});
+
+describe("54205", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+
+    cy.signInAsAdmin();
+
+    H.queryWritableDB("DROP TABLE IF EXISTS products");
+    H.queryWritableDB(
+      "CREATE TABLE IF NOT EXISTS products (id INT PRIMARY KEY, category VARCHAR, name VARCHAR)",
+    );
+    H.queryWritableDB(
+      "INSERT INTO products (id, category, name) VALUES (1, 'A', 'Foo, Bar'), (2, 'B', 'Foo, Baz')",
+    );
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "products" });
+  });
+
+  it("should be able to select a comma separated value", () => {
+    H.getTableId({
+      name: "products",
+    }).then((tableId) => {
+      H.getFieldId({
+        tableId,
+        name: "name",
+      }).then((fieldId) => {
+        cy.request("PUT", `/api/field/${fieldId}`, {
+          has_field_values: "search",
+        });
+      });
+
+      H.createQuestion(
+        {
+          database: WRITABLE_DB_ID,
+          name: "Q 54205",
+          query: {
+            "source-table": tableId,
+          },
+        },
+        { wrapId: true, visitQuestion: true },
+      );
+    });
+
+    cy.findByTestId("query-visualization-root").contains("Name").click();
+
+    H.popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByPlaceholderText("Search by Name").type("Foo");
+      cy.findByRole("option", { name: "Foo, Bar" }).click();
+      cy.findByRole("list").should("have.text", "Foo, Bar");
+    });
+  });
+});
+
+describe("issue 55631", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.startNewQuestion();
+    H.entityPickerModal().within(() => {
+      cy.findByText("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.intercept("POST", "/api/card").as("cardCreate");
+  });
+
+  it("should not flash the default title when saving the question (metabase#55631)", () => {
+    H.visualize();
+    cy.findByTestId("qb-header").button("Save").click();
+
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("Custom");
+      cy.findByLabelText("Where do you want to save this?").click();
+    });
+
+    H.entityPickerModal().within(() => {
+      cy.findByText("First collection").click();
+      cy.button("Select this collection").click();
+    });
+
+    H.modal().within(() => {
+      cy.button("Save").click();
+      cy.wait("@cardCreate");
+
+      // It is important to have extremely short timeout in order to catch the issue
+      // before the dialog closes.
+      cy.findByDisplayValue("Orders", { timeout: 10 }).should("not.exist");
+    });
   });
 });

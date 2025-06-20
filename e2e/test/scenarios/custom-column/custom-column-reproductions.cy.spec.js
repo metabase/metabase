@@ -1950,3 +1950,109 @@ describe("issue 55687", () => {
       .should("not.exist");
   });
 });
+
+// TODO: re-enable this test when we have a fix for metabase/metabase#58371
+describe.skip("issue 58371", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      display_name: null,
+    });
+
+    const baseQuestion = {
+      name: "Base Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["count-where", ["=", ["field", PRODUCTS.TITLE, null], "OK"]],
+            { "display-name": "Aggregation with Dash-in-name" },
+          ],
+        ],
+        breakout: [["field", PRODUCTS.ID, null]],
+      },
+    };
+
+    H.createQuestion(baseQuestion, { wrapId: true }).then((questionId) => {
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": `card__${questionId}`,
+              alias: "Other Question",
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Other Question" }],
+              ],
+            },
+          ],
+          expressions: {
+            Foo: [
+              "+",
+              0,
+              [
+                "field",
+                "Aggregation with Dash-in-name",
+                {
+                  "base-type": "type/Float",
+                  "join-alias": "Other Question",
+                },
+              ],
+            ],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.openNotebook();
+  });
+
+  it("should allow using names with a dash in them from joined tables (metabase#58371)", () => {
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should(
+      "eq",
+      "0 + [Other Question → Aggregation with Dash-in-name]",
+    );
+  });
+});
+
+describe("Issue 58230", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should display an error when using an aggregation function in a custom column (metabase#58230)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom expression",
+    );
+  });
+
+  it("should display an error when using an aggregation function in a custom filter (metabase#58230)", () => {
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom filter",
+    );
+  });
+
+  it("should not display an error when using an aggregation function in a custom aggregation (metabase#58230)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").should("be.enabled");
+  });
+});

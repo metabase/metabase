@@ -184,7 +184,9 @@
                                   (not-empty (mapv #(convert-metric % metadata-provider options)
                                                    (lib/available-metrics card-query)))))))))
 
-(defn- cards-details
+(defn cards-details
+  "Get the details of metrics or models as specified by `card-type` and `cards`
+  from the database with ID `database-id` respecting `options`."
   [card-type database-id cards options]
   (let [mp (lib.metadata.jvm/application-database-metadata-provider database-id)
         detail-fn (case card-type
@@ -196,12 +198,12 @@
          cards)))
 
 (defn answer-sources
-  "Get the details metrics and models from the collection with name `collection-name`."
-  ([metabot-collection]
-   (answer-sources metabot-collection nil))
-  ([metabot-collection options]
+  "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`."
+  ([metabot-id]
+   (answer-sources metabot-id nil))
+  ([metabot-id options]
    (lib.metadata.jvm/with-metadata-provider-cache
-     (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-collection)
+     (let [metrics-and-models (metabot-v3.tools.u/get-metrics-and-models metabot-id)
            {metrics :metric, models :model}
            (->> (for [[[card-type database-id] cards] (group-by (juxt :type :database_id) metrics-and-models)
                       detail (cards-details card-type database-id cards options)]

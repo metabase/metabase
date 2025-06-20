@@ -195,7 +195,6 @@
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer
                                                                                       :effective_type    :type/Integer
-                                                                                      :coercion_strategy nil
                                                                                       :semantic_type     :type/FK
                                                                                       :database_type     "INTEGER"
                                                                                       :name              "USER_ID"}]]]
@@ -209,7 +208,6 @@
                                                                             $venues.price
                                                                             [:value 1 {:base_type         :type/Integer
                                                                                        :effective_type    :type/Integer
-                                                                                       :coercion_strategy nil
                                                                                        :semantic_type     :type/Category
                                                                                        :database_type     "INTEGER"
                                                                                        :name              "PRICE"}]]
@@ -887,7 +885,6 @@
                                         [:field (mt/id :products :category) {:join-alias "products"}]
                                         [:value "Widget" {:base_type     :type/Text
                                                           :effective_type :type/Text
-                                                          :coercion_strategy nil
                                                           :semantic_type  (t2/select-one-fn :semantic_type :model/Field
                                                                                             :id (mt/id :products :category))
                                                           :database_type "CHARACTER VARYING"

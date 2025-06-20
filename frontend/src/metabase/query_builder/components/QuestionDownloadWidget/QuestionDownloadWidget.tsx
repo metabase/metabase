@@ -8,6 +8,7 @@ import type {
   TableExportFormat,
 } from "metabase/common/types/export";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
@@ -130,8 +131,9 @@ export const QuestionDownloadWidget = ({
     isPivoted &&
     !dismissedExcelPivotExportsBanner &&
     showMetabaseLinks;
+
   return (
-    <Stack w={336} p="0.75rem" gap="md" {...stackProps}>
+    <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
       <Title order={5}>{t`Download data`}</Title>
       <ExportSettingsWidget
         selectedFormat={format}
@@ -150,6 +152,7 @@ export const QuestionDownloadWidget = ({
           bg="var(--mb-color-background-light)"
           align="center"
           justify="space-between"
+          className={CS.rounded}
         >
           <Text fz="12px" lh="16px" c="text-medium">
             {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}

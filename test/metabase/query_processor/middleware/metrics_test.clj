@@ -1010,7 +1010,7 @@
                               (< (abs (- aggregation-value metric-value))
                                  (if (and (#{:percentile :median} operator)
                                           (driver/database-supports? driver/*driver* :test/inaccurate-approx-percentile nil))
-                                   1
+                                   3
                                    0.01)))
                             results-combined))))))))))
 

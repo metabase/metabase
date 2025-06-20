@@ -1,6 +1,5 @@
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
-  LLMSuggestionQuestionInfo,
   SaveQuestionForm,
   SaveQuestionTitle,
 } from "metabase/components/SaveQuestionForm";
@@ -49,7 +48,6 @@ export const SaveQuestionModal = ({
               <SaveQuestionTitle />
             </Modal.Title>
             <Flex align="center" justify="flex-end" gap="sm">
-              <LLMSuggestionQuestionInfo />
               <Modal.CloseButton />
             </Flex>
           </Modal.Header>

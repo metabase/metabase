@@ -1,38 +1,26 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  Button,
-  Group,
-  List,
-  Modal,
-  type ModalProps,
-  Text,
-  Title,
-} from "metabase/ui";
+import { useUpdateSettingsMutation } from "metabase/api";
+import { Button, Group, List, Modal, type ModalProps, Text } from "metabase/ui";
 
-import type { AdminSettingComponentProps } from "../types";
-
-export const EmbeddingSdkLegaleseModal = ({
-  opened,
-  onClose,
-  updateSetting,
-}: AdminSettingComponentProps & ModalProps) => {
+export const EmbeddingSdkLegaleseModal = ({ opened, onClose }: ModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [updateSettings] = useUpdateSettingsMutation();
 
   const onAccept = async () => {
     setLoading(true);
-    await Promise.all([
-      updateSetting({ key: "show-sdk-embed-terms" }, false),
-      updateSetting({ key: "enable-embedding-sdk" }, true),
-    ]);
+    await updateSettings({
+      "show-sdk-embed-terms": false,
+      "enable-embedding-sdk": true,
+    });
     setLoading(false);
     onClose();
   };
 
   return (
     <Modal
-      title={<Title order={3}>{t`First, some legalese`}</Title>}
+      title={t`First, some legalese`}
       onClose={onClose}
       opened={opened}
       size={670}

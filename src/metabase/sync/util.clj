@@ -184,6 +184,10 @@
   behavior. You can disable this for debugging or test purposes."
   true)
 
+(defn- do-not-retry-exception? [e]
+  (or (isa? (class e) ::exception-class-not-to-retry)
+      (some-> (ex-cause e) recur)))
+
 (defn do-with-error-handling
   "Internal implementation of [[with-error-handling]]; use that instead of calling this directly."
   ([f]
@@ -193,22 +197,39 @@
    (try
      (f)
      (catch Throwable e
-       (if *log-exceptions-and-continue?*
+       (if (and *log-exceptions-and-continue?* (not (do-not-retry-exception? e)))
          (do
            (log/warn e message)
            e)
          (throw e))))))
 
 (defmacro with-error-handling
-  "Execute `body` in a way that catches and logs any Exceptions thrown, and returns `nil` if they do so. Pass a
-  `message` to help provide information about what failed for the log message.
+  "Execute `body` in a way that catches and logs any Exceptions thrown, and returns the exception itself if they do so.
+  Pass a `message` to help provide information about what failed for the log message.
 
   The exception classes deriving from `:metabase.sync.util/exception-class-not-to-retry` are a list of classes tested
   against exceptions thrown. If there is a match found, the sync is aborted as that error is not considered
   recoverable for this sync run."
   {:style/indent 1}
   [message & body]
-  `(do-with-error-handling ~message (fn [] ~@body)))
+  `(do-with-error-handling ~message (^:once fn* [] ~@body)))
+
+(defn do-with-returning-throwable
+  "Internal implementation of [[with-returning-throwable]]; use that instead of calling this directly."
+  [message f]
+  (try (f)
+       (catch Throwable e
+         (if *log-exceptions-and-continue?*
+           (do
+             (log/warn e message)
+             {:throwable e})
+           (throw e)))))
+
+(defmacro with-returning-throwable
+  "Execute `body`, catching any exception and returning it as `{:throwable e}`"
+  {:style/indent 1}
+  [message & body]
+  `(do-with-returning-throwable ~message (^:once fn* [] ~@body)))
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
@@ -499,7 +520,7 @@
                             step-name
                             (name-for-logging database))
                     (fn [& args]
-                      (try
+                      (with-returning-throwable (format "Error running step ''%s'' for %s" step-name (name-for-logging database))
                         (task-history/with-task-history
                           {:task            step-name
                            :db_id           (u/the-id database)
@@ -507,13 +528,7 @@
                                               (if (instance? Throwable result)
                                                 (throw result)
                                                 (assoc update-map :task_details (dissoc result :start-time :end-time :log-summary-fn))))}
-                          (apply sync-fn database args))
-                        (catch Throwable e
-                          (if *log-exceptions-and-continue?*
-                            (do
-                              (log/warnf e "Error running step ''%s'' for %s" step-name (name-for-logging database))
-                              {:throwable e})
-                            (throw e))))))
+                          (apply sync-fn database args)))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results
                       :start-time start-time
@@ -559,10 +574,6 @@
   ;; Note this needs to either stay nested in the `debug` macro call or be guarded by an log/enabled?
   ;; call. Constructing the log below requires some work, no need to incur that cost debug logging isn't enabled
   (log/debug (make-log-sync-summary-str operation database sync-metadata)))
-
-(defn- do-not-retry-exception? [e]
-  (or (isa? (class e) ::exception-class-not-to-retry)
-      (some-> (ex-cause e) recur)))
 
 (defn abandon-sync?
   "Given the results of a sync step, returns truthy if a non-recoverable exception occurred"

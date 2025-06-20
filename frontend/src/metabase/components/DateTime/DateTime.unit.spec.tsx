@@ -1,4 +1,4 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 import { render, screen } from "__support__/ui";
 import DateTime from "metabase/components/DateTime";
@@ -40,7 +40,7 @@ describe("DateTime", () => {
     date_style = DEFAULT_DATE_STYLE,
     time_style = DEFAULT_TIME_STYLE,
   } = {}) {
-    return moment(TEST_DATE).format(`${date_style}, ${time_style}`);
+    return dayjs(TEST_DATE).format(`${date_style}, ${time_style}`);
   }
 
   it("uses default formatting", () => {

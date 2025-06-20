@@ -11,6 +11,7 @@ export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
 export * from "./field";
+export * from "./geojson";
 export * from "./group";
 export * from "./logger";
 export * from "./modelIndexes";

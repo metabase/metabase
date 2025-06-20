@@ -165,6 +165,7 @@ const tokenStatusFeatures = [
   "collection-cleanup",
   "config-text-file",
   "content-management",
+  "content-translation",
   "content-verification",
   "dashboard-subscription-filters",
   "database-auth-providers",
@@ -221,13 +222,13 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
-  "disable_password_login",
+  "content_translation",
   "content_verification",
+  "disable_password_login",
   "embedding",
   "embedding_sdk",
   "embedding_iframe_sdk",
   "hosting",
-  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "scim",
@@ -244,11 +245,11 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
-  "query_reference_validation",
   "cache_preemptive",
   "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
+  "ai_entity_analysis",
   "database_routing",
   "development-mode",
 ] as const;
@@ -299,6 +300,16 @@ export interface UploadsSettings {
   table_prefix: string | null;
 }
 
+export type CustomGeoJSONMap = {
+  name: string;
+  url: string;
+  region_key: string;
+  region_name: string;
+  builtin?: boolean;
+};
+
+export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
+
 interface InstanceSettings {
   "admin-email": string;
   "email-from-name": string | null;
@@ -342,6 +353,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
@@ -349,12 +361,7 @@ interface AdminSettings {
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
-  "jwt-configured"?: boolean;
-  "jwt-enabled"?: boolean;
   "premium-embedding-token": string | null;
-  "saml-configured"?: boolean;
-  "saml-enabled"?: boolean;
-  "saml-identity-provider-uri": string | null;
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
@@ -366,6 +373,7 @@ interface AdminSettings {
   "setup-license-active-at-setup": boolean;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
+  "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -397,6 +405,7 @@ interface PublicSettings {
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
   "development-mode?": boolean;
@@ -417,6 +426,7 @@ interface PublicSettings {
   "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "jwt-identity-provider-uri"?: string | null;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
   "ldap-host": string | null;
@@ -537,11 +547,35 @@ export interface EnterpriseSettings extends Settings {
   "ee-ai-features-enabled"?: boolean;
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
-  "saml-user-provisioning-enabled?"?: boolean;
   "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "jwt-configured"?: boolean;
+  "jwt-enabled"?: boolean;
+  "jwt-user-provisioning-enabled?": boolean;
+  "jwt-identity-provider-uri": string | null;
+  "jwt-shared-secret": string | null;
+  "jwt-attribute-email": string | null;
+  "jwt-attribute-firstname": string | null;
+  "jwt-attribute-lastname": string | null;
+  "jwt-group-sync": boolean | null;
+  "saml-enabled": boolean;
+  "saml-configured": boolean;
+  "saml-user-provisioning-enabled?": boolean;
+  "saml-identity-provider-uri": string | null;
+  "saml-identity-provider-issuer": string | null;
+  "saml-identity-provider-certificate": string | null;
+  "saml-application-name": string | null;
+  "saml-keystore-path": string | null;
+  "saml-keystore-password": string | null;
+  "saml-keystore-alias": string | null;
+  "saml-attribute-email": string | null;
+  "saml-attribute-firstname": string | null;
+  "saml-attribute-lastname": string | null;
+  "saml-attribute-group": string | null;
+  "saml-group-sync": boolean | null;
+  "saml-group-mappings": Record<string, GroupId[]> | null;
   /**
    * @deprecated
    */

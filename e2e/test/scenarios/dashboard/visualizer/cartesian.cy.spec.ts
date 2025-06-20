@@ -193,7 +193,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.assertWellItemsCount({ vertical: 3 });
     });
 
-    H.saveDashcardVisualizerModal("create");
+    H.saveDashcardVisualizerModal({ mode: "create" });
     // Wait for card queries before saving the dashboard
     H.getDashboardCard(0).within(() => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");

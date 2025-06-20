@@ -80,11 +80,16 @@
                                     (when (> freq 1)
                                       item)))
                             (frequencies (map :id source-metadata)))]
-    (for [{field-name :name, base-type :base_type, field-id :id} source-metadata]
-      (if (and field-id (not (contains? duplicate-ids field-id)))
-        ;; field-id is a unique reference, use it
-        [:field field-id   {:join-alias alias}]
-        [:field field-name {:base-type base-type, :join-alias alias}]))))
+    (for [{field-name :name
+           base-type :base_type
+           field-id :id
+           field-ref :field_ref} source-metadata]
+      ;; If `field-ref` is an id-based reference, only use it if the source query uses it.
+      (or (when (and field-id (not (contains? duplicate-ids field-id)))
+            (lib.util.match/match-one field-ref
+              [:field (id :guard pos-int?) _opts]
+              [:field field-id {:join-alias alias}]))
+          [:field field-name {:base-type base-type, :join-alias alias}]))))
 
 (mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."

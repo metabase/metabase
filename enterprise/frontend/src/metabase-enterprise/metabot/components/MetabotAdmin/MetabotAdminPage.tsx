@@ -1,20 +1,26 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useMemo } from "react";
 import { push } from "react-router-redux";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import {
+  AdminNavItem,
+  AdminNavWrapper,
+} from "metabase/admin/settings/components/AdminNav";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
-import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Box, Button, Flex, Icon, Loader, Text } from "metabase/ui";
 import {
   useDeleteMetabotEntitiesMutation,
   useListMetabotsEntitiesQuery,
@@ -27,9 +33,8 @@ import type {
   MetabotId,
 } from "metabase-types/api";
 
+import { MetabotPromptSuggestionPane } from "./MetabotAdminSuggestedPrompts";
 import { useMetabotIdPath } from "./utils";
-
-const metabotContext = "{0} is the name of an AI assistant";
 
 export function MetabotAdminPage() {
   const metabotId = useMetabotIdPath();
@@ -37,6 +42,11 @@ export function MetabotAdminPage() {
   const metabotName =
     data?.items?.find((bot) => bot.id === metabotId)?.name ?? t`Metabot`;
   const isEmbeddedMetabot = metabotName.toLowerCase().includes("embed");
+
+  const { data: entityList } = useListMetabotsEntitiesQuery(
+    metabotId ? { id: metabotId } : skipToken,
+  );
+  const hasEntities = (entityList?.items?.length ?? 0) > 0;
 
   if (isLoading || !data) {
     return (
@@ -48,28 +58,40 @@ export function MetabotAdminPage() {
   }
 
   return (
-    <ErrorBoundary>
-      <Flex p="xl">
-        <MetabotNavPane />
-        <Stack px="xl">
-          <SettingHeader
-            id="configure-metabot"
-            title={c(metabotContext).t`Configure ${metabotName}`}
-            description={c(metabotContext) // eslint-disable-next-line no-literal-metabase-strings -- admin ui
-              .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
-          />
-          {isEmbeddedMetabot && (
-            <Text c="text-medium" maw="40rem">
-              {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
-            </Text>
+    <AdminSettingsLayout sidebar={<MetabotNavPane />}>
+      <ErrorBoundary>
+        <SettingsSection>
+          <Box>
+            <SettingHeader
+              id="configure-metabot"
+              title={c("{0} is the name of an AI assistant")
+                .t`Configure ${metabotName}`}
+              description={c("{0} is the name of an AI assistant") // eslint-disable-next-line no-literal-metabase-strings -- admin ui
+                .t`${metabotName} is Metabase's AI agent. To help ${metabotName} more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.`}
+            />
+            {isEmbeddedMetabot && (
+              <Text c="text-medium" maw="40rem">
+                {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
+              </Text>
+            )}
+          </Box>
+          {metabotId && (
+            <>
+              <MetabotConfigurationPane
+                metabotId={metabotId}
+                metabotName={metabotName}
+              />
+              {hasEntities && (
+                <MetabotPromptSuggestionPane
+                  key={metabotId}
+                  metabotId={metabotId}
+                />
+              )}
+            </>
           )}
-          <MetabotConfigurationPane
-            metabotId={metabotId}
-            metabotName={metabotName}
-          />
-        </Stack>
-      </Flex>
-    </ErrorBoundary>
+        </SettingsSection>
+      </ErrorBoundary>
+    </AdminSettingsLayout>
   );
 }
 
@@ -94,15 +116,16 @@ function MetabotNavPane() {
 
   return (
     <Flex direction="column" w="266px" flex="0 0 auto">
-      <LeftNavPane>
+      <AdminNavWrapper>
         {metabots?.map((metabot) => (
-          <LeftNavPaneItem
+          <AdminNavItem
             key={metabot.id}
-            name={metabot.name}
+            icon="metabot"
+            label={metabot.name}
             path={`/admin/metabot/${metabot.id}`}
           />
         ))}
-      </LeftNavPane>
+      </AdminNavWrapper>
     </Flex>
   );
 }
@@ -111,22 +134,22 @@ function MetabotConfigurationPane({
   metabotId,
   metabotName,
 }: {
-  metabotId: MetabotId | null;
+  metabotId: MetabotId;
   metabotName: string;
 }) {
   const {
     data: entityList,
     isLoading,
     error,
-  } = useListMetabotsEntitiesQuery(metabotId ? { id: metabotId } : skipToken);
-  const [updateEntities] = useUpdateMetabotEntitiesMutation();
-  const [deleteEntity] = useDeleteMetabotEntitiesMutation();
+  } = useListMetabotsEntitiesQuery({ id: metabotId });
+  const [updateEntities, { isLoading: isUpdating }] =
+    useUpdateMetabotEntitiesMutation();
+  const [deleteEntity, { isLoading: isDeleting }] =
+    useDeleteMetabotEntitiesMutation();
+  const isMutating = isUpdating || isDeleting;
   const [isOpen, { open, close }] = useDisclosure(false);
   const [sendToast] = useToast();
 
-  if (!metabotId) {
-    return null;
-  }
   if (isLoading || !entityList || error) {
     return (
       <LoadingAndErrorWrapper
@@ -136,7 +159,7 @@ function MetabotConfigurationPane({
     );
   }
 
-  const collection = entityList?.items?.[0];
+  const collection: MetabotEntity | undefined = entityList?.items?.[0];
   const handleDelete = async () => {
     if (collection) {
       const result = await deleteEntity({
@@ -157,6 +180,7 @@ function MetabotConfigurationPane({
   const handleAddEntity = async (
     newEntity: Pick<MetabotEntity, "model" | "id" | "name">,
   ) => {
+    close();
     await handleDelete();
     const result = await updateEntities({
       id: metabotId,
@@ -169,19 +193,22 @@ function MetabotConfigurationPane({
         icon: "warning",
       });
     }
-    close();
   };
 
   return (
     <Box>
       <SettingHeader
         id="allow-metabot"
-        title={c(metabotContext).t`Collection ${metabotName} can use`}
+        title={c("{0} is the name of an AI assistant")
+          .t`Collection ${metabotName} can use`}
       />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
-        <Button onClick={open}>
-          {collection ? t`Pick a different collection` : t`Pick a collection`}
+        <Button onClick={open} leftSection={isMutating && <Loader size="xs" />}>
+          {match({ isMutating, collection })
+            .with({ isMutating: true }, () => t`Updating collection...`)
+            .with({ collection: undefined }, () => t`Pick a collection`)
+            .otherwise(() => t`Pick a different collection`)}
         </Button>
         {collection && (
           <Button onClick={handleDelete}>
@@ -192,6 +219,8 @@ function MetabotConfigurationPane({
       {isOpen && (
         <CollectionPickerModal
           title={t`Select a collection`}
+          shouldDisableItem={(item) => item.id === "root"}
+          canSelectItem={(item) => item && item.id !== "root"}
           value={{
             id: collection?.id ?? null,
             model: "collection",

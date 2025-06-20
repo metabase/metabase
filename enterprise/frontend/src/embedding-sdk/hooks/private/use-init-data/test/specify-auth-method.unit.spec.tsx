@@ -12,9 +12,9 @@ describe("useInitData - specifying authentication methods", () => {
     ["saml", setupMockSamlEndpoints],
   ] as const)(
     "can use %s as the preferred auth method",
-    async (authMethod, setupMockEndpoints) => {
-      setupMockEndpoints({ isPreferredAuthMethod: true });
-      setup({ authMethod });
+    async (preferredAuthMethod, setupMockEndpoints) => {
+      setupMockEndpoints();
+      setup({ preferredAuthMethod });
 
       expect(await screen.findByTestId("test-component")).toHaveAttribute(
         "data-is-logged-in",

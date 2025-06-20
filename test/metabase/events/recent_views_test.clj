@@ -29,6 +29,13 @@
           (events/publish-event! :event/card-query {:card-id (:id card-2)
                                                     :user-id (mt/user->id :rasta)
                                                     :context :collection})
+          (is (nil? (most-recent-view (mt/user->id :rasta) (:id card-2) "card")))))
+
+      (testing "dashboard subscriptions should not be counted"
+        (mt/with-temp [:model/Card card-2 {:creator_id (mt/user->id :rasta)}]
+          (events/publish-event! :event/card-query {:card-id (:id card-2)
+                                                    :user-id (mt/user->id :rasta)
+                                                    :context :dashboard-subscription})
           (is (nil? (most-recent-view (mt/user->id :rasta) (:id card-2) "card"))))))))
 
 (deftest table-read-test

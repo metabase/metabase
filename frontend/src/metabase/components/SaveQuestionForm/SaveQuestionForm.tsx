@@ -158,6 +158,7 @@ export const SaveQuestionForm = ({
           data-testid="save-question-button"
           variant="filled"
           onSuccess={onSaveSuccess}
+          data-autofocus
         />
       </FormFooter>
     </Form>

@@ -27,6 +27,7 @@ export const AdminNavbarItems = styled.ul`
   display: flex;
   flex-grow: 0;
   min-width: 0;
+  gap: 4px;
 `;
 
 export const MobileHide = styled.div`

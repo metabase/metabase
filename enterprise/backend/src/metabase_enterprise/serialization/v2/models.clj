@@ -36,6 +36,7 @@
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotEntity"
+   "MetabotPrompt"
    "TimelineEvent"])
 
 (def excluded-models
@@ -51,6 +52,7 @@
    "CollectionBookmark"
    "CollectionPermissionGraphRevision"
    "ConnectionImpersonation"
+   "ContentTranslation"
    "DatabaseRouter"
    "DashboardBookmark"
    "DataPermissions"
@@ -77,7 +79,6 @@
    "PulseChannelRecipient"
    "Query"
    "QueryAction"
-   "QueryAnalysis"
    "QueryCache"
    "QueryExecution"
    "QueryField"

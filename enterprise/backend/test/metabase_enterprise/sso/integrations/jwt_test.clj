@@ -132,14 +132,24 @@
               :status  "error-sso-disabled"}
              (client/client :get 400 "/auth/sso")))))
 
+       (testing "The JWT idp uri must also be included for SSO to be configured"
+         (mt/with-temporary-setting-values
+           [jwt-enabled true
+            jwt-identity-provider-uri nil
+            jwt-shared-secret nil]
+           (is
+            (partial=
+             {:cause   "SSO has not been enabled and/or configured",
+              :data    {:status "error-sso-disabled", :status-code 400},
+              :message "SSO has not been enabled and/or configured",
+              :status  "error-sso-disabled"}
+             (client/client :get 400 "/auth/sso")))))
+
        (testing "The JWT Shared Secret must also be included for SSO to be configured"
          (mt/with-temporary-setting-values
-           [jwt-enabled
-            true
-            jwt-identity-provider-uri
-            default-idp-uri
-            jwt-shared-secret
-            nil]
+           [jwt-enabled true
+            jwt-identity-provider-uri default-idp-uri
+            jwt-shared-secret nil]
            (is
             (partial=
              {:cause   "SSO has not been enabled and/or configured",
@@ -463,6 +473,78 @@
                 (group-memberships
                  (u/the-id (t2/select-one-pk :model/User :email "newuser@metabase.com"))))))))))))
 
+(deftest login-as-existing-user-test
+  (testing "login as an existing user works"
+    (testing "An existing user will be reactivated upon login"
+      (with-jwt-default-setup!
+        (with-users-with-email-deleted "newuser@metabase.com"
+          ;; just create the user
+          (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt
+                                                         (jwt/sign
+                                                          {:email      "newuser@metabase.com"
+                                                           :first_name "New"
+                                                           :last_name  "User"}
+                                                          default-jwt-secret))]
+            (is (saml-test/successful-login? response)))
+
+          ;; then log in again
+          (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt
+                                                         (jwt/sign
+                                                          {:email      "newuser@metabase.com"
+                                                           :first_name "New"
+                                                           :last_name  "User"}
+                                                          default-jwt-secret))]
+            (is (saml-test/successful-login? response))))))))
+
+(deftest login-update-account-test
+  (testing "An existing user will be reactivated upon login"
+    (with-jwt-default-setup!
+      (with-users-with-email-deleted "newuser@metabase.com"
+        ;; just create the user
+        (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri
+                                                       :jwt
+                                                       (jwt/sign
+                                                        {:email      "newuser@metabase.com"
+                                                         :first_name "New"
+                                                         :last_name  "User"}
+                                                        default-jwt-secret))]
+          (is (saml-test/successful-login? response)))
+
+        ;; deactivate the user
+        (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
+        (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+
+        (let [response    (client/client-real-response :get 302 "/auth/sso"
+                                                       {:request-options {:redirect-strategy :none}}
+                                                       :return_to default-redirect-uri
+                                                       :jwt
+                                                       (jwt/sign
+                                                        {:email      "newuser@metabase.com"
+                                                         :first_name "New"
+                                                         :last_name  "User"}
+                                                        default-jwt-secret))]
+          (is (saml-test/successful-login? response))
+          (is (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+
+        ;; deactivate the user again
+        (t2/update! :model/User :email "newuser@metabase.com" {:is_active false})
+        (is (not (t2/select-one-fn :is_active :model/User :email "newuser@metabase.com")))
+        (with-redefs [sso-settings/jwt-user-provisioning-enabled? (constantly false)
+                      appearance.settings/site-name               (constantly "test")]
+          (is
+           (thrown-with-msg?
+            clojure.lang.ExceptionInfo
+            #"Sorry, but you'll need a test account to view this page. Please contact your administrator."
+            (#'mt.jwt/fetch-or-create-user! "Test" "User" "newuser@metabase.com" nil))))))))
+
 (deftest create-new-jwt-user-no-user-provisioning-test
   (testing "When user provisioning is disabled, throw an error if we attempt to create a new user."
     (with-jwt-default-setup!
@@ -510,6 +592,28 @@
              :iat jwt-iat-time
              :exp jwt-exp-time}
             (:body result)))))))
+
+  (testing "should not return a session token when jwt is not configured"
+    (mt/with-temporary-setting-values
+      [jwt-enabled true
+       jwt-identity-provider-uri nil
+       jwt-shared-secret nil]
+      (mt/with-temporary-setting-values [enable-embedding-sdk true]
+        (let [jwt-iat-time (buddy-util/now)
+              jwt-exp-time (+ (buddy-util/now) 3600)
+              jwt-payload  (jwt/sign
+                            {:email      "rasta@metabase.com"
+                             :first_name "Rasta"
+                             :last_name  "Toucan"
+                             :extra      "keypairs"
+                             :are        "also present"
+                             :iat        jwt-iat-time
+                             :exp        jwt-exp-time}
+                            default-jwt-secret)
+              result       (client/client-real-response :get 400 "/auth/sso"
+                                                        {:request-options {:headers {"x-metabase-client" "embedding-sdk-react"}}}
+                                                        :jwt   jwt-payload)]
+          (is result nil)))))
 
   (testing "should not return a session token when embedding is disabled"
     (with-jwt-default-setup!

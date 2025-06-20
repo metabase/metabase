@@ -17,7 +17,7 @@
   "Middleware that happens after compilation, AROUND query execution itself. Has the form
 
     (f (f query rff)) -> (f query rff)"
-  [#'qp.enterprise/swap-mirror-db-middleware
+  [#'qp.enterprise/swap-destination-db-middleware
    #'qp.perms/check-query-action-permissions])
 
 (defn- apply-middleware [qp middleware-fns]

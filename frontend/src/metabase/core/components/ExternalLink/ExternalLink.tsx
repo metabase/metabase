@@ -4,6 +4,7 @@ import { forwardRef } from "react";
 import CS from "metabase/css/core/index.css";
 import { getUrlTarget } from "metabase/lib/dom";
 
+import S from "./ExternalLink.module.css";
 import { LinkRoot } from "./ExternalLink.styled";
 
 interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
@@ -32,6 +33,13 @@ const ExternalLink = forwardRef(function ExternalLink(
       {children}
     </LinkRoot>
   );
+});
+
+export const ButtonLink = forwardRef(function ButtonLink(
+  props: Props,
+  ref: Ref<HTMLAnchorElement>,
+) {
+  return <ExternalLink {...props} className={S.ButtonLink} ref={ref} />;
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

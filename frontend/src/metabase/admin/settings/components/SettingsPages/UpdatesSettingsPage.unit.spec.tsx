@@ -95,25 +95,6 @@ describe("UpdatesSettingsPage", () => {
     });
   });
 
-  it("only version update notice should be visible when hosted", async () => {
-    await act(() =>
-      setup({
-        isHosted: true,
-        versionTag: "v1.53.8",
-        updateChannel: "latest",
-      }),
-    );
-
-    ["Check for updates", "Types of releases to check for"].forEach((text) => {
-      expect(screen.queryByText(text)).not.toBeInTheDocument();
-    });
-    expect(
-      screen.getByText(
-        "Metabase Cloud keeps your instance up-to-date. You're currently on version 1.53.8. Thanks for being a customer!",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("should load initial settings", async () => {
     await act(() =>
       setup({

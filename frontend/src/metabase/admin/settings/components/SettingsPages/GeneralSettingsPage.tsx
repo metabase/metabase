@@ -1,83 +1,79 @@
 import { jt, t } from "ttag";
 
-import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
+import { useDocsUrl } from "metabase/common/hooks";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { Stack } from "metabase/ui";
 
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
 import { HttpsOnlyWidget } from "../widgets/HttpsOnlyWidget";
 import { SiteUrlWidget } from "../widgets/SiteUrlWidget";
-
 export function GeneralSettingsPage() {
   const { url: iframeDocsUrl } = useDocsUrl("configuring-metabase/settings", {
     anchor: "allowed-domains-for-iframes-in-dashboards",
   });
 
-  const hasQueryValidation = useHasTokenFeature("query_reference_validation");
-
   return (
-    <Stack gap="xl" maw="42rem" px="lg" py="sm">
-      <AdminSettingInput
-        name="site-name"
-        title={t`Site Name`}
-        inputType="text"
-      />
+    <SettingsPageWrapper title={t`General`}>
+      <SettingsSection title={t`App config`}>
+        <AdminSettingInput
+          name="site-name"
+          title={t`Site name`}
+          inputType="text"
+        />
 
-      <SiteUrlWidget />
+        <SiteUrlWidget />
 
-      <HttpsOnlyWidget />
+        <HttpsOnlyWidget />
 
-      <CustomHomepageDashboardSetting />
+        <CustomHomepageDashboardSetting />
 
-      <PLUGIN_LANDING_PAGE.LandingPageWidget />
+        <PLUGIN_LANDING_PAGE.LandingPageWidget />
+      </SettingsSection>
 
-      <AdminSettingInput
-        name="admin-email"
-        title={t`Email Address for Help Requests`}
-        inputType="text"
-      />
+      <SettingsSection title={t`Email and tracking`}>
+        <AdminSettingInput
+          name="admin-email"
+          title={t`Email address for help requests`}
+          inputType="text"
+        />
 
-      <AnonymousTrackingInput />
+        <AnonymousTrackingInput />
+      </SettingsSection>
 
-      <AdminSettingInput
-        name="humanization-strategy"
-        title={t`Friendly Table and Field Names`}
-        options={[
-          {
-            value: "simple",
-            label: t`Replace underscores and dashes with spaces`,
-          },
-          { value: "none", label: t`Disabled` },
-        ]}
-        inputType="select"
-      />
+      <SettingsSection title={t`Tables, X-Rays and domains`}>
+        <AdminSettingInput
+          name="humanization-strategy"
+          title={t`Friendly table and field names`}
+          options={[
+            {
+              value: "simple",
+              label: t`Replace underscores and dashes with spaces`,
+            },
+            { value: "none", label: t`Disabled` },
+          ]}
+          inputType="select"
+        />
 
-      <AdminSettingInput
-        name="enable-xrays"
-        title={t`Enable X-Ray Features`}
-        inputType="boolean"
-      />
+        <AdminSettingInput
+          name="enable-xrays"
+          title={t`Enable X-Ray features`}
+          inputType="boolean"
+        />
 
-      <AdminSettingInput
-        hidden={!hasQueryValidation}
-        name="query-analysis-enabled"
-        title={t`Enable query analysis`}
-        inputType="boolean"
-      />
-
-      <AdminSettingInput
-        name="allowed-iframe-hosts"
-        title={t`Allowed domains for iframes in dashboards`}
-        description={
-          <>
-            {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${(<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>)}`}
-          </>
-        }
-        inputType="textarea"
-      />
-    </Stack>
+        <AdminSettingInput
+          name="allowed-iframe-hosts"
+          title={t`Allowed domains for iframes in dashboards`}
+          description={
+            <>
+              {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${(<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>)}`}
+            </>
+          }
+          inputType="textarea"
+        />
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

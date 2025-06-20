@@ -14,6 +14,7 @@ import {
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import Header from "metabase/collections/containers/CollectionHeader";
 import type {
+  CollectionOrTableIdProps,
   CreateBookmark,
   DeleteBookmark,
   OnFileUpload,
@@ -42,7 +43,6 @@ import type {
 import { SortDirection } from "metabase-types/api/sorting";
 import type { State } from "metabase-types/store";
 
-import type { CollectionOrTableIdProps } from "../ModelUploadModal";
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
 

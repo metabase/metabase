@@ -6,7 +6,7 @@ import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
-import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
+import { ADMIN_SETTINGS_SECTIONS } from "metabase/admin/settings/selectors";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
@@ -34,6 +34,16 @@ import {
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
+
+type SettingsSections = {
+  [key: string]: {
+    name?: string;
+    order?: number;
+    settings?: any[];
+    getHidden?: (settings: Record<string, any>) => boolean;
+    adminOnly?: boolean;
+  };
+};
 
 export const useCommandPalette = ({
   locationQuery,
@@ -91,10 +101,7 @@ export const useCommandPalette = ({
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
-  const settingsSections = useMemo<Record<string, any>>(
-    () => getSectionsWithPlugins(),
-    [],
-  );
+  const settingsSections = ADMIN_SETTINGS_SECTIONS as SettingsSections;
 
   const docsAction = useMemo<PaletteAction[]>(() => {
     const link = debouncedSearchText

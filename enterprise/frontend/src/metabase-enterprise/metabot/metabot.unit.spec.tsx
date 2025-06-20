@@ -10,7 +10,7 @@ import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import type { User } from "metabase-types/api";
+import type { SuggestedMetabotPrompt, User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -18,9 +18,12 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "./components/Metabot";
+import {
+  FIXED_METABOT_IDS,
+  LONG_CONVO_MSG_LENGTH_THRESHOLD,
+} from "./constants";
 import { MetabotProvider } from "./context";
 import {
-  LONG_CONVO_MSG_LENGTH_THRESHOLD,
   type MetabotState,
   addUserMessage,
   metabotInitialState,
@@ -33,7 +36,7 @@ function setup(
     ui?: React.ReactElement;
     metabotPluginInitialState?: MetabotState;
     currentUser?: User | null | undefined;
-    promptSuggestions?: { prompt: string }[];
+    promptSuggestions?: SuggestedMetabotPrompt[];
   } | void,
 ) {
   const settings = mockSettings({
@@ -55,9 +58,10 @@ function setup(
     promptSuggestions = [],
   } = options || {};
 
-  fetchMock.get("path:/api/ee/metabot-v3/v2/prompt-suggestions", {
-    prompts: promptSuggestions,
-  });
+  fetchMock.get(
+    `path:/api/ee/metabot-v3/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
+  );
 
   return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
     storeInitialState: createMockState({
@@ -239,8 +243,37 @@ describe("metabot", () => {
 
     it("should provide prompt suggestions if avaiable", async () => {
       const prompts = [
-        { prompt: "Sales totals by week" },
-        { prompt: "Who is your favorite?" },
+        {
+          id: 1,
+          metabot_id: 1,
+          prompt: "What is the total revenue for this quarter?",
+          model: "metric" as const,
+          model_id: 1,
+          model_name: "Quarterly Revenue Calculator",
+          created_at: "2025-05-15T10:30:00Z",
+          updated_at: "2025-05-15T10:30:00Z",
+        },
+        {
+          id: 2,
+          metabot_id: 1,
+          prompt:
+            "Show me the customer acquisition trends over the last 6 months",
+          model: "model" as const,
+          model_id: 2,
+          model_name: "Customer Acquisition Trend Analyzer",
+          created_at: "2025-05-15T11:15:00Z",
+          updated_at: "2025-05-15T11:15:00Z",
+        },
+        {
+          id: 3,
+          metabot_id: 1,
+          prompt: "What are our top performing products by sales volume?",
+          model: "metric" as const,
+          model_id: 3,
+          model_name: "Product Performance Ranking",
+          created_at: "2025-05-15T14:22:00Z",
+          updated_at: "2025-05-16T09:45:00Z",
+        },
       ];
       setup({ promptSuggestions: prompts });
       fetchMock.post(
@@ -270,6 +303,27 @@ describe("metabot", () => {
       expect(
         screen.queryByTestId("metabot-prompt-suggestions"),
       ).not.toBeInTheDocument();
+    });
+
+    it("should make a request for new suggested prompts when the conversation is reset", async () => {
+      setup({ promptSuggestions: [] });
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(
+            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+          ),
+        ).toHaveLength(1);
+      });
+
+      await userEvent.click(await resetChatButton());
+
+      await waitFor(async () => {
+        expect(
+          fetchMock.calls(
+            `path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`,
+          ),
+        ).toHaveLength(2);
+      });
     });
   });
 
@@ -323,7 +377,10 @@ describe("metabot", () => {
 
       const TestComponent = () => {
         useRegisterMetabotContextProvider(
-          () => ({ user_is_viewing: [{ type: "question", id: 1 }] }),
+          () =>
+            Promise.resolve({
+              user_is_viewing: [{ type: "dashboard", id: 1 }],
+            }),
           [],
         );
         return null;
@@ -344,7 +401,7 @@ describe("metabot", () => {
         isMatching(
           {
             current_time_with_timezone: P.string,
-            user_is_viewing: [{ type: "question", id: 1 }],
+            user_is_viewing: [{ type: "dashboard", id: 1 }],
           },
           (await lastReqBody())?.context,
         ),

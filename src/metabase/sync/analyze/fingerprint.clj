@@ -196,12 +196,11 @@
   (if-let [fields (fields-to-fingerprint table)]
     (do
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
-      (let [stats (sync-util/with-error-handling
-                   (format "Error fingerprinting %s" (sync-util/name-for-logging table))
-                    (fingerprint-fields! table fields))]
-        (if (instance? Exception stats)
-          (assoc (empty-stats-map 0)
-                 :throwable stats)
+      (let [stats
+            (sync-util/with-returning-throwable (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+              (fingerprint-fields! table fields))]
+        (if (:throwable stats)
+          (merge (empty-stats-map 0) stats)
           stats)))
     (empty-stats-map 0)))
 
@@ -223,8 +222,14 @@
                     (sync-util/reducible-sync-tables database))]
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-                 (let [new-acc (merge-with + acc (fingerprint-table! table))]
-                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? new-acc)))
+                 (let [ret (fingerprint-table! table)
+                       new-acc (let [ret (if (:throwable ret)
+                                           (-> ret
+                                               (dissoc :throwable)
+                                               (update :failed-fingerprints inc))
+                                           ret)]
+                                 (merge-with + acc ret))]
+                   (if (and (continue? new-acc) (not (sync-util/abandon-sync? ret)))
                      new-acc
                      (reduced new-acc))))
                (empty-stats-map 0)

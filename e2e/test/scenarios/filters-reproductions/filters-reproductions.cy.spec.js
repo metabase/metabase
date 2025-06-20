@@ -366,7 +366,7 @@ describe("issue 22230", () => {
 
     H.clauseStepPopover().within(() => {
       cy.findByText("Max of Name").click();
-      cy.findByText("Is").click();
+      cy.findByText("Contains").click();
     });
     cy.findByRole("menu").findByText("Starts with").click();
 
@@ -1587,6 +1587,41 @@ describe("issue 50731", () => {
 
         descendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(descendant, container);
+        });
+      });
+  });
+});
+
+describe("issue 58923", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    cy.viewport(800, 800);
+  });
+
+  it("it should not lose padding when switching filter types (metabase#58923)", () => {
+    H.openPeopleTable();
+    H.tableHeaderClick("Name");
+
+    H.popover().findByText("Filter by this column").click();
+    H.popover().findByText("Is").click();
+    H.popover().should("have.length", 2).last().findByText("Contains").click();
+
+    H.popover().findByText("Contains").click();
+    H.popover().should("have.length", 2).last().findByText("Is").click();
+
+    H.popover()
+      .first()
+      .within(() => {
+        cy.findByPlaceholderText("Search by Name").then((input) => {
+          cy.button("Add filter")
+            .parent()
+            .then((footer) => {
+              const { bottom } = input[0].getBoundingClientRect();
+              const { top } = footer[0].getBoundingClientRect();
+
+              cy.wrap(top - bottom).should("be.gt", 16);
+            });
         });
       });
   });

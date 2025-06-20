@@ -31,6 +31,7 @@ title: Driver interface changelog
   `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
   `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
 
+- Added the multi-method `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info`.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
 - The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
   update your usages.
 
@@ -62,6 +63,16 @@ title: Driver interface changelog
 - All settings formerly in a `metabase.driver.*` namespace have been moved to `metabase.driver.settings`, and all
   settings formerly in a `metabase.query-processor.*` namespace have been moved to
   `metabase.query-processor.settings`.
+
+## Metabase 0.54.12
+
+- The function `metabase.driver.sql-jdbc.sync/describe-table-fields-xf` now takes a table instead of a database
+
+
+## Metabase 0.54.11
+
+- The multimethods `metabase.driver.sql-jdbc.sync.interface/active-tables` and `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas`, aswell as the functions
+`metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
 
 ## Metabase 0.54.10
 

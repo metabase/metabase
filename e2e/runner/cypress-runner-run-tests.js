@@ -63,9 +63,10 @@ const getHostAppE2eConfig = (suite) => ({
     return getEmbeddingSdkAppE2eConfig({
       baseUrl: getHost(),
       env,
-      specPattern: ["e2e/test-host-app", appName, "**/*.cy.spec.{js,ts}"].join(
-        "/",
-      ),
+      specPattern: [
+        "e2e/test-host-app/shared/**/*.cy.spec.{js,ts}",
+        ["e2e/test-host-app", appName, "**/*.cy.spec.{js,ts}"].join("/"),
+      ],
     });
   },
 });
@@ -91,9 +92,10 @@ const configs = {
   ...getSampleAppE2eConfig("metabase-nodejs-react-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("metabase-nextjs-sdk-embedding-sample-e2e"),
   ...getSampleAppE2eConfig("shoppy-e2e"),
-  ...getHostAppE2eConfig("vite-5-host-app-e2e"),
-  ...getHostAppE2eConfig("next-14-app-router-host-app-e2e"),
-  ...getHostAppE2eConfig("next-14-pages-router-host-app-e2e"),
+  ...getHostAppE2eConfig("vite-6-host-app-e2e"),
+  ...getHostAppE2eConfig("next-15-app-router-host-app-e2e"),
+  ...getHostAppE2eConfig("next-15-pages-router-host-app-e2e"),
+  ...getHostAppE2eConfig("angular-20-host-app-e2e"),
   snapshot: async () => {
     // We only ever care about a browser out of all possible user arguments,
     // when it comes to the snapshot generation.

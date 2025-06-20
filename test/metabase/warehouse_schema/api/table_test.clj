@@ -1140,19 +1140,19 @@
 (deftest field-ordering-test
   (let [original-field-order (t2/select-one-fn :field_order :model/Table :id (mt/id :venues))]
     (try
-      (testing "Cane we set alphabetical field ordering?"
+      (testing "Can we set alphabetical field ordering?"
         (is (= ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
                (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                           {:field_order :alphabetical})
                     :fields
                     (map :name)))))
-      (testing "Cane we set smart field ordering?"
+      (testing "Can we set smart field ordering?"
         (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
                (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                           {:field_order :smart})
                     :fields
                     (map :name)))))
-      (testing "Cane we set database field ordering?"
+      (testing "Can we set database field ordering?"
         (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE"]
                (->> (mt/user-http-request :crowberto :put 200 (format "table/%s" (mt/id :venues))
                                           {:field_order :database})

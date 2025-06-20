@@ -8,7 +8,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
@@ -47,7 +47,7 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers))
+(use-fixtures :once (fixtures/initialize :db :plugins :test-drivers :row-lock))
 
 ;; HELPER FNS
 
@@ -471,7 +471,7 @@
                         normalize)))))))))
 
 (defn- api-update-database! [expected-status-code db-or-id changes]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" (u/the-id db-or-id))
                           changes)))
 
@@ -1383,18 +1383,23 @@
         (mt/with-temp [:model/Database {db-id :id :as db} {:engine "h2", :details (:details (mt/db))}]
           (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
                         analyze/analyze-db!             (deliver-when-db analyze-called? db)]
-            (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
-            ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
-            ;; however if something went wrong, don't hang forever, eventually timeout and fail
-            (testing "sync called?"
-              (is (true?
-                   (deref sync-called? long-timeout :sync-never-called))))
-            (testing "analyze called?"
-              (is (true?
-                   (deref analyze-called? long-timeout :analyze-never-called))))
-            (testing "audit log entry generated"
-              (is (= db-id
-                     (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))))))))
+            (snowplow-test/with-fake-snowplow-collector
+              (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" (u/the-id db)))
+              ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
+              ;; however if something went wrong, don't hang forever, eventually timeout and fail
+              (testing "sync called?"
+                (is (true?
+                     (deref sync-called? long-timeout :sync-never-called))))
+              (testing "analyze called?"
+                (is (true?
+                     (deref analyze-called? long-timeout :analyze-never-called))))
+              (testing "audit log entry generated"
+                (is (= db-id
+                       (:model_id (mt/latest-audit-log-entry "database-manual-sync")))))
+              (testing "triggers snowplow event"
+                (is (=?
+                     {"event" "database_manual_sync", "target_id" db-id}
+                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
 (deftest ^:parallel dismiss-spinner-test
   (testing "Can we dismiss the spinner? (#20863)"
@@ -1426,19 +1431,24 @@
           (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
                                                                  (when (= (u/the-id synced-db) (u/the-id db))
                                                                    (deliver update-field-values-called? :sync-called)))]
-            (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
-            (is (= :sync-called
-                   (deref update-field-values-called? long-timeout :sync-never-called)))
-            (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
-            (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
-                                :details :id)))))))))
+            (snowplow-test/with-fake-snowplow-collector
+              (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
+              (is (= :sync-called
+                     (deref update-field-values-called? long-timeout :sync-never-called)))
+              (is (= (:id db) (:model_id (mt/latest-audit-log-entry "database-manual-scan"))))
+              (is (= (:id db) (-> (mt/latest-audit-log-entry "database-manual-scan")
+                                  :details :id)))
+              (testing "triggers snowplow event"
+                (is (=?
+                     {"event" "database_manual_scan", "target_id" (u/the-id db)}
+                     (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))))))))
 
-(deftest ^:parallel nonadmins-cant-trigger-rescan
+(deftest ^:parallel nonadmins-cant-trigger-rescan-test
   (testing "Non-admins should not be allowed to trigger re-scan"
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :post 403 (format "database/%d/rescan_values" (mt/id)))))))
 
-(deftest discard-db-fieldvalues
+(deftest discard-db-fieldvalues-test
   (testing "Can we DISCARD all the FieldValues for a DB?"
     (mt/with-temp [:model/Database    db       {:engine "h2", :details (:details (mt/db))}
                    :model/Table       table-1  {:db_id (u/the-id db)}
@@ -1447,8 +1457,16 @@
                    :model/Field       field-2  {:table_id (u/the-id table-2)}
                    :model/FieldValues values-1 {:field_id (u/the-id field-1), :values [1 2 3 4]}
                    :model/FieldValues values-2 {:field_id (u/the-id field-2), :values [1 2 3 4]}]
-      (is (= {:status "ok"}
-             (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
+
+      (snowplow-test/with-fake-snowplow-collector
+        (is (= {:status "ok"}
+               (mt/user-http-request :crowberto :post 200 (format "database/%d/discard_values" (u/the-id db)))))
+
+        (testing "triggers snowplow event"
+          (is (=?
+               {"event" "database_discard_field_values", "target_id" (u/the-id db)}
+               (:data (last (snowplow-test/pop-event-data-and-user-id!)))))))
+
       (testing "values-1 still exists?"
         (is (= false
                (t2/exists? :model/FieldValues :id (u/the-id values-1)))))
@@ -1476,11 +1494,11 @@
      :or   {expected-status-code 200
             user                 :crowberto}}
     request-body]
-   (with-redefs [h2/*allow-testing-h2-connections* true]
+   (with-redefs [driver.settings/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
 (defn- test-connection-details! [engine details]
-  (with-redefs [h2/*allow-testing-h2-connections* true]
+  (with-redefs [driver.settings/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
 (deftest validate-database-test
@@ -2179,7 +2197,7 @@
       (letfn [(settings []
                 (t2/select-one-fn :settings :model/Database :id (mt/id)))
               (set-settings! [m]
-                (with-redefs [h2/*allow-testing-h2-connections* true]
+                (with-redefs [driver.settings/*allow-testing-h2-connections* true]
                   (u/prog1 (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
                                                  {:settings m})
                     (is (=? {:id (mt/id)}

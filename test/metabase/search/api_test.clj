@@ -1328,7 +1328,7 @@
                      :available_models
                      set))))))))
 
-(deftest search-native-query-test
+(deftest ^:synchronized search-native-query-test
   (let [search-term "search-native-query"]
     (mt/with-temp
       [:model/Card {mbql-card :id}             {:name search-term}
@@ -1613,7 +1613,7 @@
                                            :type "foo"}]}
                    (:collection leaf-card-response)))))))))
 
-(deftest force-reindex-test
+(deftest ^:synchronized force-reindex-test
   (when (search/supports-index?)
     (search.tu/with-temp-index-table
       (mt/with-temp [:model/Card {id :id} {:name "It boggles the mind!"}]
@@ -1707,7 +1707,7 @@
                 (mt/user-http-request :crowberto :put 200 (weights-url context {:model/dataset 5}))))
         (is (= 5.0 (search.config/scorer-param context :model :dataset)))))))
 
-(deftest dashboard-questions
+(deftest ^:synchronized dashboard-questions
   (testing "Dashboard questions get a dashboard_id when searched"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -1755,7 +1755,7 @@
                 (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
                 [:total :data])))))))
 
-(deftest include-metadata
+(deftest ^:synchronized include-metadata
   (testing "Include card result_metadata if include-metadata is set"
     (let [search-name (random-uuid)
           named #(str search-name "-" %)]
@@ -1778,7 +1778,7 @@
                     first
                     :result_metadata))))))))
 
-(deftest prometheus-response-metrics-test
+(deftest ^:synchronized prometheus-response-metrics-test
   (testing "Prometheus counters get incremented for error responses"
     (let [calls (atom nil)]
       (mt/with-dynamic-fn-redefs [analytics/inc! #(swap! calls conj %)]
@@ -1799,7 +1799,10 @@
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
-(deftest ^:parallel multiple-limits
+(deftest ^:synchronized multiple-limits
+  (when (search/supports-index?)
+    ;; This test is failing with "no index" for some reason, forcing the reindex
+    (mt/user-real-request :crowberto :post 200 "search/force-reindex"))
   (testing "Multiple `limit` query args should be handled correctly (#45345)"
     (let [total-count (-> (mt/user-real-request :crowberto :get 200 "search?q=product")
                           :data count)

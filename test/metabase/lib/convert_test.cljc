@@ -763,8 +763,7 @@
                                                                                          :percent-email 0
                                                                                          :percent-state 0
                                                                                          :average-length 6.375}}}
-                                                        :base_type :type/Text
-                                                        :source_alias "Products"}
+                                                        :base_type :type/Text}
                                                        {:name "count"
                                                         :display_name "Count"
                                                         :base_type :type/Integer
@@ -784,8 +783,7 @@
                                                                           :percent-email 0
                                                                           :percent-state 0
                                                                           :average-length 6.375}}}
-                                         :base_type :type/Text
-                                         :source_alias "Products"}
+                                         :base_type :type/Text}
                                         {:name "count"
                                          :display_name "Count"
                                          :base_type :type/Integer

@@ -73,10 +73,9 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
     H.openQuestionsSidebar();
     H.clickVisualizeAnotherWay(STEP_COLUMN_CARD.name);
 
-    H.modal().findByTestId("viz-picker-menu").click();
-    H.popover().findByText("Funnel").click();
-
     H.modal().within(() => {
+      H.selectVisualization("funnel");
+
       cy.button("Add more data").click();
       H.addDataset(VIEWS_COLUMN_CARD.name);
       cy.button("Done").click();

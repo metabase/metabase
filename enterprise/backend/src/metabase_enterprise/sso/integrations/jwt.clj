@@ -32,7 +32,7 @@
               :email            email
               :sso_source       :jwt
               :login_attributes user-attributes}]
-    (or (sso-utils/fetch-and-update-login-attributes! user)
+    (or (sso-utils/fetch-and-update-login-attributes! user (sso-settings/jwt-user-provisioning-enabled?))
         (sso-utils/check-user-provisioning :jwt)
         (sso-utils/create-new-sso-user! user))))
 
@@ -110,19 +110,6 @@
       (sync-groups! user jwt-data)
       {:session session, :redirect-url redirect-url, :jwt-data jwt-data})))
 
-(defn- check-jwt-enabled []
-  (when-not (sso-settings/jwt-configured)
-    (throw
-     (ex-info (tru "JWT SSO has not been configured")
-              {:status      "error-sso-jwt-not-configured"
-               :status-code 402})))
-  (when-not (sso-settings/jwt-enabled)
-    (throw
-     (ex-info (tru "JWT SSO has not been enabled")
-              {:status      "error-sso-jwt-disabled"
-               :status-code 402})))
-  true)
-
 (defn- throw-embedding-disabled
   []
   (throw
@@ -152,7 +139,6 @@
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
   (premium-features/assert-has-feature :sso-jwt (tru "JWT-based authentication"))
-  (check-jwt-enabled)
   (let [jwt-data (when jwt (session-data jwt request))
         is-sdk? (sso-utils/is-embedding-sdk-header? request)]
     (cond

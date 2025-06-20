@@ -515,7 +515,7 @@ describe("issue 24223", () => {
     H.sidebar().button("Done").click();
 
     cy.findByLabelText("Pulse Card")
-      .should("contain", "Title is Awesome")
+      .should("contain", "Title: Awesome")
       .and("not.contain", "1 more filter")
       .click();
 

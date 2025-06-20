@@ -9,6 +9,7 @@ import {
   type Ref,
   forwardRef,
 } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -18,6 +19,7 @@ import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -161,6 +163,7 @@ type VisualizationOwnProps = {
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
   onOpenChartSettings?: (data: {
@@ -195,6 +198,7 @@ type VisualizationState = {
   visualization: VisualizationDefinition | null;
   warnings: string[];
   _lastProps?: VisualizationProps;
+  isNativeView: boolean;
 };
 
 const mapStateToProps = (state: State): StateProps => ({
@@ -219,6 +223,11 @@ const isLoading = (series: Series | null) => {
 };
 
 const deriveStateFromProps = (props: VisualizationProps) => {
+  const rawSeriesArray = props.rawSeries || [];
+  const firstCard = rawSeriesArray[0]?.card;
+  const isNative = firstCard?.dataset_query?.type === "native";
+  const isNativeView = isNative && props.queryBuilderMode === "view";
+
   const transformed = props.rawSeries
     ? getVisualizationTransformed(
         extractRemappings(props.rawSeries as RawSeries),
@@ -235,6 +244,7 @@ const deriveStateFromProps = (props: VisualizationProps) => {
     series,
     computedSettings,
     visualization: transformed?.visualization,
+    isNativeView,
   };
 };
 
@@ -276,6 +286,7 @@ class Visualization extends PureComponent<
       series: null,
       visualization: null,
       warnings: [],
+      isNativeView: false,
     };
   }
 
@@ -622,7 +633,7 @@ class Visualization extends PureComponent<
     } = this.props;
     const { width, height } = this.getNormalizedSizes();
 
-    const { genericError, visualization } = this.state;
+    const { genericError, visualization, isNativeView } = this.state;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
@@ -630,6 +641,7 @@ class Visualization extends PureComponent<
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
+
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -735,7 +747,9 @@ class Visualization extends PureComponent<
     // We can't navigate a user to a particular card from a visualizer viz,
     // so title selection is disabled in this case
     const canSelectTitle =
-      this.props.onChangeCardAndRun && !replacementContent && !isVisualizerViz;
+      this.props.onChangeCardAndRun &&
+      !replacementContent &&
+      (!isVisualizerViz || React.Children.count(titleMenuItems) === 1);
 
     return (
       <ErrorBoundary
@@ -755,6 +769,7 @@ class Visualization extends PureComponent<
             <VisualizationHeader>
               <ChartCaption
                 series={series}
+                visualizerRawSeries={visualizerRawSeries}
                 settings={settings}
                 icon={headerIcon}
                 actionButtons={extra}
@@ -791,6 +806,7 @@ class Visualization extends PureComponent<
               chartType={visualization?.identifier}
               isSummarizeSidebarOpen={isShowingSummarySidebar}
               onEditSummary={isDashboard ? undefined : onEditSummary}
+              isNativeView={isNativeView}
             />
           ) : (
             series && (

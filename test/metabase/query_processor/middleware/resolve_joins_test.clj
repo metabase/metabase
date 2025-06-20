@@ -255,6 +255,35 @@
                                :fingerprint   nil}]}]
                    :limit  10}))))))
 
+(deftest ^:parallel native-model-field-ref-test
+  (testing "should use name-based field refs for joined native models with mapped database fields (metabase#58829)"
+    (let [source-metadata [{:id            (mt/id :checkins :id)
+                            :name          "_USER_ID"
+                            :display_name  "User ID"
+                            :base_type     :type/Integer
+                            :semantic_type :type/FK
+                            :field_ref     [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]
+                            :fingerprint   {:global {:distinct-count 15, :nil% 0.0}}}]]
+      (is (query= (mt/mbql-query users
+                    {:fields [$id
+                              [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                     :joins  [{:fields       [[:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                               :alias        "alias"
+                               :strategy     :left-join
+                               :condition    [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                               :source-query {:native "SELECT USER_ID AS _USER_ID FROM CHECKINS"}
+                               :source-metadata source-metadata}]
+                     :limit  10})
+                  (resolve-joins
+                   (mt/mbql-query users
+                     {:fields [$id]
+                      :joins  [{:fields         :all
+                                :alias          "alias"
+                                :condition      [:= $id [:field "_USER_ID" {:base-type :type/Integer :join-alias "alias"}]]
+                                :source-query   {:native "SELECT USER_ID AS _USER_ID FROM CHECKINS"}
+                                :source-metadata source-metadata}]
+                      :limit  10})))))))
+
 (deftest ^:parallel join-against-source-query-test
   (is (query= (mt/mbql-query venues
                 {:joins    [{:source-query {:source-table $$categories

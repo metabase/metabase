@@ -11,7 +11,8 @@
         "appleby",
         "uladzimirdev",
         "wzimrin",
-        "ericnormand"
+        "ericnormand",
+        "galdre"
       ]
     },
     {
@@ -62,7 +63,6 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger",
         "iethree",
         "nvoxland",
         "fraserdrops",
@@ -93,6 +93,8 @@
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
+        "retro",
+        "sloansparger",
         "somtom"
       ]
     },
@@ -100,6 +102,11 @@
       "name": "Product Growth",
       "label": ".Team/ProductGrowth",
       "members": ["nemanjaglumac", "chodorowicz"]
+    },
+    {
+      "name": "Cloud",
+      "label": "cloud",
+      "members": []
     }
   ]
 }

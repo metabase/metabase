@@ -184,18 +184,36 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
     });
   });
 
-  it("shows an error if we are using an API key in production", () => {
-    cy.log("restore the current page's domain");
-    cy.visit("http://localhost:4000");
-
-    cy.log("visit a test page with an origin of example.com using api keys");
+  it("shows dashboard title when updateSettings({ withTitle: true }) is called", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      origin: "http://example.com",
-      template: "exploration",
+      dashboardId: ORDERS_DASHBOARD_ID,
+      withTitle: false,
     });
 
-    frame
-      .findByText("Using an API key in production is not allowed.")
-      .should("exist");
+    cy.wait("@getDashCardQuery");
+
+    cy.log("1. dashboard title should initially be hidden");
+    frame.within(() => {
+      cy.findByText("Orders in a dashboard").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+
+    cy.log("2. call embed.updateSettings to show the title");
+    frame.window().then((win) => {
+      // @ts-expect-error -- this is within the iframe
+      win.embed.updateSettings({ withTitle: true });
+    });
+
+    cy.log("3. dashboard title should now be visible");
+    getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
   });
 });
+
+const getIframeWindow = () =>
+  cy
+    .get("iframe")
+    .should("be.visible")
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.empty");

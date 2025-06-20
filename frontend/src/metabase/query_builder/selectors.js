@@ -24,7 +24,7 @@ import {
 } from "metabase/visualizations";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
-  computeTimeseriesDataInverval,
+  computeTimeseriesDataInterval,
   minTimeseriesUnit,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import {
@@ -756,11 +756,6 @@ const getNativeEditorSelectedRanges = createSelector(
   (uiControls) => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-export const getIsNativeQueryFixApplied = createSelector(
-  [getUiControls],
-  (uiControls) => uiControls && uiControls.isNativeQueryFixApplied,
-);
-
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   (settings) => settings && isTimeseries(settings),
@@ -793,7 +788,7 @@ const getTimeseriesDataInterval = createSelector(
         isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
       )
       .filter(isNotNull);
-    return computeTimeseriesDataInverval(
+    return computeTimeseriesDataInterval(
       xValues,
       minTimeseriesUnit(columnUnits),
     );

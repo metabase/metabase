@@ -76,15 +76,6 @@ const setup = (props: {
 };
 
 describe("VersionUpdateNotice", () => {
-  it("should tell cloud users they are up to date", async () => {
-    setup({ isHosted: true, versionTag: "v1.53.8", updateChannel: "latest" });
-    expect(
-      await screen.findByText(
-        "Metabase Cloud keeps your instance up-to-date. You're currently on version 1.53.8. Thanks for being a customer!",
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("should tell the user if they're on the latest version", async () => {
     setup({ isHosted: false, versionTag: "v1.53.8", updateChannel: "latest" });
     expect(

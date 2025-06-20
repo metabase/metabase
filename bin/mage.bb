@@ -44,13 +44,12 @@
            (zen))))
 
 (defn- print-help []
-  (do
-    (lolcat "./mage/resource.txt")
-    (flush)
-    (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
-    (println "")
-    (println (u/sh "bb tasks"))
-    (println (tip-o-day))))
+  (lolcat "./mage/resources/splash.txt")
+  (flush)
+  (println (c/bold " ✨ Metabase Automation Genius Engine ✨"))
+  (println "")
+  (println (u/sh "./bin/bb tasks"))
+  (println (tip-o-day)))
 
 (defn -main [& _]
   (cond
@@ -76,9 +75,9 @@
                (catch Exception e
                  (let [message (ex-message e)
                        data (ex-data e)]
+                   (when e       (println (c/yellow "\nException:\n") e))
                    (when message (println (c/red    (c/reverse-color "Error     :")) message))
                    (when data    (println (c/yellow (c/reverse-color "Error data:")) data))
-                   (when e       (println (c/yellow "\nException:\n") e))
                    (System/exit (:mage/exit-code data 1))))))))))
 
 (when (= *file* (System/getProperty "babashka.file"))

@@ -3,22 +3,22 @@
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.mongodb.client AggregateIterable ClientSession MongoCursor MongoDatabase)
+   (com.mongodb.client
+    AggregateIterable
+    ClientSession
+    MongoCursor
+    MongoDatabase)
    (java.util ArrayList Collection)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
@@ -52,7 +52,7 @@
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
         (throw (ex-info (tru "Unexpected columns in results: {0}" (sort not-in-expected))
-                        {:type     qp.error-type/driver
+                        {:type     driver-api/qp.error-type.driver
                          :actual   actual-cols
                          :expected expected-cols}))))))
 
@@ -166,7 +166,7 @@
                 (do (vreset! has-returned-first-row? true)
                     (first-row-thunk))
                 (remaining-rows-thunk)))]
-      (qp.reducible/reducible-rows row-thunk qp.pipeline/*canceled-chan*))))
+      (driver-api/reducible-rows row-thunk (driver-api/canceled-chan)))))
 
 (defn- reduce-results [native-query query ^MongoCursor cursor respond]
   (let [first-row (when (.hasNext cursor)
@@ -185,12 +185,12 @@
   {:pre [(string? collection-name) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) mongo.qp/parse-query-string)
-        database (lib.metadata/database (qp.store/metadata-provider))
+        database (driver-api/database (driver-api/metadata-provider))
         db-name (mongo.db/db-name database)
         client-database (mongo.util/database mongo.connection/*mongo-client* db-name)]
     (with-open [session ^ClientSession (mongo.util/start-session! mongo.connection/*mongo-client*)]
       (a/go
-        (when (a/<! qp.pipeline/*canceled-chan*)
+        (when (a/<! (driver-api/canceled-chan))
           (mongo.util/kill-session! client-database session)))
       (let [aggregate ^AggregateIterable (*aggregate* client-database
                                                       collection-name
@@ -202,6 +202,6 @@
                                                (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                                {:driver :mongo
                                                                 :native native-query
-                                                                :type   qp.error-type/invalid-query}
+                                                                :type   driver-api/qp.error-type.invalid-query}
                                                                e))))]
           (reduce-results native-query query cursor respond))))))

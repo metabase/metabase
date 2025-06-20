@@ -31,7 +31,6 @@ Storybook expects an instance running on `localhost:3000` with some configuratio
   - Make sure "User Provisioning" is enabled.
   - Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication >
     JWT > String used by the JWT signing key
-  - You will need to input a `JWT Identity Provider URI` even though it will not be used.
   - Press "Save and enable"
 - on [/admin/settings/embedding-in-other-applications](http://localhost:3000/admin/settings/embedding-in-other-applications)
   - Enable the sdk
