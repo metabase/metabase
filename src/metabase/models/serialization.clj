@@ -69,6 +69,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.string :as u.str]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.realize :as t2.realize]))
@@ -843,11 +844,12 @@
     (find-by-identity-hash model id-str)))
 
 (def ^:private max-label-length 100)
+(def ^:private max-label-bytes 200) ;; 255 is a limit in ext4
 
-(defn- truncate-label [s]
-  (if (> (count s) max-label-length)
-    (subs s 0 max-label-length)
-    s))
+(defn- truncate-label [^String s]
+  (-> s
+      (u.str/limit-bytes max-label-bytes)
+      (u.str/limit-chars max-label-length)))
 
 (defn- lower-plural [s]
   (-> s u/lower-case-en (str "s")))
