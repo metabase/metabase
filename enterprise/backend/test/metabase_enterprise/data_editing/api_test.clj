@@ -1381,9 +1381,101 @@
 
 ;; Important missing tests
 (comment
-  tmp-modal-saved-action-on-editable-on-dashboard-test
   ;; either copy past tests or use a doseq to vary how we construct it
   tmp-modal-saved-action-on-question-on-dashboard-test)
+
+(deftest tmp-modal-saved-action-on-editable-on-dashboard-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [categories [{:id   'auto-inc-type
+                                                       :name [:text]}
+                                                      {:primary-key [:id]}]
+                                          products   [{:id          'auto-inc-type
+                                                       :name        [:text]
+                                                       :price       [:int]
+                                                       :category_id [:int]}
+                                                      {:primary-key [:id]}]]
+        (mt/with-temp
+          [:model/Dashboard     dashboard {}
+           :model/Card          model     {:type           :model
+                                           :dataset_query  {:database (mt/id), :type :query, :query {:source-table categories}}}
+           :model/Action       action    {:type         :query
+                                          :name         "Do cool thing"
+                                          :model_id     (:id model)
+                                          :parameters   [{:id "a"
+                                                          :name "A"
+                                                          :type "number/="}
+                                                         {:id "b"
+                                                          :name "B"
+                                                          :type "date/single"}
+                                                         {:id "c"
+                                                          :name "C"
+                                                          :type "string/="}
+                                                         {:id "d"
+                                                          :name "D"
+                                                          :type "string/="}
+                                                         {:id "e"
+                                                          :name "E"
+                                                          :type "string/="}]
+                                          :visualization_settings
+                                          {:fields {"c" {:inputType "text"}
+                                                    "e" {:valueOptions ["a" "b"]}}}}
+           :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                           :card_id      (:id model)
+                                           :visualization_settings
+                                           {:table_id categories
+                                            :table.columns
+                                            [{:name "id"          :enabled true}
+                                             {:name "name"        :enabled true}]
+
+                                            :editableTable.columns
+                                            ["id"
+                                             "name"]
+
+                                            :editableTable.enabledActions
+                                            [{:id         "dashcard:unknown:built-in-create"
+                                              :actionId   "data-grid.row/create"
+                                              :enabled    true
+                                              :actionType "data-grid/built-in"}
+                                             {:id                "dashcard:unknown:custom"
+                                              :name              "create"
+                                              :actionId          (:id action)
+                                              :actionType        "data-grid/row-action"
+                                              :parameterMappings [{:parameterId "a" :sourceType "row-data" :sourceValueTarget "name"}
+                                                                  {:parameterId "b" :sourceType "ask-user"}
+                                                                  {:parameterId "c" :sourceType "row-data" :sourceValueTarget "id", :visibility "hidden"}]}]
+                                            :enabled           true}}]
+
+          (mt/user-http-request :crowberto :post 200
+                                (data-editing.tu/table-url categories)
+                                {:rows [{:name "Important category"}]})
+
+          (testing "table actions on a dashcard"
+            (let [custom-action-id   "dashcard:unknown:custom"
+                  scope              {:dashcard-id (:id dashcard)}]
+
+              (testing "custom"
+                (is (=? {:title      "Do cool thing"
+                         :parameters [{:id           "a"
+                                       :display_name "A"
+                                       :input_type   "text"
+                                       :value        "Important category"}
+                                      {:id           "b"
+                                       :display_name "B"
+                                       :input_type   "date"}
+                                      {:id           "d"
+                                       :display_name "D"
+                                       :input_type   "text"}
+                                      {:id            "e"
+                                       :display_name  "E"
+                                       :input_type    "dropdown"
+                                       :value_options ["a" "b"]}]}
+                        (select-keys
+                         (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                               {:scope     scope
+                                                :action_id custom-action-id
+                                                :input     {:id 1}})
+                         [:title :parameters])))))))))))
 
 (deftest tmp-modal-table-action-on-editable-on-dashboard-test
   (mt/with-premium-features #{:table-data-editing}
