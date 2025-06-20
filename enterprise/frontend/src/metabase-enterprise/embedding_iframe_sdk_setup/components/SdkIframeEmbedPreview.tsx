@@ -35,9 +35,9 @@ export const SdkIframeEmbedPreview = () => {
           iframeClassName: S.EmbedPreviewIframe,
           useExistingUserSession: true,
         });
-
-        scriptRef.current = script;
       };
+
+      scriptRef.current = script;
     }
 
     return () => {
