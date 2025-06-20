@@ -467,6 +467,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _entityId: DatabaseEntityId,
     _groupId: number,
     _isAdmin: boolean,
+    _isExternal: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,

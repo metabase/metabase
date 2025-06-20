@@ -105,13 +105,10 @@ export const getApplicationPermissionEditor = createSelector(
       PLUGIN_TENANTS.isExternalUsersGroup,
     );
 
-    if (!externalUsersGroup) {
-      return null;
-    }
-
     const entities = allGroups.map((group) => {
       const isAdmin = isAdminGroup(group);
-      const isExternal = PLUGIN_TENANTS.isExternalUsersGroup(group);
+      const isExternal =
+        !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
 
       return {
         id: group.id,
@@ -139,7 +136,7 @@ export const getApplicationPermissionEditor = createSelector(
             group.id,
             isExternal ? externalUsersGroup : defaultGroup,
             "subscription",
-            isAdmin || isExternal,
+            isAdmin,
           ),
         ],
       };

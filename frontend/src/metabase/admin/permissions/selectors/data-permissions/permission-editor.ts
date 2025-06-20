@@ -195,7 +195,8 @@ export const getDatabasesPermissionEditor = createSelector(
       throw new Error("No default group found");
     }
 
-    const isExternal = externalUsersGroup && externalUsersGroup.id === groupId;
+    const isExternal =
+      !!externalUsersGroup && externalUsersGroup.id === groupId;
 
     const hasSingleSchema =
       databaseId != null &&
@@ -224,6 +225,7 @@ export const getDatabasesPermissionEditor = createSelector(
               entityId,
               groupId,
               isAdmin,
+              isExternal,
               permissions,
               originalPermissions,
               isExternal ? externalUsersGroup : defaultGroup,
@@ -247,6 +249,7 @@ export const getDatabasesPermissionEditor = createSelector(
               entityId,
               groupId,
               isAdmin,
+              isExternal,
               permissions,
               originalPermissions,
               isExternal ? externalUsersGroup : defaultGroup,
@@ -277,6 +280,7 @@ export const getDatabasesPermissionEditor = createSelector(
               entityId,
               groupId,
               isAdmin,
+              isExternal,
               permissions,
               originalPermissions,
               isExternal ? externalUsersGroup : defaultGroup,
@@ -391,7 +395,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
       const entities = sortedGroups.map((group) => {
         const isAdmin = isAdminGroup(group);
         const isExternal =
-          externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
+          !!externalUsersGroup && PLUGIN_TENANTS.isExternalUsersGroup(group);
         let groupPermissions;
 
         if (tableId != null) {
@@ -403,6 +407,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
+            isExternal,
             permissions,
             originalPermissions,
             isExternal ? externalUsersGroup : defaultGroup,
@@ -416,6 +421,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
+            isExternal,
             permissions,
             originalPermissions,
             isExternal ? externalUsersGroup : defaultGroup,
@@ -428,6 +434,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             },
             group.id,
             isAdmin,
+            isExternal,
             permissions,
             originalPermissions,
             isExternal ? externalUsersGroup : defaultGroup,
