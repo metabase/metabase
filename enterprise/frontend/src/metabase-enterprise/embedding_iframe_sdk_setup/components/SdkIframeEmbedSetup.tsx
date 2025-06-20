@@ -29,7 +29,7 @@ const SdkIframeEmbedSetupContent = () => {
     <Box className={S.Container}>
       <SidebarResizer>
         <Box className={S.Sidebar}>
-          <Box className={S.SidebarContent}>
+          <Box className={S.SidebarContent} data-testid="embed-sidebar-content">
             <StepContent />
           </Box>
 
