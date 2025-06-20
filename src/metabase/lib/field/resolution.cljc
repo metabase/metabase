@@ -412,8 +412,7 @@
                              (:id resolved-for-name))]
      (-> (merge-metadata
           {:lib/type         :metadata/column
-           :name             (str id-or-name)
-           :lib/original-ref field-ref}
+           :name             (str id-or-name)}
           ;; metadata about the field from the metadata provider
           (field-metadata query field-id)
           ;; metadata resolved when we have a field literal (name) ref
@@ -434,6 +433,9 @@
    field-ref    :- :mbql.clause/field]
   (let [stage-number (lib.util/canonical-stage-index query stage-number)] ; this is just to make debugging easier
     (as-> (resolve-field-metadata* query stage-number field-ref) $metadata
+      ;; keep the original ref around, we need it to construct the world's most busted broken legacy refs
+      ;; in [[metabase.lib.metadata/result-metadata]].
+      (assoc $metadata :lib/original-ref field-ref)
       ;; update the effective type if needed now that we have merged metadata from all relevant sources
       (assoc $metadata :effective-type (if (or (not (:effective-type $metadata))
                                                (= (:effective-type $metadata) :type/*))

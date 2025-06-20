@@ -820,24 +820,21 @@
                     (result-metadata/expected-cols
                      (assoc-in query [:middleware :disable-remaps?] true)))))))))
 
-(comment
-  (deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
-    (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-      (let [query (lib/query
-                   meta/metadata-provider
-                   (lib.tu.macros/mbql-query orders
-                     {:source-query {:source-query {:source-table $$orders
-                                                    :filter       [:= $id 1]
-                                                    :aggregation  [[:sum $total]]
-                                                    :breakout     [!day.created-at
-                                                                   $product-id->products.title
-                                                                   $product-id->products.category]}
-                                     :filter       [:> *sum/Float 100]
-                                     :aggregation  [[:sum *sum/Float]]
-                                     :breakout     [*TITLE/Text]}
-                      :filter       [:> *sum/Float 100]}))]
-        ;; this should return a field literal ref because that's what we used in the query, even if that's not technically
-        ;; correct.
-        (is (= [[:field "TITLE" {:base-type :type/Text}]
-                [:aggregation 0]]
-               (map :field-ref (result-metadata/expected-cols query))))))))
+(deftest ^:parallel correct-legacy-refs-test
+  (testing "broken field refs should use names if they used names in the source query, regardless of whether it makes sense"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query orders
+                   {:source-query {:source-query {:source-table $$orders
+                                                  :aggregation  [[:sum $total]]
+                                                  :breakout     [!day.created-at
+                                                                 $product-id->products.title
+                                                                 $product-id->products.category]}
+                                   :aggregation  [[:sum *sum/Float]]
+                                   :breakout     [*TITLE/Text]}
+                    :filter       [:> *sum/Float 100]}))]
+      ;; this should return a field literal ref because that's what we used in the query, even if that's not technically
+      ;; correct.
+      (is (= [[:field "TITLE" {:base-type :type/Text}]
+              [:field "sum"   {:base-type :type/Float}]]
+             (map :field-ref (result-metadata/expected-cols query)))))))
