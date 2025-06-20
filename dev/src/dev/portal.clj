@@ -68,7 +68,7 @@
          :dev.debug-qp/transformed-result, :dev.debug-qp/transformed-row}
        tag)
     (send-log (with-meta [before after]
-                {:portal.viewer/default :portal.viewer/diff})
+                         {:portal.viewer/default :portal.viewer/diff})
               (update (meta middleware-var) :ns #(.name %)))
     (send-log event)))
 
@@ -90,9 +90,9 @@
                                   (mapcat identity args))
                               ~after-sym ~(if (seq args)
                                              ;; Has args: a list with their new symbols!
-                                             `(-> ~before-sym ~(list* (first form) (map first args)))
+                                            `(-> ~before-sym ~(list* (first form) (map first args)))
                                              ;; No args: just inline the form.
-                                             `(-> ~before-sym ~form))]
+                                            `(-> ~before-sym ~form))]
                           (tap> [~(list `quote form)
                                  ~@(when (seq args)
                                      `[(into {} [~@(for [[sym form] args]
