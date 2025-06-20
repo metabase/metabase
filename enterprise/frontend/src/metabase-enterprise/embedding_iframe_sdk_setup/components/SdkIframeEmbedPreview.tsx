@@ -19,32 +19,37 @@ export const SdkIframeEmbedPreview = () => {
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
-  useEffect(() => {
-    if (!scriptRef.current && isEmbedSettingsLoaded) {
-      const script = document.createElement("script");
+  useEffect(
+    () => {
+      if (isEmbedSettingsLoaded) {
+        const script = document.createElement("script");
 
-      script.src = "/app/embed.js";
-      document.body.appendChild(script);
+        script.src = "/app/embed.js";
+        document.body.appendChild(script);
 
-      script.onload = () => {
-        const { MetabaseEmbed } = window["metabase.embed"];
+        script.onload = () => {
+          const { MetabaseEmbed } = window["metabase.embed"];
 
-        embedJsRef.current = new MetabaseEmbed({
-          ...settings,
-          target: "#iframe-embed-container",
-          iframeClassName: S.EmbedPreviewIframe,
-          useExistingUserSession: true,
-        });
+          embedJsRef.current = new MetabaseEmbed({
+            ...settings,
+            target: "#iframe-embed-container",
+            iframeClassName: S.EmbedPreviewIframe,
+            useExistingUserSession: true,
+          });
+        };
+
+        scriptRef.current = script;
+      }
+
+      return () => {
+        embedJsRef.current?.destroy();
+        scriptRef.current?.remove();
       };
+    },
 
-      scriptRef.current = script;
-    }
-
-    return () => {
-      embedJsRef.current?.destroy();
-      scriptRef.current?.remove();
-    };
-  }, [settings, isEmbedSettingsLoaded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
+    [isEmbedSettingsLoaded],
+  );
 
   useEffect(() => {
     if (embedJsRef.current) {
