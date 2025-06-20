@@ -1161,7 +1161,9 @@ describe("issue 8490", () => {
     });
 
     // Loading...
-    cy.findByTestId("embed-frame").findByText("로딩...").should("be.visible");
+    cy.findByTestId("embed-frame")
+      .findByText("로드 중...")
+      .should("be.visible");
 
     cy.log("test a static embedded question");
     cy.get("@lineChartQuestionId").then((lineChartQuestionId) => {
@@ -1215,7 +1217,7 @@ describe("issue 8490", () => {
         "static embeddings with `#locale` should show a translated the loading message",
       );
       // Loading...
-      cy.findByText("로딩...")
+      cy.findByText("로드 중...")
         .should("be.visible")
         .then(resolveDashboardLoaderPromise);
 

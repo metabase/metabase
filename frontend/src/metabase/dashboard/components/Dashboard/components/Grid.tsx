@@ -7,13 +7,20 @@ import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
-import { DashboardGridConnected } from "../../DashboardGrid";
+import {
+  DashboardGridConnected,
+  type DashboardGridProps,
+} from "../../DashboardGrid";
 import {
   DashboardEmptyState,
   DashboardEmptyStateWithoutAddPrompt,
 } from "../DashboardEmptyState/DashboardEmptyState";
 
-export const Grid = () => {
+export const Grid = ({
+  className,
+  style,
+  p,
+}: Pick<DashboardGridProps, "className" | "style" | "p">) => {
   const {
     dashboard,
     selectedTabId,
@@ -143,6 +150,9 @@ export const Grid = () => {
       autoScrollToDashcardId={autoScrollToDashcardId}
       reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
       handleSetEditing={handleSetEditing}
+      className={className}
+      style={style}
+      p={p}
     />
   );
 };

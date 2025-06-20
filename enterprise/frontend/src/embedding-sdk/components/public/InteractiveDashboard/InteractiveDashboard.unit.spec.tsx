@@ -7,8 +7,13 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
+  setupLastDownloadFormatEndpoints,
+  setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { screen, waitFor } from "__support__/ui";
@@ -117,6 +122,12 @@ const setup = async ({
 
   setupDashboardEndpoints(dashboard);
 
+  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionItemsEndpoint({
+    collection: TEST_COLLECTION,
+    collectionItems: [],
+  });
+
   setupDashboardQueryMetadataEndpoint(
     dashboard,
     createMockDashboardQueryMetadata({
@@ -137,6 +148,12 @@ const setup = async ({
 
   setupAlertsEndpoints(tableCard, []);
 
+  setupNotificationChannelsEndpoints({});
+
+  setupDatabasesEndpoints([createMockDatabase()]);
+
+  setupLastDownloadFormatEndpoints();
+
   const user = createMockUser();
 
   const state = setupSdkState({
@@ -152,7 +169,6 @@ const setup = async ({
       dashcards: indexBy(dashcards, "id"),
     }),
   });
-
   renderWithSDKProviders(
     <Box h="500px">
       <InteractiveDashboard dashboardId={dashboardId} {...props} />

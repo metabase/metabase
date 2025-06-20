@@ -11,6 +11,7 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
@@ -182,9 +183,9 @@ function Dashboard() {
           data-testid="dashboard-parameters-and-cards"
         >
           <DashboardParameterPanel isFullscreen={isFullscreen} />
-          <Box display="contents" data-element-id="dashboard-cards-container">
+          <FullWidthContainer data-element-id="dashboard-cards-container">
             <Grid />
-          </Box>
+          </FullWidthContainer>
         </Box>
 
         <DashboardSidebars
