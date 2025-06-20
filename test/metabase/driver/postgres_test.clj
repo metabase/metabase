@@ -1322,14 +1322,14 @@
                        (mt/rows)))))
           (testing "Make sure we get a good error message when using ? with other parameters"
             (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                  #"It looks like you have a ''\?'' in your code which Postgres''s JDBC driver interprets as a parameter\. You might need to escape it like ''\?\?''\."
+                                  #"It looks like you have a '\?' in your code which Postgres's JDBC driver interprets as a parameter\. You might need to escape it like '\?\?'\."
                                   (-> {:query         (str "SELECT * FROM json_table "
                                                            "WHERE json_val::jsonb ? 'a' "
-                                                           "AND json_val::jsonb -> 'a' = {{val}}")
+                                                           "AND json_val::jsonb ->> 'a' = {{val}}")
                                        :template-tags {:val
                                                        {:name         "val"
                                                         :display_name "Val"
-                                                        :type         "number"}}}
+                                                        :type         "text"}}}
                                       mt/native-query
                                       (assoc :parameters
                                              [{:type   "number/="
