@@ -149,7 +149,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(ORDERS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(ORDERS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
       // Shouldn't this be automatic though?
       H.selectColumnFromColumnsList(ORDERS_COUNT_BY_CREATED_AT.name, "Count");
@@ -187,9 +187,9 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_AVERAGE_BY_CREATED_AT.name);
       H.assertWellItemsCount({ vertical: 2 });
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.assertWellItemsCount({ vertical: 3 });
     });
 
@@ -220,7 +220,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name);
       H.switchToColumnsList();
 
       H.selectVisualization("area");
@@ -362,7 +362,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset(Q2_NAME);
+        H.selectDataset(Q2_NAME);
         H.switchToColumnsList();
 
         H.verticalWell().within(() => {
@@ -465,7 +465,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
       H.modal().within(() => {
         cy.button("Add more data").click();
-        H.addDataset(Q2_NAME);
+        H.selectDataset(Q2_NAME);
         cy.button("Done").click();
 
         H.verticalWell().within(() => {

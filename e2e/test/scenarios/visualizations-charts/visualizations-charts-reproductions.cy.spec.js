@@ -651,7 +651,7 @@ describe("issue 21665", () => {
     ).click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(Q2.name);
+      H.selectDataset(Q2.name);
       cy.button("Save").click();
     });
 
