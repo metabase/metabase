@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.test :as test]
+   [clojure.test :as t]
    [environ.core :as env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -216,11 +216,11 @@
   []
   (if (:ci env/env)
     (format "CI: %s %s %s"
-            (str test/*testing-vars*)
+            (str t/*testing-vars*)
             (get env/env :github-actor)
             (get env/env :github-head-ref))
     (format "DEV: %s %s"
-            (str test/*testing-vars*)
+            (str t/*testing-vars*)
             (:user env/env))))
 
 (defn- setup-tracking-db!
