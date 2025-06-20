@@ -6,7 +6,7 @@
    :timezone "UTC",
    :is_attached_dwh false,
    :auto_run_queries true,
-   :metadata_sync_schedule "0 43 * * * ? *",
+   :metadata_sync_schedule "0 50 * * * ? *",
    :name "Sample Database",
    :settings nil,
    :caveats

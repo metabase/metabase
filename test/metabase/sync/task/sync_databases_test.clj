@@ -334,3 +334,22 @@
           (is (= fv-default (:cache_field_values_schedule after))
               "Field values schedule erroneously randomized")
           (is (= (:updated_at after) (:updated_at before))))))))
+
+(deftest randomize-db-schedules-if-needed-test-4
+  (testing "Randomizes sample dbs with the old sync string (ADM-943)"
+    (mt/with-model-cleanup [:model/Database]
+      ;; Need to call it this way to avoid callbacks
+      (let [db-id (t2/insert-returning-pk! (t2/table-name :model/Database) {:details   "{}"
+                                                                            :engine    "h2"
+                                                                            :is_sample true
+                                                                            :name      "populate-collection-created-at-test-db-1"
+                                                                            :created_at :%now
+                                                                            :updated_at :%now
+                                                                            :metadata_sync_schedule "0 43 * * * ? *"})
+            before (t2/select-one :model/Database :id db-id)]
+        (#'task.sync-databases/randomize-db-schedules-if-needed!)
+        (let [after (t2/select :model/Database :id db-id)]
+          (is (not (nil? after)) "Sample db exists")
+          ;; Old schedule should be randomized if it existed
+          (is (not= (:metadata_sync_schedule before) (:metadata_sync_schedule after))
+              "Sync schedule randomized"))))))
