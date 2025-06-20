@@ -178,7 +178,7 @@ describe("metabase/parameters/utils/formatting", () => {
         type: "number/=",
         fields: [remappedField, numberField],
       });
-      expect(formatParameterValue(123456789, parameter)).toEqual("123456789");
+      expect(formatParameterValue(123456789, parameter)).toEqual("123,456,789");
     });
 
     it("should remap a field filter parameter value with a target field that is remapped", () => {
