@@ -55,7 +55,6 @@ export function PublicOrEmbeddedDashboardView() {
     withFooter,
     navigateToNewCardFromDashboard,
     slowCards,
-    cardTitled,
     downloadsEnabled,
   } = useDashboardContext();
 
@@ -185,7 +184,6 @@ export function PublicOrEmbeddedDashboardView() {
                 isXray={false}
                 isFullscreen={isFullscreen}
                 isNightMode={isNightMode}
-                withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={
                   navigateToNewCardFromDashboard ?? null
