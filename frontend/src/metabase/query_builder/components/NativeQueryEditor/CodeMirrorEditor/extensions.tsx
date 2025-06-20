@@ -1,22 +1,14 @@
 import { autocompletion } from "@codemirror/autocomplete";
+import { type Extension, Prec } from "@codemirror/state";
 import {
   Decoration,
-  EditorView,
   MatchDecorator,
   ViewPlugin,
   keymap,
 } from "@codemirror/view";
-import {
-  type Extension,
-  Prec,
-  type Range,
-  StateEffect,
-  StateField,
-} from "@uiw/react-codemirror";
 import cx from "classnames";
-import { type RefObject, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
-import type { CodeMirrorRef } from "metabase/common/components/CodeMirror";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
@@ -74,7 +66,6 @@ export function useExtensions({ query, onRunQuery }: Options): Extension[] {
         ],
       }),
       highlightTags(),
-      highlightLines(),
       Prec.highest(
         keymap.of([
           {
@@ -135,51 +126,4 @@ function highlightTags() {
       decorations: (instance) => instance.tags,
     },
   );
-}
-
-const highlightLinesEffect = StateEffect.define<Range<Decoration>[]>();
-const highlightLinesDecoration = Decoration.mark({
-  class: "cm-highlight-line",
-});
-
-function highlightLines() {
-  return StateField.define({
-    create() {
-      return Decoration.none;
-    },
-    update(value, transaction) {
-      value = value.map(transaction.changes);
-
-      for (const effect of transaction.effects) {
-        if (effect.is(highlightLinesEffect)) {
-          value = value.update({ filter: () => false });
-          value = value.update({ add: effect.value });
-        }
-      }
-
-      return value;
-    },
-    provide: (field) => EditorView.decorations.from(field),
-  });
-}
-
-export function useHighlightLines(
-  editorRef: RefObject<CodeMirrorRef>,
-  highlightedLineNumbers: number[] = [],
-) {
-  useEffect(() => {
-    const view = editorRef.current?.view;
-    if (!view) {
-      return;
-    }
-
-    const lines = highlightedLineNumbers.map((line) =>
-      view.state.doc.line(line),
-    );
-    const lineRanges = lines.map((line) =>
-      highlightLinesDecoration.range(line.from, line.to),
-    );
-
-    view.dispatch({ effects: highlightLinesEffect.of(lineRanges) });
-  }, [editorRef, highlightedLineNumbers]);
 }

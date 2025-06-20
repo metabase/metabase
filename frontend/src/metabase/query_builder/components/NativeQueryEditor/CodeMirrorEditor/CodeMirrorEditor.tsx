@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
 } from "react";
 import _ from "underscore";
@@ -36,7 +37,7 @@ export interface CodeMirrorEditorRef {
 }
 
 import S from "./CodeMirrorEditor.module.css";
-import { useExtensions, useHighlightLines } from "./extensions";
+import { useExtensions } from "./extensions";
 import {
   getPlaceholderText,
   getSelectedRanges,
@@ -62,7 +63,6 @@ export const CodeMirrorEditor = forwardRef<
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
-  useHighlightLines(editorRef, highlightedLineNumbers);
 
   const engine = Lib.engine(query);
   const placeholder = getPlaceholderText(engine);
@@ -124,6 +124,11 @@ export const CodeMirrorEditor = forwardRef<
     return () => document.removeEventListener("contextmenu", handler);
   }, [onRightClickSelection]);
 
+  const highlightedRanges = useMemo(
+    () => highlightedLineNumbers?.map((lineNumber) => ({ line: lineNumber })),
+    [highlightedLineNumbers],
+  );
+
   return (
     <CodeMirror
       ref={editorRef}
@@ -137,6 +142,7 @@ export const CodeMirrorEditor = forwardRef<
       onUpdate={handleUpdate}
       autoFocus
       placeholder={placeholder}
+      highlightRanges={highlightedRanges}
       onFormat={onFormatQuery}
     />
   );
