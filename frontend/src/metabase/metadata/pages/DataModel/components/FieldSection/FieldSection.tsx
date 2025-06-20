@@ -96,7 +96,7 @@ const FieldSectionBase = ({
             )}
 
             <Button
-              h={33}
+              h={32}
               leftSection={<Icon name="gear_settings_filled" />}
               px="sm"
               py="xs"
