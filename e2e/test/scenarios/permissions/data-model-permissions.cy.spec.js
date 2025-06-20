@@ -116,7 +116,7 @@ describe("scenarios > admin > permissions", () => {
     cy.signIn("none");
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
     });
 

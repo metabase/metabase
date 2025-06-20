@@ -62,7 +62,7 @@ describe("issue 18384", () => {
   it("should be able to open field properties even when one of the tables is hidden (metabase#18384)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: PEOPLE_ID,
     });
 
@@ -87,7 +87,7 @@ describe("issue 21984", () => {
 
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: REVIEWS_ID,
     });
     cy.wait("@tableMetadata");
@@ -156,7 +156,7 @@ describe("issue 15542", () => {
     // clearing the in-browser cache, which is what we are testing here.
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.PRODUCT_ID,
     });

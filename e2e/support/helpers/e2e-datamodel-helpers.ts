@@ -1,19 +1,19 @@
 import type {
   DatabaseId,
   FieldId,
-  SchemaName,
+  SchemaId,
   TableId,
 } from "metabase-types/api";
 
 function visit({
   databaseId,
-  schemaName,
+  schemaId,
   tableId,
   fieldId,
 }: {
   databaseId?: DatabaseId;
   fieldId?: FieldId;
-  schemaName?: SchemaName;
+  schemaId?: SchemaId;
   tableId?: TableId;
 } = {}) {
   cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
@@ -28,12 +28,12 @@ function visit({
 
   if (
     databaseId != null &&
-    schemaName != null &&
+    schemaId != null &&
     tableId != null &&
     fieldId != null
   ) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaName)}/table/${tableId}/field/${fieldId}`,
+      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`,
     );
 
     cy.wait([
@@ -46,9 +46,9 @@ function visit({
     return;
   }
 
-  if (databaseId != null && schemaName != null && tableId != null) {
+  if (databaseId != null && schemaId != null && tableId != null) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaName)}/table/${tableId}`,
+      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}/table/${tableId}`,
     );
     cy.wait([
       "@datamodel/visit/databases",
@@ -59,9 +59,9 @@ function visit({
     return;
   }
 
-  if (databaseId != null && schemaName != null) {
+  if (databaseId != null && schemaId != null) {
     cy.visit(
-      `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaName)}`,
+      `/admin/datamodel/database/${databaseId}/schema/${encodeURIComponent(schemaId)}`,
     );
     cy.wait([
       "@datamodel/visit/databases",

@@ -2632,7 +2632,7 @@ describe("issue 23449", () => {
     cy.log("set the metadata for review");
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: SAMPLE_DATABASE.REVIEWS_ID,
     });
 

@@ -64,7 +64,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   it("should let you change the type to 'No semantic type'", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.PRODUCT_ID,
     });
@@ -82,7 +82,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.QUANTITY,
     });
@@ -104,7 +104,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.PRODUCT_ID,
     });
@@ -137,7 +137,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.PRODUCT_ID,
     });
@@ -160,7 +160,7 @@ describe("scenarios > admin > datamodel > field", () => {
   it("lets you change field name and description", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.CREATED_AT,
     });
@@ -196,7 +196,7 @@ describe("scenarios > admin > datamodel > field", () => {
   it("should allow you to change field formatting", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.QUANTITY,
     });
@@ -213,7 +213,7 @@ describe("scenarios > admin > datamodel > field", () => {
   it("lets you change field visibility", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.CREATED_AT,
     });
@@ -231,7 +231,7 @@ describe("scenarios > admin > datamodel > field", () => {
   it("lets you change to 'Search box'", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.QUANTITY,
     });
@@ -250,7 +250,7 @@ describe("scenarios > admin > datamodel > field", () => {
   it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.PRODUCT_ID,
     });
@@ -286,7 +286,7 @@ describe("scenarios > admin > datamodel > field", () => {
 
             H.DataModel.visit({
               databaseId,
-              schemaName,
+              schemaId: schemaName,
               tableId: NUMBER_WITH_NULLS_ID,
               fieldId: NUM,
             });
@@ -377,7 +377,7 @@ describe("scenarios > admin > datamodel > hidden tables (metabase#9759)", () => 
     // Toggle the orders table to be hidden as admin user
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
     });
     H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
@@ -423,7 +423,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
   it("should remap FK display value from field section", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.PRODUCT_ID,
     });
@@ -442,7 +442,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
   it("should remap FK display value from the table section", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
     });
 
@@ -547,7 +547,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
   it("display value 'Custom mapping' should be available only for 'Search box' filtering type (metabase#16322)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: REVIEWS_ID,
       fieldId: REVIEWS.RATING,
     });
@@ -583,7 +583,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
   it("allows to map FK to date fields (metabase#7108)", () => {
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.USER_ID,
     });
@@ -614,7 +614,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     it("should only show currency formatting options for currency fields", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.DISCOUNT,
       });
@@ -629,7 +629,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.QUANTITY,
       });
@@ -658,7 +658,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     it("should save and obey field prefix formatting settings", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.QUANTITY,
       });
@@ -689,7 +689,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     it("should not call PUT field endpoint when prefix or suffix has not been changed (SEM-359)", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.QUANTITY,
       });
@@ -1032,7 +1032,7 @@ describe("scenarios > admin > databases > table", () => {
     beforeEach(() => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
     });

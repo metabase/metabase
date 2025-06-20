@@ -900,7 +900,7 @@ describe("issue 31340", () => {
 
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: PEOPLE_ID,
     });
 

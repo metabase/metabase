@@ -45,7 +45,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the table name", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       setValueAndBlurInput("Orders", "New orders");
@@ -64,7 +64,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the table description", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
@@ -82,7 +82,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow clearing the table description", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       clearAndBlurInput(ORDERS_DESCRIPTION);
@@ -99,7 +99,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the table visibility", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getTable("Orders").button("Hide table").click();
@@ -115,7 +115,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
 
@@ -134,7 +134,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field name", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("TAX").within(() => {
@@ -154,7 +154,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field description", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("TOTAL").within(() => {
@@ -178,7 +178,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow clearing the field description", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("TOTAL").within(() => {
@@ -199,7 +199,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field visibility", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("TAX").findByDisplayValue("Everywhere").click();
@@ -220,7 +220,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field semantic type and currency", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("TAX")
@@ -250,7 +250,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field foreign key target", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("USER_ID")
@@ -282,7 +282,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields as in the database", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
       verifyTableOrder("Database");
@@ -302,7 +302,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields alphabetically", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
       cy.findByLabelText("Edit column order").click();
@@ -323,7 +323,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields smartly", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
       cy.findByLabelText("Edit column order").click();
@@ -344,7 +344,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow sorting fields in the custom order", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
       cy.findByLabelText("Edit column order").click();
@@ -374,7 +374,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow switching to predefined order after drag & drop (metabase#56482)", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
       cy.findByLabelText("Edit column order").click();
@@ -428,7 +428,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow hiding and restoring all tables in a schema", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -438,7 +438,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -459,7 +459,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field name", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
@@ -478,7 +478,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field description", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.TOTAL,
       });
@@ -499,7 +499,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field visibility", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
@@ -519,7 +519,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field semantic type and currency", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
@@ -545,7 +545,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow changing the field foreign key target", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.USER_ID,
       });
@@ -576,7 +576,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should allow you to cast a field to a data type", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: FEEDBACK_ID,
         fieldId: FEEDBACK.RATING,
       });
@@ -609,7 +609,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       setValueAndBlurInput("Orders", "New orders");
@@ -633,7 +633,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
       getFieldSection("TAX").within(() =>
@@ -657,7 +657,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.TOTAL,
       });
@@ -682,7 +682,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
         fieldId: ORDERS.USER_ID,
       });
@@ -722,7 +722,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.PRODUCT_ID,
       });
@@ -744,7 +744,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.PRODUCT_ID,
       });
@@ -762,7 +762,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.RATING,
       });
@@ -776,7 +776,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsAdmin();
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.RATING,
       });
@@ -788,7 +788,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
-        schemaName: SAMPLE_DB_SCHEMA_ID,
+        schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.RATING,
       });
@@ -808,7 +808,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should be able to select and update a table in a database without schemas", () => {
       H.DataModel.visit({
         databaseId: MYSQL_DB_SCHEMA_ID,
-        schemaName: MYSQL_DB_SCHEMA_ID,
+        schemaId: MYSQL_DB_SCHEMA_ID,
       });
       setValueAndBlurInput("Orders", "New orders");
       cy.wait("@updateTable");
@@ -818,7 +818,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     it("should be able to select and update a field in a database without schemas", () => {
       H.DataModel.visit({
         databaseId: MYSQL_DB_SCHEMA_ID,
-        schemaName: MYSQL_DB_SCHEMA_ID,
+        schemaId: MYSQL_DB_SCHEMA_ID,
       });
       getFieldSection("TAX").findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();

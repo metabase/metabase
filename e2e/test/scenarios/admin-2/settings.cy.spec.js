@@ -200,7 +200,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
     H.DataModel.visit({
       databaseId: SAMPLE_DB_ID,
-      schemaName: SAMPLE_DB_SCHEMA_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
       tableId: ORDERS_ID,
       fieldId: ORDERS.TOTAL,
     });
