@@ -5,7 +5,6 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-// TODO: add fetchmetadata wait
 function visit({
   databaseId,
   schemaName,
@@ -17,6 +16,16 @@ function visit({
   schemaName?: SchemaName;
   tableId?: TableId;
 } = {}) {
+  cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
+  cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
+  cy.intercept("GET", "/api/table/*/query_metadata*").as(
+    "datamodel/visit/metadata",
+  );
+  cy.intercept("GET", "/api/database/*/schemas?include_hidden=true").as(
+    "datamodel/visit/schemas",
+  );
+  cy.intercept("GET", "/api/database/*/schema/*").as("datamodel/visit/schema");
+
   if (
     databaseId != null &&
     schemaName != null &&
@@ -26,6 +35,14 @@ function visit({
     cy.visit(
       `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaName)}/table/${tableId}/field/${fieldId}`,
     );
+
+    cy.wait([
+      "@datamodel/visit/databases",
+      "@datamodel/visit/database",
+      "@datamodel/visit/schemas",
+      "@datamodel/visit/schema",
+      "@datamodel/visit/metadata",
+    ]);
     return;
   }
 
@@ -33,6 +50,12 @@ function visit({
     cy.visit(
       `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaName)}/table/${tableId}`,
     );
+    cy.wait([
+      "@datamodel/visit/databases",
+      "@datamodel/visit/schemas",
+      "@datamodel/visit/schema",
+      "@datamodel/visit/metadata",
+    ]);
     return;
   }
 
@@ -40,15 +63,26 @@ function visit({
     cy.visit(
       `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaName)}`,
     );
+    cy.wait([
+      "@datamodel/visit/databases",
+      "@datamodel/visit/schemas",
+      "@datamodel/visit/schema",
+    ]);
     return;
   }
 
   if (databaseId != null) {
     cy.visit(`/admin/datamodel/database/${databaseId}`);
+    cy.wait([
+      "@datamodel/visit/databases",
+      "@datamodel/visit/schemas",
+      "@datamodel/visit/schema",
+    ]);
     return;
   }
 
   cy.visit("/admin/datamodel");
+  cy.wait(["@datamodel/visit/databases"]);
 }
 
 function getTablePickerTable(name: string) {
