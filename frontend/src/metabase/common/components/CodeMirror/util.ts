@@ -26,6 +26,8 @@ import { isNotNull } from "metabase/lib/types";
 import { monospaceFontFamily } from "metabase/styled-components/theme";
 import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 
+import { highlightRanges } from "./highlights";
+
 export function getBasicSetup(
   basicSetup: boolean | BasicSetupOptions | undefined,
 ): boolean | BasicSetupOptions {
@@ -71,6 +73,7 @@ function useBaseExtensions({ onFormat }: { onFormat?: () => void }) {
       EditorView.lineWrapping,
       highlighting(),
       folds(),
+      highlightRanges(),
     ],
     [onFormat],
   );
