@@ -1,4 +1,4 @@
-import type { ReactCodeMirrorRef, ViewUpdate } from "@uiw/react-codemirror";
+import type { ViewUpdate } from "@uiw/react-codemirror";
 import {
   forwardRef,
   useCallback,
@@ -8,7 +8,10 @@ import {
 } from "react";
 import _ from "underscore";
 
-import { CodeMirror } from "metabase/common/components/CodeMirror";
+import {
+  CodeMirror,
+  type CodeMirrorRef,
+} from "metabase/common/components/CodeMirror";
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -57,7 +60,7 @@ export const CodeMirrorEditor = forwardRef<
   },
   ref,
 ) {
-  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const editorRef = useRef<CodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
   useHighlightLines(editorRef, highlightedLineNumbers);
 

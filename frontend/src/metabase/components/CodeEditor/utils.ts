@@ -11,12 +11,13 @@ import {
   Decoration,
   EditorView,
   RangeSet,
-  type ReactCodeMirrorRef,
   StateEffect,
   StateField,
 } from "@uiw/react-codemirror";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
 import { type RefObject, useEffect } from "react";
+
+import type { CodeMirrorRef } from "metabase/common/components/CodeMirror";
 
 import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
@@ -94,7 +95,7 @@ export function highlightText(ranges: { start: number; end: number }[] = []) {
 }
 
 export function useHighlightText(
-  editorRef: RefObject<ReactCodeMirrorRef>,
+  editorRef: RefObject<CodeMirrorRef>,
   ranges: { start: number; end: number }[] = [],
 ) {
   useEffect(() => {

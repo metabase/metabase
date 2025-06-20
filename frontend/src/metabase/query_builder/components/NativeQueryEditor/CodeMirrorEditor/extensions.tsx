@@ -9,13 +9,13 @@ import {
 import {
   type Extension,
   type Range,
-  type ReactCodeMirrorRef,
   StateEffect,
   StateField,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { type RefObject, useEffect, useMemo } from "react";
 
+import type { CodeMirrorRef } from "metabase/common/components/CodeMirror";
 import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
@@ -161,7 +161,7 @@ function highlightLines() {
 }
 
 export function useHighlightLines(
-  editorRef: RefObject<ReactCodeMirrorRef>,
+  editorRef: RefObject<CodeMirrorRef>,
   highlightedLineNumbers: number[] = [],
 ) {
   useEffect(() => {

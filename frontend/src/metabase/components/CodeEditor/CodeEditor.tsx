@@ -1,8 +1,10 @@
-import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import cx from "classnames";
 import { useMemo, useRef } from "react";
 
-import { CodeMirror } from "metabase/common/components/CodeMirror";
+import {
+  CodeMirror,
+  type CodeMirrorRef,
+} from "metabase/common/components/CodeMirror";
 
 import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
@@ -29,7 +31,7 @@ export function CodeEditor({
   value,
   onChange,
 }: Props) {
-  const ref = useRef<ReactCodeMirrorRef>(null);
+  const ref = useRef<CodeMirrorRef>(null);
   const extensions = useMemo(
     () => [getLanguageExtension(language), highlightText(highlightRanges)],
     [language, highlightRanges],
