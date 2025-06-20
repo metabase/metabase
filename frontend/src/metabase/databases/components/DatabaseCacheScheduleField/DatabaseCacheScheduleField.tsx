@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import FormField from "metabase/common/components/FormField";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import FormField from "metabase/core/components/FormField";
 import type {
   DatabaseData,
   ScheduleSettings,

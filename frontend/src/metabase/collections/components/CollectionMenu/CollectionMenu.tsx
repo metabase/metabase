@@ -7,10 +7,10 @@ import {
   isRootCollection,
   isRootPersonalCollection,
 } from "metabase/collections/utils";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/components/MoveQuestionsIntoDashboardsModal/hooks";
 import { UserHasSeen } from "metabase/components/UserHasSeen/UserHasSeen";
 import { UserHasSeenAll } from "metabase/components/UserHasSeen/UserHasSeenAll";
-import { ForwardRefLink } from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { ActionIcon, Badge, Icon, Indicator, Menu, Tooltip } from "metabase/ui";

@@ -2,8 +2,8 @@ import { useField } from "formik";
 import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import FormField from "metabase/core/components/FormField";
-import { MappingEditor } from "metabase/core/components/MappingEditor";
+import FormField from "metabase/common/components/FormField";
+import { MappingEditor } from "metabase/common/components/MappingEditor";
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   name: string;

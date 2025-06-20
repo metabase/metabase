@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { ColorRange } from "metabase/core/components/ColorRange";
+import { ColorRange } from "metabase/common/components/ColorRange";
 import { Box } from "metabase/ui";
 import type { ColumnFormattingSetting } from "metabase-types/api";
 
