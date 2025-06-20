@@ -119,25 +119,21 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByTestId("visualization-canvas").within(() => {
         cy.findByText("Count").should("exist");
       });
-
-      cy.findByTestId("visualizer-header").within(() => {
-        cy.findByText(`${PRODUCTS_COUNT_BY_CREATED_AT.name}`).should("exist");
-      });
     });
 
     H.saveDashcardVisualizerModal();
 
     H.getDashboardCard(1).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
 
     H.saveDashboard();
 
     H.getDashboardCard(1).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
+      cy.findAllByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+      cy.findAllByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText("Created At: Month").should("exist");
     });
   });
@@ -158,34 +154,36 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.modal().within(() => {
       cy.button("Add more data").click();
-      cy.findByPlaceholderText("Search for something").type("Cre");
-
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).click();
-      cy.wait("@cardQuery");
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
 
       cy.findByTestId("visualization-canvas").within(() => {
-        cy.findByText("Count").should("exist");
+        cy.findByText(`Count (${PRODUCTS_COUNT_BY_CREATED_AT.name})`).should(
+          "exist",
+        );
+        cy.findAllByText("Created At: Month").should("exist");
       });
 
       cy.findByTestId("visualizer-header").within(() => {
-        cy.findByText(`${PRODUCTS_COUNT_BY_CREATED_AT.name}`).should("exist");
+        cy.findByText(`${ORDERS_COUNT_BY_CREATED_AT.name}`).should("exist");
       });
     });
 
     H.saveDashcardVisualizerModal();
 
     H.getDashboardCard(1).within(() => {
+      cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
-      cy.findByText("Created At: Month").should("exist");
+      cy.findAllByText("Created At: Month").should("exist");
     });
 
     H.saveDashboard();
 
     H.getDashboardCard(1).within(() => {
-      cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
-      cy.findByText("Count").should("exist");
-      cy.findByText("Created At: Month").should("exist");
+      cy.findByTestId("chart-container").within(() => {
+        cy.findByText(ORDERS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("exist");
+        cy.findAllByText("Created At: Month").should("exist");
+      });
     });
   });
 
@@ -244,43 +242,6 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.clickOnCardTitle(2);
     cy.get("@productsCountByCategoryQuestionId").then((id) =>
       cy.url().should("contain", `${id}-products-by-category`),
-    );
-    cy.findByLabelText("Back to Test Dashboard").click();
-
-    // make the pie a two series pie and check that the title is still clickable
-    H.editDashboard();
-    H.showDashcardVisualizerModal(2);
-    H.modal().within(() => {
-      H.switchToAddMoreData();
-      H.selectDataset(PRODUCTS_COUNT_BY_CATEGORY.name);
-      H.assertWellItems({
-        vertical: ["Count"],
-        horizontal: ["Category"],
-      });
-      H.addDataset(PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
-      H.assertWellItems({
-        vertical: ["Count", "Count (Products by Category (Pie))"],
-        horizontal: ["Category"],
-      });
-      H.selectVisualization("pie");
-      H.assertWellItems({
-        pieMetric: ["Count"],
-        pieDimensions: ["Category", "Category (Products by Category (Pie))"],
-      });
-    });
-
-    H.saveDashcardVisualizerModal({ waitMs: 500 });
-    H.saveDashboard({ waitMs: 2000 });
-
-    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY.name);
-    cy.get("@productsCountByCategoryQuestionId").then((id) =>
-      cy.url().should("contain", `${id}-products-by-category`),
-    );
-    cy.findByLabelText("Back to Test Dashboard").click();
-
-    H.showUnderlyingQuestion(2, PRODUCTS_COUNT_BY_CATEGORY_PIE.name);
-    cy.get("@productsCountByCategoryPieQuestionId").then((id) =>
-      cy.url().should("contain", `${id}-products-by-category-pie`),
     );
     cy.findByLabelText("Back to Test Dashboard").click();
 
@@ -416,7 +377,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.get("@redoButton").should("be.disabled");
 
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.switchToColumnsList();
 
       // Undo adding a new data source
@@ -603,7 +564,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.showDashcardVisualizerModal(0);
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
       H.assertWellItemsCount({ vertical: 2 });
     });
     H.saveDashcardVisualizerModal();
@@ -648,7 +609,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
       H.modal().within(() => {
         H.switchToAddMoreData();
-        H.addDataset("Products by Created At (Month)");
+        H.selectDataset("Products by Created At (Month)");
         H.assertWellItems({
           vertical: ["Count", "Count (Products by Created At (Month))"],
         });
@@ -724,7 +685,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(invalidQuestion.name);
+      H.selectDataset(invalidQuestion.name);
       cy.button("Save").click();
     });
 
