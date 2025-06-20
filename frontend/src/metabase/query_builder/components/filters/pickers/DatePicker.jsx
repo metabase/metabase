@@ -22,6 +22,8 @@ import type {
   ForeignFieldReference,
   ExpressionReference,
 } from "metabase-types/types/Query";
+import decodeJWTPayload from './Utils'
+import accessLevelToMaxDaysMap from './Utils'
 
 const singleDatePickerPropTypes = {
   className: PropTypes.string,
@@ -54,25 +56,38 @@ const SingleDatePicker = ({
 
 SingleDatePicker.propTypes = singleDatePickerPropTypes;
 
+const params = new URLSearchParams(window.location.search);
+const token = params.get("token");
+
+let maxRangeDays = 1; // default fallback
+
+if (token) {
+  const payload = decodeJWTPayload(token);
+  const accessLevel = payload?.reportAccessLevel;
+
+  if (accessLevel != null) {
+    maxRangeDays = accessLevelToMaxDaysMap[accessLevel] || maxRangeDays;
+  }
+}
+
 const MultiDatePicker = ({
   className,
   filter: [op, field, startValue, endValue],
   onFilterChange,
   hideTimeSelectors,
+  maxRangeDays,
 }) => (
   <div className={className}>
     <div className="Grid Grid--1of2 Grid--gutters">
       <div className="Grid-cell">
         <SpecificDatePicker
           value={startValue}
-          hideTimeSelectors={hideTimeSelectors}
           onChange={value => onFilterChange([op, field, value, endValue])}
         />
       </div>
       <div className="Grid-cell">
         <SpecificDatePicker
           value={endValue}
-          hideTimeSelectors={hideTimeSelectors}
           onChange={value => onFilterChange([op, field, startValue, value])}
         />
       </div>
@@ -85,6 +100,7 @@ const MultiDatePicker = ({
         onChange={(startValue, endValue) =>
           onFilterChange([op, field, startValue, endValue])
         }
+        maxRangeDays={maxRangeDays}
       />
     </div>
   </div>
@@ -234,74 +250,74 @@ const ALL_TIME_OPERATOR = {
 };
 
 export const DATE_OPERATORS: Operator[] = [
-  {
-    name: "previous",
-    displayName: t`Previous`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      -getIntervals(filter),
-      getUnit(filter),
-      getOptions(filter),
-    ],
-    test: ([op, field, value]) =>
-      (op === "time-interval" && value < 0) || Object.is(value, -0),
-    widget: PreviousPicker,
-    options: { "include-current": true },
-  },
-  {
-    name: "next",
-    displayName: t`Next`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      getIntervals(filter),
-      getUnit(filter),
-      getOptions(filter),
-    ],
-    test: ([op, field, value]) => op === "time-interval" && value >= 0,
-    widget: NextPicker,
-    options: { "include-current": true },
-  },
-  {
-    name: "current",
-    displayName: t`Current`,
-    init: filter => [
-      "time-interval",
-      getDateTimeField(filter[1]),
-      "current",
-      getUnit(filter),
-    ],
-    test: ([op, field, value]) => op === "time-interval" && value === "current",
-    widget: CurrentPicker,
-  },
-  {
-    name: "before",
-    displayName: t`Before`,
-    init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
-    test: ([op]) => op === "<",
-    widget: SingleDatePicker,
-  },
-  {
-    name: "after",
-    displayName: t`After`,
-    init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
-    test: ([op]) => op === ">",
-    widget: SingleDatePicker,
-  },
-  {
-    name: "on",
-    displayName: t`On`,
-    init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
-    test: ([op]) => op === "=",
-    widget: SingleDatePicker,
-  },
+  // {
+  //   name: "previous",
+  //   displayName: t`Previous`,
+  //   init: filter => [
+  //     "time-interval",
+  //     getDateTimeField(filter[1]),
+  //     -getIntervals(filter),
+  //     getUnit(filter),
+  //     getOptions(filter),
+  //   ],
+  //   test: ([op, field, value]) =>
+  //     (op === "time-interval" && value < 0) || Object.is(value, -0),
+  //   widget: PreviousPicker,
+  //   options: { "include-current": true },
+  // },
+  // {
+  //   name: "next",
+  //   displayName: t`Next`,
+  //   init: filter => [
+  //     "time-interval",
+  //     getDateTimeField(filter[1]),
+  //     getIntervals(filter),
+  //     getUnit(filter),
+  //     getOptions(filter),
+  //   ],
+  //   test: ([op, field, value]) => op === "time-interval" && value >= 0,
+  //   widget: NextPicker,
+  //   options: { "include-current": true },
+  // },
+  // {
+  //   name: "current",
+  //   displayName: t`Current`,
+  //   init: filter => [
+  //     "time-interval",
+  //     getDateTimeField(filter[1]),
+  //     "current",
+  //     getUnit(filter),
+  //   ],
+  //   test: ([op, field, value]) => op === "time-interval" && value === "current",
+  //   widget: CurrentPicker,
+  // },
+  // {
+  //   name: "before",
+  //   displayName: t`Before`,
+  //   init: filter => ["<", ...getDateTimeFieldAndValues(filter, 1)],
+  //   test: ([op]) => op === "<",
+  //   widget: SingleDatePicker,
+  // },
+  // {
+  //   name: "after",
+  //   displayName: t`After`,
+  //   init: filter => [">", ...getDateTimeFieldAndValues(filter, 1)],
+  //   test: ([op]) => op === ">",
+  //   widget: SingleDatePicker,
+  // },
+  // {
+  //   name: "on",
+  //   displayName: t`On`,
+  //   init: filter => ["=", ...getDateTimeFieldAndValues(filter, 1)],
+  //   test: ([op]) => op === "=",
+  //   widget: SingleDatePicker,
+  // },
   {
     name: "between",
     displayName: t`Between`,
     init: filter => ["between", ...getDateTimeFieldAndValues(filter, 2)],
     test: ([op]) => op === "between",
-    widget: MultiDatePicker,
+    widget: props => <MultiDatePicker {...props} maxRangeDays={maxRangeDays} />,
   },
 ];
 

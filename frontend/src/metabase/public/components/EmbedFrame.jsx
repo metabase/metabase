@@ -8,6 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getValuePopulatedParameters } from "metabase/meta/Parameter";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
+import Button from "metabase/components/Button";
 import Parameters from "metabase/parameters/components/Parameters/Parameters";
 import LogoBadge from "./LogoBadge";
 
@@ -34,6 +35,8 @@ type Props = {
   parameters?: Parameter[],
   parameterValues?: { [key: string]: string },
   setParameterValue: (id: string, value: string) => void,
+  isLoading?: Boolean;
+  onSubmit?: () => void,
 };
 
 type State = {
@@ -61,6 +64,8 @@ export default class EmbedFrame extends Component {
       parameters,
       parameterValues,
       setParameterValue,
+      isLoading,
+      onSubmit,
     } = this.props;
     const { innerScroll } = this.state;
 
@@ -105,6 +110,14 @@ export default class EmbedFrame extends Component {
                     hideParameters={hide_parameters}
                     isQB
                   />
+                  <Button
+                    className="ml2"
+                    primary
+                    disabled={isLoading}
+                    onClick={onSubmit}
+                  >
+                    Submit
+                  </Button>
                 </div>
               ) : null}
             </div>
