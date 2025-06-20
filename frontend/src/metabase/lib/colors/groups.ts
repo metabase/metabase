@@ -13,12 +13,12 @@ export const getAccentColors = (
   }: AccentColorOptions = {},
   palette?: ColorPalette,
 ): ColorName[] => {
-  const ranges = [];
-  main && ranges.push(getMainAccentColors(palette, gray));
-  light && ranges.push(getLightAccentColors(palette, gray));
-  dark && ranges.push(getDarkAccentColors(palette, gray));
+  const ranges: ColorName[][] = [];
+  main && ranges.push(getMainAccentColors(palette, gray) as ColorName[]);
+  light && ranges.push(getLightAccentColors(palette, gray) as ColorName[]);
+  dark && ranges.push(getDarkAccentColors(palette, gray) as ColorName[]);
 
-  return harmony ? _.unzip(ranges).flat() : ranges.flat();
+  return harmony ? (_.unzip(ranges).flat() as ColorName[]) : ranges.flat();
 };
 
 const getBaseAccentsNames = (withGray = false) => {
