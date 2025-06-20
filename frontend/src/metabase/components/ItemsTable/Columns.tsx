@@ -3,11 +3,11 @@ import { c, t } from "ttag";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import CheckBox from "metabase/common/components/CheckBox";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Markdown from "metabase/common/components/Markdown";
 import DateTime from "metabase/components/DateTime";
 import EntityItem from "metabase/components/EntityItem";
-import CheckBox from "metabase/core/components/CheckBox";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Markdown from "metabase/core/components/Markdown";
 import { useSelector } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";

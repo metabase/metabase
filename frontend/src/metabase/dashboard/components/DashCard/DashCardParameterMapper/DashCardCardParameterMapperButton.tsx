@@ -2,10 +2,10 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import Button from "metabase/common/components/Button";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import DeprecatedTooltip from "metabase/common/components/Tooltip";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
-import Button from "metabase/core/components/Button";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import { ParameterTargetList } from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import { Box, Flex, Icon } from "metabase/ui";
