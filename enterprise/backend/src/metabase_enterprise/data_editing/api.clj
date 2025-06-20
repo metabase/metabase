@@ -508,16 +508,6 @@
           first
           not-empty))
 
-;; test case
-
-(comment
-  (get-row-data {:inner-action {:mapping {:table-id 3, :row ::root}}
-                 :param-map    {:customer_id {:sourceType "row-data", :sourceValueTarget "id"}
-                                :engineer    {:sourceType "ask-user"}}
-                 ;; because we don't have a dashcard with this id to map to a table, our code treats it like a Question instead of an Editable
-                 :dashcard-id  3}
-                {:id 3}))
-
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/tmp-modal"
