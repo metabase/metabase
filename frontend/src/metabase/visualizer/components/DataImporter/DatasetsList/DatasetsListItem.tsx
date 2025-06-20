@@ -1,7 +1,6 @@
 import ButtonGroup from "metabase/common/components/ButtonGroup";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Button, Icon } from "metabase/ui";
-import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
   Field,
   VisualizationDisplay,
@@ -36,16 +35,7 @@ export const DatasetsListItem = (props: DatasetsListItemProps) => {
           selected ? onRemove?.(item) : onToggle?.(item);
         }}
         leftSection={
-          <Icon
-            color="inherit"
-            className={S.TableIcon}
-            name={
-              item.display
-                ? getIconForVisualizationType(item.display)
-                : "table2"
-            }
-            mr="xs"
-          />
+          <Icon color="inherit" className={S.TableIcon} name="table2" mr="xs" />
         }
       >
         <Ellipsified style={{ height: 17 }}>{item.name}</Ellipsified>
