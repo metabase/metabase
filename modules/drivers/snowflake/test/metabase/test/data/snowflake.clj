@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [environ.core :as env]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -92,10 +93,19 @@
   (sql-jdbc.conn/connection-details->spec :snowflake (tx/dbdef->connection-details :snowflake :server nil)))
 
 (defn- old-dataset-names
-  "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
+  "Return a collection of all dataset names that are old
+   -- tracked that haven't been touched in 2 days or are not tracked and two days old"
   []
-  (let [query "select name from metabase_test_tracking.PUBLIC.datasets where updated_at < dateadd(day, -2, current_timestamp())"]
-    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query]))))
+  (let [days-ago -2
+        ;; tracked UNION ALL untracked
+        query "(select name from metabase_test_tracking.PUBLIC.datasets
+                where accessed_at < dateadd(day, ?, current_timestamp()))
+               UNION All
+               (select database_name from metabase_test_tracking.information_schema.databases d
+                where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
+                and d.database_name like 'sha_%'
+                and created < dateadd(day, ?, current_timestamp()))"]
+    (into [] (map :name) (jdbc/reducible-query (no-db-connection-spec) [query days-ago days-ago]))))
 
 (defn- delete-old-datasets!
   "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
@@ -116,9 +126,9 @@
            #_{:clj-kondo/ignore [:discouraged-var]}
            (println "[Snowflake] Deleting old dataset:" dataset-name)
            (try
-             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
+             (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\";"
                                     dataset-name))
-             (.execute stmt (format "DROP DATABASE \"%s\";"
+             (.execute stmt (format "delete from metabase_test_tracking.PUBLIC.datasets where name = '%s';"
                                     dataset-name))
              ;; if this fails for some reason it's probably just because some other job tried to delete the dataset at the
              ;; same time. No big deal. Just log this and carry on trying to delete the other datasets. If we don't end up
@@ -201,6 +211,56 @@
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
 
+(defn- tracking-access-note
+  []
+  (if (:ci env/env)
+    (format "CI: %s %s -> %s"
+            (get env/env :github-actor)
+            (get env/env :github-ref)
+            (get env/env :github-head-ref))
+    (format "DEV: %s"
+            (:user env/env))))
+
+(defn- setup-tracking-db!
+  "Idempotently create test tracking database"
+  [conn driver]
+  (with-open [^PreparedStatement setup-1 (sql-jdbc.execute/prepared-statement
+                                          driver
+                                          conn
+                                          "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;"
+                                          [])
+              ^PreparedStatement setup-2 (sql-jdbc.execute/prepared-statement
+                                          driver
+                                          conn
+                                          "CREATE TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.datasets (hash TEXT, name TEXT, accessed_at TIMESTAMP_TZ, access_note TEXT)"
+                                          [])
+              ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-1)
+              ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
+    nil))
+
+(defn- dataset-tracked?!
+  [conn driver db-def]
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       driver
+                                       conn
+                                       "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
+                                       [(tx/hash-dataset db-def) (qualified-db-name db-def)])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+    (some-> rs
+            resultset-seq
+            first
+            :tracked)))
+
+(defn- database-exists?!
+  [conn driver db-def]
+  (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
+                                       driver
+                                       conn
+                                       "SHOW DATABASES LIKE ?"
+                                       [(qualified-db-name db-def)])
+              ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
+    (some-> rs resultset-seq first)))
+
 (defmethod tx/dataset-already-loaded? :snowflake
   [driver db-def]
   ;; check and see if ANY tables are loaded for the current catalog
@@ -209,34 +269,10 @@
    (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server db-def))
    {:write? false}
    (fn [^java.sql.Connection conn]
-      ;; idempotent test tracking database
-     (with-open [^PreparedStatement setup-1 (sql-jdbc.execute/prepared-statement
-                                             driver
-                                             conn
-                                             "CREATE DATABASE IF NOT EXISTS metabase_test_tracking;"
-                                             [])
-                 ^PreparedStatement setup-2 (sql-jdbc.execute/prepared-statement
-                                             driver
-                                             conn
-                                             "CREATE TABLE IF NOT EXISTS metabase_test_tracking.PUBLIC.datasets (hash TEXT, name TEXT, updated_at TIMESTAMP_TZ)"
-                                             [])
-                 ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-1)
-                 ^ResultSet _ (sql-jdbc.execute/execute-prepared-statement! driver setup-2)]
-       nil)
-     (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement
-                                          driver
-                                          conn
-                                          "SELECT true as tracked FROM metabase_test_tracking.PUBLIC.datasets WHERE hash = ? and name = ?"
-                                          [(tx/hash-dataset db-def) (qualified-db-name db-def)])
-                 ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-       (when (some-> rs
-                     resultset-seq
-                     first
-                     :tracked)
-         ;; Even if it's tracked we want to ensure the database is actually there.
-         (with-open [^PreparedStatement stmt (sql-jdbc.execute/prepared-statement driver conn "SHOW DATABASES LIKE ?" [(qualified-db-name db-def)])
-                     ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
-           (some-> rs resultset-seq first)))))))
+     (setup-tracking-db! conn driver)
+     (and
+      (dataset-tracked?! conn driver db-def)
+      (database-exists?! conn driver db-def)))))
 
 (defmethod tx/track-dataset :snowflake
   [driver db-def]
@@ -249,11 +285,12 @@
                                           driver
                                           conn
                                           (str "MERGE INTO metabase_test_tracking.PUBLIC.datasets d"
-                                               "  USING (select ? as hash, ? as name, current_timestamp() as updated_at) as n on d.hash = n.hash"
-                                               "  WHEN MATCHED THEN UPDATE SET d.updated_at = n.updated_at"
-                                               "  WHEN NOT MATCHED THEN INSERT (hash,name, updated_at) VALUES (n.hash, n.name, n.updated_at)")
+                                               "  USING (select ? as hash, ? as name, current_timestamp() as accessed_at, ? as access_note) as n on d.hash = n.hash"
+                                               "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                                               "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
                                           [(tx/hash-dataset db-def)
-                                           (qualified-db-name db-def)])
+                                           (qualified-db-name db-def)
+                                           (tracking-access-note)])
                  ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (some-> rs resultset-seq doall)))))
 
@@ -302,3 +339,30 @@
       (jdbc/execute! spec
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))
+
+(comment
+  (old-dataset-names)
+  (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
+  ;; Tracked databases ordered by age
+  (->> ["select d.name, d.accessed_at, i.created, timestampdiff('minute', i.created, d.accessed_at) as diff, timestampdiff('minute', i.created, current_timestamp()) as age
+         from metabase_test_tracking.PUBLIC.datasets d
+         inner join metabase_test_tracking.information_schema.databases i on i.database_name = d.name
+         order by 5 asc"]
+       (jdbc/reducible-query (no-db-connection-spec))
+       (into [] (map (juxt :name :diff :age :accessed_at :created))))
+
+  ;; Tracked DBs that are not in snowflake
+  (->> ["select name, accessed_at from metabase_test_tracking.PUBLIC.datasets d
+       where d.name not in (select database_name from metabase_test_tracking.information_schema.databases)
+       order by accessed_at"]
+       (jdbc/reducible-query (no-db-connection-spec))
+       (into [] (map (juxt :name :accessed_at))))
+
+  ;; DBs in snowflake that are not tracked
+  (->> ["select database_name, created from metabase_test_tracking.information_schema.databases  d
+         where d.database_name not in (select name from metabase_test_tracking.PUBLIC.datasets)
+         and d.database_name like 'sha_%'
+         -- and created < dateadd(day, -2, current_timestamp())
+         order by created"]
+       (jdbc/reducible-query (no-db-connection-spec))
+       (into [] (map (juxt :database_name :created)))))
