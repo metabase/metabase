@@ -7,7 +7,7 @@ interface Props {
 
 export const Label = ({ icon, tooltip }: Props) => (
   <Tooltip label={tooltip}>
-    <Flex align="center" justify="center" w={24}>
+    <Flex aria-label={tooltip} align="center" justify="center" w={24}>
       <Icon name={icon} />
     </Flex>
   </Tooltip>

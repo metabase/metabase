@@ -38,7 +38,7 @@ export const FieldItem = ({ active, field, href }: Props) => {
     if (!error) {
       sendToast({
         icon: "check",
-        message: t`Display name for ${name} updated`,
+        message: t`Display name for ${field.display_name} updated`,
       });
     }
   };

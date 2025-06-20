@@ -446,7 +446,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       tableId: ORDERS_ID,
     });
 
-    cy.findByTestId("table-section")
+    H.DataModel.TableSection.get()
       .findByDisplayValue("Product ID")
       .clear()
       .type("Remapped Product ID")

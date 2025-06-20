@@ -89,13 +89,21 @@ function getTablePickerTable(name: string) {
   return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
 }
 
+function getTableSection() {
+  return cy.findByTestId("table-section");
+}
+
 function getTableSectionField(name: string) {
-  return cy.findByTestId("table-section").get(`a[aria-label="${name}"]`);
+  return getTableSection().get(`a[aria-label="${name}"]`);
 }
 
 function clickTableSectionField(name: string) {
   // clicks the icon specifically to avoid issues with clicking the name or description inputs
   return getTableSectionField(name).findByRole("img").scrollIntoView().click();
+}
+
+function getFieldSection() {
+  return cy.findByTestId("field-section");
 }
 
 export const DataModel = {
@@ -104,7 +112,11 @@ export const DataModel = {
     getTable: getTablePickerTable,
   },
   TableSection: {
+    get: getTableSection,
     getField: getTableSectionField,
     clickField: clickTableSectionField,
+  },
+  FieldSection: {
+    get: getFieldSection,
   },
 };
