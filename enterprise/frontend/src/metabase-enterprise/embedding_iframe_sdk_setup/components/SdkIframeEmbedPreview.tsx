@@ -14,13 +14,13 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings, isEmbedOptionsLoaded } = useSdkIframeEmbedSetupContext();
+  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   useEffect(() => {
-    if (!scriptRef.current && isEmbedOptionsLoaded) {
+    if (!scriptRef.current && isEmbedSettingsLoaded) {
       const script = document.createElement("script");
 
       script.src = "/app/embed.js";
@@ -44,7 +44,7 @@ export const SdkIframeEmbedPreview = () => {
       embedJsRef.current?.destroy();
       scriptRef.current?.remove();
     };
-  }, [isEmbedOptionsLoaded, settings]);
+  }, [settings, isEmbedSettingsLoaded]);
 
   useEffect(() => {
     if (embedJsRef.current) {
