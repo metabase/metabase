@@ -4,7 +4,7 @@ import cx from "classnames";
 
 import Markdown, {
   type MarkdownProps,
-} from "metabase/core/components/Markdown";
+} from "metabase/common/components/Markdown";
 
 import S from "./AIMarkdown.module.css";
 

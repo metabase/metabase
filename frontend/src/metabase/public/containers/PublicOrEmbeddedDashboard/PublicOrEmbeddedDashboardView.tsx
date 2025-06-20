@@ -130,7 +130,9 @@ export function PublicOrEmbeddedDashboardView() {
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
         dashboardId &&
-        dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
+        dashboardHasTabs && (
+          <DashboardTabs dashboardId={dashboardId} isNightMode={isNightMode} />
+        )
       }
       background={background}
       bordered={bordered}

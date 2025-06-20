@@ -2,12 +2,12 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
+import AccordionList from "metabase/common/components/AccordionList";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import {
   HoverParent,
   QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
-import AccordionList from "metabase/core/components/AccordionList";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";

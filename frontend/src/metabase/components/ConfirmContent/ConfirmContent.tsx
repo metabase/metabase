@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import Button from "metabase/common/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 
 interface ConfirmContentProps {
