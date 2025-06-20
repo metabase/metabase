@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
+import { useUpdateSettingsMutation } from "metabase/api";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Text, Title } from "metabase/ui";
 import type { UserInfo } from "metabase-types/store";
 
 import { submitUser } from "../../../actions";
-import { getIsHosted } from "../../../selectors";
+import { getIsHosted, getUser } from "../../../selectors";
 import { UserForm } from "../../UserForm";
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
@@ -15,12 +16,16 @@ export const UserCreationStep = () => {
 
   const { goToNextStep } = useEmbeddingSetup();
 
-  // const user = {}; // TODO: pre-fill from
+  const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
   const dispatch = useDispatch();
+  const [updateSettings] = useUpdateSettingsMutation();
 
   const handleSubmit = async (user: UserInfo) => {
     await dispatch(submitUser(user)).unwrap();
+    // We want to set the embedding homepage visible if the user skips the rest of the flow.
+    // This is the first place where we can do this, as we need the initial setup to be done.
+    await updateSettings({ "embedding-homepage": "visible" });
     goToNextStep();
   };
 
@@ -31,11 +36,7 @@ export const UserCreationStep = () => {
       <Text>
         {t`We like to keep billing and product accounts separate so that you don’t have to share logins.`}
       </Text>
-      <UserForm
-        // user={user}
-        isHosted={isHosted}
-        onSubmit={handleSubmit}
-      />
+      <UserForm user={user} isHosted={isHosted} onSubmit={handleSubmit} />
     </Box>
   );
 };

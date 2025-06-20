@@ -1,3 +1,6 @@
+import { t } from "ttag";
+
+import { SettingsPageWrapper } from "metabase/admin/settings/components/SettingsSection";
 import {
   useGetPermissionsGroupQuery,
   useListUserMembershipsQuery,
@@ -19,14 +22,16 @@ export const GroupDetailApp = (props: any) => {
     getGroupReq.isLoading ?? membershipsByUserReq.isLoading ?? !currentUser;
 
   return (
-    <LoadingAndErrorWrapper error={error} loading={isLoading}>
-      {currentUser && (
-        <GroupDetail
-          membershipsByUser={membershipsByUserReq.data ?? {}}
-          group={getGroupReq.data!}
-          currentUser={currentUser}
-        />
-      )}
-    </LoadingAndErrorWrapper>
+    <SettingsPageWrapper title={t`Groups`}>
+      <LoadingAndErrorWrapper error={error} loading={isLoading}>
+        {currentUser && (
+          <GroupDetail
+            membershipsByUser={membershipsByUserReq.data ?? {}}
+            group={getGroupReq.data!}
+            currentUser={currentUser}
+          />
+        )}
+      </LoadingAndErrorWrapper>
+    </SettingsPageWrapper>
   );
 };
