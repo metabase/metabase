@@ -169,6 +169,8 @@ import gauge_component from "./gauge.svg?component";
 import gauge_source from "./gauge.svg?source";
 import gear_component from "./gear.svg?component";
 import gear_source from "./gear.svg?source";
+import gear_settings_filled_component from "./gear_settings_filled.svg?component";
+import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
 import globe_component from "./globe.svg?component";
@@ -769,6 +771,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     gear: {
       component: gear_component,
       source: gear_source,
+    },
+    gear_settings_filled: {
+      component: gear_settings_filled_component,
+      source: gear_settings_filled_source,
     },
     gem: {
       component: gem_component,
@@ -1414,6 +1420,7 @@ export type IconName =
   | "folder_filled"
   | "gauge"
   | "gear"
+  | "gear_settings_filled"
   | "gem"
   | "globe"
   | "grabber"

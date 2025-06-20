@@ -7,12 +7,9 @@ import {
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import {
-  DiscardTableFieldValuesButton,
   FieldOrderPicker,
   NameDescriptionInput,
-  RescanTableFieldsButton,
   SortableFieldList,
-  SyncTableSchemaButton,
 } from "metabase/metadata/components";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import type { FieldId, Table } from "metabase-types/api";
@@ -21,6 +18,7 @@ import type { RouteParams } from "../../types";
 import { getUrl, parseRouteParams } from "../../utils";
 
 import { FieldList } from "./FieldList";
+import { SyncOptionsModal } from "./SyncOptionsModal";
 import S from "./TableSection.module.css";
 
 interface Props {
@@ -34,6 +32,7 @@ const TableSectionBase = ({ params, table }: Props) => {
   const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
   const [sendToast] = useToast();
   const [isSorting, setIsSorting] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   return (
     <Stack gap={0} p="xl" pt={0}>
@@ -75,9 +74,7 @@ const TableSectionBase = ({ params, table }: Props) => {
         <Stack gap={12}>
           <Group align="center" gap="md" justify="space-between" wrap="nowrap">
             <Group align="center" gap="md" h="100%" wrap="nowrap">
-              {!isSorting && (
-                <Text flex="0 0 auto" fw="bold" size="sm">{t`Fields`}</Text>
-              )}
+              {!isSorting && <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>}
 
               {isSorting && (
                 <FieldOrderPicker
@@ -97,26 +94,39 @@ const TableSectionBase = ({ params, table }: Props) => {
               )}
             </Group>
 
-            {!isSorting && (
-              <Button
-                h={32}
-                leftSection={<Icon name="sort_arrows" />}
-                px="sm"
-                py="xs"
-                size="xs"
-                onClick={() => setIsSorting(true)}
-              >{t`Sorting`}</Button>
-            )}
+            <Group gap="md" justify="flex-end">
+              {!isSorting && (
+                <Button
+                  h={32}
+                  leftSection={<Icon name="sort_arrows" />}
+                  px="sm"
+                  py="xs"
+                  size="xs"
+                  onClick={() => setIsSorting(true)}
+                >{t`Sorting`}</Button>
+              )}
 
-            {isSorting && (
-              <Button
-                h={32}
-                px="md"
-                py="xs"
-                size="xs"
-                onClick={() => setIsSorting(false)}
-              >{t`Done`}</Button>
-            )}
+              {!isSorting && (
+                <Button
+                  h={32}
+                  leftSection={<Icon name="gear_settings_filled" />}
+                  px="sm"
+                  py="xs"
+                  size="xs"
+                  onClick={() => setIsSyncModalOpen(true)}
+                >{t`Sync options`}</Button>
+              )}
+
+              {isSorting && (
+                <Button
+                  h={32}
+                  px="md"
+                  py="xs"
+                  size="xs"
+                  onClick={() => setIsSorting(false)}
+                >{t`Done`}</Button>
+              )}
+            </Group>
           </Group>
 
           {isSorting && (
@@ -146,19 +156,13 @@ const TableSectionBase = ({ params, table }: Props) => {
             />
           )}
         </Stack>
-
-        <Stack gap="sm">
-          <Text c="text-secondary" mb="md" mt="lg" size="sm" ta="center">
-            {/* eslint-disable-next-line no-literal-metabase-strings -- Admin settings */}
-            {t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
-          </Text>
-
-          <RescanTableFieldsButton tableId={table.id} />
-          <SyncTableSchemaButton tableId={table.id} />
-
-          <DiscardTableFieldValuesButton tableId={table.id} />
-        </Stack>
       </Stack>
+
+      <SyncOptionsModal
+        isOpen={isSyncModalOpen}
+        tableId={table.id}
+        onClose={() => setIsSyncModalOpen(false)}
+      />
     </Stack>
   );
 };
