@@ -104,11 +104,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
       getTable("Orders").button("Hide table").click();
       cy.wait("@updateTable");
-      H.undoToast()
-        .findByText("Updated Table visibility_type")
-        .should("be.visible");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("5 Hidden Tables").should("be.visible");
+      H.undoToast().findByText("Hid Orders").should("be.visible");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
@@ -122,11 +118,10 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaName: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Queryable").click();
+
+      getTable("Orders").button("Unhide table").click();
       cy.wait("@updateTable");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("4 Hidden Tables").should("be.visible");
+      H.undoToast().findByText("Unhid Orders").should("be.visible");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
