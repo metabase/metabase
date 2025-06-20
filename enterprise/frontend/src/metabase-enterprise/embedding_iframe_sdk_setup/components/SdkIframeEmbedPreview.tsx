@@ -5,6 +5,7 @@ import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
+import { DEFAULT_SDK_IFRAME_EMBED_SETTINGS } from "../utils/default-embed-setting";
 
 import S from "./SdkIframeEmbedSetup.module.css";
 
@@ -29,15 +30,14 @@ export const SdkIframeEmbedPreview = () => {
       const { MetabaseEmbed } = window["metabase.embed"];
 
       embedJsRef.current = new MetabaseEmbed({
-        ...settings,
+        ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
+
         instanceUrl,
-
-        // This is an invalid API key.
-        // The embed uses the admin's session if the provided API key is invalid.
-        apiKey: "invalid-api-key-for-embed-preview",
-
         target: "#iframe-embed-container",
         iframeClassName: S.EmbedPreviewIframe,
+
+        // TODO: replace with `useExistingUserSession: true` once EMB-507 is merged.
+        apiKey: "will-be-replaced-with-user-session-flag",
       });
     };
 
@@ -52,6 +52,8 @@ export const SdkIframeEmbedPreview = () => {
   useEffect(() => {
     if (embedJsRef.current) {
       embedJsRef.current.updateSettings({
+        // Clear the existing experiences.
+        // This is necessary as `updateSettings` merges new settings with existing ones.
         template: undefined,
         questionId: undefined,
         dashboardId: undefined,
