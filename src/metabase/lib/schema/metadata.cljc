@@ -125,7 +125,7 @@
   external` associated with a `Field` in the application database.
   See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
-   [:lib/type [:= :metadata.column.remapping/external]]
+   [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
    ;; from `dimension.name`
    [:name     ::lib.schema.common/non-blank-string]
@@ -138,7 +138,7 @@
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
   database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
-   [:lib/type              [:= :metadata.column.remapping/internal]]
+   [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
    ;; from `dimension.name`
    [:name                  ::lib.schema.common/non-blank-string]
