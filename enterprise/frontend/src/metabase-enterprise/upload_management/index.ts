@@ -3,6 +3,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   FileUploadErrorModal,
+  GdriveAddDataPanel,
   GdriveConnectionModal,
   GdriveDbMenu,
   GdriveSidebarMenuItem,
@@ -21,4 +22,5 @@ if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
   PLUGIN_UPLOAD_MANAGEMENT.GdriveSidebarMenuItem = GdriveSidebarMenuItem;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus = GdriveSyncStatus;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu = GdriveDbMenu;
+  PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel = GdriveAddDataPanel;
 }
