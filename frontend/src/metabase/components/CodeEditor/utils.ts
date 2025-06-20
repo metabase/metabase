@@ -6,20 +6,9 @@ import { StreamLanguage } from "@codemirror/language";
 import { clojure } from "@codemirror/legacy-modes/mode/clojure";
 import { pug } from "@codemirror/legacy-modes/mode/pug";
 import { ruby } from "@codemirror/legacy-modes/mode/ruby";
-import type { EditorState, Extension } from "@codemirror/state";
-import {
-  Decoration,
-  EditorView,
-  RangeSet,
-  StateEffect,
-  StateField,
-} from "@uiw/react-codemirror";
+import type { Extension } from "@codemirror/state";
 import { handlebarsLanguage as handlebars } from "@xiechao/codemirror-lang-handlebars";
-import { type RefObject, useEffect } from "react";
 
-import type { CodeMirrorRef } from "metabase/common/components/CodeMirror";
-
-import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
 
 export function getLanguageExtension(language: CodeLanguage): Extension {
@@ -44,63 +33,4 @@ export function getLanguageExtension(language: CodeLanguage): Extension {
         typescript: language === "typescript",
       });
   }
-}
-
-const highlightTextMark = Decoration.mark({
-  class: S.highlight,
-  attributes: {
-    "data-testid": "highlighted-text",
-  },
-});
-const highlightTextEffect =
-  StateEffect.define<{ start: number; end: number }[]>();
-
-const highlightTextField = StateField.define({
-  create() {
-    return Decoration.none;
-  },
-  update(value, transaction) {
-    value = value.map(transaction.changes);
-
-    for (const effect of transaction.effects) {
-      if (effect.is(highlightTextEffect)) {
-        value = value
-          // clear values
-          .update({ filter: () => false })
-          // add new values
-          .update({
-            add: effect.value.map((range) =>
-              highlightTextMark.range(range.start, range.end),
-            ),
-          });
-      }
-    }
-
-    return value;
-  },
-  provide: (field) => EditorView.decorations.from(field),
-});
-
-export function highlightText(ranges: { start: number; end: number }[] = []) {
-  return highlightTextField.init((state: EditorState) =>
-    RangeSet.of(
-      ranges
-        .filter(
-          (range) =>
-            range.start < state.doc.length && range.end < state.doc.length,
-        )
-        .map((range) => highlightTextMark.range(range.start, range.end)),
-    ),
-  );
-}
-
-export function useHighlightText(
-  editorRef: RefObject<CodeMirrorRef>,
-  ranges: { start: number; end: number }[] = [],
-) {
-  useEffect(() => {
-    editorRef.current?.view?.dispatch({
-      effects: highlightTextEffect.of(ranges),
-    });
-  }, [editorRef, ranges]);
 }

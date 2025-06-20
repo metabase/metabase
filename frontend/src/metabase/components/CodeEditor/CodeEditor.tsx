@@ -8,7 +8,7 @@ import {
 
 import S from "./CodeEditor.module.css";
 import type { CodeLanguage } from "./types";
-import { getLanguageExtension, highlightText, useHighlightText } from "./utils";
+import { getLanguageExtension } from "./utils";
 
 type Props = {
   className?: string;
@@ -33,11 +33,9 @@ export function CodeEditor({
 }: Props) {
   const ref = useRef<CodeMirrorRef>(null);
   const extensions = useMemo(
-    () => [getLanguageExtension(language), highlightText(highlightRanges)],
-    [language, highlightRanges],
+    () => [getLanguageExtension(language)],
+    [language],
   );
-
-  useHighlightText(ref, highlightRanges);
 
   return (
     <CodeMirror
@@ -54,6 +52,7 @@ export function CodeEditor({
       ref={ref}
       value={value}
       onChange={onChange}
+      highlightRanges={highlightRanges}
     />
   );
 }
