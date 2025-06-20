@@ -333,7 +333,7 @@
    {:doc/title [:span [:code ":field"] " clause"]}
    (helpers/clause
     :field
-    "id-or-name" [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
+    "id-or-name" [:or ::lib.schema.id/field :string]
     "options"    [:maybe [:ref ::FieldOptions]])
    [:ref
     {:description "Fields using names rather than integer IDs are required to specify `:base-type`."}
