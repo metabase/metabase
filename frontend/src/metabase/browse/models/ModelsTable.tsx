@@ -3,7 +3,9 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
@@ -15,8 +17,6 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";

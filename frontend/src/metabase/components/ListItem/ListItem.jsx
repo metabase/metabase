@@ -3,9 +3,9 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { memo } from "react";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import Card from "metabase/components/Card";
 import S from "metabase/components/List/List.module.css";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 

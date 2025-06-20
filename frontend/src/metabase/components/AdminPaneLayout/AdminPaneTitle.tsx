@@ -1,7 +1,7 @@
 import cx from "classnames";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import Button from "metabase/common/components/Button";
+import Link from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Text } from "metabase/ui";
 

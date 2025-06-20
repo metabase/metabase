@@ -2,7 +2,7 @@ import cx from "classnames";
 import type * as React from "react";
 import _ from "underscore";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { IconProps } from "metabase/ui";
 
 import type { BaseSelectListItemProps } from "./BaseSelectListItem";

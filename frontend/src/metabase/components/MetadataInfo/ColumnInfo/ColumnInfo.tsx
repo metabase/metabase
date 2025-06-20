@@ -72,7 +72,7 @@ export function QueryColumnInfo({
     : {};
 
   return (
-    <InfoContainer className={className}>
+    <InfoContainer className={className} data-testid="column-info">
       <ColumnDescription description={description} />
       <Small>
         <SemanticTypeLabel semanticType={semanticType} />

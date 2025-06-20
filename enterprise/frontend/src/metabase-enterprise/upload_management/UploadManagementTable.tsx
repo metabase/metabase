@@ -2,6 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Link from "metabase/common/components/Link";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import {
@@ -9,8 +11,6 @@ import {
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {

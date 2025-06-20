@@ -5,12 +5,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
 import { ErrorDiagnosticModalWrapper } from "metabase/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/components/ErrorPages/analytics";
 import LogoIcon from "metabase/components/LogoIcon";
 import Modal from "metabase/components/Modal";
-import { ForwardRefLink } from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   getCanAccessOnboardingPage,
