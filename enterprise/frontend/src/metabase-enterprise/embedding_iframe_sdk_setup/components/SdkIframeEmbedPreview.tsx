@@ -6,7 +6,6 @@ import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { DEFAULT_SDK_IFRAME_EMBED_SETTINGS } from "../utils/default-embed-setting";
 
 import S from "./SdkIframeEmbedSetup.module.css";
 
@@ -22,6 +21,7 @@ export const SdkIframeEmbedPreview = () => {
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
   const localeOverride = useSearchParam("locale");
+  const initialSettingRef = useRef(settings);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -32,7 +32,7 @@ export const SdkIframeEmbedPreview = () => {
       const { MetabaseEmbed } = window["metabase.embed"];
 
       embedJsRef.current = new MetabaseEmbed({
-        ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
+        ...initialSettingRef.current,
 
         instanceUrl,
         target: "#iframe-embed-container",

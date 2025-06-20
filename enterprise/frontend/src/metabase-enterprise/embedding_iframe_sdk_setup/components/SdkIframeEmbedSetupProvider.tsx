@@ -13,7 +13,7 @@ import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
 } from "../types";
-import { DEFAULT_SDK_IFRAME_EMBED_SETTINGS } from "../utils/default-embed-setting";
+import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
@@ -30,9 +30,11 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const instanceUrl = useSetting("site-url");
 
+  const defaultDashboardId = recentDashboards[0]?.id ?? 1;
+
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
-    ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
     instanceUrl,
+    ...getDefaultSdkIframeEmbedSettings("dashboard", defaultDashboardId),
   });
 
   // Which embed experience are we setting up?
