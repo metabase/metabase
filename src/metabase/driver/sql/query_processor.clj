@@ -265,8 +265,11 @@
   :hierarchy #'driver/hierarchy)
 
 (defn- sqlize-value [x]
-  ;; only do this when we're inside a QP context! Don't do this inside of Toucan query compilation!
-  (if (and driver/*driver* (not t2.pipeline/*resolved-query*))
+  ;; TODO (Cam 6/20/25) only do this when we're inside a QP context! Don't do this inside of Toucan query compilation!
+  ;; This is a hack to attempt to not do it, but I don't think it works everywhere!
+  (if (and driver/*driver*
+           (not (or t2.pipeline/*resolved-query*
+                    t2.pipeline/*parsed-args*)))
     (inline-value driver/*driver* x)
     (honey.sql.protocols/sqlize x)))
 
@@ -582,7 +585,10 @@
 
 (defmethod inline-value :default
   [driver object]
-  (assert (not= driver :mongo) "We SHOULD NOT be calling into the SQL QP code with MongoDB!!")
+  ;; if we're seeing this, we need to fix [[sqlize-value]] better so it doesn't do its thing inside of Toucan 2 queries.
+  ;; If [[driver/*driver*]] is bound we should NOT be using that to compile app DB queries.
+  (when (= driver :mongo)
+    (log/errorf "%s is being called inside Toucan query compilation! This is an error and can lead to broken app DB queries." `sqlize-value))
   ;; default implementation of [[honey.sql.protocols/sqlize]] is just [[clojure.core/str]], that is almost certainly not
   ;; what we want to do, so log a warning
   (log/warnf "No implementation of %s for [%s %s], falling back to default implementation of %s"
