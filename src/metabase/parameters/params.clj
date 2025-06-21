@@ -84,7 +84,13 @@
             (mbql.u/unwrap-field-or-expression-clause field-form)
             (catch Exception e
               (log/error e "Failed unwrap field form" field-form)))
-          (log/error "Could not find matching field clause for target:" target))))))
+          (do (log/error "Could not find matching field clause for target:" target)
+              (when (mbql.u/is-clause? :template-tag dimension)
+                (log/debug (ex-info "Failed to lookup template-tag dimension"
+                                    {:dataset_query (:dataset_query card)
+                                     :dimension dimension
+                                     :tag-name (u/qualified-name (second dimension))})
+                           "Failed to lookup template-tag dimension"))))))))
 
 (defn- pk-fields
   "Return the `fields` that are PK Fields."
