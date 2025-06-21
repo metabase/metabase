@@ -20,6 +20,9 @@ import {
 
 import IconCSV from "./illustrations/csv.svg?component";
 
+const CONTENT_MAX_WIDTH = "22.5rem";
+const INNER_WIDTH = "12.5rem";
+
 type ContactReason =
   | "add-database"
   | "enable-csv-upload"
@@ -51,7 +54,7 @@ const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
     .exhaustive();
 
   return (
-    <Alert icon={<Icon name="info_filled" />}>
+    <Alert icon={<Icon name="info_filled" />} maw={CONTENT_MAX_WIDTH}>
       <Text fz="md" lh="lg">
         {getAlertCopy}
       </Text>
@@ -70,6 +73,7 @@ interface EmptyStateProps {
   illustration: ReactNode;
   ctaLink?: CTALink;
   contactAdminReason?: ContactReason;
+  upsell?: ReactNode;
 }
 
 const AddDataEmptyState = ({
@@ -78,27 +82,30 @@ const AddDataEmptyState = ({
   illustration,
   ctaLink,
   contactAdminReason,
+  upsell,
 }: EmptyStateProps) => {
   return (
-    <Center pt="3rem">
-      <Stack gap="lg" align="center" justify="center" maw="22.5rem">
-        {illustration}
-        <Box component="header" ta="center">
-          <Title order={2} size="h4" mb="xs">
-            {title}
-          </Title>
-          <Text c="text-medium">{subtitle}</Text>
-        </Box>
-        {ctaLink && (
-          <Button variant="filled" w="12.5rem" component={Link} to={ctaLink.to}>
-            {ctaLink.text}
-          </Button>
-        )}
-        {contactAdminReason && (
-          <ContactAdminAlert reason={contactAdminReason} />
-        )}
-      </Stack>
-    </Center>
+    <Stack gap="lg" align="center" justify="center" pt="3rem">
+      {illustration}
+      <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
+        <Title order={2} size="h4" mb="xs">
+          {title}
+        </Title>
+        <Text c="text-medium">{subtitle}</Text>
+      </Box>
+      {ctaLink && (
+        <Button
+          variant="filled"
+          w={INNER_WIDTH}
+          component={Link}
+          to={ctaLink.to}
+        >
+          {ctaLink.text}
+        </Button>
+      )}
+      {contactAdminReason && <ContactAdminAlert reason={contactAdminReason} />}
+      {upsell}
+    </Stack>
   );
 };
 
@@ -120,20 +127,23 @@ export const DatabasePanelEmptyState = () => {
 export const CSVPanelEmptyState = ({
   ctaLink,
   contactAdminReason,
+  upsell,
 }:
   | {
       ctaLink: CTALink;
       contactAdminReason?: never;
+      upsell?: ReactNode;
     }
   | {
       ctaLink?: never;
       contactAdminReason: ContactReason;
+      upsell?: never;
     }) => {
   const ctaSubtitle = c("{0} refers to the string 'your database'")
     .jt`To work with CSVs, enable file uploads in ${(
     <Tooltip
       inline
-      maw="12.5rem"
+      maw={INNER_WIDTH}
       multiline
       label={t`PostgreSQL, MySQL, Redshift, and ClickHouse databases are supported for file storage.`}
       key="database-tooltip"
@@ -153,6 +163,7 @@ export const CSVPanelEmptyState = ({
       illustration={<Box component={IconCSV} c="brand" h={66} />}
       contactAdminReason={contactAdminReason}
       ctaLink={ctaLink}
+      upsell={upsell}
     />
   );
 };

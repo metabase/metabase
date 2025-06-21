@@ -137,6 +137,19 @@ describe("AddDataModal", () => {
         screen.getByText(/^To work with CSVs, enable file uploads/),
       ).toBeInTheDocument();
       expect(screen.getByText("Enable uploads")).toBeInTheDocument();
+      // Upsell banner should not show for self-hosted instances.
+      expect(
+        screen.queryByText("Add Metabase Storage"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should prompt the admin to enable uploads with an upsell on a hosted instance", async () => {
+      setup({ isAdmin: true, uploadsEnabled: false, isHosted: true });
+
+      await openTab("CSV");
+      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
+      expect(screen.getByText("Enable uploads")).toBeInTheDocument();
+      expect(screen.getByText("Add Metabase Storage")).toBeInTheDocument();
     });
 
     it("regular user should be instructed to contact their admin in order to enable uploads", async () => {

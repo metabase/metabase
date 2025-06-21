@@ -22,6 +22,7 @@ interface SetupOpts {
   uploadsEnabled?: boolean;
   canUpload?: boolean;
   canManageSettings?: boolean;
+  isHosted?: boolean;
   hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 }
@@ -32,6 +33,7 @@ export const setup = ({
   uploadsEnabled = false,
   canUpload = true,
   canManageSettings = false,
+  isHosted = false,
   hasEnterprisePlugins = false,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
@@ -67,6 +69,7 @@ export const setup = ({
       collections,
     }),
     settings: mockSettings({
+      "is-hosted?": isHosted,
       "token-features": createMockTokenFeatures(tokenFeatures),
       "uploads-settings": {
         db_id: uploadsEnabled ? database.id : null,
