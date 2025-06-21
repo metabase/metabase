@@ -8,7 +8,7 @@ export const FIXED_METABOT_IDS = {
   EMBEDDED: 2 as const,
 };
 
-export function getErrorMessage() {
+export function getAgentOfflineError() {
   return t`I'm currently offline, try again later.`;
 }
 

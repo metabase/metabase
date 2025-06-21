@@ -1,7 +1,8 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useTimeout } from "@mantine/hooks";
 import cx from "classnames";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { c, jt, t } from "ttag";
+import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -168,11 +169,9 @@ export const MetabotChat = () => {
 
               {/* loading */}
               {metabot.isDoingScience && (
-                <Loader
-                  color="brand"
-                  type="dots"
-                  size="lg"
-                  data-testid="metabot-response-loader"
+                <Thinking
+                  activeToolCallName={metabot.activeToolCall?.name}
+                  useStreaming={metabot.useStreaming}
                 />
               )}
 
@@ -207,8 +206,15 @@ export const MetabotChat = () => {
               data-testid="metabot-chat-input"
               w="100%"
               leftSection={
-                <Box h="100%" pt="11px">
-                  <Icon name="metabot" c="brand" />
+                <Box
+                  h="100%"
+                  pt="11px"
+                  onDoubleClick={() => metabot.toggleStreaming()}
+                >
+                  <Icon
+                    name="metabot"
+                    c={metabot.useStreaming ? "warning" : "brand"}
+                  />
                 </Box>
               }
               autosize
@@ -279,6 +285,52 @@ const Message = ({
           <Icon name="copy" size="1rem" />
         </ActionIcon>
       </Flex>
+    </Flex>
+  );
+};
+
+const Thinking = ({
+  activeToolCallName,
+  useStreaming,
+}: {
+  activeToolCallName: string | undefined;
+  useStreaming: boolean;
+}) => {
+  const [defaultMessageKey, setDefaultMessageKey] = useState<string>("");
+  useTimeout(() => setDefaultMessageKey("__SLOW_RESPONSE__"), 3000, {
+    autoInvoke: true,
+  });
+  useTimeout(() => setDefaultMessageKey("__VERY_SLOW_RESPONSE__"), 10000, {
+    autoInvoke: true,
+  });
+
+  const messagesKey = activeToolCallName ?? defaultMessageKey;
+
+  const messages = {
+    __SLOW_RESPONSE__: [t`Thinking...`, t`Working on your request`],
+    __VERY_SLOW_RESPONSE__: [
+      t`Lot's to consider`,
+      t`Working through the details...`,
+    ],
+    construct_notebook_query: [t`Creating a query`, t`Contructing a question`],
+    analyze_data: [t`Analyzing the data`, t`Exploring your data`],
+    analyze_chart: [t`Inspecting the visualization`, t`Looking at the data`],
+    list_available_fields: undefined, // tool executes near instantly
+  } as Record<string, string[] | undefined>;
+
+  const message = _.sample(
+    messages[messagesKey] ?? messages[defaultMessageKey] ?? [],
+  );
+
+  return (
+    <Flex gap="md" align="center">
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
+      {useStreaming && message && <Text c="text-light">{message}</Text>}
     </Flex>
   );
 };
