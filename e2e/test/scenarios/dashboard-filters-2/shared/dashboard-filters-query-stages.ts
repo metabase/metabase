@@ -673,12 +673,12 @@ export function setup2ndStageBreakoutFilter() {
 
   H.getDashboardCard(2).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Products Via Product ID Category").click();
+    getPopoverItem("Product → Category").click();
   });
 
   H.getDashboardCard(3).findByText("Select…").click();
   H.popover().within(() => {
-    getPopoverItem("Products Via Product ID Category").click();
+    getPopoverItem("Product → Category").click();
   });
 
   H.saveDashboard({ waitMs: 250 });

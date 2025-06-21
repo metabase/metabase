@@ -1,9 +1,12 @@
 (ns metabase.lib.schema.expression-test
   (:require
-   [clojure.test :refer [deftest are testing]]
+   [clojure.test :refer [are deftest is testing]]
+   [malli.error :as me]
    [metabase.lib.core :as lib]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.test-metadata :as meta]
+   [metabase.util.malli.registry :as mr]))
 
 (deftest ^:parallel comparable-expressions?-test
   (let [abs-datetime [:absolute-datetime {:lib/uuid (str (random-uuid))}
@@ -22,3 +25,16 @@
         abs-datetime 42
         abs-datetime "2023"
         (lib/ref (meta/field-metadata :orders :subtotal)) "2023-11-13"))))
+
+(deftest ^:parallel duplicate-expressions-test
+  (testing "we should disallow expressions with duplicate names (QUE-1412)"
+    (letfn [(expression-with-names [name-1 name-2]
+              [(-> (lib/+ 1 2)
+                   (lib.options/update-options assoc :lib/expression-name name-1))
+               (-> (lib/+ 3 4)
+                   (lib.options/update-options assoc :lib/expression-name name-2))])
+            (error [expr]
+              (me/humanize (mr/explain ::lib.schema.expression/expressions expr)))]
+      (is (not (error (expression-with-names "A" "B"))))
+      (is (= ["expressions must have unique names"]
+             (error (expression-with-names "A" "A")))))))

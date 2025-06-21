@@ -8,7 +8,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -216,11 +216,9 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}
           metadata (lib/returned-columns query)]
-      (is (=? [(merge (meta/field-metadata :categories :name)
+      (is (=? [(merge (-> (m/filter-vals some? (meta/field-metadata :categories :name))
+                          (dissoc :ident))
                       {:display-name         "Name"
-                       :ident                (lib.metadata.ident/explicitly-joined-ident
-                                              #_col-ident  "RDOjlMfV-Fg8UwZMPWiq3"
-                                              #_join-ident "dJbULfDmVAyTENMCo7q1q")
                        :lib/source           :source/fields
                        ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
               metadata))
@@ -1569,3 +1567,159 @@
                 (-> base
                     (bad-fields [0 1 2 3])
                     lib/returned-columns)))))))
+
+;;; adapted from [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel returned-columns-with-deduplicated-name-refs-test
+  (testing "Make sure we do the right thing with deduplicated field refs like ID_2"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query orders
+                 {:fields [$id $subtotal $tax $total $created-at $quantity]
+                  :joins [{:source-table $$products
+                           :alias "Product"
+                           :condition
+                           [:= $orders.product-id
+                            [:field %products.id {:join-alias "Product"}]]
+                           :fields
+                           [[:field %products.id {:join-alias "Product"}] ; AKA ID_2
+                            [:field %products.title {:join-alias "Product"}]
+                            [:field %products.vendor {:join-alias "Product"}]
+                            [:field %products.price {:join-alias "Product"}]
+                            [:field %products.rating {:join-alias "Product"}]]}]})])
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:fields [[:field "ID_2"   {:join-alias "Card", :base-type :type/BigInteger}]
+                             [:field "TOTAL"  {:join-alias "Card", :base-type :type/Float}]
+                             [:field "TAX"    {:join-alias "Card", :base-type :type/Float}]
+                             [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]
+                    :joins [{:source-table "card__1"
+                             :alias "Card"
+                             :condition
+                             [:= $products.id
+                              [:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}]]
+                             :fields
+                             [[:field "ID_2" {:join-alias "Card", :base-type :type/BigInteger}] ; PRODUCTS.ID -- (meta/id :products :id)
+                              [:field "TOTAL" {:join-alias "Card", :base-type :type/Float}]
+                              [:field "TAX" {:join-alias "Card", :base-type :type/Float}]
+                              [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]}]}))
+          join (m/find-first (fn [join]
+                               (= (lib.join.util/current-join-alias join) "Card"))
+                             (lib/joins query))]
+      (assert (some? join))
+      ;; should contain IDs as well.
+      (is (= [{:id (meta/id :products :id),    :display-name "ID"}
+              {:id (meta/id :orders :total),   :display-name "Total"}
+              {:id (meta/id :orders :tax),     :display-name "Tax"}
+              {:id (meta/id :products :vendor) :display-name "Vendor"}]
+             (map #(select-keys % [:id :display-name])
+                  (lib.join/join-fields-to-add-to-parent-stage query -1 join {:unique-name-fn (lib.util/unique-name-generator)})))))))
+
+(deftest ^:parallel remapping-in-joins-test
+  (testing "explicitly joined columns with remaps are added after their join"
+    (let [mp         (-> meta/metadata-provider
+                         (lib.tu/remap-metadata-provider (meta/id :venues :category-id) (meta/id :categories :name)))
+          join1      (-> (lib/join-clause (meta/table-metadata :venues)
+                                          [(lib/= (meta/field-metadata :orders :id)
+                                                  (meta/field-metadata :venues :id))])
+                         (lib/with-join-fields [(meta/field-metadata :venues :price)
+                                                (meta/field-metadata :venues :category-id)]))
+          join2      (-> (lib/join-clause (meta/table-metadata :products)
+                                          [(lib/= (meta/field-metadata :orders :product-id)
+                                                  (meta/field-metadata :products :id))])
+                         (lib/with-join-fields [(meta/field-metadata :products :category)]))
+          base       (-> (lib/query mp (meta/table-metadata :orders))
+                         (lib/with-fields [(meta/field-metadata :orders :id)
+                                           (meta/field-metadata :orders :product-id)
+                                           (meta/field-metadata :orders :subtotal)]))
+          exp-main   [{:name "ID"}
+                      {:name "PRODUCT_ID"}
+                      {:name "SUBTOTAL"}]
+          exp-join1  [{:name "PRICE"}
+                      {:name "CATEGORY_ID"}
+                      {:name "NAME"}]   ; remap of VENUES.CATEGORY_ID => CATEGORIES.NAME
+          exp-join2  [{:name "CATEGORY"}]
+          cols       (fn [query]
+                       (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
+      (is (=? (concat exp-main exp-join1 exp-join2)
+              (-> base
+                  (lib/join join1)
+                  (lib/join join2)
+                  cols)))
+      (is (=? (concat exp-main exp-join2 exp-join1)
+              (-> base
+                  (lib/join join2)
+                  (lib/join join1)
+                  cols))))))
+
+(deftest ^:parallel remapping-in-joins-test-2
+  (testing "Remapped columns in joined source queries should work (#15578)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.products.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title $category]}))
+          join (first (lib/joins query -1))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= [["TITLE" "Orders__TITLE" "TITLE" "Orders → Title"]
+                ["sum"   "Orders__sum"   "sum"   "Orders → Sum of Quantity"]]
+               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (lib.join/join-fields-to-add-to-parent-stage
+                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+
+(deftest ^:parallel remapping-in-joins-test-3
+  (testing "join-fields-to-add-to-parent-stage should include remapped columns"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                :fields       [&Orders.orders.product-id]}]
+                    :fields   [$title $category]}))
+          join (first (lib/joins query -1))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
+                ;; should get added because it is a remap
+                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
+               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (lib.join/join-fields-to-add-to-parent-stage
+                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+
+(deftest ^:parallel remapping-in-joins-duplicates-test
+  (testing "Remapped columns in joined source queries should not append duplicates (QUE-1410)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.orders.product-id
+                                               &Orders.products.title]}]
+                    :fields   [$title $category]}))
+          join (first (lib/joins query -1))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= [["PRODUCT_ID" "Orders__PRODUCT_ID" "PRODUCT_ID" "Orders → Product ID"]
+                ["TITLE"      "Orders__TITLE"      "TITLE"      "Orders → Title"]]
+               (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (lib.join/join-fields-to-add-to-parent-stage
+                     query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))

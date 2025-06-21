@@ -28,14 +28,14 @@
 (use-fixtures :each (fn [thunk]
                       (thunk)))
 
-(defn- grandparent-parent-child-id [field]
+(defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
      (case field
        :grandparent 50
        :parent      60
        :child       70)))
 
-(def ^:private grandparent-parent-child-metadata-provider
+(def grandparent-parent-child-metadata-provider
   "A MetadataProvider for a Table that nested Fields: grandparent, parent, and child"
   (let [grandparent {:lib/type     :metadata/column
                      :name         "grandparent"
@@ -65,32 +65,6 @@
                                 :table-id        (meta/id :venues)}
                                field-metadata))
                       [grandparent parent child])})))
-
-(deftest ^:parallel col-info-combine-parent-field-names-test
-  (letfn [(col-info [a-field-clause]
-            (lib/metadata
-             {:lib/type     :mbql/query
-              :lib/metadata grandparent-parent-child-metadata-provider
-              :database     (meta/id)
-              :stages       [{:lib/type     :mbql.stage/mbql
-                              :lib/options  {:lib/uuid (str (random-uuid))}
-                              :source-table (meta/id :venues)}]}
-             -1
-             a-field-clause))]
-    (testing "For fields with parents we should return them with a combined name including parent's name"
-      (is (=? {:table-id          (meta/id :venues)
-               :name              "grandparent.parent"
-               :parent-id         (grandparent-parent-child-id :grandparent)
-               :id                (grandparent-parent-child-id :parent)
-               :visibility-type   :normal}
-              (col-info [:field {:lib/uuid (str (random-uuid))} (grandparent-parent-child-id :parent)]))))
-    (testing "nested-nested fields should include grandparent name (etc)"
-      (is (=? {:table-id          (meta/id :venues)
-               :name              "grandparent.parent.child"
-               :parent-id         (grandparent-parent-child-id :parent)
-               :id                (grandparent-parent-child-id :child)
-               :visibility-type   :normal}
-              (col-info [:field {:lib/uuid (str (random-uuid))} (grandparent-parent-child-id :child)]))))))
 
 (deftest ^:parallel nested-field-display-name-test
   (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
@@ -143,17 +117,6 @@
                   (->> query
                        lib/visible-columns
                        (map #(lib/display-info base -1 %))))))))))
-
-(deftest ^:parallel col-info-field-literals-test
-  (testing "field literals should get the information from the matching `:lib/stage-metadata` if it was supplied"
-    (is (=? {:name          "sum"
-             :display-name  "sum of User ID"
-             :base-type     :type/Integer
-             :semantic-type :type/FK}
-            (lib/metadata
-             (lib.tu/native-query)
-             -1
-             [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "sum"])))))
 
 (deftest ^:parallel joined-field-display-name-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
@@ -513,49 +476,6 @@
             :long    "Distinct values of Category → Name"
             :default "Distinct values of Name"))))))
 
-(deftest ^:parallel source-card-table-display-info-test
-  ;; this uses a legacy `card__<id>` `:table-id` intentionally; we don't currently have logic that parses this to
-  ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
-  (let [query (assoc (lib.tu/venues-query) :lib/metadata lib.tu/metadata-provider-with-card)
-        field (lib/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
-                                         :table-id "card__1"))]
-    (is (=? {:name           "NAME"
-             :display-name   "Name"
-             :semantic-type  :type/Name
-             :effective-type :type/Text
-             :table          {:name "My Card", :display-name "My Card"}}
-            (lib/display-info query field)))))
-
-(deftest ^:parallel resolve-column-name-in-join-test
-  (testing ":field refs with string names should work if the Field comes from a :join"
-    (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
-                             meta/metadata-provider
-                             [(lib.tu.macros/mbql-query checkins
-                                {:aggregation [[:count]]
-                                 :breakout    [$user-id]})])
-          cols  (->> (lib.metadata/card metadata-provider 1)
-                     (lib/query metadata-provider)
-                     lib/returned-columns
-                     (m/index-by :name))
-          query (-> (lib/query metadata-provider (meta/table-metadata :checkins))
-                    (lib/join (lib/with-join-alias
-                               (lib/join-clause (lib.metadata/card metadata-provider 1)
-                                                [(lib/= (meta/field-metadata :users :id)
-                                                        (lib/ref (get cols "USER_ID")))])
-                               "checkins_by_user"))
-                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :users :last-login) :month))
-                    (lib/aggregate (lib/avg (lib/with-join-alias (lib/ref (get cols "count")) "checkins_by_user"))))]
-      (is (=? [{:id                       (meta/id :users :last-login)
-                :name                     "LAST_LOGIN"
-                :lib/source               :source/breakouts
-                :lib/source-column-alias  "LAST_LOGIN"
-                :lib/desired-column-alias "LAST_LOGIN"}
-               {:name                     "avg"
-                :lib/source               :source/aggregations
-                :lib/source-column-alias  "avg"
-                :lib/desired-column-alias "avg"}]
-              (lib/returned-columns query))))))
-
 (deftest ^:parallel with-fields-test
   (let [query           (-> (lib.tu/venues-query)
                             (lib/expression "myadd" (lib/+ 1 (meta/field-metadata :venues :category-id)))
@@ -621,109 +541,6 @@
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
                 lib/fieldable-columns)))))
-
-(deftest ^:parallel fallback-metadata-from-saved-question-when-missing-from-metadata-provider-test
-  (testing "Handle missing column metadata from the metadata provider; should still work if in Card result metadata (#31624)"
-    (let [provider (lib.tu/mock-metadata-provider
-                    {:database {:id   1
-                                :name "My Database"}
-                     :tables   [{:id   2
-                                 :name "My Table"}]
-                     :cards    [{:id              3
-                                 :name            "Card 3"
-                                 :database-id     (meta/id)
-                                 :dataset-query   {:lib/type :mbql/query
-                                                   :database 1
-                                                   :stages   [{:lib/type     :mbql.stage/mbql
-                                                               :source-table 2}]}
-                                 :result-metadata [{:id    4
-                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
-                                                    :name  "Field 4"}]}]})
-          query    (lib/query provider {:lib/type :mbql/query
-                                        :database 1
-                                        :stages   [{:lib/type    :mbql.stage/mbql
-                                                    :source-card 3}]})]
-      (is (= [{:lib/type                 :metadata/column
-               :base-type                :type/*
-               :effective-type           :type/*
-               :id                       4
-               :name                     "Field 4"
-               :ident                    "ybTElkkGoYYBAyDRTIiUe"
-               :fk-target-field-id       nil
-               :lib/source               :source/card
-               :lib/card-id              3
-               :lib/source-column-alias  "Field 4"
-               :lib/desired-column-alias "Field 4"}]
-             (lib/returned-columns query)))
-      (is (= {:lib/type                :metadata/column
-              :base-type               :type/Text
-              :effective-type          :type/Text
-              :id                      4
-              :name                    "Field 4"
-              :ident                   "ybTElkkGoYYBAyDRTIiUe"
-              :fk-target-field-id      nil
-              :display-name            "Field 4"
-              :lib/card-id             3
-              :lib/source              :source/card
-              :lib/source-column-alias "Field 4"
-              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
-             (lib/metadata
-              query
-              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
-
-(deftest ^:parallel base-type-in-field-ref-does-not-overwrite-everything-test
-  (testing "base-type of reference doesn't override a non-default effective-type in the column (#55171)"
-    (let [provider (lib.tu/mock-metadata-provider
-                    {:database {:id   1
-                                :name "My Database"}
-                     :tables   [{:id   2
-                                 :name "My Table"}]
-                     :cards    [{:id              3
-                                 :name            "Card 3"
-                                 :database-id     (meta/id)
-                                 :dataset-query   {:lib/type :mbql/query
-                                                   :database 1
-                                                   :stages   [{:lib/type     :mbql.stage/mbql
-                                                               :source-table 2}]}
-                                 :result-metadata [{:id                4
-                                                    :base-type         :type/Text
-                                                    :effective-type    :type/Date
-                                                    :coercion-strategy :Coercion/ISO8601->Date
-                                                    :ident             "ybTElkkGoYYBAyDRTIiUe"
-                                                    :name              "Field 4"}]}]})
-          query    (lib/query provider {:lib/type :mbql/query
-                                        :database 1
-                                        :stages   [{:lib/type    :mbql.stage/mbql
-                                                    :source-card 3}]})]
-      (is (= [{:lib/type                 :metadata/column
-               :base-type                :type/Text
-               :effective-type           :type/Date
-               :coercion-strategy        :Coercion/ISO8601->Date
-               :id                       4
-               :name                     "Field 4"
-               :ident                    "ybTElkkGoYYBAyDRTIiUe"
-               :fk-target-field-id       nil
-               :lib/source               :source/card
-               :lib/card-id              3
-               :lib/source-column-alias  "Field 4"
-               :lib/desired-column-alias "Field 4"}]
-             (lib/returned-columns query)))
-      (is (= {:lib/type                :metadata/column
-              :base-type               :type/Text
-              :effective-type          :type/Date
-              :coercion-strategy       :Coercion/ISO8601->Date
-              :id                      4
-              :name                    "Field 4"
-              :ident                   "ybTElkkGoYYBAyDRTIiUe"
-              :fk-target-field-id      nil
-              :display-name            "Field 4"
-              :lib/card-id             3
-              :lib/source              :source/card
-              :lib/source-column-alias "Field 4"
-              :lib/source-uuid         "aa0e13af-29b3-4c27-a880-a10c33e55a3e"}
-             (lib/metadata
-              query
-              [:field {:lib/uuid "aa0e13af-29b3-4c27-a880-a10c33e55a3e", :base-type :type/Text} 4]))))))
 
 (deftest ^:parallel ref-to-joined-column-from-previous-stage-test
   (let [query (-> (lib.tu/venues-query)
@@ -1463,7 +1280,6 @@
                         :display-name  "ID"}
           exp-src-tax  {:lib/type      :metadata/column
                         :name          "TAX"
-                        :semantic-type nil
                         :table-id      (meta/id :orders)
                         :id            (meta/id :orders :tax)
                         :lib/source    :source/fields
@@ -1480,7 +1296,6 @@
                         :display-name  "ID"}
           exp-join-tax {:lib/type      :metadata/column
                         :name          "TAX"
-                        :semantic-type nil
                         :table-id      (meta/id :orders)
                         :id            (meta/id :orders :tax)
                         :lib/source    :source/joins
@@ -1490,7 +1305,6 @@
           columns      (lib.metadata.calculation/returned-columns query)]
       (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
               (lib.metadata.calculation/returned-columns query)))
-
       (doseq [[label column-alias] [["original ID column"  "ID"]
                                     ["original TAX column" "TAX"]
                                     ["joined ID column"    "Orders__ID"]
@@ -1540,13 +1354,14 @@
                  :lib/card-id (get-in base [:stages 0 :source-card])
                  :lib/source  :source/card}
                 vis-price))
-
         (testing "can have that dropped field added back"
           (let [added (lib/add-field query -1 vis-price)]
             (is (=? columns #_(map #(assoc % :lib/source :source/fields) columns)
                     (lib.metadata.calculation/returned-columns added)))
             (testing "and removed again"
-              (is (=? (map #(assoc % :lib/source :source/fields) no-price)
+              (is (=? (map #(-> (m/filter-vals some? %)
+                                (assoc :lib/source :source/fields))
+                           no-price)
                       (-> added
                           (lib/remove-field -1 vis-price)
                           lib.metadata.calculation/returned-columns))))))))))
@@ -1609,10 +1424,12 @@
                                (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
-      (is (=? (sorted (concat order-cols join-cols))
+      (is (=? (map #(dissoc % :ident)
+                   (sorted (concat order-cols join-cols)))
               (sorted (lib.metadata.calculation/returned-columns query))))
       (testing "visible-columns returns implicitly joinable People, but does not return two copies of Product.CATEGORY"
-        (is (=? (sorted (concat order-cols join-cols implicit-cols))
+        (is (=? (map #(dissoc % :ident)
+                     (sorted (concat order-cols join-cols implicit-cols)))
                 (sorted (lib.metadata.calculation/visible-columns query))))))))
 
 (deftest ^:parallel nested-query-implicit-join-fields-test
@@ -1660,7 +1477,7 @@
         (is (=? {:lib/type        :metadata/column
                  :lib/source-uuid string?
                  :name            "12345"
-                 :display-name    "Unknown Field"}
+                 :display-name    "12345"}
                 (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
                                                    [:field {:lib/uuid (str (random-uuid))} 12345])))))))
 
@@ -1840,3 +1657,83 @@
              (lib/display-name query -1 max-venues-id :long)))
       (is (= "Max of Cat → ID"
              (lib/display-name query -1 max-categories-id :long))))))
+
+;;; adapted from [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel resolve-deduplicated-field-ref-test
+  (testing "Make sure we do the right thing with deduplicated field refs like ID_2"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query orders
+                 {:fields [$id $subtotal $tax $total $created-at $quantity]
+                  :joins [{:source-table $$products
+                           :alias "Product"
+                           :condition
+                           [:= $orders.product-id
+                            [:field %products.id {:join-alias "Product"}]]
+                           :fields
+                           [[:field %products.id {:join-alias "Product"}] ; AKA ID_2
+                            [:field %products.title {:join-alias "Product"}]
+                            [:field %products.vendor {:join-alias "Product"}]
+                            [:field %products.price {:join-alias "Product"}]
+                            [:field %products.rating {:join-alias "Product"}]]}]})])
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:fields [[:field "ID_2"   {:join-alias "Card", :base-type :type/BigInteger}]
+                             [:field "TOTAL"  {:join-alias "Card", :base-type :type/Float}]
+                             [:field "TAX"    {:join-alias "Card", :base-type :type/Float}]
+                             [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]
+                    :joins [{:source-table "card__1"
+                             :alias "Card"
+                             :condition
+                             [:= $products.id
+                              [:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}]]
+                             :fields
+                             [[:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}] ; PRODUCTS.ID -- (meta/id :products :id)
+                              [:field "TOTAL" {:join-alias "Card"
+                                               :base-type :type/Float}]
+                              [:field "TAX" {:join-alias "Card"
+                                             :base-type :type/Float}]
+                              [:field "VENDOR" {:join-alias "Card"
+                                                :base-type :type/Text}]]}]}))
+          col (lib.metadata.calculation/metadata query -1 [:field
+                                                           {:join-alias "Card", :base-type :type/BigInteger, :lib/uuid "c259c779-04f2-43d3-8635-d80c98a57c7c"}
+                                                           "ID_2"])]
+      (testing "Should correctly resolve Field ID"
+        (is (=? {:id (meta/id :products :id)}
+                col))))))
+
+(deftest ^:parallel card-name-in-display-name-test
+  (testing "Calculate fresh display names using join names rather than reusing names in source metadata"
+    (binding [lib.metadata.calculation/*display-name-style* :long]
+      (let [q1    (lib.tu.macros/$ids nil
+                    {:source-table $$orders
+                     :joins        [{:source-table $$people
+                                     :alias        "People"
+                                     :condition    [:= $orders.user-id &People.people.id]
+                                     :fields       [&People.people.address]
+                                     :strategy     :left-join}]
+                     :fields       [$orders.id &People.people.address]})
+            query (lib/query
+                   meta/metadata-provider
+                   (lib.tu.macros/mbql-query products
+                     {:joins  [{:source-query    q1
+                                :source-metadata (for [col (lib/returned-columns
+                                                            (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
+                                                   (-> col
+                                                       (dissoc :lib/type)
+                                                       (update-keys u/->snake_case_en)))
+                                :alias           "Question 54"
+                                :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
+                                :fields          [[:field %orders.id {:join-alias "Question 54"}]
+                                                  [:field %people.address {:join-alias "Question 54"}]]
+                                :strategy        :left-join}]
+                      :fields [!default.created-at
+                               [:field %orders.id {:join-alias "Question 54"}]
+                               [:field %people.address {:join-alias "Question 54"}]]}))]
+        (is (= ["Created At"
+                "Question 54 → ID"
+                "Question 54 → Address"]
+               (map :display-name (lib/returned-columns query))))))))

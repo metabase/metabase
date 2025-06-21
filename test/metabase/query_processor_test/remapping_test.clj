@@ -323,6 +323,7 @@
                                                     :aggregation  [[:sum $orders.quantity]]}
                                      :alias        "Orders"
                                      :condition    [:= $id &Orders.orders.product_id]
+                                     ;; we can get title since product_id is remapped to title
                                      :fields       [&Orders.title
                                                     &Orders.*sum/Integer]}]
                          :fields   [$title $category]
@@ -332,10 +333,10 @@
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)
                   (testing "Metadata"
-                    (is (= [["TITLE"    "Title"]
-                            ["CATEGORY" "Category"]
-                            ["TITLE_2"  "Orders → Title"]
-                            ["sum"      "Orders → Sum"]]
+                    (is (= [["TITLE"    "Title"]                     ; products.title
+                            ["CATEGORY" "Category"]                  ; products.category
+                            ["TITLE_2"  "Orders → Title"]            ; orders.title
+                            ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
                            (map (juxt :name :display_name) (mt/cols results))))))
                 (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
                         ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]

@@ -62,7 +62,7 @@
 
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (testing "make sure we can do a basic query with a SQL source-query"
+    (testing "make sure we can do a basic query with a native source-query"
       (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
                       [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
                       [3 -118.428 11 2 "The Apple Pan"                34.0406]
@@ -196,9 +196,9 @@
 (deftest ^:parallel nested-with-aggregations-at-both-levels-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (mt/dataset test-data
-      (doseq [dataset? [true false]]
+      (doseq [model? [true false]]
         (testing (format "Aggregations in both nested and outer query for %s have correct metadata (#19403) and (#23248)"
-                         (if dataset? "questions" "models"))
+                         (if model? "questions" "models"))
           (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                                             [(mt/mbql-query products
                                                {:aggregation [[:aggregation-options
@@ -230,7 +230,7 @@
                                                                                 {:name "count"}]]
                                                                 :aggregation-idents {0 "VghddL-up6ZVkpUNkE9H_"
                                                                                      1 "q0awK8v8lIp1iW_ZhSS_E"}}}
-                                                    (when dataset?
+                                                    (when model?
                                                       {:info {:metadata/model-metadata
                                                               (:result-metadata (lib.metadata/card (qp.store/metadata-provider) 1))}}))))))))))))
 
@@ -651,6 +651,7 @@
     [_driver _feature _database]
     true))
 
+;;; see also [[metabase.lib.metadata.result-metadata-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
@@ -660,11 +661,11 @@
                             :breakout     [!year.date]})]
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [source-query])
-          (let [[date-col count-col] (for [col (-> (qp/process-query source-query)
-                                                   :data :cols)]
-                                       (-> (into {} col)
-                                           (assoc :source :fields)
-                                           (dissoc :position :aggregation_index :ident)))]
+          (let [[date-col count-col] (for [col (mt/cols (qp/process-query source-query))]
+                                       (as-> col col
+                                         (assoc col :source :fields)
+                                         (dissoc col :position :ident)
+                                         (m/filter-keys simple-keyword? col)))]
             ;; since the bucketing is happening in the source query rather than at this level, the field ref should
             ;; return temporal unit `:default` rather than the upstream bucketing unit. You wouldn't want to re-apply
             ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
@@ -1092,9 +1093,6 @@
                                       (get-in result [:data :results_metadata :columns])))
             expected-cols         (qp.store/with-metadata-provider provider
                                     (qp.preprocess/query->expected-cols (mt/mbql-query orders)))]
-        (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
-                       expected-cols))
-            "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys")
         ;; Save a question with a query against orders. Should work regardless of whether Card has result_metadata
         (doseq [[description result-metadata] {"NONE"                   nil
                                                "from running the query" card-results-metadata

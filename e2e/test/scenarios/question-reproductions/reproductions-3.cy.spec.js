@@ -922,7 +922,7 @@ describe("issue 32020", () => {
     H.visualize();
     H.tableInteractive().within(() => {
       cy.findByText("Sum of Sum of Total").should("be.visible");
-      cy.findByText("Sum of Q2 → Max").should("be.visible");
+      cy.findByText("Sum of Q2 → Max of Longitude").should("be.visible");
     });
   });
 });

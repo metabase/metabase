@@ -1,8 +1,31 @@
 (ns metabase.lib.schema.metadata
   (:require
+   [clojure.string :as str]
+   [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (or (contains? lib.schema.common/HORRIBLE-keys k)
+           ;; apparently `str/includes?` doesn't work on keywords in ClojureScript ??
+           (not (str/includes? (str k) "_")))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every? kebab-cased-key? (keys m))))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])
 
 ;;; Column vs Field?
 ;;;
@@ -27,6 +50,7 @@
 
 (mr/def ::column-source
   [:enum
+   {:decode/normalize lib.schema.common/normalize-keyword}
    ;; these are for things from some sort of source other than the current stage;
    ;; they must be referenced with string names rather than Field IDs
    :source/card
@@ -101,7 +125,7 @@
   external` associated with a `Field` in the application database.
   See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
-   [:lib/type [:= :metadata.column.remapping/external]]
+   [:lib/type [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/external]]
    [:id       ::lib.schema.id/dimension]
    ;; from `dimension.name`
    [:name     ::lib.schema.common/non-blank-string]
@@ -114,7 +138,7 @@
   internal` and the [[metabase.warehouse-schema.models.field-values]] associated with a `Field` in the application
   database. See [[metabase.query-processor.middleware.add-dimension-projections]] for what this means."
   [:map
-   [:lib/type              [:= :metadata.column.remapping/internal]]
+   [:lib/type              [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata.column.remapping/internal]]
    [:id                    ::lib.schema.id/dimension]
    ;; from `dimension.name`
    [:name                  ::lib.schema.common/non-blank-string]
@@ -125,10 +149,24 @@
    [:human-readable-values [:sequential :any]]])
 
 (mr/def ::source-column-alias
-  [:maybe ::lib.schema.common/non-blank-string])
+  ::lib.schema.common/non-blank-string)
 
 (mr/def ::desired-column-alias
-  [:maybe [:string {:min 1}]])
+  [:string {:min 1}])
+
+(mr/def ::original-name
+  "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
+  column in the table it appears in). This should be the same as the `:lib/source-column-alias` for the very first
+  usage of the column.
+  Allowed to be blank because some databases like SQL Server allow blank column names."
+  [:maybe :string])
+
+(mr/def ::deduplicated-name
+  "The simply-deduplicated name that was historically used in QP results metadata (originally calculated by
+  the [[metabase.query-processor.middleware.annotate]] middleware, now calculated
+  by [[metabase.lib.middleware.result-metadata]]). This just adds suffixes to column names e.g. `ID` and `ID` become
+  `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
+  [:maybe :string])
 
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
@@ -143,79 +181,133 @@
   Now maybe these should be two different schemas, but `:id` being there or not is the only real difference; besides
   that they are largely compatible. So they're the same for now. We can revisit this in the future if we actually want
   to differentiate between the two versions."
-  [:map
-   {:error/message "Valid column metadata"}
-   [:lib/type  [:= :metadata/column]]
-   ;; column names are allowed to be empty strings in SQL Server :/
-   [:name      :string]
-   ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-   [:base-type ::lib.schema.common/base-type]
-   ;; This is nillable because internal remap columns have `:id nil`.
-   [:id             {:optional true} [:maybe ::lib.schema.id/field]]
-   [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
-   ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
-   [:database-type  {:optional true} [:maybe :string]]
-   [:active         {:optional true} :boolean]
-   ;; if this is a field from another table (implicit join), this is the field in the current table that should be
-   ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
-   ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
-   ;; `:source-field`.
-   [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
-   ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
-   ;; referenced by a name, normally when it's coming from a card or a previous query stage.
-   [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; if this is a field from another table (implicit join), this is the join alias of the source field.
-   [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
-   ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
-   ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
-   [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-   ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-   ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-   ;; remove it.
-   [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
-   ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
-   ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
-   [:lib/expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
-   ;; what top-level clause in the query this metadata originated from, if it is calculated (i.e., if this metadata
-   ;; was generated by [[metabase.lib.metadata.calculation/metadata]])
-   [:lib/source {:optional true} [:ref ::column-source]]
-   ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
-   [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
-   ;;
-   ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
-   ;; the [[metabase.lib.metadata.calculation/metadata]]
-   ;;
-   ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
-   ;; name of this clause as exported by the previous stage, source table, or join.
-   [:lib/source-column-alias {:optional true} ::source-column-alias]
-   ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
-   ;; guaranteed to be unique in each stage of the query.
-   [:lib/desired-column-alias {:optional true} ::desired-column-alias]
-   ;; when column metadata is returned by certain things
-   ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
-   ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
-   ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
-   [:selected? {:optional true} :boolean]
-   ;;
-   ;; REMAPPING & FIELD VALUES
-   ;;
-   ;; See notes above for more info. `:has-field-values` comes from the application database and is used to decide
-   ;; whether to sync FieldValues when running sync, and what certain FE QB widgets should
-   ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
-   ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
-   [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
-   ;;
-   ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
-   ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
-   ;; the application database, look at the implementation for fetching a `:metadata/column`
-   ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
-   ;; provider doesn't add these keys.
-   [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
-   [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]])
+  [:and
+   [:map
+    {:error/message    "Valid column metadata"
+     :decode/normalize lib.schema.common/normalize-map}
+    [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
+    ;;
+    ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
+    ;; in [[metabase.legacy-mbql.schema]] so we can generate this documentation from this schema or whatever.
+    ;;
+    ;; column names are allowed to be empty strings in SQL Server :/
+    ;;
+    ;; In almost EVERY circumstance you should try to avoid using `:name`, because it's not well-defined whether it's
+    ;; the `:lib/original-name` or `:lib/deduplicated-name`, and it might be either one depending on where the metadata
+    ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
+    [:name      :string]
+    ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
+    [:base-type ::lib.schema.common/base-type]
+    ;; This is nillable because internal remap columns have `:id nil`.
+    [:id             {:optional true} [:maybe ::lib.schema.id/field]]
+    [:display-name   {:optional true} [:maybe :string]]
+    [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    ;; type of this column in the data warehouse, e.g. `TEXT` or `INTEGER`
+    [:database-type  {:optional true} [:maybe :string]]
+    [:active         {:optional true} :boolean]
+    ;; if this is a field from another table (implicit join), this is the field in the current table that should be
+    ;; used to perform the implicit join. e.g. if current table is `VENUES` and this field is `CATEGORIES.ID`, then the
+    ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
+    ;; `:source-field`.
+    [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+    ;;
+    ;; TODO (Cam 6/12/25) -- add schemas for `:lib/original-name` and `:lib/deduplicated-name` from other PR.
+    ;;
+    ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
+    ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
+    ;; referenced by a name, normally when it's coming from a card or a previous query stage.
+    [:fk-field-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; if this is a field from another table (implicit join), this is the join alias of the source field.
+    [:fk-join-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; `metabase_field.fk_target_field_id` in the application database; recorded during the sync process. This Field is
+    ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
+    ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
+    [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
+    ;;
+    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
+    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
+    ;; remove it.
+    ;;
+    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
+    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
+    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
+    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
+    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
+    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
+    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
+    ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
+    ;; allowed to join on the results of something else)
+    ;;
+    ;; TODO (Cam 6/19/25) -- rename this key to `:lib/join-alias` since we're not really good about only using the
+    ;; special getter and setter functions to get at this key
+    [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
+    ;; from a previous stage.
+    ;;
+    ;; What about when the column comes from join `X`, but inside `X` itself it comes from join `Y`? I think in this
+    ;; case we want the outside world to see `X` since `Y` is not visible outside of `X`.
+    ;;
+    ;;    original join alias = X
+    ;;    column => [join X => join Y]
+    ;;
+    [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    ;; other misc namespaced keys
+    [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+    [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
+    ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
+    ;; at THIS STAGE of the query. If it's included elsewhere, that's an error. Thus this is the definitive way to know
+    ;; if a column is "custom" in this stage (needs an `:expression` reference) or not.
+    [:lib/expression-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    ;; what top-level clause in the query this metadata originated from, if it is calculated (i.e., if this metadata
+    ;; was generated by [[metabase.lib.metadata.calculation/metadata]])
+    [:lib/source {:optional true} [:ref ::column-source]]
+    ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
+    [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+    ;;
+    ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
+    ;; the [[metabase.lib.metadata.calculation/metadata]]
+    ;;
+    ;; the alias that should be used to this clause on the LHS of a `SELECT <lhs> AS <rhs>` or equivalent, i.e. the
+    ;; name of this clause as exported by the previous stage, source table, or join.
+    [:lib/source-column-alias {:optional true} [:maybe ::source-column-alias]]
+    ;; the name we should export this column as, i.e. the RHS of a `SELECT <lhs> AS <rhs>` or equivalent. This is
+    ;; guaranteed to be unique in each stage of the query.
+    [:lib/desired-column-alias {:optional true} [:maybe ::desired-column-alias]]
+    ;;
+    ;; see description in schemas above
+    ;;
+    [:lib/original-name     {:optional true} ::original-name]
+    [:lib/deduplicated-name {:optional true} ::deduplicated-name]
+    ;; appears to serve the same purpose as `:lib/original-name` but it's unclear where or why it is
+    ;; used. https://metaboat.slack.com/archives/C0645JP1W81/p1749168183509589
+    ;;
+    ;; TODO (Cam 6/19/25) -- can we remove this entirely?
+    [:lib/hack-original-name {:optional true} ::original-name]
+    ;;
+    ;; when column metadata is returned by certain things
+    ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
+    ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
+    ;; for [[metabase.lib.field/fieldable-columns]] it means its already present in `:fields`
+    [:selected? {:optional true} :boolean]
+    ;;
+    ;; REMAPPING & FIELD VALUES
+    ;;
+    ;; See notes above for more info. `:has-field-values` comes from the application database and is used to decide
+    ;; whether to sync FieldValues when running sync, and what certain FE QB widgets should
+    ;; do. (See [[metabase.lib.field/field-values-search-info]]). Note that all metadata providers may not return this
+    ;; column. The JVM provider currently does not, since the QP doesn't need it for anything.
+    [:has-field-values {:optional true} [:maybe [:ref ::column.has-field-values]]]
+    ;;
+    ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
+    ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
+    ;; the application database, look at the implementation for fetching a `:metadata/column`
+    ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
+    ;; provider doesn't add these keys.
+    [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
+    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
+   ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
+   ::kebab-cased-map])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
@@ -249,6 +341,29 @@
   [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
    :metadata/segment])
 
+(mr/def ::card.result-metadata.map
+  "Schema for the maps in card `:result-metadata`. These can be either
+  `:metabase.lib.schema.metadata/result-metadata` (i.e., kebab-cased) maps, or map snake_cased as returned by QP
+  metadata, but they should NOT be a mixture of both -- if we mixed them somehow there is a bug in our code."
+  [:multi
+   {:dispatch #(boolean (:lib/type %))}
+   [true
+    [:merge
+     [:ref ::column]
+     [:map
+      {:error/message "If a Card result metadata column has :lib/type it MUST be a valid kebab-cased :metabase.lib.schema.metadata/column"}]]]
+   ;; If it's not already MLv2 metadata just make sure it at the least something that can pass for legacy metadata.
+   ;; This is a sanity check -- we should not be seen maps that have duplicate keys because of case confusion. They
+   ;; should be all one or the other.
+   [false
+    [:and
+     [:map]
+     [:fn
+      {:error/message "map that does not mix snake_case and kebab-case simple keywords"}
+      (fn [m]
+        (not (and (contains? m :display-name)
+                  (contains? m :display_name))))]]]])
+
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
@@ -266,7 +381,7 @@
    [:dataset-query   {:optional true} :map]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential :map]]]
+   [:result-metadata {:optional true} [:maybe [:sequential ::card.result-metadata.map]]]
    ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
    [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
@@ -366,5 +481,5 @@
   `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
   `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
   [:map
-   [:lib/type [:= :metadata/results]]
+   [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])

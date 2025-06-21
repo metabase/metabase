@@ -1,5 +1,6 @@
 (ns metabase.lib.table
   (:require
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.util :as lib.util]
@@ -53,4 +54,5 @@
                 (assoc col
                        :lib/source               :source/table-defaults
                        :lib/source-column-alias  (:name col)
-                       :lib/desired-column-alias (unique-name-fn (or (:name col) ""))))))))
+                       :lib/desired-column-alias (unique-name-fn (or (:name col) "")))))
+         lib.field.util/add-deduplicated-names)))

@@ -262,7 +262,7 @@
 #?(:clj
    (deftest lower-case-en-turkish-test
      ;; TODO Can we achieve something like with-locale in CLJS?
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "id"
               (u/lower-case-en "ID"))))))
 
@@ -272,7 +272,7 @@
 
 #?(:clj
    (deftest upper-case-en-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "ID"
               (u/upper-case-en "id"))))))
 
@@ -294,7 +294,7 @@
 
 #?(:clj
    (deftest capitalize-en-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= "Ibis"
               (u/capitalize-en "ibis")
               (u/capitalize-en "IBIS")
@@ -348,7 +348,7 @@
 
 #?(:clj
    (deftest normalize-map-turkish-test
-     (mt/with-locale "tr"
+     (mt/with-locale! "tr"
        (is (= {:bird "Toucan"}
               (u/normalize-map {:BIRD "Toucan"}))))))
 

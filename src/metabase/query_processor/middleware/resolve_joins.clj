@@ -17,7 +17,7 @@
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike [[mbql.s/Joins]], this does not enforce the constraint that all join
-  aliases be unique; that is handled by the [[metabase.query-processor.middleware.escape-join-aliases]] middleware."
+  aliases be unique."
   [:sequential {:min 1} mbql.s/Join])
 
 (def ^:private UnresolvedMBQLQuery
@@ -138,7 +138,10 @@
   [{breakouts :breakout, aggregations :aggregation}]
   (every? empty? [aggregations breakouts]))
 
-(defn- append-join-fields [fields join-fields]
+(defn- append-join-fields
+  "This (supposedly) matches the behavior of [[metabase.lib.stage/add-cols-from-join]]. When we migrate this namespace
+  to Lib we can maybe use that."
+  [fields join-fields]
   (into []
         (comp cat
               (m/distinct-by (fn [clause]

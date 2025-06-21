@@ -91,7 +91,7 @@
                                                                           :sd  23.06}}))]
     (assoc column :display_name (:name column))))
 
-(deftest save-result-metadata-test
+(deftest ^:parallel save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
     (let [query (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})]
       (mt/with-temp [:model/Card card {:dataset_query query}]
@@ -105,7 +105,6 @@
             (throw (ex-info "Query failed." result))))
         (is (=? (round-to-2-decimals (default-card-results-native))
                 (-> card card-metadata round-to-2-decimals)))
-
         ;; updated_at should not be modified when saving result metadata
         (is (= (:updated_at card)
                (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
@@ -118,7 +117,7 @@
                         :display_name "Name"
                         :base_type    :type/Text}]}))
 
-(deftest save-result-metadata-test-2
+(deftest ^:parallel save-result-metadata-test-2
   (testing "check that using a Card as your source doesn't overwrite its results metadata..."
     (mt/with-temp [:model/Card card (test-card-1)]
       (is (= [{:name         "NAME"
@@ -150,7 +149,7 @@
                :base_type    :type/Text}]
              (card-metadata card))))))
 
-(deftest save-result-metadata-test-4
+(deftest ^:parallel save-result-metadata-test-4
   (testing "check that using a Card as your source doesn't overwrite the results metadata for MBQL queries..."
     (mt/with-temp [:model/Card card {:dataset_query   (mt/mbql-query venues {:fields [$name]})
                                      :result_metadata [{:name         "NAME"
@@ -265,7 +264,7 @@
             (is (= (map choose existing-metadata)
                    (map choose (-> results :data :results_metadata :columns))))))))))
 
-(deftest card-with-datetime-breakout-by-year-test
+(deftest ^:parallel card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
     (mt/with-temp [:model/Card card]
       (qp/process-query
@@ -278,13 +277,9 @@
       (is (=? [{:base_type    :type/Date
                 :effective_type    :type/Date
                 :visibility_type :normal
-                :coercion_strategy nil
                 :display_name "Date: Year"
                 :name         "DATE"
                 :unit         :year
-                :settings     nil
-                :description  nil
-                :semantic_type nil
                 :fingerprint  {:global {:distinct-count 618 :nil% 0.0}
                                :type   {:type/DateTime {:earliest "2013-01-03"
                                                         :latest   "2015-12-29"}}}

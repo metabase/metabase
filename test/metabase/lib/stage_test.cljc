@@ -5,10 +5,13 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs
@@ -36,7 +39,7 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}]
       (is (mr/validate ::lib.schema/query query))
-      (is (=? [(merge (meta/field-metadata :venues :price)
+      (is (=? [(merge (m/filter-vals some? (meta/field-metadata :venues :price))
                       {:lib/source :source/fields})]
               (lib/returned-columns query))))))
 
@@ -448,3 +451,179 @@
                          (lib/breakout (by-name "CATEGORY_ID"))))]]
       (is (= (inc (lib/stage-count query))
              (lib/stage-count (lib/ensure-filter-stage query)))))))
+
+;;; adapted from [[metabase.query-processor.middleware.remove-inactive-field-refs-test/deleted-columns-before-deletion-test-3]]
+(deftest ^:parallel add-correct-fields-for-join-test
+  (testing "Make sure we do the right thing with deduplicated field refs like ID_2"
+    (let [mp (lib.tu/metadata-provider-with-cards-for-queries
+              meta/metadata-provider
+              [(lib.tu.macros/mbql-query orders
+                 {:fields [$id $subtotal $tax $total $created-at $quantity]
+                  :joins [{:source-table $$products
+                           :alias "Product"
+                           :condition
+                           [:= $orders.product-id
+                            [:field %products.id {:join-alias "Product"}]]
+                           :fields
+                           [[:field %products.id {:join-alias "Product"}] ; AKA ID_2
+                            [:field %products.title {:join-alias "Product"}]
+                            [:field %products.vendor {:join-alias "Product"}]
+                            [:field %products.price {:join-alias "Product"}]
+                            [:field %products.rating {:join-alias "Product"}]]}]})])
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:fields [[:field "ID_2"   {:join-alias "Card", :base-type :type/BigInteger}]
+                             [:field "TOTAL"  {:join-alias "Card", :base-type :type/Float}]
+                             [:field "TAX"    {:join-alias "Card", :base-type :type/Float}]
+                             [:field "VENDOR" {:join-alias "Card", :base-type :type/Text}]]
+                    :joins [{:source-table "card__1"
+                             :alias "Card"
+                             :condition
+                             [:= $products.id
+                              [:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}]]
+                             :fields
+                             [[:field "ID_2" {:join-alias "Card"
+                                              :base-type :type/BigInteger}] ; PRODUCTS.ID -- (meta/id :products :id)
+                              [:field "TOTAL" {:join-alias "Card"
+                                               :base-type :type/Float}]
+                              [:field "TAX" {:join-alias "Card"
+                                             :base-type :type/Float}]
+                              [:field "VENDOR" {:join-alias "Card"
+                                                :base-type :type/Text}]]}]}))]
+      ;; should include ID as well.
+      (is (=? [{:id (meta/id :products :id),    :display-name "ID"}
+               {:id (meta/id :orders :total),   :display-name "Total"}
+               {:id (meta/id :orders :tax),     :display-name "Tax"}
+               {:id (meta/id :products :vendor) :display-name "Vendor"}]
+              (lib.metadata.calculation/returned-columns query))))))
+
+(deftest ^:parallel deduplicate-field-from-join-test
+  (testing "We should correctly deduplicate columns in :fields and [:join :fields] (#59664)"
+    (let [query (lib/query meta/metadata-provider
+                           (lib.tu.macros/mbql-query orders
+                             {:joins [{:alias        "Q"
+                                       :strategy     :left-join
+                                       :source-query {:source-table $$reviews
+                                                      :joins        [{:alias        "P"
+                                                                      :strategy     :left-join
+                                                                      :fk-field-id  %orders.product-id
+                                                                      :condition    [:=
+                                                                                     [:field %orders.product-id nil]
+                                                                                     [:field %products.id {:join-alias "P"}]]
+                                                                      :source-table $$products}]
+                                                      :aggregation  [[:aggregation-options [:count] {:name "count"}]]
+                                                      :breakout     [$reviews.product-id]
+                                                      :filter       [:=
+                                                                     [:field
+                                                                      %products.category
+                                                                      {:source-field %reviews.product-id
+                                                                       :join-alias "P"}]
+                                                                     "Doohickey"]
+                                                      :order-by     [[:asc $reviews.product-id]]}
+                                       :fields    [[:field $reviews.product-id {:join-alias "Q"}]
+                                                   [:field "count" {:base-type :type/Integer, :join-alias "Q"}]]
+                                       :condition [:=
+                                                   $orders.product-id
+                                                   [:field %reviews.product-id {:join-alias "Q"}]]}]
+                              :fields [$orders.id
+                                       $orders.product-id
+                                       [:field %reviews.product-id {:join-alias "Q"}]
+                                       [:field "count" {:base-type :type/Integer, :join-alias "Q"}]]}))]
+      (is (= ["ID"
+              "PRODUCT_ID"
+              "Q__PRODUCT_ID"
+              "Q__count"]
+             (map :lib/desired-column-alias (lib/returned-columns query)))))))
+
+(deftest ^:parallel calculate-names-without-truncation-test
+  (testing "Do not truncate column `:name` ever (#59665)"
+    (let [query {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :stages       [{:lib/type           :mbql.stage/native
+                                 :native             "SELECT * FROM whatever"
+                                 :lib/stage-metadata {:columns
+                                                      [{:database-type  "CHARACTER VARYING"
+                                                        :name           "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                        :effective-type :type/Text
+                                                        :display-name   "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                        :base-type      :type/Text
+                                                        :lib/type       :metadata/column}
+                                                       {:database-type  "BIGINT"
+                                                        :name           "coun"
+                                                        :effective-type :type/BigInteger
+                                                        :display-name   "coun"
+                                                        :base-type      :type/BigInteger
+                                                        :lib/type       :metadata/column}]
+                                                      :lib/type :metadata/results}}
+                                {:lib/type :mbql.stage/mbql
+                                 :fields   [[:field
+                                             {:base-type :type/Text, :lib/uuid "48208564-d2f2-462c-9794-1feaed36867a"}
+                                             "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"]
+                                            [:field
+                                             {:base-type :type/BigInteger, :lib/uuid "0f8df0f0-1244-4ca9-aa7f-9134b58e4ea3"}
+                                             "coun"]]}]
+                 :database     (meta/id)}]
+      (doseq [stage-number [0 1]]
+        (testing (str "Stage number = " stage-number)
+          (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+                   {:name "coun"}]
+                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {:unique-name-fn
+                                                                                                      (fn identity-generator
+                                                                                                        ([]
+                                                                                                         identity-generator)
+                                                                                                        ([s]
+                                                                                                         s))}))))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-test
+  (testing "Remapped columns in joined source queries should work (#15578)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title $category]}))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= [[(meta/id :products :title)    "TITLE"         "TITLE"    "Title"]                     ; products.title
+                [(meta/id :products :category) "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
+                [(meta/id :products :title)    "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
+                [nil                           "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
+               (map (juxt :id :lib/desired-column-alias :lib/source-column-alias :display-name)
+                    (lib.metadata.calculation/returned-columns
+                     query
+                     -1
+                     (lib.util/query-stage query -1)
+                     {:include-remaps? true}))))))))
+
+(deftest ^:parallel no-duplicate-remaps-test
+  (testing "Do not add duplicate columns when :include-remaps? is true (QUE-1410)"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :venues :category-id) (meta/id :categories :name))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query venues
+                   {:joins  [{:source-table $$categories
+                              :condition    [:= 1 1]
+                              :alias        "CATEGORIES__via__CATEGORY_ID"
+                              :fields       :none}]
+                    :fields [$venues.id
+                             $venues.name
+                             $venues.category-id
+                             $venues.latitude
+                             $venues.longitude
+                             $venues.price
+                             ;; this is already here, DO NOT add a duplicate of it.
+                             &CATEGORIES__via__CATEGORY_ID.categories.name]}))]
+      (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
+             (map :lib/desired-column-alias (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})))))))

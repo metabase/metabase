@@ -500,9 +500,9 @@
                   [(:name param) (:value param)]
 
                   (when-let [field-id (driver-api/match-one param
-                                                            [:field (field-id :guard integer?) _]
-                                                            (when (contains? (set &parents) :dimension)
-                                                              field-id))]
+                                        [:field (field-id :guard integer?) _]
+                                        (when (contains? (set &parents) :dimension)
+                                          field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
         user-parameters))
