@@ -2,8 +2,8 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Flex, Loader } from "metabase/ui";
