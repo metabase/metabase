@@ -63,7 +63,6 @@ import {
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
@@ -148,7 +147,6 @@ type VisualizationOwnProps = {
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
-  query?: NativeQuery;
   rawSeries?: (
     | SingleSeries
     | {
@@ -603,7 +601,6 @@ class Visualization extends PureComponent<
       metadata,
       mode,
       onEditSummary,
-      query,
       queryBuilderMode,
       rawSeries = [],
       visualizerRawSeries,
@@ -661,7 +658,7 @@ class Visualization extends PureComponent<
       } else {
         try {
           if (visualization.checkRenderable && series) {
-            visualization.checkRenderable(series, settings, query);
+            visualization.checkRenderable(series, settings);
           }
         } catch (e: unknown) {
           error =
