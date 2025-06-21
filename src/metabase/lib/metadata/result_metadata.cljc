@@ -75,12 +75,9 @@
            (u/select-non-nil-keys lib-col [:name :lib/source])
            ;; whatever type comes back from the query is by definition the effective type, otherwise fall back to the
            ;; type calculated by MLv2
-           {:effective-type (or (when-let [driver-base-type (:base-type driver-col)]
-                                  (when-not (= driver-base-type :type/*)
-                                    driver-base-type))
+           {:effective-type (or (:base-type driver-col)
                                 (:effective-type lib-col)
-                                (:base-type lib-col)
-                                :type/*)})))
+                                (:base-type lib-col))})))
 
 (mu/defn- merge-cols :- [:sequential ::kebab-cased-map]
   "Merge our column metadata (`:cols`) from MLv2 with the `initial-cols` metadata returned by the driver.
@@ -261,7 +258,9 @@
                        col
                        (when-not remove-join-alias?
                          (when-let [previous-join-alias (:lib/original-join-alias col)]
-                           {:metabase.lib.join/join-alias previous-join-alias})))
+                           {:metabase.lib.join/join-alias previous-join-alias}))
+                       (when-let [original-name (:lib/original-name col)]
+                         {:name original-name}))
                       lib.ref/ref))))
            lib.convert/->legacy-MBQL
            (fe-friendly-expression-ref col)))))
@@ -332,8 +331,8 @@
          add-source-alias
          add-legacy-source
          (add-traditional-display-names query)
-         deduplicate-names
          (add-legacy-field-refs query)
+         deduplicate-names
          (merge-model-metadata query))))
 
 (defn- add-unit [col]
