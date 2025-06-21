@@ -117,7 +117,7 @@ describe("scenarios > admin > performance > strategy form", () => {
       H.restore();
       interceptPerformanceRoutes();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("has the correct nav items", () => {

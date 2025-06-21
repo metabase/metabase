@@ -485,7 +485,7 @@ describe("scenarios > setup (EE)", () => {
 
       cy.findByText("Activate your commercial license").should("exist");
 
-      typeToken(Cypress.env("NO_FEATURES_TOKEN"));
+      typeToken(Cypress.env("MB_STARTER_CLOUD_TOKEN"));
 
       cy.button("Activate").click();
 

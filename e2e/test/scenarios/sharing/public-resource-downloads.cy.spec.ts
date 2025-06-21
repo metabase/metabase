@@ -23,7 +23,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
@@ -176,7 +176,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         cy.visit(`/question/${ORDERS_BY_YEAR_QUESTION_ID}`);
 
@@ -268,7 +268,7 @@ H.describeWithSnowplowEE(
       before(() => {
         H.restore("default");
         cy.signInAsAdmin();
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
 
         H.createNativeQuestion(
           {

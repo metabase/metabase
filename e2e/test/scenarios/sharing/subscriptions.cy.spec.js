@@ -586,7 +586,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
   describe("EE email subscriptions", { tags: "@external" }, () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       H.setupSMTP();
       cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     });
