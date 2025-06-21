@@ -1232,6 +1232,7 @@ describe("scenarios > dashboard", () => {
       cy.wait("@queryMetadata");
       assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
+      cy.reload();
 
       // edit
       H.editDashboard();
@@ -1241,6 +1242,7 @@ describe("scenarios > dashboard", () => {
       dragOnXAxis(card, 100);
       assertPreventLeave();
       H.saveDashboard();
+      cy.reload();
 
       // remove
       H.editDashboard();
@@ -1257,6 +1259,8 @@ describe("scenarios > dashboard", () => {
       assertPreventLeave();
       H.saveDashboard();
 
+      cy.reload();
+
       // move tab
       H.editDashboard();
       dragOnXAxis(cy.findByRole("tab", { name: "Tab 2" }), -200);
@@ -1267,6 +1271,8 @@ describe("scenarios > dashboard", () => {
       cy.wait(1000);
       assertPreventLeave();
       H.saveDashboard();
+
+      cy.reload();
 
       // duplicate tab
       H.editDashboard();
@@ -1280,6 +1286,8 @@ describe("scenarios > dashboard", () => {
         "true",
       );
 
+      cy.reload();
+
       // remove tab
       H.editDashboard();
       H.deleteTab("Copy of Tab 1");
@@ -1288,6 +1296,8 @@ describe("scenarios > dashboard", () => {
       cy.url().should("include", "tab-1");
       assertPreventLeave();
       H.saveDashboard({ waitMs: 100 });
+
+      cy.reload();
 
       // rename tab
       H.editDashboard();
@@ -1298,8 +1308,10 @@ describe("scenarios > dashboard", () => {
     function createNewDashboard() {
       H.newButton("Dashboard").click();
       H.modal().within(() => {
-        cy.findByLabelText("Name").type("Test");
-        cy.findByRole("button", { name: "Create" }).click();
+        cy.findByLabelText("Name").should("be.focused");
+        cy.findByLabelText("Name").realType("Test");
+        cy.findByRole("button", { name: "Create" }).should("not.be.disabled");
+        cy.findByRole("button", { name: "Create" }).realClick({ force: true });
       });
     }
 
