@@ -91,6 +91,9 @@
    :moderated_status    :text
    :display             :text
    :dashboard_id        :integer
+   :display_type        :text
+   :has_temporal_dimensions :boolean
+   :non_temporal_dimension_ids :text
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -328,6 +331,28 @@
     :where  [:= :report_dashboardcard.card_id :card.id]}
    :dashboardcard_count])
 
+(def ^:private has-temporal-dimensions-col
+  [[:case
+    [:like :result_metadata "%\"temporal_unit\":%"] true
+    :else false] :has_temporal_dimensions])
+
+(def ^:private non-temporal-dimensions-col
+  "Extracts IDs of non-temporal dimensions from result_metadata JSON.
+  Only supported for PostgreSQL app databases - returns empty array for others."
+  [(if (= (mdb/db-type) :postgres)
+     [:raw "COALESCE(
+            (SELECT jsonb_agg(field_id ORDER BY field_id)
+             FROM (
+               SELECT DISTINCT (elem->>'id')::integer as field_id
+               FROM jsonb_array_elements(card.result_metadata::jsonb) elem
+               WHERE elem->>'id' IS NOT NULL
+                 AND elem->>'temporal_unit' IS NULL
+             ) sorted_ids),
+            '[]'::jsonb
+          )"]
+     [:raw "'[]'"])
+   :non_temporal_dimension_ids])
+
 (def ^:private table-columns
   "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
@@ -362,7 +387,11 @@
         [:collection.authority_level :collection_authority_level]
         [:dashboard.name :dashboard_name]
         :dashboard_id
-        bookmark-col dashboardcard-count-col))
+        bookmark-col dashboardcard-count-col
+        :result_metadata
+        has-temporal-dimensions-col
+        non-temporal-dimensions-col
+        [:display :display_type]))
 
 (defmethod columns-for-model "indexed-entity" [_]
   [[:model-index-value.name     :name]

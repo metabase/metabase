@@ -106,53 +106,75 @@ export function groupColumnsBySuitableVizSettings(
   }
 }
 
+export function partitionTimeDimensions<T extends DatasetColumn[] | Field[]>(
+  columns: T,
+): {
+  dimensions: T;
+  timeDimensions: T;
+  otherDimensions: T;
+} {
+  // Extract only dimension columns (exclude metrics and pivot group columns)
+  const dimensions = columns.filter(
+    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
+  ) as T;
+
+  // Partition temporal & non-temporal dimensions
+  const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
+    isDate(col),
+  ) as unknown as [T, T];
+
+  return { dimensions, timeDimensions, otherDimensions };
+}
+
 function checkDimensionCompatibilityForCartesianCharts(
   ownColumns: DatasetColumn[],
-  columns: DatasetColumn[] | Field[],
+  targetColumns: DatasetColumn[] | Field[],
 ) {
-  const ownDimensions = ownColumns.filter(
-    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-  );
+  const {
+    dimensions: ownDimensions,
+    timeDimensions: ownTimeDimensions,
+    otherDimensions: ownOtherDimensions,
+  } = partitionTimeDimensions(ownColumns);
 
+  // Cartesian charts require at least one dimension in the current visualization
   if (ownDimensions.length === 0) {
     return false;
   }
 
-  const [ownTimeDimensions, ownOtherDimensions] = _.partition(
-    ownDimensions,
-    (col) => isDate(col),
-  );
+  // If current viz has time dimensions, target dataset must have at least one date field
   if (ownTimeDimensions.length > 0) {
-    const isCompatible = columns.some((field) => isDate(field));
+    const isCompatible = targetColumns.some((field) => isDate(field));
     if (!isCompatible) {
       return false;
     }
   }
+
+  // If current viz has non-time dimensions, target dataset must contain all of them (by ID)
   if (ownOtherDimensions.length > 0) {
     const isCompatible = ownOtherDimensions.every((dimension) =>
-      columns.some((field) => dimension.id && field.id === dimension.id),
+      targetColumns.some((field) => dimension.id && field.id === dimension.id),
     );
     if (!isCompatible) {
       return false;
     }
   }
 
-  const dimensions = columns.filter(
-    (col) => isDimension(col) && !isMetric(col) && !isPivotGroupColumn(col),
-  );
-  const [timeDimensions, otherDimensions] = _.partition(dimensions, (col) =>
-    isDate(col),
-  );
+  const {
+    timeDimensions: targetTimeDimensions,
+    otherDimensions: targetOtherDimensions,
+  } = partitionTimeDimensions(targetColumns);
 
-  if (timeDimensions.length > 0) {
+  // If target dataset has time dimensions, current viz must have at least one date field
+  if (targetTimeDimensions.length > 0) {
     const isCompatible = ownColumns.some((field) => isDate(field));
     if (!isCompatible) {
       return false;
     }
   }
 
-  if (otherDimensions.length > 0) {
-    const isCompatible = otherDimensions.every((dimension) =>
+  // If target dataset has non-time dimensions, current viz must contain all of them (by ID)
+  if (targetOtherDimensions.length > 0) {
+    const isCompatible = targetOtherDimensions.every((dimension) =>
       ownColumns.some((field) => dimension.id && field.id === dimension.id),
     );
     if (!isCompatible) {
