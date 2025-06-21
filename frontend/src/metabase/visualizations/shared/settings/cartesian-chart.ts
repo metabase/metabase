@@ -8,6 +8,7 @@ import {
 } from "metabase/visualizations";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
+import { getBreakoutDimensionsColumns } from "metabase/visualizations/lib/graph/columns";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
@@ -405,7 +406,11 @@ export function getAvailableAdditionalColumns(
   getCardsColumns(rawSeries, settings).forEach((cardColumns) => {
     alreadyIncludedColumns.add(cardColumns.dimension.column);
     if ("breakout" in cardColumns) {
-      alreadyIncludedColumns.add(cardColumns.breakout.column);
+      for (const breakoutColumn of getBreakoutDimensionsColumns(
+        cardColumns.breakout,
+      )) {
+        alreadyIncludedColumns.add(breakoutColumn);
+      }
       alreadyIncludedColumns.add(cardColumns.metric.column);
     } else {
       cardColumns.metrics.forEach((columnDescriptor) =>
