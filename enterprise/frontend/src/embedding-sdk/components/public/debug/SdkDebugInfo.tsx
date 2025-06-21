@@ -1,7 +1,10 @@
 /* eslint-disable i18next/no-literal-string */
 import dayjs from "dayjs";
 
-import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import {
+  embeddingSdkBundleFormat,
+  embeddingSdkVersion,
+} from "embedding-sdk/env";
 
 /**
  * @internal
@@ -32,7 +35,13 @@ export const SdkDebugInfo = (props: React.HTMLAttributes<HTMLDivElement>) => {
           <tr>
             <td>Sdk version:</td>
             <td>
-              <b>{getEmbeddingSdkVersion()}</b>
+              <b>{embeddingSdkVersion}</b>
+            </td>
+          </tr>
+          <tr>
+            <td>Bundle format:</td>
+            <td>
+              <b>{embeddingSdkBundleFormat}</b>
             </td>
           </tr>
           <tr>

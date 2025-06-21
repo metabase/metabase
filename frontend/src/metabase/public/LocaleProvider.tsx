@@ -8,7 +8,12 @@ import {
 
 import { useSetting } from "metabase/common/hooks";
 import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
+import {
+  loadLazyLocalization,
+  loadLocalization,
+  setUserLocale,
+} from "metabase/lib/i18n";
+import { PLUGIN_LAZY_LOAD_SDK_DATE_LOCALES } from "metabase/plugins";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 
 interface LocaleProviderProps {
@@ -41,7 +46,15 @@ export const LocaleProvider = ({
       );
 
       setLocaleHeader(localeToLoad);
-      loadLocalization(localeToLoad)
+
+      const loadLocalizationPromise = PLUGIN_LAZY_LOAD_SDK_DATE_LOCALES.load
+        ? loadLazyLocalization(
+            localeToLoad,
+            PLUGIN_LAZY_LOAD_SDK_DATE_LOCALES.load,
+          )
+        : loadLocalization(localeToLoad);
+
+      loadLocalizationPromise
         .then((translatedObject) => {
           setIsLocaleLoading(false);
           setUserLocale(translatedObject);
