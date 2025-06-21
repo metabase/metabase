@@ -6,6 +6,7 @@ export * from "./UpsellMetabaseBanner";
 export * from "./UpsellPerformanceTools";
 export * from "./UpsellPermissions";
 export * from "./UpsellSSO";
+export * from "./UpsellStorage";
 export * from "./UpsellUploads";
 export * from "./UpsellUsageAnalytics";
 export * from "./UpsellWhitelabel";
