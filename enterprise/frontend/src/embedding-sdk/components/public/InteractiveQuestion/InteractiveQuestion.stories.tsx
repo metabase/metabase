@@ -21,6 +21,7 @@ export default {
   component: InteractiveQuestion,
   parameters: {
     layout: "fullscreen",
+    controls: { sort: "alpha", expanded: true },
   },
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
@@ -35,6 +36,14 @@ export default {
       control: { type: "radio" },
     },
     questionId: questionIdArgType,
+    questionIdOverride: {
+      control: {
+        type: "text",
+      },
+      label: "arst",
+      description:
+        "Number only. If set, this will override the questionId prop and use the provided value instead.",
+    },
     entityTypes: {
       options: [
         "model",
@@ -66,10 +75,18 @@ export default {
   },
 };
 
-const Template: StoryFn<InteractiveQuestionComponentProps> = (args) => {
+interface AdditionalArgs {
+  questionIdOverride?: number;
+}
+const Template: StoryFn<InteractiveQuestionComponentProps & AdditionalArgs> = (
+  args,
+) => {
   return (
     <Box bg="var(--mb-color-background)" mih="100vh">
-      <InteractiveQuestion {...args} />
+      <InteractiveQuestion
+        {...args}
+        questionId={Number(args.questionIdOverride) || args.questionId}
+      />
     </Box>
   );
 };

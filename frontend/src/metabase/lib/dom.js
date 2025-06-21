@@ -235,7 +235,12 @@ export function getSitePath() {
   return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
 }
 
-function isMetabaseUrl(url) {
+/**
+ * A function that determines if the given URL is an internal link or an external link.
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isMetabaseUrl(url) {
   const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
 
   if (!isAbsoluteUrl(url)) {
