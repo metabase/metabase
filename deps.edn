@@ -187,8 +187,8 @@
   redux/redux                               {:git/url "https://github.com/metabase/redux"
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.14.1"}             ; HTTP abstraction
-  ring/ring-jetty-adapter                   {:mvn/version "1.14.1"              ; Ring adapter for Jetty
+  ring/ring-core                            {:mvn/version "1.14.2"}             ; HTTP abstraction
+  ring/ring-jetty-adapter                   {:mvn/version "1.14.2"              ; Ring adapter for Jetty
                                              :exclusions  [org.eclipse.jetty/jetty-server
                                                            org.eclipse.jetty/jetty-unixdomain-server
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
@@ -266,8 +266,8 @@
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
     rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
-    ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
-    ring/ring-mock               {:mvn/version "0.4.0"}                     ; creating Ring request maps for testing purposes
+    ring/ring-devel              {:mvn/version "1.14.2"}                    ; reload clojure files on the fly
+    ring/ring-mock               {:mvn/version "0.6.1"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
    :jvm-opts    ["-Dmb.run.mode=dev"
