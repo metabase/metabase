@@ -124,14 +124,14 @@
       (isa? base-type :type/DruidHyperUnique)  :metric
       :else                                    :dimension)))
 
-(defn- random-query-id []
+(defn- ^:dynamic *random-query-id* []
   (str (random-uuid)))
 
 (defn- query-type->default-query [query-type]
   (merge
    {:intervals   ["1900-01-01/2100-01-01"]
     :granularity :all
-    :context     {:queryId (random-query-id)}}
+    :context     {:queryId (*random-query-id*)}}
    (case query-type
      ::scan               {:queryType :scan
                            :limit     driver-api/absolute-max-results}
