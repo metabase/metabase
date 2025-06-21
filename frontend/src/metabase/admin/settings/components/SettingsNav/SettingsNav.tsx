@@ -10,6 +10,8 @@ import {
   AdminNavWrapper,
 } from "../AdminNav";
 
+import { UpdatesNavItem } from "./UpdatesNavItem";
+
 const NavDivider = () => <Divider my="sm" />;
 
 export function SettingsNav() {
@@ -48,9 +50,7 @@ export function SettingsNav() {
         label={t`Notification channels`}
         icon="bell"
       />
-      {!hasHosting && (
-        <SettingsNavItem path="updates" label={t`Updates`} icon="sparkles" />
-      )}
+      {!hasHosting && <UpdatesNavItem />}
       <NavDivider />
       <SettingsNavItem
         path="localization"
@@ -125,7 +125,7 @@ export function SettingsNav() {
   );
 }
 
-function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
+export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
   return (
     <AdminNavItem
       data-testid={`settings-sidebar-link`}
