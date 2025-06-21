@@ -1755,3 +1755,27 @@
                 "Admin isn't able to read custom reports card when audit app isn't enabled")
             (is (not (mi/can-read? cr-dashboard))
                 "Admin isn't able to read custom reports dashboard when audit app isn't enabled")))))))
+
+(deftest collection-insert-updates-permission-graph-revision-test
+  (testing "Creating a new collection should increment the CollectionPermissionGraphRevision"
+    (let [initial-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection _ {:name "Test Collection"}]
+          (let [final-revision-count (t2/count :model/CollectionPermissionGraphRevision)]
+            (is (= (inc initial-revision-count) final-revision-count)
+                "A new CollectionPermissionGraphRevision should be created when inserting a collection")))))))
+
+(deftest collection-insert-skips-permissions-for-personal-collections-test
+  (testing "Creating a collection inside a personal collection should not copy permissions"
+    (let [user-id (mt/user->id :rasta)
+          personal-collection (collection/user->personal-collection user-id)
+          initial-perms-count (t2/count :model/Permissions)]
+      ;; Create a collection inside the personal collection
+      (mt/with-current-user (mt/user->id :rasta)
+        (mt/with-temp [:model/Collection _ {:name "Personal Child Collection"
+                                            :location (collection/children-location personal-collection)}]
+          ;; Verify no new permissions were created (beyond any that might exist for the personal collection itself)
+          (let [final-perms-count (t2/count :model/Permissions)]
+            ;; The count should be the same since personal collections don't get permission entries
+            (is (= initial-perms-count final-perms-count)
+                "No new permissions should be created for collections inside personal collections")))))))
