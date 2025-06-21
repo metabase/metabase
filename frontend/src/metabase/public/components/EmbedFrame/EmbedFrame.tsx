@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import TransitionS from "metabase/css/core/transitions.module.css";
 import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
-import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
+import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons";
 import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
@@ -26,7 +26,7 @@ import { useSyncUrlParameters } from "metabase/query_builder/hooks/use-sync-url-
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box } from "metabase/ui";
+import { Box, Divider, Group, Space } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/image-exports";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -45,13 +45,8 @@ import {
   ActionButtonsContainer,
   Body,
   ContentContainer,
-  DashboardTabsContainer,
   Footer,
-  Header,
   Root,
-  Separator,
-  TitleAndButtonsContainer,
-  TitleAndDescriptionContainer,
 } from "./EmbedFrame.styled";
 import { LogoBadge } from "./LogoBadge";
 
@@ -200,55 +195,64 @@ export const EmbedFrame = ({
         })}
       >
         {hasHeader && (
-          <Header
-            className={cx(
-              EmbedFrameS.EmbedFrameHeader,
-              SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
-            )}
-            data-testid="embed-frame-header"
-          >
-            {(finalName || pdfDownloadsEnabled) && (
-              <TitleAndDescriptionContainer hasTitle={!!finalName}>
-                <TitleAndButtonsContainer
-                  data-testid="fixed-width-dashboard-header"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  {finalName && (
-                    <TitleAndDescription
-                      title={finalName}
-                      description={description}
-                      className={CS.my2}
-                    />
-                  )}
-                  <Box style={{ flex: 1 }} />
-                  {dashboard && pdfDownloadsEnabled && (
-                    <ExportAsPdfButton
-                      dashboard={dashboard}
-                      hasTitle={titled}
-                      hasVisibleParameters={hasVisibleParameters}
-                    />
-                  )}
-                  {headerButtons}
-                </TitleAndButtonsContainer>
-              </TitleAndDescriptionContainer>
-            )}
-            {dashboardTabs && (
-              <DashboardTabsContainer>
-                <FixedWidthContainer
-                  data-testid="fixed-width-dashboard-tabs"
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  {dashboardTabs}
-                </FixedWidthContainer>
-              </DashboardTabsContainer>
-            )}
-
-            {finalName && <Separator className={EmbedFrameS.Separator} />}
-          </Header>
+          <Box display="contents" data-testid="embed-frame-header">
+            <Space my="sm" />
+            <FixedWidthContainer
+              data-testid="fixed-width-dashboard-header"
+              component="header"
+              className={cx(
+                EmbedFrameS.EmbedFrameHeader,
+                CS.overflowHidden,
+                SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
+                {
+                  [EmbedFrameS.WithoutTitle]: !titled,
+                },
+              )}
+              isFixedWidth={dashboard?.width === "fixed"}
+              data-is-fixed-width={dashboard?.width === "fixed"}
+              px={{ base: "md", lg: 0 }}
+            >
+              {finalName && (
+                <TitleAndDescription
+                  title={finalName}
+                  description={description}
+                  className={cx(EmbedFrameS.DashboardTitle, CS.my2)}
+                />
+              )}
+              <Box className={EmbedFrameS.HeaderButtons} mt={titled ? "md" : 0}>
+                {headerButtons}
+                {dashboard && pdfDownloadsEnabled && (
+                  <Group
+                    justify="flex-end"
+                    pos={
+                      (dashboard?.tabs ?? []).length === 0 &&
+                      !finalName &&
+                      hasVisibleParameters
+                        ? "absolute"
+                        : "static"
+                    }
+                    top={
+                      (dashboard?.tabs ?? []).length > 1 && !finalName
+                        ? "1rem"
+                        : "1.75rem"
+                    }
+                    right={0}
+                  >
+                    <ExportAsPdfButton dashboard={dashboard} />
+                  </Group>
+                )}
+              </Box>
+              <FixedWidthContainer
+                data-testid="fixed-width-dashboard-tabs"
+                isFixedWidth={dashboard?.width === "fixed"}
+                className={EmbedFrameS.DashboardTabs}
+              >
+                {dashboardTabs}
+              </FixedWidthContainer>
+            </FixedWidthContainer>
+            {dashboardTabs && <Divider />}
+          </Box>
         )}
-
-        {/* show floating header buttons if there is no title */}
-        {headerButtons && !titled ? headerButtons : null}
 
         <span ref={parameterPanelRef} />
         {hasVisibleParameters && (

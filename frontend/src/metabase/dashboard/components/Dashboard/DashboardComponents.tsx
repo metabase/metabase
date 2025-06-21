@@ -7,6 +7,7 @@ import S from "./Dashboard.module.css";
 export const FIXED_WIDTH = "1048px";
 export const FixedWidthContainer = (
   props: BoxProps & {
+    component?: any;
     isFixedWidth: boolean;
     children: React.ReactNode;
     id?: string;
