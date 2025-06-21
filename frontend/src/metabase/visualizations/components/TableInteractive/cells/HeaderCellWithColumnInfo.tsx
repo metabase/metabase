@@ -1,13 +1,13 @@
 import type React from "react";
 import { memo, useMemo } from "react";
 
+import { useMousePressed } from "metabase/common/hooks/use-mouse-pressed";
 import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import {
   HeaderCellPill,
   type HeaderCellProps,
   HeaderCellWrapper,
 } from "metabase/data-grid";
-import { useMousePressed } from "metabase/hooks/use-mouse-pressed";
 import type { MantineTheme } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

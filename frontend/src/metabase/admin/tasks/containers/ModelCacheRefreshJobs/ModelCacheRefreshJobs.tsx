@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListPersistedInfoQuery } from "metabase/api";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -13,7 +14,6 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import PersistedModels from "metabase/entities/persisted-models";
-import { usePagination } from "metabase/hooks/use-pagination";
 import { capitalize } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

@@ -1,4 +1,5 @@
 import { useListUsersQuery } from "metabase/api";
+import { usePagination } from "metabase/common/hooks/use-pagination";
 import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";
@@ -9,7 +10,6 @@ import {
   PERSONAL_COLLECTIONS,
   ROOT_COLLECTION,
 } from "metabase/entities/collections/constants";
-import { usePagination } from "metabase/hooks/use-pagination";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Box, Flex, Icon, Loader } from "metabase/ui";

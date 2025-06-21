@@ -8,6 +8,10 @@ import { useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useFavicon } from "metabase/common/hooks/use-favicon";
+import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
+import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
@@ -53,10 +57,6 @@ import {
 } from "metabase/dashboard/hooks";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import { useFavicon } from "metabase/hooks/use-favicon";
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { parseHashOptions } from "metabase/lib/browser";
 import { connect, useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

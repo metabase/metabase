@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import { connect } from "metabase/lib/redux";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
 import { setErrorPage } from "metabase/redux/app";

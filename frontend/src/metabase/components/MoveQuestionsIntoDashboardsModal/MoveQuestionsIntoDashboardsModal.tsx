@@ -10,7 +10,7 @@ import {
   useListCollectionDashboardQuestionCandidatesQuery,
   useMoveCollectionDashboardQuestionCandidatesMutation,
 } from "metabase/api";
-import { useUserAcknowledgement } from "metabase/hooks/use-user-acknowledgement";
+import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";

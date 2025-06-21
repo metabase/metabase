@@ -6,6 +6,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
@@ -13,7 +14,6 @@ import {
   DatabaseForm,
   type DatabaseFormConfig,
 } from "metabase/databases/components/DatabaseForm";
-import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { useDispatch } from "metabase/lib/redux";
 import { Text } from "metabase/ui";
 import type {
