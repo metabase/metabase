@@ -43,16 +43,6 @@
   [:map
    [:cols {:optional true} ::cols]])
 
-(mu/defn- last-stage-type :- [:enum :mbql.stage/native :mbql.stage/mbql]
-  [query :- ::lib.schema/query]
-  (:lib/type (lib.util/query-stage query -1)))
-
-(defmulti add-column-info
-  "Middleware for adding type information about the columns in the query results (the `:cols` key)."
-  {:arglists '([query rff])}
-  (fn [query _rff]
-    (last-stage-type query)))
-
 ;;; TODO (Cam 6/18/25) -- only convert unnamespaced keys to snake case; other keys such as `lib/` keys should stay in
 ;;; kebab-case. No point in converting them back and forth a hundred times, and it's not like JS can use namespaced keys
 ;;; directly without bracket notation anyway (actually ideally the FE wouldn't even be using result metadata directly --
@@ -79,18 +69,17 @@
          (dissoc :lib/type)
          ->snake_case))))
 
-(mu/defmethod add-column-info :mbql.stage/mbql :- ::qp.schema/rff
-  [query :- ::lib.schema/query
-   rff   :- ::qp.schema/rff]
-  (mu/fn add-column-info-mbql-rff :- ::qp.schema/rf
-    [initial-metadata :- ::metadata]
-    (qp.debug/debug> (list `add-column-info query initial-metadata))
-    (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
-      (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
-      (rff metadata'))))
+(mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
+  [query            :- ::lib.schema/query
+   rff              :- ::qp.schema/rff
+   initial-metadata :- ::metadata]
+  (qp.debug/debug> (list `add-column-info query initial-metadata))
+  (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
+    (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
+    (rff metadata')))
 
 ;;;;
-;;;; NATIVE
+;;;; TYPE INFERENCE
 ;;;;
 
 (mu/defn base-type-inferer :- ::qp.schema/rf
@@ -125,13 +114,39 @@
              (map? result)
              (assoc-in [:data :cols] cols')))))))
 
-(mu/defmethod add-column-info :mbql.stage/native :- ::qp.schema/rff
+(mu/defn- add-column-info-with-type-inference :- ::qp.schema/rf
+  [query            :- ::lib.schema/query
+   rff              :- ::qp.schema/rff
+   initial-metadata :- ::metadata]
+  (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
+    (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
+    (infer-base-type-xform metadata' (rff metadata'))))
+
+;;;;
+;;;; MIDDLEWARE
+;;;;
+
+(mu/defn- needs-type-inference?
+  [query                                       :- ::lib.schema/query
+   {initial-cols :cols, :as _initial-metadata} :- ::metadata]
+  (and (= (:lib/type (lib.util/query-stage query 0)) :mbql.stage/native)
+       (or (empty? initial-cols)
+           (every? (fn [col]
+                     (let [base-type ((some-fn :base-type :base_type) col)]
+                       (or (nil? base-type)
+                           (= base-type :type/*))))
+                   initial-cols))))
+
+(mu/defn add-column-info :- ::qp.schema/rff
+  "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
-  (fn add-column-info-native-rff [initial-metadata]
-    (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
-      (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
-      (infer-base-type-xform metadata' (rff metadata')))))
+  (mu/fn :- ::qp.schema/rf
+    [initial-metadata :- ::metadata]
+    (let [f (if (needs-type-inference? query initial-metadata)
+              add-column-info-with-type-inference
+              add-column-info-no-type-inference)]
+      (f query rff initial-metadata))))
 
 ;;;;
 ;;;; NONSENSE

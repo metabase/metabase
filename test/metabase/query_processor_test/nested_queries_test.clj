@@ -62,7 +62,7 @@
 
 (deftest ^:parallel basic-sql-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
-    (testing "make sure we can do a basic query with a SQL source-query"
+    (testing "make sure we can do a basic query with a native source-query"
       (is (=? {:rows [[1 -165.374  4 3 "Red Medicine"                 10.0646]
                       [2 -118.329 11 2 "Stout Burgers & Beers"        34.0996]
                       [3 -118.428 11 2 "The Apple Pan"                34.0406]

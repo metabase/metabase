@@ -11,6 +11,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -837,3 +838,50 @@
       (is (= [[:field "TITLE" {:base-type :type/Text}]
               [:field "sum"   {:base-type :type/Float}]]
              (map :field-ref (result-metadata/expected-cols query)))))))
+
+(deftest ^:parallel mbql-query-type-inference-test
+  (testing "should add decent base/effective types if driver comes back with `:base-type :type/*`"
+    (doseq [initial-metadata [{:name "a"}
+                              {:name "a", :base-type :type/*}
+                              {:name "a", :base-type :type/*, :effective-type :type/*}
+                              {:name "a", :base-type :type/Integer}]
+            :let [expected-base-type (if (= (:base-type initial-metadata) :type/Integer)
+                                       ;; if the initial driver type comes back as something other than `:type/*`, we
+                                       ;; should use that. Otherwise if it comes back as `:type/*` use the type
+                                       ;; calculated by Lib.
+                                       :type/Integer
+                                       :type/BigInteger)]]
+      ;; should work with and without rows
+      (testing (lib.util/format "\ninitial-metadata = %s" (pr-str initial-metadata))
+        (is (=? [{:name           "ID"
+                  :display-name   "ID"
+                  :base-type      expected-base-type
+                  :effective-type expected-base-type
+                  :source         :fields
+                  :field-ref      [:field (meta/id :venues :id) nil]}]
+                (column-info
+                 (lib/query meta/metadata-provider (lib.tu.macros/mbql-query venues
+                                                     {:fields [$id]}))
+                 {:cols [initial-metadata]})))))))
+
+(deftest ^:parallel native-column-info-test
+  (testing "native column info"
+    (testing "should disambiguate duplicate names"
+      (doseq [rows [[]
+                    [[1 nil]]]
+              query [{:type :native, :native {:query "SELECT *"}}
+                     {:type :query, :query {:source-query {:native "SELECT *"}}}]]
+        (testing (lib.util/format "\nrows = %s,query = %s" (pr-str rows) (pr-str query))
+          (is (=? [{:name         "a"
+                    :display-name "a"
+                    :base-type    :type/Integer
+                    :source       :native
+                    :field-ref    [:field "a" {:base-type :type/Integer}]}
+                   {:name         "a_2"
+                    :display-name "a"
+                    :base-type    :type/Integer
+                    :source       :native
+                    :field-ref    [:field "a_2" {:base-type :type/Integer}]}]
+                  (column-info
+                   (lib/query meta/metadata-provider query)
+                   {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]}))))))))
