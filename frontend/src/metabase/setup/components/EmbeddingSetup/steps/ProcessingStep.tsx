@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useLazyGetXrayDashboardForModelQuery } from "metabase/api/automagic-dashboards";
+import { useCreateCardMutation } from "metabase/api/card";
+import { useSaveDashboardMutation } from "metabase/api/dashboard";
 import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
@@ -17,6 +20,9 @@ export const ProcessingStep = () => {
   const [processingStep, setProcessingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [updateSettings] = useUpdateSettingsMutation();
+  const [createCard] = useCreateCardMutation();
+  const [saveDashboard] = useSaveDashboardMutation();
+  const [getXrayDashboardForModel] = useLazyGetXrayDashboardForModelQuery();
 
   const {
     database,
@@ -37,7 +43,8 @@ export const ProcessingStep = () => {
 
   useEffect(() => {
     const process = async () => {
-      if (!database?.id || !selectedTables?.length) {
+      const databaseId = database?.id;
+      if (!databaseId || !selectedTables?.length) {
         setError("No database or tables selected");
         return;
       }
@@ -49,70 +56,48 @@ export const ProcessingStep = () => {
 
         // Create models for each table
         setProcessingStatus(t`Creating models...`);
-        const models = [];
-        for (const table of selectedTables) {
-          const response = await fetch("/api/card", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+
+        const models = await Promise.all(
+          selectedTables.map(async (table) => {
+            const model = await createCard({
               name: table.display_name,
               type: "model",
               display: "table",
-              result_metadata: null,
-              collection_id: null,
-              collection_position: 1,
               visualization_settings: {},
               dataset_query: {
                 type: "query",
-                database: database.id,
+                database: databaseId,
                 query: { "source-table": table.id },
               },
               description: `A model created via the embedding setup flow`,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to create model for ${table.display_name}`);
-          }
-
-          const model = await response.json();
-          models.push(model);
-          setProcessingStep((prev) => prev + 1);
-        }
+            }).unwrap();
+            setProcessingStep((prev) => prev + 1);
+            return model;
+          }),
+        );
 
         // Create x-ray dashboards for each model
         setProcessingStatus(t`Creating dashboards...`);
-        const dashboardIds = [];
-        for (const model of models) {
-          // Get the x-ray dashboard layout
-          const xrayResponse = await fetch(
-            `/api/automagic-dashboards/model/${model.id}?dashboard_load_id=${Date.now()}`,
-          );
+        const dashboardIds = await Promise.all(
+          models.map(async (model) => {
+            // Get the x-ray dashboard layout using the correct RTK Query hook
+            const dashboardContent = await getXrayDashboardForModel({
+              modelId: model.id,
+              dashboard_load_id: Date.now(),
+            }).unwrap();
 
-          if (!xrayResponse.ok) {
-            throw new Error(`Failed to generate x-ray for ${model.name}`);
-          }
-
-          const dashboardContent = await xrayResponse.json();
-
-          // Save the dashboard
-          const saveResponse = await fetch("/api/dashboard/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(dashboardContent),
-          });
-
-          if (!saveResponse.ok) {
-            throw new Error(`Failed to save dashboard for ${model.name}`);
-          }
-
-          const savedDashboard = await saveResponse.json();
-          dashboardIds.push(savedDashboard.id);
-          setProcessingStep((prev) => prev + 1);
-        }
+            // Save the dashboard
+            const savedDashboard =
+              await saveDashboard(dashboardContent).unwrap();
+            setProcessingStep((prev) => prev + 1);
+            return savedDashboard.id;
+          }),
+        );
 
         // Store the created dashboard IDs
-        setCreatedDashboardIds(dashboardIds);
+        setCreatedDashboardIds(
+          dashboardIds.filter((id): id is number => typeof id === "number"),
+        );
 
         // Move to final step
         goToNextStep();
@@ -129,6 +114,9 @@ export const ProcessingStep = () => {
     setCreatedDashboardIds,
     setupSettings,
     goToNextStep,
+    createCard,
+    saveDashboard,
+    getXrayDashboardForModel,
   ]);
 
   if (error) {
