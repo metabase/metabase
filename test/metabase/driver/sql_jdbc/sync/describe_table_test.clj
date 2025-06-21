@@ -540,6 +540,40 @@
                   (mt/db)
                   (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
+(mt/defdataset json-unwrap-list-and-int
+  "Used for testing json value unwrapping"
+  [["list_int"
+    [{:field-name "jsoncol" :base-type :type/JSON}]
+    [["{\"myfield1\":[1], \"myfield2\":1}"]
+     ["{\"myfield1\":[2], \"myfield2\":2}"]
+     ["{\"myfield1\":1, \"myfield2\":[1]}"]
+     ["{\"myfield1\":2, \"myfield2\":[2]}"]]]])
+
+(deftest json-unwrapping-list-and-int
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+    (when-not (mysql/mariadb? (mt/db))
+      (mt/dataset json-unwrap-list-and-int
+        (sync/sync-database! (mt/db))
+        (testing "Nested field columns are correct"
+          (is (= #{{:name              "jsoncol → myfield1"
+                    :database-type     "text"
+                    :base-type         :type/Text
+                    :database-position 0
+                    :json-unfolding    false
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "myfield1"]}
+                   {:name              "jsoncol → myfield2"
+                    :database-type     "text"
+                    :base-type         :type/Text
+                    :database-position 0
+                    :json-unfolding    false
+                    :visibility-type   :normal
+                    :nfc-path          [:jsoncol "myfield2"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                  driver/*driver*
+                  (mt/db)
+                  (t2/select-one :model/Table :db_id (mt/id) :name "list_int")))))))))
+
 (mt/defdataset json-int-turn-string
   "Used for testing mysql json value unwrapping"
   [["json_without_pk"
