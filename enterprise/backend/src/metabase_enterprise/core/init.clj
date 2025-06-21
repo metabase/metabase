@@ -10,7 +10,6 @@
    [metabase-enterprise.audit-app.init]
    [metabase-enterprise.cache.init]
    [metabase-enterprise.gsheets.init]
-   [metabase-enterprise.llm.init]
    [metabase-enterprise.metabot-v3.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.sso.init]
