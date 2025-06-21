@@ -9,6 +9,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -168,3 +169,47 @@
                                       (meta/id :orders :quantity)]
                                      30.0]]}]}
               query')))))
+
+(deftest ^:parallel day-of-week-binned-column-test
+  (doseq [[variant metadata-provider] [["with ORDERS.CREATED_AT semantic-type"
+                                        meta/metadata-provider]
+                                       ["without ORDERS.CREATED_AT semantic-type"
+                                        (merged-mock/merged-mock-metadata-provider
+                                         meta/metadata-provider
+                                         {:fields [{:id                (meta/id :orders :created-at)
+                                                    :semantic-type     nil}]})]]]
+    (testing (str "Automatic insights for a day-of-week binned column (#23820): " variant)
+      (let [query               (-> (lib/query metadata-provider (meta/table-metadata :orders))
+                                    (lib/aggregate (lib/count))
+                                    (lib/breakout (lib/with-temporal-bucket
+                                                    (meta/field-metadata :orders :created-at)
+                                                    :day-of-week)))
+            col-count           (m/find-first #(= (:name %) "count")
+                                              (lib/returned-columns query))
+            _                   (is (some? col-count))
+            col-created-at      (m/find-first #(= (:name %) "CREATED_AT")
+                                              (lib/returned-columns query))
+            _                   (is (some? col-created-at))
+            click-value         6
+            context             {:column     col-count
+                                 :column-ref (lib/ref col-count)
+                                 :value      1
+                                 :dimensions [{:column     col-created-at
+                                               :column-ref (lib/ref col-created-at)
+                                               :value      click-value}]}
+            available-drills    (lib/available-drill-thrus query context)
+            auto-insights-drill (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                              available-drills)
+            _                   (is (some? auto-insights-drill))
+            query'              (lib/drill-thru query -1 nil auto-insights-drill)]
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {}
+                                       [:field
+                                        {:base-type :type/DateTimeWithLocalTZ,
+                                         :effective-type :type/Integer,
+                                         :temporal-unit :day-of-week,
+                                         :inherited-temporal-unit :day-of-week}
+                                        (meta/id :orders :created-at)]
+                                       click-value]]}]}
+                query'))))))
