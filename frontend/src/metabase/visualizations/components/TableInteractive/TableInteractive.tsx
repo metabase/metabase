@@ -692,6 +692,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    enableSelection: true,
   });
   const { virtualGrid } = tableProps;
 
