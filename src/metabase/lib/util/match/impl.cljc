@@ -66,3 +66,13 @@
   (if-not (seq (get-in m ks))
     m
     (apply update-in m ks f args)))
+
+(defn vector!
+  "Return nil if `obj` is not a vector, otherwise return `obj`."
+  [obj]
+  (when (vector? obj) obj))
+
+(defn count=
+  "Return true if collection `coll` has precisely `cnt` elements in it."
+  [coll cnt]
+  (= (count coll) cnt))
