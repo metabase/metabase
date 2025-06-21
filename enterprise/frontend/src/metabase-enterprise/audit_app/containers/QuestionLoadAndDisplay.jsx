@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 import { useEffect, useImperativeHandle, useRef } from "react";
 
+import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 const propTypes = {

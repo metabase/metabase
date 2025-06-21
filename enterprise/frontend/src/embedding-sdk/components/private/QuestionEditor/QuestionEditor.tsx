@@ -6,7 +6,7 @@ import {
   type BaseInteractiveQuestionProps,
   InteractiveQuestion,
 } from "embedding-sdk/components/public/InteractiveQuestion";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
 import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
