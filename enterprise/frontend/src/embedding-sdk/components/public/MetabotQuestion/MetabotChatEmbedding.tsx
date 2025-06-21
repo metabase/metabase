@@ -57,6 +57,7 @@ export const MetabotChatEmbedding = ({
       EMBEDDING_METABOT_ID,
     );
 
+    // TODO: pretty sure this is broken now...
     metabotRequestPromise
       .then((result) => {
         const redirectUrl = (

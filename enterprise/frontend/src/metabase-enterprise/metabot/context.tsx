@@ -30,7 +30,7 @@ export const MetabotProvider = ({
 }) => {
   /* Metabot input */
   const [prompt, setPrompt] = useState("");
-  const promptInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
 
   /* Metabot context */
   const providerFnsRef = useRef<Set<ChatContextProviderFn>>(new Set());

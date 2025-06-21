@@ -1,6 +1,6 @@
 import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
-import { P, isMatching, match } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { createAsyncThunk } from "metabase/lib/redux";
@@ -17,6 +17,7 @@ import {
 } from "metabase-enterprise/api/ai-streaming";
 import type {
   MetabotAgentRequest,
+  MetabotAgentResponse,
   MetabotChatContext,
   MetabotReaction,
 } from "metabase-types/api";
@@ -34,8 +35,6 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 
-const isAbortError = isMatching({ name: "AbortError" });
-
 export const {
   addAgentMessage,
   addUserMessage,
@@ -44,6 +43,28 @@ export const {
   toolCallStart,
   toolCallEnd,
 } = metabot.actions;
+
+type PromptErrorOutcome = {
+  notification: string | false;
+  shouldRetry: boolean;
+};
+
+const handleResponseError = (error: unknown): PromptErrorOutcome => {
+  console.error(error);
+  return match(error)
+    .with({ name: "AbortError" }, () => ({
+      notification: false as const,
+      shouldRetry: false,
+    }))
+    .with({ message: P.string.startsWith("Response status: 5") }, () => ({
+      notification: getAgentOfflineError(),
+      shouldRetry: true,
+    }))
+    .otherwise(() => ({
+      notification: t`Something went wrong, try again.`,
+      shouldRetry: true,
+    }));
+};
 
 export const toggleStreaming = () => (dispatch: Dispatch) => {
   dispatch(resetConversation());
@@ -96,7 +117,10 @@ export const submitInput = createAsyncThunk<
       ? sendStreamedAgentRequest
       : sendAgentRequest;
     const sendMessageRequestPromise = dispatch(
-      sendRequestAction({ ...data, ...agentMetadata }),
+      sendRequestAction({
+        ...data,
+        ...agentMetadata,
+      }),
     );
     signal.addEventListener("abort", () => {
       sendMessageRequestPromise.abort();
@@ -104,68 +128,72 @@ export const submitInput = createAsyncThunk<
 
     const result = await sendMessageRequestPromise;
 
-    // TODO:
     if (isRejected(result)) {
-      const shouldRetry = !!result.error;
+      const notification =
+        result.payload?.notification ?? t`Something went wrong, try again.`;
+
       dispatch(rewindConversation(messageId));
-      dispatch(stopProcessingAndNotify(t`Something went wrong, try again.`));
-      console.error(result.error);
-      return { prompt: data.message, success: false, shouldRetry };
+      dispatch(stopProcessingAndNotify(notification));
+
+      return {
+        prompt: data.message,
+        success: false,
+        shouldRetry: result.payload?.shouldRetry ?? false,
+      };
     }
 
     return { prompt: data.message, success: true };
   },
 );
 
-export const sendAgentRequest = createAsyncThunk(
+export const sendAgentRequest = createAsyncThunk<
+  MetabotAgentResponse,
+  Omit<MetabotAgentRequest, "conversation_id">,
+  { rejectValue: PromptErrorOutcome }
+>(
   "metabase-enterprise/metabot/sendAgentRequest",
   async (
     data: Omit<MetabotAgentRequest, "conversation_id">,
-    { dispatch, getState },
+    { dispatch, getState, rejectWithValue, fulfillWithValue },
   ) => {
-    // TODO: make enterprise store
-    let sessionId = getMetabotConversationId(getState() as any);
-
-    // should not be needed, but just in case the value got unset
-    if (!sessionId) {
-      console.warn(
-        "Metabot has no session id while open, this should never happen",
-      );
-      dispatch(resetConversationId());
-      sessionId = getMetabotConversationId(getState() as any) as string;
-    }
-
-    const metabotRequestPromise = dispatch(
-      metabotAgent.initiate({ ...data, conversation_id: sessionId }),
-    );
-
-    const result = await metabotRequestPromise;
-
-    if (result.error) {
-      const didUserAbort = isAbortError(result.error);
-      if (didUserAbort) {
-        dispatch(stopProcessing());
-      } else {
-        console.error("Metabot request returned error: ", result.error);
-        const message =
-          (result.error as any).status >= 500
-            ? getAgentOfflineError()
-            : undefined;
-        dispatch(stopProcessingAndNotify(message));
+    try {
+      // TODO: make enterprise store
+      let sessionId = getMetabotConversationId(getState() as any);
+      // should not be needed, but just in case the value got unset
+      if (!sessionId) {
+        console.warn(
+          "Metabot has no session id while open, this should never happen",
+        );
+        dispatch(resetConversationId());
+        sessionId = getMetabotConversationId(getState() as any) as string;
       }
-    }
 
-    const reactions = result.data?.reactions || [];
-    await dispatch(processMetabotReactions(reactions));
-    return result;
+      const metabotRequestPromise = dispatch(
+        metabotAgent.initiate({ ...data, conversation_id: sessionId }),
+      );
+      const result = await metabotRequestPromise;
+
+      if (result.data) {
+        await dispatch(processMetabotReactions(result.data?.reactions || []));
+        return fulfillWithValue(result.data);
+      } else {
+        throw result.error;
+      }
+    } catch (error) {
+      return rejectWithValue(handleResponseError(error));
+    }
   },
 );
 
-export const sendStreamedAgentRequest = createAsyncThunk(
+export const sendStreamedAgentRequest = createAsyncThunk<
+  Omit<MetabotAgentResponse, "reactions">,
+  Omit<MetabotAgentRequest, "conversation_id">,
+  { rejectValue: PromptErrorOutcome }
+>(
   "metabase-enterprise/metabot/sendStreamedAgentRequest",
   async (
-    req: Omit<MetabotAgentRequest, "conversation_id">,
-    { dispatch, getState, signal },
+    req,
+    { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
     // TODO: make enterprise store
     let sessionId = getMetabotConversationId(getState() as any);
@@ -216,27 +244,13 @@ export const sendStreamedAgentRequest = createAsyncThunk(
         throw error;
       }
 
-      return {
-        data: {
-          conversation_id: body.conversation_id,
-          history: [...body.history, ...response.history],
-          state,
-        },
-        error: undefined,
-      } as const;
+      return fulfillWithValue({
+        conversation_id: body.conversation_id,
+        history: [...body.history, ...response.history],
+        state,
+      });
     } catch (error) {
-      console.error("Metabot request error: ", error);
-
-      const notification = match(error)
-        .with({ name: "AbortError" }, () => false as const)
-        .with({ status: P.number.gte(500) }, getAgentOfflineError)
-        .otherwise(() => t`Something went wrong.`);
-
-      if (notification !== false) {
-        dispatch(addAgentMessage({ type: "error", message: notification }));
-      }
-
-      return { data: undefined, error };
+      return rejectWithValue(handleResponseError(error));
     }
   },
 );
@@ -342,12 +356,14 @@ export const stopProcessing = () => (dispatch: Dispatch) => {
 };
 
 export const stopProcessingAndNotify =
-  (message?: string) => (dispatch: Dispatch) => {
+  (message?: string | false) => (dispatch: Dispatch) => {
     dispatch(stopProcessing());
-    dispatch(
-      addAgentMessage({
-        type: "error",
-        message: message || t`Something went wrong, try again.`,
-      }),
-    );
+    if (message !== false) {
+      dispatch(
+        addAgentMessage({
+          type: "error",
+          message: message || t`Something went wrong, try again.`,
+        }),
+      );
+    }
   };

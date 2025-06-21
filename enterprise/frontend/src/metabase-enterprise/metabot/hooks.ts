@@ -64,9 +64,12 @@ export const useMetabotAgent = () => {
           metabot_id: metabotId,
         }),
       );
+
       if (isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);
       }
+
+      return action;
     },
     [dispatch, getChatContext, prepareRetryIfUnsuccesful],
   );

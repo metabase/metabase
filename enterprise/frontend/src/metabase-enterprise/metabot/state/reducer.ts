@@ -133,9 +133,9 @@ export const metabot = createSlice({
       .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
         state.history = [
           ...state.history,
-          ...(action.payload?.data?.history?.slice() ?? []),
+          ...(action.payload?.history?.slice() ?? []),
         ];
-        state.state = { ...(action.payload?.data?.state ?? {}) };
+        state.state = { ...(action.payload?.state ?? {}) };
         state.activeToolCall = undefined;
         state.isProcessing = false;
       })
@@ -148,8 +148,8 @@ export const metabot = createSlice({
         state.isProcessing = true;
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.data?.history?.slice() ?? [];
-        state.state = { ...(action.payload?.data?.state ?? {}) };
+        state.history = action.payload?.history?.slice() ?? [];
+        state.state = { ...(action.payload?.state ?? {}) };
         state.isProcessing = false;
       })
       .addCase(sendAgentRequest.rejected, (state) => {
