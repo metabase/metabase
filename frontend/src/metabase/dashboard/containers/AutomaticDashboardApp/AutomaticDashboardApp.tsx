@@ -37,6 +37,8 @@ import { XrayIcon } from "../XrayIcon";
 import S from "./AutomaticDashboardApp.module.css";
 import { SuggestionsSidebar } from "./SuggestionsSidebar";
 
+const SIDEBAR_W = 346;
+
 type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
 const AutomaticDashboardAppInner = () => {
@@ -113,24 +115,40 @@ const AutomaticDashboardAppInner = () => {
       })}
     >
       {dashboard && <SetTitle title={dashboard.name} />}
-      <div style={{ marginRight: hasSidebar ? 346 : undefined }}>
-        {isHeaderVisible && (
-          <div
-            className={cx(CS.bgWhite, CS.borderBottom)}
-            data-testid="automatic-dashboard-header"
-          >
-            <div className={CS.wrapper}>
-              <FixedWidthContainer
-                data-testid="fixed-width-dashboard-header"
-                isFixedWidth={dashboard?.width === "fixed"}
+
+      {isHeaderVisible && (
+        <div
+          className={cx(CS.bgWhite, CS.borderBottom)}
+          data-testid="automatic-dashboard-header"
+        >
+          <div className={CS.wrapper}>
+            <FixedWidthContainer
+              data-testid="fixed-width-dashboard-header"
+              isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
+            >
+              <div
+                className={cx(
+                  CS.flex,
+                  CS.alignCenter,
+                  CS.py2,
+                  hasSidebar && CS.pl1,
+                )}
               >
-                <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
+                <FixedWidthContainer
+                  className={cx(CS.flex, CS.alignCenter)}
+                  isFixedWidth={dashboard?.width === "fixed"}
+                >
                   <XrayIcon />
                   <div>
                     <h2 className={cx(CS.textWrap, CS.mr2)}>
                       {dashboard && <TransientTitle dashboard={dashboard} />}
                     </h2>
                   </div>
+                </FixedWidthContainer>
+                <div
+                  className={cx(CS.flex, CS.flexGrow1)}
+                  style={{ maxWidth: SIDEBAR_W }}
+                >
                   {savedDashboardId != null ? (
                     <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
                   ) : (
@@ -144,16 +162,21 @@ const AutomaticDashboardAppInner = () => {
                     </ActionButton>
                   )}
                 </div>
-                {dashboard && tabs.length > 1 && (
-                  <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                    <DashboardTabs dashboardId={dashboard.id} />
-                  </div>
-                )}
-              </FixedWidthContainer>
-            </div>
+              </div>
+              {dashboard && tabs.length > 1 && (
+                <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
+                  <DashboardTabs dashboardId={dashboard.id} />
+                </div>
+              )}
+            </FixedWidthContainer>
           </div>
-        )}
+        </div>
+      )}
 
+      <div
+        className={CS.relative}
+        style={{ paddingRight: hasSidebar ? SIDEBAR_W : undefined }}
+      >
         <div className={cx(CS.wrapper, CS.pb4)}>
           {parameters && parameters.length > 0 && (
             <div className={cx(CS.px1, CS.pt1)}>
@@ -204,21 +227,21 @@ const AutomaticDashboardAppInner = () => {
             </Link>
           </div>
         )}
-      </div>
 
-      {hasSidebar && (
-        <Box
-          className={cx(
-            CS.absolute,
-            CS.top,
-            CS.right,
-            CS.bottom,
-            S.SuggestionsSidebarWrapper,
-          )}
-        >
-          <SuggestionsSidebar related={related} />
-        </Box>
-      )}
+        {hasSidebar && (
+          <Box
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.right,
+              CS.bottom,
+              S.SuggestionsSidebarWrapper,
+            )}
+          >
+            <SuggestionsSidebar related={related} />
+          </Box>
+        )}
+      </div>
     </div>
   );
 };
