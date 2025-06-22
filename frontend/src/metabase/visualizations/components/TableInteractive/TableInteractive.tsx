@@ -496,6 +496,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             <HeaderCellWithColumnInfo
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
+                [S.firstHeaderCell]: columnIndex === 0,
+                [S.lastHeaderCell]: columnIndex === cols.length - 1,
               })}
               getInfoPopoversDisabled={getInfoPopoversDisabledRef.current}
               timezone={data.results_timezone}
@@ -692,6 +694,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onColumnReorder: handleColumnReordering,
     pageSize,
     minGridWidth,
+    defaultRowHeight: ROW_HEIGHT,
   });
   const { virtualGrid } = tableProps;
 
