@@ -12,7 +12,7 @@ import {
   useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormProvider,
@@ -87,7 +87,6 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
-  const isHosted = useSetting("is-hosted?");
   const initialValues = useMemo<EmailSMTPSettings>(
     () => ({
       "email-smtp-host": settingValues?.["email-smtp-host"] ?? "",
@@ -241,19 +240,17 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
                     placeholder={"nicetoseeyou"}
                   />
                 </SetByEnvVarWrapper>
-                {!isHosted && (
-                  <SetByEnvVarWrapper
-                    settingKey="email-smtp-password"
-                    settingDetails={settingsDetails?.["email-smtp-password"]}
-                  >
-                    <FormTextInput
-                      name="email-smtp-password"
-                      type="password"
-                      label={t`SMTP Password`}
-                      placeholder={"Shhh..."}
-                    />
-                  </SetByEnvVarWrapper>
-                )}
+                <SetByEnvVarWrapper
+                  settingKey="email-smtp-password"
+                  settingDetails={settingsDetails?.["email-smtp-password"]}
+                >
+                  <FormTextInput
+                    name="email-smtp-password"
+                    type="password"
+                    label={t`SMTP Password`}
+                    placeholder={"Shhh..."}
+                  />
+                </SetByEnvVarWrapper>
 
                 {Boolean(sendTestEmailResult.error) && (
                   <Text

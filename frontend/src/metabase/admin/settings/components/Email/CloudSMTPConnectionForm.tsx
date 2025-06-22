@@ -12,7 +12,7 @@ import {
   useSendTestEmailMutation,
   useUpdateCloudEmailSMTPSettingsMutation,
 } from "metabase/api/email";
-import { useSetting, useToast } from "metabase/common/hooks";
+import { useToast } from "metabase/common/hooks";
 import {
   Form,
   FormChipGroup,
@@ -96,7 +96,6 @@ export const CloudSMTPConnectionForm = ({
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
   const { data: settingsDetails } = useGetAdminSettingsDetailsQuery();
-  const isHosted = useSetting("is-hosted?");
   const initialValues = useMemo<FormValues>(
     () => ({
       "cloud-email-smtp-host": settingValues?.["cloud-email-smtp-host"] ?? "",
@@ -262,21 +261,19 @@ export const CloudSMTPConnectionForm = ({
                     placeholder={"nicetoseeyou"}
                   />
                 </SetByEnvVarWrapper>
-                {!isHosted && (
-                  <SetByEnvVarWrapper
-                    settingKey="cloud-email-smtp-password"
-                    settingDetails={
-                      settingsDetails?.["cloud-email-smtp-password"]
-                    }
-                  >
-                    <FormTextInput
-                      name="cloud-email-smtp-password"
-                      type="password"
-                      label={t`SMTP Password`}
-                      placeholder={"Shhh..."}
-                    />
-                  </SetByEnvVarWrapper>
-                )}
+                <SetByEnvVarWrapper
+                  settingKey="cloud-email-smtp-password"
+                  settingDetails={
+                    settingsDetails?.["cloud-email-smtp-password"]
+                  }
+                >
+                  <FormTextInput
+                    name="cloud-email-smtp-password"
+                    type="password"
+                    label={t`SMTP Password`}
+                    placeholder={"Shhh..."}
+                  />
+                </SetByEnvVarWrapper>
 
                 {Boolean(sendTestEmailResult.error) && (
                   <Text
