@@ -639,8 +639,8 @@
    (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
   ([query stage-number lib-uuid]
    (first (keep-indexed (fn [idx stage]
-                          (lib.util.match/match-one stage
-                            (clause :guard #(= lib-uuid (lib.options/uuid %)))
+                          (lib.util.match/match-lite-recursive stage
+                            (clause :guard (= lib-uuid (lib.options/uuid clause)))
                             [idx clause]))
                         (:stages (drop-later-stages query stage-number))))))
 
