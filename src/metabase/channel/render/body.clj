@@ -78,7 +78,7 @@
     ((formatter/make-temporal-str-formatter timezone-id col {}) value)
 
     (number? value)
-    (formatter/format-number value col visualization-settings)
+    (formatter/format-number-and-wrap value col visualization-settings)
 
     :else
     (str value)))
@@ -153,7 +153,7 @@
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
-  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number number))])
+  [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number-and-wrap number))])
 
 (defn- render-truncation-warning
   [row-limit row-count]

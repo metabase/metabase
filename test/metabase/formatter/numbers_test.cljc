@@ -1,21 +1,25 @@
-(ns metabase.util.formatting.numbers-test
+(ns metabase.formatter.numbers-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [metabase.util.formatting.numbers :as numbers]))
+   [metabase.formatter.numbers :as numbers]))
 
 (deftest ^:parallel basics-test
   (testing "format-number basics"
     (are [s n] (= s (numbers/format-number n {}))
       "0"   0
       "1"   1
-      "-1" -1))
+      "-1" -1)))
+
+(deftest ^:parallel basics-test-2
   (testing "large positive and negative integers"
     (are [s n] (= s (numbers/format-number n {}))
       "10"          10
       "99,999,999"  99999999
       "-10"         -10
-      "-99,999,999" -99999999)
+      "-99,999,999" -99999999)))
 
+(deftest ^:parallel basics-test-2b
+  (testing "large positive and negative integers"
     (testing "with non-default number separators"
       (are [s n] (= s (numbers/format-number n {:number-separators ",."}))
         "10,1"          10.1
@@ -29,8 +33,9 @@
       (are [s n] (= s (numbers/format-number n {:number-separators "."}))
         "9001"      9001
         "-9001"     -9001
-        "123456.79" 123456.789)))
+        "123456.79" 123456.789))))
 
+(deftest ^:parallel basics-test-3
   (testing "defaults to two significant figures for |n| < 1"
     (are [s n] (= s (numbers/format-number n {}))
       "0.33"     (/ 1 3)
@@ -45,8 +50,9 @@
       "1.1"      1.1
       "1.11"     1.11
       "1.11"     1.111
-      "111.11"   111.11))
+      "111.11"   111.11)))
 
+(deftest ^:parallel basics-test-4
   (testing "defaults to two decimal places for |n| >= 1"
     (are [s n] (= s (numbers/format-number n {}))
       "1.01"     1.01
@@ -61,22 +67,25 @@
 
 (deftest ^:parallel compact-mode-test
   (testing "zero"
-    (is (= "0" (numbers/format-number 0 {:compact true}))))
+    (is (= "0" (numbers/format-number 0 {:compact true})))))
 
+(deftest ^:parallel compact-mode-test-2
   (testing "small numbers are not truncated to 0"
     (are [s n] (= s (numbers/format-number n {:compact true}))
       "0.1"    0.1
       "-0.1"  -0.1
       "0.01"   0.01
-      "-0.01" -0.01))
+      "-0.01" -0.01)))
 
+(deftest ^:parallel compact-mode-test-3
   (testing "should round up and down"
     (are [s n] (= s (numbers/format-number n {:compact true}))
       "0.12"    0.123
       "0.13"    0.127
       "-0.12"  -0.123
-      "-0.13"  -0.127))
+      "-0.13"  -0.127)))
 
+(deftest ^:parallel compact-mode-test-4
   (testing "large numbers get metric suffixes and exactly 1 decimal place"
     (are [s n] (= s (numbers/format-number n {:compact true}))
       "2.0k"  2000
@@ -92,8 +101,9 @@
       "-2.6B" -2614519000
       "19.2B" 19247821000
       "-2.6T" -2614519000000
-      "19.2T" 19247821000000))
+      "19.2T" 19247821000000)))
 
+(deftest ^:parallel compact-mode-test-5
   (testing "percentages"
     (are [s n] (= s (numbers/format-number n {:compact true :number-style "percent"}))
       "86.7%"   0.867
@@ -108,8 +118,9 @@
       "1.9%"    0.019
       "2.1%"    0.021
       "1.1k%"   11.11
-      "-22%"    -0.22))
+      "-22%"    -0.22)))
 
+(deftest ^:parallel compact-mode-test-6
   (testing "scientific notation"
     (are [s n] (= s (numbers/format-number n {:compact true :number-style "scientific"}))
       "0.0e+0"  0
@@ -117,8 +128,10 @@
       "1.0e-2"  0.01
       "5.0e-1"  0.5
       "1.2e+5"  123456.78
-      "-1.2e+5" -123456.78)
+      "-1.2e+5" -123456.78)))
 
+(deftest ^:parallel compact-mode-test-6b
+  (testing "scientific notation"
     (testing "with specified decimal places"
       (are [s n mn mx] (= s (numbers/format-number n {:number-style "scientific"
                                                       :minimum-fraction-digits mn
@@ -132,8 +145,10 @@
         "5.4e-1"    0.544      1 1 ; short, rounds down
         "5.5e-1"    0.545      1 1 ; short, rounds up
         "-1.235e+5" -123456.78 0 3 ; halves are rounded "up", away from 0.
-        "-1.2e+5"   -123456.78 0 1))
+        "-1.2e+5"   -123456.78 0 1))))
 
+(deftest ^:parallel compact-mode-test-6c
+  (testing "scientific notation"
     (testing "with custom separators"
       (are [s n] (= s (numbers/format-number n {:compact true
                                                 :number-style "scientific"
@@ -143,8 +158,9 @@
         "1,0e-2"  0.01
         "5,0e-1"  0.5
         "1,2e+5"  123456.78
-        "-1,2e+5" -123456.78)))
+        "-1,2e+5" -123456.78))))
 
+(deftest ^:parallel compact-mode-test-7
   (testing "currency values"
     (are [s n c] (= s (numbers/format-number n {:compact      true
                                                 :number-style "currency"
@@ -178,8 +194,9 @@
     "-$1,234,567.89"  -1234567.89 "USD"
     "₿6.34527873"     6.345278729 "BTC" ;; BTC is not natively supported, but we fix the symbols. 8 decimal places!
     "¥1,234,568"      1234567.89  "JPY" ;; 0 decimal places for JPY.
-    "CN¥1,234,567.89" 1234567.89  "CNY")
+    "CN¥1,234,567.89" 1234567.89  "CNY"))
 
+(deftest ^:parallel currency-test-2
   (testing "by name"
     (let [labels {"USD" "US dollars"
                   ;; TODO Override this in the JS side? This is the only spot where the names from Intl.NumberFormat and
@@ -204,8 +221,9 @@
         "-1,234,567.89"  -1234567.89 "USD"
         "6.34527298"     6.345272982 "BTC"
         "1,234,567.89"   1234567.89  "CNY"
-        "1,234,568"      1234567.89  "JPY")))
+        "1,234,568"      1234567.89  "JPY"))))
 
+(deftest ^:parallel currency-test-3
   (testing "by code"
     (are [s n c] (= s (numbers/format-number n {:number-style "currency" :currency c :currency-style "code"}))
          ;; NB After the currency symbol is a UTF-8 $00a0, a non-breaking space.
@@ -236,8 +254,9 @@
       "5.4e-1"   0.54
       "5.5e-1"   0.55
       "1.23e+5"  123456.78
-      "-1.23e+5" -123456.78))
+      "-1.23e+5" -123456.78)))
 
+(deftest ^:parallel scientific-test-2
   (testing "with specified decimal places"
     (are [s n mn mx] (= s (numbers/format-number n {:number-style "scientific"
                                                     :minimum-fraction-digits mn
@@ -251,8 +270,9 @@
       "5.4e-1"    0.544      1 1 ; short, rounds down
       "5.5e-1"    0.545      1 1 ; short, rounds up
       "-1.235e+5" -123456.78 0 3 ; halves are rounded "up", away from 0.
-      "-1.2e+5"   -123456.78 0 1))
+      "-1.2e+5"   -123456.78 0 1)))
 
+(deftest ^:parallel scientific-test-3
   (testing "with custom separators"
     (are [s n mn mx] (= s (numbers/format-number n {:number-style "scientific"
                                                     :number-separators       ",."
