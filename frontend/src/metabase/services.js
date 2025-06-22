@@ -5,7 +5,6 @@ import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { PLUGIN_API, PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotOptions } from "metabase-lib/v1/queries/utils/pivot";
 
 // use different endpoints for embed previews
@@ -34,18 +33,27 @@ export const StoreApi = {
 // If we add breakout/grouping sets to MBQL in the future we can remove this API switching.
 export function maybeUsePivotEndpoint(api, card, metadata) {
   const question = new Question(card, metadata);
-
   // we need to pass pivot_rows, pivot_cols, and totals settings only for ad-hoc queries endpoints
   // in other cases the BE extracts these options from the viz settings
   function wrap(api) {
     return (params, ...rest) => {
-      const { pivot_rows, pivot_cols, show_row_totals, show_column_totals } =
-        getPivotOptions(question);
+      const {
+        pivot_rows,
+        pivot_cols,
+        native_pivot_rows,
+        native_pivot_cols,
+        native_pivot_measures,
+        show_row_totals,
+        show_column_totals,
+      } = getPivotOptions(question);
       return api(
         {
           ...params,
           pivot_rows,
           pivot_cols,
+          native_pivot_rows,
+          native_pivot_cols,
+          native_pivot_measures,
           show_row_totals,
           show_column_totals,
         },
@@ -56,7 +64,6 @@ export function maybeUsePivotEndpoint(api, card, metadata) {
 
   if (
     question.display() !== "pivot" ||
-    isNative(card) ||
     // if we have metadata for the db, check if it supports pivots
     (question.database() && !question.database().supportsPivots())
   ) {
@@ -224,6 +231,7 @@ export const MetabaseApi = {
   }),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
+  result_metadata: POST("/api/dataset/result_metadata"),
 
   // to support audit app  allow the endpoint to be provided in the query
   datasetEndpoint: POST("/api/:endpoint", {

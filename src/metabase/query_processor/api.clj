@@ -18,6 +18,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -170,6 +171,15 @@
    query :- [:map
              [:database ms/PositiveInt]]]
   (queries/batch-fetch-query-metadata [query]))
+
+(api.macros/defendpoint :post "/result_metadata"
+  "Get the result metadata for an ad-hoc query."
+  [_route-params
+   _query-params
+   query :- [:map
+             [:database ms/PositiveInt]]]
+  ;; TODO: does this check perms automatically?
+  (qp.metadata/result-metadata query api/*current-user-id*))
 
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."

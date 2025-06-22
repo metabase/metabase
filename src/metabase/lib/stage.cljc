@@ -450,3 +450,10 @@
          append-stage))
      ;; Leave the query alone if we're targeting a stage other than the last one.
      query)))
+
+(defn wrap-adhoc-native-query
+  "Wraps an unsaved native query in an MBQL query, given its result metadata."
+  [a-query the-metadata]
+  (-> a-query
+      (lib.util/update-query-stage -1 assoc ::cached-metadata the-metadata)
+      append-stage))

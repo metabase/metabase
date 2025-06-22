@@ -162,15 +162,32 @@
                     (into left-row cell-values))))]
     (vec result)))
 
+;; TODO: handle duplicate columns by uniquifying the native pivot cols/rows/measures
+(defn build-indexes
+  "Generates the row-indexes, col-indexes, and val-indexes to use for an export. For MBQL pivots, these
+  are passed directly in the export options. For native pivots, we correlate column names in the
+  native split settings with the result columns to determine the indexes."
+  [cols pivot-export-options]
+  (if (:native-pivot? pivot-export-options)
+    (let [{:keys [native-pivot-rows
+                  native-pivot-cols
+                  native-pivot-measures]} pivot-export-options
+          name->idx (zipmap (map :name cols) (range))]
+      {:row-indexes  (mapv #(get name->idx (:name %)) native-pivot-rows)
+       :col-indexes  (mapv #(get name->idx (:name %)) native-pivot-cols)
+       :val-indexes  (mapv #(get name->idx (:name %)) native-pivot-measures)})
+    {:row-indexes  (:pivot-rows pivot-export-options)
+     :col-indexes  (:pivot-cols pivot-export-options)
+     :val-indexes  (:pivot-measures pivot-export-options)}))
+
 (defn build-pivot-output
   "Processes pivot data into the final pivot structure for exports. Calls into metabase.pivot.core, which is the
   postprocessing code shared with the FE pivot table implementation."
   [{:keys [data settings format-rows? pivot-export-options]} formatters]
   (let [columns                  (pivot/columns-without-pivot-group (:cols data))
-        column-split             (:pivot_table.column_split settings)
-        row-indexes              (:pivot-rows pivot-export-options)
-        col-indexes              (:pivot-cols pivot-export-options)
-        val-indexes              (:pivot-measures pivot-export-options)
+        {:keys [row-indexes
+                col-indexes
+                val-indexes]}    (build-indexes columns pivot-export-options)
         col-settings             (merge-column-settings columns settings)
         {:keys [row-formatters
                 col-formatters
@@ -191,4 +208,4 @@
         display-name-for-col-idx #(pivot/display-name-for-col (nth columns %) (nth col-settings %) format-rows?)
         top-headers              (build-top-headers topHeaderItems leftHeaderItems row-indexes display-name-for-col-idx)
         left-headers             (build-left-headers leftHeaderItems)]
-    (build-full-pivot getRowSection left-headers top-headers (count (:values column-split)))))
+    (build-full-pivot getRowSection left-headers top-headers (count val-indexes))))

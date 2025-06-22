@@ -1,0 +1,250 @@
+import { useDisclosure } from "@mantine/hooks";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { t } from "ttag";
+
+import { AggregationPicker } from "metabase/common/components/AggregationPicker";
+import { isNotNull } from "metabase/lib/types";
+import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
+import { MetabaseApi } from "metabase/services";
+import { Button, Icon, Popover } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import type {
+  NativeSplitAggregationEntry,
+  NativeSplitGroupEntry,
+} from "metabase-types/api";
+
+import {
+  ChartSettingFieldsPartition,
+  type ChartSettingFieldsPartitionProps,
+  columnAdd,
+} from "./ChartSettingFieldsPartition";
+
+type AddAggregationPopoverProps = {
+  query: Lib.Query;
+  onAddAggregation: (query: Lib.Query) => void;
+};
+
+const AddAggregationPopover = ({
+  query,
+  onAddAggregation,
+}: AddAggregationPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+  const operators = useMemo(() => {
+    const baseOperators = Lib.availableAggregationOperators(query, -1);
+    return Lib.filterPivotAggregationOperators(baseOperators);
+  }, [query]);
+
+  return (
+    <Popover
+      opened={opened}
+      onClose={close}
+      position={"right-start"}
+      onDismiss={close}
+    >
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <AggregationPicker
+          query={query}
+          operators={operators}
+          stageIndex={-1}
+          onClose={close}
+          allowCustomExpressions={false}
+          allowMetrics={false}
+          onQueryChange={onAddAggregation}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+type AddBreakoutPopoverProps = {
+  query: Lib.Query;
+  onAddBreakout: (column: Lib.ColumnMetadata) => void;
+};
+
+const AddBreakoutPopover = ({
+  query,
+  onAddBreakout,
+}: AddBreakoutPopoverProps) => {
+  const [opened, { close, toggle }] = useDisclosure();
+  return (
+    <Popover
+      opened={opened}
+      onClose={close}
+      position={"right-start"}
+      onDismiss={close}
+    >
+      <Popover.Target>
+        <Button
+          variant="subtle"
+          leftSection={<Icon name="add" />}
+          size="compact-md"
+          onClick={toggle}
+          styles={{
+            root: { paddingInline: 0 },
+          }}
+        >
+          {t`Add`}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <BreakoutPopover
+          query={query}
+          stageIndex={-1}
+          isMetric={false}
+          breakout={undefined}
+          breakoutIndex={undefined}
+          onAddBreakout={onAddBreakout}
+          onUpdateBreakoutColumn={() => {}}
+          onClose={close}
+        />
+      </Popover.Dropdown>
+    </Popover>
+  );
+};
+
+interface ChartSettingsNativeFieldPartitionProps
+  extends ChartSettingFieldsPartitionProps<
+    NativeSplitGroupEntry,
+    NativeSplitAggregationEntry
+  > {
+  question: Question;
+}
+
+export const ChartSettingNativeFieldsPartition = ({
+  value,
+  onChange,
+  question,
+  columns,
+  ...props
+}: ChartSettingsNativeFieldPartitionProps) => {
+  const query = question.query();
+  const datasetQuery = question.datasetQuery();
+
+  // TODO: use RTK query instead
+  const [baseMetadataResults, setMetadataResults] = useState(null);
+  useEffect(() => {
+    // We have to execute the base query to get the metadata, so that we know what aggregations and breakouts are available
+    MetabaseApi.dataset(datasetQuery)
+      .then((resp) => setMetadataResults(resp.data.results_metadata.columns))
+      .catch((err) => {
+        console.error("Failed to fetch metadata", err);
+      });
+  }, [datasetQuery]);
+
+  const flatOrderedEntries = useMemo(
+    () => [...value.values, ...value.rows, ...value.columns],
+    [value],
+  );
+
+  const flatDeduplicatedColumnNames = useMemo(() => {
+    return Lib.uniqueNames(flatOrderedEntries.map((c) => c.name));
+  }, [flatOrderedEntries]);
+
+  const findColumnByEntry = useCallback(
+    (entry: NativeSplitGroupEntry | NativeSplitAggregationEntry) => {
+      const entryIndex = flatOrderedEntries.indexOf(entry);
+      const deduplicatedColumnName = flatDeduplicatedColumnNames[entryIndex];
+      return columns.find((c) => c.name === deduplicatedColumnName);
+    },
+    [columns, flatDeduplicatedColumnNames, flatOrderedEntries],
+  );
+
+  if (!baseMetadataResults) {
+    return;
+  }
+
+  const wrappedQuery = Lib.wrapAdhocNativeQuery(query, baseMetadataResults);
+
+  const handleAddAggregation = (query: Lib.Query) => {
+    const aggs = Lib.aggregations(query, -1);
+    const aggDetails = aggs
+      .map((agg) => {
+        const aggDisplay = Lib.displayInfo(query, -1, agg);
+        const column = Lib.aggregationColumn(query, -1, agg);
+
+        if (!column) {
+          return null;
+        }
+        const columnName = Lib.columnKey(column);
+
+        return {
+          name: aggDisplay.name,
+          column: columnName,
+        };
+      })
+      .filter(isNotNull);
+
+    onChange({
+      ...value,
+      values: [...value.values, ...aggDetails],
+    });
+  };
+
+  const handleAddBreakout = (
+    partition: "rows" | "columns",
+    column: Lib.ColumnMetadata,
+  ) => {
+    const columnName = Lib.columnKey(column);
+    const bucket = Lib.temporalBucket(column);
+    const bucketName = bucket
+      ? Lib.displayInfo(query, 0, bucket)?.shortName
+      : undefined;
+
+    const binning = Lib.binning(column);
+    const binningInfo = binning
+      ? Lib.displayInfo(query, 0, binning)
+      : undefined;
+
+    onChange({
+      ...value,
+      [partition]: columnAdd(
+        value[partition] || [],
+        value[partition]?.length ?? 0,
+        {
+          name: columnName,
+          bucket: bucketName,
+          binning: binningInfo,
+        },
+      ),
+    });
+  };
+
+  return (
+    <ChartSettingFieldsPartition
+      {...props}
+      emptySectionText={t`Add fields here`}
+      value={value}
+      onChange={onChange}
+      columns={columns}
+      canRemoveColumns
+      getColumn={findColumnByEntry}
+      renderAddColumnButton={(partitionName) =>
+        partitionName === "values" ? (
+          <AddAggregationPopover
+            query={wrappedQuery}
+            onAddAggregation={handleAddAggregation}
+          />
+        ) : (
+          <AddBreakoutPopover
+            query={wrappedQuery}
+            onAddBreakout={(col) => handleAddBreakout(partitionName, col)}
+          />
+        )
+      }
+    />
+  );
+};
