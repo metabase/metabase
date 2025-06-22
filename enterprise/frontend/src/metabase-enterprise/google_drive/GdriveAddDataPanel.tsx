@@ -19,6 +19,7 @@ import {
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import { GdriveConnectionModal } from "metabase-enterprise/google_drive";
 import {
+  getErrorMessage,
   getStatus,
   useShowGdrive,
 } from "metabase-enterprise/google_drive/utils";
@@ -95,40 +96,9 @@ export const GdriveAddDataPanel = () => {
             </Button>
           )}
           {status === "paused" && (
-            <Alert
-              icon={<Icon name="warning" c="danger" />}
-              variant="outline"
-              title={t`Couldn't sync Google Sheets`}
-              styles={{
-                root: {
-                  backgroundColor: "transparent",
-                  border: "1px solid var(--mb-color-border)",
-                },
-                wrapper: {
-                  alignItems: "flex-start",
-                },
-                label: {
-                  fontSize: "var(--mantine-font-size-md)",
-                  color: "var(--mb-color-text-dark)",
-                },
-              }}
-            >
-              <Text fz="sm" lh="lg">
-                {storageFullError}
-              </Text>
-              <Anchor
-                href={getStoreUrl("account")}
-                target="_blank"
-                underline="never"
-                variant="brand"
-                fw="bold"
-                fz="sm"
-                p={0}
-              >
-                {t`Add storage`}
-              </Anchor>
-            </Alert>
+            <ErrorAlert error={storageFullError} upsell />
           )}
+          {status === "error" && <ErrorAlert error={getErrorMessage(error)} />}
         </Stack>
       </Center>
       <GdriveConnectionModal
@@ -137,5 +107,55 @@ export const GdriveAddDataPanel = () => {
         reconnect={true}
       />
     </>
+  );
+};
+
+const ErrorAlert = ({
+  error,
+  upsell,
+}: {
+  error?: string;
+  upsell?: boolean;
+}) => {
+  if (!error) {
+    return null;
+  }
+
+  return (
+    <Alert
+      icon={<Icon name="warning" c="danger" />}
+      variant="outline"
+      title={t`Couldn't sync Google Sheets`}
+      styles={{
+        root: {
+          backgroundColor: "transparent",
+          border: "1px solid var(--mb-color-border)",
+        },
+        wrapper: {
+          alignItems: "flex-start",
+        },
+        label: {
+          fontSize: "var(--mantine-font-size-md)",
+          color: "var(--mb-color-text-dark)",
+        },
+      }}
+    >
+      <Text fz="sm" lh="lg">
+        {error}
+      </Text>
+      {upsell && (
+        <Anchor
+          href={getStoreUrl("account")}
+          target="_blank"
+          underline="never"
+          variant="brand"
+          fw="bold"
+          fz="sm"
+          p={0}
+        >
+          {t`Add storage`}
+        </Anchor>
+      )}
+    </Alert>
   );
 };
