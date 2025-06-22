@@ -14,8 +14,8 @@ import { c, msgid, ngettext, t } from "ttag";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
+import { UploadInput } from "metabase/common/components/upload";
 import { useDocsUrl } from "metabase/common/hooks";
-import { UploadInput } from "metabase/components/upload";
 import {
   Form,
   FormProvider,

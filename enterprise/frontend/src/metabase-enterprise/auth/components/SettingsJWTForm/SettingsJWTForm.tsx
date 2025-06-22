@@ -13,7 +13,7 @@ import {
   useGetSettingsQuery,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,

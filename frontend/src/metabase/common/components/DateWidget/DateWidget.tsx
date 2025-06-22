@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useState } from "react";
 
 import DateInput from "metabase/common/components/DateInput";
 import DateSelector from "metabase/common/components/DateSelector";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
+import TippyPopover from "metabase/common/components/Popover/TippyPopover";
 
 export type DateWidgetAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,

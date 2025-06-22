@@ -3,8 +3,8 @@ import { useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { LeaveRouteConfirmModal } from "metabase/components/LeaveConfirmModal";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";

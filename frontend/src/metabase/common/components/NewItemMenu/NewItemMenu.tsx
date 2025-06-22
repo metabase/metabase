@@ -1,7 +1,6 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import NewItemMenu from "metabase/components/NewItemMenu";
 import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
@@ -12,6 +11,8 @@ import {
 } from "metabase/selectors/data";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { State } from "metabase-types/store";
+
+import NewItemMenuView from "./NewItemMenuView";
 
 interface MenuDatabaseProps {
   databases?: Database[];
@@ -37,4 +38,4 @@ export default _.compose(
     loadingAndErrorWrapper: false,
   }),
   connect(mapStateToProps, mapDispatchToProps),
-)(NewItemMenu);
+)(NewItemMenuView);

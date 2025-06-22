@@ -11,8 +11,8 @@ import {
 } from "metabase/admin/settings/components/SettingsSection";
 import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
