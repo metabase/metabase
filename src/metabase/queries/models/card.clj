@@ -1349,7 +1349,6 @@
   this index column by taking the card's dataset_query and converting it to lib format and using lib utilities
   for properly deciding which columns are non temporal dimensions."
   []
-  (println "TSP in non-temporal... " (app-db/db-type))
   (if (= (app-db/db-type) :postgres)
     [:raw "COALESCE(
            (SELECT jsonb_agg(field_id ORDER BY field_id)

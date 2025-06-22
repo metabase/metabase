@@ -336,9 +336,10 @@
     [:like :result_metadata "%\"temporal_unit\":%"] true
     :else false] :has_temporal_dimensions])
 
-(def ^:private non-temporal-dimensions-col
+(defn- non-temporal-dimensions-col
   "Extracts IDs of non-temporal dimensions from result_metadata JSON.
   Only supported for PostgreSQL app databases - returns empty array for others."
+  []
   [(if (= (mdb/db-type) :postgres)
      [:raw "COALESCE(
             (SELECT jsonb_agg(field_id ORDER BY field_id)
@@ -390,7 +391,7 @@
         bookmark-col dashboardcard-count-col
         :result_metadata
         has-temporal-dimensions-col
-        non-temporal-dimensions-col
+        (non-temporal-dimensions-col)
         [:display :display_type]))
 
 (defmethod columns-for-model "indexed-entity" [_]
