@@ -94,8 +94,14 @@
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
   [_route-params
    _query-params
-   query :- [:map
-             [:database {:optional true} [:maybe :int]]]]
+   {:keys [database pretty] :as query} :- [:map
+                                           [:database {:optional true} [:maybe :int]]]]
+  (when (= #{:source-table :limit} (set (keys (:query query))))
+    (let [table (t2/select-one :model/Table :id (:source-table (:query query)))
+          driver (driver.u/database->driver database)
+          db (t2/select-one :model/Database :id database)
+          table-preview (driver/table-preview driver db table)]
+      (tap> {:table-preview table-preview})))
   (run-streaming-query
    (-> query
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
@@ -185,6 +191,17 @@
           compiled (qp.compile/compile-with-inline-parameters query)]
       (cond-> compiled
         pretty (update :query prettify)))))
+
+(api.macros/defendpoint :post "/dryrun"
+  "Run a dry run query"
+  [_route-params
+   _query-params
+   {:keys [database] :as query} :- [:map
+                                    [:database ms/PositiveInt]]]
+  (let [driver (driver.u/database->driver database)
+        db (t2/select-one :model/Database :id database)
+        compiled-query (-> query qp.compile/compile-with-inline-parameters :query)]
+    (driver/dry-run-native-query driver db compiled-query)))
 
 (api.macros/defendpoint :post "/pivot"
   "Generate a pivoted dataset for an ad-hoc query"
