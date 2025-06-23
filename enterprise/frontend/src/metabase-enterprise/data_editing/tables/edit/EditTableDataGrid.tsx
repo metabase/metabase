@@ -6,6 +6,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
   type ColumnOptions,
   DataGrid,
+  type DataGridRowAction,
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
@@ -14,7 +15,6 @@ import { formatValue } from "metabase/lib/formatting/value";
 import { Box, Icon } from "metabase/ui";
 import type { OrderByDirection } from "metabase-lib";
 import type {
-  DataGridWritebackAction,
   DatasetColumn,
   DatasetData,
   Field,
@@ -50,8 +50,8 @@ type EditTableDataGridProps = {
     column: DatasetColumn,
   ) => OrderByDirection | undefined;
   cellsWithFailedUpdatesMap?: Record<CellUniqKey, true>;
-  rowActions?: DataGridWritebackAction[];
-  onActionRun?: (action: DataGridWritebackAction, row: Row<RowValues>) => void;
+  rowActions?: DataGridRowAction[];
+  onActionClick?: (action: DataGridRowAction, row: Row<RowValues>) => void;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   onColumnSort?: (field: Field) => void;
@@ -66,7 +66,7 @@ export const EditTableDataGrid = ({
   getColumnSortDirection,
   cellsWithFailedUpdatesMap,
   rowActions,
-  onActionRun,
+  onActionClick,
   rowSelection,
   onRowSelectionChange,
   onColumnSort,
@@ -190,8 +190,8 @@ export const EditTableDataGrid = ({
     onRowSelectionChange,
     columnRowSelectOptions: columnRowSelectOptions,
     rowActionsColumn:
-      rowActions?.length && onActionRun
-        ? { actions: rowActions, onActionRun }
+      rowActions?.length && onActionClick
+        ? { actions: rowActions, onActionClick }
         : undefined,
   });
 

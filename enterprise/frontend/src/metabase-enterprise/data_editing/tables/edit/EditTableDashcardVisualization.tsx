@@ -5,7 +5,6 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import Modal from "metabase/common/components/Modal";
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import { useDispatch } from "metabase/lib/redux";
 import {
@@ -23,8 +22,8 @@ import {
 import { ShortMessage } from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.styled";
 import { useBuiltInActions } from "metabase-enterprise/data_editing/actions/use-built-in-actions";
 import { canEditField } from "metabase-enterprise/data_editing/helpers";
-import { TableActionExecuteModalContent } from "metabase-enterprise/table-actions/execution/TableActionExecuteModalContent";
-import { useTableActionsExecute } from "metabase-enterprise/table-actions/execution/use-table-actions-execute";
+import { DataGridActionExecuteModal } from "metabase-enterprise/table-actions/execution/DataGridActionExecuteModal";
+import { useDataGridRowActions } from "metabase-enterprise/table-actions/execution/use-datagrid-row-actions";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import { formatRowCount } from "metabase-lib/v1/queries/utils/row-count";
@@ -32,7 +31,6 @@ import type {
   ConcreteTableId,
   DashCardVisualizationSettings,
   DatasetData,
-  TableActionDisplaySettings,
 } from "metabase-types/api";
 
 import { BuiltInTableAction } from "../types";
@@ -195,14 +193,12 @@ export const EditTableDashcardVisualization = memo(
     const hasBulkEditing = hasEditableAndVisibleColumns;
 
     const {
-      tableActions,
-      handleTableActionRun,
-      selectedTableActionState,
-      handleExecuteActionModalClose,
-    } = useTableActionsExecute({
-      actionsVizSettings: visualizationSettings?.[
-        "editableTable.enabledActions"
-      ] as TableActionDisplaySettings[] | undefined,
+      rowActions,
+      selectedRowAction,
+      onRowActionButtonClick,
+      onRowActionFormClose,
+    } = useDataGridRowActions({
+      actionSettings: visualizationSettings?.["editableTable.enabledActions"],
       datasetData: data,
     });
 
@@ -231,8 +227,6 @@ export const EditTableDashcardVisualization = memo(
       setRowSelection,
       constraintError: error,
     });
-
-    const isActionExecuteModalOpen = !!selectedTableActionState;
 
     const { getColumnSortDirection } = useTableSorting({
       question,
@@ -394,8 +388,8 @@ export const EditTableDashcardVisualization = memo(
                 onRowExpandClick={openUpdateRowModal}
                 columnsConfig={columnsConfig}
                 getColumnSortDirection={getColumnSortDirection}
-                rowActions={tableActions}
-                onActionRun={handleTableActionRun}
+                rowActions={rowActions}
+                onActionClick={onRowActionButtonClick}
                 rowSelection={rowSelection}
                 onRowSelectionChange={setRowSelection}
               />
@@ -441,20 +435,12 @@ export const EditTableDashcardVisualization = memo(
           onRowsDelete={handleRowDeleteBulk}
           withDelete={hasDeleteAction}
         />
-        <Modal
-          isOpen={isActionExecuteModalOpen}
-          onClose={handleExecuteActionModalClose}
-        >
-          {selectedTableActionState && (
-            <TableActionExecuteModalContent
-              actionId={selectedTableActionState.actionId}
-              scope={editingScope}
-              initialValues={selectedTableActionState.rowData}
-              actionOverrides={selectedTableActionState.actionOverrides}
-              onClose={handleExecuteActionModalClose}
-            />
-          )}
-        </Modal>
+        <DataGridActionExecuteModal
+          action={selectedRowAction?.action}
+          actionInput={selectedRowAction?.input}
+          scope={editingScope}
+          onClose={onRowActionFormClose}
+        />
         <DeleteBulkRowConfirmationModal
           opened={isDeleteBulkRequested}
           rowCount={selectedRowIndices.length}
