@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Banner } from "metabase/components/Banner";
+import { Banner } from "metabase/common/components/Banner";
 import { Text } from "metabase/ui";
 
 export const DevModeBanner = () => {

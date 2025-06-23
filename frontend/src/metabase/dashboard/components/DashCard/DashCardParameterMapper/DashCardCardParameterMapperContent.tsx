@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
