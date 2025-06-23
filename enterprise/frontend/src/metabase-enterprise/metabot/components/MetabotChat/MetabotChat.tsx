@@ -317,12 +317,20 @@ const Message = ({
         .exhaustive()}
       <Flex className={Styles.messageActions}>
         {!(message.role === "agent" && message.type === "error") && (
-          <ActionIcon onClick={() => clipboard.copy(message.message)} h="sm">
+          <ActionIcon
+            onClick={() => clipboard.copy(message.message)}
+            h="sm"
+            data-testid="metabot-chat-message-copy"
+          >
             <Icon name="copy" size="1rem" />
           </ActionIcon>
         )}
         {onRetry && (
-          <ActionIcon onClick={() => onRetry(message.id)} h="sm">
+          <ActionIcon
+            onClick={() => onRetry(message.id)}
+            h="sm"
+            data-testid="metabot-chat-message-retry"
+          >
             <Icon name="revert" size="1rem" />
           </ActionIcon>
         )}

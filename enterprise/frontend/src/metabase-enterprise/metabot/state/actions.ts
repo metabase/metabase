@@ -50,16 +50,19 @@ type PromptErrorOutcome = {
 };
 
 const handleResponseError = (error: unknown): PromptErrorOutcome => {
-  console.error(error);
   return match(error)
     .with({ name: "AbortError" }, () => ({
       notification: false as const,
       shouldRetry: false,
     }))
-    .with({ message: P.string.startsWith("Response status: 5") }, () => ({
-      notification: getAgentOfflineError(),
-      shouldRetry: true,
-    }))
+    .with(
+      { message: P.string.startsWith("Response status: 5") },
+      { status: 500 },
+      () => ({
+        notification: getAgentOfflineError(),
+        shouldRetry: true,
+      }),
+    )
     .otherwise(() => ({
       notification: t`Something went wrong, try again.`,
       shouldRetry: true,
@@ -99,50 +102,57 @@ export const submitInput = createAsyncThunk<
 >(
   "metabase-enterprise/metabot/submitInput",
   async (data, { dispatch, getState, signal }) => {
-    const state = getState() as any;
-    const isProcessing = getIsProcessing(state);
-    if (isProcessing) {
-      console.error("Metabot is actively serving a request");
-      return { prompt: data.message, success: false, shouldRetry: false };
+    try {
+      const state = getState() as any;
+      const isProcessing = getIsProcessing(state);
+      if (isProcessing) {
+        console.error("Metabot is actively serving a request");
+        return { prompt: data.message, success: false, shouldRetry: false };
+      }
+
+      // it's important that we get the current metadata containing the history before
+      // altering it by adding the current message the user is wanting to send
+      const agentMetadata = getAgentRequestMetadata(getState() as any);
+      const messageId = nanoid();
+      dispatch(addUserMessage({ id: messageId, message: data.message }));
+
+      const useStreaming = getUseStreaming(getState() as any);
+      const sendRequestAction = useStreaming
+        ? sendStreamedAgentRequest
+        : sendAgentRequest;
+      const sendMessageRequestPromise = dispatch(
+        sendRequestAction({
+          ...data,
+          ...agentMetadata,
+        }),
+      );
+      signal.addEventListener("abort", () => {
+        sendMessageRequestPromise.abort();
+      });
+
+      const result = await sendMessageRequestPromise;
+
+      if (isRejected(result)) {
+        const notification =
+          result.payload?.notification ?? t`Something went wrong, try again.`;
+
+        dispatch(rewindConversation(messageId));
+        dispatch(stopProcessingAndNotify(notification));
+
+        return {
+          prompt: data.message,
+          success: false,
+          shouldRetry: result.payload?.shouldRetry ?? false,
+        };
+      }
+
+      return { prompt: data.message, success: true };
+    } catch (error) {
+      // NOTE: all errors should be caught above, this is is a catch-all
+      // to make sure that this async action always resolves to a value
+      console.error(error);
+      return { prompt: data.message, success: false, shouldRetry: true };
     }
-
-    // it's important that we get the current metadata containing the history before
-    // altering it by adding the current message the user is wanting to send
-    const agentMetadata = getAgentRequestMetadata(getState() as any);
-    const messageId = nanoid();
-    dispatch(addUserMessage({ id: messageId, message: data.message }));
-
-    const useStreaming = getUseStreaming(getState() as any);
-    const sendRequestAction = useStreaming
-      ? sendStreamedAgentRequest
-      : sendAgentRequest;
-    const sendMessageRequestPromise = dispatch(
-      sendRequestAction({
-        ...data,
-        ...agentMetadata,
-      }),
-    );
-    signal.addEventListener("abort", () => {
-      sendMessageRequestPromise.abort();
-    });
-
-    const result = await sendMessageRequestPromise;
-
-    if (isRejected(result)) {
-      const notification =
-        result.payload?.notification ?? t`Something went wrong, try again.`;
-
-      dispatch(rewindConversation(messageId));
-      dispatch(stopProcessingAndNotify(notification));
-
-      return {
-        prompt: data.message,
-        success: false,
-        shouldRetry: result.payload?.shouldRetry ?? false,
-      };
-    }
-
-    return { prompt: data.message, success: true };
   },
 );
 
@@ -180,6 +190,7 @@ export const sendAgentRequest = createAsyncThunk<
         throw result.error;
       }
     } catch (error) {
+      console.error(error);
       return rejectWithValue(handleResponseError(error));
     }
   },
@@ -250,6 +261,7 @@ export const sendStreamedAgentRequest = createAsyncThunk<
         state,
       });
     } catch (error) {
+      console.error(error);
       return rejectWithValue(handleResponseError(error));
     }
   },
@@ -272,14 +284,15 @@ export const cancelInflightAgentRequests = createAsyncThunk(
   },
 );
 
-export const rewindConversation = createAsyncThunk(
+const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
-  (messageId: string, { dispatch }) => {
-    dispatch(setIsProcessing(false));
-
+  (messageId: string, { dispatch, getState }) => {
     dispatch(cancelInflightAgentRequests());
-
-    dispatch(metabot.actions.rewindStateToMessageId(messageId));
+    const promptMessage = getUserPromptForMessageId(getState(), messageId);
+    if (!promptMessage) {
+      throw new Error("Unable to rewind conversation to prompt for pro");
+    }
+    dispatch(metabot.actions.rewindStateToMessageId(promptMessage.id));
   },
 );
 
@@ -299,6 +312,8 @@ export const retryPrompt = createAsyncThunk<
     }
 
     dispatch(rewindConversation(prompt.id));
+    dispatch(cancelInflightAgentRequests());
+    dispatch(metabot.actions.rewindStateToMessageId(messageId));
 
     return await dispatch(
       submitInput({ message: prompt.message, context, metabot_id }),
@@ -309,8 +324,6 @@ export const retryPrompt = createAsyncThunk<
 export const resetConversation = createAsyncThunk(
   "metabase-enterprise/metabot/resetConversation",
   (_args, { dispatch }) => {
-    dispatch(setIsProcessing(false));
-
     dispatch(cancelInflightAgentRequests());
 
     // clear out suggested prompts so the user is shown something fresh
