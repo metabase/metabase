@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { colors } from "metabase/lib/colors";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
 

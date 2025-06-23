@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { Component, forwardRef } from "react";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
