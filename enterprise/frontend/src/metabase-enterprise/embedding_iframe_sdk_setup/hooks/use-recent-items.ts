@@ -13,10 +13,12 @@ export const useRecentItems = () => {
     { refetchOnMountOrArgChange: true },
   );
 
+  // Users can select dashboards from the dashboard picker.
   const [localRecentDashboards, setLocalRecentDashboards] = useState<
     SdkIframeEmbedSetupRecentItem[]
   >([]);
 
+  // Users can select questions from the question picker.
   const [localRecentQuestions, setLocalRecentQuestions] = useState<
     SdkIframeEmbedSetupRecentItem[]
   >([]);
