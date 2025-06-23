@@ -169,35 +169,40 @@
 
 (defn- describe-database-tables
   [driver database]
-  (set
-   (for [dataset-id (list-datasets (:details database) :logging-schema-exclusions? true)
-         :let [project-id (get-project-id (:details database))
-               results (query-honeysql
-                        driver
-                        database
-                        {:select [:table_name :table_type
-                                  [{:select [[[:= :option_value "true"]]]
-                                    :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
-                                    :where [:and
-                                            [:= :o.table_name :t.table_name]
-                                            [:= :o.option_name "require_partition_filter"]]}
-                                   :require_partition_filter]]
-                         :from [[(information-schema-table project-id dataset-id "TABLES") :t]]})]
-         {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter} (into [] results)]
-     {:schema dataset-id
-      :name table-name
-      :database_require_filter
-      (boolean (and
-                ;; Materialiezed views can be partitioned, and whether the view require a filter or not is based
-                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                ;; thus we can't know whether the view require a filter or not.
-                ;; Maybe this is something we can do once we can parse sql
-                (= "BASE TABLE" table-type)
-                require-partition-filter))})))
+  (let [project-id (get-project-id (:details database))
+        query-dataset (fn [dataset-id]
+                        (query-honeysql
+                         driver
+                         database
+                         {:select [:table_name :table_type
+                                   [{:select [[[:= :option_value "true"]]]
+                                     :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
+                                     :where [:and
+                                             [:= :o.table_name :t.table_name]
+                                             [:= :o.option_name "require_partition_filter"]]}
+                                    :require_partition_filter]]
+                          :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))]
+    (eduction
+     (mapcat (fn [dataset-id]
+               (eduction
+                (map
+                 (fn [{table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
+                   {:schema dataset-id
+                    :name table-name
+                    :database_require_filter
+                    (boolean (and
+                              ;; Materialized views can be partitioned, and whether the view require a filter or not is based
+                              ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                              ;; thus we can't know whether the view require a filter or not.
+                              ;; Maybe this is something we can do once we can parse sql
+                              (= "BASE TABLE" table-type)
+                              require-partition-filter))}))
+                (query-dataset dataset-id))))
+     (list-datasets (:details database) :logging-schema-exclusions? true))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [driver database]
-  {:tables (describe-database-tables driver database)})
+  {:tables (into #{} (describe-database-tables driver database))})
 
 (defn- database-type->base-type
   [database-type]
