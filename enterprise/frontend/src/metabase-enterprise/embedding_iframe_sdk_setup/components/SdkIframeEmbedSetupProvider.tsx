@@ -32,6 +32,8 @@ export const SdkIframeEmbedSetupProvider = ({
 }: SdkIframeEmbedSetupProviderProps) => {
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
+  // We don't want to re-fetch the recent items every time we switch between
+  // steps, therefore we load recent items in the provider.
   const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
     useRecentItems();
 
