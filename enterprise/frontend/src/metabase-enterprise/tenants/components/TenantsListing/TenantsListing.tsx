@@ -8,10 +8,10 @@ import {
   ACTIVE_STATUS,
   type ActiveStatus,
 } from "metabase/admin/people/constants";
-import { AdminContentTable } from "metabase/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
-import UserAvatar from "metabase/components/UserAvatar";
-import { ForwardRefLink } from "metabase/core/components/Link";
+import { AdminContentTable } from "metabase/common/components/AdminContentTable";
+import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
+import { ForwardRefLink } from "metabase/common/components/Link";
+import UserAvatar from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { regexpEscape } from "metabase/lib/string";

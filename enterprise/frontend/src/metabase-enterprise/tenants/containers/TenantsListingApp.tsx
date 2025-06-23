@@ -6,7 +6,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/settings/components/SettingsSection";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useListTenantsQuery } from "metabase-enterprise/api";
