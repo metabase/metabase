@@ -41,7 +41,7 @@ export const useRecentItems = () => {
   const recentQuestions = useMemo(() => {
     const apiQuestions = (recentItems || [])
       .filter((item): item is RecentItem => item.model === "card")
-      .slice(0, 5);
+      .slice(0, MAX_RECENTS);
 
     // Merge local selections with API items, prioritizing local
     const localIds = new Set(localRecentQuestions.map((q) => q.id));
@@ -49,7 +49,7 @@ export const useRecentItems = () => {
     const mergedItems = [
       ...localRecentQuestions,
       ...apiQuestions.filter((q) => !localIds.has(q.id)),
-    ].slice(0, 5);
+    ].slice(0, MAX_RECENTS);
 
     return mergedItems;
   }, [recentItems, localRecentQuestions]);
