@@ -1234,11 +1234,11 @@
                                        :crowberto
                                        :put
                                        (str "dashboard/" (:id dash))
-                                       {:dashcards [{:id -1
-                                                     :size_x 1
-                                                     :size_y 1
-                                                     :row 0
-                                                     :col 0
+                                       {:dashcards [{:id       -1
+                                                     :size_x    1
+                                                     :size_y    1
+                                                     :row       0
+                                                     :col       0
                                                      :action_id (:id upsert-action)}]})
 
                   {upsert-card "table.row/create-or-update"} (u/index-by (comp :kind :action) dashcards)
@@ -1248,14 +1248,12 @@
                   (mt/user-http-request :crowberto :post 200 exec-url
                                         {:parameters {:id 1, :int 41}})
                   (is (= [[1 41]]
-                         (->> (table-rows table-id)
-                              (sort-by first)))))
+                         (table-rows table-id))))
                 (testing "update"
                   (mt/user-http-request :crowberto :post 200 exec-url
                                         {:parameters {:id 1, :int 42}})
                   (is (= [[1 42]]
-                         (->> (table-rows table-id)
-                              (sort-by first)))))))))))))
+                         (table-rows table-id))))))))))))
 
 (deftest tmp-modal-saved-action-test
   (mt/with-premium-features #{:table-data-editing}
