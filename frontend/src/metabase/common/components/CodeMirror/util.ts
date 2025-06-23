@@ -1,6 +1,8 @@
 import {
   acceptCompletion,
   moveCompletionSelection,
+  nextSnippetField,
+  prevSnippetField,
 } from "@codemirror/autocomplete";
 import { indentMore } from "@codemirror/commands";
 import {
@@ -124,6 +126,14 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
   // Has to be Prec.highest so that it overwrites after the default Cmd+Enter handler
   return Prec.highest(
     keymap.of([
+      {
+        key: "Tab",
+        run: nextSnippetField,
+      },
+      {
+        key: "Shift-Tab",
+        run: prevSnippetField,
+      },
       {
         key: "Tab",
         run: acceptCompletion,
