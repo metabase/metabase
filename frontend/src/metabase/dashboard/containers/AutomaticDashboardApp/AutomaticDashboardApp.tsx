@@ -124,11 +124,11 @@ const AutomaticDashboardAppInner = () => {
           <div className={CS.wrapper}>
             <div className={cx(CS.pl1, { [CS.pr1]: !hasSidebar })}>
               <FixedWidthContainer
-                data-testid="fixed-width-dashboard-header"
                 isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
                 <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                   <FixedWidthContainer
+                    data-testid="fixed-width-dashboard-header"
                     className={cx(CS.flex, CS.alignCenter)}
                     isFixedWidth={dashboard?.width === "fixed"}
                   >
