@@ -225,7 +225,8 @@
       (let [binning-keys (cond-> (list :was-binned)
                            lib.metadata.calculation/*propagate-binning-and-bucketing*
                            (conj :binning))]
-        (boolean (some opts binning-keys))))
+        (when (some opts binning-keys)
+          true)))
     ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
     ;; middleware needs to add extra info to track things that it did (e.g. the
     ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
