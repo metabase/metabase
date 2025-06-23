@@ -36,7 +36,7 @@
   :feature :database-routing
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
-        destination-db-id (router-db-or-id->destination-db-id @api/*current-user* database)]
+        destination-db-id (router-db-or-id->destination-db-id database)]
     (when (and destination-db-id
                (not (driver.u/supports? (:engine (lib.metadata/database (qp.store/metadata-provider)))
                                         :database-routing

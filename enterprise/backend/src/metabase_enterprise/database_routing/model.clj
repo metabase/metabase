@@ -29,7 +29,7 @@
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing."
   :feature :database-routing
   [field]
-  (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id (router-db-or-id->destination-db-id @api/*current-user*))]
+  (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id router-db-or-id->destination-db-id)]
     {:destination-db-id destination-db-id}))
 
 (defenterprise delete-associated-database-router!
