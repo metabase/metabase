@@ -128,9 +128,11 @@ function getSdkIframeEmbedHtml({
 export function prepareSdkIframeEmbedTest({
   withTokenFeatures = true,
   enabledAuthMethods = ["jwt"],
+  signOut = false,
 }: {
   withTokenFeatures?: boolean;
   enabledAuthMethods?: EnabledAuthMethods[];
+  signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
@@ -150,6 +152,10 @@ export function prepareSdkIframeEmbedTest({
   cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
 
   setupMockAuthProviders(enabledAuthMethods);
+
+  if (signOut) {
+    cy.signOut();
+  }
 }
 
 type EnabledAuthMethods = "jwt" | "saml" | "api-key";
