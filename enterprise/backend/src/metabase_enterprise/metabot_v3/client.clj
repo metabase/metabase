@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
    [clj-http.client :as http]
-   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -167,11 +166,12 @@
                             :as :stream}
                      *debug* (assoc :debug true))
           response (post! url options)
-          response-lines (-> response :body io/reader)]
+          response-lines ^java.io.BufferedReader (-> response :body io/reader)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
-        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"
+                                :headers {"x-metabot-conversation-id" conversation-id}} [os canceled-chan]
           (loop []
             (when-let [line (.readLine response-lines)]
               (.write os (.getBytes (str line "\n") "UTF-8"))
