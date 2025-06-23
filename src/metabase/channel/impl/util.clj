@@ -1,7 +1,7 @@
 (ns metabase.channel.impl.util
   (:require
    [hiccup.core :refer [html]]
-   [metabase.channel.render :as channel.render]
+   [metabase.channel.render.core :as channel.render]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]))
 
@@ -59,4 +59,3 @@
                               set)]
     (filter #(not (inline-param-ids (:id %)))
             parameters)))
-
