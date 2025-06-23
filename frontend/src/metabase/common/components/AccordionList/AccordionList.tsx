@@ -405,7 +405,10 @@ export class AccordionList<
   };
 
   itemScore = (item: TItem) => {
-    const { fuzzySearch, searchProp } = this.props;
+    const {
+      fuzzySearch,
+      searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
+    } = this.props;
     const { searchText } = this.state;
 
     if (!searchText || searchText.length === 0) {

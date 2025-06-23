@@ -10,7 +10,10 @@ import type {
 import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
-import { AccordionList } from "metabase/common/components/AccordionList";
+import {
+  AccordionList,
+  type SearchProps,
+} from "metabase/common/components/AccordionList";
 import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/common/components/SelectButton";
 import SelectButton from "metabase/common/components/SelectButton";
@@ -53,7 +56,7 @@ export interface SelectProps<
   buttonText?: string; // will override selected options text
 
   // AccordionList props
-  searchProp?: string;
+  searchProp?: SearchProps<TOption>;
   searchPlaceholder?: string;
   globalSearch?: boolean;
   width?: number;
