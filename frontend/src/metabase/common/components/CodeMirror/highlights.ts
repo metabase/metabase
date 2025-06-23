@@ -54,7 +54,7 @@ function asRange(range: HighlightRange, view: EditorView): Range<Decoration> {
 
 export function useHighlightRanges(
   editorRef: RefObject<CodeMirrorRef>,
-  highlightedRanges: HighlightRange[] = [],
+  highlightedRanges?: HighlightRange[],
 ) {
   useEffect(() => {
     const view = editorRef.current?.view;
@@ -62,7 +62,8 @@ export function useHighlightRanges(
       return;
     }
 
-    const ranges = highlightedRanges.map((range) => asRange(range, view));
+    const ranges =
+      highlightedRanges?.map((range) => asRange(range, view)) ?? [];
     view.dispatch({ effects: highlightRangeEffect.of(ranges) });
   }, [editorRef, highlightedRanges]);
 }
