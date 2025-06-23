@@ -402,6 +402,7 @@
                                     :oracle "BLOB"
                                     :clickhouse "string"
                                     :databricks "BINARY"
+                                    :sqlite "BLOB"
                                     :snowflake "BINARY"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
