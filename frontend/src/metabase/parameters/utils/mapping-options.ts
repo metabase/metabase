@@ -32,6 +32,7 @@ import type {
   ParameterTarget,
   ParameterVariableTarget,
   StructuredParameterDimensionTarget,
+  WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
 import { isStructuredDimensionTarget } from "metabase-types/guards";
@@ -149,11 +150,13 @@ export function getParameterMappingOptions(
   }
 
   if (dashcard && isActionDashCard(dashcard)) {
-    const actionParams = dashcard?.action?.parameters?.map((param) => ({
-      icon: "variable",
-      isForeign: false,
-      ...param,
-    }));
+    const actionParams = (dashcard.action as WritebackAction)?.parameters?.map(
+      (param) => ({
+        icon: "variable",
+        isForeign: false,
+        ...param,
+      }),
+    );
 
     return actionParams || [];
   }

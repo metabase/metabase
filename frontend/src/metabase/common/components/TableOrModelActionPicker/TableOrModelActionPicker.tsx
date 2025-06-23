@@ -1,32 +1,35 @@
-import { type ReactNode, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { cardApi, tableApi } from "metabase/api";
 import type { ActionItem } from "metabase/common/components/DataPicker";
 import { useAvailableData } from "metabase/common/components/DataPicker/hooks";
 import {
+  DelayedLoadingSpinner,
   EntityPickerContent,
   type EntityPickerOptions,
   type EntityPickerTab,
   defaultOptions,
 } from "metabase/common/components/EntityPicker";
+import { useDispatch } from "metabase/lib/redux";
+import { Center } from "metabase/ui";
+import type { CardId, TableId } from "metabase-types/api";
 
 import { ModelActionPicker } from "./ModelActionPicker";
 import { TableActionPicker } from "./TableActionPicker";
 import type {
   ModelActionPickerItem,
   ModelActionPickerStatePath,
-  ModelActionPickerValue,
   TableActionPickerItem,
   TableActionPickerStatePath,
-  TableActionPickerValue,
 } from "./types";
 import { isActionItem } from "./utils";
 
 type TableOrModelDataPickerProps = {
-  value: ActionItem | undefined;
+  value: TableActionPickerItem | ModelActionPickerItem | undefined;
   onChange: (action: ActionItem | undefined) => void;
   onClose: () => void;
-  children: ReactNode;
 };
 
 const options: Partial<EntityPickerOptions> = {
@@ -39,7 +42,6 @@ export const TableOrModelActionPicker = ({
   value,
   onChange,
   onClose,
-  children,
 }: TableOrModelDataPickerProps) => {
   const { hasModels, isLoading: isLoadingAvailableData } = useAvailableData({
     databaseId: undefined,
@@ -51,6 +53,27 @@ export const TableOrModelActionPicker = ({
   const [modelActionPath, setModelActionPath] =
     useState<ModelActionPickerStatePath>();
 
+  const dispatch = useDispatch();
+
+  const shouldHaveTableInitialPath = value?.model === "table";
+  const shouldHaveModelInitialPath = value?.model === "dataset";
+
+  const [isSetupComplete, setIsSetupComplete] = useState(() => {
+    if (!value) {
+      return true;
+    }
+
+    if (shouldHaveTableInitialPath && tableActionPath) {
+      return true;
+    }
+
+    if (shouldHaveModelInitialPath && modelActionPath) {
+      return true;
+    }
+
+    return false;
+  });
+
   const tabs = (function getTabs() {
     const computedTabs: EntityPickerTab<
       TableActionPickerItem["id"] | ModelActionPickerItem["id"],
@@ -60,19 +83,26 @@ export const TableOrModelActionPicker = ({
       {
         id: "tables-tab",
         displayName: t`Tables`,
-        models: ["action" as const],
+        models: ["table" as const, "action" as const],
         folderModels: [],
         icon: "table",
         render: ({ onItemSelect }) => {
+          if (shouldHaveTableInitialPath && !isSetupComplete) {
+            return (
+              <Center h="100%">
+                <DelayedLoadingSpinner />
+              </Center>
+            );
+          }
+
           return (
             <TableActionPicker
               path={tableActionPath}
-              value={value as TableActionPickerValue | undefined}
               onItemSelect={onItemSelect}
-              onPathChange={setTableActionPath}
-            >
-              {children}
-            </TableActionPicker>
+              onPathChange={(path) => {
+                setTableActionPath(path);
+              }}
+            />
           );
         },
       },
@@ -82,19 +112,24 @@ export const TableOrModelActionPicker = ({
       computedTabs.push({
         id: "models-tab",
         displayName: t`Models`,
-        models: ["action" as const],
+        models: ["dataset" as const, "action" as const],
         folderModels: [],
         icon: "model",
         render: ({ onItemSelect }) => {
+          if (shouldHaveModelInitialPath && !isSetupComplete) {
+            return (
+              <Center h="100%">
+                <DelayedLoadingSpinner />
+              </Center>
+            );
+          }
+
           return (
             <ModelActionPicker
               path={modelActionPath}
-              value={value as ModelActionPickerValue | undefined}
               onItemSelect={onItemSelect}
               onPathChange={setModelActionPath}
-            >
-              {children}
-            </ModelActionPicker>
+            />
           );
         },
       });
@@ -118,11 +153,51 @@ export const TableOrModelActionPicker = ({
     [onChange],
   );
 
-  const handleTabChange = useCallback(() => {
-    onChange(undefined);
-    setTableActionPath(undefined);
-    setModelActionPath(undefined);
-  }, [onChange]);
+  useMount(() => {
+    async function fetchTableMetadata(tableId: TableId) {
+      const action = dispatch(
+        tableApi.endpoints.getTable.initiate({ id: tableId }),
+      );
+
+      try {
+        const tableData = await action.unwrap();
+
+        const { db_id, schema, id } = tableData;
+        setTableActionPath([db_id, schema, id, undefined]);
+      } catch (e) {
+        setTableActionPath([undefined, undefined, undefined, undefined]);
+      } finally {
+        setIsSetupComplete(true);
+      }
+    }
+
+    if (value?.model === "table" && !tableActionPath) {
+      fetchTableMetadata(value.id);
+    }
+  });
+
+  useMount(() => {
+    async function fetchModelMetadata(modelId: CardId) {
+      const action = dispatch(
+        cardApi.endpoints.getCard.initiate({ id: modelId }),
+      );
+
+      try {
+        const modelData = await action.unwrap();
+
+        const { collection_id, id } = modelData;
+        setModelActionPath([collection_id || "root", id, undefined]);
+      } catch (e) {
+        setModelActionPath([undefined, undefined, undefined]);
+      } finally {
+        setIsSetupComplete(true);
+      }
+    }
+
+    if (value?.model === "dataset" && !modelActionPath) {
+      fetchModelMetadata(value.id);
+    }
+  });
 
   return (
     <EntityPickerContent
@@ -135,8 +210,7 @@ export const TableOrModelActionPicker = ({
       title={t`Pick an action to add`}
       onClose={onClose}
       onItemSelect={handleItemSelect}
-      isLoadingTabs={isLoadingAvailableData}
-      onTabChange={handleTabChange}
+      isLoadingTabs={isLoadingAvailableData && !isSetupComplete}
     />
   );
 };
