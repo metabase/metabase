@@ -97,7 +97,7 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_column_removed",
           triggered_from: "visualizer-modal",
-          event_data: "source: card:81, column: count",
+          event_data: "source: card:80, column: count",
         });
 
         // select a column
@@ -107,7 +107,7 @@ describe("Snowplow tracking", () => {
           event: "visualizer_data_changed",
           event_detail: "visualizer_column_added",
           triggered_from: "visualizer-modal",
-          event_data: "source: card:81, column: count",
+          event_data: "source: card:80, column: count",
         });
 
         // show settings sidebar
