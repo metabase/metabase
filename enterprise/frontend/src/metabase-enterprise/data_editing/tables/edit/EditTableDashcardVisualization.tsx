@@ -22,7 +22,7 @@ import {
 import { ShortMessage } from "metabase/visualizations/components/Visualization/NoResultsView/NoResultsView.styled";
 import { useBuiltInActions } from "metabase-enterprise/data_editing/actions/use-built-in-actions";
 import { canEditField } from "metabase-enterprise/data_editing/helpers";
-import { DataGridRowActionExecuteModal } from "metabase-enterprise/table-actions/execution/DataGridRowActionExecuteModal";
+import { DataGridActionExecuteModal } from "metabase-enterprise/table-actions/execution/DataGridActionExecuteModal";
 import { useDataGridRowActions } from "metabase-enterprise/table-actions/execution/use-datagrid-row-actions";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
@@ -435,9 +435,9 @@ export const EditTableDashcardVisualization = memo(
           onRowsDelete={handleRowDeleteBulk}
           withDelete={hasDeleteAction}
         />
-        <DataGridRowActionExecuteModal
-          rowAction={selectedRowAction?.action}
-          rowActionInput={selectedRowAction?.input}
+        <DataGridActionExecuteModal
+          action={selectedRowAction?.action}
+          actionInput={selectedRowAction?.input}
           scope={editingScope}
           onClose={onRowActionFormClose}
         />

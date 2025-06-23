@@ -92,7 +92,7 @@ export enum BuiltInTableAction {
 }
 
 export type DescribeActionFormRequest = {
-  action_id: BuiltInTableAction | string | number;
+  action_id: string;
   scope: ActionScope;
   input?: Record<string, unknown>;
 };

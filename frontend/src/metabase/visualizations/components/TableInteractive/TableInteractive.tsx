@@ -788,8 +788,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isColumnReorderingDisabled =
     (isDashboard || mode == null || isRawTable) && !isSettings;
 
-  const DataGridRowActionExecuteModal =
-    PLUGIN_TABLE_ACTIONS.DataGridRowActionExecuteModal;
+  const DataGridActionExecuteModal =
+    PLUGIN_TABLE_ACTIONS.DataGridActionExecuteModal;
 
   return (
     <div
@@ -813,10 +813,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
       />
-      <DataGridRowActionExecuteModal
+      <DataGridActionExecuteModal
         scope={actionScope}
-        rowAction={selectedRowAction?.action}
-        rowActionInput={selectedRowAction?.input}
+        action={selectedRowAction?.action}
+        actionInput={selectedRowAction?.input}
         onClose={onRowActionFormClose}
       />
     </div>

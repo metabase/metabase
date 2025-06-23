@@ -822,9 +822,9 @@ export const PLUGIN_TABLE_ACTIONS = {
       ) => void;
       onRowActionFormClose: () => void;
     },
-  DataGridRowActionExecuteModal: PluginPlaceholder as ComponentType<{
-    rowAction?: DataGridRowAction;
-    rowActionInput?: Record<string, RowValue>;
+  DataGridActionExecuteModal: PluginPlaceholder as ComponentType<{
+    action?: DataGridRowAction;
+    actionInput?: Record<string, RowValue>;
     scope: ActionScope;
     onClose: () => void;
   }>,

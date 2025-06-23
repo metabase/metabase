@@ -16,24 +16,24 @@ import { ActionFormModalParameter } from "metabase-enterprise/data_editing/table
 import type { RowCellsWithPkValue } from "metabase-enterprise/data_editing/tables/types";
 import type { ActionScope } from "metabase-types/api";
 
-import S from "./DataGridRowActionExecuteModal.module.css";
+import S from "./DataGridActionExecuteModal.module.css";
 import { useTableActionForm } from "./use-table-action-form";
 
-interface DataGridRowActionExecuteModalProps {
-  rowAction?: DataGridRowAction;
-  rowActionInput?: RowCellsWithPkValue;
+interface DataGridActionExecuteModalProps {
+  action?: DataGridRowAction;
+  actionInput?: RowCellsWithPkValue;
   scope: ActionScope;
   onClose: () => void;
 }
 
 type FormData = Record<string, string | number | boolean | null>;
 
-export function DataGridRowActionExecuteModal({
-  rowAction,
-  rowActionInput,
+export function DataGridActionExecuteModal({
+  action,
+  actionInput,
   scope,
   onClose,
-}: DataGridRowActionExecuteModalProps) {
+}: DataGridActionExecuteModalProps) {
   const dispatch = useDispatch();
 
   const [fetchFormDescription, { data: description, isLoading }] =
@@ -44,13 +44,13 @@ export function DataGridRowActionExecuteModal({
 
   const onSubmit = useCallback(
     async (values: FormData) => {
-      if (!rowActionInput || !rowAction) {
+      if (!actionInput || !action) {
         return;
       }
 
       const result = await executeAction({
-        actionId: rowAction.id,
-        input: rowActionInput,
+        actionId: action.id,
+        input: actionInput,
         scope,
         params: values,
       });
@@ -62,7 +62,7 @@ export function DataGridRowActionExecuteModal({
         onClose();
       }
     },
-    [executeAction, dispatch, onClose, rowAction, rowActionInput, scope],
+    [executeAction, dispatch, onClose, action, actionInput, scope],
   );
 
   const { isValid, resetForm, setFieldValue, handleSubmit, validateForm } =
@@ -73,14 +73,14 @@ export function DataGridRowActionExecuteModal({
 
   // Fetch the modal description on modal open
   useEffect(() => {
-    if (rowAction) {
+    if (action) {
       fetchFormDescription({
-        action_id: rowAction.id,
-        input: rowActionInput,
+        action_id: action.id,
+        input: actionInput,
         scope,
       });
     }
-  }, [rowAction, rowActionInput, fetchFormDescription, scope]);
+  }, [action, actionInput, fetchFormDescription, scope]);
 
   // Reset form and revalidate when description changes
   useEffect(() => {
@@ -103,7 +103,7 @@ export function DataGridRowActionExecuteModal({
   }, []);
 
   return (
-    <Modal.Root opened={!!rowAction} onClose={onClose}>
+    <Modal.Root opened={!!action} onClose={onClose}>
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header
@@ -113,7 +113,7 @@ export function DataGridRowActionExecuteModal({
             [S.withoutParameters]: !hasParameters,
           })}
         >
-          <Modal.Title>{rowAction?.name}</Modal.Title>
+          <Modal.Title>{action?.name}</Modal.Title>
           <Modal.CloseButton onClick={onClose} />
         </Modal.Header>
         {isLoading || !description ? (
