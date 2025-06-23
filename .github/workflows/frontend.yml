@@ -36,6 +36,8 @@ jobs:
             eslintcache-
       - name: Compile CLJS
         run: yarn build-pure:cljs
+      - name: Save wireit cache
+        uses: ./.github/actions/save-wireit-cache
       - name: Find CSS variables that are used but never defined
         run: yarn find-never-defined-css-variables
       - name: Run Prettier formatting linter
@@ -57,6 +59,8 @@ jobs:
           m2-cache-key: "cljs"
       - run: yarn build-pure:cljs
         name: Compile CLJS
+      - name: Save wireit cache
+        uses: ./.github/actions/save-wireit-cache
       - run: yarn type-check-pure
         name: Check types
 

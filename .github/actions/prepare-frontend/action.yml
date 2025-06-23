@@ -3,6 +3,10 @@ inputs:
   node-version:
     description: "The version of Node.js to use, overriding .nvmrc"
     required: false
+  skip-wireit-cache:
+    description: "Whether to skip wireit cache restoration"
+    required: false
+    default: "true"
 runs:
   using: "composite"
   steps:
@@ -32,6 +36,17 @@ runs:
       with:
         path: node_modules
         key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
+
+    # Add wireit cache restoration
+    - name: Get wireit cache
+      uses: actions/cache@v4
+      id: wireit-cache
+      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') && inputs.skip-wireit-cache != 'true' }}
+      with:
+        path: .wireit
+        key: wireit-${{ runner.os }}-${{ hashFiles('src/**/*.cljc', 'src/**/*.cljs', 'src/**/*.clj', '**deps.edn', 'enterprise/backend/src/**', 'src/**', 'modules/drivers/{*,*/{*,!(test)/**}}', '.clj-kondo/**', 'shadow-cljs.edn') }}
+        restore-keys: |
+          wireit-${{ runner.os }}-
 
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash

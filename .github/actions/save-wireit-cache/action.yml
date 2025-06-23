@@ -1,0 +1,17 @@
+name: Save wireit cache
+description: "Saves the wireit cache for ClojureScript compilation"
+inputs:
+  skip:
+    description: "Whether to skip wireit cache saving"
+    required: false
+    default: 'false'
+runs:
+  using: "composite"
+  steps:
+    # Save wireit cache for future runs
+    - name: Save wireit cache
+      uses: actions/cache/save@v4
+      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') && inputs.skip != 'true' }}
+      with:
+        path: .wireit
+        key: wireit-${{ runner.os }}-${{ hashFiles('src/**/*.cljc', 'src/**/*.cljs', 'src/**/*.clj', '**deps.edn', 'enterprise/backend/src/**', 'src/**', 'modules/drivers/{*,*/{*,!(test)/**}}', '.clj-kondo/**', 'shadow-cljs.edn') }}
