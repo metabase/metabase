@@ -4,6 +4,7 @@ import { indexBy } from "underscore";
 import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { screen, waitFor } from "__support__/ui";
@@ -91,6 +92,8 @@ const setup = async (
   );
 
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
+
+  setupLastDownloadFormatEndpoints();
 
   const user = createMockUser();
 

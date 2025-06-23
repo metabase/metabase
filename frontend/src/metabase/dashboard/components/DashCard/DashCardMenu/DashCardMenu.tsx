@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
@@ -67,8 +67,10 @@ export const DashCardMenu = ({
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const token = getDashcardTokenId(dashcard);
-  const uuid = getDashcardUuid(dashcard);
+  const token = useMemo(() => {
+    return getDashcardTokenId(dashcard);
+  }, [dashcard]);
+  const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
   const dashcardId = dashcard.id;
   const { dashboard, dashboardId, dashcardMenu } = useDashboardContext();
 
@@ -190,17 +192,22 @@ export const DashCardMenu = ({
   );
 };
 
-interface ShouldRenderDashcardMenuProps {
-  question: Question;
+type ShouldRenderDashcardMenuProps = {
+  question: Question | null;
   result?: Dataset;
-  isEditing: boolean;
-}
+} & Pick<DashboardContextReturned, "dashboard" | "dashcardMenu" | "isEditing">;
 
 DashCardMenu.shouldRender = ({
   question,
+  dashboard,
+  dashcardMenu,
   result,
   isEditing,
 }: ShouldRenderDashcardMenuProps) => {
+  if (!question || !dashboard || dashcardMenu === null) {
+    return null;
+  }
+
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
   const isInternalQuery = InternalQuery.isDatasetQueryType(

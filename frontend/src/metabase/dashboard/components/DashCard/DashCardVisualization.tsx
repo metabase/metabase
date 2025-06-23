@@ -364,10 +364,10 @@ export function DashCardVisualization({
 
     if (
       !question ||
-      !dashboard ||
-      dashcardMenu === null ||
       !DashCardMenu.shouldRender({
         question,
+        dashboard,
+        dashcardMenu,
         result,
         isEditing,
       })
