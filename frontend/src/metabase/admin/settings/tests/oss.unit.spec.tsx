@@ -54,7 +54,9 @@ describe("Admin Settings Routing - OSS", () => {
   describe("does not render the premium routes", () => {
     it("does not show the enterprise version of the license route", async () => {
       await setup({ isAdmin: true, initialRoute: "/license" });
-      expect(screen.queryByText(/License/)).not.toBeInTheDocument();
+      expect(
+        await screen.findByText("Explore our paid plans"),
+      ).toBeInTheDocument();
       expect(screen.queryByText(/Billing/)).not.toBeInTheDocument();
     });
 

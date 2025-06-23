@@ -6,6 +6,7 @@
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
    [metabase.api.common :as api]
    [metabase.database-routing.core :refer [with-database-routing-on]]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.store :as qp.store]
@@ -36,5 +37,10 @@
   [query]
   (let [database (lib.metadata/database (qp.store/metadata-provider))
         destination-db-id (router-db-or-id->destination-db-id @api/*current-user* database)]
+    (when (and destination-db-id
+               (not (driver.u/supports? (:engine (lib.metadata/database (qp.store/metadata-provider)))
+                                        :database-routing
+                                        database)))
+      (throw (ex-info "Unsupported database for database routing" {})))
     (cond-> query
       destination-db-id (assoc :destination-database/id destination-db-id))))

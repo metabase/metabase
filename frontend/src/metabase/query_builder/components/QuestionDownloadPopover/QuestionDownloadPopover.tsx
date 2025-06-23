@@ -2,11 +2,11 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
   ExportFormat,
   TableExportFormat,
 } from "metabase/common/types/export";
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {

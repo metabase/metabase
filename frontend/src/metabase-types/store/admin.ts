@@ -3,7 +3,6 @@ import type {
   DatabaseId,
   GroupsPermissions,
   SettingDefinition,
-  SettingKey,
 } from "metabase-types/api";
 
 export type AdminPathKey =
@@ -13,7 +12,6 @@ export type AdminPathKey =
   | "people"
   | "databases"
   | "permissions"
-  | "troubleshooting"
   | "audit"
   | "tools"
   | "performance"
@@ -43,7 +41,6 @@ export interface AdminState {
   };
   settings: {
     settings: SettingDefinition[];
-    warnings: Partial<Record<SettingKey, unknown>>;
   };
   databases: {
     deletionError: null | unknown;

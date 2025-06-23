@@ -45,6 +45,11 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
         ([filter, { value, representativeResult }], index) => {
           // eslint-disable-next-line no-unsafe-element-filtering
           H.filterWidget().eq(index).click();
+
+          if (["Is", "Is not"].includes(filter)) {
+            cy.log("Wait for the correct popover to appear");
+            cy.findByPlaceholderText(/search the list/i).should("be.visible");
+          }
           applyFilterByType(filter, value);
 
           cy.log(`Make sure ${filter} filter returns correct result`);

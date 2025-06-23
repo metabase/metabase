@@ -1,6 +1,7 @@
 (ns metabase-enterprise.metabot-v3.client
   (:require
    [clj-http.client :as http]
+   [clojure.set :as set]
    [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
@@ -15,6 +16,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.o11y :refer [with-span]]))
 
 (set! *warn-on-reflection* true)
@@ -79,6 +81,9 @@
 
 (defn- analyze-dashboard-endpoint []
   (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/dashboard"))
+
+(defn- example-question-generation-endpoint []
+  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/example-question-generation/batch"))
 
 (mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
   "Make a V2 request to the AI Proxy."
@@ -249,4 +254,48 @@
       (throw (ex-info (format "Error in dashboard analysis request to AI service: unexpected status code: %d %s"
                               (:status response) (:reason-phrase response))
                       {:request options
+                       :response response})))))
+
+(mr/def ::example-generation-column
+  [:and
+   [:map
+    [:name :string]
+    [:type [:enum :number, :string, :date, :datetime, :time, :boolean, :null]]
+    [:description {:optional true} [:maybe :string]]
+    [:table-reference {:optional true} :string]]
+   [:map {:encode/ai-service-request #(set/rename-keys % {:table-reference :table_reference})}]])
+
+(mr/def ::example-generation-payload
+  [:map
+   [:tables {:optional true}
+    [:sequential
+     [:map
+      [:name :string]
+      [:description {:optional true} [:maybe :string]]
+      [:fields [:sequential ::example-generation-column]]]]]
+   [:metrics {:optional true}
+    [:sequential
+     [:and
+      [:map
+       [:name :string]
+       [:description {:optional true} [:maybe :string]]
+       [:queryable-dimensions [:sequential ::example-generation-column]]
+       [:default-time-dimension {:optional true} ::example-generation-column]]
+      [:map {:encode/ai-service-request #(set/rename-keys % {:default-time-dimension :default_time_dimension
+                                                             :queryable-dimensions :queryable_dimensions})}]]]]])
+
+(mu/defn generate-example-questions
+  "Generate example questions for the given models and metrics."
+  [promptables :- ::example-generation-payload]
+  (let [url (example-question-generation-endpoint)
+        payload (mc/encode ::example-generation-payload
+                           promptables
+                           (mtx/transformer {:name :ai-service-request}))
+        options (build-request-options payload)
+        response (post! url options)]
+    (if (= (:status response) 200)
+      (:body response)
+      (throw (ex-info (format "Error in generate-example-questions request to AI service: unexpected status: %d %s"
+                              (:status response) (:reason-phrase response))
+                      {:request (assoc options :body payload)
                        :response response})))))

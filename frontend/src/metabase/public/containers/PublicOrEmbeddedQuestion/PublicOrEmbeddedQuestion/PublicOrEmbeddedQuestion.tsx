@@ -203,7 +203,7 @@ export const PublicOrEmbeddedQuestion = ({
         theme={theme}
         titled={titled}
         setCard={setCard}
-        downloadsEnabled={downloadsEnabled.results}
+        downloadsEnabled={downloadsEnabled}
       />
     </LocaleProvider>
   );

@@ -105,12 +105,16 @@ type CollectionBrowserEntityTypes =
   | "question"
   | "model";
 
-type SdkIframeEmbedBaseSettings = {
-  apiKey: string;
+export type SdkIframeEmbedBaseSettings = {
+  apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
   preferredAuthMethod?: MetabaseAuthMethod;
+
+  /** Whether we should use the existing user session (i.e. admin user's cookie) */
+  useExistingUserSession?: boolean;
+
   // Whether the embed is running on localhost. Cannot be set by the user.
   _isLocalhost?: boolean;
 };
@@ -131,3 +135,12 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   target: string | HTMLElement;
   iframeClassName?: string;
 };
+
+/** Keys that can be used to update the embed settings */
+export type SdkIframeEmbedSettingKey =
+  | keyof SdkIframeEmbedBaseSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
+  | keyof ExplorationEmbedOptions
+  | keyof CurateContentEmbedOptions
+  | keyof ViewContentEmbedOptions;

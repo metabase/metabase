@@ -408,7 +408,7 @@
   (->> (cond-> m
          ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
          ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
-         (contains? m :metabase.lib.query/transformation-added-base-type)
+         (:metabase.lib.query/transformation-added-base-type m)
          (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
 
          ;; Removing the namespaces from a few

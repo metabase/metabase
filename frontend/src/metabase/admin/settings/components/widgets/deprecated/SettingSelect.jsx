@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import Select, { Option } from "metabase/core/components/Select";
+import Select, { Option } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 
 /**

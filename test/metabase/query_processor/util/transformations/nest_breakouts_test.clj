@@ -146,7 +146,5 @@
                                        "test_data_products__v_f48e965c"]]
                            :aggregation [[:count {:name "count"}]
                                          [:cum-count {:name "count_2"}]]}]
-                 ;; unrelated TODO, but I think `:alias/escaped->original` should be a string -> string map not keyword ->
-                 ;; string
-                 :info {:alias/escaped->original {:test-data-products--v-af2712b9 "test_data_products__via__product_id"}}}
+                 :info {:alias/escaped->original {"test_data_products__v_af2712b9" "test_data_products__via__product_id"}}}
                 actual))))))
