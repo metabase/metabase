@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { callMockEvent } from "__support__/events";
 import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved, within } from "__support__/ui";
-import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
+import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/common/hooks/use-before-unload";
 import registerVisualizations from "metabase/visualizations/register";
 
 import {

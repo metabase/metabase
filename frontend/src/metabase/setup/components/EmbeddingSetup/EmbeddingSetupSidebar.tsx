@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/components/LogoIcon";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
+import LogoIcon from "metabase/common/components/LogoIcon";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Box, Center, Flex, Icon, type IconName, Text } from "metabase/ui";
 
 import { LanguageSelector } from "../LanguageSelector";
