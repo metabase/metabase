@@ -8,8 +8,8 @@ import {
   useListDatabaseXraysQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Select from "metabase/core/components/Select";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import Select from "metabase/common/components/Select";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";

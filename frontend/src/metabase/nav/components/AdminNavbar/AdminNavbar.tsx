@@ -4,7 +4,7 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import LogoIcon from "metabase/components/LogoIcon";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -66,6 +66,7 @@ export const AdminNavbar = ({
   return (
     <AdminNavbarRoot
       data-element-id="navbar-root"
+      data-testid="admin-navbar"
       aria-label={t`Navigation bar`}
     >
       <AdminLogoLink to="/admin">

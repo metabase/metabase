@@ -5,6 +5,7 @@ import type { Route, WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
@@ -16,7 +17,6 @@ import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/D
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
-import { useFavicon } from "metabase/hooks/use-favicon";
 import { parseHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

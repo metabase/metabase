@@ -6,8 +6,8 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Markdown from "metabase/core/components/Markdown";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Markdown from "metabase/common/components/Markdown";
 import DashboardS from "metabase/css/dashboard.module.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";

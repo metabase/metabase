@@ -1258,7 +1258,7 @@
                 (is (= 1 (count (:errors report))))
                 (is (= 3 (count (:seen report)))))
               (is (= [["Failed to read file for Collection does-not-exist"]]
-                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
+                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}\n"
                                    (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test

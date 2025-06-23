@@ -1,6 +1,6 @@
 // We need to mock this *before* registering the visualizations. Otherwise
 // `ChartWithLegend` with already load the real one.
-jest.mock("metabase/components/ExplicitSize");
+jest.mock("metabase/common/components/ExplicitSize");
 
 // We need to mock this *before* registering the visualizations.
 // Otherwise ActionViz loads the NativeQueryEditor (via ActionCreator)

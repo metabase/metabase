@@ -6,7 +6,7 @@ import {
   useListUsersQuery,
   useReactivateUserMutation,
 } from "metabase/api";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 interface UserActivationModalInnerProps {
   params: { userId: string };
