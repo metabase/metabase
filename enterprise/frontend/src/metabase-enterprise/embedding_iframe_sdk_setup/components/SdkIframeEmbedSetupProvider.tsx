@@ -97,7 +97,7 @@ export const SdkIframeEmbedSetupProvider = ({
     recentDashboards,
     recentQuestions,
     addRecentItem,
-    isEmbedSettingsLoaded: isEmbedSettingsLoaded,
+    isEmbedSettingsLoaded,
   };
 
   return (
