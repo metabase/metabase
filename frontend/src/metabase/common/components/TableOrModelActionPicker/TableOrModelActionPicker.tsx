@@ -14,7 +14,7 @@ import {
 } from "metabase/common/components/EntityPicker";
 import { useDispatch } from "metabase/lib/redux";
 import { Center } from "metabase/ui";
-import type { CardId, TableId } from "metabase-types/api";
+import type { CardId, DatabaseId, TableId } from "metabase-types/api";
 
 import { ModelActionPicker } from "./ModelActionPicker";
 import { TableActionPicker } from "./TableActionPicker";
@@ -28,6 +28,7 @@ import { isActionItem } from "./utils";
 
 type TableOrModelDataPickerProps = {
   value: TableActionPickerItem | ModelActionPickerItem | undefined;
+  initialDbId: DatabaseId | undefined;
   onChange: (action: ActionItem | undefined) => void;
   onClose: () => void;
 };
@@ -40,6 +41,7 @@ const options: Partial<EntityPickerOptions> = {
 
 export const TableOrModelActionPicker = ({
   value,
+  initialDbId,
   onChange,
   onClose,
 }: TableOrModelDataPickerProps) => {
@@ -59,7 +61,7 @@ export const TableOrModelActionPicker = ({
   const shouldHaveModelInitialPath = value?.model === "dataset";
 
   const [isSetupComplete, setIsSetupComplete] = useState(() => {
-    if (!value) {
+    if (!value && !initialDbId) {
       return true;
     }
 
@@ -173,6 +175,12 @@ export const TableOrModelActionPicker = ({
 
     if (value?.model === "table" && !tableActionPath) {
       fetchTableMetadata(value.id);
+    } else {
+      if (!value && !tableActionPath && initialDbId) {
+        // preselect db
+        setTableActionPath([initialDbId, undefined, undefined, undefined]);
+        setIsSetupComplete(true);
+      }
     }
   });
 

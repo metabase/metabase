@@ -14,6 +14,7 @@ import type { BasicTableViewColumn } from "metabase/visualizations/types/table-a
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   DataGridWritebackAction,
+  DatabaseId,
   RowActionFieldSettings,
   TableActionDisplaySettings,
 } from "metabase-types/api";
@@ -23,6 +24,7 @@ import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
 interface Props {
   actionSettings: TableActionDisplaySettings | null | undefined;
   tableColumns: BasicTableViewColumn[];
+  databaseId: DatabaseId | undefined;
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
@@ -30,12 +32,12 @@ interface Props {
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
-  actions?: DataGridWritebackAction[];
 }
 
 export function AddOrEditActionSettingsContent({
   actionSettings,
   tableColumns,
+  databaseId,
   onClose,
   onSubmit,
 }: Props) {
@@ -117,6 +119,7 @@ export function AddOrEditActionSettingsContent({
     return (
       <TableOrModelActionPicker
         value={newActionInitialParentItem}
+        initialDbId={databaseId}
         onChange={setAction}
         onClose={onClose}
       />

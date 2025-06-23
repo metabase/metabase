@@ -44,6 +44,8 @@ export const ConfigureDashcardEditableTableActions = ({
 }) => {
   const dispatch = useDispatch();
 
+  const databaseId = dashcard.card?.database_id;
+
   const { enabledActions, tableActions, builtInActionsMap } = useMemo(() => {
     const enabledActions =
       dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
@@ -183,6 +185,7 @@ export const ConfigureDashcardEditableTableActions = ({
         <ConfigureTableActions
           value={tableActions}
           onChange={handleUpdateRowActions}
+          databaseId={databaseId}
           cols={tableColumns}
         />
       )}
