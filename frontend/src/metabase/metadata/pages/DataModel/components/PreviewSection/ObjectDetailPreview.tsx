@@ -2,7 +2,7 @@ import { memo } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import EmptyState from "metabase/components/EmptyState";
+import EmptyState from "metabase/common/components/EmptyState";
 import { Stack } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {

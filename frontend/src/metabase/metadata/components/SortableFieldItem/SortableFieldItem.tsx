@@ -1,7 +1,7 @@
 import cx from "classnames";
 
+import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Sortable } from "metabase/core/components/Sortable";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Flex, Group, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

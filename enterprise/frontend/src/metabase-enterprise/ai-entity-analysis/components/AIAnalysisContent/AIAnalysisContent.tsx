@@ -1,4 +1,4 @@
-import Markdown from "metabase/core/components/Markdown";
+import Markdown from "metabase/common/components/Markdown";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { Skeleton } from "metabase/ui/components/feedback/Skeleton/Skeleton";
 
