@@ -171,6 +171,21 @@ class MetabaseEmbed {
       );
     }
 
+    // Ensure auth methods are mutually exclusive
+    const authMethods = [
+      settings.apiKey,
+      settings.useExistingUserSession,
+      settings.preferredAuthMethod,
+    ].filter(
+      (method) => method !== undefined && method !== null && method !== false,
+    );
+
+    if (authMethods.length > 1) {
+      raiseError(
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+      );
+    }
+
     if (!settings.target) {
       raiseError("target must be provided");
     }

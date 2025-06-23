@@ -106,7 +106,7 @@ type CollectionBrowserEntityTypes =
   | "model";
 
 type SdkIframeEmbedBaseSettings = {
-  apiKey: string;
+  apiKey?: string;
   instanceUrl: string;
   theme?: MetabaseTheme;
   locale?: string;
