@@ -3,6 +3,7 @@ import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
+import { isActionDashCard } from "metabase/dashboard/utils";
 import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
@@ -42,6 +43,7 @@ export const PublicOrEmbeddedDashboard = ({
 }: PublicOrEmbeddedDashboardProps) => (
   <DashboardContextProvider
     {...contextProps}
+    isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
     dashcardMenu={
       contextProps.dashcardMenu ??
       (({ dashcard, result }) =>

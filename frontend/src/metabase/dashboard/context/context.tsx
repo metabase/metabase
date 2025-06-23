@@ -1,9 +1,11 @@
+import { assoc } from "icepick";
 import {
   type PropsWithChildren,
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { usePrevious, useUnmount } from "react-use";
@@ -12,7 +14,7 @@ import { isEqual, isObject, noop } from "underscore";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
-import type { Dashboard, DashboardId } from "metabase-types/api";
+import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -45,6 +47,7 @@ export type DashboardContextOwnProps = {
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
   dashcardMenu?: DashboardCardMenu | null;
+  isDashcardVisible?: (dc: DashboardCard) => boolean;
 };
 
 export type DashboardContextOwnResult = {
@@ -81,6 +84,7 @@ const DashboardContextProviderInner = ({
   onLoadWithoutCards,
   onError,
   dashcardMenu,
+  isDashcardVisible,
 
   children,
 
@@ -287,11 +291,23 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
+  const finalDashboard = useMemo(() => {
+    if (dashboard && isDashcardVisible) {
+      return assoc(
+        dashboard,
+        "dashcards",
+        dashboard.dashcards.filter(isDashcardVisible),
+      );
+    }
+    return dashboard;
+  }, [dashboard, isDashcardVisible]);
+
   return (
     <DashboardContext.Provider
       value={{
         dashboardIdProp,
         dashboardId,
+        dashboard: finalDashboard,
         parameterQueryParams,
         onLoad,
         onError,
@@ -326,7 +342,6 @@ const DashboardContextProviderInner = ({
         withFooter,
 
         // redux selectors
-        dashboard,
         selectedTabId,
         isEditing,
         isNavigatingBackToDashboard,
