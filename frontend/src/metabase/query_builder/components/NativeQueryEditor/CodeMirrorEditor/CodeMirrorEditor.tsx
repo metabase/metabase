@@ -141,6 +141,7 @@ export const CodeMirrorEditor = forwardRef<
       height="100%"
       onUpdate={handleUpdate}
       autoFocus
+      autoCorrect="off"
       placeholder={placeholder}
       highlightRanges={highlightedRanges}
       onFormat={onFormatQuery}
