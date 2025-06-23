@@ -18,6 +18,7 @@ import {
   Flex,
   Icon,
   Popover,
+  Stack,
   Text,
   UnstyledButton,
 } from "metabase/ui";
@@ -32,6 +33,7 @@ type LicenseTokenFormProps = {
 };
 
 const MOUSE_HOVER_DELAY = 200;
+const POPOVER_WIDTH = 300;
 
 export const LicenseTokenForm = ({
   onSubmit,
@@ -109,14 +111,10 @@ export const LicenseTokenForm = ({
                       onMouseEnter={() => debouncedMouseMove(true)}
                       onMouseLeave={() => debouncedMouseMove(false)}
                     >
-                      <Flex
-                        className={styles.popoverContent}
-                        direction="column"
-                        gap="md"
-                      >
+                      <Stack gap="md" p="md" w={POPOVER_WIDTH}>
                         <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
                         <Text lh="lg">{jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
-                      </Flex>
+                      </Stack>
                     </Popover.Dropdown>
                   </Popover>
                 </Box>
