@@ -8,7 +8,7 @@ import { type Ref, forwardRef, useRef } from "react";
 
 import S from "./CodeMirror.module.css";
 import { type HighlightRange, useHighlightRanges } from "./highlights";
-import { type ExtensionOptions, useBasicSetup, useExtensions } from "./util";
+import { type ExtensionOptions, useBasicSetup, useExtensions } from "./utils";
 
 export type CodeMirrorProps = ReactCodeMirrorProps &
   ExtensionOptions & {
