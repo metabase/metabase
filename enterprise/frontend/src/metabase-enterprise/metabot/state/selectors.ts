@@ -108,6 +108,8 @@ export const getAgentRequestMetadata = createSelector(
   (history, state) => ({
     state,
     // NOTE: need end to end support for ids on messages as BE will error if ids are present
-    history: history.map(({ id, ...h }) => h),
+    history: history.map((h) =>
+      h.id && h.id.startsWith(`msg_`) ? _.omit(h, "id") : h,
+    ),
   }),
 );

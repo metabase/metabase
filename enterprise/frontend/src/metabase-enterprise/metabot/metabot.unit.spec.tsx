@@ -431,6 +431,7 @@ describe("metabot", () => {
       fetchMock.post(
         `path:/api/ee/metabot-v3/v2/agent`,
         whoIsYourFavoriteResponse,
+        { delay: 50 }, // small delay to cause loading state
       );
 
       await enterChatMessage("Who is your favorite?");
