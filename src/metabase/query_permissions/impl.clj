@@ -81,9 +81,8 @@
                                 [:table-query-ids {:optional true} [:set ::lib.schema.id/table]]
                                 [:card-ids  {:optional true} [:set ::lib.schema.id/card]]
                                 [:native?   {:optional true} :boolean]]]
-  "Returns a map containing sources necessary for permissions checks. The set of permissions is
-  will be the full set necessary for an ad hoc query and other permissions functions will be required
-  to narrow down to just the permissions required for other types of query access.
+  "Returns a map containing sources necessary for permissions checks. The map will have the full set of resources
+  necessary for ad hoc query execution.
 
   * table-ids - tables that a user will need view-data permissions to access
   * card-ids - cards that user will need collection-access permissions to use
