@@ -406,6 +406,7 @@
                                     :sqlserver "BINARY(14)"
                                     :vertica "BINARY(14)"
                                     :sparksql "BINARY"
+                                    :bigquery-cloud-sdk "BYTES"
                                     :snowflake "BINARY"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
