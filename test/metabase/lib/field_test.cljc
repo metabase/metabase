@@ -1736,7 +1736,7 @@
                 "Question 54 → Address"]
                (map :display-name (lib/returned-columns query))))))))
 
-;;; adapted from parameters/utils/targets › getParameterColumns › unit of time parameter › question › date breakouts
+;;; adapted from parameters/utils/targets > getParameterColumns > unit of time parameter > question > date breakouts
 ;;; in multiple stages - returns date column from the last stage only
 (deftest ^:parallel display-name-for-columns-with-multiple-date-buckets-test
   (testing "the display name should only append the most recent date bucketing unit"
