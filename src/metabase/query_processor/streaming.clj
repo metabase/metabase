@@ -192,7 +192,8 @@
            (do
              (assert (qp.pipeline/canceled?* canceled-chan)
                      "QP unexpectedly returned nil.")
-             ;; Create a cancelled result to trigger possible proper cleanup
+             ;; Create a cancelled result to trigger possible proper cleanup?
+             ;; If canceled, nobody should be receiving the stream.
              {:status :canceled, :row_count 0, :data {:cols []}})
            (do
              ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
