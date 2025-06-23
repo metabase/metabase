@@ -1,11 +1,12 @@
 import { t } from "ttag";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+
 import {
   EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
 } from "../EmbeddingSettings/EmbeddingOption";
-import { SettingsPageWrapper } from "../SettingsSection";
 
 export function EmbeddingSettingsPage() {
   return (

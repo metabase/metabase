@@ -6,7 +6,7 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
-} from "metabase/admin/AdminNav";
+} from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";

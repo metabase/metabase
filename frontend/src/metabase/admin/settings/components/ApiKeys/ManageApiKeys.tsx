@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { useListApiKeysQuery } from "metabase/api";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -10,8 +14,6 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
-
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";

@@ -4,7 +4,7 @@ import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
-} from "metabase/admin/AdminNav";
+} from "metabase/admin/components/AdminNav";
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { useSelector } from "metabase/lib/redux";
