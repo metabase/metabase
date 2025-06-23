@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Flex, Icon, Stack, Text } from "metabase/ui";
 
 export interface ForeignKeyConstraintModalProps {

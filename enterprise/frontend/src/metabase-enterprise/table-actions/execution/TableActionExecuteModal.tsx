@@ -1,4 +1,4 @@
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
 import type { SelectedTableActionState } from "metabase/visualizations/types/table-actions";
 import type { ActionScope } from "metabase-types/api";
 

@@ -7,7 +7,7 @@ import {
   useGetTableDataQuery,
   useGetTableQuery,
 } from "metabase/api";
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -4,7 +4,7 @@ import {
   useGetRemappedFieldValueQuery,
   useSearchFieldValuesQuery,
 } from "metabase/api/field";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
 import type { FieldValue, RowValue } from "metabase-types/api";
 

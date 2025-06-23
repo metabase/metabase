@@ -3,11 +3,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListTablesQuery } from "metabase/api";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import SelectList from "metabase/components/SelectList";
-import { ItemTitle } from "metabase/components/SelectList/SelectListItem.styled";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import SelectList from "metabase/common/components/SelectList";
+import { ItemTitle } from "metabase/common/components/SelectList/SelectListItem.styled";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { humanize } from "metabase/lib/formatting";
 import {

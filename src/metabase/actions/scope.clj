@@ -33,10 +33,11 @@
 (defn- hydrate-from-card [scope card-id]
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
-    (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id] card-id)
-          ;; TODO Enable check for-real once we've updated all the tests that rely on row-data (using "or" for eastwood)
-          source-table (when (or true (= :model (:type card)))
-                         (-> card :dataset_query :query :source-table))
+    (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id)
+          ;; TODO Enable check for-real once we've updated all the tests that rely on row-data
+          ;;      (only for an editable do we want to treat the )
+          source-table #_(when (and (= :model (:type card)) (= :table-editable (:display card))))
+          (-> card :dataset_query :query :source-table)
           table-id     (when (pos-int? source-table)
                          source-table)]
       (merge {:table-id      table-id
