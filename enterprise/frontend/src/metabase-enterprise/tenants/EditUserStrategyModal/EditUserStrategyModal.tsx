@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { permissionApi } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
 import { Modal, Select, Stack, Text } from "metabase/ui";
 
