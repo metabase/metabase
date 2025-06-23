@@ -377,21 +377,20 @@
                              _         (api/check-404 row)]
                          ;; TODO i would much prefer if we used field-ids and not names in the configuration
                          (update-keys row name)))))]
-    (reduce-kv
-     (fn [acc k v]
-       (case (:sourceType v)
-         "ask-user" (if-let [default (:value v)]
-                      (if-not (contains? acc k)
-                        (assoc acc k default)
-                        acc)
-                      acc)
-         "constant" (assoc acc k (:value v))
-         ;; TODO: support override from params?
-         "row-data" (assoc acc k (get @row (:sourceValueTarget v)))
-         ;; no mapping? omit the key
-         nil acc))
-     (merge input params)
-     param-map)))
+    (if-not param-map
+      (merge input params)
+      (reduce-kv
+       (fn [acc k v]
+         (let [override (when-not (:visible v) (get params k))]
+           (case (:sourceType v)
+             ;; I don't think the FE can send a value for ask-user, but our tests do it...
+             "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
+             "constant" (assoc acc k (or override (:value v)))
+             "row-data" (assoc acc k (or override (get @row (:sourceValueTarget v))))
+             ;; no mapping? omit the key
+             nil acc)))
+       {}
+       param-map))))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
   (let [mapping (hydrate-mapping mapping)
