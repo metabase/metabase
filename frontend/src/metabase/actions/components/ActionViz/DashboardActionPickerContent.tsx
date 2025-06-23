@@ -50,7 +50,7 @@ export const DashboardActionPickerContent = ({
     }
   };
 
-  const handleCreateNewAction = useCallback(
+  const handleChangeAction = useCallback(
     (newAction: WritebackAction) => {
       dispatch(setActionForDashcard(dashcard, newAction));
       setNewActionInitialParentItem(undefined);
@@ -103,7 +103,7 @@ export const DashboardActionPickerContent = ({
       dashboard={dashboard}
       dashcard={dashcard}
       onChooseNewAction={handleChooseNewAction}
-      onCreateNewAction={handleCreateNewAction}
+      onChangeAction={handleChangeAction}
       onClose={handleClose}
     />
   );

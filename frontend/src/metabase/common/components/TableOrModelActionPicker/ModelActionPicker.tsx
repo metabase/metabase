@@ -15,7 +15,7 @@ import {
   ItemList,
   ListBox,
 } from "metabase/common/components/EntityPicker";
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
 import { isNotNull } from "metabase/lib/types";
 import { Box, Button, Divider, Flex, Icon, Stack } from "metabase/ui";
 import type {

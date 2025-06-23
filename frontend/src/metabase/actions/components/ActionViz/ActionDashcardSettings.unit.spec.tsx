@@ -73,6 +73,7 @@ const setup = (
 ) => {
   const closeSpy = jest.fn();
   const onChooseNewActionSpy = jest.fn();
+  const onChangeActionSpy = jest.fn();
 
   renderWithProviders(
     <Modal.Root opened onClose={closeSpy}>
@@ -81,6 +82,7 @@ const setup = (
         dashboard={dashboard}
         dashcard={actionDashcard}
         onChooseNewAction={onChooseNewActionSpy}
+        onChangeAction={onChangeActionSpy}
         onClose={closeSpy}
         {...options}
       />

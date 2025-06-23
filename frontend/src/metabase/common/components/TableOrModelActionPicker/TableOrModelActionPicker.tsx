@@ -129,7 +129,7 @@ export const TableOrModelActionPicker = ({
               path={modelActionPath}
               onItemSelect={onItemSelect}
               onPathChange={setModelActionPath}
-            ></ModelActionPicker>
+            />
           );
         },
       });
