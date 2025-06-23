@@ -430,6 +430,11 @@
     ;; formats. Not great.
     [:convert [:raw "datetime2"] formatted 20]))
 
+(defmethod sql.qp/cast-temporal-byte [:sqlserver :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:convert (h2x/literal "NVARCHAR(14)")  expr (h2x/literal 0)]))
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_driver _top-level-clause honeysql-form {value :limit}]
   (-> honeysql-form
