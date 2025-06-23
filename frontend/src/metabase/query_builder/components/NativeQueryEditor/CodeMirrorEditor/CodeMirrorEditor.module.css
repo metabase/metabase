@@ -5,6 +5,7 @@
   flex-shrink: 1;
   height: 100%;
   color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-bg-light);
 
   :global {
     .cm-tooltip-autocomplete {
