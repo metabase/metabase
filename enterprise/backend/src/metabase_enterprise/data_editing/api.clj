@@ -316,7 +316,7 @@
                              viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
                              inner-id    (:actionId viz-action)
                              inner       (fetch-unified-action scope inner-id)
-                             action-type (:actionType viz-action "data-grid/row-action")
+                             action-type (:actionType viz-action "data-grid/custom-action")
                              mapping     (:mapping viz-action)
                              ;; TODO we should do this *later* because it's lossy - we lose the configured ordering.
                              param-map   (->> (:parameterMappings viz-action {})
@@ -325,6 +325,8 @@
                          (assert (:enabled viz-action true) "Cannot call disabled actions")
                          (case action-type
                            ("data-grid/built-in"
+                            "data-grid/custom-action"
+                            ;; deprecated
                             "data-grid/row-action")
                            {:inner-action inner
                             :mapping      mapping

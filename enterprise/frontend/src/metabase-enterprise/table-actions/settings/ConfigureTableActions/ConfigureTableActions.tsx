@@ -49,7 +49,9 @@ export const ConfigureTableActions = ({
         id: uuid(),
         name: name || action.name,
         actionId: action.id,
-        actionType: "data-grid/row-action",
+        actionType: "data-grid/custom-action",
+        isRowAction: true,
+        isHeaderAction: false,
         parameterMappings,
         enabled: true,
       };
@@ -97,6 +99,9 @@ export const ConfigureTableActions = ({
         name: name || action.name,
         actionId: action.id,
         actionType: "data-grid/row-action",
+        actionType: "data-grid/custom-action",
+        isRowAction: true,
+        isHeaderAction: false,
         parameterMappings,
         enabled: editingAction?.enabled ?? true,
       };

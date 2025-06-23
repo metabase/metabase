@@ -219,7 +219,7 @@
                                                :parameterMappings nil}
                                               {:id                "dashcard:unknown:update"
                                                :actionId          "table.row/update"
-                                               :actionType        "data-grid/row-action"
+                                               :actionType        "data-grid/custom-action"
                                                :enabled           true
                                                ;; TODO make sure this stuff makes sense.
                                                ;;      What does the FE really write? Have we messed anything up?
