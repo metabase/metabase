@@ -20,23 +20,21 @@ function CollectionTimelineAcknowledgement({
 }) {
   return (
     <UserHasSeen id="events-menu">
-      {({ hasSeen, ack }) => {
-        return (
-          <Indicator disabled={hasSeen} size={6}>
-            {children({
-              ack: () => {
-                trackSimpleEvent({
-                  event: "events_clicked",
-                  triggered_from: "collection",
-                });
-                if (!hasSeen) {
-                  ack();
-                }
-              },
-            })}
-          </Indicator>
-        );
-      }}
+      {({ hasSeen, ack }) => (
+        <Indicator disabled={hasSeen} size={6} offset={6}>
+          {children({
+            ack: () => {
+              trackSimpleEvent({
+                event: "events_clicked",
+                triggered_from: "collection",
+              });
+              if (!hasSeen) {
+                ack();
+              }
+            },
+          })}
+        </Indicator>
+      )}
     </UserHasSeen>
   );
 }
@@ -48,20 +46,18 @@ const CollectionTimeline = ({
 
   return (
     <CollectionTimelineAcknowledgement>
-      {({ ack }) => {
-        return (
-          <Tooltip label={t`Events`} position="bottom">
-            <div>
-              <CollectionHeaderButton
-                as={Link}
-                to={url}
-                icon="calendar"
-                onClick={ack}
-              />
-            </div>
-          </Tooltip>
-        );
-      }}
+      {({ ack }) => (
+        <Tooltip label={t`Events`} position="bottom">
+          <div>
+            <CollectionHeaderButton
+              as={Link}
+              to={url}
+              icon="calendar"
+              onClick={ack}
+            />
+          </div>
+        </Tooltip>
+      )}
     </CollectionTimelineAcknowledgement>
   );
 };

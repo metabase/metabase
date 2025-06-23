@@ -22,23 +22,21 @@ function QuestionTimelineAcknowledgement({
 }) {
   return (
     <UserHasSeen id="events-menu">
-      {({ hasSeen, ack }) => {
-        return (
-          <Indicator disabled={hasSeen} size={6}>
-            {children({
-              ack: () => {
-                trackSimpleEvent({
-                  event: "events_clicked",
-                  triggered_from: "chart",
-                });
-                if (!hasSeen) {
-                  ack();
-                }
-              },
-            })}
-          </Indicator>
-        );
-      }}
+      {({ hasSeen, ack }) => (
+        <Indicator disabled={hasSeen} size={6} offset={4}>
+          {children({
+            ack: () => {
+              trackSimpleEvent({
+                event: "events_clicked",
+                triggered_from: "chart",
+              });
+              if (!hasSeen) {
+                ack();
+              }
+            },
+          })}
+        </Indicator>
+      )}
     </UserHasSeen>
   );
 }
