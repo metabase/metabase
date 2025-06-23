@@ -29,6 +29,8 @@ import type {
 
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
+import { trackSMTPSetupSuccess } from "./analytics";
+
 const emailSettingKeys = [
   "cloud-email-smtp-host",
   "cloud-email-smtp-port",
@@ -146,6 +148,7 @@ export const CloudSMTPConnectionForm = ({
             : t`Error updating email settings`,
         });
       } else {
+        trackSMTPSetupSuccess({ eventDetail: "cloud" });
         sendToast({
           message: t`Email settings updated`,
         });

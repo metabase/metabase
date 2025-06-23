@@ -39,6 +39,8 @@ import type {
 
 import { SetByEnvVarWrapper } from "../widgets/AdminSettingInput";
 
+import { trackSMTPSetupSuccess } from "./analytics";
+
 const emailSettingKeys = [
   "email-smtp-host",
   "email-smtp-port",
@@ -130,6 +132,7 @@ export const SelfHostedSMTPConnectionForm = ({
             : t`Error updating email settings`,
         });
       } else {
+        trackSMTPSetupSuccess({ eventDetail: "self-hosted" });
         sendToast({
           message: t`Email settings updated`,
         });

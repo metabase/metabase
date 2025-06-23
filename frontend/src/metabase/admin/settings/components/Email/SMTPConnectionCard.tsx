@@ -6,6 +6,7 @@ import { CloudSMTPConnectionCard } from "./CloudSMTPConnectionCard";
 import { CloudSMTPConnectionForm } from "./CloudSMTPConnectionForm";
 import { SelfHostedSMTPConnectionCard } from "./SelfHostedSMTPConnectionCard";
 import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
+import { trackSMTPSetupClick } from "./analytics";
 
 export const SMTPConnectionCard = () => {
   const hasCloudSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
@@ -17,7 +18,12 @@ export const SMTPConnectionCard = () => {
   if (!isHosted) {
     return (
       <>
-        <SelfHostedSMTPConnectionCard onOpenSMTPModal={openModal} />
+        <SelfHostedSMTPConnectionCard
+          onOpenSMTPModal={() => {
+            openModal();
+            trackSMTPSetupClick({ eventDetail: "self-hosted" });
+          }}
+        />
         {showModal && <SelfHostedSMTPConnectionForm onClose={closeModal} />}
       </>
     );
@@ -26,7 +32,12 @@ export const SMTPConnectionCard = () => {
   if (isHosted && hasCloudSMTPFeature) {
     return (
       <>
-        <CloudSMTPConnectionCard onOpenCloudSMTPModal={openModal} />
+        <CloudSMTPConnectionCard
+          onOpenCloudSMTPModal={() => {
+            openModal();
+            trackSMTPSetupClick({ eventDetail: "cloud" });
+          }}
+        />
         {showModal && <CloudSMTPConnectionForm onClose={closeModal} />}
       </>
     );
