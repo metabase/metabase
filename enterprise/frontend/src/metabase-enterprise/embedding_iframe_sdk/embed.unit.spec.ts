@@ -4,10 +4,7 @@ describe("embed.js script tag for sdk iframe embedding", () => {
   const defaultSettings = {
     apiKey: "test-api-key",
     instanceUrl: "http://localhost:3000",
-
-    // this will fail due to the target being missing,
-    // but the errors for incompatible configuration will throw first.
-    target: "#non-existent-target",
+    target: document.createElement("div"),
   };
 
   it("throws when target element is not found", () => {
@@ -55,7 +52,6 @@ describe("embed.js script tag for sdk iframe embedding", () => {
         ...defaultSettings,
         instanceUrl: "https://foo-bar-baz.com",
         questionId: 10,
-        target: document.createElement("div"),
       });
 
       embed.updateSettings({ instanceUrl: "https://foo-bar-baz.com" });
@@ -109,4 +105,20 @@ describe("embed.js script tag for sdk iframe embedding", () => {
       );
     },
   );
+
+  it("fires ready event immediately when addEventListener is called when embed is ready", () => {
+    const readyHandler = jest.fn();
+
+    const embed = new MetabaseEmbed({
+      ...defaultSettings,
+      dashboardId: 1,
+    });
+
+    // Simulate the embed being ready.
+    (embed as any)._isEmbedReady = true;
+
+    // The handler should be called immediately.
+    embed.addEventListener("ready", readyHandler);
+    expect(readyHandler).toHaveBeenCalledTimes(1);
+  });
 });

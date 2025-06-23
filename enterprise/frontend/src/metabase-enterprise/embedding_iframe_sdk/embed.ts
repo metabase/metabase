@@ -80,6 +80,12 @@ class MetabaseEmbed {
       this._eventHandlers.set(eventType, new Set());
     }
 
+    // For the ready event, invoke the handler immediately if the embed is already ready.
+    if (eventType === "ready" && this._isEmbedReady) {
+      handler();
+      return;
+    }
+
     this._eventHandlers.get(eventType)!.add(handler);
   }
 
