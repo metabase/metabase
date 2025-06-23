@@ -1,6 +1,7 @@
 (ns metabase-enterprise.tenants.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.settings.core :as setting]
    [toucan2.core :as t2]))
 
 (defenterprise login-attributes
@@ -8,7 +9,7 @@
   attributes. Currently overrides any existing user attributes."
   :feature :tenants
   [{:keys [tenant_id] :as _user}]
-  (when tenant_id
+  (when (and (setting/get :use-tenants) tenant_id)
     (let [{slug :slug} (t2/select-one :model/Tenant tenant_id)]
       {"@tenant.slug" slug})))
 
@@ -16,4 +17,6 @@
   "The set of tenant attribute keys that will be merged into tenant users' attributes"
   :feature :tenants
   []
-  #{"@tenant.slug"})
+  (if (setting/get :use-tenants)
+    #{"@tenant.slug"}
+    #{}))
