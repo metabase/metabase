@@ -27,11 +27,12 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     autoFocus,
     autoCorrect,
     tabIndex,
+    extensions,
     ...rest
   } = props;
 
-  const extensions = useExtensions({
-    extensions: props.extensions,
+  const extendedExtensions = useExtensions({
+    extensions,
     onFormat,
     autoFocus,
     autoCorrect,
@@ -51,7 +52,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
       autoFocus={autoFocus}
       className={cx(S.editor, className)}
       basicSetup={setup}
-      extensions={extensions}
+      extensions={extendedExtensions}
     />
   );
 });
