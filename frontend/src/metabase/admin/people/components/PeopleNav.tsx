@@ -17,7 +17,7 @@ export function PeopleNav() {
   const tenantEnabled = useSetting("use-tenants");
 
   return (
-    <AdminNavWrapper justify="space-between">
+    <AdminNavWrapper justify="space-between" aria-label="people-nav">
       <Stack gap="xs">
         <PeopleNavItem
           path="/admin/people"
@@ -38,7 +38,7 @@ export function PeopleNav() {
               path="/admin/tenants"
               data-testid="nav-item"
               label={t`Tenants`}
-              icon="info"
+              icon="globe"
             />
             <PeopleNavItem
               path="/admin/tenants/people"

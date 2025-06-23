@@ -56,12 +56,12 @@ describe("Tenants - management", () => {
       cy.findByRole("link", { name: /External Users/ }).should("not.exist");
     });
 
-    cy.findByRole("list", { name: "admin-list-items" })
-      .findByRole("link", { name: "People" })
+    cy.findByRole("navigation", { name: "people-nav" })
+      .findByRole("link", { name: /People/ })
       .click();
 
-    cy.findByRole("link", { name: "External Users" }).should("not.exist");
-    cy.findByRole("link", { name: "Tenants" }).should("not.exist");
+    cy.findByRole("link", { name: /External Users/ }).should("not.exist");
+    cy.findByRole("link", { name: /Tenants/ }).should("not.exist");
 
     cy.findByRole("link", { name: /gear/ }).click();
 
@@ -69,8 +69,8 @@ describe("Tenants - management", () => {
     H.popover().findByText("Multi tenant").click();
     H.modal().button("Close").click();
 
-    cy.findByRole("link", { name: "External Users" }).should("exist");
-    cy.findByRole("link", { name: "Tenants" }).click();
+    cy.findByRole("link", { name: /External Users/ }).should("exist");
+    cy.findByRole("link", { name: /Tenants/ }).click();
 
     // Create some tenants
     cy.findByRole("button", { name: "New tenant" }).click();
@@ -147,7 +147,7 @@ describe("Tenants - management", () => {
     });
 
     // Create an external user
-    cy.findByRole("link", { name: "External Users" }).click();
+    cy.findByRole("link", { name: /External Users/ }).click();
     cy.button("Invite someone").click();
 
     H.modal().within(() => {
@@ -187,7 +187,7 @@ describe("Tenants - management", () => {
     cy.findByTestId("admin-people-list-table").should("contain.text", "Parrot");
 
     // Reactivate tenant
-    cy.findByRole("link", { name: "Tenants" }).click();
+    cy.findByRole("link", { name: /Tenants/ }).click();
     cy.findByTestId("admin-content-table").should("contain.text", "1");
 
     cy.findByLabelText("Deactivated").click();
@@ -207,8 +207,8 @@ describe("Tenants - management", () => {
       cy.findByRole("link", { name: /Eagle/ }).should("exist");
     });
 
-    cy.findByRole("list", { name: "admin-list-items" })
-      .findByRole("link", { name: "Groups" })
+    cy.findByRole("navigation", { name: "people-nav" })
+      .findByRole("link", { name: /Groups/ })
       .click();
 
     cy.findByTestId("admin-content-table").within(() => {
@@ -304,7 +304,7 @@ describe("tenant users", () => {
       "jwt-attribute-firstname": "first_name",
       "jwt-attribute-lastname": "last_name",
       "jwt-enabled": true,
-      "jwt-identity-provider-uri": null,
+      "jwt-identity-provider-uri": "localhost:4000",
       "jwt-shared-secret": JWT_SECRET,
       "jwt-user-provisioning-enabled?": true,
       "use-tenants": true,
@@ -410,6 +410,12 @@ describe("tenant users", () => {
 
     H.navigationSidebar()
       .findByTestId("navbar-new-collection-button")
+      .should("not.exist");
+    H.navigationSidebar()
+      .findByRole("heading", { name: /collections/i })
+      .should("not.exist");
+    H.navigationSidebar()
+      .findByRole("link", { name: /trash/i })
       .should("not.exist");
   });
 });
