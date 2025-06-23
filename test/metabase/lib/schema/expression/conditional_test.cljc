@@ -120,6 +120,10 @@
     10 (value-expr :type/DateTime "2023-03-08T04:33:45")
     10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
 
+    10.5 (value-expr :type/Date "2023-03-08")
+    10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
+    10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
     "A" (value-expr :type/Date "2023-03-08")
     "A" (value-expr :type/DateTime "2023-03-08T04:33:45")
     "A" (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
@@ -276,6 +280,10 @@
     10 (value-expr :type/Date "2023-03-08")
     10 (value-expr :type/DateTime "2023-03-08T04:33:45")
     10 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
+
+    10.5 (value-expr :type/Date "2023-03-08")
+    10.5 (value-expr :type/DateTime "2023-03-08T04:33:45")
+    10.5 (value-expr :type/DateTimeWithTZ "2023-03-08T04:33:45Z")
 
     "A" (value-expr :type/Date "2023-03-08")
     "A" (value-expr :type/DateTime "2023-03-08T04:33:45")

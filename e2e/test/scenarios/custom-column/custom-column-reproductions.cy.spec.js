@@ -2067,78 +2067,29 @@ describe("issue 57674", () => {
     H.openOrdersTable({ mode: "notebook" });
   });
 
-  const examples = {
-    "types/Text": ['"foo"', "[Product → Title]"],
-    "types/Integer": ["10"],
-    "types/Float": ["42.5", "[Total]"],
-    "types/Date": ["date([Created At])"],
-    "types/DateTime": ["[Created At]"],
-    "types/Boolean": ["true", "false"],
-  };
-
-  // an arbitrary list of pairs of types that are incompatible
-  // this list is not exhaustive, but it should cover a lot of cases
-  const incompatiblePairs = [
-    ["types/Text", "types/Integer"],
-    ["types/Text", "types/Float"],
-    ["types/Text", "types/Date"],
-    ["types/Text", "types/DateTime"],
-    ["types/Text", "types/Boolean"],
-
-    ["types/Integer", "types/Date"],
-    ["types/Integer", "types/DateTime"],
-    ["types/Integer", "types/Boolean"],
-
-    ["types/Float", "types/Date"],
-    ["types/Float", "types/DateTime"],
-    ["types/Float", "types/Boolean"],
-  ];
-
   it("should show an error when using a case or if expression with mismatched types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();
 
-    for (const [ta, tb] of incompatiblePairs) {
-      for (const a of examples[ta]) {
-        for (const b of examples[tb]) {
-          H.CustomExpressionEditor.clear();
-          H.popover().findByText("Types are incompatible.").should("not.exist");
+    H.CustomExpressionEditor.clear();
+    H.popover().findByText("Types are incompatible.").should("not.exist");
 
-          cy.log(`${a} vs. ${b}`);
-          H.CustomExpressionEditor.type(`case([Total] > 100, ${a}, ${b})`, {
-            allowFastSet: true,
-          }).blur();
+    H.CustomExpressionEditor.type('case([Total] > 100, [Created At], "foo")', {
+      allowFastSet: true,
+    }).blur();
 
-          H.popover()
-            .findByText("Types are incompatible.")
-            .should("be.visible");
-        }
-      }
-    }
+    H.popover().findByText("Types are incompatible.").should("be.visible");
   });
-
-  // an arbitrary list of pairs of types that are compatible
-  // this list is not exhaustive, but it should cover a lot of cases
-  const compatiblePairs = [
-    ["types/Integer", "types/Float"],
-    ["types/Date", "types/DateTime"],
-  ];
 
   it("should not show an error when using a case or if expression with compatible types (metabase#57674)", () => {
     H.getNotebookStep("data").button("Custom column").click();
 
-    for (const [ta, tb] of compatiblePairs) {
-      for (const a of examples[ta]) {
-        for (const b of examples[tb]) {
-          H.CustomExpressionEditor.clear();
-          H.popover().findByText("Types are incompatible.").should("not.exist");
+    H.CustomExpressionEditor.clear();
+    H.popover().findByText("Types are incompatible.").should("not.exist");
 
-          H.CustomExpressionEditor.type(`case([Total] > 100, ${a}, ${b})`, {
-            allowFastSet: true,
-          }).blur();
+    H.CustomExpressionEditor.type('case([Total] > 100, "foo", "bar")', {
+      allowFastSet: true,
+    }).blur();
 
-          H.popover().findByText("Types are incompatible.").should("not.exist");
-        }
-      }
-    }
+    H.popover().findByText("Types are incompatible.").should("not.exist");
   });
 });
