@@ -122,53 +122,48 @@ const AutomaticDashboardAppInner = () => {
           data-testid="automatic-dashboard-header"
         >
           <div className={CS.wrapper}>
-            <FixedWidthContainer
-              data-testid="fixed-width-dashboard-header"
-              isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
-            >
-              <div
-                className={cx(
-                  CS.flex,
-                  CS.alignCenter,
-                  CS.py2,
-                  hasSidebar && CS.pl1,
-                )}
+            <div className={cx(CS.pl1, { [CS.pr1]: !hasSidebar })}>
+              <FixedWidthContainer
+                data-testid="fixed-width-dashboard-header"
+                isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
-                <FixedWidthContainer
-                  className={cx(CS.flex, CS.alignCenter)}
-                  isFixedWidth={dashboard?.width === "fixed"}
-                >
-                  <XrayIcon />
-                  <div>
-                    <h2 className={cx(CS.textWrap, CS.mr2)}>
-                      {dashboard && <TransientTitle dashboard={dashboard} />}
-                    </h2>
+                <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
+                  <FixedWidthContainer
+                    className={cx(CS.flex, CS.alignCenter)}
+                    isFixedWidth={dashboard?.width === "fixed"}
+                  >
+                    <XrayIcon />
+                    <div>
+                      <h2 className={cx(CS.textWrap, CS.mr2)}>
+                        {dashboard && <TransientTitle dashboard={dashboard} />}
+                      </h2>
+                    </div>
+                  </FixedWidthContainer>
+                  <div
+                    className={cx(CS.flex, CS.flexGrow1)}
+                    style={{ maxWidth: SIDEBAR_W }}
+                  >
+                    {savedDashboardId != null ? (
+                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                    ) : (
+                      <ActionButton
+                        className={cx(CS.mlAuto, CS.textNoWrap)}
+                        success
+                        borderless
+                        actionFn={save}
+                      >
+                        {t`Save this`}
+                      </ActionButton>
+                    )}
                   </div>
-                </FixedWidthContainer>
-                <div
-                  className={cx(CS.flex, CS.flexGrow1)}
-                  style={{ maxWidth: SIDEBAR_W }}
-                >
-                  {savedDashboardId != null ? (
-                    <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
-                  ) : (
-                    <ActionButton
-                      className={cx(CS.mlAuto, CS.textNoWrap)}
-                      success
-                      borderless
-                      actionFn={save}
-                    >
-                      {t`Save this`}
-                    </ActionButton>
-                  )}
                 </div>
-              </div>
-              {dashboard && tabs.length > 1 && (
-                <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                  <DashboardTabs dashboardId={dashboard.id} />
-                </div>
-              )}
-            </FixedWidthContainer>
+                {dashboard && tabs.length > 1 && (
+                  <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
+                    <DashboardTabs dashboardId={dashboard.id} />
+                  </div>
+                )}
+              </FixedWidthContainer>
+            </div>
           </div>
         </div>
       )}
