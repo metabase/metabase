@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback } from "react";
+import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -22,13 +22,13 @@ import {
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
 
-export const SdkIframeEmbedRoute = () => {
-  const onSettingsChanged = useCallback((settings: SdkIframeEmbedSettings) => {
-    // Tell the SDK whether to use the existing user session or not.
-    EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession =
-      settings?.useExistingUserSession || false;
-  }, []);
+const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
+  // Tell the SDK whether to use the existing user session or not.
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession =
+    settings?.useExistingUserSession || false;
+};
 
+export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
 
   // The embed settings won't be available until the parent sends it via postMessage.
