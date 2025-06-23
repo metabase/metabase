@@ -48,7 +48,7 @@
 
 (defmethod lib.metadata.calculation/type-of-method :field
   [query stage-number [_tag {:keys [temporal-unit], :as _opts} _id-or-name :as field-ref]]
-  (let [metadata (cond-> (lib.field.resolution/resolve-field-metadata query stage-number field-ref)
+  (let [metadata (cond-> (lib.field.resolution/resolve-field-ref query stage-number field-ref)
                    temporal-unit (assoc ::temporal-unit temporal-unit))]
     (lib.metadata.calculation/type-of query stage-number metadata)))
 
@@ -58,7 +58,7 @@
 
 (mu/defmethod lib.metadata.calculation/metadata-method :field :- ::lib.schema.metadata/column
   [query stage-number field-ref]
-  (lib.field.resolution/resolve-field-metadata query stage-number field-ref))
+  (lib.field.resolution/resolve-field-ref query stage-number field-ref))
 
 (defn- field-nesting-path
   [metadata-providerable {:keys [display-name parent-id] :as _field-metadata}]
@@ -207,7 +207,7 @@
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number field-ref style]
-  (if-let [field-metadata (lib.field.resolution/resolve-field-metadata query stage-number field-ref)]
+  (if-let [field-metadata (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
     (lib.metadata.calculation/display-name query stage-number field-metadata style)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     (i18n/tru "[Unknown Field]")))
@@ -220,7 +220,7 @@
 
 (defmethod lib.metadata.calculation/column-name-method :field
   [query stage-number [_tag _id-or-name, :as field-clause]]
-  (if-let [field-metadata (lib.field.resolution/resolve-field-metadata query stage-number field-clause)]
+  (if-let [field-metadata (lib.field.resolution/resolve-field-ref query stage-number field-clause)]
     (lib.metadata.calculation/column-name query stage-number field-metadata)
     ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
     "unknown_field"))
@@ -276,7 +276,7 @@
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
-  (lib.temporal-bucket/available-temporal-buckets query stage-number (lib.field.resolution/resolve-field-metadata query stage-number field-ref)))
+  (lib.temporal-bucket/available-temporal-buckets query stage-number (lib.field.resolution/resolve-field-ref query stage-number field-ref)))
 
 (defn- fingerprint-based-default-unit [fingerprint]
   (u/ignore-exceptions
@@ -313,7 +313,7 @@
           :binning
           (assoc :lib/type    ::lib.binning/binning
                  :metadata-fn (fn [query stage-number]
-                                (lib.field.resolution/resolve-field-metadata query stage-number field-clause)))))
+                                (lib.field.resolution/resolve-field-ref query stage-number field-clause)))))
 
 (defmethod lib.binning/binning-method :metadata/column
   [metadata]
@@ -332,7 +332,7 @@
 
 (defmethod lib.binning/available-binning-strategies-method :field
   [query stage-number field-ref]
-  (lib.binning/available-binning-strategies query stage-number (lib.field.resolution/resolve-field-metadata query stage-number field-ref)))
+  (lib.binning/available-binning-strategies query stage-number (lib.field.resolution/resolve-field-ref query stage-number field-ref)))
 
 (defmethod lib.binning/available-binning-strategies-method :metadata/column
   [query _stage-number {:keys [effective-type fingerprint semantic-type] :as field-metadata}]

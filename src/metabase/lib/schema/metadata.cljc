@@ -7,7 +7,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
 
 (defn- kebab-cased-key? [k]
@@ -187,7 +186,7 @@
    [:map
     {:error/message    "Valid column metadata"
      :decode/normalize lib.schema.common/normalize-map}
-    [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword} :metadata/column]]
+    [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
     ;;
     ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
     ;; in [[metabase.legacy-mbql.schema]] so we can generate this documentation from this schema or whatever.
@@ -395,7 +394,7 @@
   (cond-> card
     (and (not (:name card))
          (:id card))
-    (assoc :name (lib.util/format "Card %d" (:id card)))))
+    (assoc :name (str "Card " (:id card)))))
 
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as

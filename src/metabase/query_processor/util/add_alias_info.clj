@@ -312,6 +312,7 @@
   (when-let [[_tag _id-or-name {::keys [desired-alias]}] (matching-field-in-source-query inner-query field-clause)]
     desired-alias))
 
+;;; TODO (Cam 6/22/25) -- remove this method ASAP
 (defmulti ^String field-reference
   "Generate a reference for the field instance `field-inst` appropriate for the driver `driver`.
   By default this is just the name of the field, but it can be more complicated, e.g., take

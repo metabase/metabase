@@ -291,29 +291,29 @@
   "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
    initial-cols :- ::cols]
-  (let [lib-cols (binding [lib.metadata.calculation/*display-name-style* :long]
-                   (doall (lib.metadata.calculation/returned-columns
+  (binding [lib.metadata.calculation/*display-name-style* :long]
+    (let [lib-cols (doall (lib.metadata.calculation/returned-columns
                            query
                            -1
                            (lib.util/query-stage query -1)
                            {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
-                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))})))
-        ;; generate barebones cols if lib was unable to calculate metadata here.
-        lib-cols (if (empty? lib-cols)
-                   (mapv basic-native-col initial-cols)
-                   lib-cols)]
-    (->> initial-cols
-         (map (fn [col]
-                (update-keys col u/->kebab-case-en)))
-         ((fn [cols]
-            (cond-> cols
-              (seq lib-cols) (merge-cols lib-cols))))
-         (add-converted-timezone query)
-         add-source-alias
-         add-legacy-source
-         deduplicate-names
-         (add-legacy-field-refs query)
-         (merge-model-metadata query))))
+                            :include-remaps? (not (get-in query [:middleware :disable-remaps?]))}))
+          ;; generate barebones cols if lib was unable to calculate metadata here.
+          lib-cols (if (empty? lib-cols)
+                     (mapv basic-native-col initial-cols)
+                     lib-cols)]
+      (->> initial-cols
+           (map (fn [col]
+                  (update-keys col u/->kebab-case-en)))
+           ((fn [cols]
+              (cond-> cols
+                (seq lib-cols) (merge-cols lib-cols))))
+           (add-converted-timezone query)
+           add-source-alias
+           add-legacy-source
+           deduplicate-names
+           (add-legacy-field-refs query)
+           (merge-model-metadata query)))))
 
 (defn- add-unit [col]
   (merge
@@ -354,13 +354,13 @@
   [cols :- [:sequential ::kebab-cased-map]]
   (mapv col->legacy-metadata cols))
 
-(mu/defn expected-cols :- [:and
-                           [:sequential ::kebab-cased-map]
-                           [:fn
-                            {:error/message "columns should have unique :name(s)"}
-                            (fn [cols]
-                              (or (empty? cols)
-                                  (apply distinct? (map :name cols))))]]
+(mu/defn returned-columns :- [:and
+                              [:sequential ::kebab-cased-map]
+                              [:fn
+                               {:error/message "columns should have unique :name(s)"}
+                               (fn [cols]
+                                 (or (empty? cols)
+                                     (apply distinct? (map :name cols))))]]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
@@ -368,7 +368,7 @@
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
   ([query]
-   (expected-cols query []))
+   (returned-columns query []))
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]

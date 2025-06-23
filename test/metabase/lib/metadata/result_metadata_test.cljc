@@ -6,6 +6,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
@@ -17,7 +18,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (mu/defn- column-info [query :- ::lib.schema/query {initial-columns :cols}]
-  (result-metadata/expected-cols query initial-columns))
+  (result-metadata/returned-columns query initial-columns))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are comming back the way we'd expect for :field clauses"
@@ -312,7 +313,7 @@
                     :fields      [[:expression "expr"]]}))]
       (is (=? [{:name               "expr"
                 :converted-timezone "Asia/Seoul"}]
-              (result-metadata/expected-cols query))))))
+              (result-metadata/returned-columns query))))))
 
 (deftest ^:parallel converted-timezone-test-4
   (testing "We should be able to reach back into the source card to resolve and expression to populate :converted-timezone"
@@ -328,7 +329,7 @@
                {:name "to-07", :converted-timezone "Asia/Saigon"}
                {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
               (map #(select-keys % [:name :converted-timezone])
-                   (result-metadata/expected-cols (lib/query mp (lib.metadata/card mp 1)))))))))
+                   (result-metadata/returned-columns (lib/query mp (lib.metadata/card mp 1)))))))))
 
 (defn- col-info-for-aggregation-clause
   ([ag-clause]
@@ -725,7 +726,7 @@
           metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                              meta/metadata-provider
                              [source-query])
-          [date-col count-col] (for [col (result-metadata/expected-cols (lib/query meta/metadata-provider source-query))]
+          [date-col count-col] (for [col (result-metadata/returned-columns (lib/query meta/metadata-provider source-query))]
                                  (as-> col col
                                    (assoc col :source :fields)
                                    (dissoc col :position)
@@ -737,7 +738,7 @@
       ;; display values of the column.
       (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) {}], :unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
-              (result-metadata/expected-cols
+              (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
 
 (deftest ^:parallel flow-semantic-types-test
@@ -783,9 +784,9 @@
               {:name "TOTAL"}
               {:name "Tax Rate", :semantic-type :type/Percentage}]
              (map #(select-keys % [:name :semantic-type])
-                  (result-metadata/expected-cols (lib/query mp (:dataset-query (lib.metadata/card mp 3)))))
+                  (result-metadata/returned-columns (lib/query mp (:dataset-query (lib.metadata/card mp 3)))))
              (map #(select-keys % [:name :semantic-type])
-                  (result-metadata/expected-cols (lib/query mp (lib.metadata/card mp 3)))))))))
+                  (result-metadata/returned-columns (lib/query mp (lib.metadata/card mp 3)))))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Remapped columns in joined source queries should work (#15578)"
@@ -810,14 +811,14 @@
               ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]                  ; products.category
               ["TITLE_2"  "Orders__TITLE" "TITLE"    "Orders → Title"]            ; orders.product-id -> products.title
               ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
-             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name) (result-metadata/expected-cols query))))
+             (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name) (result-metadata/returned-columns query))))
       (testing "with disable-remaps option in the middleware"
         (is (= [["TITLE"    "TITLE"         "TITLE"    "Title"]
                 ["CATEGORY" "CATEGORY"      "CATEGORY" "Category"]
                 ;; orders.title should get excluded since it is invalid without remaps being in play.
                 ["sum"      "Orders__sum"   "sum"      "Orders → Sum of Quantity"]]
                (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
-                    (result-metadata/expected-cols
+                    (result-metadata/returned-columns
                      (assoc-in query [:middleware :disable-remaps?] true)))))))))
 
 (deftest ^:parallel correct-legacy-refs-test
@@ -837,7 +838,7 @@
       ;; correct.
       (is (= [[:field "TITLE" {:base-type :type/Text}]
               [:field "sum"   {:base-type :type/Float}]]
-             (map :field-ref (result-metadata/expected-cols query)))))))
+             (map :field-ref (result-metadata/returned-columns query)))))))
 
 (deftest ^:parallel mbql-query-type-inference-test
   (testing "should add decent base/effective types if driver comes back with `:base-type :type/*`"
@@ -885,3 +886,42 @@
                   (column-info
                    (lib/query meta/metadata-provider query)
                    {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]}))))))))
+
+;;; adapted from parameters/utils/targets › getParameterColumns › unit of time parameter › question › date breakouts
+;;; in multiple stages - returns date column from the last stage only
+(deftest ^:parallel display-name-for-columns-with-multiple-date-buckets-test
+  (testing "the display name should only append the most recent date bucketing unit"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (as-> query (lib/breakout query (-> (m/find-first #(= (:id %) (meta/id :orders :created-at))
+                                                                      (lib/breakoutable-columns query))
+                                                        (lib/with-temporal-bucket :month))))
+                    lib/append-stage
+                    (as-> query (lib/breakout query (-> (m/find-first #(= (:id %) (meta/id :orders :created-at))
+                                                                      (lib/breakoutable-columns query))
+                                                        (lib/with-temporal-bucket :year)))))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (=? [{:base-type                                  :type/DateTimeWithLocalTZ
+                  :display-name                               "Created At: Year"
+                  :effective-type                             :type/Integer
+                  ;; additional keys in field ref are WRONG
+                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
+                                                                                               :temporal-unit :year}])
+                  :id                                         (meta/id :orders :created-at)
+                  :inherited-temporal-unit                    :year
+                  :name                                       "CREATED_AT"
+                  :semantic-type                              :type/CreationTimestamp
+                  :source                                     :breakout
+                  :table-id                                   (meta/id :orders)
+                  :unit                                       :year
+                  :lib/deduplicated-name                      "CREATED_AT"
+                  :lib/desired-column-alias                   "CREATED_AT"
+                  :lib/hack-original-name                     "CREATED_AT"
+                  :lib/original-display-name                  "Created At"
+                  :lib/original-name                          "CREATED_AT"
+                  :lib/source                                 :source/breakouts
+                  :lib/source-column-alias                    "CREATED_AT"
+                  :lib/type                                   :metadata/column
+                  :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ
+                  :metabase.lib.field/temporal-unit           :year}]
+                (column-info query {})))))))

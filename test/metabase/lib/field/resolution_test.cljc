@@ -18,6 +18,7 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]))
 
@@ -27,7 +28,7 @@
   (testing "field literals should get the information from the matching `:lib/stage-metadata` if it was supplied"
     ;; `resolve-field-metadata` SHOULD basically be the implementation of `lib/metadata` for a field ref
     (doseq [f [#'lib/metadata
-               #'lib.field.resolution/resolve-field-metadata]]
+               #'lib.field.resolution/resolve-field-ref]]
       (testing f
         (is (=? {:name          "sum"
                  :display-name  "sum of User ID"
@@ -208,7 +209,7 @@
 
 ;;; this is adapted from [[metabase.query-processor.preprocess-test/model-display-names-test]]; the `query` below is
 ;;; meant to look like the results of [[metabase.query-processor.preprocess/preprocess]] (what we will actually see
-;;; in [[metabase.lib.metadata.result-metadata/expected-cols]])
+;;; in [[metabase.lib.metadata.result-metadata/returned-columns]])
 (deftest ^:parallel model-display-names-test
   (testing "Preserve display names from models"
     (let [native-cols (for [col [{:name "EXAMPLE_TIMESTAMP", :base-type :type/DateTime}
@@ -236,7 +237,7 @@
                      :name            "MODEL"
                      :database-id     (meta/id)
                      :dataset-query   query
-                     :result-metadata (for [col (lib.metadata.result-metadata/expected-cols (lib/query mp query))]
+                     :result-metadata (for [col (lib.metadata.result-metadata/returned-columns (lib/query mp query))]
                                         (assoc col :display-name (u.humanization/name->human-readable-name :simple (:name col))))})]}))
           query {:lib/type     :mbql/query
                  :lib/metadata mp
@@ -277,25 +278,20 @@
         (testing `lib.field.resolution/options-metadata*
           (is (=? {:lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
                   (#'lib.field.resolution/options-metadata* field-ref))))
-        (testing `lib.field.resolution/resolve-field-metadata
+        (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name            "EXAMPLE_TIMESTAMP"
                    :display-name    "Example Timestamp"
                    :lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
-                  (lib.field.resolution/resolve-field-metadata query -1 field-ref)))
+                  (lib.field.resolution/resolve-field-ref query -1 field-ref)))
           (testing "preserve display names from field refs"
             (let [ref' (lib.options/update-options field-ref assoc :display-name "My Cool Timestamp")]
               (is (=? {:name            "EXAMPLE_TIMESTAMP"
                        :display-name    "My Cool Timestamp"
                        :lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
-                      (lib.field.resolution/resolve-field-metadata query -1 ref')))))))
+                      (lib.field.resolution/resolve-field-ref query -1 ref')))))))
       (testing `lib/returned-columns
         (is (= ["Example Timestamp"
-                ;; old `annotate` behavior would append the temporal unit to the display name here
-                ;; even tho we explicitly overrode the display name in the model metadata. I don't
-                ;; think that behavior is desirable. New behavior takes the display name specified
-                ;; by the user as-is.
-                "Example Week"
-                #_"Example Week: Week"]
+                "Example Week: Week"]
                (map :display-name (lib/returned-columns (lib/query mp query)))))))))
 
 (deftest ^:parallel col-info-combine-parent-field-names-test-2
@@ -312,7 +308,7 @@
                :visibility-type   :normal
                :display-name      "Grandparent: Parent"
                :base-type         :type/Text}
-              (lib.field.resolution/resolve-field-metadata query -1 (first (lib/fields query -1))))))))
+              (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))
 
 (deftest ^:parallel col-info-combine-grandparent-field-names-test
   (testing "nested-nested fields should include grandparent name (etc)"
@@ -326,7 +322,7 @@
                :visibility-type   :normal
                :display-name      "Grandparent: Parent: Child"
                :base-type         :type/Text}
-              (lib.field.resolution/resolve-field-metadata query -1 (first (lib/fields query -1))))))))
+              (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))
 
 (deftest ^:parallel resolve-bad-ref-test
   (let [query (lib/query
@@ -349,7 +345,7 @@
                :lib/type                         :metadata/column
                :metabase.lib.field/binning       {:strategy :num-bins, :num-bins 10, :bin-width 5, :min-value -100, :max-value 100}
                :metabase.lib.field/temporal-unit :month}
-              (lib.field.resolution/resolve-field-metadata query -1 (first (lib/fields query -1))))))))
+              (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))
 
 (deftest ^:parallel resolve-field-from-explicit-join-test
   (let [query (lib/query
@@ -370,9 +366,8 @@
                 :lib/original-name                                 "NAME"
                 :lib/source-uuid                                   string?
                 :metabase.lib.join/join-alias                      "Categories"
-                :metabase.lib.query/transformation-added-base-type true
-                :was-binned                                        false})
-              (lib.field.resolution/resolve-field-metadata query -1 (first (lib/fields query -1))))))))
+                :metabase.lib.query/transformation-added-base-type true})
+              (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))
 
 (deftest ^:parallel ref-test
   (testing "Returned metadata should allow use to construct correct refs"
@@ -386,7 +381,7 @@
                               :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                               :strategy     :left-join
                               :fk-field-id  %category-id}]}))
-          col   (lib.field.resolution/resolve-field-metadata query -1 (first (lib/fields query -1)))]
+          col   (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1)))]
       (is (=? {:lib/original-ref [:field {:join-alias "Category"} pos-int?]}
               col))
       (is (=? [:field
@@ -430,10 +425,9 @@
                        :name                          "CATEGORY"
                        :semantic-type                 :type/Category
                        :table-id                      (meta/id :products)
-                       :visibility-type               :normal
-                       :was-binned                    false}
+                       :visibility-type               :normal}
                       ;; this eventually uses `lib.field.resolution`
-                      (lib.field.resolution/resolve-field-metadata query -1 breakout-ref))))))))))
+                      (lib.field.resolution/resolve-field-ref query -1 breakout-ref))))))))))
 
 (deftest ^:parallel join-from-model-test
   (testing "Do the right thing with joins that come from models"
@@ -454,7 +448,7 @@
                                                      :binning       {:strategy :default}}]]})}]})
           query (lib/query mp {:type :query, :database (meta/id), :query {:source-table "card__1"}})
           expected {:base-type                        :type/Text
-                    :display-name                     "C → Name" #_"C → Name: Auto binned: Month" ; not sure which is 'correct'
+                    :display-name                     "C → Name: Month" #_"C → Name: Auto binned: Month" ; not sure which is 'correct'
                     :effective-type                   :type/Text
                     :fingerprint                      map?
                     :id                               (meta/id :categories :name)
@@ -462,7 +456,7 @@
                     :semantic-type                    :type/Name
                     :table-id                         (meta/id :categories)
                     :visibility-type                  :normal
-                    :was-binned                       false
+                    :was-binned                       true #_false
                     :lib/card-id                      1
                     :lib/desired-column-alias         "C__NAME"
                     :lib/original-display-name        "Name"
@@ -481,7 +475,7 @@
                          :lib/deduplicated-name   "NAME"
                          :name                    "NAME"
                          :lib/source-column-alias "C__NAME")
-                  (lib.field.resolution/resolve-field-metadata query -1 field-ref))))
+                  (lib.field.resolution/resolve-field-ref query -1 field-ref))))
         (testing "With a query that has been preprocessed (current-stage-model-metadata pathway)"
           (let [model-query (lib/query mp (:dataset-query (lib.metadata/card mp 1)))
                 query'      (update query :stages (fn [[original-stage]]
@@ -492,7 +486,7 @@
                            :lib/deduplicated-name   "C__NAME"
                            :name                    "C__NAME"
                            :lib/source-column-alias "C__NAME")
-                    (lib.field.resolution/resolve-field-metadata query' -1 field-ref)))))))))
+                    (lib.field.resolution/resolve-field-ref query' -1 field-ref)))))))))
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakouts-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
@@ -519,10 +513,9 @@
                  :preview-display               true
                  :semantic-type                 :type/Category
                  :table-id                      (meta/id :products)
-                 :visibility-type               :normal
-                 :was-binned                    false}
-                (first (lib/breakouts-metadata query))))
-        (testing "don't set :lib/previous-stage-join-alias")))))
+                 :visibility-type               :normal}
+                (first (lib/breakouts-metadata query)))
+            "don't set :lib/previous-stage-join-alias")))))
 
 (deftest ^:parallel column-filter-join-alias-test
   (testing "We should be able to resolve a ref missing join alias and add that to the metadata (#36861)"
@@ -536,7 +529,7 @@
                :name                         "CATEGORY"
                :lib/original-join-alias      "Products"
                :metabase.lib.join/join-alias "Products"}
-              (lib.field.resolution/resolve-field-metadata query -1 broken-ref))))))
+              (lib.field.resolution/resolve-field-ref query -1 broken-ref))))))
 
 (deftest ^:parallel explict-join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
@@ -589,7 +582,7 @@
                                [:field %orders.id {:join-alias "Question 54"}]
                                [:field %people.address {:join-alias "Question 54"}]]}))]
         (is (=? {:lib/original-display-name "Address"}
-                (lib.field.resolution/resolve-field-metadata query -1 (last (lib/fields query -1)))))))))
+                (lib.field.resolution/resolve-field-ref query -1 (last (lib/fields query -1)))))))))
 
 (deftest ^:parallel disambiguate-duplicate-columns-test
   (testing "Handle duplicates of the same column with different bucketing/binning correctly"
@@ -613,3 +606,109 @@
       (is (= ["Created At: Quarter"
               "Created At: Day of week"]
              (map :display-name (lib/returned-columns q2)))))))
+
+;;; TODO (Cam 6/22/25) -- move this to `lib.test-util` or something if it proves to be useful generally
+(defn- mock-preprocess-resolve-cards [query]
+  (let [query' (lib.walk/walk-stages
+                query
+                (fn [query _path {:keys [source-card], :as stage}]
+                  (if-not (:source-card stage)
+                    stage
+                    (let [card        (lib.metadata/card query source-card)
+                          card-query  (lib/query (lib.metadata/->metadata-provider query) (:dataset-query card))
+                          card-stages (:stages card-query)]
+                      (conj (vec (butlast card-stages))
+                            (-> (last card-stages)
+                                (assoc :qp/stage-is-from-source-card source-card
+                                       :source-query/model? (= (:type source-card) :model))
+                                (cond-> (:result-metadata card) (assoc :lib/stage-metadata {:lib/type :metadata/results
+                                                                                            :columns  (:result-metadata card)})))
+                            (-> stage
+                                (dissoc :source-card)
+                                (assoc :qp/stage-had-source-card source-card)))))))]
+    (if (= query' query)
+      query
+      (recur query'))))
+
+(defn- mock-preprocess-add-metadata [query]
+  (lib.walk/walk-stages
+   query
+   (fn [query path stage]
+     (if (seq (:lib/stage-metadata stage))
+       stage
+       (let [cols             (lib.walk/apply-f-for-stage-at-path
+                               (fn [query stage-number]
+                                 (lib.metadata.result-metadata/returned-columns (update query :stages #(take (inc stage-number) %))))
+                               query path)
+             returned-columns {:lib/type :metadata/results
+                               :columns  cols}]
+         (assoc stage :lib/stage-metadata returned-columns))))))
+
+(defn- mock-preprocess [query]
+  (-> query
+      mock-preprocess-resolve-cards
+      mock-preprocess-add-metadata))
+
+(deftest ^:parallel propagate-join-aliases-test
+  (testing "Join aliases from prior stages should get propagated in display names"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:fields [$id $subtotal $tax $total $created-at $quantity]
+                                             :joins  [{:source-table $$products
+                                                       :alias        "Product"
+                                                       :condition    [:= $orders.product-id
+                                                                      [:field %products.id {:join-alias "Product"}]]
+                                                       :fields       [[:field %products.id {:join-alias "Product"}]
+                                                                      [:field %products.title {:join-alias "Product"}]
+                                                                      [:field %products.vendor {:join-alias "Product"}]
+                                                                      [:field %products.price {:join-alias "Product"}]
+                                                                      [:field %products.rating {:join-alias "Product"}]]}]})}
+                          {:id            2
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:source-table "card__1"
+                                             :fields       [[:field "ID" {:base-type :type/BigInteger}]
+                                                            [:field "TAX" {:base-type :type/Float}]
+                                                            [:field "TOTAL" {:base-type :type/Float}]
+                                                            [:field "ID_2" {:base-type :type/BigInteger}]
+                                                            [:field "RATING" {:base-type :type/Float}]]
+                                             :filter       [:> [:field "TOTAL" {:base-type :type/Float}] 3]})}]})
+          query (mock-preprocess
+                 (lib/query
+                  mp
+                  (lib.tu.macros/mbql-query orders
+                    {:source-table "card__2"
+                     :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                     :breakout     [[:field "RATING" {:base-type :type/Float}]]})))]
+      (is (=? {:stages [{:qp/stage-is-from-source-card 1
+                         :lib/stage-metadata           map?
+                         :joins                        [{:stages [{:lib/stage-metadata map?}]}]}
+                        {:qp/stage-is-from-source-card 2
+                         :lib/stage-metadata           map?}
+                        {}]}
+              query))
+      (testing :lib/stage-metadata
+        (let [stage-cols (fn [stage-number]
+                           (u/prog1 (get-in (lib.util/query-stage query stage-number) [:lib/stage-metadata :columns])
+                             (assert (seq <>))))]
+          (testing "first stage (from Card 1)"
+            (is (=? {:name                         "RATING"
+                     :display-name                 "Product → Rating"
+                     :metabase.lib.join/join-alias "Product"}
+                    (m/find-first #(= (:name %) "RATING")
+                                  (stage-cols 0)))))
+          (testing "second stage (from Card 2)"
+            (is (=? {:name                      "RATING"
+                     :display-name              "Product → Rating"
+                     :lib/original-display-name "Rating"
+                     :lib/original-join-alias   "Product"}
+                    (m/find-first #(= (:name %) "RATING")
+                                  (stage-cols 1)))))))
+      (testing "returned columns (final stage)"
+        (binding [lib.metadata.calculation/*display-name-style* :long]
+          (is (=? [{:display-name              "Product → Rating"
+                    :lib/original-display-name "Rating"
+                    :lib/original-join-alias   "Product"}
+                   {:display-name "Sum of Total"}]
+                  (lib/returned-columns query))))))))

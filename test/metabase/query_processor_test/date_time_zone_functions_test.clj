@@ -852,12 +852,12 @@
               (let [query (lib/query
                            (qp.store/metadata-provider)
                            (lib.metadata/card (qp.store/metadata-provider) 1))]
-                (testing `lib.metadata.result-metadata/expected-cols
+                (testing `lib.metadata.result-metadata/returned-columns
                   (is (=? [{:name "dt"}
                            {:name "to-07", :converted-timezone "Asia/Saigon"}
                            {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
                           (map #(select-keys % [:name :converted-timezone])
-                               (lib.metadata.result-metadata/expected-cols query)))))
+                               (lib.metadata.result-metadata/returned-columns query)))))
                 (testing `annotate/expected-cols
                   (is (=? [{:name "dt"}
                            {:name "to-07", :converted_timezone "Asia/Saigon"}

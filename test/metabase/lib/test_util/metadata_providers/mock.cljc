@@ -1,5 +1,7 @@
 (ns metabase.lib.test-util.metadata-providers.mock
   (:require
+   #?@(:clj
+       ([pretty.core :as pretty]))
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
    [malli.core :as mc]
@@ -110,7 +112,12 @@
 
   clojure.core.protocols/Datafiable
   (datafy [_this]
-    (list `mock-metadata-provider metadata)))
+    (list `mock-metadata-provider metadata))
+
+  #?@(:clj
+      (pretty/PrettyPrintable
+       (pretty [_this]
+               (list `mock-metadata-provider metadata)))))
 
 ;;;
 ;;; NEW!

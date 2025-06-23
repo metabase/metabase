@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -122,12 +123,7 @@
           expected-display-names ["Example Timestamp"
                                   "Example Date"
                                   "Example Week Number"
-                                  ;; old `annotate` behavior would append the temporal unit to the display name here
-                                  ;; even tho we explicitly overrode the display name in the model metadata. I don't
-                                  ;; think that behavior is desirable. New behavior takes the display name specified
-                                  ;; by the user as-is.
-                                  "Example Week"
-                                  #_"Example Week: Week"]
+                                  "Example Week: Week"]
           mp (as-> meta/metadata-provider mp
                (lib.tu/mock-metadata-provider
                 mp
@@ -167,7 +163,10 @@
                      ;; make sure we're getting metadata for the PREPROCESSED query.
                      :result-metadata (qp.preprocess/query->expected-cols (lib/query mp query))})]}))]
       (testing "Model (Card 2) saved result metadata"
-        (is (= expected-display-names
+        (is (= ["Example Timestamp"
+                "Example Date"
+                "Example Week Number"
+                "Example Week"]
                (map :display_name (:result-metadata (lib.metadata/card mp 2))))))
       (testing "Model => Model (Card 3) saved result metadata"
         (is (= expected-display-names
@@ -192,3 +191,55 @@
               "Created At: Day of week"
               "Count"]
              (map :display_name (qp.preprocess/query->expected-cols q2)))))))
+
+(deftest ^:parallel propagate-join-aliases-in-display-names-test
+  (testing "Join aliases from prior stages should get propagated in display names"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:fields [$id $subtotal $tax $total $created-at $quantity]
+                                             :joins  [{:source-table $$products
+                                                       :alias        "Product"
+                                                       :condition
+                                                       [:= $orders.product-id
+                                                        [:field %products.id {:join-alias "Product"}]]
+                                                       :fields
+                                                       [[:field %products.id {:join-alias "Product"}]
+                                                        [:field %products.title {:join-alias "Product"}]
+                                                        [:field %products.vendor {:join-alias "Product"}]
+                                                        [:field %products.price {:join-alias "Product"}]
+                                                        [:field %products.rating {:join-alias "Product"}]]}]})}
+                          {:id            2
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:source-table "card__1"
+                                             :fields       [[:field "ID" {:base-type :type/BigInteger}]
+                                                            [:field "TAX" {:base-type :type/Float}]
+                                                            [:field "TOTAL" {:base-type :type/Float}]
+                                                            [:field "ID_2" {:base-type :type/BigInteger}]
+                                                            [:field "RATING" {:base-type :type/Float}]]
+                                             :filter       [:> [:field "TOTAL" {:base-type :type/Float}] 3]})}]})
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query orders
+                   {:source-table "card__2"
+                    :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
+                    :breakout     [[:field "RATING" {:base-type :type/Float}]]}))]
+      (let [preprocessed (lib/query mp (qp.preprocess/preprocess query))
+            stages       (:stages preprocessed)]
+        (testing "added metadata"
+          (testing "first stage (from Card 1)"
+            (is (=? {:name                         "RATING"
+                     :display-name                 "Product → Rating"
+                     :metabase.lib.join/join-alias "Product"}
+                    (m/find-first #(= (:name %) "RATING")
+                                  (get-in (nth stages 0) [:lib/stage-metadata :columns])))))
+          (testing "second stage (from Card 2)"
+            (is (=? {:name                    "RATING"
+                     :display-name            "Product → Rating"
+                     :lib/original-join-alias "Product"}
+                    (m/find-first #(= (:name %) "RATING")
+                                  (get-in (nth stages 1) [:lib/stage-metadata :columns])))))))
+      (is (=? [{:display_name "Product → Rating"}
+               {:display_name "Sum of Total"}]
+              (qp.preprocess/query->expected-cols query))))))

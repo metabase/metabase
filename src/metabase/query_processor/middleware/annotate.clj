@@ -64,7 +64,7 @@
 
   ([query         :- ::lib.schema/query
     initial-cols  :- ::cols]
-   (for [col (lib.metadata.result-metadata/expected-cols query initial-cols)]
+   (for [col (lib.metadata.result-metadata/returned-columns query initial-cols)]
      (-> col
          (dissoc :lib/type)
          ->snake_case))))

@@ -289,10 +289,10 @@
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
     (doseq [[result-metadata-style result-metadata-fn] {:mlv2-returned-columns lib.metadata.calculation/returned-columns
-                                                        :mlv2-expected-columns lib.metadata.result-metadata/expected-cols
+                                                        :mlv2-expected-columns lib.metadata.result-metadata/returned-columns
                                                         :legacy-snake-case-qp  (mu/fn :- [:sequential :map]
                                                                                  [query]
-                                                                                 (for [col (lib.metadata.result-metadata/expected-cols query)]
+                                                                                 (for [col (lib.metadata.result-metadata/returned-columns query)]
                                                                                    (-> col
                                                                                        (update-keys (fn [k]
                                                                                                       (cond-> k

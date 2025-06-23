@@ -208,6 +208,7 @@
   (when (map? x)
     (keyword (some #(get x %) [:lib/type "lib/type"]))))
 
+;;; TODO -- enforce all kebab-case keys
 (mr/def ::stage
   [:and
    {:default          {}
@@ -223,7 +224,10 @@
    [:multi {:dispatch      lib-type
             :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
     [:mbql.stage/native [:ref ::stage.native]]
-    [:mbql.stage/mbql   [:ref ::stage.mbql]]]])
+    [:mbql.stage/mbql   [:ref ::stage.mbql]]]
+   [:fn
+    {:error/message "A query stage should not have :source-metadata, the prior stage should have :lib/stage-metadata instead"}
+    (complement :source-metadata)]])
 
 (mr/def ::stage.initial
   [:multi {:dispatch      lib-type

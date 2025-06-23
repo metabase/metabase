@@ -155,9 +155,7 @@
                                         "Products__CATEGORY"]]}]}
                       query'))
               (is (=? [{:name              "CATEGORY"
-                        :display-name      (if has-result-metadata?
-                                             "Products → Category"
-                                             "Category")
+                        :display-name      "Category"
                         :long-display-name "Products → Category"
                         :effective-type    :type/Text}]
                       (map #(lib/display-info query' %)
@@ -1737,3 +1735,21 @@
                 "Question 54 → ID"
                 "Question 54 → Address"]
                (map :display-name (lib/returned-columns query))))))))
+
+;;; adapted from parameters/utils/targets › getParameterColumns › unit of time parameter › question › date breakouts
+;;; in multiple stages - returns date column from the last stage only
+(deftest ^:parallel display-name-for-columns-with-multiple-date-buckets-test
+  (testing "the display name should only append the most recent date bucketing unit"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (as-> query (lib/breakout query (-> (m/find-first #(= (:id %) (meta/id :orders :created-at))
+                                                                      (lib/breakoutable-columns query))
+                                                        (lib/with-temporal-bucket :month))))
+                    lib/append-stage
+                    (lib/aggregate (lib/count))
+                    (as-> query (lib/breakout query (-> (m/find-first #(= (:id %) (meta/id :orders :created-at))
+                                                                      (lib/breakoutable-columns query))
+                                                        (lib/with-temporal-bucket :year)))))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (=? ["Created At: Year" "Count"]
+                (mapv :display-name (lib/returned-columns query))))))))
