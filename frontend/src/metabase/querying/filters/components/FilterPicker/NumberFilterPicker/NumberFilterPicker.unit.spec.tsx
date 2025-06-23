@@ -564,4 +564,38 @@ describe("NumberFilterPicker", () => {
       expect(onChange).not.toHaveBeenCalled();
     });
   });
+
+  describe("between filter", () => {
+    it("should change inclusiveness on click and keypress", async () => {
+      setup(createQueryWithNumberFilter({ operator: "between" }));
+
+      const greaterButton = screen.getByRole("button", {
+        name: /toggle greater chevron inclusiveness/,
+      });
+      const lessButton = screen.getByRole("button", {
+        name: /toggle less chevron inclusiveness/,
+      });
+
+      expect(greaterButton).toBeInTheDocument();
+      expect(lessButton).toBeInTheDocument();
+
+      expect(greaterButton).toHaveTextContent("≥");
+
+      await userEvent.click(greaterButton);
+
+      expect(greaterButton).toHaveTextContent(">");
+
+      expect(lessButton).toHaveTextContent("≤");
+
+      await userEvent.click(lessButton);
+
+      expect(lessButton).toHaveTextContent("<");
+
+      await userEvent.click(lessButton);
+      await userEvent.click(greaterButton);
+
+      expect(greaterButton).toHaveTextContent("≥");
+      expect(lessButton).toHaveTextContent("≤");
+    });
+  });
 });
