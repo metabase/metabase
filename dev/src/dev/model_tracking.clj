@@ -22,6 +22,7 @@
    [toucan2.tools.before-update :as t2.before-update]
    [toucan2.util :as t2.util]))
 
+
 (def changes*
   "An atom to store all the changes of models that we currently track."
   (atom {}))
@@ -78,7 +79,7 @@
                            :update
                            (into {} (t2/changes row-or-instance))
                            (into {} row-or-instance))
-                         clean-change)
+                        clean-change)
         path       [(t2/table-name model) action]]
     ;; ideally this should be debug, but for some reasons this doesn't get logged
     (on-change path change-info)
