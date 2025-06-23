@@ -39,10 +39,10 @@
                    api/check-404)]
     {:title      (:name action)
      :parameters (for [param (:parameters action)]
-                   {:id               (case (:type action)
-                                        :query (:slug param)
-                                        :implicit (:id param))
-                    :sourceType       "ask-user"})}))
+                   {:id         (case (:type action)
+                                  :query (:slug param)
+                                  :implicit (:id param))
+                    :sourceType "ask-user"})}))
 
 ;; TODO handle exposing new inputs required by the inner-action
 (defn- configuration-for-pending-action [{:keys [param-map] :as _action}]

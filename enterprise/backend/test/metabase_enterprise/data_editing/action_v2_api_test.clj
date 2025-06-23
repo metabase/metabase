@@ -38,23 +38,23 @@
                              :model/Action action {:type       :query
                                                    :name       "Do cool thing"
                                                    :model_id   (:id model)
-                                                   :parameters [{:id   "a"
+                                                   :parameters [{:id   "random-a"
                                                                  :name "A"
                                                                  :type "number/="
                                                                  :slug "a"}
-                                                                {:id   "b"
+                                                                {:id   "random-b"
                                                                  :name "B"
                                                                  :type "date/single"
                                                                  :slug "b"}
-                                                                {:id   "c"
+                                                                {:id   "random-c"
                                                                  :name "C"
                                                                  :type "string/="
                                                                  :slug "c"}
-                                                                {:id   "d"
+                                                                {:id   "random-d"
                                                                  :name "D"
                                                                  :type "string/="
                                                                  :slug "d"}
-                                                                {:id   "e"
+                                                                {:id   "random-e"
                                                                  :name "E"
                                                                  :type "string/="
                                                                  :slug "e"}]
