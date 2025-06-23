@@ -26,6 +26,8 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
 
   const [activeTab, setActiveTab] = useState<string | null>("db");
 
+  const isHosted = useSetting("is-hosted?");
+
   const isAdmin = useSelector(getUserIsAdmin);
   const userCanAccessSettings = useSelector(canAccessSettings);
 
@@ -84,9 +86,14 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
               <Tabs.Tab value="csv" leftSection={<Icon name="table2" />}>
                 {t`CSV`}
               </Tabs.Tab>
-              <Tabs.Tab value="gsheets" leftSection={<Icon name="document" />}>
-                {t`Google Sheets`}
-              </Tabs.Tab>
+              {isHosted && (
+                <Tabs.Tab
+                  value="gsheets"
+                  leftSection={<Icon name="document" />}
+                >
+                  {t`Google Sheets`}
+                </Tabs.Tab>
+              )}
             </Tabs.List>
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
