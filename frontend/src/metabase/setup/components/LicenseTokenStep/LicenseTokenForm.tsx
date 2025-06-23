@@ -139,7 +139,7 @@ export const LicenseTokenForm = ({
               fw="normal"
             >{t`I'll activate later`}</Button>
             <Text c="text-light" size="sm">
-              {t`You won't have access to the paid features until you activate.`}
+              {t`You won't have access to paid features until you activate.`}
             </Text>
           </Box>
         </Form>
