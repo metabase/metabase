@@ -14,13 +14,11 @@ import "sdk-specific-imports";
 export * from "./hooks/public";
 export * from "./components/public";
 
+export * from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+
 export type {
   ButtonProps,
   ChartColor,
-  CustomDashboardCardMenuItem,
-  DashCardMenuItem,
-  DashboardCardCustomMenuItem,
-  DashboardCardMenuCustomElement,
   EntityTypeFilterKeys,
   IconName,
   LoginStatus,

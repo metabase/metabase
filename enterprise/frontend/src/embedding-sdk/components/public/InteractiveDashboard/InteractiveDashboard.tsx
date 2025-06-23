@@ -208,6 +208,7 @@ const InteractiveDashboardInner = ({
             isNightMode={false}
             onNightModeChange={_.noop}
             hasNightModeToggle={false}
+            dashcardMenu={plugins?.dashboard?.dashboardCardMenu}
           />
         </InteractiveDashboardProvider>
       )}

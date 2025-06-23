@@ -1,3 +1,4 @@
+import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
@@ -31,6 +32,7 @@ export type PublicOrEmbeddedDashboardProps = Pick<
   | "onError"
   | "getClickActionMode"
   | "navigateToNewCardFromDashboard"
+  | "dashcardMenu"
 > &
   Pick<EmbeddingAdditionalHashOptions, "locale">;
 
@@ -38,7 +40,18 @@ export const PublicOrEmbeddedDashboard = ({
   locale,
   ...contextProps
 }: PublicOrEmbeddedDashboardProps) => (
-  <DashboardContextProvider {...contextProps}>
+  <DashboardContextProvider
+    {...contextProps}
+    dashcardMenu={
+      contextProps.dashcardMenu ??
+      (({ dashcard, result }) =>
+        contextProps.downloadsEnabled?.results &&
+        !!result?.data &&
+        !result?.error && (
+          <DashCardQuestionDownloadButton result={result} dashcard={dashcard} />
+        ))
+    }
+  >
     <PublicOrEmbeddedDashboardView />
   </DashboardContextProvider>
 );

@@ -1,40 +1,49 @@
 import cx from "classnames";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import CS from "metabase/css/core/index.css";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useStore } from "metabase/lib/redux";
+import { isQuestionCard } from "metabase/dashboard/utils";
+import { useSelector, useStore } from "metabase/lib/redux";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
+import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import type Question from "metabase-lib/v1/Question";
-import type { DashCardId, DashboardId, Dataset } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type { DashboardCard, Dataset } from "metabase-types/api";
+
+import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 
 type DashCardQuestionDownloadButtonProps = {
-  question: Question;
   result: Dataset;
-  dashboardId: DashboardId;
-  dashcardId: DashCardId;
-  uuid?: string;
-  token?: string;
+  dashcard: DashboardCard;
 };
 
 export const DashCardQuestionDownloadButton = ({
-  question,
   result,
-  dashboardId,
-  dashcardId,
-  uuid,
-  token,
+  dashcard,
 }: DashCardQuestionDownloadButtonProps) => {
   const store = useStore();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const canDownloadPng = canSavePng(question.display());
+  const token = getDashcardTokenId(dashcard);
+  const uuid = getDashcardUuid(dashcard);
+  const dashcardId = dashcard.id;
+  const { dashboardId } = useDashboardContext();
+
+  const metadata = useSelector(getMetadata);
+  const question = useMemo(() => {
+    return isQuestionCard(dashcard.card)
+      ? new Question(dashcard.card, metadata)
+      : null;
+  }, [dashcard.card, metadata]);
+
+  const canDownloadPng = question && canSavePng(question.display());
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
     : exportFormats;

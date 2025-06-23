@@ -14,6 +14,7 @@ import { fetchEntityId } from "metabase/lib/entity-id/fetch-entity-id";
 import { useDispatch } from "metabase/lib/redux";
 import type { Dashboard, DashboardId } from "metabase-types/api";
 
+import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
@@ -42,6 +43,7 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
+  dashcardMenu?: DashboardCardMenu | null;
 };
 
 export type DashboardContextOwnResult = {
@@ -61,15 +63,15 @@ export type DashboardContextProps = DashboardContextOwnProps &
 
 type ContextProps = DashboardContextProps & ReduxProps;
 
-type ContextReturned = DashboardContextOwnResult &
+export type DashboardContextReturned = DashboardContextOwnResult &
   Omit<DashboardContextOwnProps, "dashboardId"> &
   ReduxProps &
   Required<DashboardControls> &
   DashboardContextErrorState;
 
-export const DashboardContext = createContext<ContextReturned | undefined>(
-  undefined,
-);
+export const DashboardContext = createContext<
+  DashboardContextReturned | undefined
+>(undefined);
 
 const DashboardContextProviderInner = ({
   dashboardId: dashboardIdProp,
@@ -77,6 +79,7 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
+  dashcardMenu,
 
   children,
 
@@ -291,6 +294,7 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
+        dashcardMenu,
 
         navigateToNewCardFromDashboard,
         isLoading,

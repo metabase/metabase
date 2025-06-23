@@ -208,6 +208,7 @@ export const EditableDashboard = ({
               drillThroughQuestionProps.plugins as InternalMetabasePluginsConfig,
           })
         }
+        dashcardMenu={plugins?.dashboard?.dashboardCardMenu}
       >
         {adhocQuestionUrl ? (
           <InteractiveAdHocQuestion

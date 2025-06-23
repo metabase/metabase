@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import {
@@ -13,8 +14,6 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -54,8 +53,8 @@ import type {
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
-import { DashCardQuestionDownloadButton } from "./DashCardQuestionDownloadButton";
 import S from "./DashCardVisualization.module.css";
+import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
 import type {
   CardSlownessStatus,
   DashCardOnChangeCardAndRunHandler,
@@ -116,7 +115,6 @@ interface DashCardVisualizationProps {
 
 export function DashCardVisualization({
   dashcard,
-  dashboard,
   series: untranslatedRawSeries,
   getClickActionMode,
   getHref,
@@ -129,8 +127,6 @@ export function DashCardVisualization({
   isAction,
   isSlow,
   isPreviewing,
-  isPublicOrEmbedded,
-  isXray,
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
@@ -145,9 +141,10 @@ export function DashCardVisualization({
   showClickBehaviorSidebar,
   onChangeLocation,
   onUpdateVisualizationSettings,
-  downloadsEnabled,
   onEditVisualization,
 }: DashCardVisualizationProps) {
+  const { dashboard, dashcardMenu } = useDashboardContext();
+
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
   const metadata = useSelector(getMetadata);
@@ -318,16 +315,8 @@ export function DashCardVisualization({
     series,
   ]);
 
-  const token = useMemo(
-    () =>
-      isJWT(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
-    [dashcard],
-  );
-  const uuid = useMemo(
-    () =>
-      isUuid(dashcard.dashboard_id) ? String(dashcard.dashboard_id) : undefined,
-    [dashcard],
-  );
+  const token = useMemo(() => getDashcardTokenId(dashcard), [dashcard]);
+  const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
 
   const findCardById = useCallback(
     (cardId?: CardId | null) => {
@@ -371,36 +360,19 @@ export function DashCardVisualization({
   );
 
   const actionButtons = useMemo(() => {
-    if (!question) {
+    const result = series[0] as unknown as Dataset;
+
+    if (
+      !question ||
+      !dashboard ||
+      dashcardMenu === null ||
+      !DashCardMenu.shouldRender({
+        question,
+        result,
+        isEditing,
+      })
+    ) {
       return null;
-    }
-
-    const mainSeries = series[0] as unknown as Dataset;
-    const shouldShowDashCardMenu = DashCardMenu.shouldRender({
-      question,
-      result: mainSeries,
-      isXray,
-      isPublicOrEmbedded,
-      isEditing,
-      downloadsEnabled,
-    });
-
-    if (!shouldShowDashCardMenu) {
-      return null;
-    }
-
-    // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded && downloadsEnabled) {
-      return (
-        <DashCardQuestionDownloadButton
-          question={question}
-          result={mainSeries}
-          dashboardId={dashboard.id}
-          dashcardId={dashcard.id}
-          uuid={uuid}
-          token={token}
-        />
-      );
     }
 
     // We only show the titleMenuItems if the card has no title.
@@ -411,29 +383,21 @@ export function DashCardVisualization({
 
     return (
       <DashCardMenu
-        downloadsEnabled={downloadsEnabled}
         question={question}
-        result={mainSeries}
-        dashcardId={dashcard.id}
-        dashboardId={dashboard.id}
-        token={token}
-        uuid={uuid}
+        result={result}
+        dashcard={dashcard}
         onEditVisualization={onEditVisualization}
         openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
       />
     );
   }, [
+    dashboard,
+    dashcard,
+    dashcardMenu,
+    isEditing,
+    onEditVisualization,
     question,
     series,
-    isXray,
-    isPublicOrEmbedded,
-    isEditing,
-    downloadsEnabled,
-    dashcard.id,
-    dashboard.id,
-    token,
-    uuid,
-    onEditVisualization,
     titleMenuItems,
   ]);
 
@@ -448,7 +412,7 @@ export function DashCardVisualization({
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
       })}
-      dashboard={dashboard}
+      dashboard={dashboard ?? undefined}
       dashcard={dashcard}
       rawSeries={series}
       visualizerRawSeries={
