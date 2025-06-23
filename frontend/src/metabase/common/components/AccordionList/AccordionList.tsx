@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type Fuse from "fuse.js";
 import {
   type CSSProperties,
   Component,
@@ -27,9 +26,7 @@ import {
   type Cursor,
   getNextCursor,
   getPrevCursor,
-  getSearchIndex,
   itemScore,
-  search,
   sectionScore,
 } from "./utils";
 
@@ -61,19 +58,17 @@ type Props<
   maxHeight?: number;
 };
 
-type State<TItem extends Item> = {
+type State = {
   openSection: number | null;
   searchText: string;
   cursor: Cursor | null;
   scrollToAlignment: Alignment;
-  searchIndex: Fuse<TItem>;
-  searchResults: Map<TItem, number> | null;
 };
 
 export class AccordionList<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
-> extends Component<Props<TItem, TSection>, State<TItem>> {
+> extends Component<Props<TItem, TSection>, State> {
   _cache: CellMeasurerCache;
 
   listRef: RefObject<List>;
@@ -111,11 +106,6 @@ export class AccordionList<
       searchText: "",
       cursor: null,
       scrollToAlignment: "start",
-      searchIndex: getSearchIndex({
-        sections: props.sections,
-        searchProp: props.searchProp,
-      }),
-      searchResults: null,
     };
 
     this._cache = new CellMeasurerCache({
@@ -156,10 +146,7 @@ export class AccordionList<
     }, 0);
   }
 
-  componentDidUpdate(
-    _prevProps: Props<TItem, TSection>,
-    prevState: State<TItem>,
-  ) {
+  componentDidUpdate(_prevProps: Props<TItem, TSection>, prevState: State) {
     // if anything changes that affects the selected rows we need to clear the row height cache
     if (
       this.state.openSection !== prevState.openSection ||
@@ -167,23 +154,6 @@ export class AccordionList<
     ) {
       this._clearRowHeightCache();
     }
-  }
-
-  static getDerivedStateFromProps<TItem extends Item>(
-    props: Props<TItem>,
-    state: State<TItem>,
-  ) {
-    const { searchText } = state;
-    const searchIndex = getSearchIndex({
-      sections: props.sections,
-      searchProp: props.searchProp,
-    });
-
-    return {
-      ...state,
-      searchIndex,
-      searchResults: search({ searchIndex, searchText }),
-    };
   }
 
   componentWillUnmount() {
@@ -280,14 +250,7 @@ export class AccordionList<
   };
 
   handleChangeSearchText = (searchText: string) => {
-    this.setState({
-      searchText,
-      cursor: null,
-      searchResults: search({
-        searchIndex: this.state.searchIndex,
-        searchText,
-      }),
-    });
+    this.setState({ searchText, cursor: null });
   };
 
   checkSectionHasItemsMatchingSearch = (section: TSection) => {

@@ -178,7 +178,7 @@ export function isReactNode(x: unknown): x is ReactNode {
   );
 }
 
-export const getSearchIndex = memoize(function <
+const getSearchIndex = memoize(function <
   TItem extends Item,
   TSection extends Section<TItem>,
 >({
@@ -218,7 +218,7 @@ function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
   };
 }
 
-export const search = memoize(function <T>({
+const search = memoize(function <T>({
   searchIndex,
   searchText,
 }: {
@@ -229,10 +229,8 @@ export const search = memoize(function <T>({
     return null;
   }
   const results = searchIndex
-    .search(searchText, {
-      limit: 50,
-    })
-    .filter((result) => result.score && result.score < 0.4);
+    .search(searchText, { limit: 50 })
+    .filter((result) => result.score && result.score < 0.6);
 
   const map = new Map<T, number>();
   for (const result of results) {
