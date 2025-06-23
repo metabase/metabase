@@ -19,7 +19,7 @@ const {
 } = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
-const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:PUBLIC`;
+const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:`;
 
 const CUSTOM_MAPPING_ERROR =
   "You need unrestricted data access on this table to map custom display values.";
@@ -940,6 +940,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       H.DataModel.visit({
         databaseId: MYSQL_DB_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
       });
 
       H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
@@ -956,6 +957,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       H.DataModel.visit({
         databaseId: MYSQL_DB_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
+        tableId: ORDERS_ID,
       });
 
       H.DataModel.TableSection.clickField("Tax");
