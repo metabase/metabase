@@ -161,7 +161,8 @@
                     (not= widget-type :none))
                [param-name widget-type]
 
-               (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+               (or (contains? lib.schema.template-tag/raw-value-template-tag-types tag-type)
+                   (= tag-type :temporal-unit))
                [param-name tag-type])))
       (filter some?))
      (get-in query [:native :template-tags]))))

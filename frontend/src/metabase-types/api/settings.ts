@@ -165,6 +165,7 @@ const tokenStatusFeatures = [
   "collection-cleanup",
   "config-text-file",
   "content-management",
+  "content-translation",
   "content-verification",
   "dashboard-subscription-filters",
   "database-auth-providers",
@@ -221,9 +222,10 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
-  "disable_password_login",
+  "content_translation",
   "content_verification",
   // "data_editing", // TODO[WRK]: enable this check after this feature token is added on the BE
+  "disable_password_login",
   "embedding",
   "embedding_sdk",
   "embedding_iframe_sdk",
@@ -249,6 +251,7 @@ export const tokenFeatures = [
   "metabot_v3",
   "ai_sql_fixer",
   "ai_sql_generation",
+  "ai_entity_analysis",
   "database_routing",
   "development-mode",
 ] as const;

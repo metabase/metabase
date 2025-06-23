@@ -38,23 +38,23 @@
                              :model/Action action {:type       :query
                                                    :name       "Do cool thing"
                                                    :model_id   (:id model)
-                                                   :parameters [{:id   "param-a"
+                                                   :parameters [{:id   "random-a"
                                                                  :name "A"
                                                                  :type "number/="
                                                                  :slug "a"}
-                                                                {:id   "param-b"
+                                                                {:id   "random-b"
                                                                  :name "B"
                                                                  :type "date/single"
                                                                  :slug "b"}
-                                                                {:id   "param-c"
+                                                                {:id   "random-c"
                                                                  :name "C"
                                                                  :type "string/="
                                                                  :slug "c"}
-                                                                {:id   "param-d"
+                                                                {:id   "random-d"
                                                                  :name "D"
                                                                  :type "string/="
                                                                  :slug "d"}
-                                                                {:id   "param-e"
+                                                                {:id   "random-e"
                                                                  :name "E"
                                                                  :type "string/="
                                                                  :slug "e"}]
@@ -70,11 +70,11 @@
                                   ;;      staging and beta users.
                                   ;;      for now it doesn't tell you the type or the possible values, BUT maybe we want the wrapping
                                   ;;      component to know that (it just doesn't get saved)
-                                  :parameters [{:id "param-a", :sourceType "ask-user", :sourceValueTarget "a"}
-                                               {:id "param-b", :sourceType "ask-user", :sourceValueTarget "b"}
-                                               {:id "param-c", :sourceType "ask-user", :sourceValueTarget "c"}
-                                               {:id "param-d", :sourceType "ask-user", :sourceValueTarget "d"}
-                                               {:id "param-e", :sourceType "ask-user", :sourceValueTarget "e"}]}}
+                                  :parameters [{:id "a", :sourceType "ask-user"}
+                                               {:id "b", :sourceType "ask-user"}
+                                               {:id "c", :sourceType "ask-user"}
+                                               {:id "d", :sourceType "ask-user"}
+                                               {:id "e", :sourceType "ask-user"}]}}
                         (req {:scope     {:model-id (:id model)
                                           :table-id (:id table)}
                               :action_id {:action-id (:id action)}})))))))))))
@@ -85,15 +85,15 @@
     (mt/test-drivers #{:h2 :postgres}
       (data-editing.tu/with-data-editing-enabled! true
         (testing "saved actions"
-          (let [expected-id-params  [{:id "id"         :sourceType "ask-user" :sourceValueTarget "id"}]
-                expected-row-params [{:id "user_id"    :sourceType "ask-user" :sourceValueTarget "user_id"}
-                                     {:id "product_id" :sourceType "ask-user" :sourceValueTarget "product_id"}
-                                     {:id "subtotal"   :sourceType "ask-user" :sourceValueTarget "subtotal"}
-                                     {:id "tax"        :sourceType "ask-user" :sourceValueTarget "tax"}
-                                     {:id "total"      :sourceType "ask-user" :sourceValueTarget "total"}
-                                     {:id "discount"   :sourceType "ask-user" :sourceValueTarget "discount"}
-                                     {:id "created_at" :sourceType "ask-user" :sourceValueTarget "created_at"}
-                                     {:id "quantity"   :sourceType "ask-user" :sourceValueTarget "quantity"}]
+          (let [expected-id-params  [{:id "id"         :sourceType "ask-user"}]
+                expected-row-params [{:id "user_id"    :sourceType "ask-user"}
+                                     {:id "product_id" :sourceType "ask-user"}
+                                     {:id "subtotal"   :sourceType "ask-user"}
+                                     {:id "tax"        :sourceType "ask-user"}
+                                     {:id "total"      :sourceType "ask-user"}
+                                     {:id "discount"   :sourceType "ask-user"}
+                                     {:id "created_at" :sourceType "ask-user"}
+                                     {:id "quantity"   :sourceType "ask-user"}]
                 action-kind->expected-params {"row/create" expected-row-params
                                               "row/update" (concat expected-id-params expected-row-params)
                                               "row/delete" expected-id-params}]
@@ -124,11 +124,11 @@
 
         (let [;; TODO the form for configuring a row action will need to know that ID is meant to be "locked" to
               ;;      the pk of the table underlying the data-grid.
-              expected-id-params   [{:id "field-id"        :sourceType "ask-user" :sourceValueTarget "id"}]
-              expected-row-params  [{:id "field-text"      :sourceType "ask-user" :sourceValueTarget "text"}
-                                    {:id "field-int"       :sourceType "ask-user" :sourceValueTarget "int"}
-                                    {:id "field-timestamp" :sourceType "ask-user" :sourceValueTarget "timestamp"}
-                                    {:id "field-date"      :sourceType "ask-user" :sourceValueTarget "date"}]]
+              expected-id-params   [{:id "id"        :sourceType "ask-user"}]
+              expected-row-params  [{:id "text"      :sourceType "ask-user"}
+                                    {:id "int"       :sourceType "ask-user"}
+                                    {:id "timestamp" :sourceType "ask-user"}
+                                    {:id "date"      :sourceType "ask-user"}]]
 
           (testing "table actions"
             (let [scope {:table-id test-table}
@@ -253,7 +253,7 @@
                        :body   {:parameters
                                 [{:id "id",   :sourceType "ask-user"}
                                  {:id "int",  :sourceType "constant", :value 42}
-                                 {:id "text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                 {:id "text", :sourceType "row-data", :visibility "readonly"}
                                  ;; TODO https://linear.app/metabase/issue/WRK-476/handle-actions-whose-mapping-doesnt-cover-new-inputs
                                  #_{:id "date", :visibility "hidden"}
                                  {:id "timestamp", :visibility "hidden"}]}}
@@ -284,7 +284,7 @@
                 pending-config {:parameters
                                 [{:parameterId "id",        :sourceType "row-data"}
                                  {:parameterId "int",       :sourceType "constant", :value 42}
-                                 {:parameterId "text",      :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                 {:parameterId "text",      :sourceType "row-data", :visibility "readonly"}
                                  {:parameterId "timestamp", :visibility "hidden"}]}
 
                 ;; This gives us the format that the in-memory action looks like in the FE.

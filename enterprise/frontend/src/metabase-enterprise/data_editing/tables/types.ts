@@ -86,9 +86,9 @@ export type TableExecuteActionResponse = {
 };
 
 export enum BuiltInTableAction {
-  Create = "table.row/create",
-  Update = "table.row/update",
-  Delete = "table.row/delete",
+  Create = "data-grid.row/create",
+  Update = "data-grid.row/update",
+  Delete = "data-grid.row/delete",
 }
 
 export type DescribeActionFormRequest = {

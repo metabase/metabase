@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
 import { useUniqueId } from "metabase/hooks/use-unique-id";
-import { Flex, Paper, Text, Title } from "metabase/ui";
+import { Flex, Text, Title } from "metabase/ui";
+
+import { SettingsSection } from "../../SettingsSection";
 
 type EmbeddingOptionProps = {
   title: string;
@@ -20,27 +22,22 @@ export function EmbeddingOption({
 }: EmbeddingOptionProps) {
   const titleId = useUniqueId();
   return (
-    <Paper
-      maw="40rem"
-      w="100%"
-      shadow="sm"
-      p="2.5rem"
-      component="article"
-      aria-labelledby={titleId}
-    >
-      {icon}
-      <Flex gap="md" mt="md" mb="sm" direction={"row"} align="center">
-        <Title id={titleId} order={3}>
-          {title}
-        </Title>
-        {label}
-      </Flex>
-      <Text lh={"1.25rem"} mb={"lg"}>
-        {description}
-      </Text>
-      <Flex gap="lg" direction="column" align="flex-start">
-        {children}
-      </Flex>
-    </Paper>
+    <SettingsSection>
+      <article aria-labelledby={titleId}>
+        {icon}
+        <Flex gap="md" mt="md" mb="sm" direction={"row"} align="center">
+          <Title id={titleId} order={3}>
+            {title}
+          </Title>
+          {label}
+        </Flex>
+        <Text lh={"1.25rem"} mb={"lg"}>
+          {description}
+        </Text>
+        <Flex gap="lg" direction="column" align="flex-start">
+          {children}
+        </Flex>
+      </article>
+    </SettingsSection>
   );
 }

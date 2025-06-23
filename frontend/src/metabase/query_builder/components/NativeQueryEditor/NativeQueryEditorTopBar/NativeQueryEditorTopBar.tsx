@@ -1,3 +1,5 @@
+import { useDispatch } from "metabase/lib/redux";
+import { updateQuestion } from "metabase/query_builder/actions/core";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -13,9 +15,9 @@ import type {
 
 import { ResponsiveParametersList } from "../../ResponsiveParametersList";
 import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
-import type { Features as SidebarFeatures } from "../NativeQueryEditorActionButtons";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
+import type { SidebarFeatures } from "../types";
 import { formatQuery } from "../utils";
 
 interface NativeQueryEditorTopBarProps {
@@ -40,15 +42,11 @@ interface NativeQueryEditorTopBarProps {
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
-  toggleDataReference: () => void;
-  toggleTemplateTagsEditor: () => void;
   toggleEditor: () => void;
-  toggleSnippetSidebar: () => void;
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   onOpenModal: (modalType: QueryModalType) => void;
   onChange: (queryText: string) => void;
-  setParameterValueToDefault: (parameterId: ParameterId) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
@@ -76,17 +74,15 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     isShowingTemplateTagsEditor,
     isShowingSnippetSidebar,
     onOpenModal,
-    toggleDataReference,
-    toggleTemplateTagsEditor,
-    toggleSnippetSidebar,
     nativeEditorSelectedText,
     setIsNativeEditorOpen,
     toggleEditor,
     onSetDatabaseId,
     hasParametersList = true,
-    setParameterValueToDefault,
     setDatasetQuery,
   } = props;
+
+  const dispatch = useDispatch();
 
   const setTableId = (tableId: TableId) => {
     const table = query.metadata().table(tableId);
@@ -99,9 +95,9 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
     parameterId: ParameterId,
     parameterIndex: number,
   ) => {
-    // could be
-    // dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
-    setDatasetQuery(query.setParameterIndex(parameterId, parameterIndex));
+    const newQuery = query.setParameterIndex(parameterId, parameterIndex);
+
+    dispatch(updateQuestion(question.setDatasetQuery(newQuery.datasetQuery())));
   };
 
   // Change the Database we're currently editing a query for.
@@ -154,7 +150,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
           parameters={parameters}
           setParameterValue={setParameterValue}
           setParameterIndex={setParameterIndex}
-          setParameterValueToDefault={setParameterValueToDefault}
           enableParameterRequiredBehavior
         />
       )}
@@ -175,9 +170,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
             isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
             isShowingSnippetSidebar={isShowingSnippetSidebar}
             onOpenModal={onOpenModal}
-            toggleDataReference={toggleDataReference}
-            toggleTemplateTagsEditor={toggleTemplateTagsEditor}
-            toggleSnippetSidebar={toggleSnippetSidebar}
           />
         )}
         {query.hasWritePermission() &&
