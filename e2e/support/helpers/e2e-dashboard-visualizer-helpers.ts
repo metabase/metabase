@@ -290,3 +290,11 @@ export function closeDashcardVisualizerModal() {
 export function saveDashcardVisualizerModalSettings() {
   return saveDashcardVisualizerModal();
 }
+
+export function clickUndoButton() {
+  cy.findByLabelText("Back").click();
+}
+
+export function clickRedoButton() {
+  cy.findByLabelText("Forward").click();
+}

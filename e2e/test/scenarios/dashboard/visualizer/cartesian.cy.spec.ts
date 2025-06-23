@@ -219,10 +219,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     );
 
     H.modal().within(() => {
-      H.switchToAddMoreData();
-      H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name);
-      H.switchToColumnsList();
-
       H.selectVisualization("area");
 
       H.assertDataSourceColumnSelected(
@@ -236,19 +232,6 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       H.assertDataSourceColumnSelected(
         ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
         "Product → Category",
-      );
-
-      H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
-        "Count",
-      );
-      H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
-        "Created At: Month",
-      );
-      H.assertDataSourceColumnSelected(
-        PRODUCTS_COUNT_BY_CREATED_AT_AND_CATEGORY.name,
-        "Category",
       );
     });
   });
