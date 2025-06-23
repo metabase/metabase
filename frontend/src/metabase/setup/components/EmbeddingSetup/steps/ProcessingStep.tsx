@@ -7,6 +7,7 @@ import { useSaveDashboardMutation } from "metabase/api/dashboard";
 import { useUpdateSettingsMutation } from "metabase/api/settings";
 import { useSetting } from "metabase/common/hooks";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
+import type { DashboardId } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
 import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
@@ -76,30 +77,28 @@ export const ProcessingStep = () => {
           }),
         );
 
-        // Create x-ray dashboards for each model
+        // Get the x-ray dashboard content (this doesn't save the dashboard yet)
         setProcessingStatus(t`Creating dashboards...`);
-        const dashboardIds = await Promise.all(
+        const dashboardsContent = await Promise.all(
           models.map(async (model) => {
-            // Get the x-ray dashboard layout using the correct RTK Query hook
             const dashboardContent = await getXrayDashboardForModel({
               modelId: model.id,
               dashboard_load_id: Date.now(),
             }).unwrap();
-
-            // Save the dashboard
-            const savedDashboard =
-              await saveDashboard(dashboardContent).unwrap();
-            setProcessingStep((prev) => prev + 1);
-            return savedDashboard.id;
+            return dashboardContent;
           }),
         );
 
-        // Store the created dashboard IDs
-        setCreatedDashboardIds(
-          dashboardIds.filter((id): id is number => typeof id === "number"),
-        );
+        // Save the dashboards one at the time, to avoid creating multiple "Automatically Generated Dashboards" collections
+        const dashboardIds: DashboardId[] = [];
+        for (const dashboard of dashboardsContent) {
+          const savedDashboard = await saveDashboard(dashboard).unwrap();
+          setProcessingStep((prev) => prev + 1);
+          dashboardIds.push(savedDashboard.id);
+        }
 
-        // Move to final step
+        setCreatedDashboardIds(dashboardIds);
+
         goToNextStep();
       } catch (err) {
         setError(err instanceof Error ? err.message : "An error occurred");
