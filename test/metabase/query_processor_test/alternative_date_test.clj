@@ -400,7 +400,7 @@
                                     :redshift "VARBYTE"
                                     :presto-jdbc "VARBINARY"
                                     :oracle "BLOB"
-                                    :clickhouse "string"
+                                    :clickhouse "String"
                                     :databricks "BINARY"
                                     :sqlite "BLOB"
                                     :sqlserver "BINARY(14)"
