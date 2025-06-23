@@ -2825,7 +2825,17 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card))
                                     (assoc card :type :model :type "model")))))))
 
-;;; see also [[metabase.lib.card-test/preserve-edited-metadata-test]], a pure-Lib version of this test.
+;;; See also:
+;;;
+;;; - [[metabase.lib.field.resolution-test/preserve-model-metadata-test]]
+;;;
+;;; - [[metabase.lib.card-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.lib.metadata.result-metadata-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.query-processor.preprocess-test/preserve-edited-metadata-test]]
+;;;
+;;; - [[metabase.query-processor.card-test/preserve-model-metadata-test]]
 (deftest model-card-test-2
   (testing "Cards preserve their edited metadata"
     (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))

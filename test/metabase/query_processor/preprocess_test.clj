@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -12,6 +13,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.humanization :as u.humanization]))
@@ -243,3 +245,59 @@
       (is (=? [{:display_name "Product → Rating"}
                {:display_name "Sum of Total"}]
               (qp.preprocess/query->expected-cols query))))))
+
+;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; and [[metabase.lib.card-test/preserve-edited-metadata-test]]
+(deftest ^:parallel preserve-edited-metadata-test
+  (testing "Cards preserve their edited metadata"
+    (let [mp                       (metabase.lib.card-test/preserve-edited-metadata-test-mock-metadata-provider
+                                    {:result-metadata-fn qp.preprocess/query->expected-cols})
+          metadata                 (:result-metadata (lib.metadata/card mp 1))
+          base-type->semantic-type (fn [base-type]
+                                     (condp #(isa? %2 %1) base-type
+                                       :type/Integer :type/Quantity
+                                       :type/Float   :type/Cost
+                                       :type/Text    :type/Name
+                                       base-type))
+          add-user-edits           (fn [cols]
+                                     (for [col cols]
+                                       (assoc col
+                                              :description   "user description"
+                                              :display_name  "user display name"
+                                              :semantic_type (base-type->semantic-type (:base_type col)))))
+          user-edited              (add-user-edits metadata)
+          edited-mp                (lib.tu/merged-mock-metadata-provider
+                                    mp
+                                    {:cards [{:id              1
+                                              :result-metadata user-edited}]})]
+      (is (=? [{:name "ID",          :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
+               {:name "NAME",        :description "user description", :display-name "user display name", :semantic-type :type/Name}
+               {:name "CATEGORY_ID", :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
+               {:name "LATITUDE",    :description "user description", :display-name "user display name", :semantic-type :type/Cost}
+               {:name "LONGITUDE",   :description "user description", :display-name "user display name", :semantic-type :type/Cost}
+               {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
+              (lib.card/saved-question-metadata edited-mp 1)))
+      (doseq [card-id [1 2]]
+        (testing card-id
+          (is (=? [{:name "ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
+                   {:name "NAME", :description "user description", :display_name "user display name", :semantic_type :type/Name}
+                   {:name "CATEGORY_ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
+                   {:name "LATITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "LONGITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "PRICE", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
+                  (qp.store/with-metadata-provider edited-mp
+                    (qp.preprocess/query->expected-cols
+                     {:database (meta/id)
+                      :type     :query
+                      :query    {:source-table (format "card__%d" card-id)}}))))))
+      (testing "respect :metadata/model-metadata"
+        (let [card  (lib.metadata/card edited-mp 1)
+              query (-> (:dataset-query card)
+                        (assoc-in [:info :metadata/model-metadata] (:result-metadata card)))]
+          (is (=? [{:name "ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
+                   {:name "NAME", :description "user description", :display_name "user display name", :semantic_type :type/Name}
+                   {:name "CATEGORY_ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
+                   {:name "LATITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "LONGITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "PRICE", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
+                  (qp.preprocess/query->expected-cols (lib/query mp query)))))))))
