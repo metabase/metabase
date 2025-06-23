@@ -70,23 +70,24 @@ runs:
       run: kill $(cat metabase_pid)
       shell: bash
 
-    ## Reset the checksums so that we can when we go back to the base branch, it's as if the PR branch was what was originally deployed
+    ## Testing that originally deploying this PR allows you to roll back to a previous release
+    ## Reset the checksums so when we go back to the base branch, it's as if the PR branch was what was originally deployed
     - name: Reset the checksums as if the PR branch was what was originally deployed
       run: |
         clojure -M:dev:ee:migrate reset-checksums
       shell: bash
 
-    - name: Test rollback of last migrations
+    - name: Rollback the last deployment
       run: |
         clojure -M:dev:ee:migrate rollback last-deployment
       shell: bash
 
-    - name: (Re)check out base branch
+    - name: Re-check out base branch
       uses: actions/checkout@v4
       with:
         ref: ${{ inputs.base-ref }}
 
-    - name: (Re)run backend on base branch
+    - name: Re-run backend on base branch
       run: |
         clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
         tail -F metabase.log &

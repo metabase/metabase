@@ -8,7 +8,7 @@
    [toucan2.core :as t2]
    [toucan2.honeysql2 :as t2.honeysql])
   (:import
-   (liquibase Contexts Liquibase RuntimeEnvironment)
+   (liquibase Contexts LabelExpression Liquibase RuntimeEnvironment)
    (liquibase.change Change)
    (liquibase.changelog ChangeLogIterator ChangeSet DatabaseChangeLog)
    (liquibase.changelog.filter ChangeSetFilter)
@@ -90,10 +90,14 @@
 
 (defn reset-checksums!
   []
-  (let [changelog-table (keyword (liquibase/changelog-table-name (mdb/data-source)))]
-    (t2/query {:update changelog-table
-               :set    {:md5sum nil}}))
-  (migrate! :up)
+  (with-open [conn (.getConnection ^javax.sql.DataSource (mdb/data-source))]
+    (let [changelog-table (keyword (liquibase/changelog-table-name (mdb/data-source)))]
+      (t2/query {:update changelog-table
+                 :set    {:md5sum nil}}))
+    (.setAutoCommit conn false)
+    (liquibase/with-liquibase [liquibase conn]
+      (liquibase/with-scope-locked liquibase
+        (.changeLogSync liquibase (Contexts.) (LabelExpression.)))))
   (println "Reset checksums"))
 
 (mu/defn rollback!
