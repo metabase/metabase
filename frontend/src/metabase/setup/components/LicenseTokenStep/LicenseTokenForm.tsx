@@ -12,8 +12,8 @@ import {
 } from "metabase/forms";
 import { getStoreUrl } from "metabase/selectors/settings";
 import {
-  Anchor,
   Box,
+  Button,
   Divider,
   Flex,
   Icon,
@@ -23,7 +23,6 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 
-import styles from "./LicenseTokenForm.module.css";
 import { LICENSE_TOKEN_SCHEMA } from "./constants";
 
 type LicenseTokenFormProps = {
@@ -132,17 +131,17 @@ export const LicenseTokenForm = ({
             />
           </Flex>
           <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
-          <Flex direction="column" gap="xs">
-            <Anchor
+          <Box>
+            <Button
               onClick={onSkip}
-              variant="brand"
-              component="button"
-              className={styles.skipButton}
-            >{t`I'll activate later`}</Anchor>
+              variant="subtle"
+              px={0}
+              fw="normal"
+            >{t`I'll activate later`}</Button>
             <Text c="text-light" size="sm">
               {t`You won't have access to the paid features until you activate.`}
             </Text>
-          </Flex>
+          </Box>
         </Form>
       )}
     </FormProvider>
