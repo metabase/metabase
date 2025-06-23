@@ -1,6 +1,6 @@
 import type React from "react";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -19,7 +19,15 @@ export const AdminNavWrapper = ({
   children: React.ReactNode;
 } & StackProps) => {
   return (
-    <Stack w="16rem" gap="xs" bg="white" p="md" h="100%" {...stackProps}>
+    <Stack
+      w="16rem"
+      gap="xs"
+      bg="white"
+      p="md"
+      h="100%"
+      {...stackProps}
+      component="nav"
+    >
       {children}
     </Stack>
   );

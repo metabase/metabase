@@ -1,14 +1,13 @@
 import type * as React from "react";
 
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
-import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 
 import { PeopleNav } from "../components/PeopleNav";
 
 export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
   return (
     <AdminSettingsLayout sidebar={<PeopleNav />} maw="80rem">
-      <SettingsSection>{children}</SettingsSection>
+      {children}
     </AdminSettingsLayout>
   );
 };
