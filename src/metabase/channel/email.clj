@@ -77,17 +77,21 @@
      {})))
 
 (defn- smtp-settings []
-  (if (and (channel.settings/cloud-smtp-enabled) (premium-features/is-hosted?))
-    (-> {:host (channel.settings/cloud-email-smtp-host)
-         :user (channel.settings/cloud-email-smtp-username)
-         :pass (channel.settings/cloud-email-smtp-password)
-         :port (channel.settings/cloud-email-smtp-port)}
-        (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
-    (-> {:host (channel.settings/email-smtp-host)
-         :user (channel.settings/email-smtp-username)
-         :pass (channel.settings/email-smtp-password)
-         :port (channel.settings/email-smtp-port)}
-        (add-ssl-settings (channel.settings/email-smtp-security)))))
+  (merge (if (and (channel.settings/cloud-smtp-enabled) (premium-features/is-hosted?))
+           (-> {:host         (channel.settings/cloud-email-smtp-host)
+                :user         (channel.settings/cloud-email-smtp-username)
+                :pass         (channel.settings/cloud-email-smtp-password)
+                :port         (channel.settings/cloud-email-smtp-port)
+                :from-address (channel.settings/cloud-email-from-address)}
+               (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
+           (-> {:host         (channel.settings/email-smtp-host)
+                :user         (channel.settings/email-smtp-username)
+                :pass         (channel.settings/email-smtp-password)
+                :port         (channel.settings/email-smtp-port)
+                :from-address (channel.settings/email-from-address)}
+               (add-ssl-settings (channel.settings/email-smtp-security))))
+         {:reply-to  (channel.settings/email-reply-to)
+          :from-name (channel.settings/email-from-name)}))
 
 (def ^:private EmailMessage
   [:and
@@ -96,8 +100,7 @@
     [:recipients   [:or [:sequential ms/Email] [:set ms/Email]]]
     [:message-type [:enum :text :html :attachments]]
     [:message      [:or :string [:sequential :map]]]
-    [:bcc?         {:optional true} [:maybe :boolean]]
-    [:smtp-config  {:optional true :default :configured} [:enum :configured :cloud :standard]]]
+    [:bcc?         {:optional true} [:maybe :boolean]]]
    [:fn {:error/message (str "Bad message-type/message combo: message-type `:attachments` should have a sequence of maps as its message; "
                              "other types should have a String message.")}
     (fn [{:keys [message-type message]}]
@@ -108,55 +111,28 @@
 (defn send-message-or-throw!
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
-  the caller has its own retry logic.
-
-  smtp-config can be :configured, :cloud, or :standard. If :configured or nil, it will use the overall configured SMTP setting"
-  [{:keys [subject recipients message-type message bcc? smtp-config] :as _email}]
+  the caller has its own retry logic."
+  [{:keys [subject recipients message-type message bcc?] :as _email}]
   (try
     (when-not (channel.settings/email-smtp-host)
       (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
     ;; Now send the email
-    (let [smtp-config (if (or (nil? smtp-config) (= :configured smtp-config))
-                        (if (and (channel.settings/cloud-smtp-enabled) (premium-features/has-feature? :cloud-custom-smtp))
-                          :cloud
-                          :standard)
-                        smtp-config)
-          smtp-settings (cond
-                          (= :cloud smtp-config)
-                          (-> {:host (channel.settings/cloud-email-smtp-host)
-                               :user (channel.settings/cloud-email-smtp-username)
-                               :pass (channel.settings/cloud-email-smtp-password)
-                               :port (channel.settings/cloud-email-smtp-port)}
-                              (add-ssl-settings (channel.settings/cloud-email-smtp-security)))
-
-                          (= :standard smtp-config)
-                          (-> {:host (channel.settings/email-smtp-host)
-                               :user (channel.settings/email-smtp-username)
-                               :pass (channel.settings/email-smtp-password)
-                               :port (channel.settings/email-smtp-port)}
-                              (add-ssl-settings (channel.settings/email-smtp-security)))
-                          :else (throw (ex-info (tru "Invalid SMTP configuration: {0}" smtp-config)
-                                                {:cause :invalid-smtp-config})))
-          from-name (channel.settings/email-from-name)
-          from-address (if (= :cloud smtp-config)
-                         (channel.settings/cloud-email-from-address)
-                         (channel.settings/email-from-address))
-          reply-to (channel.settings/email-reply-to)
-          to-type (if bcc? :bcc :to)]
+    (let [to-type (if bcc? :bcc :to)
+          smtp-settings (smtp-settings)]
       (send-email! smtp-settings
                    (merge
-                    {:from    (if from-name
-                                (str from-name " <" from-address ">")
-                                from-address)
-           ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
+                    {:from    (if-let [from-name (:from-name smtp-settings)]
+                                (str from-name " <" (:from-address smtp-settings) ">")
+                                (:from-address smtp-settings))
+                     ;; FIXME: postal doesn't accept recipients if it's a set, need to fix this from upstream
                      to-type  (seq recipients)
                      :subject subject
                      :body    (case message-type
                                 :attachments message
-                                :text message
-                                :html [{:type    "text/html; charset=utf-8"
-                                        :content message}])}
-                    (when reply-to
+                                :text        message
+                                :html        [{:type    "text/html; charset=utf-8"
+                                               :content message}])}
+                    (when-let [reply-to (:reply-to smtp-settings)]
                       {:reply-to reply-to}))))
     (catch Throwable e
       (analytics/inc! :metabase-email/message-errors)

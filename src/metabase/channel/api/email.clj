@@ -190,7 +190,10 @@
                             :cloud-smtp-enabled false))
   api/generic-204-no-content)
 
-(defn- test-email [smtp-config]
+(api.macros/defendpoint :post "/test"
+  "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
+  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
+  []
   (perms/check-has-application-permission :setting)
   (when-not (and (channel.settings/email-smtp-port) (channel.settings/email-smtp-host))
     {:status 400
@@ -199,22 +202,8 @@
                   {:subject      "Metabase Test Email"
                    :recipients   [(:email @api/*current-user*)]
                    :message-type :text
-                   :message      "Your Metabase emails are working — hooray!"
-                   :smtp-config  smtp-config})]
+                   :message      "Your Metabase emails are working — hooray!"})]
     (if-not (::email/error response)
       {:ok true}
       {:status 400
        :body   (humanize-error-messages mb-to-smtp-settings response)})))
-
-(api.macros/defendpoint :post "/test"
-  "Send a test email using the standard SMTP Settings. You must be a superuser or have `setting` permission to do this.
-  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response.
-  NOTE: if you have an overridden 'cloud' SMTP settings, this will still test the standard settings."
-  []
-  (test-email :standard))
-
-(api.macros/defendpoint :post "/cloud/test"
-  "Send a test email using the Cloud SMTP Settings. You must be a superuser or have `setting` permission to do this.
-  Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
-  []
-  (test-email :cloud))
