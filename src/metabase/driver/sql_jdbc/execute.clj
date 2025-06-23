@@ -419,7 +419,6 @@
 
 (defmethod set-parameter :default
   [_ prepared-statement i object]
-  (println "DEFAULT" object)
   (set-object prepared-statement i object))
 
 (defmethod set-parameter [::driver/driver LocalDate]

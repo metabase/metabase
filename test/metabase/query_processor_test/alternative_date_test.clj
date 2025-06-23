@@ -457,12 +457,6 @@
 (deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
     (mt/dataset yyyymmddhhss-binary-times
-      (clojure.pprint/pprint (qp.compile/compile
-                              (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false})))
-      (clojure.pprint/pprint (qp/process-query
-                              (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false})))
       (is (= (yyyymmddhhmmss-binary-dates-expected-rows driver/*driver*)
              (sort-by
               first
