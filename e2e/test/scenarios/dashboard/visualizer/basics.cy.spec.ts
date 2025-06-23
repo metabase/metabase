@@ -116,8 +116,9 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).click();
       cy.wait("@cardQuery");
 
-      cy.findByTestId("visualization-canvas").within(() => {
-        cy.findByText("Count").should("exist");
+      H.assertWellItems({
+        vertical: ["Count", "Count (Products by Created At (Month))"],
+        horizontal: ["Created At: Month"],
       });
     });
 
