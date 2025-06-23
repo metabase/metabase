@@ -9,7 +9,7 @@
 ;; 0. Make sure we have tests to cover every single step taken in our core user journeys.
 ;; 1. Cover :create-or-update as well.
 ;; 2. DRY up or otherwise streamline how we construct these scenarios - hard to see the forest for the boilerplate.
-;; 3. Consolidate test cases between /configure, /tmp-model, and /execute
+;; 3. Consolidate test cases between /config-form, /tmp-model, and /execute
 
 ;; Important missing tests
 (comment
@@ -23,7 +23,7 @@
   (let [req #(mt/user-http-request-full-response
               (:user % :crowberto)
               :post
-              "action/v2/configure"
+              "action/v2/config-form"
               (select-keys % [:action_id
                               :scope
                               :input]))]
@@ -65,7 +65,7 @@
                          :body   {:title      "Do cool thing"
                                   ;; TODO this is the raw format we're currently saving config like
                                   ;;      but, we want to instead return "data components" which tell us how to *change* it
-                                  ;;      and also... as part of introducing /configure we are free to *change* how config is saved
+                                  ;;      and also... as part of introducing /config-form we are free to *change* how config is saved
                                   ;;      because it will now be encapsulated. we just need migrate on read to avoid breaking
                                   ;;      staging and beta users.
                                   ;;      for now it doesn't tell you the type or the possible values, BUT maybe we want the wrapping
@@ -106,7 +106,7 @@
                                                         :name "Do cool thing"}]
                 (is (= {:title      "Do cool thing"
                         :parameters expected-params}
-                       (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                       (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
                                              {:scope     {:model-id (:id model)
                                                           :table-id (mt/id :orders)}
                                               :action_id {:action-id action-id}})))))))))))
@@ -144,19 +144,19 @@
               (testing "create"
                 (is (=? {:title      (mt/malli=? :string)
                          :parameters expected-row-params}
-                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                        (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
                                               {:scope     scope
                                                :action_id create-id}))))
               (testing "update"
                 (is (=? {:title      (mt/malli=? :string)
                          :parameters (concat expected-id-params expected-row-params)}
-                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                        (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
                                               {:scope     scope
                                                :action_id update-id}))))
               (testing "delete"
                 (is (=? {:title      (mt/malli=? :string)
                          :parameters expected-id-params}
-                        (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                        (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
                                               {:scope     scope
                                                :action_id delete-id})))))))))))
 
@@ -171,7 +171,7 @@
   (let [req #(dissoc (mt/user-http-request-full-response
                       (:user % :crowberto)
                       :post
-                      "action/v2/configure"
+                      "action/v2/config-form"
                       (select-keys % [:action_id
                                       :scope
                                       :input]))
@@ -300,6 +300,6 @@
                      :parameters (for [p (:parameters pending-config)]
                                    ;; What a silly difference, which we should squelch.
                                    (-> p (assoc :id (:parameterId p)) (dissoc :parameterId)))}
-                    (mt/user-http-request :crowberto :post 200 "action/v2/configure"
+                    (mt/user-http-request :crowberto :post 200 "action/v2/config-form"
                                           {:scope     scope
                                            :action_id (wrap-action action-id)})))))))))
