@@ -51,3 +51,6 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
     component: () => "get code placeholder",
   },
 ];
+
+/** If the activity log of the user is completely empty, we fallback to this dashboard. */
+export const EMBED_FALLBACK_DASHBOARD_ID = 1;

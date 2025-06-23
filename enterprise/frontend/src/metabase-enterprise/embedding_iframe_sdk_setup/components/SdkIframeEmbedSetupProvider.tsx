@@ -10,6 +10,7 @@ import { P, match } from "ts-pattern";
 import { useSetting } from "metabase/common/hooks";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
+import { EMBED_FALLBACK_DASHBOARD_ID } from "../constants";
 import {
   SdkIframeEmbedSetupContext,
   type SdkIframeEmbedSetupContextType,
@@ -31,7 +32,7 @@ export const SdkIframeEmbedSetupProvider = ({
   const [isEmbedSettingsLoaded, setEmbedSettingsLoaded] = useState(false);
 
   // We don't want to re-fetch the recent items every time we switch between
-  // steps, therefore we load recent items in the provider.
+  // steps, therefore we load recent items once in the provider.
   const { recentDashboards, recentQuestions, addRecentItem, isRecentsLoading } =
     useRecentItems();
 
@@ -45,7 +46,7 @@ export const SdkIframeEmbedSetupProvider = ({
     instanceUrl,
 
     // This will be overridden by the last selected dashboard in the activity log.
-    dashboardId: 1,
+    dashboardId: EMBED_FALLBACK_DASHBOARD_ID,
   });
 
   // Which embed experience are we setting up?
@@ -74,7 +75,7 @@ export const SdkIframeEmbedSetupProvider = ({
     if (!isEmbedSettingsLoaded && !isRecentsLoading) {
       const defaultSettings = getDefaultSdkIframeEmbedSettings(
         "dashboard",
-        recentDashboards[0]?.id ?? DEFAULT_DASHBOARD_ID,
+        recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID,
       );
 
       updateSettings(defaultSettings);
