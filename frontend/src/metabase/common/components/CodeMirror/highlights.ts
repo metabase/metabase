@@ -3,8 +3,7 @@ import { Decoration, EditorView } from "@codemirror/view";
 import { type RefObject, useEffect } from "react";
 
 import S from "./CodeMirror.module.css";
-
-import type { CodeMirrorRef } from ".";
+import type { CodeMirrorRef } from "./types";
 
 export type HighlightRange =
   | {
