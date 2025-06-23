@@ -12,6 +12,7 @@ import {
   useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
+import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import {
   Form,
@@ -122,21 +123,22 @@ export const SelfHostedSMTPConnectionForm = ({
 
   const handleUpdateEmailSettings = useCallback(
     async (formData: EmailSMTPSettings) => {
-      const result = await updateEmailSMTPSettings(formData);
-      if (result.error) {
-        sendToast({
-          icon: "warning",
-          toastColor: "error",
-          message: isErrorWithMessage(result.error)
-            ? result.error.data.message
-            : t`Error updating email settings`,
-        });
-      } else {
+      try {
+        await updateEmailSMTPSettings(formData).unwrap();
         trackSMTPSetupSuccess({ eventDetail: "self-hosted" });
         sendToast({
           message: t`Email settings updated`,
         });
         onClose();
+      } catch (error) {
+        sendToast({
+          icon: "warning",
+          toastColor: "error",
+          message: getErrorMessage(error, t`Error updating email settings`),
+        });
+
+        // throw to allow the form to handle the error
+        throw error;
       }
     },
     [updateEmailSMTPSettings, sendToast, onClose],
