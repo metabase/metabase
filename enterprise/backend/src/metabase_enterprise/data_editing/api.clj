@@ -372,7 +372,7 @@
                              pk-fields (filter #(= :type/PK (:semantic_type %)) fields)
                              ;; TODO we could restrict which fields we fetch in future
                              [row]     (data-editing/query-db-rows table_id pk-fields [input])
-                             _         (api/check-404 row)]
+                             #__         #_(api/check-404 row)]
                          ;; TODO i would much prefer if we used field-ids and not names in the configuration
                          (update-keys row name)))))]
     (reduce-kv
@@ -490,7 +490,7 @@
   "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
   [{:keys [param-map] :as action}]
   ;; We create a version of the action that will "map" to an input which is just the row data itself.
-  (let [row-data-mapping (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+  (let [row-data-mapping (u/for-map [[_ {:keys [sourceType sourceValueTarget]}] param-map
                                      :when (= "row-data" sourceType)]
                            [sourceValueTarget [::key (keyword sourceValueTarget)]])]
     (when (seq row-data-mapping)
@@ -509,16 +509,6 @@
           (apply-mapping-nested nil [input])
           first
           not-empty))
-
-;; test case
-
-(comment
-  (get-row-data {:inner-action {:mapping {:table-id 3, :row ::root}}
-                 :param-map    {:customer_id {:sourceType "row-data", :sourceValueTarget "id"}
-                                :engineer    {:sourceType "ask-user"}}
-                 ;; because we don't have a dashcard with this id to map to a table, our code treats it like a Question instead of an Editable
-                 :dashcard-id  3}
-                {:id 3}))
 
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
