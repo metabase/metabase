@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import { CopyButton } from "metabase/components/CopyButton";
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { useSelector } from "metabase/lib/redux";
 import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

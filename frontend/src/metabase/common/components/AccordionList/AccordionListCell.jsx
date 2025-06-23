@@ -4,9 +4,9 @@ import cx from "classnames";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import EmptyState from "metabase/components/EmptyState";
-import ListSearchField from "metabase/components/ListSearchField";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import EmptyState from "metabase/common/components/EmptyState";
+import ListSearchField from "metabase/common/components/ListSearchField";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";

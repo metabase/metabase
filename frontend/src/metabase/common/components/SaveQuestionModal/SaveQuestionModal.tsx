@@ -1,10 +1,10 @@
-import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
-} from "metabase/components/SaveQuestionForm";
-import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
-import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
+} from "metabase/common/components/SaveQuestionForm";
+import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
+import type { SaveQuestionProps } from "metabase/common/components/SaveQuestionForm/types";
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Flex, Modal, type ModalProps } from "metabase/ui";
 
 type SaveQuestionModalProps = Omit<SaveQuestionProps, "initialDashboardTabId"> &

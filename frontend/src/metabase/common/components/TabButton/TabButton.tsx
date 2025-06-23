@@ -20,7 +20,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
+import ControlledPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { lighten } from "metabase/lib/colors";
 
