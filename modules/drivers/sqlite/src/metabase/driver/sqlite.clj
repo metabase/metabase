@@ -292,6 +292,11 @@
                                 [:substr expr 13 2]]
                                "timestamp"))
 
+(defmethod sql.qp/cast-temporal-byte [:sqlite :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               (h2x/cast "TEXT" expr)))
+
 (defmethod sql.qp/->date :sqlite
   [_driver value]
   (->date value))
