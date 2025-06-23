@@ -45,7 +45,6 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
     instanceUrl,
-    ...getDefaultSdkIframeEmbedSettings("dashboard", defaultDashboardId),
     dashboardId: DEFAULT_DASHBOARD_ID,
   });
 
