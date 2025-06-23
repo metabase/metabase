@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import {
   HoverParent,
@@ -28,10 +29,12 @@ export interface QueryColumnPickerProps {
   hasTemporalBucketing?: boolean;
   withDefaultBucketing?: boolean;
   withInfoIcons?: boolean;
+  withCustomExpression?: boolean;
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
+  onExpressionSelect?: () => void;
   onClose?: () => void;
   "data-testid"?: string;
   width?: string;
@@ -40,10 +43,22 @@ export interface QueryColumnPickerProps {
   disableSearch?: boolean;
 }
 
-type Sections = {
+type Section = {
+  key?: string;
   name: string;
+  type?: "action";
   items: ColumnListItem[];
   icon?: IconName;
+};
+
+const CUSTOM_EXPRESSION_SECTION: Section = {
+  key: "custom-expression",
+  type: "action",
+  get name() {
+    return t`Custom Expression`;
+  },
+  items: [],
+  icon: "filter",
 };
 
 export function QueryColumnPicker({
@@ -55,9 +70,11 @@ export function QueryColumnPicker({
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
   withInfoIcons = false,
+  withCustomExpression = false,
   color = "brand",
   checkIsColumnSelected,
   onSelect,
+  onExpressionSelect,
   onClose,
   width,
   "data-testid": dataTestId,
@@ -65,24 +82,26 @@ export function QueryColumnPicker({
   alwaysExpanded,
   disableSearch,
 }: QueryColumnPickerProps) {
-  const sections: Sections[] = useMemo(
-    () =>
-      columnGroups.map((group) => {
-        const groupInfo = Lib.displayInfo(query, stageIndex, group);
+  const sections: Section[] = useMemo(() => {
+    const columnSections = columnGroups.map((group) => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
 
-        const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
-          ...Lib.displayInfo(query, stageIndex, column),
-          column,
-        }));
+      const items = Lib.getColumnsFromColumnGroup(group).map((column) => ({
+        ...Lib.displayInfo(query, stageIndex, column),
+        column,
+      }));
 
-        return {
-          name: groupInfo.displayName,
-          icon: getColumnGroupIcon(groupInfo),
-          items,
-        };
-      }),
-    [query, stageIndex, columnGroups],
-  );
+      return {
+        name: groupInfo.displayName,
+        icon: getColumnGroupIcon(groupInfo),
+        items,
+      };
+    });
+    return [
+      ...columnSections,
+      ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
+    ];
+  }, [query, stageIndex, columnGroups, withCustomExpression]);
 
   const handleSelect = useCallback(
     (column: Lib.ColumnMetadata) => {
@@ -137,6 +156,12 @@ export function QueryColumnPicker({
       onClose,
     ],
   );
+
+  const handleSectionChange = (section: Section) => {
+    if (section.key === CUSTOM_EXPRESSION_SECTION.key) {
+      onExpressionSelect?.();
+    }
+  };
 
   const renderItemExtra = useCallback(
     (item: ColumnListItem) => {
@@ -198,6 +223,7 @@ export function QueryColumnPicker({
         sections={sections}
         alwaysExpanded={alwaysExpanded}
         onChange={handleSelectColumn}
+        onChangeSection={handleSectionChange}
         itemIsSelected={checkIsColumnSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}

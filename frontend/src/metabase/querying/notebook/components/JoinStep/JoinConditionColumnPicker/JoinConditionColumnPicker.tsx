@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { Ref } from "react";
 import { forwardRef, useMemo } from "react";
@@ -7,6 +8,8 @@ import {
   type ColumnListItem,
   QueryColumnPicker,
 } from "metabase/common/components/QueryColumnPicker";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -161,6 +164,69 @@ function JoinColumnDropdown({
   onChange,
   onClose,
 }: JoinColumnDropdownProps) {
+  const expression = isLhsExpression ? lhsExpression : rhsExpression;
+  const [
+    isEditingExpression,
+    { open: openExpressionEditor, close: closeExpressionEditor },
+  ] = useDisclosure(Lib.isColumnMetadata(expression));
+
+  const handleX = (_name: string, newExpression: Lib.ExpressionClause) => {
+    onChange(newExpression);
+    onClose();
+  };
+
+  if (isEditingExpression) {
+    return (
+      <ExpressionWidget
+        query={query}
+        stageIndex={stageIndex}
+        clause={expression}
+        expressionMode="expression"
+        header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
+        onChangeClause={handleX}
+        onClose={closeExpressionEditor}
+      />
+    );
+  }
+
+  return (
+    <JoinColumnPicker
+      query={query}
+      stageIndex={stageIndex}
+      joinable={joinable}
+      lhsExpression={lhsExpression}
+      rhsExpression={rhsExpression}
+      isLhsExpression={isLhsExpression}
+      onChange={onChange}
+      onExpressionSelect={openExpressionEditor}
+      onClose={onClose}
+    />
+  );
+}
+
+interface JoinColumnPickerProps {
+  query: Lib.Query;
+  stageIndex: number;
+  joinable: Lib.JoinOrJoinable;
+  lhsExpression: Lib.ExpressionClause | undefined;
+  rhsExpression: Lib.ExpressionClause | undefined;
+  isLhsExpression: boolean;
+  onChange: (column: Lib.ExpressionClause) => void;
+  onExpressionSelect: () => void;
+  onClose: () => void;
+}
+
+function JoinColumnPicker({
+  query,
+  stageIndex,
+  joinable,
+  lhsExpression,
+  rhsExpression,
+  isLhsExpression,
+  onChange,
+  onExpressionSelect,
+  onClose,
+}: JoinColumnPickerProps) {
   const columnGroups = useMemo(() => {
     const getColumns = isLhsExpression
       ? Lib.joinConditionLHSColumns
@@ -193,8 +259,10 @@ function JoinColumnDropdown({
       columnGroups={columnGroups}
       stageIndex={stageIndex}
       hasTemporalBucketing
+      withCustomExpression
       checkIsColumnSelected={checkIsColumnSelected}
       onSelect={handleColumnSelect}
+      onExpressionSelect={onExpressionSelect}
       onClose={onClose}
       data-testid={isLhsExpression ? "lhs-column-picker" : "rhs-column-picker"}
     />
