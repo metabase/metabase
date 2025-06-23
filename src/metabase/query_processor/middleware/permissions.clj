@@ -114,15 +114,16 @@
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (check-query-does-not-access-inactive-tables outer-query)
-    (let [card-id         (or *card-id* (:qp/source-card-id outer-query))
-          required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
+    (let [required-perms  (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
           source-card-ids (set/difference (:card-ids required-perms) (:card-ids gtap-perms))]
       ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
       ;; (unless overriden by `gtap-perms`) and any queries that touch blocked tables/DBs
       (check-block-permissions outer-query)
       (cond
-        card-id
-        (query-perms/check-card-read-perms database-id card-id)
+        ;; if card-id is bound this means that this is not an ad hoc query and we can just
+        ;; check that the user has permission to read this card
+        *card-id*
+        (query-perms/check-card-read-perms database-id *card-id*)
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
@@ -133,8 +134,7 @@
         ;; Ad-hoc query (not a saved question)
         :else
         (do
-          (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true)
-
+          ;; Check that we permissions for any source cards first, then check that we have requisite data permissions
           ;; Recursively check permissions for any source Cards
           (doseq [card-id source-card-ids]
             (let [{query :dataset-query} (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)]
@@ -144,7 +144,10 @@
           ;; Recursively check permissions for any Cards referenced by this query via template tags
           (doseq [{query :dataset-query} (lib/template-tags-referenced-cards
                                           (lib/query (qp.store/metadata-provider) outer-query))]
-            (check-query-permissions* query)))))))
+            (check-query-permissions* query))
+
+          ;; Finally check that we have the data permissions to run this card
+          (query-perms/check-data-perms outer-query required-perms :throw-exceptions? true))))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
