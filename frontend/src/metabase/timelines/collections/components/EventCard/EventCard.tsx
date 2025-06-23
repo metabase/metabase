@@ -1,8 +1,8 @@
 import { memo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/components/EntityMenu";
-import Link from "metabase/core/components/Link";
+import EntityMenu from "metabase/common/components/EntityMenu";
+import Link from "metabase/common/components/Link";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";

@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Radio from "metabase/core/components/Radio/Radio";
+import Radio from "metabase/common/components/Radio/Radio";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";

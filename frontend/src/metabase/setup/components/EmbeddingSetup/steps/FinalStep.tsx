@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { useDocsUrl } from "metabase/common/hooks";
-import { CopyButton } from "metabase/components/CopyButton";
 import { highlight } from "metabase/query_builder/components/expressions/HighlightExpression/utils";
 import {
   Box,
