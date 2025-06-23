@@ -14,6 +14,12 @@ export const settingsApi = Api.injectEndpoints({
         url: `/api/email/test`,
       }),
     }),
+    sendCloudTestEmail: builder.mutation<void, void>({
+      query: () => ({
+        method: "POST",
+        url: `/api/email/cloud/test`,
+      }),
+    }),
     updateEmailSMTPSettings: builder.mutation<void, EmailSMTPSettings>({
       query: (emailSettings) => ({
         method: "PUT",
@@ -58,6 +64,7 @@ export const {
   useDeleteCloudEmailSMTPSettingsMutation,
   useDeleteEmailSMTPSettingsMutation,
   useSendTestEmailMutation,
+  useSendCloudTestEmailMutation,
   useUpdateCloudEmailSMTPSettingsMutation,
   useUpdateEmailSMTPSettingsMutation,
 } = settingsApi;

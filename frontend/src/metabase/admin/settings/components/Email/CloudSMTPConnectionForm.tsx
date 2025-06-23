@@ -9,7 +9,7 @@ import {
 } from "metabase/api";
 import {
   useDeleteCloudEmailSMTPSettingsMutation,
-  useSendTestEmailMutation,
+  useSendCloudTestEmailMutation,
   useUpdateCloudEmailSMTPSettingsMutation,
 } from "metabase/api/email";
 import { useToast } from "metabase/common/hooks";
@@ -90,7 +90,7 @@ export const CloudSMTPConnectionForm = ({
 }) => {
   const [updateCloudEmailSMTPSettings] =
     useUpdateCloudEmailSMTPSettingsMutation();
-  const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
+  const [sendTestEmail, sendTestEmailResult] = useSendCloudTestEmailMutation();
   const [deleteCloudEmailSMTPSettings] =
     useDeleteCloudEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
