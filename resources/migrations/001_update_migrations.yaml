@@ -11971,20 +11971,20 @@ databaseChangeLog:
               UPDATE metabase_field AS fk
               SET has_field_values = pk.has_field_values
               FROM metabase_field AS pk
-              WHERE pk.id = fk.fk_target_field_id AND fk.semantic_type = 'type/FK';
+              WHERE pk.id = fk.fk_target_field_id AND pk.has_field_values IS NOT NULL AND fk.semantic_type = 'type/FK';
         - sql:
             dbms: mysql,mariadb
             sql: >-
               UPDATE metabase_field AS fk
               JOIN metabase_field AS pk ON pk.id = fk.fk_target_field_id
               SET fk.has_field_values = pk.has_field_values
-              WHERE fk.semantic_type = 'type/FK';
+              WHERE pk.has_field_values IS NOT NULL AND fk.semantic_type = 'type/FK';
         - sql:
             dbms: h2
             sql: >-
               UPDATE metabase_field AS fk
               SET has_field_values = (
-                SELECT pk.has_field_values
+                SELECT coalesce(pk.has_field_values, fk.has_field_values)
                 FROM metabase_field AS pk
                 WHERE pk.id = fk.fk_target_field_id
               )
