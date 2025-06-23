@@ -113,8 +113,10 @@
     (fallback-match-field-id id-or-name cols)
     (fallback-match-field-name id-or-name cols)))
 
-(mu/defn- resolve-column-in-metadata
-  [field-ref :- :mbql.clause/field cols]
+(mu/defn resolve-column-in-metadata
+  "Find the matching column metadata in `cols` for a `field-ref`."
+  [field-ref :- :mbql.clause/field
+   cols]
   (some-> (or (lib.equality/find-matching-column field-ref cols)
               (lib.equality/find-matching-column field-ref cols {:generous? true})
               (fallback-match field-ref cols))
