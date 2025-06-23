@@ -3,7 +3,7 @@ import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
-import { isActionDashCard } from "metabase/dashboard/utils";
+import { isActionDashCard, isQuestionCard } from "metabase/dashboard/utils";
 import type { EmbeddingAdditionalHashOptions } from "metabase/public/lib/types";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
@@ -48,6 +48,7 @@ export const PublicOrEmbeddedDashboard = ({
       contextProps.dashcardMenu ??
       (({ dashcard, result }) =>
         contextProps.downloadsEnabled?.results &&
+        isQuestionCard(dashcard.card) &&
         !!result?.data &&
         !result?.error && (
           <DashCardQuestionDownloadButton result={result} dashcard={dashcard} />
