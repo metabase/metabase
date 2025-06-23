@@ -25,8 +25,6 @@ interface SdkIframeEmbedSetupProviderProps {
   children: ReactNode;
 }
 
-const DEFAULT_DASHBOARD_ID = 1;
-
 export const SdkIframeEmbedSetupProvider = ({
   children,
 }: SdkIframeEmbedSetupProviderProps) => {
@@ -45,7 +43,9 @@ export const SdkIframeEmbedSetupProvider = ({
 
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
     instanceUrl,
-    dashboardId: DEFAULT_DASHBOARD_ID,
+
+    // This will be overridden by the last selected dashboard in the activity log.
+    dashboardId: 1,
   });
 
   // Which embed experience are we setting up?
