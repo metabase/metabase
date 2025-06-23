@@ -9,7 +9,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { createMockField } from "metabase-types/api/mocks";
 
