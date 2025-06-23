@@ -60,7 +60,7 @@ export type EditableDashboardProps = {
    * Props for the drill-through question
    */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
-} & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
+} & Omit<SdkDashboardDisplayProps, "withTitle"> &
   DashboardEventHandlersProps;
 
 const EditableDashboardInner = ({
@@ -95,6 +95,7 @@ const EditableDashboardInner = ({
 export const EditableDashboard = ({
   dashboardId: dashboardIdProp,
   initialParameters = {},
+  hiddenParameters = [],
   withDownloads = false,
   drillThroughQuestionHeight,
   plugins,
@@ -118,7 +119,7 @@ export const EditableDashboard = ({
     dashboardId: dashboardIdProp,
     withDownloads,
     withTitle: true,
-    hiddenParameters: undefined,
+    hiddenParameters,
     initialParameters,
   });
 
