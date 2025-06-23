@@ -23,8 +23,6 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    expression-idents:
-      Days since last view: expression_UEK1JfYa3ZBp6W7F-Ui5i@0__Days since last view
     expressions:
       Days since last view:
       - datetime-diff

@@ -158,12 +158,6 @@ export const RedirectReaction = {
                       ],
                     ],
                     "source-table": "card__139",
-                    "aggregation-idents": {
-                      "0": "HDhq5Q2UFL6A9yGqK1G9s",
-                    },
-                    "breakout-idents": {
-                      "0": "7SA5jwZ0NoPjm4DzTJKMx",
-                    },
                     filter: [
                       "=",
                       [

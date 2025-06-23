@@ -677,7 +677,8 @@
                                         ;; We ignore the order of the fields in the lists, but need to make sure any
                                         ;; dupes match up. Therefore de-dupe with `frequencies` rather than `set`.
                                         (assoc :fields (frequencies fields))
-                                        ;; Remove the randomized idents, which are of course not going to match.
+                                        ;; Remove any randomized idents, which are of course not going to match.
+                                        ;; These fields are deprecated, but we should still ignore them.
                                         (dissoc :aggregation-idents :breakout-idents :expression-idents)))))
       ;; Ignore :info since it contains the randomized :card-entity-id.
       (dissoc :info)))
@@ -721,10 +722,10 @@
          (= (first x) (first y) :field))
     (compare-field-refs x y)
 
-    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid and :ident values don't have to match.
+    ;; Otherwise this is a duplicate of clojure.core/= except :lib/uuid values don't have to match.
     (and (map? x) (map? y))
-    (let [x (dissoc x :lib/uuid :ident)
-          y (dissoc y :lib/uuid :ident)]
+    (let [x (dissoc x :lib/uuid)
+          y (dissoc y :lib/uuid)]
       (and (= (set (keys x)) (set (keys y)))
            (every? (fn [[k v]]
                      (query=* v (get y k)))
@@ -2573,10 +2574,3 @@
   > **Code health:** Healthy"
   [a-query]
   (lib.core/ensure-filter-stage a-query))
-
-(defn ^:export random-ident
-  "Returns a randomly generated `ident` string, suitable for a Card's `entity_id` or a query.
-
-  > **Code health:** Healthy, Single use. Only called when creating a new card/query."
-  []
-  (lib.core/random-ident))

@@ -68,18 +68,18 @@
           ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
           (reduce-kv (fn [acc k _]
                        (if (or (qualified-keyword? k)
-                               (#{:base-type :effective-type :ident} k))
+                               (#{:base-type :effective-type} k))
                          (dissoc acc k)
                          acc))
                      options options)))))))
 
 (defn remove-randomized-idents
-  "Recursively remove all uuids, `:ident`s and `:entity_id`s from x."
+  "Recursively remove all uuids and `:entity_id`s from x."
   [x]
   (walk/postwalk
    (fn [x]
      (if (map? x)
-       (dissoc x :lib/uuid :ident :entity_id :entity-id)
+       (dissoc x :lib/uuid :entity_id :entity-id)
        x))
    x))
 

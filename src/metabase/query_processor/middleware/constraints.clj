@@ -2,7 +2,6 @@
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
   `:add-default-userland-constraints?` `:middleware` option."
   (:require
-   [metabase.lib.core :as lib]
    [metabase.query-processor.settings :as qp.settings]))
 
 ;; The following "defaults" are not applied to the settings themselves - why not? Because the existing behavior is
@@ -46,11 +45,6 @@
   [query]
   (update query :constraints (comp ensure-valid-constraints merge-default-constraints)))
 
-(defn- add-card-entity-id
-  "Userland queries are always associated with a `:card-entity-id`, so e generate and add a placeholder when missing."
-  [query]
-  (assoc-in query [:info :card-entity-id] (lib/placeholder-card-entity-id-for-adhoc-query)))
-
 (defn- should-add-userland-constraints? [query]
   (and (get-in query [:middleware :userland-query?])
        (get-in query [:middleware :add-default-userland-constraints?])))
@@ -59,8 +53,5 @@
   "If the query is marked as requiring userland constraints, actually calculate the constraints and add them to the
   query."
   [query]
-  (let [userland? (should-add-userland-constraints? query)]
-    (cond-> query
-      userland?                                  add-constraints
-      (and userland?
-           (-> query :info :card-entity-id not)) add-card-entity-id)))
+  (cond-> query
+    (should-add-userland-constraints? query) add-constraints))

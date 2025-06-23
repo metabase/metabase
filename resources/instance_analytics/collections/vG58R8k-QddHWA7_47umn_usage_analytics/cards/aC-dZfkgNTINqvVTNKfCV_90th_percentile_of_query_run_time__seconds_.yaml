@@ -32,8 +32,6 @@ dataset_query:
         - 0.9
       - name: Percentile 90 of query running time
         display-name: Percentile 90 of query running time
-    aggregation-idents:
-      0: aggregation_aC-dZfkgNTINqvVTNKfCV@0__0
     breakout:
     - - field
       - started_at
@@ -42,9 +40,6 @@ dataset_query:
     - - field
       - cache_hit
       - base-type: type/Boolean
-    breakout-idents:
-      0: breakout_aC-dZfkgNTINqvVTNKfCV@0__0
-      1: breakout_aC-dZfkgNTINqvVTNKfCV@0__1
     filter:
     - and
     - - time-interval

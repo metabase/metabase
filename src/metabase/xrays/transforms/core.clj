@@ -3,7 +3,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
@@ -73,30 +72,24 @@
                             keys
                             (select-keys (get-in bindings [name :dimensions])))]
       (-> query
-          (assoc :expressions       expr-clauses
-                 :expression-idents (update-vals expr-clauses (fn [_] (u/generate-nano-id))))
+          (assoc :expressions expr-clauses)
           (update :fields concat (for [expression (keys expressions)]
                                    [:expression expression]))))
     query))
-
-(defn- indexed-idents [seqable]
-  (when (seq seqable)
-    (into {} (map (fn [i] [i (u/generate-nano-id)]))
-          (range (count seqable)))))
 
 (defn- maybe-add-aggregation
   [bindings {:keys [name aggregation]} query]
   (let [aggs (->> (for [agg (keys aggregation)]
                     [:aggregation-options (get-in bindings [name :dimensions agg]) {:name agg}])
                   not-empty)]
-    (m/assoc-some query :aggregation aggs :aggregation-idents (indexed-idents aggs))))
+    (m/assoc-some query :aggregation aggs)))
 
 (defn- maybe-add-breakout
   [bindings {:keys [name breakout]} query]
   (let [breakouts (not-empty
                    (for [breakout breakout]
                      (de/resolve-dimension-clauses bindings name breakout)))]
-    (m/assoc-some query :breakout breakouts :breakout-idents (indexed-idents breakouts))))
+    (m/assoc-some query :breakout breakouts)))
 
 (mu/defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
@@ -113,7 +106,6 @@
                    (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
                         :source-table (-> source bindings :entity ->source-table-reference)
                         :alias        source
-                        :ident        (u/generate-nano-id)
                         :fields       :all}
                        (m/assoc-some :strategy strategy))))))
 
@@ -141,10 +133,6 @@
                             (maybe-add-joins local-bindings step)
                             (maybe-add-filter local-bindings step)
                             (maybe-add-limit local-bindings step))
-        inner-query    (-> inner-query
-                           (m/assoc-some :expression-idents  (lib.ident/indexed-idents (:expression inner-query)))
-                           (m/assoc-some :aggregation-idents (lib.ident/indexed-idents (:aggregation inner-query)))
-                           (m/assoc-some :breakout-idents    (lib.ident/indexed-idents (:breakout inner-query))))
         query          {:type     :query
                         :query    inner-query
                         :database ((some-fn :db_id :database_id) source-entity)}]

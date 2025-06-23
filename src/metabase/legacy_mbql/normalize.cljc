@@ -413,12 +413,6 @@
   (cond-> row
     (map? row) (update-keys u/qualified-name)))
 
-(defn- normalize-ident-index [index]
-  (cond
-    (string? index)  (parse-long index)
-    (keyword? index) (-> index name parse-long)
-    :else            index))
-
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -427,10 +421,10 @@
    ;; don't normalize native queries
    :native          normalize-native-query
    :query           {:aggregation        normalize-ag-clause-tokens
-                     :aggregation-idents #(update-keys % normalize-ident-index)
-                     :breakout-idents    #(update-keys % normalize-ident-index)
+                     :aggregation-idents (constantly ::skip)  ; Deprecated and should be ignored.
+                     :breakout-idents    (constantly ::skip)  ; Deprecated and should be ignored.
                      :expressions        normalize-expressions-tokens
-                     :expression-idents  #(update-keys % lib.schema.common/normalize-string-key)
+                     :expression-idents  (constantly ::skip)  ; Deprecated and should be ignored.
                      :order-by           normalize-order-by-tokens
                      :source-query       normalize-source-query
                      :source-metadata    {::sequence normalize-source-metadata}
@@ -483,8 +477,10 @@
         ;; Each recursive call appends to the keypath above so we can handle top-level clauses in a special way if needed
         (map? x)
         (into {} (for [[k v] x
-                       :let  [k (maybe-normalize-token k)]]
-                   [k (normalize-tokens v (conj (vec path) k))]))
+                       :let  [k (maybe-normalize-token k)
+                              v (normalize-tokens v (conj (vec path) k))]
+                       :when (not= v ::skip)]
+                   [k v]))
 
         ;; MBQL clauses handled above because of special cases
         (mbql-clause? x)

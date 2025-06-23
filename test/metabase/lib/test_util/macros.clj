@@ -33,7 +33,6 @@
     #(as-> inner-query <>
        (mbql-query-impl/parse-tokens table-name <>)
        (mbql-query-impl/maybe-add-source-table <> table-name)
-       (mbql-query-impl/wrap-populate-idents <>)
        (mbql-query-impl/wrap-inner-query <>)
        (vary-meta <> assoc :type :mbql-query)))))
 

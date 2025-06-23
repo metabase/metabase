@@ -2,48 +2,216 @@
   {
     "data": {
       "rows": [
-        ["2025-01-01T00:00:00+01:00", "a", 124],
-        ["2025-01-01T00:00:00+01:00", "b", 280],
-        ["2025-01-01T00:00:00+01:00", "c", 691],
-        ["2025-01-01T00:00:00+01:00", "d", 0],
-        ["2025-01-01T00:00:00+01:00", "e", 10],
-        ["2025-01-01T00:00:00+01:00", "f", 931],
-        ["2025-01-01T00:00:00+01:00", "g", 17],
-        ["2025-01-01T00:00:00+01:00", "h", 115],
-        ["2025-01-01T00:00:00+01:00", "i", 25],
-        ["2025-01-01T00:00:00+01:00", "j", 0],
-        ["2025-01-01T00:00:00+01:00", "k", 37],
-        ["2025-02-01T00:00:00+01:00", "a", 166],
-        ["2025-02-01T00:00:00+01:00", "b", 281],
-        ["2025-02-01T00:00:00+01:00", "c", 1002],
-        ["2025-02-01T00:00:00+01:00", "d", 0],
-        ["2025-02-01T00:00:00+01:00", "e", 58],
-        ["2025-02-01T00:00:00+01:00", "f", 983],
-        ["2025-02-01T00:00:00+01:00", "g", 102],
-        ["2025-02-01T00:00:00+01:00", "h", 104],
-        ["2025-02-01T00:00:00+01:00", "i", 10],
-        ["2025-02-01T00:00:00+01:00", "j", 0],
-        ["2025-02-01T00:00:00+01:00", "k", 35],
-        ["2025-03-01T00:00:00+01:00", "a", 557],
-        ["2025-03-01T00:00:00+01:00", "b", 282],
-        ["2025-03-01T00:00:00+01:00", "c", 926],
-        ["2025-03-01T00:00:00+01:00", "d", 0],
-        ["2025-03-01T00:00:00+01:00", "e", 59],
-        ["2025-03-01T00:00:00+01:00", "f", 1112],
-        ["2025-03-01T00:00:00+01:00", "g", 258],
-        ["2025-03-01T00:00:00+01:00", "h", 79],
-        ["2025-03-01T00:00:00+01:00", "i", 14],
-        ["2025-03-01T00:00:00+01:00", "k", 67],
-        ["2025-04-01T00:00:00+02:00", "a", 60],
-        ["2025-04-01T00:00:00+02:00", "b", 57],
-        ["2025-04-01T00:00:00+02:00", "c", 207],
-        ["2025-04-01T00:00:00+02:00", "d", 0],
-        ["2025-04-01T00:00:00+02:00", "e", 22],
-        ["2025-04-01T00:00:00+02:00", "f", 221],
-        ["2025-04-01T00:00:00+02:00", "g", 87],
-        ["2025-04-01T00:00:00+02:00", "h", 27],
-        ["2025-04-01T00:00:00+02:00", "i", 4],
-        ["2025-04-01T00:00:00+02:00", "k", 19]
+        [
+          "2025-01-01T00:00:00+01:00",
+          "a",
+          124
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "b",
+          280
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "c",
+          691
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "d",
+          0
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "e",
+          10
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "f",
+          931
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "g",
+          17
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "h",
+          115
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "i",
+          25
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "j",
+          0
+        ],
+        [
+          "2025-01-01T00:00:00+01:00",
+          "k",
+          37
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "a",
+          166
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "b",
+          281
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "c",
+          1002
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "d",
+          0
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "e",
+          58
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "f",
+          983
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "g",
+          102
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "h",
+          104
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "i",
+          10
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "j",
+          0
+        ],
+        [
+          "2025-02-01T00:00:00+01:00",
+          "k",
+          35
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "a",
+          557
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "b",
+          282
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "c",
+          926
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "d",
+          0
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "e",
+          59
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "f",
+          1112
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "g",
+          258
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "h",
+          79
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "i",
+          14
+        ],
+        [
+          "2025-03-01T00:00:00+01:00",
+          "k",
+          67
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "a",
+          60
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "b",
+          57
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "c",
+          207
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "d",
+          0
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "e",
+          22
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "f",
+          221
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "g",
+          87
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "h",
+          27
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "i",
+          4
+        ],
+        [
+          "2025-04-01T00:00:00+02:00",
+          "k",
+          19
+        ]
       ],
       "results_timezone": "Europe/Berlin",
       "download_perms": "full",
@@ -114,7 +282,10 @@
           },
           {
             "display_name": "Sum of Leads",
-            "field_ref": ["aggregation", 0],
+            "field_ref": [
+              "aggregation",
+              0
+            ],
             "base_type": "type/Decimal",
             "effective_type": "type/Decimal",
             "database_type": "numeric",
@@ -191,7 +362,10 @@
           "database_type": "numeric",
           "name": "sum",
           "source": "aggregation",
-          "field_ref": ["aggregation", 0],
+          "field_ref": [
+            "aggregation",
+            0
+          ],
           "effective_type": "type/Decimal",
           "aggregation_index": 0,
           "ident": "dCNLoYho0mcnCevUJtTje",
@@ -217,7 +391,14 @@
           "best-fit": [
             "+",
             203057.5675457945,
-            ["*", -20468.28112699451, ["log", "x"]]
+            [
+              "*",
+              -20468.28112699451,
+              [
+                "log",
+                "x"
+              ]
+            ]
           ]
         }
       ],
@@ -247,8 +428,13 @@
       "viz-settings": {
         "stackable.stack_type": "stacked",
         "graph.x_axis.scale": "timeseries",
-        "graph.dimensions": ["date", "subchannel"],
-        "graph.metrics": ["sum"]
+        "graph.dimensions": [
+          "date",
+          "subchannel"
+        ],
+        "graph.metrics": [
+          "sum"
+        ]
       },
       "database": 2,
       "query": {
@@ -281,14 +467,7 @@
             }
           ]
         ],
-        "source-table": "card__737",
-        "aggregation-idents": {
-          "0": "dCNLoYho0mcnCevUJtTje"
-        },
-        "breakout-idents": {
-          "0": "BnqR1aeDTNxVd9ks3Q5N5",
-          "1": "06dBBtJEBkpGFbKT_hhoY"
-        }
+        "source-table": "card__737"
       }
     },
     "average_execution_time": null,
@@ -316,8 +495,13 @@
       "visualization_settings": {
         "stackable.stack_type": "stacked",
         "graph.x_axis.scale": "timeseries",
-        "graph.dimensions": ["date", "subchannel"],
-        "graph.metrics": ["sum"]
+        "graph.dimensions": [
+          "date",
+          "subchannel"
+        ],
+        "graph.metrics": [
+          "sum"
+        ]
       },
       "collection_preview": true,
       "entity_id": "-x8PIhzHabtKQL-rvbbuL",
@@ -359,137 +543,134 @@
               }
             ]
           ],
-          "source-table": "card__737",
-          "aggregation-idents": {
-            "0": "dCNLoYho0mcnCevUJtTje"
-          },
-          "breakout-idents": {
-            "0": "BnqR1aeDTNxVd9ks3Q5N5",
-            "1": "06dBBtJEBkpGFbKT_hhoY"
-          }
+          "source-table": "card__737"
         }
+      }
+    },
+    "cache_ttl": null,
+    "embedding_params": null,
+    "made_public_by_id": null,
+    "updated_at": "2025-04-08T16:46:57.880798Z",
+    "moderation_reviews": [],
+    "can_restore": false,
+    "creator_id": 1,
+    "average_query_time": 92.16666666666667,
+    "type": "question",
+    "dashboard": null,
+    "last_used_at": "2025-04-08T20:59:08.006893Z",
+    "dashboard_count": 0,
+    "last_query_start": "2025-04-08T20:59:07.972926Z",
+    "name": "56424",
+    "query_type": "query",
+    "collection_id": null,
+    "enable_embedding": false,
+    "database_id": 2,
+    "card_schema": 20,
+    "trashed_from_collection_id": null,
+    "can_write": true,
+    "initially_published_at": null,
+    "result_metadata": [
+      {
+        "database_type": "timestamp",
+        "semantic_type": null,
+        "unit": "month",
+        "name": "date",
+        "field_ref": [
+          "field",
+          "date",
+          {
+            "base-type": "type/Date",
+            "temporal-unit": "month"
+          }
+        ],
+        "effective_type": "type/DateTime",
+        "id": 40281,
+        "visibility_type": "normal",
+        "display_name": "Date: Month",
+        "fingerprint": {
+          "global": {
+            "distinct-count": 4,
+            "nil%": 0
+          },
+          "type": {
+            "type/DateTime": {
+              "earliest": "2025-01-01T00:00:00Z",
+              "latest": "2025-04-01T00:00:00Z"
+            }
+          }
+        },
+        "base_type": "type/DateTime"
       },
-      "cache_ttl": null,
-      "embedding_params": null,
-      "made_public_by_id": null,
-      "updated_at": "2025-04-08T16:46:57.880798Z",
-      "moderation_reviews": [],
-      "can_restore": false,
-      "creator_id": 1,
-      "average_query_time": 92.16666666666667,
-      "type": "question",
-      "dashboard": null,
-      "last_used_at": "2025-04-08T20:59:08.006893Z",
-      "dashboard_count": 0,
-      "last_query_start": "2025-04-08T20:59:07.972926Z",
-      "name": "56424",
-      "query_type": "query",
-      "collection_id": null,
-      "enable_embedding": false,
-      "database_id": 2,
-      "card_schema": 20,
-      "trashed_from_collection_id": null,
-      "can_write": true,
-      "initially_published_at": null,
-      "result_metadata": [
-        {
-          "database_type": "timestamp",
-          "semantic_type": null,
-          "unit": "month",
-          "name": "date",
-          "field_ref": [
-            "field",
-            "date",
-            {
-              "base-type": "type/Date",
-              "temporal-unit": "month"
-            }
-          ],
-          "effective_type": "type/DateTime",
-          "id": 40281,
-          "visibility_type": "normal",
-          "display_name": "Date: Month",
-          "fingerprint": {
-            "global": {
-              "distinct-count": 4,
-              "nil%": 0
-            },
-            "type": {
-              "type/DateTime": {
-                "earliest": "2025-01-01T00:00:00Z",
-                "latest": "2025-04-01T00:00:00Z"
-              }
-            }
+      {
+        "database_type": "varchar",
+        "semantic_type": "type/Source",
+        "name": "subchannel",
+        "field_ref": [
+          "field",
+          "subchannel",
+          {
+            "base-type": "type/Text"
+          }
+        ],
+        "effective_type": "type/Text",
+        "id": 40282,
+        "visibility_type": "normal",
+        "display_name": "Subchannel",
+        "fingerprint": {
+          "global": {
+            "distinct-count": 11,
+            "nil%": 0
           },
-          "base_type": "type/DateTime"
+          "type": {
+            "type/Text": {
+              "percent-json": 0,
+              "percent-url": 0,
+              "percent-email": 0,
+              "percent-state": 0,
+              "average-length": 1
+            }
+          }
         },
-        {
-          "database_type": "varchar",
-          "semantic_type": "type/Source",
-          "name": "subchannel",
-          "field_ref": [
-            "field",
-            "subchannel",
-            {
-              "base-type": "type/Text"
-            }
-          ],
-          "effective_type": "type/Text",
-          "id": 40282,
-          "visibility_type": "normal",
-          "display_name": "Subchannel",
-          "fingerprint": {
-            "global": {
-              "distinct-count": 11,
-              "nil%": 0
-            },
-            "type": {
-              "type/Text": {
-                "percent-json": 0,
-                "percent-url": 0,
-                "percent-email": 0,
-                "percent-state": 0,
-                "average-length": 1
-              }
-            }
+        "base_type": "type/Text"
+      },
+      {
+        "display_name": "Sum of Leads",
+        "field_ref": [
+          "aggregation",
+          0
+        ],
+        "base_type": "type/Decimal",
+        "effective_type": "type/Decimal",
+        "database_type": "numeric",
+        "name": "sum",
+        "semantic_type": null,
+        "fingerprint": {
+          "global": {
+            "distinct-count": 36,
+            "nil%": 0
           },
-          "base_type": "type/Text"
-        },
-        {
-          "display_name": "Sum of Leads",
-          "field_ref": ["aggregation", 0],
-          "base_type": "type/Decimal",
-          "effective_type": "type/Decimal",
-          "database_type": "numeric",
-          "name": "sum",
-          "semantic_type": null,
-          "fingerprint": {
-            "global": {
-              "distinct-count": 36,
-              "nil%": 0
-            },
-            "type": {
-              "type/Number": {
-                "min": 0,
-                "q1": 17,
-                "q3": 258,
-                "max": 1112,
-                "sd": 323.3885745523289,
-                "avg": 214.97619047619048
-              }
+          "type": {
+            "type/Number": {
+              "min": 0,
+              "q1": 17,
+              "q3": 258,
+              "max": 1112,
+              "sd": 323.3885745523289,
+              "avg": 214.97619047619048
             }
           }
         }
-      ],
-      "can_run_adhoc_query": true,
-      "table_id": 1721,
-      "source_card_id": 737,
-      "collection_position": null,
-      "view_count": 25,
-      "archived": false,
-      "description": null,
-      "cache_invalidated_at": null,
-      "displayIsLocked": true
-    }
+      }
+    ],
+    "can_run_adhoc_query": true,
+    "table_id": 1721,
+    "source_card_id": 737,
+    "collection_position": null,
+    "view_count": 25,
+    "archived": false,
+    "description": null,
+    "cache_invalidated_at": null,
+    "displayIsLocked": true
   }
+}
 ]

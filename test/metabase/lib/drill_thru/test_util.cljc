@@ -340,7 +340,7 @@
                 [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
 
 (defn- drop-uuids-and-idents [form]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid :ident))
+  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
                  form))
 
 (defn- clean-expected-query [form]

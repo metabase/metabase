@@ -59,21 +59,18 @@
       (let [eid (u/generate-nano-id)]
         (is (= [{:name         "venue_id"
                  :display_name "venue_id"
-                 :ident        (lib/native-ident "venue_id" eid)
                  :source       :native
                  :base_type    :type/Integer
                  :effective_type :type/Integer
                  :field_ref    [:field "venue_id" {:base-type :type/Integer}]}
                 {:name         "user_id"
                  :display_name "user_id"
-                 :ident        (lib/native-ident "user_id" eid)
                  :source       :native
                  :base_type    :type/Integer
                  :effective_type :type/Integer
                  :field_ref    [:field "user_id" {:base-type :type/Integer}]}
                 {:name         "checkins_id"
                  :display_name "checkins_id"
-                 :ident        (lib/native-ident "checkins_id" eid)
                  :source       :native
                  :base_type    :type/Integer
                  :effective_type :type/Integer

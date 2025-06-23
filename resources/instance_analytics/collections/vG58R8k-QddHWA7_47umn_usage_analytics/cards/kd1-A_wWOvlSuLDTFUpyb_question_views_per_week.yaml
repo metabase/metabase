@@ -25,8 +25,6 @@ dataset_query:
   query:
     aggregation:
     - - count
-    aggregation-idents:
-      0: aggregation_kd1-A_wWOvlSuLDTFUpyb@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -42,9 +40,6 @@ dataset_query:
         - group_name
       - base-type: type/Text
         join-alias: Group Members - User
-    breakout-idents:
-      0: breakout_kd1-A_wWOvlSuLDTFUpyb@0__0
-      1: breakout_kd1-A_wWOvlSuLDTFUpyb@0__1
     filter:
     - =
     - - field

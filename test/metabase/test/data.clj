@@ -45,7 +45,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -160,7 +159,6 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-populate-idents <>)
      (mbql-query-impl/wrap-inner-query <>)
      (vary-meta <> assoc :type :mbql-query))))
 
@@ -179,8 +177,7 @@
     {:database `(id)
      :type     :query}
     (cond-> (mbql-query-impl/parse-tokens table-name outer-query)
-      (not (:native outer-query)) (-> (update :query mbql-query-impl/maybe-add-source-table table-name)
-                                      (update :query mbql-query-impl/wrap-populate-idents))))))
+      (not (:native outer-query)) (update :query mbql-query-impl/maybe-add-source-table table-name)))))
 
 (defmacro native-query
   "Like `mbql-query`, but for native queries."
@@ -241,11 +238,6 @@
   "Get a metadata-provider for the current database."
   []
   (lib.metadata.jvm/application-database-metadata-provider (id)))
-
-(defn ident
-  "Get the ident for a field. Arguments are the same as for `(mt/id :table :field)`."
-  [table-key field-key]
-  (:ident (lib.metadata/field (metadata-provider) (id table-key field-key))))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the

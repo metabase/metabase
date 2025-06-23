@@ -16,7 +16,6 @@
    [metabase.driver.test-util :as driver.tu]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -472,10 +471,8 @@
                           (assoc-in [:info :card-entity-id] entity-id)
                           actual-query-results)}))
 
-(defn- as-model [result-metadata entity-id]
-  (for [col result-metadata]
-    (cond-> col
-      (not (lib/valid-model-ident? col entity-id)) (lib/add-model-ident entity-id))))
+(defn- as-model [result-metadata _entity-id]
+  result-metadata)
 
 (defn card-with-metadata
   "Given a (partial) Card, such as might be passed to `with-temp`, fill in its `:result_metadata` based on the query."
@@ -634,12 +631,6 @@
 
 (defn metadata->native-form
   "Given metadata for an MBQL query, transform it into the metadata which would be expected for a native query that
-  selected the same columns.
-
-  If the optional `entity_id` is provided, it will be used for the `:ident`s. If missing, a placeholder ident will
-  be used instead, as is done for ad-hoc native queries."
-  ([metadata]
-   (metadata->native-form metadata (lib/placeholder-card-entity-id-for-adhoc-query)))
-  ([metadata card-entity-id]
-   (qp.annotate/annotate-native-cols (mapv #(dissoc % :id :ident :source) metadata)
-                                     card-entity-id)))
+  selected the same columns."
+  [metadata]
+  (qp.annotate/annotate-native-cols (mapv #(dissoc % :id :source) metadata)))

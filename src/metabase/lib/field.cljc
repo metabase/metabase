@@ -12,7 +12,6 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -180,7 +179,7 @@
    stage-number
    metadata
    [_tag {source-uuid :lib/uuid
-          :keys [base-type binning effective-type ident join-alias source-field source-field-name
+          :keys [base-type binning effective-type join-alias source-field source-field-name
                  source-field-join-alias temporal-unit]
           :as opts}
     :as field-ref]]
@@ -200,18 +199,10 @@
       effective-type          (assoc :effective-type effective-type)
       temporal-unit           (assoc ::temporal-unit temporal-unit)
       binning                 (assoc ::binning binning)
-      source-field            (-> (assoc :fk-field-id source-field)
-                                  (update :ident lib.metadata.ident/implicitly-joined-ident
-                                          (:ident (lib.metadata/field query source-field))))
+      source-field            (assoc :fk-field-id source-field)
       source-field-name       (assoc :fk-field-name source-field-name)
       source-field-join-alias (assoc :fk-join-alias source-field-join-alias)
-      join-alias              (-> (lib.join/with-join-alias join-alias)
-                                  (update :ident lib.metadata.ident/explicitly-joined-ident
-                                          (:ident (lib.join/maybe-resolve-join-across-stages query
-                                                                                             stage-number
-                                                                                             join-alias))))
-      ;; Overwriting the ident with one from the options, eg. for a breakout clause.
-      ident                   (assoc :ident ident))))
+      join-alias              (lib.join/with-join-alias join-alias))))
 
 ;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field

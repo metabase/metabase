@@ -3,8 +3,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -54,13 +52,11 @@
         (let [card-eid (u/generate-nano-id)]
           (is (= [{:name         "a"
                    :display_name "a"
-                   :ident        (lib/native-ident "a" card-eid)
                    :base_type    :type/Integer
                    :source       :native
                    :field_ref    [:field "a" {:base-type :type/Integer}]}
                   {:name         "a"
                    :display_name "a"
-                   :ident        (lib/native-ident "a_2" card-eid)
                    :base_type    :type/Integer
                    :source       :native
                    :field_ref    [:field "a_2" {:base-type :type/Integer}]}]
@@ -75,7 +71,6 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (lib.tu.macros/$ids venues
         (is (=? [{:source    :fields
-                  :ident     (meta/ident :venues :price)
                   :field_ref $price}]
                 (annotate/column-info
                  {:type :query, :query {:fields [$price]}}
@@ -89,8 +84,6 @@
         (is (=? [{:fk_field_id  %category-id
                   :source       :fields
                   :field_ref    $category-id->categories.name
-                  :ident        (lib/implicitly-joined-ident (meta/ident :categories :name)
-                                                             (meta/ident :venues :category-id))
                   ;; for whatever reason this is what the `annotate` middleware traditionally returns here, for
                   ;; some reason we use the `:long` style inside aggregations and the `:default` style elsewhere,
                   ;; who knows why. See notes
@@ -102,21 +95,18 @@
 
 (deftest ^:parallel col-info-for-implicit-joins-aggregation-test
   (qp.store/with-metadata-provider meta/metadata-provider
-    (let [ident (lib/random-ident)]
-      (lib.tu.macros/$ids venues
-        (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
-                      "info about the source Field")
-          (is (=? [{:source            :aggregation
-                    :field_ref         [:aggregation 0]
-                    :aggregation_index 0
-                    :ident             ident
-                    :display_name      "Distinct values of Category → Name"}]
-                  (annotate/column-info
-                   {:type  :query
-                    :query {:source-table $$venues
-                            :aggregation  [[:distinct $category-id->categories.name]]
-                            :aggregation-idents {0 ident}}}
-                   {:columns [:name]}))))))))
+    (lib.tu.macros/$ids venues
+      (testing (str "when a `:field` with `:source-field` (implicit join) is used, we should add in `:fk_field_id` "
+                    "info about the source Field")
+        (is (=? [{:source            :aggregation
+                  :field_ref         [:aggregation 0]
+                  :aggregation_index 0
+                  :display_name      "Distinct values of Category → Name"}]
+                (annotate/column-info
+                 {:type  :query
+                  :query {:source-table $$venues
+                          :aggregation  [[:distinct $category-id->categories.name]]}}
+                 {:columns [:name]})))))))
 
 (deftest ^:parallel col-info-for-explicit-joins-with-fk-field-id-test
   (qp.store/with-metadata-provider meta/metadata-provider
@@ -126,15 +116,12 @@
         (is (=? [{:display_name "Category → Name"
                   :source       :fields
                   :field_ref    $category-id->categories.name
-                  :fk_field_id  %category-id
-                  :ident        (lib/implicitly-joined-ident (meta/ident :categories :name)
-                                                             (meta/ident :venues :category-id))}]
+                  :fk_field_id  %category-id}]
                 (annotate/column-info
                  {:type  :query
                   :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
                           ;; This is a hand-rolled implicit join clause.
                           :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                                    :ident        (lib/implicit-join-clause-ident (meta/ident :venues :category-id))
                                     :source-table $$venues
                                     :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                     :strategy     :left-join
@@ -148,13 +135,11 @@
                     "`:field_ref` should be have only `:join-alias`, and no `:source-field`")
         (is (=? [{:display_name "Categories → Name"
                   :source       :fields
-                  :field_ref    &Categories.categories.name
-                  :ident        (lib/explicitly-joined-ident (meta/ident :categories :name) "4LzfvdZnP61w1n73B7nDu")}]
+                  :field_ref    &Categories.categories.name}]
                 (annotate/column-info
                  {:type  :query
                   :query {:fields [&Categories.categories.name]
                           :joins  [{:alias        "Categories"
-                                    :ident        "4LzfvdZnP61w1n73B7nDu"
                                     :source-table $$venues
                                     :condition    [:= $category-id &Categories.categories.id]
                                     :strategy     :left-join}]}}
@@ -180,9 +165,6 @@
                  :base_type    :type/Number
                  :display_name "Price"
                  :unit         :month
-                 ;; TODO: No :ident here! This case doesn't really map to how the idents work - you
-                 ;; can't have a string-based field ref without a source query or earlier stage.
-                 ;; That case is handled by other tests below.
                  :source       :fields
                  :field_ref    !month.*price/Number}]
                (doall
@@ -193,44 +175,37 @@
 (deftest ^:parallel col-info-for-field-with-temporal-unit-from-nested-query-test
   (qp.store/with-metadata-provider meta/metadata-provider
     (testing "should add the correct info if the Field originally comes from a nested query"
-      (let [date-ident       (lib/random-ident)
-            last-login-ident (lib/random-ident)]
-        (lib.tu.macros/$ids checkins
-          (is (= [{:name      "DATE"
-                   :ident     date-ident
-                   :unit      :month
-                   :field_ref [:field %date {:temporal-unit :default}]}
-                  {:name      "LAST_LOGIN"
-                   :ident     last-login-ident
-                   :unit      :month
-                   :field_ref [:field %users.last-login {:temporal-unit :default
-                                                         :join-alias    "USERS__via__USER_ID"}]}]
-                 (mapv
-                  (fn [col]
-                    (select-keys col [:name :ident :unit :field_ref]))
-                  (annotate/column-info
-                   {:type  :query
-                    :query {:source-query    {:source-table $$checkins
-                                              :breakout     [[:field %date {:temporal-unit :month}]
-                                                             [:field
-                                                              %users.last-login
-                                                              {:temporal-unit :month, :source-field %user-id}]]
-                                              :breakout-idents {0 date-ident, 1 last-login-ident}}
-                            :source-metadata [{:name      "DATE"
-                                               :id        %date
-                                               :ident     date-ident
-                                               :unit      :month
-                                               :field_ref [:field %date {:temporal-unit :month}]}
-                                              {:name      "LAST_LOGIN"
-                                               :id        %users.last-login
-                                               :ident     last-login-ident
-                                               :unit      :month
-                                               :field_ref [:field %users.last-login {:temporal-unit :month
-                                                                                     :source-field  %user-id}]}]
-                            :fields          [[:field %date {:temporal-unit :default}]
-                                              [:field %users.last-login {:temporal-unit :default, :join-alias "USERS__via__USER_ID"}]]
-                            :limit           1}}
-                   nil)))))))))
+      (lib.tu.macros/$ids checkins
+        (is (= [{:name      "DATE"
+                 :unit      :month
+                 :field_ref [:field %date {:temporal-unit :default}]}
+                {:name      "LAST_LOGIN"
+                 :unit      :month
+                 :field_ref [:field %users.last-login {:temporal-unit :default
+                                                       :join-alias    "USERS__via__USER_ID"}]}]
+               (mapv
+                (fn [col]
+                  (select-keys col [:name :unit :field_ref]))
+                (annotate/column-info
+                 {:type  :query
+                  :query {:source-query    {:source-table $$checkins
+                                            :breakout     [[:field %date {:temporal-unit :month}]
+                                                           [:field
+                                                            %users.last-login
+                                                            {:temporal-unit :month, :source-field %user-id}]]}
+                          :source-metadata [{:name      "DATE"
+                                             :id        %date
+                                             :unit      :month
+                                             :field_ref [:field %date {:temporal-unit :month}]}
+                                            {:name      "LAST_LOGIN"
+                                             :id        %users.last-login
+                                             :unit      :month
+                                             :field_ref [:field %users.last-login {:temporal-unit :month
+                                                                                   :source-field  %user-id}]}]
+                          :fields          [[:field %date {:temporal-unit :default}]
+                                            [:field %users.last-login {:temporal-unit :default, :join-alias "USERS__via__USER_ID"}]]
+                          :limit           1}}
+                 nil))))))))
 
 ;; TODO: Not practical to add idents to this one - it needs to properly be a breakout.
 (deftest ^:parallel col-info-for-binning-strategy-test
@@ -265,18 +240,15 @@
    meta/metadata-provider
    {:fields [(assoc (meta/field-metadata :venues :name)
                     :id           1
-                    :ident        "grandparent__v_2Tvafr"
                     :name         "grandparent"
                     :display-name "Grandparent")
              (assoc (meta/field-metadata :venues :name)
                     :id           2
-                    :ident        "parent__ALQnFu6HMDhtU"
                     :name         "parent"
                     :display-name "Parent"
                     :parent-id    1)
              (assoc (meta/field-metadata :venues :name)
                     :id           3
-                    :ident        "child__yxGs5UuS4CeAHF"
                     :name         "child"
                     :display-name "Child"
                     :parent-id    2)]}))
@@ -295,7 +267,6 @@
                :field_ref         [:field 2 nil]
                :nfc_path          nil
                :parent_id         1
-               :ident             "parent__ALQnFu6HMDhtU"
                :visibility_type   :normal
                :display_name      "Parent"
                :base_type         :type/Text}
@@ -313,7 +284,6 @@
                :nfc_path          nil
                :parent_id         2
                :id                3
-               :ident             "child__yxGs5UuS4CeAHF"
                :visibility_type   :normal
                :display_name      "Child"
                :base_type         :type/Text}
@@ -324,7 +294,6 @@
     (qp.store/with-metadata-provider meta/metadata-provider
       (is (= {:name          "sum"
               :display_name  "sum of User ID"
-              :ident         "h_y8R2SIUWCcHYmbDMMDS"
               :base_type     :type/Integer
               :field_ref     [:field "sum" {:base-type :type/Integer}]
               :semantic_type :type/FK}
@@ -332,12 +301,10 @@
               {:source-metadata
                [{:name          "abc"
                  :display_name  "another Field"
-                 :ident         "7idO5a5rdQVmEqghp0NDD"
                  :base_type     :type/Integer
                  :semantic_type :type/FK}
                 {:name          "sum"
                  :display_name  "sum of User ID"
-                 :ident         "h_y8R2SIUWCcHYmbDMMDS"
                  :base_type     :type/Integer
                  :semantic_type :type/FK}]}
               [:field "sum" {:base-type :type/Integer}]))))))
@@ -348,12 +315,10 @@
       (is (= {:base_type       :type/Float
               :name            "double-price"
               :display_name    "double-price"
-              :ident           "eG2KisFcSyHRqACHSmmbN"
               :field_ref       [:expression "double-price"]}
              (lib.tu.macros/$ids venues
                (#'annotate/col-info-for-field-clause
-                {:expressions {"double-price" [:* $price 2]}
-                 :expression-idents {"double-price" "eG2KisFcSyHRqACHSmmbN"}}
+                {:expressions {"double-price" [:* $price 2]}}
                 [:expression "double-price"])))))
     (testing "col info for a boolean `expression` should have the correct `base_type`"
       (lib.tu.macros/$ids people
@@ -390,24 +355,20 @@
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :ident              "aP4kbV3PYLhLoK3o3F5xx"
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
                (#'annotate/col-info-for-field-clause
-                {:expressions {"last-login-converted" [:convert-timezone $last-login "Asia/Ho_Chi_Minh" "UTC"]}
-                 :expression-idents {"last-login-converted" "aP4kbV3PYLhLoK3o3F5xx"}}
+                {:expressions {"last-login-converted" [:convert-timezone $last-login "Asia/Ho_Chi_Minh" "UTC"]}}
                 [:expression "last-login-converted"]))))
       (is (= {:converted_timezone "Asia/Ho_Chi_Minh",
               :base_type          :type/DateTime,
               :name               "last-login-converted",
               :display_name       "last-login-converted",
-              :ident              "aP4kbV3PYLhLoK3o3F5xx"
               :field_ref          [:expression "last-login-converted"]}
              (lib.tu.macros/$ids users
                (#'annotate/col-info-for-field-clause
                 {:expressions {"last-login-converted" [:datetime-add
-                                                       [:convert-timezone $last-login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}
-                 :expression-idents {"last-login-converted" "aP4kbV3PYLhLoK3o3F5xx"}}
+                                                       [:convert-timezone $last-login "Asia/Ho_Chi_Minh" "UTC"] 2 :hour]}}
                 [:expression "last-login-converted"])))))))
 
 (deftest ^:parallel col-info-expressions-test-3
@@ -424,19 +385,13 @@
                (catch Throwable e {:message (.getMessage e), :data (ex-data e)})))))))
 
 ;; test that added information about aggregations looks the way we'd expect
-(def ^:private ident-for-aggregation
-  "epkgPymoZu76ZqTEM7U5k")
-
 (defn- aggregation-names
   ([ag-clause]
    (let [inner-query {:source-table (meta/id :venues)
-                      :aggregation  [ag-clause]
-                      :aggregation-idents {0 ident-for-aggregation}}]
+                      :aggregation  [ag-clause]}]
      (binding [driver/*driver* :h2]
        (qp.store/with-metadata-provider meta/metadata-provider
          (let [col (first (#'annotate/col-info-for-aggregation-clauses inner-query))]
-           (is (= (:ident col) ident-for-aggregation)
-               "col-info-for-aggregation-clauses should return the existing ident for the aggregation")
            (select-keys col [:name :display_name])))))))
 
 (deftest ^:parallel aggregation-names-test
@@ -503,10 +458,7 @@
    (col-info-for-aggregation-clause {:source-table (meta/id :venues)} clause))
 
   ([inner-query clause]
-   (let [prior-aggs  (-> inner-query :aggregation count)
-         inner-query (-> inner-query
-                         (update :aggregation (fnil conj []) clause)
-                         (assoc-in [:aggregation-idents prior-aggs] ident-for-aggregation))]
+   (let [inner-query (update inner-query :aggregation (fnil conj []) clause)]
      (binding [driver/*driver* :h2]
        (first (#'annotate/col-info-for-aggregation-clauses inner-query))))))
 
@@ -516,14 +468,12 @@
       (testing "`:count` (no field)"
         (is (=? {:base_type    :type/Float
                  :name         "expression"
-                 :display_name "Count ÷ 2"
-                 :ident        ident-for-aggregation}
+                 :display_name "Count ÷ 2"}
                 (col-info-for-aggregation-clause [:/ [:count] 2]))))
       (testing "`:sum`"
         (is (=? {:base_type    :type/Integer
                  :name         "sum"
-                 :display_name "Sum of Price + 1"
-                 :ident        ident-for-aggregation}
+                 :display_name "Sum of Price + 1"}
                 (lib.tu.macros/$ids venues
                   (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))))))
 
@@ -534,8 +484,7 @@
         (is (=? {:base_type     :type/Integer
                  :settings      {:is_priceless true}
                  :name          "sum_2"
-                 :display_name  "My custom name"
-                 :ident         ident-for-aggregation}
+                 :display_name  "My custom name"}
                 (lib.tu.macros/$ids venues
                   (col-info-for-aggregation-clause
                    [:aggregation-options [:sum $price] {:name "sum_2", :display-name "My custom name"}])))))
@@ -543,16 +492,14 @@
         (is (=? {:base_type     :type/Integer
                  :settings      {:is_priceless true}
                  :name          "sum_2"
-                 :display_name  "Sum of Price"
-                 :ident         ident-for-aggregation}
+                 :display_name  "Sum of Price"}
                 (lib.tu.macros/$ids venues
                   (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:name "sum_2"}])))))
       (testing "`:display-name` only"
         (is (=? {:base_type     :type/Integer
                  :settings      {:is_priceless true}
                  :name          "sum"
-                 :display_name  "My Custom Name"
-                 :ident         ident-for-aggregation}
+                 :display_name  "My Custom Name"}
                 (lib.tu.macros/$ids venues
                   (col-info-for-aggregation-clause
                    [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))))
@@ -573,7 +520,6 @@
                          :base_type      :type/Text
                          :effective_type :type/Text
                          :source         :aggregation
-                         :ident          (get-in query [:query :aggregation-idents 0])
                          :field_ref      [:aggregation 0]}]}
                 (add-column-info
                  query
@@ -587,8 +533,7 @@
                      :aggregation [[:sum [:expression "double-price"]]]})]
         (is (=? {:base_type    :type/Integer
                  :name         "sum"
-                 :display_name "Sum of double-price"
-                 :ident        (get-in query [:query :aggregation-idents 0])}
+                 :display_name "Sum of double-price"}
                 (lib.tu.macros/$ids venues
                   (col-info-for-aggregation-clause
                    (:query query)
@@ -607,7 +552,6 @@
 (deftest ^:parallel computed-columns-inference
   (letfn [(infer [expr] (-> (lib.tu.macros/mbql-query venues
                               {:expressions {"expr" expr}
-                               :expression-idents {"expr" "LbroONhJ5OWyvFCQB4zp3"}
                                :fields [[:expression "expr"]]
                                :limit 10})
                             (add-column-info {})
@@ -619,7 +563,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :ident "LbroONhJ5OWyvFCQB4zp3"
                   :source :fields,
                   :field_ref [:expression "expr"],
                   :effective_type :type/Text,
@@ -633,7 +576,6 @@
           (is (= {:base_type :type/Text,
                   :name "expr",
                   :display_name "expr",
-                  :ident "LbroONhJ5OWyvFCQB4zp3"
                   :field_ref [:expression "expr"],
                   :source :fields}
                  (infer [:coalesce "bar" [:field (meta/id :venues :name) nil]]))))))
@@ -643,7 +585,6 @@
           (is (= {:semantic_type :type/Name,
                   :coercion_strategy nil,
                   :name "expr",
-                  :ident "LbroONhJ5OWyvFCQB4zp3"
                   :source :fields,
                   :field_ref [:expression "expr"],
                   :effective_type :type/Text,
@@ -722,13 +663,11 @@
                  :semantic_type :type/Quantity
                  :name          "count"
                  :display_name  "count"
-                 :ident         (get-in query [:query :aggregation-idents 0])
                  :source        :aggregation
                  :field_ref     [:aggregation 0]}
                 {:source       :aggregation
                  :name         "sum"
                  :display_name "sum"
-                 :ident         (get-in query [:query :aggregation-idents 1])
                  :base_type    :type/Number
                  :effective_type :type/Number
                  :field_ref    [:aggregation 1]}
@@ -737,7 +676,6 @@
                  :semantic_type :type/Quantity
                  :name          "count_2"
                  :display_name  "count"
-                 :ident         (get-in query [:query :aggregation-idents 2])
                  :source        :aggregation
                  :field_ref     [:aggregation 2]}
                 {:base_type     :type/Number
@@ -745,7 +683,6 @@
                  :semantic_type :type/Quantity
                  :name          "count_3"
                  :display_name  "count_2"
-                 :ident         (get-in query [:query :aggregation-idents 3])
                  :source        :aggregation
                  :field_ref     [:aggregation 3]}]}
               (add-column-info
@@ -760,13 +697,11 @@
     (is (= {:name            "discount_price"
             :display_name    "discount_price"
             :base_type       :type/Float
-            :ident           "bdW6mQ49dxdMbC1CheUpt"
             :source          :fields
             :field_ref       [:expression "discount_price"]}
            (-> (add-column-info
                 (lib.tu.macros/mbql-query venues
                   {:expressions {"discount_price" [:* 0.9 $price]}
-                   :expression-idents {"discount_price" "bdW6mQ49dxdMbC1CheUpt"}
                    :fields      [$name [:expression "discount_price"]]
                    :limit       10})
                 {})
@@ -782,13 +717,11 @@
         (is (=? [{:base_type    :type/Float
                   :name         "expression"
                   :display_name "0.9 × Average of Price"
-                  :ident        (get-in query [:query :aggregation-idents 0])
                   :source       :aggregation
                   :field_ref    [:aggregation 0]}
                  {:base_type    :type/Float
                   :name         "expression_2"
                   :display_name "0.8 × Average of Price"
-                  :ident        (get-in query [:query :aggregation-idents 1])
                   :source       :aggregation
                   :field_ref    [:aggregation 1]}]
                 (:cols (add-column-info query {}))))))
@@ -799,7 +732,6 @@
         (is (=? [{:name            "prev_month"
                   :display_name    "prev_month"
                   :base_type       :type/DateTime
-                  :ident           (get-in query [:query :expression-idents "prev_month"])
                   :source          :fields
                   :field_ref       [:expression "prev_month"]}]
                 (:cols (add-column-info query {}))))))))
@@ -813,10 +745,9 @@
                                     :source-table $$categories
                                     :condition    [:= $category-id &c.categories.id]
                                     :alias        "c"}]}))
-            join-ident (get-in base-query [:query :joins 0 :ident])
             field      (fn [field-key legacy-ref]
                          (-> (meta/field-metadata :venues field-key)
-                             (select-keys [:id :name :ident])
+                             (select-keys [:id :name])
                              (assoc :field_ref legacy-ref)))]
         (doseq [level [0 1 2 3]]
           (testing (format "%d level(s) of nesting" level)
@@ -831,13 +762,11 @@
                           (field :price       $price)
                           {:name      "ID_2"
                            :id        %categories.id
-                           :ident     (lib/explicitly-joined-ident (meta/ident :categories :id) join-ident)
                            :field_ref &c.categories.id}
                           {:name      "NAME_2"
                            :id        %categories.name
-                           :ident     (lib/explicitly-joined-ident (meta/ident :categories :name) join-ident)
                            :field_ref &c.categories.name}])
-                       (map #(select-keys % [:name :id :field_ref :ident])
+                       (map #(select-keys % [:name :id :field_ref])
                             (:cols (add-column-info nested-query {})))))))))))))
 
 (deftest ^:parallel mbql-cols-nested-queries-test-2
@@ -879,7 +808,7 @@
               (as-> (:cols result) result
                 (m/index-by :name result)
                 (get result "EAN")
-                (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref :ident])))]
+                (select-keys result [:name :display_name :base_type :semantic_type :id :field_ref])))]
       (qp.store/with-metadata-provider meta/metadata-provider
         (testing "Make sure metadata is correct for the 'EAN' column with"
           (let [base-query (qp.preprocess/preprocess
@@ -888,8 +817,7 @@
                                         :source-table $$products
                                         :condition    [:= $product-id &Products.products.id]
                                         :alias        "Products"}]
-                               :limit 10}))
-                join-ident (-> base-query :query :joins first :ident)]
+                               :limit 10}))]
             (doseq [level (range 4)]
               (testing (format "%d level(s) of nesting" level)
                 (let [nested-query (mt/nest-query base-query level)]
@@ -900,7 +828,6 @@
                               :base_type     :type/Text
                               :semantic_type nil
                               :id            %ean
-                              :ident         (lib/explicitly-joined-ident (meta/ident :products :ean) join-ident)
                               :field_ref     &Products.ean})
                            (ean-metadata (add-column-info nested-query {}))))))))))))))
 
@@ -927,19 +854,14 @@
                                  :limit        1}))
                   fields     #{%orders.discount %products.title %people.source}]
               (is (= [{:display_name "Discount"
-                       :ident        (meta/ident :orders :discount)
                        :field_ref    [:field %orders.discount nil]}
                       {:display_name "Products → Title"
-                       :ident        (lib/explicitly-joined-ident (meta/ident :products :title)
-                                                                  (-> card-1-query :query :joins first :ident))
                        :field_ref    [:field %products.title nil]}
                       {:display_name "Q → Source"
-                       :ident        (lib/explicitly-joined-ident (meta/ident :people :source)
-                                                                  (-> base-query :query :joins first :ident))
                        :field_ref    [:field %people.source {:join-alias "Q"}]}]
                      (->> (:cols (add-column-info base-query {}))
                           (filter #(fields (:id %)))
-                          (map #(select-keys % [:display_name :field_ref :ident]))))))))))))
+                          (map #(select-keys % [:display_name :field_ref]))))))))))))
 
 (deftest ^:parallel col-info-for-joined-fields-from-card-test
   (testing "Has the correct display names for joined fields from cards (#14787)"
@@ -957,8 +879,6 @@
                                                     :dataset-query   (native "select 'foo' as A_COLUMN")
                                                     :result-metadata [{:name         "A_COLUMN"
                                                                        :display_name "A Column"
-                                                                       :ident        (lib/native-ident "A_COLUMN"
-                                                                                                       card1-eid)
                                                                        :base_type    :type/Text}]}
                                                    {:id              2
                                                     :entity_id       card2-eid
@@ -967,8 +887,6 @@
                                                     :dataset-query   (native "select 'foo' as B_COLUMN")
                                                     :result-metadata [{:name         "B_COLUMN"
                                                                        :display_name "B Column"
-                                                                       :ident        (lib/native-ident "B_COLUMN"
-                                                                                                       card2-eid)
                                                                        :base_type    :type/Text}]}]})
           (let [query (lib.tu.macros/mbql-query nil
                         {:source-table "card__1"
@@ -980,10 +898,8 @@
                                                                             :join-alias "alias"}]]
                                          :alias        "alias"}]})
                 cols  (qp.preprocess/query->expected-cols query)]
-            (is (=? [{:ident        (lib/native-ident "A_COLUMN" card1-eid)}
-                     {:display_name "alias → B Column"
-                      :ident        (lib/explicitly-joined-ident (lib/native-ident "B_COLUMN" card2-eid)
-                                                                 (-> query :query :joins first :ident))}]
+            (is (=? [{}
+                     {:display_name "alias → B Column"}]
                     cols)
                 "cols has wrong display name")))))))
 
@@ -992,12 +908,10 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
       (mt/dataset test-data
         (let [join-alias "Products with a very long name - Product ID with a very long name"
-              join-ident (u/generate-nano-id)
               results    (mt/run-mbql-query orders
                            {:joins  [{:source-table $$products
                                       :condition    [:= $product_id [:field %products.id {:join-alias join-alias}]]
                                       :alias        join-alias
-                                      :ident        join-ident
                                       :fields       [[:field %products.title {:join-alias join-alias}]]}]
                             :fields [$orders.id
                                      [:field %products.title {:join-alias join-alias}]]
@@ -1007,47 +921,9 @@
             (testing location
               (is (= (mt/$ids
                        [{:display_name "ID"
-                         :ident        (:ident (lib.metadata/field (mt/metadata-provider) (mt/id :orders :id)))
                          :field_ref    $orders.id}
                         {:display_name (str join-alias " → Title")
-                         :ident        (-> (lib.metadata/field (mt/metadata-provider) (mt/id :products :title))
-                                           :ident
-                                           (lib/explicitly-joined-ident join-ident))
                          :field_ref    [:field %products.title {:join-alias join-alias}]}])
                      (map
-                      #(select-keys % [:display_name :field_ref :ident])
+                      #(select-keys % [:display_name :field_ref])
                       metadata))))))))))
-
-(deftest ^:parallel breakout-of-model-field-ident-test
-  (testing "breakout of model field"
-    (mt/with-temp [:model/Card model (mt/card-with-metadata
-                                      {:dataset_query (mt/mbql-query orders)
-                                       :type          :model})]
-      (testing "inner model has correct idents"
-        (is (=? (for [col-key [:id :user_id :product_id :subtotal :tax :total :discount :created_at :quantity]]
-                  {:ident             (lib/model-ident (mt/ident :orders col-key) (:entity_id model))
-                   :model/inner_ident (mt/ident :orders col-key)})
-                (:result_metadata model))))
-      (testing "outer breakout gets correct ident"
-        (let [query (mt/mbql-query orders {:source-table (str "card__" (:id model))
-                                           :aggregation  [[:count]]
-                                           :breakout     [!month.$created_at]})
-              brk-ident (get-in query [:query :breakout-idents 0])
-              agg-ident (get-in query [:query :aggregation-idents 0])]
-          (is (=? [{:name  "CREATED_AT"
-                    :ident brk-ident}
-                   {:name  "count"
-                    :ident agg-ident}]
-                  (mt/cols (mt/process-query query))))
-          (testing "even when outer query is a model"
-            (mt/with-temp [:model/Card model2 (mt/card-with-metadata {:dataset_query query
-                                                                      :type          :model})]
-              ;; Inner idents are the unadorned breakout and aggregation idents.
-              ;; Outer idents are only wrapped with the outer model.
-              (is (=? [{:name              "CREATED_AT"
-                        :model/inner_ident brk-ident
-                        :ident             (lib/model-ident brk-ident (:entity_id model2))}
-                       {:name              "count"
-                        :model/inner_ident agg-ident
-                        :ident             (lib/model-ident agg-ident (:entity_id model2))}]
-                      (:result_metadata model2))))))))))

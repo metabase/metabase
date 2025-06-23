@@ -1023,20 +1023,16 @@
                       :native   {:query "select * from birds"
                                  :parameters []}}]
            (testing "results_metadata columns are correctly typed"
-             (is (=? [{:name  "name"
-                       :ident (lib/native-ident "name" eid)}
+             (is (=? [{:name  "name"}
                       {:name "status"
-                       :ident (lib/native-ident "status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird_status"}
                       {:name "other_status"
-                       :ident (lib/native-ident "other_status" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "\"bird_schema\".\"bird_status\""}
                       {:name "type"
-                       :ident (lib/native-ident "type" eid)
                        :base_type :type/PostgresEnum
                        :effective_type :type/PostgresEnum
                        :database_type "bird type"}]

@@ -6,7 +6,6 @@
    [metabase.lib.metadata.protocols :as metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
 (defn- with-optional-lib-type
@@ -124,10 +123,7 @@
     =>
     (lib/composed-metadata-provider (lib.tu/mock-metadata-provider {...}) parent-metadata-provider)"
   ([m :- MockMetadata]
-   (-> m
-       (update :fields #(for [field %]
-                          (u/assoc-default field :ident (u/generate-nano-id))))
-       ->MockMetadataProvider))
+   (->MockMetadataProvider m))
 
   ([parent-metadata-provider mock-metadata]
    (lib/composed-metadata-provider

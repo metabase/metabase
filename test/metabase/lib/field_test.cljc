@@ -9,7 +9,6 @@
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -41,21 +40,18 @@
                      :name         "grandparent"
                      :display-name "Grandparent"
                      :id           (grandparent-parent-child-id :grandparent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         parent      {:lib/type     :metadata/column
                      :name         "parent"
                      :display-name "Parent"
                      :parent-id    (grandparent-parent-child-id :grandparent)
                      :id           (grandparent-parent-child-id :parent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         child       {:lib/type     :metadata/column
                      :name         "child"
                      :display-name "Child"
                      :parent-id    (grandparent-parent-child-id :parent)
                      :id           (grandparent-parent-child-id :child)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/database
@@ -465,7 +461,6 @@
                                                  :condition    [:=
                                                                 [:field (meta/id :venues :category-id) nil]
                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]
-                                                 :ident        "khQz-1AxQ4MVUfynQFnUw"
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -637,7 +632,6 @@
                                                    :stages   [{:lib/type     :mbql.stage/mbql
                                                                :source-table 2}]}
                                  :result-metadata [{:id    4
-                                                    :ident "ybTElkkGoYYBAyDRTIiUe"
                                                     :name  "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
@@ -648,7 +642,6 @@
                :effective-type           :type/*
                :id                       4
                :name                     "Field 4"
-               :ident                    "ybTElkkGoYYBAyDRTIiUe"
                :fk-target-field-id       nil
                :lib/source               :source/card
                :lib/card-id              3
@@ -660,7 +653,6 @@
               :effective-type          :type/Text
               :id                      4
               :name                    "Field 4"
-              :ident                   "ybTElkkGoYYBAyDRTIiUe"
               :fk-target-field-id      nil
               :display-name            "Field 4"
               :lib/card-id             3
@@ -689,7 +681,6 @@
                                                     :base-type         :type/Text
                                                     :effective-type    :type/Date
                                                     :coercion-strategy :Coercion/ISO8601->Date
-                                                    :ident             "ybTElkkGoYYBAyDRTIiUe"
                                                     :name              "Field 4"}]}]})
           query    (lib/query provider {:lib/type :mbql/query
                                         :database 1
@@ -701,7 +692,6 @@
                :coercion-strategy        :Coercion/ISO8601->Date
                :id                       4
                :name                     "Field 4"
-               :ident                    "ybTElkkGoYYBAyDRTIiUe"
                :fk-target-field-id       nil
                :lib/source               :source/card
                :lib/card-id              3
@@ -714,7 +704,6 @@
               :coercion-strategy       :Coercion/ISO8601->Date
               :id                      4
               :name                    "Field 4"
-              :ident                   "ybTElkkGoYYBAyDRTIiUe"
               :fk-target-field-id      nil
               :display-name            "Field 4"
               :lib/card-id             3
@@ -1602,11 +1591,9 @@
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
                                      :source-alias "Products")
-                              (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
-                               (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
       (is (=? (sorted (concat order-cols join-cols))
@@ -1656,13 +1643,12 @@
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (binding [lib.metadata.ident/*enforce-idents-present* false]
-        (is (=? {:lib/type        :metadata/column
-                 :lib/source-uuid string?
-                 :name            "12345"
-                 :display-name    "Unknown Field"}
-                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
-                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "12345"
+               :display-name    "Unknown Field"}
+              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
@@ -1785,7 +1771,6 @@
                             {:lib/type :metadata/column
                              :id 1
                              :name "search"
-                             :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                              :display-name "Search"
                              :base-type :type/Text})
                  lib/visible-columns
@@ -1800,7 +1785,6 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
-                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns

@@ -497,7 +497,6 @@
                                                                                                     :q1  141761.53790523874,
                                                                                                     :q3  141761.53790523874,
                                                                                                     :sd  nil}}},
-                                                                :ident          "aggregation_skXR69-dlhJST5C7Rd9nR@0__0",
                                                                 :name           "sum",
                                                                 :semantic_type  nil}]))))
   (testing "removes duplicate and nil _ keywords"

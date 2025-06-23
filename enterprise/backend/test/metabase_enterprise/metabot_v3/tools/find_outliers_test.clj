@@ -99,8 +99,7 @@
 
 (deftest ^:parallel metric-find-outliers-no-temporal-dimension-test
   (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
-                                                 (m/dissoc-in [:dataset_query :query :breakout]
-                                                              [:dataset_query :query :breakout-idents])
+                                                 (m/dissoc-in [:dataset_query :query :breakout])
                                                  (assoc :type :metric))]
     (mt/with-current-user (mt/user->id :crowberto)
       (is (= {:output "No temporal dimension found. Outliers can only be detected when a temporal dimension is available."}
@@ -109,8 +108,7 @@
 
 (deftest ^:parallel metric-find-outliers-no-numeric-dimension-test
   (mt/with-temp [:model/Card {metric-id :id} (-> (test-card)
-                                                 (m/dissoc-in [:dataset_query :query :aggregation]
-                                                              [:dataset_query :query :aggregation-idents])
+                                                 (m/dissoc-in [:dataset_query :query :aggregation])
                                                  (assoc :type :metric))]
     (mt/with-current-user (mt/user->id :crowberto)
       (is (= {:output "Could not determine result field."}

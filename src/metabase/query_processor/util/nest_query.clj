@@ -117,7 +117,7 @@
 (defn- nest-source [inner-query]
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
-        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions :expression-idents]) source
+        source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
                  ;; preprocess this in a superuser context so it's not subject to permissions checks. To get here in the
                  ;; first place we already had to do perms checks to make sure the query we're transforming is itself
                  ;; ok, so we don't need to run another check.
@@ -245,16 +245,14 @@
   `:source-query` and updates `:expression` references and `:field` clauses with `:join-alias`es accordingly. See
   tests for examples. This is used by the SQL QP to make sure expressions happen in a subselect."
   [inner-query]
-  (let [{:keys [expressions expression-idents]
+  (let [{:keys [expressions]
          :as inner-query}                      (m/update-existing inner-query :source-query nest-expressions)]
     (if-not (should-nest-expressions? inner-query)
       inner-query
       (let [{:keys [source-query], :as inner-query} (nest-source inner-query)
             inner-query                             (rewrite-fields-and-expressions inner-query)
-            source-query                            (assoc source-query
-                                                           :expressions expressions
-                                                           :expression-idents expression-idents)]
+            source-query                            (assoc source-query :expressions expressions)]
         (-> inner-query
-            (dissoc :source-query :expressions :expression-idents)
+            (dissoc :source-query :expressions)
             (assoc :source-query source-query)
             add/add-alias-info)))))

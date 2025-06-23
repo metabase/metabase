@@ -60,9 +60,6 @@
                                   nil))
       (lib/with-binning nil)))
 
-(defn- copy-ident [to from]
-  (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))
-
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
@@ -73,8 +70,7 @@
       (-> col
           update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
           lib/ref
-          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true))
-          (cond-> (some #{:breakout} &parents) (copy-ident &match)))
+          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity

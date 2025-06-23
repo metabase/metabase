@@ -8,7 +8,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -90,12 +89,10 @@
   (for [col cols]
     (assoc col :lib/source src)))
 
-(defn- implicitly-joined [fk cols]
-  (for [col (from :source/implicitly-joinable cols)]
-    (update col :ident lib.metadata.ident/implicitly-joined-ident (:ident fk))))
-(defn- explicitly-joined [join-ident cols]
-  (for [col (from :source/joins cols)]
-    (update col :ident lib.metadata.ident/explicitly-joined-ident join-ident)))
+(defn- implicitly-joined [_fk cols]
+  (from :source/implicitly-joinable cols))
+(defn- explicitly-joined [_join cols]
+  (from :source/joins cols))
 
 (defn- cols-of [table]
   (for [col (meta/fields table)]
@@ -188,12 +185,12 @@
                                               (lib/ref (meta/field-metadata :products :id)))])
           query      (lib/join base join)]
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
-                           (explicitly-joined (:ident join) (cols-of :products)))
+                           (explicitly-joined join (cols-of :products)))
                    sort-cols)
               (->> query lib.metadata.calculation/returned-columns sort-cols)))
 
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
-                           (explicitly-joined (:ident join) (cols-of :products))
+                           (explicitly-joined join (cols-of :products))
                            (implicitly-joined (meta/field-metadata :orders :user-id) (cols-of :people)))
                    sort-cols)
               (->> query lib.metadata.calculation/visible-columns sort-cols)))

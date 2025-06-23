@@ -580,8 +580,7 @@
                                  ;; does not include `:join-alias`. It should still work anyway.
                                  "busted ref"
                                  [:field {:lib/uuid  (str (random-uuid))
-                                          :base-type :type/Text
-                                          :ident     (u/generate-nano-id)}
+                                          :base-type :type/Text}
                                   (meta/id :categories :name)]}]
       (testing (str \newline message " ref = " (pr-str field-ref))
         (let [query (-> (lib.tu/venues-query)

@@ -31,8 +31,6 @@ dataset_query:
           - v_query_log
           - running_time_seconds
         - base-type: type/Float
-    aggregation-idents:
-      0: aggregation_OCkxXZM5KPJ9zOjYVEnqY@0__0
     breakout:
     - - field
       - - Internal Metabase Database
@@ -55,10 +53,6 @@ dataset_query:
         - entity_id
       - base-type: type/Integer
         join-alias: Content - Dashboard Qualified
-    breakout-idents:
-      0: breakout_OCkxXZM5KPJ9zOjYVEnqY@0__0
-      1: breakout_OCkxXZM5KPJ9zOjYVEnqY@0__1
-      2: breakout_OCkxXZM5KPJ9zOjYVEnqY@0__2
     filter:
     - and
     - - time-interval

@@ -11,11 +11,9 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -265,14 +263,6 @@
                                                     (:alias join)
                                                     ((some-fn :lib/source-column-alias :name) col)))))
 
-(mu/defn- adjust-ident :- :map
-  [join :- [:map
-            [:ident
-             {:error/message "Join must have an ident to determine column idents"}
-             ::lib.schema.common/non-blank-string]]
-   col  :- :map]
-  (update col :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
-
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join
   [query
    stage-number
@@ -299,7 +289,6 @@
           field-metadatas (if (empty? field-metadatas) join-cols field-metadatas)
           cols  (mapv (fn [field-metadata]
                         (->> (column-from-join-fields query stage-number field-metadata join-alias)
-                             (adjust-ident join)
                              (add-source-and-desired-aliases join unique-name-fn)))
                       field-metadatas)]
       (concat cols (lib.metadata.calculation/remapped-columns join-query -1 cols options)))))
@@ -622,7 +611,6 @@
   by default."
   ([joinable]
    (-> (join-clause-method joinable)
-       (u/assoc-default :ident (lib.ident/random-ident))
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]
