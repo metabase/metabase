@@ -4,11 +4,11 @@ import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import Input from "metabase/common/components/Input";
+import SelectList from "metabase/common/components/SelectList";
+import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import SelectList from "metabase/components/SelectList";
-import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
-import Input from "metabase/core/components/Input";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { isEmbeddingSdk } from "metabase/env";

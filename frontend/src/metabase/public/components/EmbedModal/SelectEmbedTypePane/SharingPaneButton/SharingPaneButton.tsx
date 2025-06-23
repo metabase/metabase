@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { MouseEventHandler, ReactNode } from "react";
 import { t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { Box, Center, Group, Paper, Stack, Text, Title } from "metabase/ui";
 
 import S from "./SharingPaneButton.module.css";

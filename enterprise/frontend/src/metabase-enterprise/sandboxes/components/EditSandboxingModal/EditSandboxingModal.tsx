@@ -6,14 +6,14 @@ import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
+import ActionButton from "metabase/common/components/ActionButton";
+import QuestionLoader from "metabase/common/components/QuestionLoader";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
+import Radio from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import ActionButton from "metabase/components/ActionButton";
-import QuestionLoader from "metabase/containers/QuestionLoader";
-import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
 import { GTAPApi } from "metabase/services";

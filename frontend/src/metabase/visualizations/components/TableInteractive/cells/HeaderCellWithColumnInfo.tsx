@@ -1,8 +1,8 @@
 import type React from "react";
 import { memo, useMemo } from "react";
 
+import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
 import { useMousePressed } from "metabase/common/hooks/use-mouse-pressed";
-import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import {
   HeaderCellPill,
   type HeaderCellProps,
@@ -16,7 +16,7 @@ import type { DatasetColumn } from "metabase-types/api";
 import S from "./HeaderCellWithColumnInfo.module.css";
 
 export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
-  infoPopoversDisabled: boolean;
+  getInfoPopoversDisabled: () => boolean;
   timezone?: string;
   question: Question;
   column: DatasetColumn;
@@ -36,7 +36,7 @@ export const HeaderCellWithColumnInfo = memo(
     align,
     sort,
     variant = "light",
-    infoPopoversDisabled,
+    getInfoPopoversDisabled,
     question,
     timezone,
     column,
@@ -67,7 +67,7 @@ export const HeaderCellWithColumnInfo = memo(
 
     return (
       <HeaderCellWrapper className={className} variant={variant} align={align}>
-        {infoPopoversDisabled ? (
+        {getInfoPopoversDisabled() ? (
           cellContent
         ) : (
           <QueryColumnInfoPopover

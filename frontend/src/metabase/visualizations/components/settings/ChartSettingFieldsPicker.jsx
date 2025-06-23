@@ -5,7 +5,7 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Sortable, SortableList } from "metabase/core/components/Sortable";
+import { Sortable, SortableList } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { moveElement } from "metabase/lib/arrays";
 
