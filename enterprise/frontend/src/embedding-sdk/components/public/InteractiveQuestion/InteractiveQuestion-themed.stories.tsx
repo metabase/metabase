@@ -74,3 +74,15 @@ export const WithWhiteTooltip = {
     },
   }),
 };
+
+export const UnthemedOnBlackBackground = {
+  render() {
+    return (
+      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+        <Box p="xl" bg="#000">
+          <InteractiveQuestion questionId={QUESTION_ID} isSaveEnabled />
+        </Box>
+      </MetabaseProvider>
+    );
+  },
+};
