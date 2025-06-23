@@ -205,30 +205,34 @@ export function MainNavbarView({
             </SidebarSection>
           )}
 
-          <SidebarSection>
-            <ErrorBoundary>
-              <CollectionSectionHeading
-                handleCreateNewCollection={handleCreateNewCollection}
-              />
+          {/* This check also limits the create collection button, but if a user has write
+              access to a collection, then it would show up under regular collections.*/}
+          {regularCollections.length > 0 && (
+            <SidebarSection>
+              <ErrorBoundary>
+                <CollectionSectionHeading
+                  handleCreateNewCollection={handleCreateNewCollection}
+                />
 
-              <Tree
-                data={regularCollections}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
-              {isAdmin && (
-                <PaddedSidebarLink
-                  icon="group"
-                  url={OTHER_USERS_COLLECTIONS_URL}
-                >
-                  {t`Other users' personal collections`}
-                </PaddedSidebarLink>
-              )}
-            </ErrorBoundary>
-          </SidebarSection>
+                <Tree
+                  data={regularCollections}
+                  selectedId={collectionItem?.id}
+                  onSelect={onItemSelect}
+                  TreeNode={SidebarCollectionLink}
+                  role="tree"
+                  aria-label="collection-tree"
+                />
+                {isAdmin && (
+                  <PaddedSidebarLink
+                    icon="group"
+                    url={OTHER_USERS_COLLECTIONS_URL}
+                  >
+                    {t`Other users' personal collections`}
+                  </PaddedSidebarLink>
+                )}
+              </ErrorBoundary>
+            </SidebarSection>
+          )}
 
           <SidebarSection>
             <ErrorBoundary>
