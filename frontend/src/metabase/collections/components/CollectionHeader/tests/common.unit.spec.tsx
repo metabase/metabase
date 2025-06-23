@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
+import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -148,14 +148,15 @@ describe("CollectionHeader", () => {
 
       userEvent.click(button);
 
-      await waitFor(() => {
-        expect(
-          fetchMock.calls(
-            "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
-            { method: "PUT" },
-          ),
-        ).toHaveLength(1);
+      const puts = await waitFor(async () => {
+        const puts = await findRequests("PUT");
+        expect(puts).toHaveLength(1);
+        return puts;
       });
+
+      expect(puts[0].url).toBe(
+        "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/events-menu",
+      );
     });
   });
 
