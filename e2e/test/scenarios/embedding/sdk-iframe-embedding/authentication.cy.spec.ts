@@ -8,8 +8,7 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding > authentication", () => {
   it("cannot login if no auth methods are enabled", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -23,7 +22,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("can use existing user session when useExistingUserSession is true", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -34,7 +33,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("cannot use existing user session when useExistingUserSession is false", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: false });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -53,8 +52,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("can login via JWT", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt"], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -65,8 +63,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("can login via SAML", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -78,8 +75,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
 
   it("shows an error if the SAML login results in an invalid user", () => {
     mockAuthSsoEndpointForSamlAuthProvider();
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -97,8 +93,10 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("shows an error if we are using an API key in production", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["api-key"],
+      signOut: true,
+    });
 
     cy.log("restore the current page's domain");
     cy.visit("http://localhost:4000");
@@ -120,8 +118,7 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("shows an error if we are using the existing user session in production", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: [], signOut: true });
 
     cy.log("restore the current page's domain");
     cy.visit("http://localhost:4000");
@@ -145,8 +142,10 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   });
 
   it("does not show an error if we are using an API key in development", () => {
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["api-key"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["api-key"],
+      signOut: true,
+    });
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
@@ -165,8 +164,10 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   it("uses JWT when authMethod is set to 'jwt' and both SAML and JWT are enabled", () => {
     cy.intercept("GET", "/auth/sso?preferred_method=jwt").as("authSso");
 
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["jwt", "saml"],
+      signOut: true,
+    });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
@@ -180,8 +181,10 @@ describe("scenarios > embedding > sdk iframe embedding > authentication", () => 
   it("uses SAML when authMethod is set to 'saml' and both SAML and JWT are enabled", () => {
     cy.intercept("GET", "/auth/sso?preferred_method=saml").as("authSso");
 
-    H.prepareSdkIframeEmbedTest({ enabledAuthMethods: ["jwt", "saml"] });
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["jwt", "saml"],
+      signOut: true,
+    });
 
     const frame = H.loadSdkIframeEmbedTestPage({
       dashboardId: ORDERS_DASHBOARD_ID,
