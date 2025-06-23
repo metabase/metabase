@@ -203,7 +203,9 @@
 
 (defmethod ->rvalue :expression
   [[_ expression-name]]
-  (->rvalue (driver-api/expression-with-name (:query *query*) expression-name)))
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (cond->> (->rvalue expression-value)
+      (driver-api/is-clause? :value expression-value) (hash-map $literal))))
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
