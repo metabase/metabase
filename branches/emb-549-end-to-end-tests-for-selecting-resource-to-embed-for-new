@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-508-select-dashboards-and-questions-for-new-iframe-embedding",
     "hash": "466b7b496c1851bf0d6cb0aacddedb8d03b33058"
+  },
+  "upstream": {
+    "branch": "emb-549-end-to-end-tests-for-selecting-resource-to-embed-for-new"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 59944,
+        "gqlID": "PR_kwDOAczgH86bsyhm"
+      }
+    }
   }
 }
