@@ -200,26 +200,6 @@ const getSearchIndex = memoize(function <
   });
 });
 
-/**
- * Memoizes a function based on shallow equality of its argument.
- */
-function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
-  let lastArgs: T | null = null;
-  let lastResult: R | null = null;
-
-  return function (args: T): R {
-    if (
-      lastArgs == null ||
-      lastResult == null ||
-      !shallowEqual(lastArgs, args)
-    ) {
-      lastArgs = args;
-      lastResult = fn(args);
-    }
-    return lastResult;
-  };
-}
-
 const search = memoize(function <T>({
   searchIndex,
   searchText,
@@ -306,4 +286,29 @@ function searchPredicate<TItem>(item: TItem, searchText: string, prop: string) {
   const path = prop.split(".");
   const itemText = String(getIn(item, path) || "");
   return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
+}
+
+/**
+ * Memoizes a function based on shallow equality of its argument.
+ *
+ * This basically acts as a LRU cache with just one cache entry.
+ *
+ * We use this over _.memoize because we rely on object identiy to memoize
+ * the search index, and _.memoize use string hashing for equality.
+ */
+function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {
+  let lastArgs: T | null = null;
+  let lastResult: R | null = null;
+
+  return function (args: T): R {
+    if (
+      lastArgs == null ||
+      lastResult == null ||
+      !shallowEqual(lastArgs, args)
+    ) {
+      lastArgs = args;
+      lastResult = fn(args);
+    }
+    return lastResult;
+  };
 }
