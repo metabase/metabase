@@ -2,7 +2,7 @@ import { dissoc } from "icepick";
 import { t } from "ttag";
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
-import ModalContent from "metabase/components/ModalContent";
+import ModalContent from "metabase/common/components/ModalContent";
 import {
   CopyDashboardFormConnected,
   type CopyDashboardFormProperties,

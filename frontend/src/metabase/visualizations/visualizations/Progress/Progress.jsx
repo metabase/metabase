@@ -5,7 +5,7 @@ import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import IconBorder from "metabase/components/IconBorder";
+import IconBorder from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";

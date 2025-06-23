@@ -1,15 +1,15 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import {
-  HoverParent,
-  QueryColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   AccordionList,
   type Section,
-} from "metabase/core/components/AccordionList";
+} from "metabase/common/components/AccordionList";
+import {
+  HoverParent,
+  QueryColumnInfoIcon,
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { DelayGroup } from "metabase/ui";

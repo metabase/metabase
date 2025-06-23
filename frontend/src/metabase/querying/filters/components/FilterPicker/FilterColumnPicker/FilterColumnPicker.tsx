@@ -2,15 +2,15 @@ import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 import { t } from "ttag";
 
-import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import {
-  HoverParent,
-  QueryColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   AccordionList,
   type Section,
-} from "metabase/core/components/AccordionList";
+} from "metabase/common/components/AccordionList";
+import {
+  HoverParent,
+  QueryColumnInfoIcon,
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";

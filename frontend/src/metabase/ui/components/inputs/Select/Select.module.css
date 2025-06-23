@@ -92,6 +92,7 @@
 .SelectItems_Options {
   padding: 0.75rem;
   max-height: rem(500px);
+  overflow-y: auto;
 }
 
 .SelectItems_Item {

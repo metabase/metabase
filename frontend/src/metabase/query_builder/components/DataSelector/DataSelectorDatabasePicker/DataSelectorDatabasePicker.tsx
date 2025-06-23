@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import {
   AccordionList,
   type Section,
-} from "metabase/core/components/AccordionList";
+} from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";

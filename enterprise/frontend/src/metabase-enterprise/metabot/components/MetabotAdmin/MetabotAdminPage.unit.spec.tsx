@@ -5,6 +5,8 @@ import { Route } from "react-router";
 import {
   findRequests,
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -14,13 +16,14 @@ import {
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoint,
 } from "__support__/server-mocks/metabot";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import type {
   MetabotApiEntity,
   MetabotEntity,
   MetabotId,
   RecentItem,
 } from "metabase-types/api";
+import { createMockCollection } from "metabase-types/api/mocks";
 
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
@@ -193,6 +196,40 @@ describe("MetabotAdminPage", () => {
       fetchMock.calls(`path:/api/ee/metabot-v3/metabot/1/prompt-suggestions`)
         .length,
     ).toEqual(3); // +1 refetch for DELETE, +1 for PUT
+  });
+
+  it("should not allow selecting the root collection", async () => {
+    // setup entity picker endpoints
+    const rootCollection = createMockCollection({ id: "root" });
+    setupCollectionsEndpoints({ collections: [rootCollection] });
+    setupCollectionItemsEndpoint({
+      collection: rootCollection,
+      collectionItems: [],
+      models: [],
+    });
+    setupCollectionItemsEndpoint({
+      collection: createMockCollection({ id: 1 }),
+      collectionItems: [],
+      models: [],
+    });
+
+    // default to no entities for default metabot - this will default the
+    // entity picker's initial value to be the root collection
+    await setup(1, { ...entities, 1: [] });
+
+    await userEvent.click(screen.getByText("Pick a collection"));
+
+    const entityPicker = await screen.findByTestId("entity-picker-modal");
+    const entityPickerTabs =
+      await within(entityPicker).findByTestId("tabs-view");
+    await userEvent.click(
+      await within(entityPickerTabs).findByText(/Collections/),
+    );
+
+    // should not be able to select the default Our analytics option
+    expect(
+      await screen.findByRole("button", { name: /Select/ }),
+    ).toBeDisabled();
   });
 
   it("should delete the selected collection", async () => {

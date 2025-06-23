@@ -4,7 +4,7 @@ import { t } from "ttag";
 import {
   AccordionList,
   type Section,
-} from "metabase/core/components/AccordionList";
+} from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { Icon } from "metabase/ui";

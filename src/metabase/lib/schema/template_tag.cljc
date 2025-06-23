@@ -21,7 +21,7 @@
 (mr/def ::type
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date])
+   :snippet :card :dimension :number :text :date :temporal-unit])
 
 (mr/def ::name
   [:ref
@@ -48,6 +48,18 @@
     [:default {:optional true} any?]
     ;; whether or not a value for this parameter is required in order to run the query
     [:required {:optional true} :boolean]]])
+
+;; Example:
+;;
+;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
+;;    :type "temporal-unit",
+;;    :name "unit",
+;;    :display-name "Unit"}
+(mr/def ::temporal-unit
+  [:merge
+   [:ref ::common]
+   [:map
+    [:type [:= :temporal-unit]]]])
 
 ;; Example:
 ;;
@@ -144,9 +156,10 @@
    [:map
     [:type [:ref ::type]]]
    [:multi {:dispatch #(keyword (:type %))}
-    [:dimension   [:ref ::field-filter]]
-    [:snippet     [:ref ::snippet]]
-    [:card        [:ref ::source-query]]
+    [:temporal-unit [:ref ::temporal-unit]]
+    [:dimension     [:ref ::field-filter]]
+    [:snippet       [:ref ::snippet]]
+    [:card          [:ref ::source-query]]
     ;; :number, :text, :date
     [::mc/default [:ref ::raw-value]]]])
 

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
-import ButtonGroup from "metabase/core/components/ButtonGroup";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import ButtonGroup from "metabase/common/components/ButtonGroup";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Icon } from "metabase/ui";
 import {

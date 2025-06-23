@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { GridItem } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
+import { GridItem } from "metabase/common/components/Grid";
+import Link from "metabase/common/components/Link";
 import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
