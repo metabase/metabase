@@ -668,15 +668,16 @@
 ;; These tests verify that query cancellation returns proper results instead of nil
 
 (deftest ^:parallel qp-pipeline-cancellation-test
-  (testing "QP pipeline functions return ::cancel instead of nil when cancelled"
+  (testing "QP pipeline functions return nil when cancelled and canceled? returns truthy"
     (let [canceled-chan (a/promise-chan)
           _ (a/>!! canceled-chan ::cancel)
           query (mt/mbql-query venues {:limit 1})
           mock-rff (constantly identity)]
 
       (binding [qp.pipeline/*canceled-chan* canceled-chan]
-        (is (= ::qp.pipeline/cancel (qp.pipeline/*run* query mock-rff))
-            "Cancelled query returns ::cancel, not nil")))))
+        (let [result (qp.pipeline/*run* query mock-rff)]
+          (is (nil? result) "Cancelled query returns nil")
+          (is (qp.pipeline/canceled?) "canceled? should return truthy when query is cancelled"))))))
 
 (deftest ^:parallel streaming-response-handles-cancellation-test
   (testing "Streaming response handles cancellation gracefully without assertion errors"
@@ -690,11 +691,12 @@
           "Streaming response should handle cancellation without assertion error"))))
 
 (deftest ^:parallel streaming-response-handles-cancel-keyword-test
-  (testing "Streaming response handles ::cancel return value gracefully"
+  (testing "Streaming response handles nil + canceled? gracefully"
     (let [mock-qp-fn (fn [rff]
-                       ;; Return ::cancel directly to simulate QP cancellation
-                       ::qp.pipeline/cancel)]
+                       ;; Return nil and set up canceled? to return truthy
+                       (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
+                         nil))]
 
       ;; Should not throw any assertion errors
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
-          "Streaming response should handle ::cancel without assertion error"))))
+          "Streaming response should handle cancellation without assertion error"))))

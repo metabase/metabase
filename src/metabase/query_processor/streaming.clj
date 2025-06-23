@@ -188,30 +188,19 @@
                         (f rff))
                       (catch Throwable e
                         e))]
-         ;; Handle cancellation - if QP returned ::cancel, the client has given up waiting
-         ;; Create a cancelled result to trigger proper cleanup
-         (when (= result ::qp.pipeline/cancel)
-           (log/infof "Query was cancelled, exiting streaming response. Export format: %s, Thread: %s"
-                      export-format (.getName (Thread/currentThread)))
-           ;; Return a completed result with row count 0 to trigger cleanup
-           ;; The streaming response system will handle the rest
-           {:status :cancelled, :row_count 0, :data {:cols []}})
-
-         (when (nil? result)
-           (let [was-cancelled? (some-> canceled-chan clojure.core.async/poll!)]
-             (log/errorf "QP returned nil. Cancelled: %s, Export format: %s, Thread: %s"
-                         was-cancelled? export-format (.getName (Thread/currentThread)))
-             (throw (ex-info "QP unexpectedly returned nil"
-                             {:cancelled? was-cancelled?
-                              :export-format export-format
-                              :thread (.getName (Thread/currentThread))}))))
-         (assert (some? result) "QP unexpectedly returned nil.")
-        ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
-        ;; question to return a response directly instead of a core.async channel
-         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-         (when (or (instance? Throwable result)
-                   (= (:status result) :failed))
-           (streaming-response/write-error! os result export-format)))))))
+         (if (nil? result)
+           (do
+             (assert (qp.pipeline/canceled?* canceled-chan)
+                     "QP unexpectedly returned nil.")
+             ;; Create a cancelled result to trigger possible proper cleanup
+             {:status :canceled, :row_count 0, :data {:cols []}})
+           (do
+             ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
+             ;; question to return a response directly instead of a core.async channel
+             (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+             (when (or (instance? Throwable result)
+                       (= (:status result) :failed))
+               (streaming-response/write-error! os result export-format)))))))))
 
 (defn transforming-query-response
   "Decorate the streaming rff to transform the top-level payload."
