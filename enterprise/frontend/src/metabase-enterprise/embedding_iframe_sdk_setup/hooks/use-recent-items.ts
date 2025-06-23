@@ -8,7 +8,7 @@ import type { SdkIframeEmbedSetupRecentItem } from "../types";
 const MAX_RECENTS = 6;
 
 export const useRecentItems = () => {
-  const { data: recentItems, isLoading } = useListRecentsQuery(
+  const { data: apiRecentItems, isLoading } = useListRecentsQuery(
     { context: ["views", "selections"] },
     { refetchOnMountOrArgChange: true },
   );
@@ -21,58 +21,36 @@ export const useRecentItems = () => {
     SdkIframeEmbedSetupRecentItem[]
   >([]);
 
-  // Filter and merge API recent items with local selections
   const recentDashboards = useMemo(() => {
-    const apiDashboards = (recentItems || [])
-      .filter((item): item is RecentItem => item.model === "dashboard")
-      .slice(0, MAX_RECENTS);
-
-    // Merge local selections with API items, prioritizing local
-    const localIds = new Set(localRecentDashboards.map((d) => d.id));
-
-    const mergedItems = [
-      ...localRecentDashboards,
-      ...apiDashboards.filter((d) => !localIds.has(d.id)),
-    ].slice(0, MAX_RECENTS);
-
-    return mergedItems;
-  }, [recentItems, localRecentDashboards]);
+    return getCombinedRecentItems(
+      "dashboard",
+      localRecentDashboards,
+      apiRecentItems ?? [],
+    );
+  }, [apiRecentItems, localRecentDashboards]);
 
   const recentQuestions = useMemo(() => {
-    const apiQuestions = (recentItems || [])
-      .filter((item): item is RecentItem => item.model === "card")
-      .slice(0, MAX_RECENTS);
-
-    // Merge local selections with API items, prioritizing local
-    const localIds = new Set(localRecentQuestions.map((q) => q.id));
-
-    const mergedItems = [
-      ...localRecentQuestions,
-      ...apiQuestions.filter((q) => !localIds.has(q.id)),
-    ].slice(0, MAX_RECENTS);
-
-    return mergedItems;
-  }, [recentItems, localRecentQuestions]);
+    return getCombinedRecentItems(
+      "card",
+      localRecentQuestions,
+      apiRecentItems ?? [],
+    );
+  }, [apiRecentItems, localRecentQuestions]);
 
   const addRecentItem = (
     type: "dashboard" | "question",
-    item: SdkIframeEmbedSetupRecentItem,
+    recentItemToAdd: SdkIframeEmbedSetupRecentItem,
   ) => {
-    if (type === "dashboard") {
-      setLocalRecentDashboards((prev) => {
-        const filtered = prev.filter((d) => d.id !== item.id);
+    const setRecentItems =
+      type === "dashboard" ? setLocalRecentDashboards : setLocalRecentQuestions;
 
-        return [item, ...filtered].slice(0, MAX_RECENTS);
-      });
-    }
-
-    if (type === "question") {
-      setLocalRecentQuestions((prev) => {
-        const filtered = prev.filter((q) => q.id !== item.id);
-
-        return [item, ...filtered].slice(0, MAX_RECENTS);
-      });
-    }
+    // Bump the added item to the top of the list.
+    setRecentItems((prev) =>
+      [
+        recentItemToAdd,
+        ...prev.filter((recentItem) => recentItem.id !== recentItemToAdd.id),
+      ].slice(0, MAX_RECENTS),
+    );
   };
 
   return {
@@ -81,4 +59,33 @@ export const useRecentItems = () => {
     addRecentItem,
     isRecentsLoading: isLoading,
   };
+};
+
+/**
+ * Combine the recent items from the activity log with the
+ * recent items that users have chosen in the modal locally.
+ */
+const getCombinedRecentItems = (
+  model: "dashboard" | "card",
+  localRecentItems: SdkIframeEmbedSetupRecentItem[],
+  apiRecentItems: RecentItem[],
+): SdkIframeEmbedSetupRecentItem[] => {
+  const localRecentItemIds = new Set(
+    localRecentItems.map((recentItem) => recentItem.id),
+  );
+
+  const filteredApiRecentItems = apiRecentItems
+    .filter((recentItem) => recentItem.model === model)
+    .slice(0, MAX_RECENTS);
+
+  // If the user has already selected the item which already exists
+  // in the activity log, we don't want to show it twice.
+  const deduplicatedApiRecentItems = filteredApiRecentItems.filter(
+    (recentItem) => !localRecentItemIds.has(recentItem.id),
+  );
+
+  return [...localRecentItems, ...deduplicatedApiRecentItems].slice(
+    0,
+    MAX_RECENTS,
+  );
 };
