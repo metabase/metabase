@@ -181,24 +181,20 @@
                                              [:= :o.table_name :t.table_name]
                                              [:= :o.option_name "require_partition_filter"]]}
                                     :require_partition_filter]]
-                          :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))]
-    (eduction
-     (mapcat (fn [dataset-id]
-               (eduction
-                (map
-                 (fn [{table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
-                   {:schema dataset-id
-                    :name table-name
-                    :database_require_filter
-                    (boolean (and
-                              ;; Materialized views can be partitioned, and whether the view require a filter or not is based
-                              ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                              ;; thus we can't know whether the view require a filter or not.
-                              ;; Maybe this is something we can do once we can parse sql
-                              (= "BASE TABLE" table-type)
-                              require-partition-filter))}))
-                (query-dataset dataset-id))))
-     (list-datasets (:details database) :logging-schema-exclusions? true))))
+                          :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
+        table-info (fn [dataset-id {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
+                     {:schema dataset-id
+                      :name table-name
+                      :database_require_filter
+                      (boolean (and
+                                ;; Materialized views can be partitioned, and whether the view require a filter or not is based
+                                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                                ;; thus we can't know whether the view require a filter or not.
+                                ;; Maybe this is something we can do once we can parse sql
+                                (= "BASE TABLE" table-type)
+                                require-partition-filter))})]
+    (->> (list-datasets (:details database) :logging-schema-exclusions? true)
+         (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [driver database]
@@ -293,25 +289,24 @@
                  database
                  {:select [:column_name :data_type :field_path]
                   :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
-                  :where [:= :table_name table-name]})
-        nested-columns (eduction
-                        (map (fn [{data-type :data_type field-path-str :field_path}]
-                               (let [field-path (str/split field-path-str #"\.")
-                                     nfc-path (not-empty (pop field-path))
-                                     [database-type base-type] (raw-type->database+base-type data-type)]
-                                 {:name (peek field-path)
-                                  :table-name table-name
-                                  :table-schema dataset-id
-                                  :database-type database-type
-                                  :base-type base-type
-                                  :nfc-path nfc-path})))
-                        (filter :nfc-path)
-                        results)]
-    (reduce
+                  :where [:= :table_name table-name]})]
+    (transduce
+     (comp
+      (map (fn [{data-type :data_type field-path-str :field_path}]
+             (let [field-path (str/split field-path-str #"\.")
+                   nfc-path (not-empty (pop field-path))
+                   [database-type base-type] (raw-type->database+base-type data-type)]
+               {:name (peek field-path)
+                :table-name table-name
+                :table-schema dataset-id
+                :database-type database-type
+                :base-type base-type
+                :nfc-path nfc-path})))
+      (filter :nfc-path))
      (fn [accum col]
        (update accum (:nfc-path col) (fnil conj []) col))
      {}
-     nested-columns)))
+     results)))
 
 (defn- maybe-add-nested-fields [nested-column-lookup col nfc-path root-database-position]
   (let [new-path ((fnil conj []) nfc-path (:name col))
