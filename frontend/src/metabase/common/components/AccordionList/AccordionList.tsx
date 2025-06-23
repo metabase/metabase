@@ -280,20 +280,21 @@ export class AccordionList<
   };
 
   getInitialCursor = () => {
-    const { cursor, searchText } = this.state;
+    const { searchText } = this.state;
+    if (searchText.length === 0) {
+      return this.getFirstSelectedItemCursor();
+    }
 
-    return (
-      cursor ??
-      (searchText.length === 0 ? this.getFirstSelectedItemCursor() : null)
-    );
+    return null;
   };
 
   handleKeyDown = (event: KeyboardEvent) => {
+    const { cursor } = this.state;
     if (event.key === "ArrowUp") {
       event.preventDefault();
 
       const prevCursor = getPrevCursor(
-        this.getInitialCursor(),
+        cursor ?? this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
         this.canSelectSection,
@@ -310,7 +311,7 @@ export class AccordionList<
       event.preventDefault();
 
       const nextCursor = getNextCursor(
-        this.getInitialCursor(),
+        cursor ?? this.getInitialCursor(),
         this.props.sections,
         this.isSectionExpanded,
         this.canSelectSection,
