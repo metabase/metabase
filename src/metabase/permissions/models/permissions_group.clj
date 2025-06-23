@@ -90,6 +90,7 @@
   [{id :id}]
   {:pre [(integer? id)]}
   (doseq [magic-group [(all-users)
+                       (all-external-users)
                        (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
