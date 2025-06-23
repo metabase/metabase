@@ -63,14 +63,15 @@
 (mbql-clause/define-catn-mbql-clause :datetime :- :type/DateTime
   [:value [:schema :any]] ;; need to support bytes type
   [:mode [:?
-          [:enum {:error/message "datetime mode string"
-                  :decode/normalize common/normalize-keyword-lower}
-           :iso
-           :simple
-           :unixMilliseconds
-           :unixSeconds
-           :unixMicroseconds
-           :unixNanoseconds]]])
+          [:schema
+           [:enum {:error/message "datetime mode string"
+                   :decode/normalize common/normalize-keyword-lower}
+            :iso
+            :simple
+            :unixmilliseconds
+            :unixseconds
+            :unixmicroseconds
+            :unixnanoseconds]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit

@@ -324,6 +324,22 @@ const CONVERSION = defineClauses(
       type: "datetime",
       requiresFeature: "expressions/datetime",
       description: () => t`Converts a datetime string to a datetime.`,
+      hasOptions: true,
+      validator(_value, mode) {
+        if (
+          !(typeof mode === "undefined") &&
+          ![
+            "iso",
+            "simple",
+            "unixmilliseconds",
+            "unixseconds",
+            "unixmicroseconds",
+            "unixnanoseconds",
+          ].includes(mode.toLowerCase())
+        ) {
+          return t`Invalid mode: ${mode}`;
+        }
+      },
       args: () => [
         {
           name: t`value`,
