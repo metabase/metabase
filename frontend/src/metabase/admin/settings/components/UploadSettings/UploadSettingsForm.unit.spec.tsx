@@ -17,7 +17,7 @@ import {
   within,
 } from "__support__/ui";
 import { findRequests } from "__support__/utils";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,
