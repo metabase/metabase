@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/containers/UndoListing";
@@ -32,7 +31,6 @@ const setup = async (props: {
   const settings = createMockSettings(emailSettings);
 
   setupPropertiesEndpoints(settings);
-  setupUpdateSettingEndpoint();
   setupSettingsEndpoints(
     Object.entries(settings).map(([key, value]) =>
       createMockSettingDefinition({ key: key as SettingKey, value }),
