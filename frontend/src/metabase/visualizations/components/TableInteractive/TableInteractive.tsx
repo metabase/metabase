@@ -262,12 +262,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [cols, settings, getCellClickedObject, tc]);
 
   const {
-    tableActions,
-    selectedTableActionState,
-    handleTableActionRun,
-    handleExecuteActionModalClose,
-  } = PLUGIN_TABLE_ACTIONS.useTableActionsExecute({
-    actionsVizSettings: settings[TABLE_ACTIONS_SETTING],
+    rowActions,
+    selectedRowAction,
+    onRowActionButtonClick,
+    onRowActionFormClose,
+  } = PLUGIN_TABLE_ACTIONS.useDataGridRowActions({
+    actionSettings: settings[TABLE_ACTIONS_SETTING],
     datasetData: data,
   });
 
@@ -701,10 +701,10 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }, [isDashcardViewTable, width]);
 
   const rowActionsColumn = useMemo(() => {
-    return tableActions?.length && handleTableActionRun
-      ? { actions: tableActions, onActionRun: handleTableActionRun }
+    return rowActions?.length && onRowActionButtonClick
+      ? { actions: rowActions, onActionClick: onRowActionButtonClick }
       : undefined;
-  }, [handleTableActionRun, tableActions]);
+  }, [rowActions, onRowActionButtonClick]);
 
   const tableProps = useDataGridInstance({
     data: rows,
@@ -788,7 +788,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   const isColumnReorderingDisabled =
     (isDashboard || mode == null || isRawTable) && !isSettings;
 
-  const TableActionExecuteModal = PLUGIN_TABLE_ACTIONS.TableActionExecuteModal;
+  const DataGridRowActionExecuteModal =
+    PLUGIN_TABLE_ACTIONS.DataGridRowActionExecuteModal;
 
   return (
     <div
@@ -812,10 +813,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         onHeaderCellClick={handleHeaderCellClick}
         onWheel={handleWheel}
       />
-      <TableActionExecuteModal
+      <DataGridRowActionExecuteModal
         scope={actionScope}
-        selectedTableActionState={selectedTableActionState}
-        onClose={handleExecuteActionModalClose}
+        rowAction={selectedRowAction?.action}
+        rowActionInput={selectedRowAction?.input}
+        onClose={onRowActionFormClose}
       />
     </div>
   );
