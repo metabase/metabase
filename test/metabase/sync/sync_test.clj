@@ -42,7 +42,8 @@
                         :semantic-type     :type/PK
                         :database-is-auto-increment true
                         :database-is-generated false
-                        :database-is-nullable false
+                        :database-is-nullable  false
+                        :database-is-pk        true
                         :json-unfolding    false
                         :database-position 0}
                        {:name              "title"
@@ -51,7 +52,8 @@
                         :semantic-type     :type/Title
                         :database-is-auto-increment false
                         :database-is-generated false
-                        :database-is-nullable true
+                        :database-is-nullable  true
+                        :database-is-pk        false
                         :json-unfolding    false
                         :database-position 1}
                        {:name              "studio"
@@ -59,7 +61,8 @@
                         :base-type         :type/Text
                         :database-is-auto-increment false
                         :database-is-generated false
-                        :database-is-nullable true
+                        :database-is-nullable  true
+                        :database-is-pk        false
                         :json-unfolding    false
                         :database-position 2}}
              :description nil}
@@ -71,7 +74,8 @@
                         :semantic-type     :type/PK
                         :database-is-auto-increment false
                         :database-is-generated false
-                        :database-is-nullable true
+                        :database-is-nullable  true
+                        :database-is-pk        true
                         :json-unfolding    false
                         :database-position 0}
                        {:name              "name"
@@ -79,7 +83,8 @@
                         :base-type         :type/Text
                         :database-is-auto-increment false
                         :database-is-generated false
-                        :database-is-nullable true
+                        :database-is-nullable  true
+                        :database-is-pk        false
                         :json-unfolding    false
                         :database-position 1}}
              :description ""}})
@@ -142,6 +147,7 @@
     :fingerprint         false
     :fingerprint_version false
     :fk_target_field_id  false
+    :database_is_pk      false
     :database_is_auto_increment false
     :database_is_generated false
     :database_is_nullable true
@@ -169,6 +175,7 @@
     :effective_type    :type/Integer
     :semantic_type     :type/PK
     :database_position 0
+    :database_is_pk    true
     :database_is_auto_increment true
     :database_is_nullable false
     :position          0}))
@@ -222,6 +229,7 @@
     :base_type         :type/Text
     :effective_type    :type/Text
     :semantic_type     :type/PK
+    :database_is_pk    true
     :database_position 0
     :position          0}))
 

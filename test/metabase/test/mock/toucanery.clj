@@ -14,6 +14,7 @@
                               :database-type              "SERIAL"
                               :base-type                  :type/Integer
                               :json-unfolding             false
+                              :database-is-pk             true
                               :database-is-auto-increment true
                               :database-is-generated      false
                               :database-is-nullable       false}
@@ -23,6 +24,7 @@
                               :effective-type             :type/DateTime
                               :coercion-strategy          :Coercion/UNIXMilliSeconds->DateTime
                               :json-unfolding             false
+                              :database-is-pk             false
                               :database-is-auto-increment false
                               :database-is-generated      false
                               :database-is-nullable       true}
@@ -30,6 +32,7 @@
                               :database-type              "OBJECT"
                               :base-type                  :type/Dictionary
                               :json-unfolding             false
+                              :database-is-pk             false
                               :database-is-auto-increment false
                               :database-is-generated      false
                               :database-is-nullable       true
@@ -37,6 +40,7 @@
                                                              :database-type              "VARCHAR"
                                                              :base-type                  :type/Text
                                                              :json-unfolding             false
+                                                             :database-is-pk             false
                                                              :database-is-auto-increment false
                                                              :database-is-generated      false
                                                              :database-is-nullable       true}
@@ -44,6 +48,7 @@
                                                              :database-type              "OBJECT"
                                                              :base-type                  :type/Dictionary
                                                              :json-unfolding             false
+                                                             :database-is-pk             false
                                                              :database-is-auto-increment false
                                                              :database-is-generated      false
                                                              :database-is-nullable       true
@@ -64,6 +69,7 @@
                                                                                             :base-type                  :type/Decimal}}}}}
                              {:name           "buyer"
                               :database-type  "OBJECT"
+                              :database-is-pk             false
                               :database-is-auto-increment false
                               :database-is-generated false
                               :database-is-nullable true
@@ -73,6 +79,7 @@
                                                  :database-type              "VARCHAR"
                                                  :json-unfolding             false
                                                  :base-type                  :type/Text
+                                                 :database-is-pk             false
                                                  :database-is-auto-increment false
                                                  :database-is-generated      false
                                                  :database-is-nullable       true}
@@ -80,6 +87,7 @@
                                                  :database-type              "VARCHAR"
                                                  :json-unfolding             false
                                                  :base-type                  :type/Text
+                                                 :database-is-pk             false
                                                  :database-is-auto-increment false
                                                  :database-is-generated      false
                                                  :database-is-nullable       true}}}}}
@@ -88,6 +96,7 @@
                    :fields #{{:name                       "id"
                               :database-type              "SERIAL"
                               :json-unfolding             false
+                              :database-is-pk             true
                               :database-is-auto-increment true
                               :database-is-generated      false
                               :database-is-nullable       false
@@ -95,6 +104,7 @@
                              {:name                       "name"
                               :database-type              "VARCHAR"
                               :json-unfolding             false
+                              :database-is-pk             false
                               :database-is-auto-increment false
                               :database-is-generated      false
                               :database-is-nullable       true

@@ -86,7 +86,7 @@
     field
     [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at
      :database_required :database_default
-     :database_is_auto_increment :database_is_generated :database_is_nullable
+     :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
      :entity_id])))
 
 (defn- fk-field-details [field]

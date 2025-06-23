@@ -46,7 +46,7 @@
   (when (seq new-field-metadatas)
     (t2/insert-returning-pks! :model/Field
                               (for [{:keys [base-type coercion-strategy database-partitioned database-position
-                                            database-default database-is-auto-increment database-is-generated database-is-nullable
+                                            database-default database-is-auto-increment database-is-generated database-is-nullable database-is-pk
                                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
                                      field-name :name :as field} new-field-metadatas
                                     :let [semantic-type (common/semantic-type field)
@@ -82,6 +82,7 @@
                                    :database_is_auto_increment (or database-is-auto-increment false)
                                    :database_is_generated      (or database-is-generated false)
                                    :database_is_nullable       (or database-is-nullable false)
+                                   :database_is_pk             (or database-is-pk false)
                                    :database_default           database-default
                                    :database_required          (or database-required false)
                                    :database_partitioned       database-partitioned ;; nullable for database that doesn't support partitioned fields
