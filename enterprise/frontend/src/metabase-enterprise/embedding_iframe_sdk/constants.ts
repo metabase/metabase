@@ -21,6 +21,7 @@ const allowedSettingsKeys = {
     "theme",
     "locale",
     "preferredAuthMethod",
+    "useExistingUserSession",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
@@ -62,4 +63,4 @@ export type AllowedEmbedSettingKey =
 export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
-] as const satisfies EmbedSettingKey[];
+] as const satisfies AllowedEmbedSettingKey[];
