@@ -28,6 +28,14 @@ import { metabaseSyntaxHighlighting } from "metabase/ui/syntax";
 
 import { highlightRanges } from "./highlights";
 
+export type ExtensionOptions = {
+  onFormat?: () => void;
+  autoFocus?: boolean;
+  autoCorrect?: string;
+  tabIndex?: number;
+  extensions?: (Extension | null)[];
+};
+
 export function getBasicSetup(
   basicSetup: boolean | BasicSetupOptions | undefined,
 ): boolean | BasicSetupOptions {
@@ -44,22 +52,23 @@ export function getBasicSetup(
 
 export function useExtensions({
   extensions,
-  onFormat,
-}: {
-  onFormat?: () => void;
-  extensions?: (Extension | null)[];
-}): Extension[] {
-  const baseExtensions = useBaseExtensions({ onFormat });
+  ...options
+}: ExtensionOptions): Extension[] {
+  const baseExtensions = useBaseExtensions(options);
   return useMemo(
     () => [...baseExtensions, ...(extensions ?? [])].filter(isNotNull),
     [extensions, baseExtensions],
   );
 }
 
-function useBaseExtensions({ onFormat }: { onFormat?: () => void }) {
+function useBaseExtensions({
+  onFormat,
+  autoFocus,
+  autoCorrect,
+  tabIndex,
+}: Omit<ExtensionOptions, "extensions">) {
   return useMemo(
     () => [
-      //
       nonce(),
       fonts(),
       drawSelection({
@@ -74,8 +83,13 @@ function useBaseExtensions({ onFormat }: { onFormat?: () => void }) {
       highlighting(),
       folds(),
       highlightRanges(),
+      contentAttributes({
+        autoFocus,
+        autoCorrect,
+        tabIndex,
+      }),
     ],
-    [onFormat],
+    [onFormat, tabIndex, autoFocus, autoCorrect],
   );
 }
 
@@ -244,4 +258,29 @@ function folds() {
       to: end,
     };
   });
+}
+
+function contentAttributes({
+  autoFocus,
+  autoCorrect,
+  tabIndex,
+}: {
+  autoFocus?: boolean;
+  autoCorrect?: string;
+  tabIndex?: number;
+}) {
+  const attrs: Record<string, string> = {};
+  if (autoFocus) {
+    // To be able to let make Mantine's FocusTrap work, the content
+    // element needs a tabIndex and data-autofocus attribute.
+    attrs["data-autofocus"] = "";
+    attrs.autofocus = "";
+  }
+  if (autoCorrect != null) {
+    attrs.autocorrect = autoCorrect;
+  }
+  if (tabIndex != null) {
+    attrs.tabIndex = tabIndex.toString();
+  }
+  return EditorView.contentAttributes.of(attrs);
 }

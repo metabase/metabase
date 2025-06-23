@@ -1,6 +1,5 @@
 import { useMergedRef } from "@mantine/hooks";
 import ReactCodeMirror, {
-  type Extension,
   type ReactCodeMirrorProps,
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
@@ -9,23 +8,34 @@ import { type Ref, forwardRef, useRef } from "react";
 
 import S from "./CodeMirror.module.css";
 import { type HighlightRange, useHighlightRanges } from "./highlights";
-import { getBasicSetup, useExtensions } from "./util";
+import { type ExtensionOptions, getBasicSetup, useExtensions } from "./util";
 
-export type CodeMirrorProps = ReactCodeMirrorProps & {
-  onFormat?: () => void;
-  extensions?: (Extension | null)[];
-  highlightRanges?: HighlightRange[];
-};
+export type CodeMirrorProps = ReactCodeMirrorProps &
+  ExtensionOptions & {
+    highlightRanges?: HighlightRange[];
+  };
 
 export const CodeMirror = forwardRef(function CodeMirrorInner(
   props: CodeMirrorProps,
   ref: Ref<ReactCodeMirrorRef>,
 ) {
-  const { className, basicSetup, highlightRanges, onFormat, ...rest } = props;
+  const {
+    className,
+    basicSetup,
+    highlightRanges,
+    onFormat,
+    autoFocus,
+    autoCorrect,
+    tabIndex,
+    ...rest
+  } = props;
 
   const extensions = useExtensions({
     extensions: props.extensions,
     onFormat,
+    autoFocus,
+    autoCorrect,
+    tabIndex,
   });
 
   const localRef = useRef(null);
@@ -37,6 +47,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
     <ReactCodeMirror
       ref={mergedRef}
       {...rest}
+      autoFocus={autoFocus}
       className={cx(S.editor, className)}
       basicSetup={getBasicSetup(basicSetup)}
       extensions={extensions}

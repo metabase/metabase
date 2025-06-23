@@ -164,6 +164,8 @@ export function Editor(props: EditorProps) {
           width="100%"
           indentWithTab={false}
           autoFocus
+          autoCorrect="off"
+          tabIndex={0}
           onFormat={
             error === null && isValidated ? formatExpression : undefined
           }

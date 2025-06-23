@@ -46,13 +46,6 @@ export function useExtensions(options: Options): Extension[] {
 
   return useMemo(() => {
     return [
-      EditorView.contentAttributes.of({
-        autocorrect: "off",
-        // To be able to let make Mantine's FocusTrap work, the content
-        // element needs a tabIndex and data-autofocus attribute.
-        tabIndex: "0",
-        "data-autofocus": "",
-      }),
       customExpression({
         expressionMode,
         query,
