@@ -1406,7 +1406,7 @@ describe("scenarios > dashboard > parameters", () => {
         cy.button("Add filter").click();
       });
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Gadget").should("be.visible");
+        cy.findAllByText("Gadget").should("have.length", 2); // x-axis label + filter
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gizmo").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -1518,7 +1518,7 @@ describe("scenarios > dashboard > parameters", () => {
         .findByText("3 selections")
         .should("exist");
       H.getDashboardCard(0).within(() => {
-        cy.findByText("Gizmo").should("exist");
+        cy.findAllByText("Gizmo").should("have.length", 2); // x-axis label + filter
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Widget").should("not.exist");
@@ -1577,7 +1577,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       H.getDashboardCard(0).within(() => {
         cy.findByText("Count").should("exist");
-        cy.findByText("4,000").should("exist");
+        cy.findAllByText("4,000").should("have.length", 2); // y-axis label + filter
         cy.findByText("Category").should("not.exist");
 
         cy.findByText("Doohickey").should("be.visible");
@@ -1804,6 +1804,7 @@ describe("scenarios > dashboard > parameters", () => {
         H.visitDashboard(dashcard.dashboard_id);
         H.editDashboard();
       });
+      cy.intercept("PUT", "/api/dashboard/*").as("updateDashboard");
 
       // Connect the Count filter in the header to first card
       H.editingDashboardParametersContainer().findByText("Count").click();
@@ -1827,12 +1828,8 @@ describe("scenarios > dashboard > parameters", () => {
       H.getDashboardCard(0).findByText("Category").click();
       H.getDashboardCard(1)
         .findByTestId("parameter-mapper-container")
-        .within(() => {
-          cy.findByText(/This filter can only connect to its own card/).should(
-            "exist",
-          );
-          cy.findByText(/Select/).should("not.exist");
-        });
+        .findByText(/Category/)
+        .should("not.exist");
 
       // Verify new card's filter is connected to the new card
       H.getDashboardCard(1).findByText("Category 1").click();
