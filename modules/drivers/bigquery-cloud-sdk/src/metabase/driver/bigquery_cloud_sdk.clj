@@ -699,7 +699,8 @@
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
                               :set-timezone             true
-                              :expression-literals      true}]
+                              :expression-literals      true
+                              :database-routing         false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC

@@ -3,7 +3,7 @@ import type { ComponentProps, MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import {
