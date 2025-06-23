@@ -16,9 +16,8 @@ import type {
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import CollectionName from "metabase/common/components/CollectionName";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
+import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
