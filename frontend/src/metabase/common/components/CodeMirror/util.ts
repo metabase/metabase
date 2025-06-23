@@ -166,7 +166,7 @@ function keyboardShortcuts({ onFormat }: { onFormat?: () => void }) {
               if (
                 !evt.shiftKey &&
                 (evt.ctrlKey || evt.metaKey) &&
-                evt.key.toLowerCase() === "f"
+                evt.key === "f"
               ) {
                 return openSearchPanel(view);
               }
