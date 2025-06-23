@@ -6,8 +6,8 @@ import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { isQuestionCard } from "metabase/dashboard/utils";
 import { useSelector, useStore } from "metabase/lib/redux";
+import { checkNotNull } from "metabase/lib/types";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
@@ -33,15 +33,13 @@ export const DashCardQuestionDownloadButton = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const token = getDashcardTokenId(dashcard);
   const uuid = getDashcardUuid(dashcard);
-  const dashcardId = dashcard.id;
   const { dashboardId } = useDashboardContext();
 
   const metadata = useSelector(getMetadata);
-  const question = useMemo(() => {
-    return isQuestionCard(dashcard.card)
-      ? new Question(dashcard.card, metadata)
-      : null;
-  }, [dashcard.card, metadata]);
+  const question = useMemo(
+    () => new Question(dashcard.card, metadata),
+    [dashcard.card, metadata],
+  );
 
   const canDownloadPng = question && canSavePng(question.display());
   const formats = canDownloadPng
@@ -58,11 +56,12 @@ export const DashCardQuestionDownloadButton = ({
       },
     });
 
+  // by the time we reach this code,  dashboardId really should not be null.
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
-    question,
+    question: question,
     result,
-    dashboardId,
-    dashcardId,
+    dashboardId: checkNotNull(dashboardId),
+    dashcardId: dashcard.id,
     uuid,
     token,
     params: getParameterValuesBySlugMap(store.getState()),
