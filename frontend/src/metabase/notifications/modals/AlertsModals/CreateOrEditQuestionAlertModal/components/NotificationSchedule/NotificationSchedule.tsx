@@ -6,7 +6,7 @@ import {
   cronUnitToNumber,
   isRepeatingEvery,
 } from "metabase/admin/performance/utils";
-import { Schedule } from "metabase/components/Schedule/Schedule";
+import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import { getScheduleExplanation } from "metabase/lib/cron";
 import { formatNotificationScheduleDescription } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";

@@ -1,4 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type { Database, Field, Table } from "metabase-types/api";
 import {
@@ -7,6 +8,8 @@ import {
   createMockFieldDimension,
   createMockTable,
 } from "metabase-types/api/mocks";
+
+import FieldClass from "./Field";
 
 const FIELD_ID = 1;
 
@@ -368,6 +371,44 @@ describe("Field", () => {
       });
 
       expect(field.remappedExternalField()).toBe(null);
+    });
+
+    it("should return the remapped field for multiple fields if it is identical", () => {
+      const metadata = createMockMetadata({
+        fields: [
+          createMockField({
+            id: 1,
+            semantic_type: "type/PK",
+          }),
+          createMockField({
+            id: 2,
+            semantic_type: "type/FK",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: 1,
+              }),
+            ],
+          }),
+          createMockField({
+            id: 3,
+            semantic_type: "type/FK",
+            dimensions: [
+              createMockFieldDimension({
+                type: "external",
+                human_readable_field_id: 1,
+              }),
+            ],
+          }),
+        ],
+      });
+      const pkField = checkNotNull(metadata.field(1));
+      const fkField1 = checkNotNull(metadata.field(2));
+      const fkField2 = checkNotNull(metadata.field(3));
+      expect(FieldClass.remappedField([fkField1])).toBe(pkField);
+      expect(FieldClass.remappedField([fkField2])).toBe(pkField);
+      expect(FieldClass.remappedField([fkField1, fkField2])).toBe(pkField);
+      expect(FieldClass.remappedField([pkField, fkField1])).toBeNull();
     });
   });
 

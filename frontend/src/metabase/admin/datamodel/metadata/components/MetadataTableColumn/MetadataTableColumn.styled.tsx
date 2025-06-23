@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import InputBlurChange from "metabase/components/InputBlurChange";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 
 export const ColumnContainer = styled.section`
   padding: 1rem 0.5rem 1rem 1rem;

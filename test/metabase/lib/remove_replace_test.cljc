@@ -1152,8 +1152,8 @@
                       :lib/metadata (lib.tu/metadata-provider-with-mock-cards)
                       :database (meta/id)
                       :stages [{:lib/type :mbql.stage/mbql
-                                :source-card (:id ((lib.tu/mock-cards) :orders))}]}
-          product-card ((lib.tu/mock-cards) :products)
+                                :source-card (:id (:orders (lib.tu/mock-cards)))}]}
+          product-card (:products (lib.tu/mock-cards))
           [orders-id orders-product-id] (lib/join-condition-lhs-columns base-query product-card nil nil)
           [products-id] (lib/join-condition-rhs-columns base-query product-card orders-product-id nil)
           query (lib/join base-query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))
@@ -1702,3 +1702,58 @@
         (testing description
           (is (= ["Products" "Products_II"]
                  (map :alias (lib/joins new-query)))))))))
+
+(deftest ^:parallel stale-clauses-test-unrelated-refs-are-stable
+  (testing "deleting eg. an aggregation should not break a downstream ref to a breakout (#59441)"
+    (let [base1  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/join (meta/table-metadata :products))
+                     (lib/aggregate (lib/count))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+          cols   (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          base2  (-> base1
+                     (lib/breakout (get cols "Products__CATEGORY"))             ; Explicitly joined
+                     (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE"))   ; Implicitly joined
+                     lib/append-stage)
+          [category] (lib/visible-columns base2)
+          ;; Adding an expression based on one of the breakouts.
+          query      (lib/expression base2 "WidgetOrNah" (lib/case [[(lib/= category "Widget") "Widget!"]] "Nah"))
+          [cnt sum]  (lib/aggregations query 0)]
+      (is (=? [:count {}]
+              cnt))
+      (is (=? [:sum {} [:field {} (meta/id :orders :subtotal)]]
+              sum))
+      (is (=? (update-in query [:stages 0 :aggregation] (comp vector first))
+              (lib/remove-clause query 0 sum)))
+      (is (=? (update-in query [:stages 0 :aggregation] (comp vec rest))
+              (lib/remove-clause query 0 cnt))))))
+
+(deftest ^:parallel stale-clauses-test-no-capture-of-later-aggregations
+  (testing "deleting an aggregation in stage 0 should not delete refs to a similar aggregation in stage 1"
+    (let [base1                     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                        (lib/join (meta/table-metadata :products))
+                                        (lib/aggregate (lib/count))
+                                        (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+          cols                      (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          base2                     (-> base1
+                                        (lib/breakout (get cols "Products__CATEGORY"))             ; Explicitly joined
+                                        (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE"))   ; Implicitly joined
+                                        lib/append-stage)
+          [category _source count0] (lib/visible-columns base2)
+          ;; Adding a second stage with: a filter on stage 0's count, its own count aggregation, and order-by
+          ;; (stage 1's) count, descending.
+          base3                     (-> base2
+                                        (lib/filter (lib/> count0 100))
+                                        (lib/aggregate (lib/count))
+                                        (lib/breakout category))
+          [_cat1 cnt1]              (lib/orderable-columns base3)
+          query                     (lib/order-by base3 cnt1 :desc)
+          [cnt0]                    (lib/aggregations query 0)]
+      (is (=? [:count {}]
+              cnt0))
+      ;; Deleting the :count aggregation from stage 0 should:
+      ;; - Removing the filter on stage 1, which references the :count from stage 0.
+      ;; - Preserve the order-by on stage 1, which references the :count from stage 1.
+      (is (=? (-> query
+                  (update-in [:stages 0 :aggregation] (comp vec rest))
+                  (update-in [:stages 1] dissoc :filters))
+              (lib/remove-clause query 0 cnt0))))))

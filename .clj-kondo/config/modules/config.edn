@@ -354,6 +354,14 @@
    :api  #{metabase.connection-pool}
    :uses #{}}
 
+  content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase.content-translation.api
+           metabase.content-translation.models}
+   :uses #{api
+           premium-features
+           util}}
+
   content-verification
   {:team "Admin Webapp"
    :api  #{metabase.content-verification.core
@@ -372,6 +380,7 @@
    :api  #{metabase.dashboards.api
            metabase.dashboards.autoplace
            metabase.dashboards.constants
+           metabase.dashboards.init
            metabase.dashboards.models.dashboard
            metabase.dashboards.models.dashboard-card
            metabase.dashboards.models.dashboard-tab}
@@ -398,6 +407,7 @@
            request
            revisions
            search
+           settings
            util
            warehouse-schema
            xrays}}
@@ -479,6 +489,7 @@
   {:team "Embedding"
    :api  #{metabase.embedding.api
            metabase.embedding.init
+           metabase.embedding.jwt
            metabase.embedding.settings
            metabase.embedding.validation}
    :uses #{analytics
@@ -760,17 +771,7 @@
   {:team "Admin Webapp"
    :api  #{metabase.permissions.api
            metabase.permissions.core
-           metabase.permissions.init
-           ;; TODO -- move these into the API namespace.
-           metabase.permissions.models.application-permissions-revision
-           metabase.permissions.models.collection-permission-graph-revision
-           metabase.permissions.models.collection.graph
-           metabase.permissions.models.data-permissions
-           metabase.permissions.models.permissions
-           metabase.permissions.models.permissions-group
-           metabase.permissions.path
-           metabase.permissions.util
-           metabase.permissions.validation}
+           metabase.permissions.init}
    :uses #{api
            app-db
            audit-app
@@ -902,7 +903,6 @@
            premium-features
            public-sharing
            pulse
-           query-analysis
            query-permissions
            query-processor
            request
@@ -911,19 +911,6 @@
            util
            view-log
            warehouse-schema}}
-
-  query-analysis
-  {:team "Querying"
-   :api  #{metabase.query-analysis.core
-           metabase.query-analysis.init}
-   :uses #{config
-           driver
-           legacy-mbql
-           lib
-           query-processor
-           settings
-           task
-           util}}
 
   query-permissions
   {:team "Admin Webapp"
@@ -1500,7 +1487,6 @@
    :api  #{metabase-enterprise.ai-sql-fixer.api}
    :uses #{api
            driver
-           query-analysis
            query-processor
            util
            enterprise/metabot-v3}}
@@ -1572,6 +1558,17 @@
            task
            util}}
 
+  enterprise/content-translation
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.content-translation.dictionary
+           metabase-enterprise.content-translation.routes}
+   :uses #{api
+           content-translation
+           embedding
+           premium-features
+           util
+           enterprise/api}}
+
   enterprise/content-verification
   {:team "Admin Webapp"
    :api  #{metabase-enterprise.content-verification.api.routes}
@@ -1626,6 +1623,7 @@
    :uses #{api
            config
            database-routing
+           driver
            events
            lib
            models
@@ -1696,6 +1694,7 @@
            app-db
            collections
            config
+           driver
            legacy-mbql
            lib
            lib-be
@@ -1711,19 +1710,20 @@
            util
            warehouse-schema}}
 
+  enterprise/permission-debug
+  {:team "Admin Webapp"
+   :api #{metabase-enterprise.permission-debug.api}
+   :uses #{api
+           lib
+           models
+           permissions
+           query-processor
+           util}}
+
   enterprise/premium-features
   {:team "Admin Webapp"
    :api  #{}
    :uses #{premium-features
-           util}}
-
-  enterprise/query-reference-validation
-  {:team "Querying"
-   :api  #{metabase-enterprise.query-reference-validation.api}
-   :uses #{api
-           collections
-           query-analysis
-           request
            util}}
 
   enterprise/sandbox

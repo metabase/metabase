@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useListCardsQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getIcon } from "metabase/entities/questions";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";

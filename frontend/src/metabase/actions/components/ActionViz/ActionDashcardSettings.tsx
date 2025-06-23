@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
 import { isModelAction } from "metabase/actions/utils";
-import EmptyState from "metabase/components/EmptyState";
-import LegacyModal from "metabase/components/Modal";
-import LegacyButton from "metabase/core/components/Button/Button";
+import LegacyButton from "metabase/common/components/Button/Button";
+import EmptyState from "metabase/common/components/EmptyState";
+import LegacyModal from "metabase/common/components/Modal";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,

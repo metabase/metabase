@@ -18,6 +18,7 @@
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
+   [metabase.dashboards.settings :as dashboards.settings]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.events.core :as events]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
@@ -28,7 +29,6 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.validation :as validation]
    [metabase.public-sharing.validation :as public-sharing.validation]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.pulse.core :as pulse]
@@ -97,21 +97,22 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (binding [params/*field-id-context* (atom params/empty-field-id-context)]
-      (t2/hydrate dashboard [:dashcards
-                             ;; disabled :can_run_adhoc_query for performance reasons in 50 release
-                             [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                             [:series :can_write #_:can_run_adhoc_query]
-                             :dashcard/action
-                             :dashcard/linkcard-info]
-                  :can_restore
-                  :can_delete
-                  :last_used_param_values
-                  :tabs
-                  :collection_authority_level
-                  :can_write
-                  :param_fields
-                  [:moderation_reviews :moderator_details]
-                  [:collection :is_personal :effective_location]))))
+      (cond->>  [[:dashcards
+                    ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                  [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                  [:series :can_write #_:can_run_adhoc_query]
+                  :dashcard/action
+                  :dashcard/linkcard-info]
+                 :can_restore
+                 :can_delete
+                 :tabs
+                 :collection_authority_level
+                 :can_write
+                 :param_fields
+                 [:moderation_reviews :moderator_details]
+                 [:collection :is_personal :effective_location]]
+        (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
+        true (apply t2/hydrate dashboard)))))
 
 (api.macros/defendpoint :post "/"
   "Create a new Dashboard."
@@ -1009,20 +1010,17 @@
                                            :embedding_params :archived :auto_apply_filters}))]
              (when (api/column-will-change? :archived current-dash dash-updates)
                (if (:archived dash-updates)
-                 (queries/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card
-                               :dashboard_id id
-                               :archived false
-                               {:archived true :archived_directly false}))
-                 (queries/with-allowed-changes-to-internal-dashboard-card
-                   (t2/update! :model/Card
-                               :dashboard_id id
-                               :archived true
-                               :archived_directly false
-                               {:archived false}))))
+                 (t2/update! :model/Card
+                             :dashboard_id id
+                             :archived false
+                             {:archived true :archived_directly false})
+                 (t2/update! :model/Card
+                             :dashboard_id id
+                             :archived true
+                             :archived_directly false
+                             {:archived false})))
              (when (api/column-will-change? :collection_id current-dash dash-updates)
-               (queries/with-allowed-changes-to-internal-dashboard-card
-                 (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)})))
+               (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)}))
              (t2/update! :model/Dashboard id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
@@ -1161,7 +1159,7 @@
   "Delete the publicly-accessible link to this Dashboard."
   [{:keys [dashboard-id]} :- [:map
                               [:dashboard-id ms/PositiveInt]]]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/update! :model/Dashboard dashboard-id
@@ -1173,7 +1171,7 @@
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -1181,7 +1179,7 @@
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (embedding.validation/check-embedding-enabled)
   (t2/select [:model/Dashboard :name :id], :enable_embedding true, :archived false))
 
@@ -1249,7 +1247,8 @@
    constraint-param-key->value  :- [:map-of string? any?]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
-    (binding [qp.perms/*param-values-query* true]
+    (binding [qp.perms/*param-values-query* true
+              chain-filter/*allow-implicit-uuid-field-remapping* false]
       (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 (api.macros/defendpoint :get "/:id/params/:param-key/remapping"

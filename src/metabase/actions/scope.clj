@@ -34,8 +34,9 @@
   (if (and (contains? scope :collection-id) (contains? scope :table-id) (contains? scope :database-id))
     scope
     (let [card         (t2/select-one [:model/Card :dataset_query :collection_id :database_id] card-id)
-          ;; TODO Make this change once we've updated all the tests that rely on row-data
-          source-table (when true #_(= :model (:type card)) (-> card :dataset_query :query :source-table))
+          ;; TODO Enable check for-real once we've updated all the tests that rely on row-data (using "or" for eastwood)
+          source-table (when (or true (= :model (:type card)))
+                         (-> card :dataset_query :query :source-table))
           table-id     (when (pos-int? source-table)
                          source-table)]
       (merge {:table-id      table-id

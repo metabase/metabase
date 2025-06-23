@@ -4,10 +4,10 @@ import { t } from "ttag";
 
 import ActionViz from "metabase/actions/components/ActionViz";
 import { isActionDashCard } from "metabase/actions/utils";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import FormField from "metabase/core/components/FormField/FormField";
-import FormInput from "metabase/core/components/FormInput";
-import FormSelect from "metabase/core/components/FormSelect";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import FormField from "metabase/common/components/FormField/FormField";
+import FormInput from "metabase/common/components/FormInput";
+import FormSelect from "metabase/common/components/FormSelect";
 import { closeSidebar } from "metabase/dashboard/actions";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { Form, FormProvider } from "metabase/forms";

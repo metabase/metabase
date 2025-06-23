@@ -327,6 +327,7 @@
   with-system-timezone-id!]
 
  [tx
+  arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
   dataset-definition
@@ -338,6 +339,7 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
+  field-reference
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag
