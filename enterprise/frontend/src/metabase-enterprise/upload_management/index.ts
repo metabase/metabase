@@ -6,7 +6,6 @@ import {
   GdriveAddDataPanel,
   GdriveConnectionModal,
   GdriveDbMenu,
-  GdriveSidebarMenuItem,
   GdriveSyncStatus,
 } from "../google_drive";
 
@@ -23,7 +22,6 @@ if (hasPremiumFeature("hosting")) {
 if (hasPremiumFeature("hosting") && hasPremiumFeature("attached_dwh")) {
   PLUGIN_UPLOAD_MANAGEMENT.FileUploadErrorModal = FileUploadErrorModal;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveConnectionModal = GdriveConnectionModal;
-  PLUGIN_UPLOAD_MANAGEMENT.GdriveSidebarMenuItem = GdriveSidebarMenuItem;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus = GdriveSyncStatus;
   PLUGIN_UPLOAD_MANAGEMENT.GdriveDbMenu = GdriveDbMenu;
 }
