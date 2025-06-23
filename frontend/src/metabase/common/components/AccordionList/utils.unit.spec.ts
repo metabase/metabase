@@ -4,8 +4,6 @@ const sectionIsExpanded = () => true;
 const sectionIsNotExpanded = () => false;
 const canSelectSection = () => true;
 const cannotSelectSection = () => false;
-const filterAll = () => true;
-const filterEvenIds = (item: any) => item.id % 2 === 0;
 
 const sections = [
   {
@@ -32,28 +30,67 @@ const sections = [
   },
 ];
 
+const rows = [
+  {
+    type: "header" as const,
+    section: sections[0],
+    sectionIndex: 0,
+    isLastSection: false,
+  },
+  {
+    type: "item" as const,
+    section: sections[0],
+    sectionIndex: 0,
+    itemIndex: 0,
+    item: sections[0].items[0],
+    isLastSection: false,
+    isLastItem: false,
+  },
+  {
+    type: "item" as const,
+    section: sections[0],
+    sectionIndex: 0,
+    itemIndex: 1,
+    item: sections[0].items[1],
+    isLastSection: false,
+    isLastItem: true,
+  },
+  {
+    type: "header" as const,
+    section: sections[1],
+    sectionIndex: 1,
+    isLastSection: true,
+  },
+  {
+    type: "item" as const,
+    section: sections[1],
+    sectionIndex: 1,
+    itemIndex: 0,
+    item: sections[1].items[0],
+    isLastSection: true,
+    isLastItem: false,
+  },
+  {
+    type: "item" as const,
+    section: sections[1],
+    sectionIndex: 1,
+    itemIndex: 1,
+    item: sections[1].items[1],
+    isLastSection: true,
+    isLastItem: true,
+  },
+];
+
 describe("getNextCursor", () => {
   it("returns the first section selected when initial cursor is null and selecting sections allowed", () => {
     expect(
-      getNextCursor(
-        null,
-        sections,
-        sectionIsExpanded,
-        canSelectSection,
-        filterAll,
-      ),
+      getNextCursor(null, rows, sectionIsExpanded, canSelectSection),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: null });
   });
 
   it("returns the first item of the first section selected when initial cursor is null and selecting sections is not allowed", () => {
     expect(
-      getNextCursor(
-        null,
-        sections,
-        sectionIsExpanded,
-        cannotSelectSection,
-        filterAll,
-      ),
+      getNextCursor(null, rows, sectionIsExpanded, cannotSelectSection),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 0 });
   });
 
@@ -61,10 +98,9 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 0, itemIndex: null },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 0 });
   });
@@ -73,10 +109,9 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 0, itemIndex: null },
-        sections,
+        rows,
         sectionIsNotExpanded,
         canSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 1, itemIndex: null });
   });
@@ -85,10 +120,9 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 0, itemIndex: 0 },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 1 });
   });
@@ -97,10 +131,9 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 0, itemIndex: 1 },
-        sections,
+        rows,
         sectionIsExpanded,
         canSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 1, itemIndex: null });
   });
@@ -109,10 +142,9 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 0, itemIndex: 1 },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 1, itemIndex: 0 });
   });
@@ -121,10 +153,9 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 1, itemIndex: 1 },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 1, itemIndex: 1 });
   });
@@ -133,25 +164,18 @@ describe("getNextCursor", () => {
     expect(
       getNextCursor(
         { sectionIndex: 0, itemIndex: 1 },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterEvenIds,
       ),
-    ).toStrictEqual({ sectionIndex: 1, itemIndex: 1 });
+    ).toStrictEqual({ sectionIndex: 1, itemIndex: 0 });
   });
 });
 
 describe("getPrevCursor", () => {
   it("returns the first section when initial cursor is null and selecting sections allowed", () => {
     expect(
-      getPrevCursor(
-        null,
-        sections,
-        sectionIsExpanded,
-        canSelectSection,
-        filterAll,
-      ),
+      getPrevCursor(null, rows, sectionIsExpanded, canSelectSection),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: null });
   });
 
@@ -159,10 +183,9 @@ describe("getPrevCursor", () => {
     expect(
       getPrevCursor(
         { sectionIndex: 0, itemIndex: 0 },
-        sections,
+        rows,
         sectionIsExpanded,
         canSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: null });
   });
@@ -171,10 +194,9 @@ describe("getPrevCursor", () => {
     expect(
       getPrevCursor(
         { sectionIndex: 0, itemIndex: 0 },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 0 });
   });
@@ -183,10 +205,9 @@ describe("getPrevCursor", () => {
     expect(
       getPrevCursor(
         { sectionIndex: 0, itemIndex: 1 },
-        sections,
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 0 });
   });
@@ -195,10 +216,9 @@ describe("getPrevCursor", () => {
     expect(
       getPrevCursor(
         { sectionIndex: 1, itemIndex: null },
-        sections,
+        rows,
         sectionIsNotExpanded,
         canSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: null });
   });
@@ -207,10 +227,9 @@ describe("getPrevCursor", () => {
     expect(
       getPrevCursor(
         { sectionIndex: 1, itemIndex: null },
-        sections,
+        rows,
         sectionIsExpanded,
         canSelectSection,
-        filterAll,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 1 });
   });
@@ -218,11 +237,10 @@ describe("getPrevCursor", () => {
   it("skips filtered out items", () => {
     expect(
       getPrevCursor(
-        { sectionIndex: 1, itemIndex: 1 },
-        sections,
+        { sectionIndex: 1, itemIndex: 0 },
+        rows,
         sectionIsExpanded,
         cannotSelectSection,
-        filterEvenIds,
       ),
     ).toStrictEqual({ sectionIndex: 0, itemIndex: 1 });
   });
