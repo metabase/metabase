@@ -5,6 +5,35 @@ import type {
   TableId,
 } from "metabase-types/api";
 
+export const DataModel = {
+  visit,
+  TablePicker: {
+    getTable: getTablePickerTable,
+  },
+  TableSection: {
+    get: getTableSection,
+    getNameInput: getTableNameInput,
+    getDescriptionInput: getTableDescriptionInput,
+    getSortButton: getTableSortButton,
+    getSortOrderInput: getTableSortOrderInput,
+    getField: getTableSectionField,
+    getFieldNameInput: getTableSectionFieldNameInput,
+    getFieldDescriptionInput: getTableSectionFieldDescriptionInput,
+    getSortableField: getTableSectionSortableField,
+    getSortableFields: getTableSectionSortableFields,
+    clickField: clickTableSectionField,
+  },
+  FieldSection: {
+    get: getFieldSection,
+    getNameInput: getFieldNameInput,
+    getDescriptionInput: getFieldDescriptionInput,
+    getVisibilityInput: getFieldVisibilityInput,
+    getSemanticTypeInput: getFieldSemanticTypeInput,
+    getSemanticTypeCurrencyInput: getFieldSemanticTypeCurrencyInput,
+    getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
+  },
+};
+
 function visit({
   databaseId,
   schemaId,
@@ -85,16 +114,56 @@ function visit({
   cy.wait(["@datamodel/visit/databases"]);
 }
 
+/** table picker helpers */
+
 function getTablePickerTable(name: string) {
   return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
 }
+
+/** table section helpers */
 
 function getTableSection() {
   return cy.findByTestId("table-section");
 }
 
+function getTableNameInput() {
+  return getTableSection().findByPlaceholderText("Give this table a name");
+}
+
+function getTableDescriptionInput() {
+  return getTableSection().findByPlaceholderText(
+    "Give this table a description",
+  );
+}
+
+function getTableSortButton() {
+  return getTableSection().button(/Sorting/);
+}
+
+function getTableSortOrderInput() {
+  return getTableSection().findByLabelText("Column order");
+}
+
 function getTableSectionField(name: string) {
   return getTableSection().get(`a[aria-label="${name}"]`);
+}
+
+function getTableSectionSortableField(name: string) {
+  return getTableSection().findByLabelText(name);
+}
+
+function getTableSectionSortableFields() {
+  return getTableSection().findAllByRole("listitem");
+}
+
+function getTableSectionFieldNameInput(name: string) {
+  return getTableSectionField(name).findByPlaceholderText(
+    "Give this field a name",
+  );
+}
+
+function getTableSectionFieldDescriptionInput(name: string) {
+  return getTableSectionField(name).findByPlaceholderText("No description yet");
 }
 
 function clickTableSectionField(name: string) {
@@ -102,21 +171,34 @@ function clickTableSectionField(name: string) {
   return getTableSectionField(name).findByRole("img").scrollIntoView().click();
 }
 
+/** field section helpers */
+
 function getFieldSection() {
   return cy.findByTestId("field-section");
 }
 
-export const DataModel = {
-  visit,
-  TablePicker: {
-    getTable: getTablePickerTable,
-  },
-  TableSection: {
-    get: getTableSection,
-    getField: getTableSectionField,
-    clickField: clickTableSectionField,
-  },
-  FieldSection: {
-    get: getFieldSection,
-  },
-};
+function getFieldNameInput() {
+  return getFieldSection().findByPlaceholderText("Give this field a name");
+}
+
+function getFieldDescriptionInput() {
+  return getFieldSection().findByPlaceholderText(
+    "Give this field a description",
+  );
+}
+
+function getFieldVisibilityInput() {
+  return getFieldSection().findByPlaceholderText("Select a field visibility");
+}
+
+function getFieldSemanticTypeInput() {
+  return getFieldSection().findByPlaceholderText("Select a semantic type");
+}
+
+function getFieldSemanticTypeCurrencyInput() {
+  return getFieldSection().findByPlaceholderText("Select a currency type");
+}
+
+function getFieldSemanticTypeFkTargetInput() {
+  return getFieldSection().findByPlaceholderText("Select a target");
+}

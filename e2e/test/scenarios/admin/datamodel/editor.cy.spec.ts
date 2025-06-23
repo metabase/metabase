@@ -5,6 +5,7 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { DataModel } from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -20,8 +21,6 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:PUBLIC`;
 
-const ORDERS_DESCRIPTION =
-  "Confirmed Sample Company orders for a product, from a user.";
 const CUSTOM_MAPPING_ERROR =
   "You need unrestricted data access on this table to map custom display values.";
 
@@ -48,10 +47,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      setValueAndBlurInput("Orders", "New orders");
+
+      DataModel.TableSection.getNameInput().clear().type("New orders").blur();
       cy.wait("@updateTable");
+
       H.undoToast().should("contain.text", "Table name updated");
       cy.findByDisplayValue("New orders").should("be.visible");
+      DataModel.TableSection.getNameInput()
+        .should("have.value", "New orders")
+        .and("be.visible");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
@@ -67,10 +71,17 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      setValueAndBlurInput(ORDERS_DESCRIPTION, "New description");
+
+      DataModel.TableSection.getDescriptionInput()
+        .clear()
+        .type("New description")
+        .blur();
       cy.wait("@updateTable");
+
       H.undoToast().should("contain.text", "Table description updated");
-      cy.findByDisplayValue("New description").should("be.visible");
+      DataModel.TableSection.getDescriptionInput()
+        .should("have.value", "New description")
+        .and("be.visible");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -85,9 +96,14 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      clearAndBlurInput(ORDERS_DESCRIPTION);
+
+      DataModel.TableSection.getDescriptionInput().clear().blur();
       cy.wait("@updateTable");
+
       H.undoToast().should("contain.text", "Table description updated");
+      DataModel.TableSection.getDescriptionInput()
+        .should("have.value", "")
+        .and("be.visible");
 
       cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}`);
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -102,9 +118,11 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
+
       getTable("Orders").button("Hide table").click();
       cy.wait("@updateTable");
-      H.undoToast().findByText("Hid Orders").should("be.visible");
+
+      H.undoToast().should("contain.text", "Hid Orders");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
@@ -121,7 +139,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       getTable("Orders").button("Unhide table").click();
       cy.wait("@updateTable");
-      H.undoToast().findByText("Unhid Orders").should("be.visible");
+
+      H.undoToast().should("contain.text", "Unhid Orders");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
@@ -137,14 +156,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      H.DataModel.TableSection.getField("Tax").within(() => {
-        setValueAndBlurInput("Tax", "New tax");
-      });
+
+      DataModel.TableSection.getFieldNameInput("Tax")
+        .clear()
+        .type("New tax")
+        .blur();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Display name for Tax updated");
-      H.DataModel.TableSection.getField("New tax")
-        .findByDisplayValue("New tax")
-        .should("be.visible");
+      DataModel.TableSection.getFieldNameInput("New tax").should("be.visible");
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -159,14 +179,18 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      H.DataModel.TableSection.getField("Total").within(() => {
-        setValueAndBlurInput("The total billed amount.", "New description");
-      });
+
+      DataModel.TableSection.getFieldDescriptionInput("Total")
+        .clear()
+        .type("New description")
+        .blur();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Description for Total updated");
-      H.DataModel.TableSection.getField("Total")
-        .findByDisplayValue("New description")
-        .should("be.visible");
+      DataModel.TableSection.getFieldDescriptionInput("Total").should(
+        "have.value",
+        "New description",
+      );
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -183,11 +207,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      H.DataModel.TableSection.getField("Total").within(() => {
-        clearAndBlurInput("The total billed amount.");
-      });
+
+      DataModel.TableSection.getFieldDescriptionInput("Total").clear().blur();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Description for Total updated");
+      DataModel.TableSection.getFieldDescriptionInput("Total").should(
+        "have.value",
+        "",
+      );
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -205,13 +233,18 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
-      H.DataModel.FieldSection.get().findByDisplayValue("Everywhere").click();
+
+      H.DataModel.FieldSection.getVisibilityInput()
+        .should("have.value", "Everywhere")
+        .click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Visibility for Tax updated");
-      H.DataModel.FieldSection.get()
-        .findByDisplayValue("Do not include")
-        .should("be.visible");
+      H.DataModel.FieldSection.getVisibilityInput().should(
+        "have.value",
+        "Do not include",
+      );
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -227,23 +260,20 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
-      H.DataModel.FieldSection.get()
-        .findByPlaceholderText("Select a semantic type")
+
+      H.DataModel.FieldSection.getSemanticTypeInput()
         .should("have.value", "No semantic type")
         .click();
-      searchAndSelectValue("Currency");
+      H.popover().findByText("Currency").click();
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Semantic type for Tax updated");
-      H.DataModel.FieldSection.get()
-        .findByPlaceholderText("Select a currency type")
-        .should("be.visible");
 
-      H.DataModel.FieldSection.get()
-        .findByPlaceholderText("Select a currency type")
+      H.undoToast().should("contain.text", "Semantic type for Tax updated");
+      H.DataModel.FieldSection.getSemanticTypeCurrencyInput()
         .scrollIntoView()
-        .should("have.value", "US Dollar")
+        .should("be.visible")
+        .and("have.value", "US Dollar")
         .click();
-      searchAndSelectValue("Canadian Dollar");
+      H.popover().findByText("Canadian Dollar").click();
       cy.wait("@updateField");
 
       H.openOrdersTable();
@@ -258,17 +288,18 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.USER_ID,
       });
-      H.DataModel.FieldSection.get()
-        .findByPlaceholderText("Select a target")
+
+      H.DataModel.FieldSection.getSemanticTypeFkTarget()
         .should("have.value", "People → ID")
         .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Semantic type for User ID updated");
-      H.DataModel.FieldSection.get()
-        .findByPlaceholderText("Select a target")
-        .should("have.value", "Products → ID")
-        .and("be.visible");
+      H.DataModel.FieldSection.getSemanticTypeFkTarget().should(
+        "have.value",
+        "Products → ID",
+      );
 
       H.openTable({
         database: SAMPLE_DB_ID,
@@ -290,8 +321,12 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
-      cy.button(/Sorting/).click();
-      verifyTableOrder("database");
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
       H.openProductsTable();
       assertTableHeader([
         "ID",
@@ -311,8 +346,17 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
-      cy.button(/Sorting/).click();
-      setTableOrder("Alphabetical order");
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByLabelText("Alphabetical order")
+        .click();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("alphabetical")
+        .should("be.checked");
+
       H.openProductsTable();
       assertTableHeader([
         "Category",
@@ -332,8 +376,17 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
-      cy.button(/Sorting/).click();
-      setTableOrder("Auto order");
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByLabelText("Auto order")
+        .click();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("smart")
+        .should("be.checked");
+
       H.openProductsTable();
       assertTableHeader([
         "ID",
@@ -353,9 +406,13 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
-      cy.button(/Sorting/).click();
-      verifyTableOrder("database");
-      H.moveDnDKitElement(cy.findByLabelText("ID"), {
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
         vertical: 50,
       });
       cy.wait("@updateFieldOrder");
@@ -363,7 +420,10 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.log("should not show loading state after an update (metabase#56482)");
       cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
 
-      verifyTableOrder("custom");
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("custom")
+        .should("be.checked");
+
       H.openProductsTable();
       assertTableHeader([
         "Ean",
@@ -383,9 +443,13 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: PRODUCTS_ID,
       });
-      cy.button(/Sorting/).click();
-      verifyTableOrder("database");
-      H.moveDnDKitElement(cy.findByLabelText("ID"), {
+
+      H.DataModel.TableSection.getSortButton().click();
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+
+      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
         vertical: 50,
       });
       cy.wait("@updateFieldOrder");
@@ -393,29 +457,33 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.log("should not show loading state after an update (metabase#56482)");
       cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
 
-      H.DataModel.TableSection.get()
-        .findAllByRole("listitem")
-        .should(($items) => {
-          expect($items[0].textContent).to.equal("Ean");
-          expect($items[1].textContent).to.equal("ID");
-        });
+      H.DataModel.TableSection.getSortableFields().should(($items) => {
+        expect($items[0].textContent).to.equal("Ean");
+        expect($items[1].textContent).to.equal("ID");
+      });
 
-      verifyTableOrder("custom");
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("custom")
+        .should("be.checked");
 
       cy.log(
         "should allow switching to predefined order afterwards (metabase#56482)",
       );
-      setTableOrder("Database order");
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByLabelText("Database order")
+        .click();
+      cy.wait("@updateTable");
 
-      H.DataModel.TableSection.get()
-        .findAllByRole("listitem")
-        .should(($items) => {
-          expect($items[0].textContent).to.equal("ID");
-          expect($items[1].textContent).to.equal("Ean");
-        });
+      H.DataModel.TableSection.getSortOrderInput()
+        .findByDisplayValue("database")
+        .should("be.checked");
+      H.DataModel.TableSection.getSortableFields().should(($items) => {
+        expect($items[0].textContent).to.equal("ID");
+        expect($items[1].textContent).to.equal("Ean");
+      });
 
       cy.log("should allow drag & drop afterwards (metabase#56482)"); // extra sanity check
-      H.moveDnDKitElement(cy.findByLabelText("ID"), {
+      H.moveDnDKitElement(H.DataModel.TableSection.getSortableField("ID"), {
         vertical: 50,
       });
       cy.wait("@updateFieldOrder");
@@ -423,12 +491,10 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.log("should not show loading state after an update (metabase#56482)");
       cy.findByTestId("loading-indicator", { timeout: 0 }).should("not.exist");
 
-      H.DataModel.TableSection.get()
-        .findAllByRole("listitem")
-        .should(($items) => {
-          expect($items[0].textContent).to.equal("Ean");
-          expect($items[1].textContent).to.equal("ID");
-        });
+      H.DataModel.TableSection.getSortableFields().should(($items) => {
+        expect($items[0].textContent).to.equal("Ean");
+        expect($items[1].textContent).to.equal("ID");
+      });
     });
 
     // TODO: https://linear.app/metabase/issue/SEM-299
@@ -470,9 +536,11 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
-      setValueAndBlurInput("Tax", "New tax");
+      H.DataModel.TableSection.getField("Tax").within(() => {
+        setValueAndBlurInput("Tax", "New tax");
+      });
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated Tax");
+      H.undoToast().should("contain.text", "Display name for Tax updated");
       cy.findByDisplayValue("New tax").should("be.visible");
 
       H.openOrdersTable();
@@ -489,9 +557,12 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TOTAL,
       });
-      setValueAndBlurInput("The total billed amount.", "New description");
+
+      H.DataModel.TableSection.getField("Total").within(() => {
+        setValueAndBlurInput("The total billed amount.", "New description");
+      });
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated Total");
+      H.undoToast().should("contain.text", "Description for Total updated");
       cy.findByDisplayValue("New description").should("be.visible");
 
       cy.visit(
@@ -513,7 +584,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByDisplayValue("Everywhere").click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated Tax");
+      H.undoToast().should("contain.text", "Visibility for Tax updated");
       cy.findByDisplayValue("Do not include").should("be.visible");
 
       H.openOrdersTable();
@@ -535,7 +606,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       searchAndSelectValue("Currency");
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated Tax");
+      H.undoToast().should("contain.text", "Semantic type for Tax updated");
       cy.findByPlaceholderText("Select a currency type").should("be.visible");
 
       cy.findByPlaceholderText("Select a currency type")
@@ -561,7 +632,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated User ID");
+      H.undoToast().should("contain.text", "Semantic type for User ID updated");
       cy.findByPlaceholderText("Select a target")
         .should("have.value", "Products → ID")
         .should("be.visible");
@@ -580,6 +651,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("User ID").should("be.visible");
     });
 
+    // TODO: next
     it("should allow you to cast a field to a data type", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
@@ -857,27 +929,12 @@ const setValueAndBlurInput = (oldValue: string, newValue: string) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
 };
 
-const clearAndBlurInput = (oldValue: string) => {
-  cy.findByDisplayValue(oldValue).clear().blur();
-};
-
 const searchAndSelectValue = (newValue: string) => {
   H.popover().findByText(newValue).click();
 };
 
 const getFieldSection = (fieldName: string) => {
   return cy.findByLabelText(fieldName);
-};
-
-const verifyTableOrder = (order: string) => {
-  cy.findByLabelText("Column order")
-    .findByDisplayValue(order)
-    .should("be.checked");
-};
-
-const setTableOrder = (order: string) => {
-  cy.findByLabelText("Column order").findByLabelText(order).click();
-  cy.wait("@updateTable");
 };
 
 const assertTableHeader = (columns: string[]) => {
