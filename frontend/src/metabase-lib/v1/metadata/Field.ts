@@ -4,7 +4,8 @@ import dayjs from "dayjs";
 import _ from "underscore";
 
 import { coercions_for_type, is_coerceable } from "cljs/metabase.types.core";
-import { formatField, stripId } from "metabase/lib/formatting";
+import { formatField } from "metabase/lib/formatting/field";
+import { stripId } from "metabase/lib/formatting/strings";
 import {
   getFieldValues,
   getRemappings,
