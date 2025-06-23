@@ -925,3 +925,33 @@
                   :metabase.lib.field/original-effective-type :type/DateTimeWithLocalTZ
                   :metabase.lib.field/temporal-unit           :year}]
                 (column-info query {})))))))
+
+(deftest ^:parallel preserve-edited-metadata-test
+  (testing "Cards preserve their edited metadata"
+    (let [query                    (lib/query
+                                    meta/metadata-provider
+                                    {:database (meta/id)
+                                     :type     :query
+                                     :query    {:source-table (meta/id :venues)}})
+          cols                     (result-metadata/returned-columns query)
+          base-type->semantic-type (fn [base-type]
+                                     (condp #(isa? %2 %1) base-type
+                                       :type/Integer :type/Quantity
+                                       :type/Float   :type/Cost
+                                       :type/Text    :type/Name
+                                       base-type))
+          user-edited              (for [col cols]
+                                     (assoc col
+                                            :description   "user description"
+                                            :display-name  "user display name"
+                                            :semantic-type (base-type->semantic-type (:base-type col))))]
+      (testing "respect :metadata/model-metadata"
+        (let [query (-> query
+                        (assoc-in [:info :metadata/model-metadata] user-edited))]
+          (is (=? [{:name "ID",          :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
+                   {:name "NAME",        :description "user description", :display-name "user display name", :semantic-type :type/Name}
+                   {:name "CATEGORY_ID", :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
+                   {:name "LATITUDE",    :description "user description", :display-name "user display name", :semantic-type :type/Cost}
+                   {:name "LONGITUDE",   :description "user description", :display-name "user display name", :semantic-type :type/Cost}
+                   {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
+                  (result-metadata/returned-columns query))))))))
