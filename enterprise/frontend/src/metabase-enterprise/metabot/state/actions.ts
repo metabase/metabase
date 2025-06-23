@@ -1,4 +1,4 @@
-import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
+import { type UnknownAction, isRejected } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
@@ -34,6 +34,7 @@ import {
   getUseStreaming,
   getUserPromptForMessageId,
 } from "./selectors";
+import { createMessageId } from "./utils";
 
 export const {
   addAgentMessage,
@@ -113,7 +114,7 @@ export const submitInput = createAsyncThunk<
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
-      const messageId = nanoid();
+      const messageId = createMessageId();
       dispatch(addUserMessage({ id: messageId, message: data.message }));
 
       const useStreaming = getUseStreaming(getState() as any);
@@ -146,7 +147,7 @@ export const submitInput = createAsyncThunk<
         };
       }
 
-      return { prompt: data.message, success: true };
+      return { prompt: data.message, success: true, data: result.payload };
     } catch (error) {
       // NOTE: all errors should be caught above, this is is a catch-all
       // to make sure that this async action always resolves to a value

@@ -1,4 +1,4 @@
-import { type PayloadAction, createSlice, nanoid } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
@@ -6,6 +6,7 @@ import { uuid } from "metabase/lib/uuid";
 import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
 
 import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
+import { createMessageId } from "./utils";
 
 export type MetabotAgentChatMessage =
   | { id: string; role: "agent"; message: string; type: "reply" }
@@ -71,7 +72,7 @@ export const metabot = createSlice({
       action: PayloadAction<Omit<MetabotAgentChatMessage, "id" | "role">>,
     ) => {
       state.messages.push({
-        id: nanoid(),
+        id: createMessageId(),
         role: "agent",
         message: action.payload.message,
         type: action.payload.type,

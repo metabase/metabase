@@ -30,6 +30,7 @@ import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import Styles from "./MetabotChat.module.css";
 import { useAutoscrollMessages } from "./hooks";
+import { isLastAgentReply } from "./utils";
 
 export const MetabotChat = () => {
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -164,19 +165,9 @@ export const MetabotChat = () => {
             <Box className={Styles.messages}>
               {/* conversation messages */}
               {metabot.messages.map((message, index) => {
-                const nextMessage: MetabotChatMessage | undefined =
-                  metabot.messages[index + 1];
-
-                const isLastAgentReply =
-                  message.role === "agent" &&
-                  message.type === "reply" &&
-                  (!nextMessage ||
-                    nextMessage.role !== "agent" ||
-                    (nextMessage.role === "agent" &&
-                      nextMessage.type !== message.type));
-
-                // NOTE: need e2e support for ids on message to support non-streamed requests
-                const canRetry = metabot.useStreaming && isLastAgentReply;
+                const canRetry =
+                  metabot.useStreaming &&
+                  isLastAgentReply(message, metabot.messages[index + 1]);
 
                 return (
                   <Message
