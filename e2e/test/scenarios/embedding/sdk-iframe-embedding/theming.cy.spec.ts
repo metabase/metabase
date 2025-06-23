@@ -28,8 +28,7 @@ const DARK_THEME = {
 
 describe("scenarios > embedding > sdk iframe embedding > theming", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest();
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ signOut: true });
   });
 
   it("should apply custom themes", () => {
