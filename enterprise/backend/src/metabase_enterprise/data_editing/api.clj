@@ -537,7 +537,7 @@
 
 (def configure
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
-  (api.macros/defendpoint :post "/configure-form"
+  (api.macros/defendpoint :post "/config-form"
     "This API returns a data representation of the form the FE will render. It does not update the configuration."
     [{}
      {}

@@ -186,55 +186,62 @@
                                                         {:primary-key [:id]}]]
 
           (mt/with-temp
-            [:model/Dashboard dashboard {}
-             :model/DashboardCard dashcard {:dashboard_id (:id dashboard)
-                                            :visualization_settings
-                                            {:table_id test-table
+            [:model/Dashboard     dashboard {}
+             :model/Card          model     {:type           :model
+                                             :table_id       test-table
+                                             :database_id    (mt/id)
+                                             :dataset_query  {:database (mt/id)
+                                                              :type :query
+                                                              :query {:source-table test-table}}}
+             :model/DashboardCard dashcard  {:dashboard_id (:id dashboard)
+                                             :card_id      (:id model)
+                                             :visualization_settings
+                                             {:table_id test-table
 
-                                             ;; The data-grid config is NOT inherited by custom actions (yet)
-                                             :table.columns
-                                             [{:name "int", :enabled true}
-                                              {:name "text", :enabled true}
-                                              {:name "timetamp", :enabled true}
+                                              ;; The data-grid config is NOT inherited by custom actions (yet)
+                                              :table.columns
+                                              [{:name "int", :enabled true}
+                                               {:name "text", :enabled true}
+                                               {:name "timetamp", :enabled true}
                                                ;; this signals date should not be shown in the grid, or be available
                                                ;; to default actions.
-                                              {:name "date", :enabled false}]
+                                               {:name "date", :enabled false}]
 
-                                             ;; The data-grid config is NOT inherited by custom actions (yet)
-                                             :editableTable.columns
-                                             ["int"
+                                              ;; The data-grid config is NOT inherited by custom actions (yet)
+                                              :editableTable.columns
+                                              ["int"
                                                ;; this signals text is not editable by default actions
-                                              #_"text"
-                                              "timestamp"
-                                              "date"]
+                                               #_"text"
+                                               "timestamp"
+                                               "date"]
 
-                                             :editableTable.enabledActions
+                                              :editableTable.enabledActions
                                               ;; See [[metabase.dashboards.api/create-or-fix-action-id]] for why this is unknown.
-                                             [{:id                "dashcard:unknown:built-in-update"
-                                               :actionId          "table.row/update"
-                                               ;; TODO Katya calls these "default" actions, maybe we should rename to match?
-                                               :actionType        "data-grid/built-in"
-                                               :enabled           true
-                                               ;; Not currently configurable.
-                                               :parameterMappings nil}
-                                              {:id                "dashcard:unknown:update"
-                                               :actionId          "table.row/update"
-                                               :actionType        "data-grid/row-action"
-                                               :enabled           true
-                                               ;; TODO make sure this stuff makes sense.
-                                               ;;      What does the FE really write? Have we messed anything up?
-                                               ;;      Have we missed any cases?
-                                               :parameterMappings [{:parameterId       "id"
-                                                                    :sourceType       "ask-user"}
-                                                                   {:parameterId       "int"
-                                                                    :sourceType        "constant"
-                                                                    :value             42}
-                                                                   {:parameterId       "text"
-                                                                    :sourceType        "row-data"
-                                                                    :sourceValueTarget "text"
-                                                                    :visibility        "readonly"}
-                                                                   {:parameterId       "timestamp"
-                                                                    :visibility        "hidden"}]}]}}]
+                                              [{:id                "dashcard:unknown:built-in-update"
+                                                :actionId          "table.row/update"
+                                                ;; TODO Katya calls these "default" actions, maybe we should rename to match?
+                                                :actionType        "data-grid/built-in"
+                                                :enabled           true
+                                                ;; Not currently configurable.
+                                                :parameterMappings nil}
+                                               {:id                "dashcard:unknown:update"
+                                                :actionId          "table.row/update"
+                                                :actionType        "data-grid/row-action"
+                                                :enabled           true
+                                                ;; TODO make sure this stuff makes sense.
+                                                ;;      What does the FE really write? Have we messed anything up?
+                                                ;;      Have we missed any cases?
+                                                :parameterMappings [{:parameterId       "id"
+                                                                     :sourceType       "ask-user"}
+                                                                    {:parameterId       "int"
+                                                                     :sourceType        "constant"
+                                                                     :value             42}
+                                                                    {:parameterId       "text"
+                                                                     :sourceType        "row-data"
+                                                                     :sourceValueTarget "text"
+                                                                     :visibility        "readonly"}
+                                                                    {:parameterId       "timestamp"
+                                                                     :visibility        "hidden"}]}]}}]
 
             ;; insert a row for the row action
             (mt/user-http-request :crowberto :post 200
@@ -253,10 +260,9 @@
                        :body   {:parameters
                                 [{:id "id",   :sourceType "ask-user"}
                                  {:id "int",  :sourceType "constant", :value 42}
-                                 {:id "text", :sourceType "row-data", :visibility "readonly"}
-                                 ;; TODO https://linear.app/metabase/issue/WRK-476/handle-actions-whose-mapping-doesnt-cover-new-inputs
-                                 #_{:id "date", :visibility "hidden"}
-                                 {:id "timestamp", :visibility "hidden"}]}}
+                                 {:id "text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                 {:id "timestamp", :visibility "hidden"}
+                                 {:id "date",      :sourceType "ask-user"}]}}
                       (req {:action_id "dashcard:unknown:update"
                             :scope     {:dashcard-id (:id dashcard)}
                             :input     {:id 1}}))))))))))
@@ -270,8 +276,7 @@
       (data-editing.tu/with-test-tables! [test-table [{:id        'auto-inc-type
                                                        :text      [:text]
                                                        :int       [:int]
-                                                       :timestamp [:timestamp]
-                                                       :date      [:date]}
+                                                       :timestamp [:timestamp]}
                                                       {:primary-key [:id]}]]
         (testing "custom data-grid calling a table action, with pending configuration changes"
           (let [{action-id "table.row/update"} (->> (mt/user-http-request-full-response

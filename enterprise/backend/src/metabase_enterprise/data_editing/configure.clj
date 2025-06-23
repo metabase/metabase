@@ -30,8 +30,8 @@
    [:title      :string]
    [:parameters [:sequential ::param-configuration]]])
 
-(defn- configuration-for-saved-action
-  [action-id]
+(mu/defn- configuration-for-saved-action
+  [action-id :- pos-int?]
   (let [action (-> (actions/select-action :id action-id
                                           :archived false
                                           {:where [:not [:= nil :model_id]]})
@@ -51,8 +51,9 @@
    :parameters (for [[param-id param-settings] param-map]
                  (assoc param-settings :id (name param-id)))})
 
-(defn- configuration-for-table-action
-  [table-id action-kw]
+(mu/defn- configuration-for-table-action
+  [table-id :- pos-int?
+   action-kw :- :keyword]
   (let [table          (t2/select-one [:model/Table :display_name :field_order] table-id)
         ordered-fields (table/ordered-fields table-id (:field_order table))]
     {:title      (format "%s: %s" (:display_name table) (u/capitalize-en (name action-kw)))
@@ -64,28 +65,41 @@
                    {:id               (:name field)
                     :sourceType       "ask-user"})}))
 
+(defn- combine-configurations
+  [saved-configuration raw-configuration]
+  (let [existing-param-ids (set (map :id (:parameters saved-configuration)))]
+    {:title      (:title saved-configuration)
+     :parameters (concat (:parameters saved-configuration) (remove #(existing-param-ids (:id %)) (:parameters raw-configuration)))}))
+
 (mu/defn configuration :- [:or ::action-configuration [:map [:status ms/PositiveInt]]]
   "Returns configuration needed for a given action."
-  [{:keys [action-id action-kw] :as action}
+  [{:keys [action-id action-kw inner-action] :as action}
    scope]
   (if (false? (:configurable action))
     {:status 400, :body "Cannot configure this action"}
     (cond
       ;; Eventually will be put inside a nicely typed :configuration key
       (:param-map action)
-      (configuration-for-pending-action action)
+      (combine-configurations (configuration-for-pending-action action) (configuration (dissoc action :param-map) scope))
 
       (pos-int? action-id)
       (configuration-for-saved-action action-id)
 
       (and action-kw (isa? action-kw :table.row/common))
       ;; TODO eventually we will just get the table-id from having applied the mapping, which supports nesting etc
-      (configuration-for-table-action (or (:table-id (:mapping (:inner-action action)))
-                                          (:table-id (:mapping action))
-                                          (:table-id scope))
-                                      action-kw)
+      (configuration-for-table-action (:table-id scope) action-kw)
+
+      inner-action
+      (let [action-id (:action-id inner-action)
+            action-kw (:action-kw inner-action)]
+        (cond
+          (pos-int? action-id)
+          (configuration-for-saved-action action-id)
+          (and action-kw (isa? action-kw :table.row/common))
+          ;; TODO remove assumption that all primitives are dable actions
+          (configuration-for-table-action (:table-id scope) action-kw)
+          :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified action})))
 
       ;; TODO support data-grid.row and model.row actions (not important yet)
-
       :else
       (throw (ex-info "Don't know how to handle this action" {:action action, :scope scope})))))
