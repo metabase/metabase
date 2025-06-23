@@ -204,7 +204,7 @@ function NumberValueInput({
           onChange={(newValue) => onChange([newValue, values[1]])}
           leftSection={
             <ToggleButton
-              onClick={() => onChevronChange?.("left", !leftInclusive)}
+              onChange={() => onChevronChange?.("left", !leftInclusive)}
             >
               {leftInclusive ? GREATER_THAN_OR_EQUAL_TO : GREATER_THAN}
             </ToggleButton>
@@ -220,7 +220,7 @@ function NumberValueInput({
           onChange={(newValue) => onChange([values[0], newValue])}
           leftSection={
             <ToggleButton
-              onClick={() => onChevronChange?.("right", !rightInclusive)}
+              onChange={() => onChevronChange?.("right", !rightInclusive)}
             >
               {rightInclusive ? LESS_THAN_OR_EQUAL_TO : LESS_THAN}
             </ToggleButton>
@@ -242,10 +242,10 @@ function NumberValueInput({
 
 function ToggleButton({
   children,
-  onClick,
+  onChange,
 }: {
   children: React.ReactNode;
-  onClick: () => void;
+  onChange: () => void;
 }) {
   return (
     <Flex
@@ -255,12 +255,17 @@ function ToggleButton({
       justify="center"
       h="100%"
       miw="40px"
-      onClick={onClick}
       c="text-primary"
       fz="18px"
       aria-label="toggle greater chevron direction"
       tabIndex={0}
       role="button"
+      onClick={onChange}
+      onKeyDown={(event) => {
+        if (event.key === " ") {
+          onChange();
+        }
+      }}
     >
       {children}
     </Flex>
