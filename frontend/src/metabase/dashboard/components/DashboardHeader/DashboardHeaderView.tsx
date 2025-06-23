@@ -33,7 +33,10 @@ import type {
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTION_COMPONENTS,
+  PLUGIN_MODERATION,
+} from "metabase/plugins";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
@@ -212,6 +215,11 @@ export function DashboardHeaderView({
                     <PLUGIN_MODERATION.EntityModerationIcon
                       dashboard={dashboard}
                       handleUpdateCaption={handleUpdateCaption}
+                      collection={collection}
+                      entity="dashboard"
+                    />
+                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                      color="brand"
                       collection={collection}
                       entity="dashboard"
                     />
