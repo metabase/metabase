@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
