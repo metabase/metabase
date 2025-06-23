@@ -26,9 +26,10 @@ const INNER_WIDTH = "12.5rem";
 type ContactReason =
   | "add-database"
   | "enable-csv-upload"
-  | "obtain-csv-upload-permission";
+  | "obtain-csv-upload-permission"
+  | "enable-google-sheets";
 
-const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
+export const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
   const adminEmail = useSelector((state) => getSetting(state, "admin-email"));
   const adminEmailElement = <b key="admin-email">{adminEmail}</b>;
 
@@ -50,6 +51,12 @@ const ContactAdminAlert = ({ reason }: { reason: ContactReason }) => {
       () =>
         c("{0} is admin's email address")
           .jt`You are not permitted to upload CSV files. To get proper permissions, please contact your administrator at ${adminEmailElement}.`,
+    )
+    .with(
+      "enable-google-sheets",
+      () =>
+        c("{0} is admin's email address")
+          .jt`To enable Google Sheets import, please contact your administrator at ${adminEmailElement}.`,
     )
     .exhaustive();
 

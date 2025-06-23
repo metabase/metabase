@@ -6,6 +6,8 @@ import { List } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
 
+export const BUY_STORAGE_URL = getStoreUrl("account/storage");
+
 export const UpsellStorage = ({ source }: { source: string }) => {
   const isHosted = useSetting("is-hosted?");
   const hasStorage = useHasTokenFeature("attached_dwh");
@@ -14,13 +16,11 @@ export const UpsellStorage = ({ source }: { source: string }) => {
     return null;
   }
 
-  const storeAccount = getStoreUrl("account");
-
   return (
     <UpsellBanner
       campaign="storage"
       buttonText={t`Add`}
-      buttonLink={storeAccount}
+      buttonLink={BUY_STORAGE_URL}
       source={source}
       title={t`Add Metabase Storage`}
       large

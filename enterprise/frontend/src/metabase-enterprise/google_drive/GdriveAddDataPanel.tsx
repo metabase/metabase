@@ -1,10 +1,15 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { BUY_STORAGE_URL, UpsellStorage } from "metabase/admin/upsells";
 import { skipToken } from "metabase/api";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
-import { getStoreUrl } from "metabase/selectors/settings";
+import { ContactAdminAlert } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
   Anchor,
@@ -17,96 +22,138 @@ import {
   Title,
 } from "metabase/ui";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
-import { GdriveConnectionModal } from "metabase-enterprise/google_drive";
+import {
+  DriveConnectionDisplay,
+  GdriveConnectionModal,
+} from "metabase-enterprise/google_drive";
 import {
   getErrorMessage,
   getStatus,
   useShowGdrive,
 } from "metabase-enterprise/google_drive/utils";
 
+const PanelWrapper = ({
+  title = t`Connect Google Sheets`,
+  subtitle = t`Sync a spreadsheet or an entire Google Drive folder with your instance.`,
+  children,
+}: PropsWithChildren<{
+  title?: string;
+  subtitle?: string;
+}>) => {
+  const illustration = getSubpathSafeUrl(
+    "app/assets/img/empty-states/google-sheet.svg",
+  );
+
+  return (
+    <Stack gap="md" align="center" justify="center" pt="3rem">
+      <Center component="img" src={illustration} w="3rem" />
+      <Box component="header" ta="center" maw="22.5rem">
+        <Title order={2} size="h4" mb="xs">
+          {title}
+        </Title>
+        <Text c="text-medium">{subtitle}</Text>
+      </Box>
+      {children}
+    </Stack>
+  );
+};
+
 export const GdriveAddDataPanel = () => {
   const [
     isConnectionModalOpen,
     { open: openConnectionModal, close: closeConnectionModal },
   ] = useDisclosure(false);
+
+  const isAdmin = useSelector(getUserIsAdmin);
+  const hasStorage = useHasTokenFeature("attached_dwh");
+
   const showGdrive = useShowGdrive();
   const { data: folder, error } = useGetGsheetsFolderQuery(
     !showGdrive ? skipToken : undefined,
     { refetchOnMountOrArgChange: 5 },
   );
 
-  // if (!showGdrive) {
-  //   return null;
-  // }
+  const NO_STORAGE_SUBTITLE = t`To work with spreadsheets, you can add storage to your instance.`;
 
+  if (!isAdmin) {
+    return (
+      <PanelWrapper>
+        <ContactAdminAlert reason="enable-google-sheets" />
+      </PanelWrapper>
+    );
+  }
+
+  if (!hasStorage) {
+    return (
+      <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
+        <UpsellStorage source="add-data-modal-sheets" />
+      </PanelWrapper>
+    );
+  }
+
+  // If a user is an admin of a hosted instance with storage but for some reason
+  // any other condition from the `showGdrive` hook is not met, we show the general error
+  if (!showGdrive) {
+    return (
+      <PanelWrapper>
+        <ErrorAlert error={getErrorMessage({})} />
+      </PanelWrapper>
+    );
+  }
+
+  <GdriveConnectionModal
+    isModalOpen={isConnectionModalOpen}
+    onClose={closeConnectionModal}
+    reconnect={true}
+  />;
+
+  // Finally, all conditions have been met, and all screens below this line depend only
+  // on the status of the attempted connection
   const status = getStatus({ status: folder?.status, error });
 
-  const title =
-    status === "active" ? t`Import Google Sheets` : t`Connect Google Sheets`;
-  const subtitle = match(status)
-    .with(
-      "paused",
-      // eslint-disable-next-line no-literal-metabase-strings -- admin only
-      () => t`To work with spreadsheets, you can add storage to your Metabase.`,
-    )
-    .otherwise(
-      () =>
-        // eslint-disable-next-line no-literal-metabase-strings -- admin only
-        t`Sync a spreadsheet or an entire Google Drive folder with Metabase.`,
+  if (status === "active") {
+    return (
+      <PanelWrapper title={t`Import Google Sheets`}>
+        <DriveConnectionDisplay />
+        <Button variant="subtle" onClick={openConnectionModal}>
+          {t`Add new`}
+        </Button>
+      </PanelWrapper>
     );
+  }
+
+  if (status === "paused") {
+    return (
+      <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
+        <DriveConnectionDisplay />
+        <ErrorAlert
+          // eslint-disable-next-line no-literal-metabase-strings -- admin only
+          error={t`Metabase Storage is full. Add more storage to continue syncing.`}
+          upsell
+        />
+      </PanelWrapper>
+    );
+  }
 
   const buttonText = match(status)
-    .with("active", () => t`Connected`)
     .with("not-connected", () => t`Connect`)
     .with("syncing", () => t`Connecting...`)
-    .with("paused", () => t`Connected`)
     .with("error", () => t`Something went wrong`)
     .exhaustive();
 
-  // eslint-disable-next-line no-literal-metabase-strings -- admin only
-  const storageFullError = t`Metabase Storage is full. Add more storage to continue syncing.`;
-
-  const illustration = getSubpathSafeUrl(
-    "app/assets/img/empty-states/google-sheet.svg",
-  );
-
   return (
-    <>
-      <Center pt="3rem">
-        <Stack gap="md" align="center" justify="center">
-          <Center component="img" src={illustration} w="3rem" />
-          <Box component="header" ta="center" maw="22.5rem">
-            <Title order={2} size="h4" mb="xs">
-              {title}
-            </Title>
-            <Text c="text-medium">{subtitle}</Text>
-          </Box>
+    <PanelWrapper>
+      <Button
+        variant="filled"
+        w="12.5rem"
+        disabled={status !== "not-connected"}
+        onClick={openConnectionModal}
+      >
+        {buttonText}
+      </Button>
 
-          <Button
-            variant="filled"
-            w="12.5rem"
-            disabled={status !== "not-connected"}
-            onClick={openConnectionModal}
-          >
-            {buttonText}
-          </Button>
-          {status === "active" && (
-            <Button variant="subtle" onClick={openConnectionModal}>
-              {t`Add new`}
-            </Button>
-          )}
-          {status === "paused" && (
-            <ErrorAlert error={storageFullError} upsell />
-          )}
-          {status === "error" && <ErrorAlert error={getErrorMessage(error)} />}
-        </Stack>
-      </Center>
-      <GdriveConnectionModal
-        isModalOpen={isConnectionModalOpen}
-        onClose={closeConnectionModal}
-        reconnect={true}
-      />
-    </>
+      {status === "error" && <ErrorAlert error={getErrorMessage(error)} />}
+    </PanelWrapper>
   );
 };
 
@@ -145,7 +192,7 @@ const ErrorAlert = ({
       </Text>
       {upsell && (
         <Anchor
-          href={getStoreUrl("account")}
+          href={BUY_STORAGE_URL}
           target="_blank"
           underline="never"
           variant="brand"
