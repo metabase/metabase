@@ -286,6 +286,12 @@
     ;; TODO (Cam 6/19/25) -- can we remove this entirely?
     [:lib/hack-original-name {:optional true} ::original-name]
     ;;
+    ;; the original display name of this column before adding join/temporal bucketing/binning stuff to it. `Join ->
+    ;; <whatever>` or `<whatever>: Month` or `<whatever>: Auto-binned`. This should be equal to the display name when
+    ;; it first came out of the metadata provider -- so it might be something user-supplied in a Model
+    ;; `:result-metadata`.
+    [:lib/original-display-name {:optional true} [:maybe :string]]
+    ;;
     ;; when column metadata is returned by certain things
     ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it
     ;; might include this key, which tells you whether or not that column is currently selected or not already, e.g.
