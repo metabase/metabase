@@ -31,35 +31,3 @@ export const trackColumnExtractViaHeader = (
     question_id: question?.id() ?? 0,
   });
 };
-
-export const trackColumnCompareViaColumnHeader = (
-  query: Lib.Query,
-  stageIndex: number,
-  expressions: Lib.ExpressionClause[],
-  questionId?: number,
-) => {
-  trackSchemaEvent("question", {
-    event: "column_compare_via_column_header",
-    custom_expressions_used: expressions.flatMap((expression) =>
-      Lib.functionsUsedByExpression(query, stageIndex, expression),
-    ),
-    database_id: Lib.databaseID(query),
-    question_id: questionId ?? 0,
-  });
-};
-
-export const trackColumnCompareViaPlusModal = (
-  query: Lib.Query,
-  stageIndex: number,
-  expressions: Lib.ExpressionClause[],
-  questionId?: number,
-) => {
-  trackSchemaEvent("question", {
-    event: "column_compare_via_plus_modal",
-    custom_expressions_used: expressions.flatMap((expression) =>
-      Lib.functionsUsedByExpression(query, stageIndex, expression),
-    ),
-    database_id: Lib.databaseID(query),
-    question_id: questionId ?? 0,
-  });
-};

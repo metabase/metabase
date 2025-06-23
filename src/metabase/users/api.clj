@@ -12,7 +12,6 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.permissions.validation :as validation]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.models.session :as session]
@@ -188,8 +187,8 @@
   (or
    api/*is-superuser?*
    (if group_id
-     (validation/check-manager-of-group group_id)
-     (validation/check-group-manager)))
+     (perms/check-manager-of-group group_id)
+     (perms/check-group-manager)))
   (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
         clauses             (user-clauses status query group-id-clause include_deactivated)]
@@ -345,7 +344,7 @@
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-group-manager)))
+      (perms/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id))
       (t2/hydrate :user_group_memberships)))
 
@@ -430,7 +429,7 @@
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
-      (validation/check-group-manager)))
+      (perms/check-group-manager)))
   (check-not-internal-user id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]

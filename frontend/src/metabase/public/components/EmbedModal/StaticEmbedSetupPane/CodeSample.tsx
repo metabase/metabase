@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { type ChangeEvent, useMemo } from "react";
 
-import type { CodeLanguage } from "metabase/components/CodeEditor";
-import { CodeEditor } from "metabase/components/CodeEditor";
-import { CopyButton } from "metabase/components/CopyButton";
-import Select, { Option } from "metabase/core/components/Select";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import Select, { Option } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
 import type { CodeSampleOption } from "metabase/public/lib/types";
 

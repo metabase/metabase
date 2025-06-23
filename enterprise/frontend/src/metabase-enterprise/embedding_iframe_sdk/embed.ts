@@ -9,6 +9,7 @@ import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 import {
   ALLOWED_EMBED_SETTING_KEYS,
   type AllowedEmbedSettingKey,
+  DISABLE_UPDATE_FOR_KEYS,
 } from "./constants";
 import type {
   SdkIframeEmbedEvent,
@@ -44,13 +45,15 @@ class MetabaseEmbed {
    * Merge these settings with the current settings.
    */
   public updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    // The value of instanceUrl must be the same as the initial value used to create an embed.
+    // The value of these fields must be the same as the initial value used to create an embed.
     // This allows users to pass a complete settings object that includes all their settings.
-    if (
-      settings.instanceUrl &&
-      settings.instanceUrl !== this._settings.instanceUrl
-    ) {
-      raiseError("instanceUrl cannot be updated after the embed is created");
+    for (const field of DISABLE_UPDATE_FOR_KEYS) {
+      if (
+        settings[field] !== undefined &&
+        settings[field] !== this._settings[field]
+      ) {
+        raiseError(`${field} cannot be updated after the embed is created`);
+      }
     }
 
     if (!this._isEmbedReady) {
@@ -197,6 +200,21 @@ class MetabaseEmbed {
     if (settings.dashboardId && settings.questionId) {
       raiseError(
         "can't use both dashboardId and questionId at the same time. to change the question to a dashboard, set the questionId to null (and vice-versa)",
+      );
+    }
+
+    // Ensure auth methods are mutually exclusive
+    const authMethods = [
+      settings.apiKey,
+      settings.useExistingUserSession,
+      settings.preferredAuthMethod,
+    ].filter(
+      (method) => method !== undefined && method !== null && method !== false,
+    );
+
+    if (authMethods.length > 1) {
+      raiseError(
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
       );
     }
 

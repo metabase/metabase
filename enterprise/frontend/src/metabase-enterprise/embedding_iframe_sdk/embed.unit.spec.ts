@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { MetabaseEmbed } from "./embed";
 
 describe("embed.js script tag for sdk iframe embedding", () => {
@@ -56,6 +58,22 @@ describe("embed.js script tag for sdk iframe embedding", () => {
 
       embed.updateSettings({ instanceUrl: "https://foo-bar-baz.com" });
     }).not.toThrow();
+  });
+
+  it("throws an error when useExistingUserSession is updated to be a different value", () => {
+    expect(() => {
+      const embed = new MetabaseEmbed({
+        ..._.omit(defaultSettings, "apiKey"),
+        instanceUrl: "https://foo-bar-baz.com",
+        questionId: 10,
+        target: document.createElement("div"),
+        useExistingUserSession: true,
+      });
+
+      embed.updateSettings({ useExistingUserSession: false });
+    }).toThrow(
+      "useExistingUserSession cannot be updated after the embed is created",
+    );
   });
 
   it("throws when question id is provided in the exploration template", () => {
@@ -120,5 +138,46 @@ describe("embed.js script tag for sdk iframe embedding", () => {
     // The handler should be called immediately.
     embed.addEventListener("ready", readyHandler);
     expect(readyHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [{ apiKey: "test-key", useExistingUserSession: true }],
+    [{ apiKey: "test-key", preferredAuthMethod: "jwt" }],
+    [{ useExistingUserSession: true, preferredAuthMethod: "jwt" }],
+    [
+      {
+        apiKey: "test-key",
+        useExistingUserSession: true,
+        preferredAuthMethod: "jwt",
+      },
+    ],
+  ] as const)(
+    "throws when auth methods are not mutually exclusive",
+    (authConfig) => {
+      const settings = {
+        ..._.omit(defaultSettings, "apiKey"),
+        dashboardId: 1,
+      };
+
+      expect(() => {
+        new MetabaseEmbed({ ...settings, ...authConfig });
+      }).toThrow(
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+      );
+    },
+  );
+
+  it("does not throw when only one auth method is provided", () => {
+    const settings = {
+      ..._.omit(defaultSettings, "apiKey"),
+      dashboardId: 1,
+      target: document.createElement("div"),
+    };
+
+    expect(() => {
+      new MetabaseEmbed({ ...settings, apiKey: "test-key" });
+      new MetabaseEmbed({ ...settings, useExistingUserSession: true });
+      new MetabaseEmbed({ ...settings, preferredAuthMethod: "jwt" });
+    }).not.toThrow();
   });
 });

@@ -10,8 +10,7 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest();
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ signOut: true });
   });
 
   it("can find the embed.js file", () => {

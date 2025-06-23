@@ -1,6 +1,6 @@
 import type React from "react";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -21,7 +21,7 @@ export const AdminNavWrapper = ({
   return (
     <Stack
       w="16rem"
-      gap="xs"
+      gap={0}
       bg="white"
       p="md"
       h="100%"
@@ -55,6 +55,7 @@ export function AdminNavItem({
       active={path === subpath}
       variant="admin-nav"
       label={label}
+      mb="xs"
       {...(icon ? { leftSection: <Icon name={icon} /> } : undefined)}
       {...navLinkProps}
     />
