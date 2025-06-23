@@ -1084,26 +1084,28 @@ jobs:
     needs:
       # if you add a driver job, you must add it to this list for it to be a required check
       - be-tests-h2
-      - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
-      - be-tests-druid-ee
-      - be-tests-databricks-ee
-      - be-tests-druid-jdbc-ee
+      - be-tests-clickhouse-ee
       - be-tests-mysql-mariadb
-      - be-tests-mongo
+
       - be-tests-mongo-ssl
       - be-tests-mongo-sharded-cluster-ee
-      - be-tests-oracle
       - be-tests-postgres
-      - be-tests-presto-jdbc-ee
       - be-tests-redshift-ee
       - be-tests-snowflake-ee
-      - be-tests-sparksql-ee
-      - be-tests-sqlite-ee
-      - be-tests-sqlserver
-      - be-tests-starburst-ee
-      - be-tests-vertica-ee
-      - be-tests-clickhouse-ee
+      # Tier 3 and 4 drivers, we do not require them to pass
+      # - be-tests-athena-ee
+      # - be-tests-druid-ee
+      # - be-tests-databricks-ee
+      # - be-tests-druid-jdbc-ee
+      # - be-tests-mongo
+      # - be-tests-oracle
+      # - be-tests-presto-jdbc-ee
+      # - be-tests-sparksql-ee
+      # - be-tests-sqlite-ee
+      # - be-tests-sqlserver
+      # - be-tests-starburst-ee
+      # - be-tests-vertica-ee
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: drivers-tests-result
@@ -1122,6 +1124,8 @@ jobs:
                 name: jobName,
                 result: jobValues.result
               }));
+
+            jobs.every(job => (console.log("Job:", job)));
 
             // are all jobs skipped or successful?
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {

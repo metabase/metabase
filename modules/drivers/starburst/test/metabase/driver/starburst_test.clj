@@ -35,7 +35,7 @@
 
 (deftest describe-database-test
   (mt/test-driver :starburst
-    (is (= {:tables #{{:name "categories" :schema "default"}
+    (is (= {:tables #{{:name "xcategories" :schema "default"}
                       {:name "venues" :schema "default"}
                       {:name "checkins" :schema "default"}
                       {:name "users" :schema "default"}}}
