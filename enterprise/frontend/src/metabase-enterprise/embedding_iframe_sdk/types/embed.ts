@@ -136,6 +136,10 @@ export type SdkIframeEmbedTagSettings = SdkIframeEmbedSettings & {
   iframeClassName?: string;
 };
 
+export type SdkIframeEmbedEvent = { type: "ready" };
+
+export type SdkIframeEmbedEventHandler = () => void;
+
 /** Keys that can be used to update the embed settings */
 export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeEmbedBaseSettings
