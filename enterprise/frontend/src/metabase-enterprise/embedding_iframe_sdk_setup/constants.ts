@@ -5,6 +5,9 @@ import type {
   SdkIframeEmbedSetupStep,
 } from "./types";
 
+/** The maximum number of recent items to show in the entity selection step. */
+export const EMBED_ENTITY_LIST_MAX_RECENTS = 6;
+
 export const EMBED_EXPERIENCES = [
   {
     value: "dashboard" as SdkIframeEmbedSetupExperience,
