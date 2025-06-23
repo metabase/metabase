@@ -779,7 +779,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       cy.findByText("Add more data").click();
       cy.findByPlaceholderText("Search for something").type("non-existing");
 
-      cy.findByText("No results").should("exist");
+      cy.findByText("No compatible results").should("exist");
     });
   });
 });
