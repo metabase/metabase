@@ -1255,6 +1255,62 @@
                   (is (= [[1 42]]
                          (table-rows table-id))))))))))))
 
+;; the right way to use create-or-update is by having a row-key mapping, currently this is not possible on the UI
+;; This test is here for reference
+(deftest create-or-update-on-with-row-key-mapping-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [table-id [{:id   'auto-inc-type
+                                                     :int  [:int]
+                                                     :text [:text]}
+                                                    {:primary-key [:id]}]]
+        (mt/with-temp [:model/Dashboard dash {}
+                       :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                      :visualization_settings
+                                                      {:table_id table-id
+
+                                                       :table.columns
+                                                       [{:name "int", :enabled true}]
+
+                                                       :editableTable.columns
+                                                       ["int" "text"]
+
+                                                       :editableTable.enabledActions
+                                                       [{:id                "dashcard:unknown:create-or-update"
+                                                         :actionId          "table.row/create-or-update"
+                                                         :actionType        "data-grid/row-action"
+                                                         :enabled           true
+                                                         :mapping           {:table-id table-id
+                                                                             :row-key  {:int ["::key" :int]}
+                                                                             :row      "::params"}
+                                                         :parameterMappings [{:parameterId       "id"
+                                                                              :sourceType        "ask-user"}
+                                                                             {:parameterId       "int"
+                                                                              :sourceType        "ask-user"}
+                                                                             {:parameterId       "text"
+                                                                              :visibility        "ask-user"}]}]}}]
+          (let [create-or-update! #(mt/user-http-request :crowberto :post 200 execute-v2-url
+                                                         (merge {:action_id "dashcard:unknown:create-or-update"
+                                                                 :scope     {:dashcard-id (:id dashcard)}}
+                                                                %))]
+            (testing "create when there is no rows with the same int found"
+              (is (= {:outputs [{:op  "created"
+                                 :row {:id 1, :int 42, :text "new"}, :table-id table-id}]}
+                     (create-or-update! {:input  {}
+                                         :params {:int 42 :text "new"}}))))
+
+            (testing "update if a row with the same int exists"
+              (is (= {:outputs [{:op  "updated",
+                                 :row {:id 1, :int 42, :text "updated"}, :table-id table-id}]}
+                     (create-or-update! {:input  {}
+                                         :params {:int 42 :text "updated"}}))))
+
+            (testing "create if we change int"
+              (is (= {:outputs [{:op  "created",
+                                 :row {:id 2, :int 43, :text "updated"}, :table-id table-id}]}
+                     (create-or-update! {:input  {}
+                                         :params {:int 43 :text "updated"}}))))))))))
+
 (deftest tmp-modal-saved-action-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}

@@ -372,7 +372,7 @@
                              pk-fields (filter #(= :type/PK (:semantic_type %)) fields)
                              ;; TODO we could restrict which fields we fetch in future
                              [row]     (data-editing/query-db-rows table_id pk-fields [input])
-                             _         (api/check-404 row)]
+                             #__         #_(api/check-404 row)]
                          ;; TODO i would much prefer if we used field-ids and not names in the configuration
                          (update-keys row name)))))]
     (reduce-kv
