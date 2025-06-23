@@ -2366,15 +2366,17 @@
             create-dashcard (fn create-dashcard
                               ([card-id] (create-dashcard card-id (parameter-mappings-without-stage-numbers card-id)))
                               ([card-id pmappings]
-                               (insert-returning-pk! :model/DashboardCard
-                                                     {:dashboard_id dashboard-id
-                                                      :parameter_mappings pmappings
+                               (insert-returning-pk! (t2/table-name :model/DashboardCard)
+                                                     {:dashboard_id           dashboard-id
+                                                      :parameter_mappings     (json/encode pmappings)
+                                                      :created_at             :%now
+                                                      :updated_at             :%now
                                                       :visualization_settings "{}"
-                                                      :card_id card-id
-                                                      :size_x  4
-                                                      :size_y  4
-                                                      :col     1
-                                                      :row     1})))
+                                                      :card_id                card-id
+                                                      :size_x                 4
+                                                      :size_y                 4
+                                                      :col                    1
+                                                      :row                    1})))
             single-stage-dashcard-id      (create-dashcard single-stage-question-id)
             native-dashcard-id            (create-dashcard native-question-id)
             multi-stage-dashcard1-id      (create-dashcard multi-stage-question-id)
