@@ -679,7 +679,7 @@
           (is (nil? result) "Cancelled query returns nil")
           (is (qp.pipeline/canceled?) "canceled? should return truthy when query is cancelled"))))))
 
-(deftest ^:parallel streaming-response-handles-cancellation-test
+(deftest streaming-response-handles-cancellation-test
   (testing "Streaming response handles cancellation gracefully without assertion errors"
     (let [mock-qp-fn (fn [rff]
                       ;; Simulate immediate cancellation
@@ -690,9 +690,9 @@
       (is (some? (qp.streaming/-streaming-response :csv "test" mock-qp-fn))
           "Streaming response should handle cancellation without assertion error"))))
 
-(deftest ^:parallel streaming-response-handles-cancel-keyword-test
+(deftest streaming-response-handles-cancel-keyword-test
   (testing "Streaming response handles nil + canceled? gracefully"
-    (let [mock-qp-fn (fn [rff]
+    (let [mock-qp-fn (fn [_rff]
                        ;; Return nil and set up canceled? to return truthy
                        (with-redefs [qp.pipeline/canceled? (constantly ::cancel)]
                          nil))]
