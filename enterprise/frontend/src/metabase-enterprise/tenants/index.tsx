@@ -25,22 +25,19 @@ import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
 import { TenantsListingApp } from "./containers/TenantsListingApp";
-import { createTenantsRouteGuard } from "./utils/routeGuard";
 import {
   isExternalUser,
   isExternalUsersGroup,
   isTenantCollection,
 } from "./utils/utils";
 
-// TODO remove `true` once feature is enabled for dev token
-// eslint-disable-next-line no-constant-condition
-if (true || hasPremiumFeature("tenants")) {
+if (hasPremiumFeature("tenants")) {
   PLUGIN_TENANTS.userStrategyRoute = (
     <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />
   );
 
   PLUGIN_TENANTS.tenantsRoutes = (
-    <Route path="tenants" component={createTenantsRouteGuard()}>
+    <>
       <Route {...{ title: t`Tenants` }} component={AdminPeopleApp}>
         <IndexRoute component={TenantsListingApp} />
         <Route path="" component={TenantsListingApp}>
@@ -82,7 +79,7 @@ if (true || hasPremiumFeature("tenants")) {
           <ModalRoute path="reactivate" modal={TenantActivationModal} noWrap />
         </Route>
       </Route>
-    </Route>
+    </>
   );
 
   PLUGIN_TENANTS.EditUserStrategySettingsButton =

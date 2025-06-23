@@ -50,7 +50,11 @@ import { StrategyEditorForDatabases } from "./performance/components/StrategyEdi
 import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
+import {
+  RedirectToAllowedSettings,
+  createAdminRouteGuard,
+  createTenantsRouteGuard,
+} from "./utils";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route path="/admin" component={CanAccessSettings}>
@@ -120,7 +124,9 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       {/* Tenants */}
-      {PLUGIN_TENANTS.tenantsRoutes}
+      <Route path="tenants" component={createTenantsRouteGuard()}>
+        {PLUGIN_TENANTS.tenantsRoutes}
+      </Route>
 
       {/* PERFORMANCE */}
       <Route

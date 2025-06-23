@@ -42,10 +42,33 @@ const DOOHICKEY_USER = {
 const TENANTS = [GIZMO_TENANT, DOOHICKEY_TENANT];
 const USERS = [GIZMO_USER, DOOHICKEY_USER];
 
+describe("Tenants - management OSS", { tags: "@OSS" }, () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show the popup to enable multi tenancy", () => {
+    cy.visit("/admin/tenants");
+    cy.location("pathname").should("eq", "/admin/people");
+
+    cy.findByRole("link", { name: /gear/ }).should("not.exist");
+  });
+});
+
 describe("Tenants - management", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
+
+  it("should disable the feature if the token feature is not enabled", () => {
+    H.setTokenFeatures("none");
+
+    cy.visit("/admin/tenants");
+    cy.location("pathname").should("eq", "/admin/people");
+
+    cy.findByRole("link", { name: /gear/ }).should("not.exist");
   });
 
   it("should allow users to enable multi tenancy, and create / manage tenants and external users", () => {
