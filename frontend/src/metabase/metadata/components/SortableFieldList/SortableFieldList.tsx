@@ -5,7 +5,7 @@ import _ from "underscore";
 import {
   type DragEndEvent,
   SortableList,
-} from "metabase/core/components/Sortable";
+} from "metabase/common/components/Sortable";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Stack, rem } from "metabase/ui";
 import type { Field, FieldId, Table } from "metabase-types/api";

@@ -4,9 +4,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
+import EditableText from "metabase/common/components/EditableText";
 import { useToast } from "metabase/common/hooks";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import EditableText from "metabase/core/components/EditableText";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { Box, Flex, Group, Icon, TextareaBlurChange, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";

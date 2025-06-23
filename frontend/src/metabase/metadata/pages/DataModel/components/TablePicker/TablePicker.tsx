@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useState } from "react";
 import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";

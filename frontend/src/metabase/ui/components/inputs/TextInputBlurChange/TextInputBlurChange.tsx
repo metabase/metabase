@@ -4,7 +4,7 @@ import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-import { useUnmountLayout } from "metabase/hooks/use-unmount-layout";
+import { useUnmountLayout } from "metabase/common/hooks/use-unmount-layout";
 
 type TextInputRestProps = Omit<TextInputProps, "onBlur" | "ref">;
 
