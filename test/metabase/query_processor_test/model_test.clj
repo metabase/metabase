@@ -75,26 +75,11 @@
                                                                :month))])
                                           (lib/with-join-fields :all))))))]
       (is (=? ["CREATED_AT" "avg" "CREATED_AT_2" "sum"]
-              (map :name (lib.metadata.result-metadata/expected-cols question))))
-      (is (= [{:id (mt/id :reviews :created_at)
-               :display_name "Reviews → Created At: Month"}
-              {:display_name "Average of Rating"}
-              ;; TODO (Cam 6/17/25) -- the 'old' answer here was this, but it's returning something slightly different
-              ;; now that I added the [[metabase.lib.field/qp-model-metadata-for-stage]] stuff. Not really 100% sure
-              ;; what the ideal answer is here and if this is a bug or not. If we somehow revert to the old display name
-              ;; that's fine.
-              #_{:id (mt/id :reviews :created_at)
-                 :source_alias "Products+Reviews Summary - Reviews → Created At: Month"
-                 :display_name "Products+Reviews Summary - Reviews → Created At: Month → Created At"}
-              {:id (mt/id :reviews :created_at)
-               ;; did I introduce a regression in display name? Nobody named Cam can figure out how it's supposed
-               ;; anyway.
-               :display_name "Reviews → Created At: Month"
-               :source_alias "Products+Reviews Summary - Reviews → Created At"}
-              #_{:source_alias "Products+Reviews Summary - Reviews → Created At: Month"
-                 :display_name "Products+Reviews Summary - Reviews → Created At: Month → Sum"}
-              {:display_name "Products+Reviews Summary - Reviews → Created At → Sum of Price",
-               :source_alias "Products+Reviews Summary - Reviews → Created At"}]
+              (map :name (lib.metadata.result-metadata/returned-columns question))))
+      (is (= ["Reviews → Created At: Month"
+              "Average of Rating"
+              "Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"
+              "Products+Reviews Summary - Reviews → Created At: Month → Sum of Price"]
              (->> (qp/process-query question)
                   mt/cols
-                  (mapv #(select-keys % [:id :source_alias :display_name]))))))))
+                  (mapv :display_name)))))))
