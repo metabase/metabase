@@ -7,6 +7,7 @@
    [metabase.channel.email :as email]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.email.result-attachment :as email.result-attachment]
+   [metabase.channel.impl.util :as impl.util]
    [metabase.channel.models.channel :as models.channel]
    [metabase.channel.params :as channel.params]
    [metabase.channel.render.core :as channel.render]
@@ -71,9 +72,6 @@
                              :email    non-user-email
                              :pulse-id dashboard-subscription-id}))))
 
-;; TODO: reorganize to avoid this declare
-(declare render-filters)
-
 (defn- render-part
   [timezone part options]
   (case (:type part)
@@ -82,7 +80,7 @@
 
     :text
     (let [inline-params   (:inline_parameters part)
-          rendered-params (when (seq inline-params) (render-filters inline-params))]
+          rendered-params (when (seq inline-params) (impl.util/render-filters inline-params))]
       {:content (str (markdown/process-markdown (:text part) :html)
                      rendered-params)})
     :tab-title
@@ -232,56 +230,6 @@
 ;;                                    Dashboard Subscriptions                                      ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- render-filters
-  [parameters]
-  (let [cells (map
-               (fn [filter]
-                 [:td {:class "filter-cell"
-                       :style (channel.render/style {:width "50%"
-                                                     :padding "0px"
-                                                     :vertical-align "baseline"})}
-                  [:table {:cellpadding "0"
-                           :cellspacing "0"
-                           :width "100%"
-                           :height "100%"}
-                   [:tr
-                    [:td
-                     {:style (channel.render/style {:color channel.render/color-text-medium
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 4px 4px 0"
-                                                    :vertical-align "baseline"})}
-                     (:name filter)]
-                    [:td
-                     {:style (channel.render/style {:color channel.render/color-text-dark
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 16px 4px 8px"
-                                                    :vertical-align "baseline"})}
-                     (shared.params/value-string filter (system/site-locale))]]]])
-               parameters)
-        rows  (partition-all 2 cells)]
-    (html
-     [:table {:style (channel.render/style {:table-layout    :fixed
-                                            :border-collapse :collapse
-                                            :cellpadding     "0"
-                                            :cellspacing     "0"
-                                            :width           "100%"
-                                            :font-size       "12px"
-                                            :font-weight     700
-                                            :margin-top      "8px"})}
-      (for [row rows]
-        [:tr {} row])])))
-
-(defn- remove-inline-parameters
-  [dashboard-parts parameters]
-  (let [inline-param-ids (->> dashboard-parts
-                              (mapcat :inline_parameters)
-                              (map :id)
-                              set)]
-    (filter #(not (inline-param-ids (:id %)))
-            parameters)))
-
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard] :- [:sequential EmailMessage]
   [_channel-type {:keys [payload payload_type] :as notification-payload} template recipients]
   (let [{:keys [dashboard_parts
@@ -322,8 +270,8 @@
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
                                                     :filters           (when (seq parameters)
                                                                          (some->> parameters
-                                                                                  (remove-inline-parameters dashboard_parts)
-                                                                                  (render-filters)))})
+                                                                                  (impl.util/remove-inline-parameters dashboard_parts)
+                                                                                  (impl.util/render-filters)))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 
