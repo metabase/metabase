@@ -181,7 +181,13 @@ export const CloudSMTPConnectionForm = ({
   }, [settingsDetails]);
 
   return (
-    <Modal title={t`SMTP Configuration`} opened onClose={onClose} padding="xl">
+    <Modal
+      title={t`SMTP Configuration`}
+      opened
+      onClose={onClose}
+      padding="xl"
+      data-testid="cloud-smtp-connection-form"
+    >
       <Box data-testid="settings-updates" pt="lg">
         <FormProvider
           initialValues={initialValues}

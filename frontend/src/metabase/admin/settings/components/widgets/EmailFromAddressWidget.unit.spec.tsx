@@ -18,7 +18,6 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 import { EmailFromAddressWidget } from "./EmailFromAddressWidget";
 
 const setup = async (props: {
-  disablePremiumFeatures?: boolean;
   cloudCustomSMTPFF?: boolean;
   cloudSMTPEnabled?: boolean;
   hosted?: boolean;

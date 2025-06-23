@@ -15,7 +15,6 @@ export const CloudSMTPConnectionCard = ({
   const isCloudSMTPConfigured = Boolean(useSetting("cloud-email-smtp-host"));
   const { value: iscloudSMTPEnabled, updateSetting } =
     useAdminSetting("cloud-smtp-enabled");
-
   const [localValue, setLocalValue] = useState(iscloudSMTPEnabled);
 
   useEffect(() => {
@@ -36,8 +35,6 @@ export const CloudSMTPConnectionCard = ({
       <Radio.Group
         value={localValue ? "custom" : "metabase"}
         onChange={handleChange}
-        // label="SMTP Configuration"
-        // description="Choose a package that you will need in your application"
       >
         <Radio.Card radius="md" value="metabase" className={S.RadioCardRoot}>
           <Box p="lg">

@@ -80,7 +80,11 @@ const getFormValueSchema = (
   });
 };
 
-export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
+export const SelfHostedSMTPConnectionForm = ({
+  onClose,
+}: {
+  onClose: () => void;
+}) => {
   const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
   const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
@@ -161,7 +165,13 @@ export const SMTPConnectionForm = ({ onClose }: { onClose: () => void }) => {
   }, [settingsDetails]);
 
   return (
-    <Modal title={t`SMTP Configuration`} opened onClose={onClose} padding="xl">
+    <Modal
+      title={t`SMTP Configuration`}
+      opened
+      onClose={onClose}
+      padding="xl"
+      data-testid="self-hosted-smtp-connection-form"
+    >
       <Box data-testid="settings-updates" pt="lg">
         <FormProvider
           initialValues={initialValues}

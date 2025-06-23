@@ -1,39 +1,36 @@
-import { t } from "ttag";
+import { useDisclosure } from "@mantine/hooks";
 
-import { useSetting } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
-import { Button, Flex, Paper, Title } from "metabase/ui";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 
-import { SettingsSection } from "../SettingsSection";
+import { CloudSMTPConnectionCard } from "./CloudSMTPConnectionCard";
+import { CloudSMTPConnectionForm } from "./CloudSMTPConnectionForm";
+import { SelfHostedSMTPConnectionCard } from "./SelfHostedSMTPConnectionCard";
+import { SelfHostedSMTPConnectionForm } from "./SelfHostedSMTPConnectionForm";
 
-export const SMTPConnectionCard = ({
-  onOpenSMTPModal,
-}: {
-  onOpenSMTPModal: () => void;
-}) => {
-  const isEmailConfigured = useSetting("email-configured?");
+export const SMTPConnectionCard = () => {
+  const hasCloudSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
+  const [showModal, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
-  return (
-    <>
-      <SettingsSection data-testid="smtp-connection-card">
-        <Flex justify="space-between" align="center">
-          <Flex align="center" gap="sm">
-            <Title order={2}>{t`Self-Hosted SMTP`}</Title>
-            {isEmailConfigured && (
-              <Paper
-                fw="bold"
-                c={"brand"}
-                bg={color("brand-light")}
-                p={"0.25rem 0.375rem"}
-                radius="xs"
-              >{t`Active`}</Paper>
-            )}
-          </Flex>
-          <Button onClick={onOpenSMTPModal} variant="filled">
-            {isEmailConfigured ? t`Edit configuration` : t`Configure`}
-          </Button>
-        </Flex>
-      </SettingsSection>
-    </>
-  );
+  const isHosted = useSetting("is-hosted?");
+
+  if (!isHosted) {
+    return (
+      <>
+        <SelfHostedSMTPConnectionCard onOpenSMTPModal={openModal} />
+        {showModal && <SelfHostedSMTPConnectionForm onClose={closeModal} />}
+      </>
+    );
+  }
+
+  if (isHosted && hasCloudSMTPFeature) {
+    return (
+      <>
+        <CloudSMTPConnectionCard onOpenCloudSMTPModal={openModal} />
+        {showModal && <CloudSMTPConnectionForm onClose={closeModal} />}
+      </>
+    );
+  }
+
+  return null;
 };
