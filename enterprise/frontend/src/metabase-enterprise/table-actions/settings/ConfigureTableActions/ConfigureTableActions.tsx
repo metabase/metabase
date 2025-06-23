@@ -98,7 +98,6 @@ export const ConfigureTableActions = ({
         id: id || uuid(),
         name: name || action.name,
         actionId: action.id,
-        actionType: "data-grid/row-action",
         actionType: "data-grid/custom-action",
         isRowAction: true,
         isHeaderAction: false,
