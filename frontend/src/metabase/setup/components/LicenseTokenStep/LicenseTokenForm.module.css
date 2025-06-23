@@ -1,16 +1,3 @@
-.breakoutHorizontalRule {
-  width: 100%;
-  position: absolute;
-  left: 0;
-  height: 1px;
-  background-color: var(--mb-color-border);
-}
-
-.breakoutHorizontalRuleContainer {
-  padding-top: var(--mantine-spacing-xl);
-  padding-bottom: var(--mantine-spacing-md);
-}
-
 .popoverContent {
   display: flex;
   width: 300px;

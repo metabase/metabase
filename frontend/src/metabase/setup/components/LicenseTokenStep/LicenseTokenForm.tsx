@@ -133,9 +133,7 @@ export const LicenseTokenForm = ({
               primary
             />
           </Flex>
-          <div className={styles.breakoutHorizontalRuleContainer}>
-            <Divider className={styles.breakoutHorizontalRule} />
-          </div>
+          <Divider mx={{ base: "-2rem", sm: "-4rem" }} mt="xl" mb="md" />
           <Flex direction="column" gap="xs">
             <Anchor
               onClick={onSkip}
