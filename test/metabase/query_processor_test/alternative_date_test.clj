@@ -489,7 +489,7 @@
    [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
    [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
 
-(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc]]
+(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc :starburst]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
