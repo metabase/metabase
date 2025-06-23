@@ -887,8 +887,10 @@
                                                           {:table_id table-id
                                                            :editableTable.enabledActions
                                                            (let [param-maps
-                                                                 ;; we might need to change these to use field ids
-                                                                 [{:parameterId "name", :sourceType "row-data", :sourceValueTarget "name"}]]
+                                                                 ;; TODO change these to use field ids, to test the translation
+                                                                 [{:parameterId "id",     :sourceType "row-data", :sourceValueTarget "id"}
+                                                                  {:parameterId "name",   :sourceType "row-data", :sourceValueTarget "name"}
+                                                                  {:parameterId "status", :sourceType "row-data", :sourceValueTarget "status"}]]
                                                              [{:id                "dashcard:unknown:abcdef"
                                                                :actionId          (:id action)
                                                                :actionType        "data-grid/custom-action"
