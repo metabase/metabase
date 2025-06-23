@@ -121,10 +121,11 @@ export const ParametersList = ({
         />
       ) : (
         <>
-          {visibleValuePopulatedParameters.map((parameter) =>
+          {visibleValuePopulatedParameters.map((parameter, index) =>
             renderItem({
               item: parameter,
               id: getId(parameter),
+              index,
             }),
           )}
         </>
