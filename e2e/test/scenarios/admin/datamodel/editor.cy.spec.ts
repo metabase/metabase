@@ -5,7 +5,6 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { DataModel } from "e2e/support/helpers";
 
 const {
   ORDERS,
@@ -48,12 +47,12 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      DataModel.TableSection.getNameInput().clear().type("New orders").blur();
+      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
       cy.wait("@updateTable");
 
       H.undoToast().should("contain.text", "Table name updated");
       cy.findByDisplayValue("New orders").should("be.visible");
-      DataModel.TableSection.getNameInput()
+      H.DataModel.TableSection.getNameInput()
         .should("have.value", "New orders")
         .and("be.visible");
 
@@ -72,14 +71,14 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      DataModel.TableSection.getDescriptionInput()
+      H.DataModel.TableSection.getDescriptionInput()
         .clear()
         .type("New description")
         .blur();
       cy.wait("@updateTable");
 
       H.undoToast().should("contain.text", "Table description updated");
-      DataModel.TableSection.getDescriptionInput()
+      H.DataModel.TableSection.getDescriptionInput()
         .should("have.value", "New description")
         .and("be.visible");
 
@@ -97,11 +96,11 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      DataModel.TableSection.getDescriptionInput().clear().blur();
+      H.DataModel.TableSection.getDescriptionInput().clear().blur();
       cy.wait("@updateTable");
 
       H.undoToast().should("contain.text", "Table description updated");
-      DataModel.TableSection.getDescriptionInput()
+      H.DataModel.TableSection.getDescriptionInput()
         .should("have.value", "")
         .and("be.visible");
 
@@ -157,14 +156,16 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      DataModel.TableSection.getFieldNameInput("Tax")
+      H.DataModel.TableSection.getFieldNameInput("Tax")
         .clear()
         .type("New tax")
         .blur();
       cy.wait("@updateField");
 
       H.undoToast().should("contain.text", "Display name for Tax updated");
-      DataModel.TableSection.getFieldNameInput("New tax").should("be.visible");
+      H.DataModel.TableSection.getFieldNameInput("New tax").should(
+        "be.visible",
+      );
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -180,14 +181,14 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      DataModel.TableSection.getFieldDescriptionInput("Total")
+      H.DataModel.TableSection.getFieldDescriptionInput("Total")
         .clear()
         .type("New description")
         .blur();
       cy.wait("@updateField");
 
       H.undoToast().should("contain.text", "Description for Total updated");
-      DataModel.TableSection.getFieldDescriptionInput("Total").should(
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
         "have.value",
         "New description",
       );
@@ -208,11 +209,11 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      DataModel.TableSection.getFieldDescriptionInput("Total").clear().blur();
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").clear().blur();
       cy.wait("@updateField");
 
       H.undoToast().should("contain.text", "Description for Total updated");
-      DataModel.TableSection.getFieldDescriptionInput("Total").should(
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
         "have.value",
         "",
       );
@@ -536,12 +537,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
-      H.DataModel.TableSection.getField("Tax").within(() => {
-        setValueAndBlurInput("Tax", "New tax");
-      });
+
+      H.DataModel.FieldSection.getNameInput().clear().type("New tax").blur();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Display name for Tax updated");
-      cy.findByDisplayValue("New tax").should("be.visible");
+      H.DataModel.FieldSection.getNameInput().should("have.value", "New tax");
+      H.DataModel.TableSection.getFieldNameInput("New tax").should(
+        "be.visible",
+      );
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -558,12 +562,21 @@ describe("scenarios > admin > datamodel > editor", () => {
         fieldId: ORDERS.TOTAL,
       });
 
-      H.DataModel.TableSection.getField("Total").within(() => {
-        setValueAndBlurInput("The total billed amount.", "New description");
-      });
+      H.DataModel.FieldSection.getDescriptionInput()
+        .clear()
+        .type("New description")
+        .blur();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Description for Total updated");
-      cy.findByDisplayValue("New description").should("be.visible");
+      H.DataModel.FieldSection.getDescriptionInput().should(
+        "have.value",
+        "New description",
+      );
+      H.DataModel.TableSection.getFieldDescriptionInput("Total").should(
+        "have.value",
+        "New description",
+      );
 
       cy.visit(
         `/reference/databases/${SAMPLE_DB_ID}/tables/${ORDERS_ID}/fields/${ORDERS.TOTAL}`,
@@ -581,11 +594,16 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
-      cy.findByDisplayValue("Everywhere").click();
+
+      H.DataModel.FieldSection.getVisibilityInput().click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Visibility for Tax updated");
-      cy.findByDisplayValue("Do not include").should("be.visible");
+      H.DataModel.FieldSection.getVisibilityInput().should(
+        "have.value",
+        "Do not include",
+      );
 
       H.openOrdersTable();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -601,18 +619,20 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TAX,
       });
-      cy.findByPlaceholderText("Select a semantic type")
+
+      H.DataModel.FieldSection.getSemanticTypeInput()
         .should("have.value", "No semantic type")
         .click();
-      searchAndSelectValue("Currency");
+      H.popover().findByText("Currency").click();
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Semantic type for Tax updated");
-      cy.findByPlaceholderText("Select a currency type").should("be.visible");
 
-      cy.findByPlaceholderText("Select a currency type")
-        .should("have.value", "US Dollar")
+      H.undoToast().should("contain.text", "Semantic type for Tax updated");
+
+      H.DataModel.FieldSection.getSemanticTypeCurrencyInput()
+        .should("be.visible")
+        .and("have.value", "US Dollar")
         .click();
-      searchAndSelectValue("Canadian Dollar");
+      H.popover().findByText("Canadian Dollar").click();
       cy.wait("@updateField");
 
       H.openOrdersTable();
@@ -627,15 +647,18 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.USER_ID,
       });
-      cy.findByPlaceholderText("Select a target")
+
+      H.DataModel.FieldSection.getSemanticTypeFkTarget()
         .should("have.value", "People → ID")
         .click();
       H.popover().findByText("Products → ID").click();
       cy.wait("@updateField");
+
       H.undoToast().should("contain.text", "Semantic type for User ID updated");
-      cy.findByPlaceholderText("Select a target")
-        .should("have.value", "Products → ID")
-        .should("be.visible");
+      H.DataModel.FieldSection.getSemanticTypeFkTarget().should(
+        "have.value",
+        "Products → ID",
+      );
 
       H.openTable({
         database: SAMPLE_DB_ID,
@@ -659,6 +682,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: FEEDBACK_ID,
         fieldId: FEEDBACK.RATING,
       });
+
       cy.findByRole("button", { name: /Don't cast/ }).click();
 
       cy.log(
@@ -927,10 +951,6 @@ const setDataModelPermissions = ({ tableIds = [] }) => {
 
 const setValueAndBlurInput = (oldValue: string, newValue: string) => {
   cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
-};
-
-const searchAndSelectValue = (newValue: string) => {
-  H.popover().findByText(newValue).click();
 };
 
 const getFieldSection = (fieldName: string) => {
