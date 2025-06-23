@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { jt, t } from "ttag";
+import { c, t } from "ttag";
 import { debounce } from "underscore";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -112,7 +112,10 @@ export const LicenseTokenForm = ({
                     >
                       <Stack gap="md" p="md" w={POPOVER_WIDTH}>
                         <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
-                        <Text lh="lg">{jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
+                        <Text lh="lg">{c(
+                          "When users have no token, they can visit the link ${0} pointing to the store, where they can purchase a license for Metabase.",
+                        )
+                          .jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
                       </Stack>
                     </Popover.Dropdown>
                   </Popover>
