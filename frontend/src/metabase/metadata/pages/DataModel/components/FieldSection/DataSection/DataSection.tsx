@@ -26,11 +26,14 @@ const DataSectionBase = ({ field }: Props) => {
   const [isCasting, setIsCasting] = useState(
     field ? field.coercion_strategy != null : false,
   );
+  const [autoFocusCoercionPicker, setAutoFocusCoercionPicker] = useState(false);
+  const [isCoercionPickerOpen, setIsCoercionPickerOpen] = useState(false);
   const [updateField] = useUpdateFieldMutation();
   const [sendToast] = useToast();
 
   useEffect(() => {
     setIsCasting(field.coercion_strategy != null);
+    setAutoFocusCoercionPicker(false);
   }, [field.coercion_strategy]);
 
   return (
@@ -75,6 +78,8 @@ const DataSectionBase = ({ field }: Props) => {
                 size="xs"
                 onChange={async (event) => {
                   setIsCasting(event.target.checked);
+                  setAutoFocusCoercionPicker(event.target.checked);
+                  setIsCoercionPickerOpen(true);
 
                   if (
                     !event.target.checked &&
@@ -93,7 +98,9 @@ const DataSectionBase = ({ field }: Props) => {
 
             {isCasting && (
               <CoercionStrategyPicker
+                autoFocus={autoFocusCoercionPicker}
                 baseType={field.base_type}
+                dropdownOpened={isCoercionPickerOpen}
                 value={field.coercion_strategy ?? undefined}
                 onChange={async (coercionStrategy) => {
                   await updateField({
@@ -106,6 +113,8 @@ const DataSectionBase = ({ field }: Props) => {
                     message: t`Casting enabled for ${field.display_name}`,
                   });
                 }}
+                onDropdownClose={() => setIsCoercionPickerOpen(false)}
+                onDropdownOpen={() => setIsCoercionPickerOpen(true)}
               />
             )}
           </>

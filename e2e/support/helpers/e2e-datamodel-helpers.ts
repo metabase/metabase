@@ -31,6 +31,8 @@ export const DataModel = {
     getSemanticTypeInput: getFieldSemanticTypeInput,
     getSemanticTypeCurrencyInput: getFieldSemanticTypeCurrencyInput,
     getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
+    getCoercionToggle: getFieldCoercionToggle,
+    getCoercionInput: getFieldCoercionInput,
   },
 };
 
@@ -201,4 +203,12 @@ function getFieldSemanticTypeCurrencyInput() {
 
 function getFieldSemanticTypeFkTargetInput() {
   return getFieldSection().findByPlaceholderText("Select a target");
+}
+
+function getFieldCoercionToggle() {
+  return getFieldSection().findByLabelText("Cast to a specific data type");
+}
+
+function getFieldCoercionInput() {
+  return getFieldSection().findByPlaceholderText("Select data type");
 }

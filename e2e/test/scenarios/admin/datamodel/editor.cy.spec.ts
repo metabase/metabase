@@ -674,7 +674,6 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("User ID").should("be.visible");
     });
 
-    // TODO: next
     it("should allow you to cast a field to a data type", () => {
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
@@ -683,11 +682,13 @@ describe("scenarios > admin > datamodel > editor", () => {
         fieldId: FEEDBACK.RATING,
       });
 
-      cy.findByRole("button", { name: /Don't cast/ }).click();
-
       cy.log(
         "Ensure that Coercion strategy has been humanized (metabase#44723)",
       );
+      H.DataModel.FieldSection.getCoercionToggle()
+        .parent()
+        .scrollIntoView()
+        .click();
       H.popover().should("not.contain.text", "Coercion");
       H.popover().findByText("UNIX seconds → Datetime").click();
       cy.wait("@updateField");
