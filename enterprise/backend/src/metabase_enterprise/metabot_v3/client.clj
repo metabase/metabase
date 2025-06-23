@@ -167,7 +167,6 @@
                             :as :stream}
                      *debug* (assoc :debug true))
           response (post! url options)
-          _ (log/info response)
           response-lines (-> response :body io/reader)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
@@ -175,9 +174,9 @@
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
           (loop []
             (when-let [line (.readLine response-lines)]
-              (println "LINE" line)
               (.write os (.getBytes (str line "\n") "UTF-8"))
               (.flush os)
+                                   ;; Give time for the line to flush before continuing
               (Thread/sleep 10)
               (recur))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
