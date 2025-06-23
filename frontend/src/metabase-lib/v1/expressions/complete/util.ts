@@ -42,9 +42,10 @@ export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {
   return `${clause.displayName}(${args})`;
 }
 
-export function fuzzyMatcher(options: Completion[]) {
-  const keys = ["displayLabel"];
-
+export function fuzzyMatcher(
+  options: Completion[],
+  { keys = ["displayLabel"] }: { keys?: string[] } = {},
+) {
   const fuse = new Fuse(options, {
     keys,
     includeScore: true,
@@ -52,17 +53,26 @@ export function fuzzyMatcher(options: Completion[]) {
   });
 
   return function (word: string) {
-    return (
-      fuse
-        .search(word)
-        // .filter(result => (result.score ?? 0) <= 1)
-        .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
-        .map((result) => {
-          result.item.matches =
-            result.matches?.flatMap((match) => match.indices) ?? [];
-          return result.item;
-        })
-    );
+    return fuse
+      .search(word)
+      .filter((result) => (result.score ?? 0) <= 1)
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .map((result) => {
+        const key = result.matches?.[0]?.key;
+        const matches = result.matches?.flatMap((match) =>
+          match.key === key ? (match.indices ?? []) : [],
+        );
+
+        const displayLabel = key
+          ? (result.item[key as keyof typeof result.item] as string | undefined)
+          : null;
+
+        return {
+          ...result.item,
+          displayLabel: displayLabel ?? result.item.displayLabel,
+          matches,
+        };
+      });
   };
 }
 
