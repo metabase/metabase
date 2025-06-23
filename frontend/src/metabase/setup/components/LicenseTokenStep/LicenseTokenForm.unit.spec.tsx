@@ -4,18 +4,11 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { LicenseTokenForm } from "./LicenseTokenForm";
 
-const mockOnSubmit = jest.fn();
-const mockOnSkip = jest.fn();
+function setup(args: { initialValue?: string } = {}) {
+  const { initialValue } = args;
+  const onSubmit = jest.fn();
+  const onSkip = jest.fn();
 
-function setup({
-  onSubmit = mockOnSubmit,
-  onSkip = mockOnSkip,
-  initialValue = "",
-}: {
-  onSubmit: (token: string) => Promise<void>;
-  onSkip: () => void;
-  initialValue?: string;
-}) {
   renderWithProviders(
     <LicenseTokenForm
       onSubmit={onSubmit}
@@ -23,6 +16,11 @@ function setup({
       initialValue={initialValue}
     />,
   );
+
+  return {
+    onSubmit,
+    onSkip,
+  };
 }
 
 describe("LicenseTokenForm", () => {
@@ -31,7 +29,7 @@ describe("LicenseTokenForm", () => {
   });
 
   it("renders the form with initial empty value", () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    setup();
 
     expect(
       screen.getByPlaceholderText("Paste your token here"),
@@ -44,8 +42,6 @@ describe("LicenseTokenForm", () => {
 
   it("renders the form with initial value", () => {
     setup({
-      onSubmit: mockOnSubmit,
-      onSkip: mockOnSkip,
       initialValue: "test-token",
     });
 
@@ -53,7 +49,7 @@ describe("LicenseTokenForm", () => {
   });
 
   it("trims whitespace from token input", async () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    setup();
 
     const input = screen.getByPlaceholderText("Paste your token here");
     await userEvent.type(input, "  test-token  ");
@@ -62,7 +58,7 @@ describe("LicenseTokenForm", () => {
   });
 
   it("calls onSubmit with trimmed token value", async () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    const { onSubmit } = setup();
 
     const input = screen.getByPlaceholderText("Paste your token here");
     const token = Array(64).fill("1").join("");
@@ -72,21 +68,21 @@ describe("LicenseTokenForm", () => {
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith(token);
+      expect(onSubmit).toHaveBeenCalledWith(token);
     });
   });
 
   it("calls onSkip when skip link is clicked", async () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    const { onSkip } = setup();
 
     const skipLink = screen.getByText("I'll activate later");
     await userEvent.click(skipLink);
 
-    expect(mockOnSkip).toHaveBeenCalled();
+    expect(onSkip).toHaveBeenCalled();
   });
 
   it("shows info popover on hover", async () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    setup();
 
     const infoIcon = screen.getByLabelText("Token details information");
     userEvent.hover(infoIcon);
@@ -101,7 +97,7 @@ describe("LicenseTokenForm", () => {
   });
 
   it("disables submit button when token is invalid", async () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    setup();
 
     const input = screen.getByPlaceholderText("Paste your token here");
     await userEvent.type(input, "invalid-token");
@@ -111,7 +107,7 @@ describe("LicenseTokenForm", () => {
   });
 
   it("shows error message for invalid token", async () => {
-    setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    setup();
     const user = userEvent.setup();
 
     const input = screen.getByPlaceholderText("Paste your token here");
