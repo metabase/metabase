@@ -249,8 +249,8 @@ function GoogleSheetsDisconnectModal({
       .catch((response: unknown) => {
         setErrorMessage(
           getErrorMessage(
-            // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
             response,
+            // eslint-disable-next-line no-literal-metabase-strings -- admin only ui
             t`Please check that the folder is shared with the Metabase Service Account.`,
           ),
         );
