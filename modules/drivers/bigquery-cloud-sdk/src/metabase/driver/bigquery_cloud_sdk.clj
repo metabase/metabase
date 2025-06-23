@@ -289,22 +289,24 @@
                  database
                  {:select [:column_name :data_type :field_path]
                   :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
-                  :where [:= :table_name table-name]})]
+                  :where [:= :table_name table-name]})
+        nested-column-info (fn [{data-type :data_type field-path-str :field_path}]
+                             (let [field-path (str/split field-path-str #"\.")
+                                   nfc-path (not-empty (pop field-path))
+                                   [database-type base-type] (raw-type->database+base-type data-type)]
+                               {:name (peek field-path)
+                                :table-name table-name
+                                :table-schema dataset-id
+                                :database-type database-type
+                                :base-type base-type
+                                :nfc-path nfc-path}))]
     (transduce
      (comp
-      (map (fn [{data-type :data_type field-path-str :field_path}]
-             (let [field-path (str/split field-path-str #"\.")
-                   nfc-path (not-empty (pop field-path))
-                   [database-type base-type] (raw-type->database+base-type data-type)]
-               {:name (peek field-path)
-                :table-name table-name
-                :table-schema dataset-id
-                :database-type database-type
-                :base-type base-type
-                :nfc-path nfc-path})))
+      (map nested-column-info)
       (filter :nfc-path))
-     (fn [accum col]
-       (update accum (:nfc-path col) (fnil conj []) col))
+     (completing
+      (fn [accum col]
+        (update accum (:nfc-path col) (fnil conj []) col)))
      {}
      results)))
 
