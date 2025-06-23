@@ -13,9 +13,9 @@ import {
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
+import { getIsEmbeddingSdk } from "metabase/env";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
