@@ -2511,19 +2511,21 @@
 
             create-dashcard (fn create-dashcard
                               [card-id targets-or-viz-settings]
-                              (insert-returning-pk! :model/DashboardCard
-                                                    {:dashboard_id dashboard-id
-                                                     :parameter_mappings []
-                                                     :visualization_settings
-                                                     (if (map? targets-or-viz-settings)
-                                                       targets-or-viz-settings
-                                                       (viz-settings-without-stage-numbers
-                                                        targets-or-viz-settings))
-                                                     :card_id card-id
-                                                     :size_x  4
-                                                     :size_y  4
-                                                     :col     1
-                                                     :row     1}))
+                              (insert-returning-pk! (t2/table-name :model/DashboardCard)
+                                                    {:dashboard_id           dashboard-id
+                                                     :created_at             :%now
+                                                     :updated_at             :%now
+                                                     :parameter_mappings     "[]"
+                                                     :visualization_settings (json/encode
+                                                                              (if (map? targets-or-viz-settings)
+                                                                                targets-or-viz-settings
+                                                                                (viz-settings-without-stage-numbers
+                                                                                 targets-or-viz-settings)))
+                                                     :card_id                card-id
+                                                     :size_x                 4
+                                                     :size_y                 4
+                                                     :col                    1
+                                                     :row                    1}))
             single-stage-dashcard-id (create-dashcard single-stage-question-id
                                                       [single-stage-question-id dashboard-id native-question-id])
             multi-stage-dashcard-id  (create-dashcard single-stage-question-id
