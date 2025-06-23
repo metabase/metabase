@@ -112,12 +112,12 @@ describe("LicenseTokenForm", () => {
 
   it("shows error message for invalid token", async () => {
     setup({ onSubmit: mockOnSubmit, onSkip: mockOnSkip });
+    const user = userEvent.setup();
 
     const input = screen.getByPlaceholderText("Paste your token here");
     await userEvent.type(input, "invalid-token");
-
-    const submitButton = screen.getByRole("button", { name: "Activate" });
-    await userEvent.click(submitButton);
+    // we should see error message when input loses focus
+    await user.tab();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
