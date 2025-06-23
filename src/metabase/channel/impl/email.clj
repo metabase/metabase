@@ -15,7 +15,6 @@
    [metabase.channel.shared :as channel.shared]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
-   [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.notification.models :as models.notification]
    [metabase.parameters.shared :as shared.params]
    [metabase.system.core :as system]

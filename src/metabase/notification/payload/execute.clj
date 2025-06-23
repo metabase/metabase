@@ -124,7 +124,7 @@
   [dashcard]
   (not= "heading" (get-in dashcard [:visualization_settings :virtual_card :display])))
 
-(defn- process-virtual-dashcard
+(defn process-virtual-dashcard
   "Given a virtual (text or heading) dashcard and the parameters on a dashboard, returns the dashcard with any
   parameter values appropriately substituted into connected variables in the text."
   [dashcard parameters]
