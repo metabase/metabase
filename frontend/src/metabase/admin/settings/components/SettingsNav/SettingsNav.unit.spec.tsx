@@ -1,7 +1,9 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
+import { setupSettingEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockVersionInfo } from "metabase-types/api/mocks";
 import {
   createMockLocation,
   createMockRoutingState,
@@ -10,6 +12,11 @@ import {
 import { SettingsNav } from "./SettingsNav";
 
 const setup = async ({ initialRoute }: { initialRoute: string }) => {
+  setupSettingEndpoint({
+    settingKey: "version-info",
+    settingValue: createMockVersionInfo(),
+  });
+
   renderWithProviders(<Route path="*" component={SettingsNav} />, {
     withRouter: true,
     initialRoute,

@@ -131,7 +131,7 @@ const hasActiveChild = (children: ReactElement[], pathname: string) =>
     (child) => child?.props?.path && pathname.includes(child.props.path),
   );
 
-function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
+export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
   const children = React.Children.toArray(
     navItemProps.children,
   ) as ReactElement[];
