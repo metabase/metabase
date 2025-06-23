@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getFieldOptions } from "metabase/querying/filters/components/FilterValuePicker/utils";
 import {
   Box,

@@ -544,11 +544,19 @@
                     results)}))
 
 ;;;; Shared stuff for both `:table.row/delete` and `:table.row/update`
+(mu/defn- table-id->pk-fields
+  "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
+  [table-id    :- driver-api/schema.id.table]
+  (driver-api/cached-value
+   [::table-id->pk-fields table-id]
+   (fn []
+     (filter #(isa? (:semantic_type %) :type/PK)
+             (t2/select :model/Field :table_id table-id)))))
 
 (mu/defn- table-id->pk-field-name->id :- [:map-of driver-api/schema.common.non-blank-string driver-api/schema.id.field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- driver-api/schema.id.database
-   table-id    :- driver-api/schema.id.table]
+   table-id :- driver-api/schema.id.table]
   (driver-api/cached-value
    [::table-id->pk-field-name->id table-id]
    #(into {}
@@ -772,7 +780,7 @@
     (throw (ex-info (tru "Cannot mix values of :delete-children, behavior would be ambiguous") {:status-code 400})))
   (let [delete-children?  (some :delete-children inputs)
         table-id->pk-keys (u/for-map [table-id (distinct (map :table-id inputs))]
-                            (let [database       (driver-api/cached-database-via-table-id table-id)
+                            (let [database (driver-api/cached-database-via-table-id table-id)
                                   field-name->id (table-id->pk-field-name->id (:id database) table-id)]
                               [table-id (keys field-name->id)]))
         [errors results]  (batch-execution-by-table-id!
@@ -947,7 +955,7 @@
                            :action   action
                            :proc     create-or-update!*
                            :rows     inputs
-                           :xform    (map (fn [{:keys [database row-key row table-id] :as input}]
+                           :xform    (map (fn [{:keys [_database row-key row table-id] :as input}]
                                             ;; Currently we do not have any UX to configure which columns to use for
                                             ;; the row key. To compensate for this, we fall back to using the pk for now.
                                             ;; Ideally, this would be explicitly configured in the future.
@@ -961,8 +969,11 @@
                                             ;; to using the database PK (but first we'll need to track which columns
                                             ;; those are).
                                             (if (empty? row-key)
-                                              (let [pk-cols (keys (table-id->pk-field-name->id database table-id))]
-                                                (assoc input :row-key (select-keys row pk-cols)))
+                                              (let [pk-fields (table-id->pk-fields table-id)]
+                                                (-> input
+                                                    (assoc :row-key (select-keys row (map :name pk-fields)))
+                                                    ;; make sure the row doesn't include pk that's auto incremented
+                                                    (update :row (fn [row] (apply dissoc row (map :name (filter :database_is_auto_increment pk-fields)))))))
                                               input)))})]
     (when (seq errors)
       (throw (ex-info (tru "Error(s) creating or updating rows.")

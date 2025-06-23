@@ -6,7 +6,7 @@ import {
   type DragEndEvent,
   Sortable,
   SortableList,
-} from "metabase/core/components/Sortable";
+} from "metabase/common/components/Sortable";
 import {
   onUpdateDashCardVisualizationSettings,
   updateEditableTableCardQueryInEditMode,

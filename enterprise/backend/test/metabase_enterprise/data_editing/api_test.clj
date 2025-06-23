@@ -887,23 +887,25 @@
                                                           {:table_id table-id
                                                            :editableTable.enabledActions
                                                            (let [param-maps
-                                                                 ;; we might need to change these to use field ids
-                                                                 [{:parameterId "name", :sourceType "row-data", :sourceValueTarget "name"}]]
+                                                                 ;; TODO change these to use field ids, to test the translation
+                                                                 [{:parameterId "id",     :sourceType "row-data", :sourceValueTarget "id"}
+                                                                  {:parameterId "name",   :sourceType "row-data", :sourceValueTarget "name"}
+                                                                  {:parameterId "status", :sourceType "row-data", :sourceValueTarget "status"}]]
                                                              [{:id                "dashcard:unknown:abcdef"
                                                                :actionId          (:id action)
-                                                               :actionType        "data-grid/row-action"
+                                                               :actionType        "data-grid/custom-action"
                                                                :parameterMappings param-maps
                                                                :enabled           true}
                                                               {:id                "dashcard:unknown:fedcba"
                                                                :actionId          "table.row/update"
-                                                               :actionType        "data-grid/row-action"
+                                                               :actionType        "data-grid/custom-action"
                                                                :mapping           {:table-id table-id
                                                                                    :row      "::root"}
                                                                :parameterMappings param-maps
                                                                :enabled           true}
                                                               {:id                "dashcard:unknown:xyzabc"
                                                                :actionId          (#'actions/encoded-action-id :table.row/update table-id)
-                                                               :actionType        "data-grid/row-action"
+                                                               :actionType        "data-grid/custom-action"
                                                                :parameterMappings param-maps
                                                                :enabled           true}])}}]
               (testing "no access to the model"
@@ -1020,7 +1022,7 @@
                                                        :editableTable.enabledActions
                                                        [{:id         "dashcard:unknown:my-row-action"
                                                          :actionId   "table.row/create"
-                                                         :actionType "data-grid/row-action"
+                                                         :actionType "data-grid/custom-action"
                                                          :mapping    {:table-id table-2-id
                                                                       :row      {:a ["::key" "aa"]
                                                                                  :b ["::key" "bb"]
@@ -1201,28 +1203,115 @@
                           [2 "seeya, world!" nil nil                   nil]]
                          (->> (table-rows table-id)
                               (sort-by first)))))
-                ;; This is failing because id is auto-incremented and does not accept a value
-                ;; we need to change the tests so that the upsert is conditioned on columns other than PK
-                ;; This should match with how it's intended to use too. but we haven't made the mapping for row-key
-                ;; so this is commented out for now
-                #_(testing "insert"
-                    (execute! upsert-card {:id        3
-                                           :text      "hello, world!!!"
-                                           :int       45})
-                    (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
-                            [2 "seeya, world!"   nil nil                   nil]
-                            [3 "hello, world!!!" 45 nil                   nil]]
-                           (->> (table-rows @test-table)
-                                (sort-by first))))))
+                (testing "insert"
+                  (execute! upsert-card {:id        3
+                                         :text      "hello, world!!!"
+                                         :int       45})
+                  (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                          [2 "seeya, world!"   nil nil                   nil]
+                          [3 "hello, world!!!" 45 nil                   nil]]
+                         (->> (table-rows table-id)
+                              (sort-by first))))))
 
               (testing "delete"
                 (testing "prefill does not crash"
                   (is (= {} (prefill-values delete-card {})))
-                  (is (= {} (prefill-values delete-card {:id 2}))))
-                (execute! delete-card {:id 2})
-                (is (= [[1 "hello, world!" 44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]]
+                  (is (= {} (prefill-values delete-card {:id 3}))))
+                (execute! delete-card {:id 3})
+                (is (= [[1 "hello, world!"   44 "2025-05-12T14:32:16Z" "2025-05-12T00:00:00Z"]
+                        [2 "seeya, world!"   nil nil                   nil]]
                        (->> (table-rows table-id)
                             (sort-by first))))))))))))
+
+(deftest create-or-update-on-table-where-pk-is-not-auto-incremented-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [table-id [{:id        [:int]
+                                                     :int       [:int]}
+                                                    {:primary-key [:id]}]]
+        (let [table-actions (list-actions table-id)]
+          (mt/with-temp [:model/Dashboard dash {}]
+            (let [upsert-action       (get (u/index-by :kind table-actions) "table.row/create-or-update")
+                  {:keys [dashcards]} (mt/user-http-request
+                                       :crowberto
+                                       :put
+                                       (str "dashboard/" (:id dash))
+                                       {:dashcards [{:id       -1
+                                                     :size_x    1
+                                                     :size_y    1
+                                                     :row       0
+                                                     :col       0
+                                                     :action_id (:id upsert-action)}]})
+
+                  upsert-card         (get (u/index-by (comp :kind :action) dashcards) "table.row/create-or-update")
+                  exec-url            (format "dashboard/%d/dashcard/%d/execute" (:id dash) (:id upsert-card))]
+              (testing "create-or-update"
+                (testing "insert"
+                  (mt/user-http-request :crowberto :post 200 exec-url
+                                        {:parameters {:id 1, :int 41}})
+                  (is (= [[1 41]]
+                         (table-rows table-id))))
+                (testing "update"
+                  (mt/user-http-request :crowberto :post 200 exec-url
+                                        {:parameters {:id 1, :int 42}})
+                  (is (= [[1 42]]
+                         (table-rows table-id))))))))))))
+
+;; the right way to use create-or-update is by having a row-key mapping, currently this is not possible on the UI
+;; This test is here for reference
+(deftest create-or-update-on-with-row-key-mapping-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [table-id [{:id   'auto-inc-type
+                                                     :int  [:int]
+                                                     :text [:text]}
+                                                    {:primary-key [:id]}]]
+        (mt/with-temp [:model/Dashboard dash {}
+                       :model/DashboardCard dashcard {:dashboard_id (:id dash)
+                                                      :visualization_settings
+                                                      {:table_id table-id
+
+                                                       :table.columns
+                                                       [{:name "int", :enabled true}]
+
+                                                       :editableTable.columns
+                                                       ["int" "text"]
+
+                                                       :editableTable.enabledActions
+                                                       [{:id                "dashcard:unknown:create-or-update"
+                                                         :actionId          "table.row/create-or-update"
+                                                         :actionType        "data-grid/row-action"
+                                                         :enabled           true
+                                                         :mapping           {:table-id table-id
+                                                                             :row-key  {:int ["::key" :int]}
+                                                                             :row      "::params"}
+                                                         :parameterMappings [{:parameterId       "id"
+                                                                              :sourceType        "ask-user"}
+                                                                             {:parameterId       "int"
+                                                                              :sourceType        "ask-user"}
+                                                                             {:parameterId       "text"
+                                                                              :visibility        "ask-user"}]}]}}]
+          (let [create-or-update! #(mt/user-http-request :crowberto :post 200 execute-v2-url
+                                                         (merge {:action_id "dashcard:unknown:create-or-update"
+                                                                 :scope     {:dashcard-id (:id dashcard)}}
+                                                                %))]
+            (testing "create when there is no rows with the same int found"
+              (is (= {:outputs [{:op  "created"
+                                 :row {:id 1, :int 42, :text "new"}, :table-id table-id}]}
+                     (create-or-update! {:input  {}
+                                         :params {:int 42 :text "new"}}))))
+
+            (testing "update if a row with the same int exists"
+              (is (= {:outputs [{:op  "updated",
+                                 :row {:id 1, :int 42, :text "updated"}, :table-id table-id}]}
+                     (create-or-update! {:input  {}
+                                         :params {:int 42 :text "updated"}}))))
+
+            (testing "create if we change int"
+              (is (= {:outputs [{:op  "created",
+                                 :row {:id 2, :int 43, :text "updated"}, :table-id table-id}]}
+                     (create-or-update! {:input  {}
+                                         :params {:int 43 :text "updated"}}))))))))))
 
 (deftest tmp-modal-saved-action-test
   (mt/with-premium-features #{:table-data-editing}
@@ -1387,14 +1476,14 @@
 (deftest tmp-modal-saved-action-on-editable-on-dashboard-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
-      (data-editing.tu/with-test-tables! [categories [{:id   'auto-inc-type
-                                                       :name [:text]}
-                                                      {:primary-key [:id]}]
-                                          products   [{:id          'auto-inc-type
-                                                       :name        [:text]
-                                                       :price       [:int]
-                                                       :category_id [:int]}
-                                                      {:primary-key [:id]}]]
+      (data-editing.tu/with-test-tables! [categories  [{:id   'auto-inc-type
+                                                        :name [:text]}
+                                                       {:primary-key [:id]}]
+                                          _products   [{:id          'auto-inc-type
+                                                        :name        [:text]
+                                                        :price       [:int]
+                                                        :category_id [:int]}
+                                                       {:primary-key [:id]}]]
         (mt/with-temp
           [:model/Dashboard     dashboard {}
            :model/Card          model     {:type           :model
@@ -1440,7 +1529,7 @@
                                              {:id                "dashcard:unknown:custom"
                                               :name              "create"
                                               :actionId          (:id action)
-                                              :actionType        "data-grid/row-action"
+                                              :actionType        "data-grid/custom-action"
                                               :parameterMappings [{:parameterId "a" :sourceType "row-data" :sourceValueTarget "name"}
                                                                   {:parameterId "b" :sourceType "ask-user"}
                                                                   {:parameterId "c" :sourceType "row-data" :sourceValueTarget "id", :visibility "hidden"}]}]
@@ -1512,7 +1601,7 @@
                                              {:id                "dashcard:unknown:custom-create"
                                               :name              "create"
                                               :actionId          (#'actions/encoded-action-id :table.row/create products)
-                                              :actionType        "data-grid/row-action"
+                                              :actionType        "data-grid/custom-action"
                                               :parameterMappings [{:parameterId "name" :sourceType "row-data" :sourceValueTarget "name"}
                                                                   {:parameterId "price" :sourceType "ask-user"}
                                                                   {:parameterId "category_id" :sourceType "row-data" :sourceValueTarget "id"}]}]
@@ -1602,7 +1691,7 @@
                                               :actionType        "data-grid/built-in"}
                                              {:id                "dashcard:unknown:custom-create"
                                               :actionId          "table.row/create"
-                                              :actionType        "data-grid/row-action"
+                                              :actionType        "data-grid/custom-action"
                                               :mapping           {:table-id table-id
                                                                   :row      "::root"}
                                               :parameterMappings [{:parameterId "int"

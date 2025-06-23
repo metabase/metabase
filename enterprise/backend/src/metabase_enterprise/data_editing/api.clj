@@ -316,7 +316,7 @@
                              viz-action  (api/check-404 (first (filter (comp #{raw-id} :id) actions)))
                              inner-id    (:actionId viz-action)
                              inner       (fetch-unified-action scope inner-id)
-                             action-type (:actionType viz-action "data-grid/row-action")
+                             action-type (:actionType viz-action "data-grid/custom-action")
                              mapping     (:mapping viz-action)
                              ;; TODO we should do this *later* because it's lossy - we lose the configured ordering.
                              param-map   (->> (:parameterMappings viz-action {})
@@ -325,6 +325,8 @@
                          (assert (:enabled viz-action true) "Cannot call disabled actions")
                          (case action-type
                            ("data-grid/built-in"
+                            "data-grid/custom-action"
+                            ;; deprecated
                             "data-grid/row-action")
                            {:inner-action inner
                             :mapping      mapping
@@ -375,21 +377,20 @@
                              _         (api/check-404 row)]
                          ;; TODO i would much prefer if we used field-ids and not names in the configuration
                          (update-keys row name)))))]
-    (reduce-kv
-     (fn [acc k v]
-       (case (:sourceType v)
-         "ask-user" (if-let [default (:value v)]
-                      (if-not (contains? acc k)
-                        (assoc acc k default)
-                        acc)
-                      acc)
-         "constant" (assoc acc k (:value v))
-         ;; TODO: support override from params?
-         "row-data" (assoc acc k (get @row (:sourceValueTarget v)))
-         ;; no mapping? omit the key
-         nil acc))
-     (merge input params)
-     param-map)))
+    (if-not param-map
+      (merge input params)
+      (reduce-kv
+       (fn [acc k v]
+         (let [override (when-not (:visible v) (get params k))]
+           (case (:sourceType v)
+             ;; I don't think the FE can send a value for ask-user, but our tests do it...
+             "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
+             "constant" (assoc acc k (or override (:value v)))
+             "row-data" (assoc acc k (or override (get @row (:sourceValueTarget v))))
+             ;; no mapping? omit the key
+             nil acc)))
+       {}
+       param-map))))
 
 (defn- apply-mapping [{:keys [mapping] :as action} params inputs]
   (let [mapping (hydrate-mapping mapping)
@@ -490,7 +491,7 @@
   "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
   [{:keys [param-map] :as action}]
   ;; We create a version of the action that will "map" to an input which is just the row data itself.
-  (let [row-data-mapping (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+  (let [row-data-mapping (u/for-map [[_ {:keys [sourceType sourceValueTarget]}] param-map
                                      :when (= "row-data" sourceType)]
                            [sourceValueTarget [::key (keyword sourceValueTarget)]])]
     (when (seq row-data-mapping)
@@ -510,16 +511,6 @@
           first
           not-empty))
 
-;; test case
-
-(comment
-  (get-row-data {:inner-action {:mapping {:table-id 3, :row ::root}}
-                 :param-map    {:customer_id {:sourceType "row-data", :sourceValueTarget "id"}
-                                :engineer    {:sourceType "ask-user"}}
-                 ;; because we don't have a dashcard with this id to map to a table, our code treats it like a Question instead of an Editable
-                 :dashcard-id  3}
-                {:id 3}))
-
 (def tmp-modal
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/tmp-modal"
@@ -535,7 +526,7 @@
           partial-input (first (apply-mapping-nested unified nil [input]))]
       (data-editing.describe/describe-unified-action unified scope row-data partial-input))))
 
-(def configure
+(def config-form
   "A temporary var for our proxy in [[metabase.actions.api]] to call, until we move this endpoint there."
   (api.macros/defendpoint :post "/config-form"
     "This API returns a data representation of the form the FE will render. It does not update the configuration."

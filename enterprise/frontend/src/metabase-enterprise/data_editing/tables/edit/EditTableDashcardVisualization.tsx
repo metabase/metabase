@@ -5,8 +5,8 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
-import { NoDataError } from "metabase/components/errors/NoDataError";
+import Modal from "metabase/common/components/Modal";
+import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import { useDispatch } from "metabase/lib/redux";
 import {
   ActionIcon,
