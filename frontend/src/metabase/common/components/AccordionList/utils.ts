@@ -4,7 +4,7 @@ import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 
-import type { Item, SearchProps, Section } from "./types";
+import type { Item, Row, SearchProps, Section } from "./types";
 
 export type Cursor = {
   sectionIndex: number;
@@ -12,7 +12,6 @@ export type Cursor = {
 };
 
 type SectionPredicate = (sectionIndex: number) => boolean;
-type ItemFilterPredicate = (item: any) => boolean;
 
 const areSameCursors = (left: Cursor, right: Cursor) => {
   return (
@@ -21,31 +20,36 @@ const areSameCursors = (left: Cursor, right: Cursor) => {
   );
 };
 
-export const getNextCursor = (
+export function getNextCursor<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>(
   cursor: Cursor | null,
-  sections: Section[],
+  rows: Row<TItem, TSection>[],
   isSectionExpanded: SectionPredicate,
   canSelectSection: SectionPredicate,
-  filterFn: ItemFilterPredicate,
   skipInitial: boolean = true,
-): Cursor => {
+): Cursor {
   if (!cursor) {
     return getNextCursor(
       { sectionIndex: 0, itemIndex: null },
-      sections,
+      rows,
       isSectionExpanded,
       canSelectSection,
-      filterFn,
       false,
     );
   }
 
-  for (
-    let sectionIndex = cursor.sectionIndex;
-    sectionIndex < sections.length;
-    sectionIndex++
-  ) {
-    const section = sections[sectionIndex];
+  const currentRowIndex = rows.findIndex(
+    (row) =>
+      row.sectionIndex === cursor.sectionIndex &&
+      ((row.type === "item" && row.itemIndex === cursor.itemIndex) ||
+        cursor.itemIndex == null),
+  );
+
+  for (let rowIndex = currentRowIndex; rowIndex < rows.length; rowIndex++) {
+    const row = rows[rowIndex];
+    const { section, sectionIndex } = row;
 
     const sectionCursor = {
       sectionIndex,
@@ -73,7 +77,6 @@ export const getNextCursor = (
       itemIndex < (section.items?.length ?? 0);
       itemIndex++
     ) {
-      const item = section.items?.[itemIndex];
       const itemCursor = {
         sectionIndex,
         itemIndex,
@@ -83,39 +86,41 @@ export const getNextCursor = (
         continue;
       }
 
-      if (filterFn(item)) {
-        return itemCursor;
-      }
+      return itemCursor;
     }
   }
 
   return cursor;
-};
+}
 
-export const getPrevCursor = (
+export function getPrevCursor<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>(
   cursor: Cursor | null,
-  sections: Section[],
+  rows: Row<TItem, TSection>[],
   isSectionExpanded: SectionPredicate,
   canSelectSection: SectionPredicate,
-  filterFn: ItemFilterPredicate,
-): Cursor => {
+): Cursor {
   if (!cursor) {
-    return getNextCursor(
+    return getPrevCursor(
       { sectionIndex: 0, itemIndex: null },
-      sections,
+      rows,
       isSectionExpanded,
       canSelectSection,
-      filterFn,
-      false,
     );
   }
 
-  for (
-    let sectionIndex = cursor.sectionIndex;
-    sectionIndex >= 0;
-    sectionIndex--
-  ) {
-    const section = sections[sectionIndex];
+  const currentRowIndex = rows.findIndex(
+    (row) =>
+      row.sectionIndex === cursor.sectionIndex &&
+      ((row.type === "item" && row.itemIndex === cursor.itemIndex) ||
+        cursor.itemIndex == null),
+  );
+
+  for (let rowIndex = currentRowIndex; rowIndex >= 0; rowIndex--) {
+    const row = rows[rowIndex];
+    const { section, sectionIndex } = row;
 
     const skipItems =
       (cursor.sectionIndex === sectionIndex && cursor.itemIndex == null) ||
@@ -130,7 +135,6 @@ export const getPrevCursor = (
         itemIndex >= 0;
         itemIndex--
       ) {
-        const item = section.items?.[itemIndex];
         const itemCursor = {
           sectionIndex,
           itemIndex,
@@ -140,9 +144,7 @@ export const getPrevCursor = (
           continue;
         }
 
-        if (filterFn(item)) {
-          return itemCursor;
-        }
+        return itemCursor;
       }
     }
 
@@ -165,7 +167,7 @@ export const getPrevCursor = (
   }
 
   return cursor;
-};
+}
 
 export function isReactNode(x: unknown): x is ReactNode {
   return (

@@ -295,10 +295,9 @@ export class AccordionList<
 
       const prevCursor = getPrevCursor(
         cursor ?? this.getInitialCursor(),
-        this.props.sections,
+        this.getRows(),
         this.isSectionExpanded,
         this.canSelectSection,
-        this.searchFilter,
       );
 
       return this.setState({
@@ -312,10 +311,9 @@ export class AccordionList<
 
       const nextCursor = getNextCursor(
         cursor ?? this.getInitialCursor(),
-        this.props.sections,
+        this.getRows(),
         this.isSectionExpanded,
         this.canSelectSection,
-        this.searchFilter,
       );
 
       return this.setState({
