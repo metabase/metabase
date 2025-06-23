@@ -11,8 +11,8 @@ import {
 } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";

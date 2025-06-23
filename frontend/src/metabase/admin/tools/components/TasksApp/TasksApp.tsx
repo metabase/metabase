@@ -6,7 +6,7 @@ import { t } from "ttag";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
