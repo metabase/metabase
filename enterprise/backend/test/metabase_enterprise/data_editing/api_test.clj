@@ -1418,14 +1418,14 @@
 (deftest tmp-modal-saved-action-on-editable-on-dashboard-test
   (mt/with-premium-features #{:table-data-editing}
     (mt/test-drivers #{:h2 :postgres}
-      (data-editing.tu/with-test-tables! [categories [{:id   'auto-inc-type
-                                                       :name [:text]}
-                                                      {:primary-key [:id]}]
-                                          products   [{:id          'auto-inc-type
-                                                       :name        [:text]
-                                                       :price       [:int]
-                                                       :category_id [:int]}
-                                                      {:primary-key [:id]}]]
+      (data-editing.tu/with-test-tables! [categories  [{:id   'auto-inc-type
+                                                        :name [:text]}
+                                                       {:primary-key [:id]}]
+                                          _products   [{:id          'auto-inc-type
+                                                        :name        [:text]
+                                                        :price       [:int]
+                                                        :category_id [:int]}
+                                                       {:primary-key [:id]}]]
         (mt/with-temp
           [:model/Dashboard     dashboard {}
            :model/Card          model     {:type           :model

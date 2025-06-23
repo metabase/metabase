@@ -490,7 +490,7 @@
   "HACK: create a placeholder unified action who will map to the values we need from row-data, if we need any"
   [{:keys [param-map] :as action}]
   ;; We create a version of the action that will "map" to an input which is just the row data itself.
-  (let [row-data-mapping (u/for-map [[id {:keys [sourceType sourceValueTarget]}] param-map
+  (let [row-data-mapping (u/for-map [[_ {:keys [sourceType sourceValueTarget]}] param-map
                                      :when (= "row-data" sourceType)]
                            [sourceValueTarget [::key (keyword sourceValueTarget)]])]
     (when (seq row-data-mapping)
