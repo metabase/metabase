@@ -401,7 +401,8 @@
                                     :presto-jdbc "VARBINARY"
                                     :oracle "BLOB"
                                     :clickhouse "string"
-                                    :databricks "BINARY"}}
+                                    :databricks "BINARY"
+                                    :snowflake "BINARY"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
