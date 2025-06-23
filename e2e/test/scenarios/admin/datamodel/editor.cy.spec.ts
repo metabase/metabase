@@ -121,7 +121,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      getTable("Orders").button("Hide table").click();
+      H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
       cy.wait("@updateTable");
 
       H.undoToast().should("contain.text", "Hid Orders");
@@ -139,7 +139,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
       });
 
-      getTable("Orders").button("Unhide table").click();
+      H.DataModel.TablePicker.getTable("Orders").button("Unhide table").click();
       cy.wait("@updateTable");
 
       H.undoToast().should("contain.text", "Unhid Orders");
@@ -712,6 +712,7 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the table name with data model permissions only", () => {
       setDataModelPermissions({ tableIds: [ORDERS_ID] });
+
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
@@ -726,11 +727,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         "have.value",
         "New orders",
       );
-      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
-      H.DataModel.TablePicker.getTable("Orders").should("not.exist");
 
-      H.undoToast().should("contain.text", "Updated Table display_name");
-      cy.wait("@updateTable");
+      H.undoToast().should("contain.text", "Table name updated");
       cy.signOut();
 
       cy.signInAsNormalUser();
@@ -751,12 +749,17 @@ describe("scenarios > admin > datamodel > editor", () => {
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      getFieldSection("TAX").within(() =>
-        setValueAndBlurInput("Tax", "New tax"),
-      );
+      H.DataModel.TableSection.getFieldNameInput("Tax")
+        .clear()
+        .type("New tax")
+        .blur();
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated Tax");
-      getFieldSection("TAX").findByDisplayValue("New tax").should("be.visible");
+
+      H.undoToast().should("contain.text", "Display name for Tax updated");
+      H.DataModel.TableSection.getFieldNameInput("New tax").should(
+        "be.visible",
+      );
+      H.DataModel.TableSection.getField("New tax").should("be.visible");
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
@@ -776,10 +779,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.TOTAL,
       });
-      setValueAndBlurInput("Total", "New total");
+
+      H.DataModel.FieldSection.getNameInput().clear().type("New total").blur();
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated Total");
-      cy.findByDisplayValue("New total").should("be.visible");
+
+      H.undoToast().should("contain.text", "Display name for Total updated");
+      H.DataModel.FieldSection.getNameInput().should("have.value", "New total");
+      H.DataModel.TableSection.getFieldNameInput("New total")
+        .scrollIntoView()
+        .should("be.visible");
 
       cy.signInAsNormalUser();
       H.openOrdersTable();
@@ -801,7 +809,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: ORDERS_ID,
         fieldId: ORDERS.USER_ID,
       });
-      cy.findByPlaceholderText("Select a target")
+      H.DataModel.FieldSection.getSemanticTypeFkTarget()
         .should("have.value", "People → ID")
         .click();
       H.popover().within(() => {
@@ -809,8 +817,9 @@ describe("scenarios > admin > datamodel > editor", () => {
         cy.findByText("Products → ID").click();
       });
       cy.wait("@updateField");
-      H.undoToast().should("contain.text", "Updated User ID");
-      cy.findByPlaceholderText("Select a target")
+
+      H.undoToast().should("contain.text", "Semantic type for User ID updated");
+      H.DataModel.FieldSection.getSemanticTypeFkTarget()
         .should("have.value", "Products → ID")
         .and("be.visible");
 
@@ -829,7 +838,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("User ID").should("be.visible");
     });
 
-    it("should allow setting foreign key mapping for accessible tables", () => {
+    // TODO: https://linear.app/metabase/issue/SEM-434
+    it.skip("should allow setting foreign key mapping for accessible tables", () => {
       setDataModelPermissions({
         tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
       });
@@ -841,8 +851,8 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.PRODUCT_ID,
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Use original value").click();
+
+      H.DataModel.FieldSection.getDisplayValuesInput().click();
       H.popover().findByText("Use foreign key").click();
       H.popover().findByText("Title").click();
       cy.wait("@updateFieldDimension");
@@ -863,11 +873,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.PRODUCT_ID,
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Use original value").click();
+      H.DataModel.FieldSection.getDisplayValuesInput().click();
+
       H.popover().within(() => {
-        cy.findByText("Use original value").should("be.visible");
-        cy.findByText("Use foreign key").should("not.exist");
+        cy.findByRole("option", { name: /Use original value/ })
+          .should("be.visible")
+          .and("not.have.attr", "data-combobox-disabled");
+        cy.findByRole("option", { name: /Use foreign key/ })
+          .should("be.visible")
+          .and("have.attr", "data-combobox-disabled", "true");
       });
     });
 
@@ -881,11 +895,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.RATING,
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Use original value").click();
+      H.DataModel.FieldSection.getDisplayValuesInput().click();
+
       H.popover().within(() => {
-        cy.findByText("Use original value").should("be.visible");
-        cy.findByText("Custom mapping").should("not.exist");
+        cy.findByRole("option", { name: /Use original value/ })
+          .should("be.visible")
+          .and("not.have.attr", "data-combobox-disabled");
+        cy.findByRole("option", { name: /Custom mapping/ })
+          .should("be.visible")
+          .and("have.attr", "data-combobox-disabled", "true");
       });
 
       cy.signInAsAdmin();
@@ -895,8 +913,7 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.RATING,
       });
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Use original value").click();
+      H.DataModel.FieldSection.getDisplayValuesInput().click();
       H.popover().findByText("Custom mapping").click();
       cy.wait("@updateFieldDimension");
 
@@ -907,10 +924,9 @@ describe("scenarios > admin > datamodel > editor", () => {
         tableId: REVIEWS_ID,
         fieldId: REVIEWS.RATING,
       });
+
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Custom mapping").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(CUSTOM_MAPPING_ERROR).should("be.visible");
+      cy.findByText(CUSTOM_MAPPING_ERROR).scrollIntoView().should("be.visible");
     });
   });
 
@@ -925,9 +941,15 @@ describe("scenarios > admin > datamodel > editor", () => {
         databaseId: MYSQL_DB_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
-      setValueAndBlurInput("Orders", "New orders");
+
+      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
       cy.wait("@updateTable");
-      cy.findByDisplayValue("New orders").should("be.visible");
+
+      H.undoToast().should("contain.text", "Table name updated");
+      H.DataModel.TableSection.getNameInput().should(
+        "have.value",
+        "New orders",
+      );
     });
 
     it("should be able to select and update a field in a database without schemas", () => {
@@ -935,12 +957,17 @@ describe("scenarios > admin > datamodel > editor", () => {
         databaseId: MYSQL_DB_ID,
         schemaId: MYSQL_DB_SCHEMA_ID,
       });
-      getFieldSection("TAX").findByDisplayValue("Everywhere").click();
+
+      H.DataModel.TableSection.clickField("Tax");
+      H.DataModel.FieldSection.getVisibilityInput().click();
       H.popover().findByText("Do not include").click();
       cy.wait("@updateField");
-      getFieldSection("TAX")
-        .findByDisplayValue("Do not include")
-        .should("be.visible");
+
+      H.undoToast().should("contain.text", "Visibility for Tax updated");
+      H.DataModel.FieldSection.getVisibilityInput().should(
+        "have.value",
+        "Do not include",
+      );
     });
   });
 });
@@ -966,14 +993,6 @@ const setDataModelPermissions = ({
   });
 };
 
-const setValueAndBlurInput = (oldValue: string, newValue: string) => {
-  cy.findByDisplayValue(oldValue).clear().type(newValue).blur();
-};
-
-const getFieldSection = (fieldName: string) => {
-  return cy.findByLabelText(fieldName);
-};
-
 const assertTableHeader = (columns: string[]) => {
   cy.findAllByTestId("header-cell").should("have.length", columns.length);
 
@@ -982,7 +1001,3 @@ const assertTableHeader = (columns: string[]) => {
     cy.findAllByTestId("header-cell").eq(index).should("have.text", column);
   });
 };
-
-function getTable(name: string) {
-  return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
-}

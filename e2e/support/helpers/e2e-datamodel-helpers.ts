@@ -33,6 +33,7 @@ export const DataModel = {
     getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
     getCoercionToggle: getFieldCoercionToggle,
     getCoercionInput: getFieldCoercionInput,
+    getDisplayValuesInput: getFieldDisplayValuesInput,
   },
 };
 
@@ -211,4 +212,8 @@ function getFieldCoercionToggle() {
 
 function getFieldCoercionInput() {
   return getFieldSection().findByPlaceholderText("Select data type");
+}
+
+function getFieldDisplayValuesInput() {
+  return getFieldSection().findByPlaceholderText("Select display values");
 }

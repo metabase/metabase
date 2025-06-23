@@ -57,7 +57,10 @@ export const RemappingPicker = ({
   const [isChoosingInitialFkTarget, setIsChoosingInitialFkTarget] =
     useState(false);
   const id = getRawTableFieldId(field);
-  const { data: fkTargetField, error: fkTargetFieldError } = useGetFieldQuery(
+  const { error: fieldValuesError } = useGetFieldValuesQuery(
+    getRawTableFieldId(field),
+  );
+  const { data: fkTargetField } = useGetFieldQuery(
     field.fk_target_field_id == null
       ? skipToken
       : {
@@ -96,7 +99,7 @@ export const RemappingPicker = ({
       : skipToken,
   );
   const fkRemappingField = hasFkMappingValue ? fkRemappingFieldData : undefined;
-  const isFieldsAccessRestricted = is403Error(fkTargetFieldError);
+  const isFieldsAccessRestricted = is403Error(fieldValuesError);
 
   const [updateFieldValues] = useUpdateFieldValuesMutation();
   const [createFieldDimension] = useCreateFieldDimensionMutation();
