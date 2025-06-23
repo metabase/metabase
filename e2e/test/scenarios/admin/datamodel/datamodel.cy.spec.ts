@@ -18,41 +18,6 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
   }
 
-  function getFieldType() {
-    return cy.findByPlaceholderText("Select a semantic type");
-  }
-
-  function setFieldType({
-    oldValue,
-    newValue,
-  }: {
-    oldValue: string;
-    newValue: string;
-  }) {
-    getFieldType().should("have.value", oldValue).click();
-    H.popover().findByText(newValue).click();
-  }
-
-  function checkNoFieldType({
-    oldValue,
-    newValue,
-  }: {
-    oldValue: string;
-    newValue: string;
-  }) {
-    getFieldType().should("have.value", oldValue).click();
-
-    H.popover().within(() => {
-      cy.findByText(newValue).should("not.exist");
-    });
-  }
-
-  function setFKTargetField(field: string) {
-    cy.findByPlaceholderText("Select a target").click();
-
-    H.popover().contains(field).click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -70,13 +35,20 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
     cy.wait(["@metadata", "@metadata"]);
 
-    setFieldType({ oldValue: "Foreign Key", newValue: "No semantic type" });
+    H.DataModel.FieldSection.getSemanticTypeInput()
+      .should("have.value", "Foreign Key")
+      .click();
+    H.popover().findByText("No semantic type").click();
+
     waitAndAssertOnResponse("fieldUpdate");
 
     cy.reload();
     cy.wait("@metadata");
 
-    getFieldType().should("have.value", "No semantic type");
+    H.DataModel.FieldSection.getSemanticTypeInput().should(
+      "have.value",
+      "No semantic type",
+    );
   });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
@@ -88,17 +60,22 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
     cy.wait("@metadata");
 
-    setFieldType({ oldValue: "Quantity", newValue: "Foreign Key" });
+    H.DataModel.FieldSection.getSemanticTypeInput()
+      .should("have.value", "Quantity")
+      .click();
+    H.popover().findByText("Foreign Key").click();
     waitAndAssertOnResponse("fieldUpdate");
 
-    setFKTargetField("Products → ID");
+    H.DataModel.FieldSection.getSemanticTypeFkTarget().click();
+    H.popover().findByText("Products → ID").click();
     waitAndAssertOnResponse("fieldUpdate");
 
     cy.reload();
     cy.wait(["@metadata", "@metadata"]);
 
-    getFieldType().should("be.visible");
-    cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
+    H.DataModel.FieldSection.getSemanticTypeFkTarget()
+      .should("be.visible")
+      .and("have.value", "Products → ID");
   });
 
   it("should correctly filter out options in Foreign Key picker (metabase#56839)", () => {
@@ -110,7 +87,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
     cy.wait(["@metadata", "@metadata"]);
 
-    cy.findByPlaceholderText("Select a target").clear();
+    H.DataModel.FieldSection.getSemanticTypeFkTarget().focus().clear();
     H.popover()
       .should("contain.text", "Orders → ID")
       .and("contain.text", "People → ID")
@@ -118,7 +95,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
       .and("contain.text", "Reviews → ID");
 
     cy.log("should case-insensitive match field display name");
-    cy.findByPlaceholderText("Select a target").type("id");
+    H.DataModel.FieldSection.getSemanticTypeFkTarget().focus().type("id");
     H.popover()
       .should("contain.text", "Orders → ID")
       .and("contain.text", "People → ID")
@@ -126,7 +103,10 @@ describe("scenarios > admin > datamodel > field > field type", () => {
       .and("contain.text", "Reviews → ID");
 
     cy.log("should case-insensitive match field description");
-    cy.findByPlaceholderText("Select a target").clear().type("EXT");
+    H.DataModel.FieldSection.getSemanticTypeFkTarget()
+      .focus()
+      .clear()
+      .type("EXT");
     H.popover()
       .should("not.contain.text", "Orders → ID")
       .and("not.contain.text", "People → ID")
@@ -143,7 +123,10 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     });
     cy.wait(["@metadata", "@metadata"]);
 
-    checkNoFieldType({ oldValue: "Foreign Key", newValue: "Number" });
+    H.DataModel.FieldSection.getSemanticTypeInput().click();
+    H.popover()
+      .should("contain.text", "Foreign Key")
+      .and("not.contain.text", "Number");
   });
 });
 
@@ -166,8 +149,7 @@ describe("scenarios > admin > datamodel > field", () => {
     });
 
     // update the name
-    cy.findByTestId("field-section")
-      .findByPlaceholderText("Give this field a name")
+    H.DataModel.FieldSection.getNameInput()
       .should("have.value", "Created At")
       .clear()
       .type("new display_name")
@@ -175,8 +157,7 @@ describe("scenarios > admin > datamodel > field", () => {
     cy.wait("@fieldUpdate");
 
     // update the description
-    cy.findByTestId("field-section")
-      .findByPlaceholderText("Give this field a description")
+    H.DataModel.FieldSection.getDescriptionInput()
       .should("have.value", "The date and time an order was submitted.")
       .clear()
       .type("new description")
@@ -185,12 +166,14 @@ describe("scenarios > admin > datamodel > field", () => {
 
     // reload and verify they have been updated
     cy.reload();
-    cy.findByTestId("field-section")
-      .findByPlaceholderText("Give this field a name")
-      .should("have.value", "new display_name");
-    cy.findByTestId("field-section")
-      .findByPlaceholderText("Give this field a description")
-      .should("have.value", "new description");
+    H.DataModel.FieldSection.getNameInput().should(
+      "have.value",
+      "new display_name",
+    );
+    H.DataModel.FieldSection.getDescriptionInput().should(
+      "have.value",
+      "new description",
+    );
   });
 
   it("should allow you to change field formatting", () => {
@@ -201,13 +184,14 @@ describe("scenarios > admin > datamodel > field", () => {
       fieldId: ORDERS.QUANTITY,
     });
 
-    cy.findByLabelText("Style").click();
+    H.DataModel.FieldSection.getStyleInput().click();
     H.popover().findByText("Percent").click();
     cy.wait("@fieldUpdate");
 
-    H.undoToast()
-      .findByText("Field formatting for Quantity updated")
-      .should("be.visible");
+    H.undoToast().should(
+      "contain.text",
+      "Field formatting for Quantity updated",
+    );
   });
 
   it("lets you change field visibility", () => {
@@ -218,14 +202,14 @@ describe("scenarios > admin > datamodel > field", () => {
       fieldId: ORDERS.CREATED_AT,
     });
 
-    cy.findByPlaceholderText("Select a field visibility").click();
+    H.DataModel.FieldSection.getVisibilityInput().click();
     H.popover().findByText("Do not include").click();
     cy.wait("@fieldUpdate");
 
     cy.reload();
-    cy.findByPlaceholderText("Select a field visibility")
-      .should("have.value", "Do not include")
-      .and("be.visible");
+    H.DataModel.FieldSection.getVisibilityInput()
+      .should("be.visible")
+      .and("have.value", "Do not include");
   });
 
   it("lets you change to 'Search box'", () => {
@@ -236,15 +220,15 @@ describe("scenarios > admin > datamodel > field", () => {
       fieldId: ORDERS.QUANTITY,
     });
 
-    cy.findByPlaceholderText("Select field filtering").click();
+    H.DataModel.FieldSection.getFilteringInput().click();
     H.popover().findByText("Search box").click();
     cy.wait("@fieldUpdate");
 
     cy.reload();
-    cy.findByPlaceholderText("Select field filtering")
+    H.DataModel.FieldSection.getFilteringInput()
       .scrollIntoView()
-      .should("have.value", "Search box")
-      .and("be.visible");
+      .should("be.visible")
+      .and("have.value", "Search box");
   });
 
   it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
@@ -255,19 +239,19 @@ describe("scenarios > admin > datamodel > field", () => {
       fieldId: ORDERS.PRODUCT_ID,
     });
 
-    cy.findByPlaceholderText("Select display values").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use foreign key").click();
     H.popover().findByText("Title").click();
     cy.wait("@fieldDimensionUpdate");
 
     cy.reload();
-    cy.findByPlaceholderText("Select display values")
+    H.DataModel.FieldSection.getDisplayValuesInput()
       .scrollIntoView()
-      .should("have.value", "Use foreign key")
-      .and("be.visible");
-    cy.findByPlaceholderText("Choose a field")
-      .should("have.value", "Title")
-      .and("be.visible");
+      .should("be.visible")
+      .and("have.value", "Use foreign key");
+    H.DataModel.FieldSection.getDisplayValuesFkTargetInput()
+      .should("be.visible")
+      .and("have.value", "Title");
   });
 
   it("allows 'Custom mapping' null values", () => {
@@ -286,7 +270,7 @@ describe("scenarios > admin > datamodel > field", () => {
 
             H.DataModel.visit({
               databaseId,
-              schemaId: schemaName,
+              schemaId: `${databaseId}:${schemaName}`,
               tableId: NUMBER_WITH_NULLS_ID,
               fieldId: NUM,
             });
@@ -294,7 +278,7 @@ describe("scenarios > admin > datamodel > field", () => {
         );
 
         cy.log("Change `null` to custom mapping");
-        cy.findByPlaceholderText("Select display values")
+        H.DataModel.FieldSection.getDisplayValuesInput()
           .scrollIntoView()
           .click();
         H.popover().findByText("Custom mapping").click();
@@ -353,7 +337,7 @@ describe("Unfold JSON", { tags: "@external" }, () => {
     );
 
     // Sync database
-    H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
+    cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
     cy.button("Sync database schema").click();
     cy.wait("@sync_schema");
     cy.button(/Sync triggered!/).should("be.visible");
@@ -428,8 +412,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       fieldId: ORDERS.PRODUCT_ID,
     });
 
-    cy.findByTestId("field-section")
-      .findByPlaceholderText("Give this field a name")
+    H.DataModel.FieldSection.getNameInput()
       .clear()
       .type("Remapped Product ID")
       .realPress("Tab");
@@ -446,8 +429,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
       tableId: ORDERS_ID,
     });
 
-    H.DataModel.TableSection.get()
-      .findByDisplayValue("Product ID")
+    H.DataModel.TableSection.getFieldNameInput("Product ID")
       .clear()
       .type("Remapped Product ID")
       .realPress("Tab");
@@ -465,13 +447,16 @@ describe("scenarios > admin > datamodel > metadata", () => {
     H.DataModel.TableSection.clickField("Product ID");
 
     // remap its original value to use foreign key
-    cy.findByPlaceholderText("Select display values").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use foreign key").click();
     H.popover().findByText("Title").click();
 
-    cy.findByTestId("field-section").findByText(
-      "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
-    );
+    cy.findByTestId("field-section")
+      .findByText(
+        "You might want to update the field name to make sure it still makes sense based on your remapping choices.",
+      )
+      .scrollIntoView()
+      .should("be.visible");
 
     cy.log("Name of the product should be displayed instead of its ID");
     H.openOrdersTable();
@@ -496,7 +481,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     H.DataModel.TableSection.clickField("Rating");
 
     // apply custom remapping for "Rating" values 1-5
-    cy.findByPlaceholderText("Select display values").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Custom mapping").click();
     H.modal().within(() => {
       cy.findByText(
@@ -507,7 +492,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
         cy.findByDisplayValue(key).click().clear().type(value);
       });
 
-      cy.findByText("Save").click();
+      cy.button("Save").click();
     });
     cy.wait("@fieldValuesUpdate");
 
@@ -525,7 +510,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
     H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
     H.DataModel.TablePicker.getTable("Reviews").scrollIntoView().click();
     H.DataModel.TableSection.clickField("ID");
-    cy.findByPlaceholderText("Select a semantic type").click();
+    H.DataModel.FieldSection.getSemanticTypeInput().click();
 
     H.popover().scrollTo("top");
     H.popover()
@@ -552,11 +537,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
       fieldId: REVIEWS.RATING,
     });
 
-    cy.findByPlaceholderText("Select field filtering").click();
+    H.DataModel.FieldSection.getFilteringInput().click();
     H.popover().findByText("Search box").click();
     cy.wait("@fieldUpdate");
 
-    cy.findByPlaceholderText("Select display values").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover()
       .findByRole("option", { name: /Custom mapping/ })
       .should("have.attr", "data-combobox-disabled", "true");
@@ -571,10 +556,10 @@ describe("scenarios > admin > datamodel > metadata", () => {
         'You can only use custom mapping for numerical fields with filtering set to "A list of all values"',
       );
 
-    cy.findByPlaceholderText("Select field filtering").click();
+    H.DataModel.FieldSection.getFilteringInput().click();
     H.popover().findByText("A list of all values").click();
 
-    cy.findByPlaceholderText("Select display values").click();
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover()
       .findByRole("option", { name: /Custom mapping/ })
       .should("not.have.attr", "data-combobox-disabled");
@@ -587,9 +572,10 @@ describe("scenarios > admin > datamodel > metadata", () => {
       tableId: ORDERS_ID,
       fieldId: ORDERS.USER_ID,
     });
-    cy.findByPlaceholderText("Select display values").click();
+
+    H.DataModel.FieldSection.getDisplayValuesInput().click();
     H.popover().findByText("Use foreign key").click();
-    cy.findByPlaceholderText("Choose a field").click();
+    H.DataModel.FieldSection.getDisplayValuesFkTargetInput().click();
 
     H.popover().within(() => {
       cy.findByText("Birth Date").scrollIntoView().should("be.visible");
@@ -664,9 +650,8 @@ describe("scenarios > admin > datamodel > metadata", () => {
       });
       cy.wait("@metadata");
 
-      cy.findByTestId("column-settings")
+      H.DataModel.FieldSection.getPrefixInput()
         .scrollIntoView()
-        .findByTestId("prefix")
         .type("about ")
         .blur();
       cy.wait("@updateField");
@@ -695,11 +680,11 @@ describe("scenarios > admin > datamodel > metadata", () => {
       });
       cy.wait("@metadata");
 
-      cy.findByTestId("column-settings").findByTestId("prefix").focus().blur();
+      H.DataModel.FieldSection.getPrefixInput().focus().blur();
       cy.get("@updateFieldSpy").should("not.have.been.called");
       H.undoToast().should("not.exist");
 
-      cy.findByTestId("column-settings").findByTestId("suffix").focus().blur();
+      H.DataModel.FieldSection.getSuffixInput().focus().blur();
       cy.get("@updateFieldSpy").should("not.have.been.called");
       H.undoToast().should("not.exist");
     });
@@ -991,10 +976,7 @@ describe("scenarios > admin > databases > table", () => {
 
   it("should see 8 tables in sample database", () => {
     H.DataModel.visit({ databaseId: SAMPLE_DB_ID });
-
-    cy.findAllByTestId("tree-item")
-      .filter('[data-type="table"]')
-      .should("have.length", 8);
+    H.DataModel.TablePicker.getTables().should("have.length", 8);
   });
 
   it("should be able to see details of each table", () => {
@@ -1008,7 +990,7 @@ describe("scenarios > admin > databases > table", () => {
     H.DataModel.TablePicker.getTable("Orders").click();
     cy.get("main").findByText("Edit the table and fields").should("be.visible");
 
-    cy.findByPlaceholderText("Give this table a description").should(
+    H.DataModel.TableSection.getDescriptionInput().should(
       "have.value",
       "Confirmed Sample Company orders for a product, from a user.",
     );
@@ -1039,41 +1021,41 @@ describe("scenarios > admin > databases > table", () => {
 
     it("should see multiple fields", () => {
       H.DataModel.TableSection.clickField("ID");
-      cy.findByLabelText("Data type")
+      H.DataModel.FieldSection.getDataTypeInput()
         .should("be.visible")
         .and("have.value", "BIGINT");
-      cy.findByPlaceholderText("Select a semantic type").should(
+      H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Entity Key",
       );
 
       H.DataModel.TableSection.clickField("User ID");
-      cy.findByLabelText("Data type")
+      H.DataModel.FieldSection.getDataTypeInput()
         .should("be.visible")
         .and("have.value", "INTEGER");
-      cy.findByPlaceholderText("Select a semantic type").should(
+      H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Foreign Key",
       );
-      cy.findByPlaceholderText("Select a target").should(
+      H.DataModel.FieldSection.getSemanticTypeFkTarget().should(
         "have.value",
         "People → ID",
       );
 
       H.DataModel.TableSection.clickField("Tax");
-      cy.findByLabelText("Data type")
+      H.DataModel.FieldSection.getDataTypeInput()
         .should("be.visible")
         .and("have.value", "DOUBLE PRECISION");
-      cy.findByPlaceholderText("Select a semantic type").should(
+      H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "No semantic type",
       );
 
       H.DataModel.TableSection.clickField("Discount");
-      cy.findByLabelText("Data type")
+      H.DataModel.FieldSection.getDataTypeInput()
         .should("be.visible")
         .and("have.value", "DOUBLE PRECISION");
-      cy.findByPlaceholderText("Select a semantic type").should(
+      H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Discount",
       );
@@ -1082,7 +1064,7 @@ describe("scenarios > admin > databases > table", () => {
       cy.findByLabelText("Data type")
         .should("be.visible")
         .and("have.value", "TIMESTAMP");
-      cy.findByPlaceholderText("Select a semantic type").should(
+      H.DataModel.FieldSection.getSemanticTypeInput().should(
         "have.value",
         "Creation timestamp",
       );

@@ -9,6 +9,7 @@ export const DataModel = {
   visit,
   TablePicker: {
     getTable: getTablePickerTable,
+    getTables: getTablePickerTables,
   },
   TableSection: {
     get: getTableSection,
@@ -27,13 +28,19 @@ export const DataModel = {
     get: getFieldSection,
     getNameInput: getFieldNameInput,
     getDescriptionInput: getFieldDescriptionInput,
-    getVisibilityInput: getFieldVisibilityInput,
+    getDataTypeInput: getFieldDataTypeInput,
+    getCoercionToggle: getFieldCoercionToggle,
+    getCoercionInput: getFieldCoercionInput,
     getSemanticTypeInput: getFieldSemanticTypeInput,
     getSemanticTypeCurrencyInput: getFieldSemanticTypeCurrencyInput,
     getSemanticTypeFkTarget: getFieldSemanticTypeFkTargetInput,
-    getCoercionToggle: getFieldCoercionToggle,
-    getCoercionInput: getFieldCoercionInput,
+    getVisibilityInput: getFieldVisibilityInput,
+    getFilteringInput: getFieldFilteringInput,
     getDisplayValuesInput: getFieldDisplayValuesInput,
+    getDisplayValuesFkTargetInput: getFieldDisplayValuesFkTargetInput,
+    getStyleInput: getFieldStyleInput,
+    getPrefixInput: getFieldPrefixInput,
+    getSuffixInput: getFieldSuffixInput,
   },
 };
 
@@ -123,6 +130,10 @@ function getTablePickerTable(name: string) {
   return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
 }
 
+function getTablePickerTables() {
+  return cy.findAllByTestId("tree-item").filter('[data-type="table"]');
+}
+
 /** table section helpers */
 
 function getTableSection() {
@@ -190,8 +201,16 @@ function getFieldDescriptionInput() {
   );
 }
 
-function getFieldVisibilityInput() {
-  return getFieldSection().findByPlaceholderText("Select a field visibility");
+function getFieldDataTypeInput() {
+  return getFieldSection().findByLabelText("Data type");
+}
+
+function getFieldCoercionToggle() {
+  return getFieldSection().findByLabelText("Cast to a specific data type");
+}
+
+function getFieldCoercionInput() {
+  return getFieldSection().findByPlaceholderText("Select data type");
 }
 
 function getFieldSemanticTypeInput() {
@@ -206,14 +225,30 @@ function getFieldSemanticTypeFkTargetInput() {
   return getFieldSection().findByPlaceholderText("Select a target");
 }
 
-function getFieldCoercionToggle() {
-  return getFieldSection().findByLabelText("Cast to a specific data type");
+function getFieldVisibilityInput() {
+  return getFieldSection().findByPlaceholderText("Select a field visibility");
 }
 
-function getFieldCoercionInput() {
-  return getFieldSection().findByPlaceholderText("Select data type");
+function getFieldFilteringInput() {
+  return getFieldSection().findByPlaceholderText("Select field filtering");
 }
 
 function getFieldDisplayValuesInput() {
   return getFieldSection().findByPlaceholderText("Select display values");
+}
+
+function getFieldDisplayValuesFkTargetInput() {
+  return getFieldSection().findByPlaceholderText("Choose a field");
+}
+
+function getFieldStyleInput() {
+  return getFieldSection().findByLabelText("Style");
+}
+
+function getFieldPrefixInput() {
+  return getFieldSection().findByTestId("prefix");
+}
+
+function getFieldSuffixInput() {
+  return getFieldSection().findByTestId("suffix");
 }
