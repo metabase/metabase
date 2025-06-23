@@ -40,6 +40,7 @@ export type DashboardContextOwnProps = {
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
+  onAddQuestion?: (dashboard: Dashboard | null) => void;
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
