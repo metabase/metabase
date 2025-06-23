@@ -1125,7 +1125,7 @@ jobs:
                 result: jobValues.result
               }));
 
-            jobs.every(job => (console.log("Job:", job)));
+            jobs.forEach(job => (console.log("Job:", job)));
 
             // are all jobs skipped or successful?
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
