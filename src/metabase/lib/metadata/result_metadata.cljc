@@ -189,20 +189,6 @@
           (assoc col :source (source->legacy-source (:lib/source col))))
         cols))
 
-(defn- add-traditional-display-names
-  "There was some insane (weird) display name logic in the old QP code. Try to match what it did. (Not super important
-  since display names generally aren't used as keys outside of tests but I guess we can try to mimic them anyway.)"
-  [query cols]
-  (for [col cols]
-    (let [col' (merge col
-                      (when-let [previous-join-alias ((some-fn :lib/original-join-alias :source-alias) col)]
-                        {:metabase.lib.join/join-alias previous-join-alias})
-                      (when-let [original-name (:lib/original-name col)]
-                        {:name original-name}))]
-      (if (= col' col)
-        col
-        (assoc col :display-name (lib.metadata.calculation/display-name query col'))))))
-
 (mu/defn- fe-friendly-expression-ref :- ::super-broken-legacy-field-ref
   "Apparently the FE viz code breaks for pivot queries if `field_ref` comes back with extra 'non-traditional' MLv2
   info (`:base-type` or `:effective-type` in `:expression`), so we better just strip this info out to be sure. If you
@@ -302,10 +288,7 @@
       (lib.card/merge-model-metadata model-metadata))))
 
 (mu/defn- add-extra-metadata :- [:sequential ::kebab-cased-map]
-  "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata.
-
-  TODO -- we should probably move all this stuff into lib so it comes back there as well! That's a tech debt problem tho
-  I guess. -- Cam"
+  "Add extra metadata to the [[lib/returned-columns]] that only comes back with QP results metadata."
   [query        :- ::lib.schema/query
    initial-cols :- ::cols]
   (let [lib-cols (binding [lib.metadata.calculation/*display-name-style* :long]
@@ -313,9 +296,6 @@
                            query
                            -1
                            (lib.util/query-stage query -1)
-                           ;; TODO (Cam 6/12/25) -- not 100% sure about using different unique name generation logic
-                           ;; here versus what is normally done in Lib -- I guess it should mean joins don't get
-                           ;; truncated, but don't we want desired column aliases to match what lib generates?
                            {:unique-name-fn  (lib.util/non-truncating-unique-name-generator)
                             :include-remaps? (not (get-in query [:middleware :disable-remaps?]))})))
         ;; generate barebones cols if lib was unable to calculate metadata here.
@@ -331,7 +311,6 @@
          (add-converted-timezone query)
          add-source-alias
          add-legacy-source
-         (add-traditional-display-names query)
          deduplicate-names
          (add-legacy-field-refs query)
          (merge-model-metadata query))))
