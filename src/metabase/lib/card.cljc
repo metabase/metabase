@@ -83,6 +83,9 @@
    field-metadata      :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (update-keys u/->kebab-case-en))
+        ;; use the (possibly user-specified) display name as the "original display name" going forward
+        source-metadata-col (cond-> source-metadata-col
+                              (:display-name source-metadata-col) (assoc :lib/original-display-name (:display-name source-metadata-col)))
         col (cond-> (merge
                      {:base-type :type/*, :lib/type :metadata/column}
                      (m/filter-keys some? field-metadata)
@@ -106,6 +109,7 @@
       ;; :effective-type is required, but not always set, see e.g.,
       ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
       (u/assoc-default col :effective-type (:base-type col))
+      ;; add original display name IF not already present AND we have a value
       (lib.normalize/normalize ::lib.schema.metadata/column col))))
 
 (mu/defn ->card-metadata-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
@@ -154,6 +158,7 @@
     (->card-metadata-columns metadata-providerable card cols)))
 
 (mu/defn- source-model-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
+  "If `card` itself has a source card that is a Model, return that Model's columns."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
   (when-let [card-query (some->> (:dataset-query card) (lib.query/query metadata-providerable))]
@@ -167,33 +172,53 @@
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
-  ;; TODO: ideally we don't preserve :id but some notion of :user-entered-id or :identified-id
   [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type])
 
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols."
-  [result-cols :- [:sequential ::lib.schema.metadata/column]
+  [result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
    model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]]
-  (let [name->model-col (m/index-by :name model-cols)]
-    (mapv (fn [result-col]
-            (merge
-             result-col
-             ;; if the result col is aggregating something in the source column then don't flow display name and what
-             ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
-             (when-not (= (:lib/source result-col) :source/aggregations)
-               (when-let [model-col (get name->model-col (:name result-col))]
-                 (let [model-col     (u/select-non-nil-keys model-col model-preserved-keys)
-                       temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
-                       binning       (lib.binning/binning result-col)
-                       semantic-type ((some-fn model-col result-col) :semantic-type)]
-                   (cond-> model-col
-                     temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
-                     binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
-          result-cols)))
+  (cond
+    (and (seq result-cols)
+         (empty? model-cols))
+    result-cols
 
-(mu/defn card-metadata-columns :- CardColumns
+    (and (empty? result-cols)
+         (seq model-cols))
+    model-cols
+
+    (and (seq result-cols)
+         (seq model-cols))
+    (let [name->model-col (m/index-by :name model-cols)]
+      (mapv (fn [result-col]
+              (merge
+               result-col
+               ;; if the result col is aggregating something in the source column then don't flow display name and what
+               ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
+               (when-not (= (:lib/source result-col) :source/aggregations)
+                 (when-let [model-col (get name->model-col (:name result-col))]
+                   (let [model-col     (u/select-non-nil-keys model-col model-preserved-keys)
+                         temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
+                         binning       (lib.binning/binning result-col)
+                         semantic-type ((some-fn model-col result-col) :semantic-type)]
+                     (cond-> model-col
+                       temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
+                       binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
+            result-cols))))
+
+(defn- add-original-display-names
+  "Add original display names if they're not already present."
+  [cols]
+  (map (fn [col]
+         (cond-> col
+           (and (not (:lib/original-display-name col))
+                (:display-name col))
+           (assoc :lib/original-display-name (:display-name col))))
+       cols))
+
+(mu/defn card-metadata-columns :- [:maybe CardColumns]
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card                  :- ::lib.schema.metadata/card]
@@ -203,8 +228,10 @@
             ;; don't pull in metadata from parent model if we ourself are a model
             model-cols  (when-not (= (:type card) :model)
                           (source-model-cols metadata-providerable card))]
-        (cond-> result-cols
-          (seq model-cols) (merge-model-metadata model-cols))))))
+        (-> result-cols
+            (cond-> (seq model-cols) (merge-model-metadata model-cols))
+            add-original-display-names
+            not-empty)))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."

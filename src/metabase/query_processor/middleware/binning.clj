@@ -95,7 +95,7 @@
                            (not (every? :lib/desired-column-alias mlv2-metadatas)) add-desired-column-aliases)
           field-ref      [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
       (or
-       (lib.field.resolution/resolve-column-in-metadata field-ref mlv2-metadatas)
+       (lib.field.resolution/resolve-column-in-metadata (qp.store/metadata-provider) field-ref mlv2-metadatas)
        (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))
