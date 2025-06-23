@@ -97,16 +97,6 @@
   (let [start-time   (t/zoned-date-time)
         task-details (f)
         end-time     (t/zoned-date-time)]
-    (when (= task-type "persist-refresh")
-      (when-let [error-details (seq (:error-details task-details))]
-        (let [error-details-by-id (m/index-by :persisted-info-id error-details)
-              persisted-infos (->> (t2/hydrate (t2/select PersistedInfo :id [:in (keys error-details-by-id)])
-                                            [:card :collection] :database)
-                                   (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
-          (messages/send-persistent-model-error-email!
-            db-id
-            persisted-infos
-            (:trigger task-details)))))
     (t2/insert! TaskHistory {:task         task-type
                              :db_id        db-id
                              :started_at   start-time
