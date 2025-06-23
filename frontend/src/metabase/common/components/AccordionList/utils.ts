@@ -182,7 +182,7 @@ export const getSearchIndex = memoize(function <
   TSection extends Section<TItem>,
 >({
   sections,
-  searchProp = ["name", "displayName"],
+  searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
 }: {
   sections: TSection[];
   searchProp?: SearchProps<TItem>;
