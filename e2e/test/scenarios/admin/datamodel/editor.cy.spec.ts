@@ -5,6 +5,7 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { TableId } from "metabase-types/api";
 
 const {
   ORDERS,
@@ -55,6 +56,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       H.DataModel.TableSection.getNameInput()
         .should("have.value", "New orders")
         .and("be.visible");
+      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
+      H.DataModel.TablePicker.getTable("Orders").should("not.exist");
 
       H.startNewQuestion();
       H.entityPickerModal().within(() => {
@@ -709,15 +712,23 @@ describe("scenarios > admin > datamodel > editor", () => {
 
     it("should allow changing the table name with data model permissions only", () => {
       setDataModelPermissions({ tableIds: [ORDERS_ID] });
-
       cy.signIn("none");
       H.DataModel.visit({
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
       });
-      setValueAndBlurInput("Orders", "New orders");
-      cy.findByDisplayValue("New orders").should("be.visible");
+
+      H.DataModel.TableSection.getNameInput().clear().type("New orders").blur();
+      cy.wait("@updateTable");
+
+      H.DataModel.TableSection.getNameInput().should(
+        "have.value",
+        "New orders",
+      );
+      H.DataModel.TablePicker.getTable("New orders").should("be.visible");
+      H.DataModel.TablePicker.getTable("Orders").should("not.exist");
+
       H.undoToast().should("contain.text", "Updated Table display_name");
       cy.wait("@updateTable");
       cy.signOut();
@@ -934,9 +945,14 @@ describe("scenarios > admin > datamodel > editor", () => {
   });
 });
 
-const setDataModelPermissions = ({ tableIds = [] }) => {
+const setDataModelPermissions = ({
+  tableIds = [],
+}: {
+  tableIds: TableId[];
+}) => {
   const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
 
+  // @ts-expect-error invalid cy.updatePermissionsGraph typing
   cy.updatePermissionsGraph({
     [ALL_USERS_GROUP]: {
       [SAMPLE_DB_ID]: {
