@@ -218,6 +218,10 @@ function folds() {
     "[": "]",
   };
 
+  function isOpening(character?: string): character is keyof typeof pairs {
+    return typeof character === "string" && character in pairs;
+  }
+
   return foldService.of(function (
     state: EditorState,
     from: number,
@@ -230,12 +234,11 @@ function folds() {
     }
 
     const left = line.at(openIndex);
-    if (!left || !(left in pairs)) {
+    if (!isOpening(left)) {
       return null;
     }
 
-    const right = pairs[left as keyof typeof pairs];
-
+    const right = pairs[left];
     const start = from + openIndex;
     const doc = state.doc.sliceString(start);
 
