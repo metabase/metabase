@@ -10,7 +10,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.request.core :as request]
@@ -190,8 +190,8 @@
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
-    (when (= (data-perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
-      (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
+    (when (= (perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
+      (perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
 

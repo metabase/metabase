@@ -20,8 +20,7 @@ export function SettingsSection({
   title?: React.ReactNode;
   description?: React.ReactNode;
   children?: React.ReactNode;
-  boxProps?: BoxProps;
-}) {
+} & BoxProps) {
   return (
     <Box {...boxProps}>
       {children && (

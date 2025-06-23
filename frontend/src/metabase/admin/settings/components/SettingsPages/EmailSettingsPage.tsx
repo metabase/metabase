@@ -5,8 +5,8 @@ import {
   UpsellHostingBanner,
 } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { Center } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
