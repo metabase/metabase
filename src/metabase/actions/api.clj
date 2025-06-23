@@ -325,7 +325,7 @@
      (api.macros/call-core-fn @(requiring-resolve ~var-sym) ~'route-params ~'query-params ~'body-params ~'request)))
 
 (evil-proxy :get  "/v2/tmp-action" 'metabase-enterprise.data-editing.api/tmp-action)
-(evil-proxy :post "/v2/configure" 'metabase-enterprise.data-editing.api/configure)
+(evil-proxy :post "/v2/config-form" 'metabase-enterprise.data-editing.api/config-form)
 (evil-proxy :post "/v2/execute" 'metabase-enterprise.data-editing.api/execute-single)
 (evil-proxy :post "/v2/execute-bulk" 'metabase-enterprise.data-editing.api/execute-bulk)
 (evil-proxy :post "/v2/tmp-modal" 'metabase-enterprise.data-editing.api/tmp-modal)
