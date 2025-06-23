@@ -73,6 +73,15 @@ describe("Tenants - management", () => {
     cy.findByRole("link", { name: /gear/ }).should("not.exist");
   });
 
+  it("should disable the feature if the token feature is not enabled", () => {
+    H.setTokenFeatures("none");
+
+    cy.visit("/admin/tenants");
+    cy.location("pathname").should("eq", "/admin/people");
+
+    cy.findByRole("link", { name: /gear/ }).should("not.exist");
+  });
+
   it("should allow users to enable multi tenancy, and create / manage tenants and external users", () => {
     // We expect this to redirect to /admin/people
     cy.visit("/admin/tenants");
