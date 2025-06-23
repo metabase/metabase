@@ -482,7 +482,7 @@
 (defn- stage-metadata->legacy-metadata [stage-metadata]
   (into []
         (comp (map #(update-keys % u/->snake_case_en))
-              (map ->legacy-MBQL))
+              (map #(dissoc % :lib/type)))
         (:columns stage-metadata)))
 
 (mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
@@ -578,14 +578,17 @@
     :always (set/rename-keys {pMBQL-key legacy-key})))
 
 (defmethod ->legacy-MBQL :mbql/join [join]
-  (let [base (cond-> (disqualify join)
-               (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))]
+  (let [base     (cond-> (disqualify join)
+                   (and *clean-query* (str/starts-with? (:alias join) legacy-default-join-alias)) (dissoc :alias))
+        metadata (:lib/stage-metadata (last (:stages join)))]
     (merge (-> base
                (dissoc :stages :conditions)
                (update-vals ->legacy-MBQL))
            (-> base
                (select-keys [:conditions])
                (update-list->legacy-boolean-expression :conditions :condition))
+           (when (seq (:columns metadata))
+             {:source-metadata (stage-metadata->legacy-metadata metadata)})
            (chain-stages base))))
 
 (defn- source-card->legacy-source-table
