@@ -3,9 +3,8 @@ import { useMemo, useState } from "react";
 import { useListRecentsQuery } from "metabase/api";
 import type { RecentItem } from "metabase-types/api";
 
+import { EMBED_ENTITY_LIST_MAX_RECENTS } from "../constants";
 import type { SdkIframeEmbedSetupRecentItem } from "../types";
-
-const MAX_RECENTS = 6;
 
 export const useRecentItems = () => {
   const { data: apiRecentItems, isLoading } = useListRecentsQuery(
@@ -51,7 +50,7 @@ export const useRecentItems = () => {
       [
         recentItemToAdd,
         ...prev.filter((recentItem) => recentItem.id !== recentItemToAdd.id),
-      ].slice(0, MAX_RECENTS),
+      ].slice(0, EMBED_ENTITY_LIST_MAX_RECENTS),
     );
   };
 
@@ -78,7 +77,7 @@ const getCombinedRecentItems = (
 
   const filteredApiRecentItems = apiRecentItems
     .filter((recentItem) => recentItem.model === model)
-    .slice(0, MAX_RECENTS);
+    .slice(0, EMBED_ENTITY_LIST_MAX_RECENTS);
 
   // If the user has already selected the item which already exists
   // in the activity log, we don't want to show it twice.
@@ -88,6 +87,6 @@ const getCombinedRecentItems = (
 
   return [...localRecentItems, ...deduplicatedApiRecentItems].slice(
     0,
-    MAX_RECENTS,
+    EMBED_ENTITY_LIST_MAX_RECENTS,
   );
 };
