@@ -169,25 +169,6 @@ databaseChangeLog:
                   type: ${text.type}
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: v56.2025-06-13T15:00:01
-      author: nvoxland
-      comment: test table
-      changes:
-        - createTable:
-            tableName: test_table2
-            remarks: Content translations
-            columns:
-              - column:
-                  name: id
-                  remarks: Unique ID
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
