@@ -891,19 +891,19 @@
                                                                  [{:parameterId "name", :sourceType "row-data", :sourceValueTarget "name"}]]
                                                              [{:id                "dashcard:unknown:abcdef"
                                                                :actionId          (:id action)
-                                                               :actionType        "data-grid/row-action"
+                                                               :actionType        "data-grid/custom-action"
                                                                :parameterMappings param-maps
                                                                :enabled           true}
                                                               {:id                "dashcard:unknown:fedcba"
                                                                :actionId          "table.row/update"
-                                                               :actionType        "data-grid/row-action"
+                                                               :actionType        "data-grid/custom-action"
                                                                :mapping           {:table-id table-id
                                                                                    :row      "::root"}
                                                                :parameterMappings param-maps
                                                                :enabled           true}
                                                               {:id                "dashcard:unknown:xyzabc"
                                                                :actionId          (#'actions/encoded-action-id :table.row/update table-id)
-                                                               :actionType        "data-grid/row-action"
+                                                               :actionType        "data-grid/custom-action"
                                                                :parameterMappings param-maps
                                                                :enabled           true}])}}]
               (testing "no access to the model"
@@ -1020,7 +1020,7 @@
                                                        :editableTable.enabledActions
                                                        [{:id         "dashcard:unknown:my-row-action"
                                                          :actionId   "table.row/create"
-                                                         :actionType "data-grid/row-action"
+                                                         :actionType "data-grid/custom-action"
                                                          :mapping    {:table-id table-2-id
                                                                       :row      {:a ["::key" "aa"]
                                                                                  :b ["::key" "bb"]
@@ -1527,7 +1527,7 @@
                                              {:id                "dashcard:unknown:custom"
                                               :name              "create"
                                               :actionId          (:id action)
-                                              :actionType        "data-grid/row-action"
+                                              :actionType        "data-grid/custom-action"
                                               :parameterMappings [{:parameterId "a" :sourceType "row-data" :sourceValueTarget "name"}
                                                                   {:parameterId "b" :sourceType "ask-user"}
                                                                   {:parameterId "c" :sourceType "row-data" :sourceValueTarget "id", :visibility "hidden"}]}]
@@ -1599,7 +1599,7 @@
                                              {:id                "dashcard:unknown:custom-create"
                                               :name              "create"
                                               :actionId          (#'actions/encoded-action-id :table.row/create products)
-                                              :actionType        "data-grid/row-action"
+                                              :actionType        "data-grid/custom-action"
                                               :parameterMappings [{:parameterId "name" :sourceType "row-data" :sourceValueTarget "name"}
                                                                   {:parameterId "price" :sourceType "ask-user"}
                                                                   {:parameterId "category_id" :sourceType "row-data" :sourceValueTarget "id"}]}]
@@ -1689,7 +1689,7 @@
                                               :actionType        "data-grid/built-in"}
                                              {:id                "dashcard:unknown:custom-create"
                                               :actionId          "table.row/create"
-                                              :actionType        "data-grid/row-action"
+                                              :actionType        "data-grid/custom-action"
                                               :mapping           {:table-id table-id
                                                                   :row      "::root"}
                                               :parameterMappings [{:parameterId "int"
