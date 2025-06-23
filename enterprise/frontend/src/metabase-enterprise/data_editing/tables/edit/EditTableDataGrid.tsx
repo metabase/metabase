@@ -2,7 +2,7 @@ import type { OnChangeFn, Row, RowSelectionState } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo } from "react";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import {
   type ColumnOptions,
   DataGrid,

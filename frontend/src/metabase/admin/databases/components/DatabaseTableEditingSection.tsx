@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { hasFeature } from "metabase/admin/databases/utils";
-import Toggle from "metabase/core/components/Toggle";
+import Toggle from "metabase/common/components/Toggle";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { PLUGIN_DATA_EDITING } from "metabase/plugins";
 import { Box, Flex } from "metabase/ui";

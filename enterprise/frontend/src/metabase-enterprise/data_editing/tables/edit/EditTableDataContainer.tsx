@@ -10,7 +10,7 @@ import {
   useGetAdhocQueryQuery,
   useGetDatabaseQuery,
 } from "metabase/api";
-import { GenericError } from "metabase/components/ErrorPages";
+import { GenericError } from "metabase/common/components/ErrorPages";
 import { useDispatch } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { Box, Flex, Stack, Text } from "metabase/ui";

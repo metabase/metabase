@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Avatar } from "metabase/components/UserAvatar";
+import { Avatar } from "metabase/common/components/UserAvatar";
 import {
   ActionIcon,
   Box,

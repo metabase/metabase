@@ -9,7 +9,7 @@ import React, {
 import { jt, t } from "ttag";
 
 import { useListChannelsQuery, useListUserRecipientsQuery } from "metabase/api";
-import { CodeEditor } from "metabase/components/CodeEditor";
+import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { getNotificationHandlersGroupedByTypes } from "metabase/lib/notifications";
 import { useSelector } from "metabase/lib/redux";
 import { ChannelSettingsBlock } from "metabase/notifications/channels/ChannelSettingsBlock";

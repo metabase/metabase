@@ -13,12 +13,12 @@ import cx from "classnames";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
-import { useSetting } from "metabase/common/hooks";
-import type { CodeLanguage } from "metabase/components/CodeEditor/types";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor/types";
 import {
   getLanguageExtension,
   nonce,
-} from "metabase/components/CodeEditor/utils";
+} from "metabase/common/components/CodeEditor/utils";
+import { useSetting } from "metabase/common/hooks";
 import { isNotNull } from "metabase/lib/types";
 import { Text } from "metabase/ui";
 
