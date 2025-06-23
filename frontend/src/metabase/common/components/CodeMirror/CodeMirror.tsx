@@ -8,7 +8,7 @@ import { type Ref, forwardRef, useRef } from "react";
 
 import S from "./CodeMirror.module.css";
 import { type HighlightRange, useHighlightRanges } from "./highlights";
-import { type ExtensionOptions, getBasicSetup, useExtensions } from "./util";
+import { type ExtensionOptions, useBasicSetup, useExtensions } from "./util";
 
 export type CodeMirrorProps = ReactCodeMirrorProps &
   ExtensionOptions & {
@@ -42,6 +42,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
   const mergedRef = useMergedRef(localRef, ref);
 
   useHighlightRanges(localRef, highlightRanges);
+  const setup = useBasicSetup(basicSetup);
 
   return (
     <ReactCodeMirror
@@ -49,7 +50,7 @@ export const CodeMirror = forwardRef(function CodeMirrorInner(
       {...rest}
       autoFocus={autoFocus}
       className={cx(S.editor, className)}
-      basicSetup={getBasicSetup(basicSetup)}
+      basicSetup={setup}
       extensions={extensions}
     />
   );

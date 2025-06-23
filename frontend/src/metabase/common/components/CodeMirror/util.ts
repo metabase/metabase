@@ -36,18 +36,20 @@ export type ExtensionOptions = {
   extensions?: (Extension | null)[];
 };
 
-export function getBasicSetup(
+export function useBasicSetup(
   basicSetup: boolean | BasicSetupOptions | undefined,
 ): boolean | BasicSetupOptions {
-  if (basicSetup === false) {
-    return false;
-  }
+  return useMemo(() => {
+    if (basicSetup === false) {
+      return false;
+    }
 
-  const opts = basicSetup === true ? {} : basicSetup;
-  return {
-    ...opts,
-    searchKeymap: false,
-  };
+    const opts = basicSetup === true ? {} : basicSetup;
+    return {
+      ...opts,
+      searchKeymap: false,
+    };
+  }, [basicSetup]);
 }
 
 export function useExtensions({
