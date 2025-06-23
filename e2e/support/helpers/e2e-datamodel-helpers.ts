@@ -52,7 +52,7 @@ function visit({
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
   );
-  cy.intercept("GET", "/api/database/*/schemas?include_hidden=true").as(
+  cy.intercept("GET", "/api/database/*/schemas?*").as(
     "datamodel/visit/schemas",
   );
   cy.intercept("GET", "/api/database/*/schema/*").as("datamodel/visit/schema");

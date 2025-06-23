@@ -93,7 +93,12 @@ export function useTableLoader(path: TreePath) {
         return [];
       }
       const res = await fetchTables(
-        { id: databaseId, schema: schemaId, include_hidden: true },
+        {
+          id: databaseId,
+          schema: schemaId,
+          include_hidden: true,
+          include_editable_data_model: true,
+        },
         true,
       );
       return (
@@ -116,7 +121,11 @@ export function useTableLoader(path: TreePath) {
         return [];
       }
       const res = await fetchSchemas(
-        { id: databaseId, include_hidden: true },
+        {
+          id: databaseId,
+          include_hidden: true,
+          include_editable_data_model: true,
+        },
         true,
       );
       return Promise.all(
