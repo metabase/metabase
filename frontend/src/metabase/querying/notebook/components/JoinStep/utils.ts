@@ -4,11 +4,11 @@ export function updateTemporalBucketing(
   query: Lib.Query,
   stageIndex: number,
   condition: Lib.JoinCondition,
-  columns: Lib.ColumnMetadata[],
+  expressions: Lib.ExpressionClause[],
 ) {
   const bucket =
-    columns
-      .map((column) => Lib.temporalBucket(column))
+    expressions
+      .map((expression) => Lib.temporalBucket(expression))
       .find((bucket) => bucket != null) ?? null;
 
   return Lib.joinConditionUpdateTemporalBucketing(

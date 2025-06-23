@@ -22,7 +22,7 @@ interface JoinConditionDraftProps {
   isRemovable: boolean;
   onChange: (newCondition: Lib.JoinCondition) => void;
   onRemove?: () => void;
-  onLhsColumnChange?: (newLhsColumn: Lib.ColumnMetadata) => void;
+  onLhsExpressionChange?: (newLhsExpression: Lib.ExpressionClause) => void;
 }
 
 export function JoinConditionDraft({
@@ -36,21 +36,21 @@ export function JoinConditionDraft({
   isRemovable,
   onChange,
   onRemove,
-  onLhsColumnChange,
+  onLhsExpressionChange,
 }: JoinConditionDraftProps) {
   const [operator, setOperator] = useState(() =>
     getDefaultJoinConditionOperator(query, stageIndex),
   );
-  const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
-  const [rhsColumn, setRhsColumn] = useState<Lib.ColumnMetadata>();
+  const [lhsExpression, setLhsExpression] = useState<Lib.ExpressionClause>();
+  const [rhsExpression, setRhsExpression] = useState<Lib.ExpressionClause>();
   const [isLhsOpened, setIsLhsOpened] = useState(true);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
   const handleColumnChange = (
-    lhsColumn: Lib.ColumnMetadata | undefined,
-    rhsColumn: Lib.ColumnMetadata | undefined,
+    newLhsExpression: Lib.ExpressionClause | undefined,
+    newRhsExpression: Lib.ExpressionClause | undefined,
   ) => {
-    if (lhsColumn != null && rhsColumn != null) {
+    if (newLhsExpression != null && newRhsExpression != null) {
       const newCondition = updateTemporalBucketing(
         query,
         stageIndex,
@@ -58,30 +58,34 @@ export function JoinConditionDraft({
           query,
           stageIndex,
           operator,
-          lhsColumn,
-          rhsColumn,
+          newLhsExpression,
+          newRhsExpression,
         ),
-        [lhsColumn, rhsColumn],
+        [newLhsExpression, newRhsExpression],
       );
       onChange(newCondition);
     }
   };
 
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    setLhsColumn(newLhsColumn);
+  const handleLhsExpressionChange = (
+    newLhsExpression: Lib.ExpressionClause,
+  ) => {
+    setLhsExpression(newLhsExpression);
     setIsRhsOpened(true);
-    onLhsColumnChange?.(newLhsColumn);
-    handleColumnChange(newLhsColumn, rhsColumn);
+    onLhsExpressionChange?.(newLhsExpression);
+    handleColumnChange(newLhsExpression, rhsExpression);
   };
 
-  const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    setRhsColumn(newRhsColumn);
-    handleColumnChange(lhsColumn, newRhsColumn);
+  const handleRhsExpressionChange = (
+    newRhsExpression: Lib.ExpressionClause,
+  ) => {
+    setRhsExpression(newRhsExpression);
+    handleColumnChange(lhsExpression, newRhsExpression);
   };
 
   useLayoutEffect(() => {
-    setLhsColumn(undefined);
-    setRhsColumn(undefined);
+    setLhsExpression(undefined);
+    setRhsExpression(undefined);
     setIsLhsOpened(true);
     setIsRhsOpened(false);
   }, [rhsTable]);
@@ -89,18 +93,18 @@ export function JoinConditionDraft({
   return (
     <Flex className={S.JoinConditionRoot}>
       <Flex align="center" gap="xs" mih="47px" p="xs">
-        <Box ml={!lhsColumn ? "xs" : undefined}>
+        <Box ml={!lhsExpression ? "xs" : undefined}>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
             joinable={joinable}
             tableName={lhsTableName}
-            lhsColumn={lhsColumn}
-            rhsColumn={rhsColumn}
+            lhsExpression={lhsExpression}
+            rhsExpression={rhsExpression}
             isOpened={isLhsOpened}
-            isLhsColumn={true}
+            isLhsExpression={true}
             isReadOnly={isReadOnly}
-            onChange={handleLhsColumnChange}
+            onChange={handleLhsExpressionChange}
             onOpenChange={setIsLhsOpened}
           />
         </Box>
@@ -112,18 +116,18 @@ export function JoinConditionDraft({
           isConditionComplete={false}
           onChange={setOperator}
         />
-        <Box mr={!rhsColumn ? "xs" : undefined}>
+        <Box mr={!rhsExpression ? "xs" : undefined}>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
             joinable={joinable}
             tableName={rhsTableName}
-            lhsColumn={lhsColumn}
-            rhsColumn={rhsColumn}
+            lhsExpression={lhsExpression}
+            rhsExpression={rhsExpression}
             isOpened={isRhsOpened}
-            isLhsColumn={false}
+            isLhsExpression={false}
             isReadOnly={isReadOnly}
-            onChange={handleRhsColumnChange}
+            onChange={handleRhsExpressionChange}
             onOpenChange={setIsRhsOpened}
           />
         </Box>

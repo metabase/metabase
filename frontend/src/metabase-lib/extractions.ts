@@ -1,11 +1,10 @@
 import * as ML from "cljs/metabase.lib.js";
 
-import { expressionParts } from "./expression";
+import { expressionParts, isExpressionParts } from "./expression";
 import type {
   ColumnExtraction,
   ColumnMetadata,
   DrillThru,
-  ExpressionArg,
   ExpressionClause,
   ExpressionParts,
   Query,
@@ -80,10 +79,4 @@ function walk(parts: ExpressionParts): string[] {
     }
   });
   return res;
-}
-
-export function isExpressionParts(
-  arg: ExpressionParts | ExpressionArg,
-): arg is ExpressionParts {
-  return arg != null && typeof arg === "object" && "operator" in arg;
 }

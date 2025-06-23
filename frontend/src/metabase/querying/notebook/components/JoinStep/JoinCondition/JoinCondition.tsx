@@ -38,36 +38,55 @@ export function JoinCondition({
   const [isLhsOpened, setIsLhsOpened] = useState(false);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
-  const { operator, lhsColumn, rhsColumn } = useMemo(
+  const { operator, lhsExpression, rhsExpression } = useMemo(
     () => Lib.joinConditionParts(query, stageIndex, condition),
     [query, stageIndex, condition],
   );
 
   const createCondition = (
-    operator: Lib.JoinConditionOperator,
-    lhsColumn: Lib.ColumnMetadata,
-    rhsColumn: Lib.ColumnMetadata,
+    newOperator: Lib.JoinConditionOperator,
+    newLhsExpression: Lib.ExpressionClause,
+    newRhsExpression: Lib.ExpressionClause,
   ) =>
-    Lib.joinConditionClause(query, stageIndex, operator, lhsColumn, rhsColumn);
+    Lib.joinConditionClause(
+      query,
+      stageIndex,
+      newOperator,
+      newLhsExpression,
+      newRhsExpression,
+    );
 
   const syncTemporalBucket = (
-    condition: Lib.JoinCondition,
-    newColumn: Lib.ColumnMetadata,
-  ) => updateTemporalBucketing(query, stageIndex, condition, [newColumn]);
+    newCondition: Lib.JoinCondition,
+    newExpression: Lib.ExpressionClause,
+  ) =>
+    updateTemporalBucketing(query, stageIndex, newCondition, [newExpression]);
 
   const handleOperatorChange = (newOperator: Lib.JoinConditionOperator) => {
-    const newCondition = createCondition(newOperator, lhsColumn, rhsColumn);
+    const newCondition = createCondition(
+      newOperator,
+      lhsExpression,
+      rhsExpression,
+    );
     onChange(newCondition);
   };
 
-  const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = createCondition(operator, newLhsColumn, rhsColumn);
-    onChange(syncTemporalBucket(newCondition, newLhsColumn));
+  const handleLhsColumnChange = (newLhsExpression: Lib.ExpressionClause) => {
+    const newCondition = createCondition(
+      operator,
+      newLhsExpression,
+      rhsExpression,
+    );
+    onChange(syncTemporalBucket(newCondition, newLhsExpression));
   };
 
-  const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
-    const newCondition = createCondition(operator, lhsColumn, newRhsColumn);
-    onChange(syncTemporalBucket(newCondition, newRhsColumn));
+  const handleRhsColumnChange = (newRhsExpression: Lib.ExpressionClause) => {
+    const newCondition = createCondition(
+      operator,
+      lhsExpression,
+      newRhsExpression,
+    );
+    onChange(syncTemporalBucket(newCondition, newRhsExpression));
   };
 
   return (
@@ -78,10 +97,10 @@ export function JoinCondition({
           stageIndex={stageIndex}
           joinable={join}
           tableName={lhsTableName}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
           isOpened={isLhsOpened}
-          isLhsColumn={true}
+          isLhsExpression={true}
           isReadOnly={isReadOnly}
           onChange={handleLhsColumnChange}
           onOpenChange={setIsLhsOpened}
@@ -99,10 +118,10 @@ export function JoinCondition({
           stageIndex={stageIndex}
           joinable={join}
           tableName={rhsTableName}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
           isOpened={isRhsOpened}
-          isLhsColumn={false}
+          isLhsExpression={false}
           isReadOnly={isReadOnly}
           onChange={handleRhsColumnChange}
           onOpenChange={setIsRhsOpened}

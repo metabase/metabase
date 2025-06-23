@@ -17,12 +17,12 @@ interface JoinConditionColumnPickerProps {
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
   tableName: string | undefined;
-  lhsColumn: Lib.ColumnMetadata | undefined;
-  rhsColumn: Lib.ColumnMetadata | undefined;
+  lhsExpression: Lib.ExpressionClause | undefined;
+  rhsExpression: Lib.ExpressionClause | undefined;
   isOpened: boolean;
-  isLhsColumn: boolean;
+  isLhsExpression: boolean;
   isReadOnly: boolean;
-  onChange: (column: Lib.ColumnMetadata) => void;
+  onChange: (column: Lib.ExpressionClause) => void;
   onOpenChange: (isOpened: boolean) => void;
 }
 
@@ -31,10 +31,10 @@ export function JoinConditionColumnPicker({
   stageIndex,
   joinable,
   tableName,
-  lhsColumn,
-  rhsColumn,
+  lhsExpression,
+  rhsExpression,
   isOpened,
-  isLhsColumn,
+  isLhsExpression,
   isReadOnly,
   onChange,
   onOpenChange,
@@ -46,9 +46,9 @@ export function JoinConditionColumnPicker({
           query={query}
           stageIndex={stageIndex}
           tableName={tableName}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
-          isLhsColumn={isLhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
+          isLhsExpression={isLhsExpression}
           isOpened={isOpened}
           isReadOnly={isReadOnly}
           onClick={() => onOpenChange(!isOpened)}
@@ -59,9 +59,9 @@ export function JoinConditionColumnPicker({
           query={query}
           stageIndex={stageIndex}
           joinable={joinable}
-          lhsColumn={lhsColumn}
-          rhsColumn={rhsColumn}
-          isLhsColumn={isLhsColumn}
+          lhsExpression={lhsExpression}
+          rhsExpression={rhsExpression}
+          isLhsExpression={isLhsExpression}
           onChange={onChange}
           onClose={() => onOpenChange(false)}
         />
@@ -74,9 +74,9 @@ interface JoinColumnTargetProps {
   query: Lib.Query;
   stageIndex: number;
   tableName: string | undefined;
-  lhsColumn: Lib.ColumnMetadata | undefined;
-  rhsColumn: Lib.ColumnMetadata | undefined;
-  isLhsColumn: boolean;
+  lhsExpression: Lib.ExpressionClause | undefined;
+  rhsExpression: Lib.ExpressionClause | undefined;
+  isLhsExpression: boolean;
   isOpened: boolean;
   isReadOnly: boolean;
   onClick: () => void;
@@ -87,16 +87,16 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
     query,
     stageIndex,
     tableName,
-    lhsColumn,
-    rhsColumn,
-    isLhsColumn,
+    lhsExpression,
+    rhsExpression,
+    isLhsExpression,
     isOpened,
     isReadOnly,
     onClick,
   }: JoinColumnTargetProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const column = isLhsColumn ? lhsColumn : rhsColumn;
+  const column = isLhsExpression ? lhsExpression : rhsExpression;
   const columnInfo = useMemo(
     () => (column ? Lib.displayInfo(query, stageIndex, column) : undefined),
     [query, stageIndex, column],
@@ -113,7 +113,7 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
       ref={ref}
       disabled={isReadOnly}
       onClick={onClick}
-      aria-label={isLhsColumn ? t`Left column` : t`Right column`}
+      aria-label={isLhsExpression ? t`Left column` : t`Right column`}
     >
       {tableName != null && (
         <Text
@@ -144,10 +144,10 @@ interface JoinColumnDropdownProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
-  lhsColumn: Lib.ColumnMetadata | undefined;
-  rhsColumn: Lib.ColumnMetadata | undefined;
-  isLhsColumn: boolean;
-  onChange: (column: Lib.ColumnMetadata) => void;
+  lhsExpression: Lib.ExpressionClause | undefined;
+  rhsExpression: Lib.ExpressionClause | undefined;
+  isLhsExpression: boolean;
+  onChange: (column: Lib.ExpressionClause) => void;
   onClose: () => void;
 }
 
@@ -155,25 +155,36 @@ function JoinColumnDropdown({
   query,
   stageIndex,
   joinable,
-  lhsColumn,
-  rhsColumn,
-  isLhsColumn,
+  lhsExpression,
+  rhsExpression,
+  isLhsExpression,
   onChange,
   onClose,
 }: JoinColumnDropdownProps) {
   const columnGroups = useMemo(() => {
-    const getColumns = isLhsColumn
+    const getColumns = isLhsExpression
       ? Lib.joinConditionLHSColumns
       : Lib.joinConditionRHSColumns;
     const columns = getColumns(
       query,
       stageIndex,
       joinable,
-      lhsColumn,
-      rhsColumn,
+      lhsExpression,
+      rhsExpression,
     );
     return Lib.groupColumns(columns);
-  }, [query, stageIndex, joinable, lhsColumn, rhsColumn, isLhsColumn]);
+  }, [
+    query,
+    stageIndex,
+    joinable,
+    lhsExpression,
+    rhsExpression,
+    isLhsExpression,
+  ]);
+
+  const handleColumnSelect = (column: Lib.ColumnMetadata) => {
+    onChange(Lib.expressionClause(column));
+  };
 
   return (
     <QueryColumnPicker
@@ -183,9 +194,9 @@ function JoinColumnDropdown({
       stageIndex={stageIndex}
       hasTemporalBucketing
       checkIsColumnSelected={checkIsColumnSelected}
-      onSelect={onChange}
+      onSelect={handleColumnSelect}
       onClose={onClose}
-      data-testid={isLhsColumn ? "lhs-column-picker" : "rhs-column-picker"}
+      data-testid={isLhsExpression ? "lhs-column-picker" : "rhs-column-picker"}
     />
   );
 }

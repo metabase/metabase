@@ -103,3 +103,9 @@ export function diagnoseExpression(
     expressionIndex,
   );
 }
+
+export function isExpressionParts(
+  arg: ExpressionParts | ExpressionArg,
+): arg is ExpressionParts {
+  return arg != null && typeof arg === "object" && "operator" in arg;
+}

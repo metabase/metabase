@@ -185,15 +185,15 @@ function setup({
     const fields = Lib.joinFields(join);
 
     const conditions = Lib.joinConditions(join).map((condition) => {
-      const { operator, lhsColumn, rhsColumn } = Lib.joinConditionParts(
+      const { operator, lhsExpression, rhsExpression } = Lib.joinConditionParts(
         query,
         step.stageIndex,
         condition,
       );
       return {
         operator: Lib.displayInfo(query, step.stageIndex, operator),
-        lhsColumn: Lib.displayInfo(query, step.stageIndex, lhsColumn),
-        rhsColumn: Lib.displayInfo(query, step.stageIndex, rhsColumn),
+        lhsExpression: Lib.displayInfo(query, step.stageIndex, lhsExpression),
+        rhsExpression: Lib.displayInfo(query, step.stageIndex, rhsExpression),
       };
     });
 
@@ -343,8 +343,8 @@ describe("Notebook Editor > Join Step", () => {
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
     expect(condition.operator.shortName).toBe("=");
-    expect(condition.lhsColumn.longDisplayName).toBe("User ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("People - User → ID");
+    expect(condition.lhsExpression.longDisplayName).toBe("User ID");
+    expect(condition.rhsExpression.longDisplayName).toBe("People - User → ID");
   });
 
   it("should allow to change the RHS table when there are no suggested join conditions", async () => {
@@ -369,8 +369,8 @@ describe("Notebook Editor > Join Step", () => {
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
     expect(condition.operator.shortName).toBe("=");
-    expect(condition.lhsColumn.longDisplayName).toBe("Total");
-    expect(condition.rhsColumn.longDisplayName).toBe("Reviews → ID");
+    expect(condition.lhsExpression.longDisplayName).toBe("Total");
+    expect(condition.rhsExpression.longDisplayName).toBe("Reviews → ID");
   });
 
   it("should highlight selected LHS column", async () => {
@@ -434,8 +434,8 @@ describe("Notebook Editor > Join Step", () => {
     const [condition] = conditions;
     expect(conditions).toHaveLength(1);
     expect(condition.operator.shortName).toBe("=");
-    expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
+    expect(condition.lhsExpression.longDisplayName).toBe("Product ID");
+    expect(condition.rhsExpression.longDisplayName).toBe("Products → ID");
   });
 
   it("should change LHS column", async () => {
@@ -449,8 +449,10 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(within(popover).getByText("User ID"));
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.lhsColumn.longDisplayName).toBe("User ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products - User → ID");
+    expect(condition.lhsExpression.longDisplayName).toBe("User ID");
+    expect(condition.rhsExpression.longDisplayName).toBe(
+      "Products - User → ID",
+    );
   });
 
   it("should change RHS column", async () => {
@@ -464,8 +466,8 @@ describe("Notebook Editor > Join Step", () => {
     await userEvent.click(within(popover).getByText("Price"));
 
     const [condition] = getRecentJoin().conditions;
-    expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products → Price");
+    expect(condition.lhsExpression.longDisplayName).toBe("Product ID");
+    expect(condition.rhsExpression.longDisplayName).toBe("Products → Price");
   });
 
   it("shouldn't allow removing an incomplete condition", async () => {
@@ -888,10 +890,12 @@ describe("Notebook Editor > Join Step", () => {
       const { conditions } = getRecentJoin();
       const [condition1, condition2] = conditions;
 
-      expect(condition1.lhsColumn.longDisplayName).toBe("Product ID");
-      expect(condition1.rhsColumn.longDisplayName).toBe("Products → ID");
-      expect(condition2.lhsColumn.longDisplayName).toBe("Created At: Month");
-      expect(condition2.rhsColumn.longDisplayName).toBe(
+      expect(condition1.lhsExpression.longDisplayName).toBe("Product ID");
+      expect(condition1.rhsExpression.longDisplayName).toBe("Products → ID");
+      expect(condition2.lhsExpression.longDisplayName).toBe(
+        "Created At: Month",
+      );
+      expect(condition2.rhsExpression.longDisplayName).toBe(
         "Products → Created At: Month",
       );
     });
@@ -961,8 +965,8 @@ describe("Notebook Editor > Join Step", () => {
       const { conditions } = getRecentJoin();
       const [condition] = conditions;
       expect(conditions).toHaveLength(1);
-      expect(condition.lhsColumn.longDisplayName).toBe("Product ID");
-      expect(condition.rhsColumn.longDisplayName).toBe("Products → ID");
+      expect(condition.lhsExpression.longDisplayName).toBe("Product ID");
+      expect(condition.rhsExpression.longDisplayName).toBe("Products → ID");
     });
 
     it("shouldn't allow removing a single complete condition", async () => {
@@ -1021,8 +1025,8 @@ describe("Notebook Editor > Join Step", () => {
 
         const { conditions } = getRecentJoin();
         const [condition] = conditions;
-        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
-        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.lhsExpression.displayName).toBe(expectedColumnName);
+        expect(condition.rhsExpression.displayName).toBe(expectedColumnName);
       },
     );
 
@@ -1107,8 +1111,8 @@ describe("Notebook Editor > Join Step", () => {
 
         const { conditions } = getRecentJoin();
         const [condition] = conditions;
-        expect(condition.lhsColumn.displayName).toBe(expectedColumnName);
-        expect(condition.rhsColumn.displayName).toBe(expectedColumnName);
+        expect(condition.lhsExpression.displayName).toBe(expectedColumnName);
+        expect(condition.rhsExpression.displayName).toBe(expectedColumnName);
       },
     );
   });

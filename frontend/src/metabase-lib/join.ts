@@ -6,13 +6,14 @@ import type {
   VirtualTableId,
 } from "metabase-types/api";
 
-import { expressionParts } from "./expression";
-import { displayInfo, isColumnMetadata } from "./metadata";
+import { expressionClause, expressionParts } from "./expression";
+import { displayInfo } from "./metadata";
 import type {
   Bucket,
   CardMetadata,
   Clause,
   ColumnMetadata,
+  ExpressionClause,
   Join,
   JoinCondition,
   JoinConditionOperator,
@@ -48,11 +49,14 @@ export function joinConditionClause(
   query: Query,
   stageIndex: number,
   operator: JoinConditionOperator,
-  lhsColumn: ColumnMetadata,
-  rhsColumn: ColumnMetadata,
+  lhsExpression: ColumnMetadata | ExpressionClause,
+  rhsExpression: ColumnMetadata | ExpressionClause,
 ): JoinCondition {
   const operatorInfo = displayInfo(query, stageIndex, operator);
-  return ML.expression_clause(operatorInfo.shortName, [lhsColumn, rhsColumn]);
+  return ML.expression_clause(operatorInfo.shortName, [
+    lhsExpression,
+    rhsExpression,
+  ]);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {
@@ -85,25 +89,26 @@ export function joinConditionParts(
 ): JoinConditionParts {
   const {
     operator: operatorName,
-    args: [lhsColumn, rhsColumn],
+    args: [lhsExpression, rhsExpression],
   } = expressionParts(query, stageIndex, condition);
 
-  if (!isColumnMetadata(lhsColumn) || !isColumnMetadata(rhsColumn)) {
+  if (lhsExpression == null || rhsExpression == null) {
     throw new TypeError("Unexpected join condition");
   }
 
-  const operator = joinConditionOperators(
-    query,
-    stageIndex,
-    lhsColumn,
-    rhsColumn,
-  ).find((op) => displayInfo(query, stageIndex, op).shortName === operatorName);
+  const operator = joinConditionOperators(query, stageIndex).find(
+    (op) => displayInfo(query, stageIndex, op).shortName === operatorName,
+  );
 
   if (!operator) {
     throw new TypeError("Unexpected join condition");
   }
 
-  return { operator, lhsColumn, rhsColumn };
+  return {
+    operator,
+    lhsExpression: expressionClause(lhsExpression),
+    rhsExpression: expressionClause(rhsExpression),
+  };
 }
 
 export function withJoinConditions(
@@ -197,10 +202,8 @@ export function joinConditionRHSColumns(
 export function joinConditionOperators(
   query: Query,
   stageIndex: number,
-  lhsColumn?: ColumnMetadata,
-  rhsColumn?: ColumnMetadata,
 ): JoinConditionOperator[] {
-  return ML.join_condition_operators(query, stageIndex, lhsColumn, rhsColumn);
+  return ML.join_condition_operators(query, stageIndex);
 }
 
 export function suggestedJoinConditions(
@@ -316,7 +319,7 @@ export function joinLHSDisplayName(
   query: Query,
   stageIndex: number,
   joinOrJoinable?: JoinOrJoinable,
-  conditionLHSColumn?: ColumnMetadata,
+  conditionLHSColumn?: ExpressionClause,
 ): string {
   return ML.join_lhs_display_name(
     query,

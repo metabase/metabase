@@ -457,8 +457,8 @@ export type JoinConditionOperatorDisplayInfo = {
 
 export type JoinConditionParts = {
   operator: JoinConditionOperator;
-  lhsColumn: ColumnMetadata;
-  rhsColumn: ColumnMetadata;
+  lhsExpression: ExpressionClause;
+  rhsExpression: ExpressionClause;
 };
 
 export type JoinStrategyDisplayInfo = {
