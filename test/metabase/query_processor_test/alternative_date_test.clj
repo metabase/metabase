@@ -403,6 +403,7 @@
                                     :clickhouse "string"
                                     :databricks "BINARY"
                                     :sqlite "BLOB"
+                                    :sqlserver "BINARY(14)"
                                     :snowflake "BINARY"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
