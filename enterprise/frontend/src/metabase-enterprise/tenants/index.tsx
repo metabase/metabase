@@ -8,7 +8,6 @@ import { NewUserModal } from "metabase/admin/people/containers/NewUserModal";
 import { UserActivationModal } from "metabase/admin/people/containers/UserActivationModal";
 import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPasswordResetModal";
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
-import { createAdminRouteGuard } from "metabase/admin/utils";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
@@ -26,6 +25,7 @@ import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
 import { TenantsListingApp } from "./containers/TenantsListingApp";
+import { createTenantsRouteGuard } from "./utils/routeGuard";
 import {
   isExternalUser,
   isExternalUsersGroup,
@@ -40,7 +40,7 @@ if (true || hasPremiumFeature("tenants")) {
   );
 
   PLUGIN_TENANTS.tenantsRoutes = (
-    <Route path="tenants" component={createAdminRouteGuard("people")}>
+    <Route path="tenants" component={createTenantsRouteGuard()}>
       <Route {...{ title: t`Tenants` }} component={AdminPeopleApp}>
         <IndexRoute component={TenantsListingApp} />
         <Route path="" component={TenantsListingApp}>

@@ -49,7 +49,14 @@ describe("Tenants - management", () => {
   });
 
   it("should allow users to enable multi tenancy, and create / manage tenants and external users", () => {
-    cy.visit("/admin/people/groups");
+    // We expect this to redirect to /admin/people
+    cy.visit("/admin/tenants");
+
+    cy.location("pathname").should("eq", "/admin/people");
+
+    cy.findByRole("navigation", { name: "people-nav" })
+      .findByRole("link", { name: /Groups/ })
+      .click();
 
     cy.findByTestId("admin-content-table").within(() => {
       cy.findByRole("link", { name: /All Users/ }).should("exist");
@@ -230,6 +237,36 @@ describe("Tenants - management", () => {
     cy.findByTestId("admin-panel")
       .findByText(/External Users group and can't be removed from it/)
       .should("exist");
+  });
+
+  it("should not show send email modal when creating tenant users when SMTP is configured", () => {
+    H.setupSMTP();
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": true,
+    });
+
+    TENANTS.forEach((tenant) => cy.request("POST", "/api/ee/tenants", tenant));
+
+    cy.visit("admin/tenants/people");
+
+    cy.findByRole("link", { name: /External Users/ }).click();
+    cy.button("Invite someone").click();
+
+    H.modal().within(() => {
+      cy.findByRole("textbox", { name: "First name" }).type("Test");
+      cy.findByRole("textbox", { name: "Last name" }).type("User");
+      cy.findByRole("textbox", { name: "Email" }).type("test.user@email.com");
+      cy.findByRole("generic", { name: "Groups" }).should("not.exist");
+      cy.findByRole("textbox", { name: "Tenant" }).click();
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Gizmos").click();
+    });
+
+    H.modal().button("Create").click();
+
+    H.modal().should("not.exist");
   });
 
   it("should show the tenant attribute in user attribute lists when multi tenancy is enabled", () => {
