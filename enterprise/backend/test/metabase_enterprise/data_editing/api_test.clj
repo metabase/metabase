@@ -1229,7 +1229,7 @@
                                                     {:primary-key [:id]}]]
         (let [table-actions (list-actions table-id)]
           (mt/with-temp [:model/Dashboard dash {}]
-            (let [{upsert-action "table.row/create-or-update"} (u/index-by :kind table-actions)
+            (let [upsert-action       (get (u/index-by :kind table-actions) "table.row/create-or-update")
                   {:keys [dashcards]} (mt/user-http-request
                                        :crowberto
                                        :put
@@ -1241,8 +1241,8 @@
                                                      :col       0
                                                      :action_id (:id upsert-action)}]})
 
-                  {upsert-card "table.row/create-or-update"} (u/index-by (comp :kind :action) dashcards)
-                  exec-url (format "dashboard/%d/dashcard/%d/execute" (:id dash) (:id upsert-card))]
+                  upsert-card         (get (u/index-by (comp :kind :action) dashcards) "table.row/create-or-update")
+                  exec-url            (format "dashboard/%d/dashcard/%d/execute" (:id dash) (:id upsert-card))]
               (testing "create-or-update"
                 (testing "insert"
                   (mt/user-http-request :crowberto :post 200 exec-url

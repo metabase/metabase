@@ -972,7 +972,7 @@
                                               (let [pk-fields (table-id->pk-fields table-id)]
                                                 (-> input
                                                     (assoc :row-key (select-keys row (map :name pk-fields)))
-                                                    ;; make sure the row don't include pk that's auto incremented
+                                                    ;; make sure the row doesn't include pk that's auto incremented
                                                     (update :row (fn [row] (apply dissoc row (map :name (filter :database_is_auto_increment pk-fields)))))))
                                               input)))})]
     (when (seq errors)
