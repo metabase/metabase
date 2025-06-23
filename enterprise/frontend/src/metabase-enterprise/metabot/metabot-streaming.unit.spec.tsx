@@ -265,15 +265,14 @@ describe("metabot-streaming", () => {
 
     it("should not show a user error when an AbortError is triggered", async () => {
       setup();
-      mockAgentEndpoint({
-        textChunks: whoIsYourFavoriteResponse,
-        initialDelay: 50,
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      await enterChatMessage("Who is your favorite?");
+      await waitFor(async () => {
+        expect(await chatMessages()).toHaveLength(2);
       });
 
-      await enterChatMessage("Who is your favorite?");
-
-      expect(await chatMessages()).toHaveLength(1);
       await userEvent.click(await resetChatButton());
+
       await waitFor(() => {
         expect(
           screen.queryByTestId("metabot-chat-message"),
