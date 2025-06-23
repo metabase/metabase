@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
+import Modal from "metabase/common/components/Modal";
 import { useSelector } from "metabase/lib/redux";
 import type { EmbedModalStep } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";

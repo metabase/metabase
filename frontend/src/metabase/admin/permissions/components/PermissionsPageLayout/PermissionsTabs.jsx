@@ -2,7 +2,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio";
+import Radio from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 

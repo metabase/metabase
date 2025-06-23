@@ -3,7 +3,7 @@ import { assoc } from "icepick";
 import { useCallback } from "react";
 import _ from "underscore";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -129,7 +129,9 @@ export function PublicOrEmbeddedDashboardView() {
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
         dashboardId &&
-        dashboardHasTabs && <DashboardTabs dashboardId={dashboardId} />
+        dashboardHasTabs && (
+          <DashboardTabs dashboardId={dashboardId} isNightMode={isNightMode} />
+        )
       }
       background={background}
       bordered={bordered}
