@@ -4,10 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import CollapseSection from "metabase/components/CollapseSection";
-import Modal from "metabase/components/Modal";
+import CollapseSection from "metabase/common/components/CollapseSection";
+import Modal from "metabase/common/components/Modal";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import Search from "metabase/entities/search";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { Divider, Stack, Text, Title } from "metabase/ui";
 import type { Card, TableAction, WritebackAction } from "metabase-types/api";
 

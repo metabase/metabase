@@ -3,8 +3,8 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import Button from "metabase/common/components/Button";
+import Link from "metabase/common/components/Link";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 

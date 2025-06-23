@@ -13,7 +13,7 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import ButtonWithStatus from "metabase/common/components/ButtonWithStatus";
 import CS from "metabase/css/core/index.css";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import {

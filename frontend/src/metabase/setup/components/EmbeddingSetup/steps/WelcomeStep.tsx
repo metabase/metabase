@@ -12,7 +12,7 @@ export const WelcomeStep = ({ nextStep }: StepProps) => {
   return (
     <Box p="2xl" style={{ borderRadius: 16 }} my="xxl" bg="white">
       <Title order={2} mb="lg">
-        {t`Howdy,`}
+        {t`Welcome to Metabase`}
       </Title>
       <Title order={2} mb="lg">
         {t`Let's get you up and running with a starting setup for embedded analytics`}

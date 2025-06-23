@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useSetting, useUrlWithUtm } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { getLearnUrl, getUpgradeUrl } from "metabase/selectors/settings";

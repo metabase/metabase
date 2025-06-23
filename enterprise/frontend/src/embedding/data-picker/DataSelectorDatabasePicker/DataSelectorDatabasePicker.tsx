@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import AccordionList from "metabase/core/components/AccordionList";
+import AccordionList from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
