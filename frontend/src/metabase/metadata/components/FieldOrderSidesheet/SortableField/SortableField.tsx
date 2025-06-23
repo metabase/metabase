@@ -1,7 +1,7 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
 import cx from "classnames";
 
-import { Sortable } from "metabase/core/components/Sortable";
+import { Sortable } from "metabase/common/components/Sortable";
 import { Flex, Group, Icon, type IconName, Text } from "metabase/ui";
 
 import S from "./SortableField.module.css";

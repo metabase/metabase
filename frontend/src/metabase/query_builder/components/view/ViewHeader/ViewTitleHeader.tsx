@@ -3,7 +3,7 @@ import type React from "react";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
-import { useToggle } from "metabase/hooks/use-toggle";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

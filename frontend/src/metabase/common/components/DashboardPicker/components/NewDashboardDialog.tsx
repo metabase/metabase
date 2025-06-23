@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { useCreateDashboardMutation } from "metabase/api";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import { FormFooter } from "metabase/core/components/FormFooter";
 import {
   Form,
   FormErrorMessage,

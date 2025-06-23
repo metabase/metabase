@@ -166,6 +166,11 @@
   "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
   (delay nil))
 
+(defn sandboxes-for-user
+  "Derefs the *sandboxes-for-user* dynamic variable so it can be contained to this namespace"
+  []
+  @*sandboxes-for-user*)
+
 (defmacro with-relevant-permissions-for-user
   "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
   in this namespace."

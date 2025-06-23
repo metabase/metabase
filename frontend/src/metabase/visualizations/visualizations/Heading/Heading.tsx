@@ -3,7 +3,7 @@ import type { ComponentProps, MouseEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import {
@@ -234,6 +234,12 @@ function ParametersList(props: ParametersListProps) {
     [rest.parameters],
   );
 
+  const parametersListCommonProps = {
+    ...rest,
+    widgetsVariant: "subtle" as const,
+    isSortable: false,
+  };
+
   if (isNarrow) {
     if (editingParameter) {
       const parameters = rest.parameters.filter(
@@ -242,9 +248,8 @@ function ParametersList(props: ParametersListProps) {
       // If a parameter is being edited, we don't show the dropdown
       return (
         <DashboardParameterList
-          {...rest}
+          {...parametersListCommonProps}
           parameters={parameters}
-          widgetsVariant="subtle"
         />
       );
     }
@@ -273,8 +278,7 @@ function ParametersList(props: ParametersListProps) {
           style={{ overflow: "visible" }}
         >
           <DashboardParameterList
-            {...rest}
-            widgetsVariant="subtle"
+            {...parametersListCommonProps}
             widgetsWithinPortal={false}
             vertical
           />
@@ -283,5 +287,5 @@ function ParametersList(props: ParametersListProps) {
     );
   }
 
-  return <DashboardParameterList {...rest} widgetsVariant="subtle" />;
+  return <DashboardParameterList {...parametersListCommonProps} />;
 }

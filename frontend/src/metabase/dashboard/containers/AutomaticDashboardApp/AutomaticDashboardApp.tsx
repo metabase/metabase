@@ -7,10 +7,10 @@ import _ from "underscore";
 
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
-import ActionButton from "metabase/components/ActionButton";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Button from "metabase/core/components/Button";
-import Link from "metabase/core/components/Link";
+import ActionButton from "metabase/common/components/ActionButton";
+import Button from "metabase/common/components/Button";
+import Link from "metabase/common/components/Link";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";

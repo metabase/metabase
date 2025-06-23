@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
+import { CopyButton } from "metabase/common/components/CopyButton";
 import { useDocsUrl } from "metabase/common/hooks";
-import { CopyButton } from "metabase/components/CopyButton";
 import { highlight } from "metabase/query_builder/components/expressions/HighlightExpression/utils";
 import {
   Box,
@@ -100,6 +100,10 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         </Tabs.List>
         {tabs.map((tab) => (
           <Tabs.Panel key={tab.url} value={tab.url}>
+            <Box mt="md">
+              <CodeSnippet code={getEmbedCode(tab.url)} />
+            </Box>
+
             {/* This shows a loader while the iframe is loading, it's ugly as it's a different loader than the one inside the iframe,
             but some times the iframe takes a second or two to "start" and in that time there's just a big white space in the page */}
             <Box my="md" style={{ position: "relative" }}>
@@ -124,8 +128,6 @@ export const FinalStep = ({ nextStep }: StepProps) => {
                 title={tab.title}
               />
             </Box>
-
-            <CodeSnippet code={getEmbedCode(tab.url)} />
           </Tabs.Panel>
         ))}
       </Tabs>

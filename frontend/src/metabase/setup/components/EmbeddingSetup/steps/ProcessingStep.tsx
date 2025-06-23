@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSettingsMutation } from "metabase/api/settings";
+import { useSetting } from "metabase/common/hooks";
 import { Box, Loader, Stack, Text, Title } from "metabase/ui";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
@@ -9,6 +10,7 @@ import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const ProcessingStep = () => {
   useForceLocaleRefresh();
+  const siteUrl = useSetting("site-url");
 
   const { goToNextStep } = useEmbeddingSetup();
 
@@ -27,10 +29,11 @@ export const ProcessingStep = () => {
   const setupSettings = useCallback(async () => {
     await updateSettings({
       "embedding-homepage": "visible",
-      "embedding-app-origins-interactive": "*",
       "enable-embedding-interactive": true,
-    }).unwrap();
-  }, [updateSettings]);
+      "embedding-app-origins-interactive": `localhost:* ${siteUrl}`,
+      "session-cookie-samesite": "none",
+    });
+  }, [updateSettings, siteUrl]);
 
   useEffect(() => {
     const process = async () => {

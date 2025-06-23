@@ -1,4 +1,4 @@
-import type { CodeLanguage } from "metabase/components/CodeEditor";
+import type { CodeLanguage } from "metabase/common/components/CodeEditor";
 import type { Card, Dashboard } from "metabase-types/api";
 
 export type DisplayTheme = "light" | "night" | "transparent";
