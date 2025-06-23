@@ -1,11 +1,13 @@
 (ns metabase.lib.schema.metadata
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
 
 (defn- kebab-cased-key? [k]
@@ -364,21 +366,53 @@
         (not (and (contains? m :display-name)
                   (contains? m :display_name))))]]]])
 
+(defn- normalize-card-query [query]
+  (when query
+    (let [query (lib.schema.common/normalize-map query)]
+      ;; we will do more normalization/conversion later.
+      (-> query
+          (m/update-existing :type keyword)
+          (m/update-existing :lib/type keyword)))))
+
+(mr/def ::card.query
+  "Saved query. This is possibly still a legacy query, but should already be normalized.
+  Call [[metabase.lib.convert/->pMBQL]] on it as needed."
+  [:map
+   {:decode/normalize normalize-card-query}])
+
+(defn- normalize-card [card]
+  (when card
+    (let [card (lib.schema.common/normalize-map card)]
+      (cond-> card
+        (and (not (:database-id card))
+             (pos-int? (get-in card [:dataset-query :database])))
+        (assoc :database-id (get-in card [:dataset-query :database]))))))
+
+(defn- mock-card
+  "Mock coercer for use with the [[metabase.lib.test-util/mock-metadata-provider]]. Add a default name to the Card if
+  one was not specified."
+  [card]
+  (cond-> card
+    (and (not (:name card))
+         (:id card))
+    (assoc :name (lib.util/format "Card %d" (:id card)))))
+
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
   converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
   not quite massaged into a sequence of [[::column]] metadata just yet.
+
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
   [:map
-   {:error/message "Valid Card metadata"}
+   {:decode/normalize normalize-card
+    :decode/mock      mock-card
+    :error/message    "Valid Card metadata"}
    [:lib/type    [:= :metadata/card]]
    [:id          ::lib.schema.id/card]
    [:name        ::lib.schema.common/non-blank-string]
    [:database-id ::lib.schema.id/database]
-   ;; saved query. This is possibly still a legacy query, but should already be normalized.
-   ;; Call [[metabase.lib.convert/->pMBQL]] on it as needed
-   [:dataset-query   {:optional true} :map]
+   [:dataset-query   {:optional true} ::card.query]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
    [:result-metadata {:optional true} [:maybe [:sequential ::card.result-metadata.map]]]
@@ -481,5 +515,6 @@
   `frontend/src/metabase/query_builder/selectors.js` -- but this is ridiculous. Let's try to merge anything missing in
   `results_metadata` into `cols` going forward so things don't need to be manually merged in the future."
   [:map
+   {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
