@@ -113,8 +113,8 @@ describe("NumberFilterPicker", () => {
 
       expect(screen.getByText("Total")).toBeInTheDocument();
       expect(screen.getByText("Between")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Min")).toHaveValue("");
-      expect(screen.getByPlaceholderText("Max")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Start of range")).toHaveValue("");
+      expect(screen.getByPlaceholderText("End of range")).toHaveValue("");
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
@@ -205,8 +205,8 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-          const leftInput = screen.getByPlaceholderText("Min");
-          const rightInput = screen.getByPlaceholderText("Max");
+          const leftInput = screen.getByPlaceholderText("Start of range");
+          const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.type(leftInput, String(leftValue));
           await userEvent.type(rightInput, String(rightValue));
           await userEvent.click(addFilterButton);
@@ -228,8 +228,8 @@ describe("NumberFilterPicker", () => {
         });
 
         await setOperator("Between");
-        const leftInput = screen.getByPlaceholderText("Min");
-        const rightInput = screen.getByPlaceholderText("Max");
+        const leftInput = screen.getByPlaceholderText("Start of range");
+        const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
         await userEvent.type(rightInput, "-10.5");
         await userEvent.click(addFilterButton);
@@ -248,8 +248,8 @@ describe("NumberFilterPicker", () => {
           setup();
 
         await setOperator("Between");
-        const leftInput = screen.getByPlaceholderText("Min");
-        const rightInput = screen.getByPlaceholderText("Max");
+        const leftInput = screen.getByPlaceholderText("Start of range");
+        const rightInput = screen.getByPlaceholderText("End of range");
         await userEvent.type(leftInput, "5");
         await userEvent.type(rightInput, "-10.5{enter}");
 
@@ -421,8 +421,8 @@ describe("NumberFilterPicker", () => {
           });
 
           await setOperator("Between");
-          const leftInput = screen.getByPlaceholderText("Min");
-          const rightInput = screen.getByPlaceholderText("Max");
+          const leftInput = screen.getByPlaceholderText("Start of range");
+          const rightInput = screen.getByPlaceholderText("End of range");
           await userEvent.clear(leftInput);
           await userEvent.type(leftInput, `${leftValue}`);
           expect(updateButton).toBeEnabled();

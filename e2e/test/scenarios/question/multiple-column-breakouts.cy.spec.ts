@@ -895,10 +895,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByPlaceholderText("Min")
+            cy.findByPlaceholderText("Start of range")
               .clear()
               .type(String(columnMinValue));
-            cy.findByPlaceholderText("Max")
+            cy.findByPlaceholderText("End of range")
               .clear()
               .type(String(columnMaxValue));
             cy.button("Add filter").click();
@@ -1218,10 +1218,10 @@ describe("scenarios > question > multiple column breakouts", () => {
           H.popover().within(() => {
             cy.findByText("Summaries").click();
             cy.findByText(columnName).click();
-            cy.findByPlaceholderText("Min")
+            cy.findByPlaceholderText("Start of range")
               .clear()
               .type(String(columnMinValue));
-            cy.findByPlaceholderText("Max")
+            cy.findByPlaceholderText("End of range")
               .clear()
               .type(String(columnMaxValue));
             cy.button("Apply filter").click();
@@ -1478,10 +1478,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           H.popover().within(() => {
             cy.findAllByText(columnName).click();
-            cy.findByPlaceholderText("Min")
+            cy.findByPlaceholderText("Start of range")
               .clear()
               .type(String(columnMinValue));
-            cy.findByPlaceholderText("Max")
+            cy.findByPlaceholderText("End of range")
               .clear()
               .type(String(columnMaxValue));
             cy.button("Add filter").click();

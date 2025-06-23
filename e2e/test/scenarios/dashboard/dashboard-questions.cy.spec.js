@@ -32,7 +32,7 @@ describe("Dashboard > Dashboard Questions", () => {
         .findByText("Add filters to narrow your answer")
         .click();
       H.popover().findByText("Discount").click();
-      cy.findByPlaceholderText("Min").type("1");
+      cy.findByPlaceholderText("Start of range").type("1");
       H.popover().button("Add filter").click();
       cy.button("Visualize").click();
 
