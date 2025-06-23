@@ -235,8 +235,8 @@ function JoinColumnPicker({
       query,
       stageIndex,
       joinable,
-      lhsExpression,
-      rhsExpression,
+      Lib.isColumnMetadata(lhsExpression) ? lhsExpression : undefined,
+      Lib.isColumnMetadata(rhsExpression) ? rhsExpression : undefined,
     );
     return Lib.groupColumns(columns);
   }, [

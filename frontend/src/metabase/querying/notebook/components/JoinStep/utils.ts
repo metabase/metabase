@@ -1,12 +1,12 @@
 import type * as Lib from "metabase-lib";
 
 export function updateTemporalBucketing(
-  query: Lib.Query,
+  _query: Lib.Query,
   _stageIndex: number,
-  _condition: Lib.JoinCondition,
+  condition: Lib.JoinCondition,
   _expressions: Lib.ExpressionClause[],
 ) {
-  return query;
+  return condition;
 
   // const bucket =
   //   expressions
