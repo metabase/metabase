@@ -17,8 +17,6 @@
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.channel.urls :as urls]
    [metabase.notification.models :as models.notification]
-   [metabase.parameters.shared :as shared.params]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
