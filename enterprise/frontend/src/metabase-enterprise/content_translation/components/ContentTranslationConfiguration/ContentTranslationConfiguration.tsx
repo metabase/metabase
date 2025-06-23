@@ -15,14 +15,13 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useConfirmation, useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormProvider,
   FormSubmitButton,
   useFormContext,
 } from "metabase/forms";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { openSaveDialog } from "metabase/lib/dom";
 import {
   Button,
