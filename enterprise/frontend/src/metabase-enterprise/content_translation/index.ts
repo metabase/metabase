@@ -1,7 +1,7 @@
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { ContentTranslationConfiguration } from "./components";
+import { ContentTranslationConfigurationWrapper } from "./components/ContentTranslationConfiguration/ContentTranslationConfiguration";
 import { contentTranslationEndpoints } from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
@@ -22,6 +22,6 @@ if (hasPremiumFeature("content_translation")) {
       contentTranslationEndpoints.getDictionary = `/api/ee/content-translation/dictionary/${encodedToken}`;
     },
     translateDisplayNames,
-    ContentTranslationConfiguration,
+    ContentTranslationConfiguration: ContentTranslationConfigurationWrapper,
   });
 }

@@ -11,7 +11,9 @@ import {
 } from "react";
 import { c, msgid, ngettext, t } from "ttag";
 
+import ErrorBoundary from "metabase/ErrorBoundary";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
@@ -341,4 +343,12 @@ const UploadForm = ({
 };
 const DescriptionText = (props: PropsWithChildren<TextProps>) => (
   <Text c="inherit" lh="1.5" {...props} />
+);
+
+export const ContentTranslationConfigurationWrapper = () => (
+  <SettingsSection title={t`Content translation`}>
+    <ErrorBoundary>
+      <ContentTranslationConfiguration />
+    </ErrorBoundary>
+  </SettingsSection>
 );
