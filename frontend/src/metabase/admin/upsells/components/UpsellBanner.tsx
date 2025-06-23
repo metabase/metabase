@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMount } from "react-use";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -27,6 +28,7 @@ export type UpsellBannerProps = {
   buttonText: string;
   campaign: string;
   source: string;
+  large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
 } & CardLinkProps;
@@ -38,6 +40,7 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   internalLink,
   campaign,
   source,
+  large,
   children,
   ...props
 }: UpsellBannerProps) => {
@@ -51,15 +54,18 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
     trackUpsellViewed({ source, campaign });
   });
 
+  const gemSize = large ? 24 : undefined;
+  const contentAlignment = large ? "flex-start" : "center";
+
   return (
     <Box
-      className={S.UpsellBannerComponent}
+      className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
       bg="bg-white"
       {...props}
     >
-      <Flex align="center" gap="md" wrap="nowrap">
-        <UpsellGem />
+      <Flex align={contentAlignment} gap="md" wrap="nowrap">
+        <UpsellGem size={gemSize} />
         <Box>
           <Title lh={1.25} order={3} size="md">
             {title}
