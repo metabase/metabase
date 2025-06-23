@@ -54,7 +54,7 @@ export const LicenseTokenForm = ({
 
   const storeLink = (
     <ExternalLink
-      href={getStoreUrl()}
+      href={getStoreUrl("checkout")}
       key="store-link"
     >{t`Try Metabase for free`}</ExternalLink>
   );
