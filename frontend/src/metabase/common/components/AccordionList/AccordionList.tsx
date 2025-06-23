@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type Fuse from "fuse.js";
-import { getIn } from "icepick";
 import {
   type CSSProperties,
   Component,
@@ -29,7 +28,9 @@ import {
   getNextCursor,
   getPrevCursor,
   getSearchIndex,
+  itemScore,
   search,
+  sectionScore,
 } from "./utils";
 
 type Props<
@@ -289,15 +290,6 @@ export class AccordionList<
     });
   };
 
-  searchPredicate = (item: TItem, searchPropMember: string) => {
-    const path = searchPropMember.split(".");
-
-    const { searchText } = this.state;
-    const itemText = String(getIn(item, path) || "");
-
-    return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
-  };
-
   checkSectionHasItemsMatchingSearch = (section: TSection) => {
     return (section.items?.filter(this.searchFilter).length ?? 0) > 0;
   };
@@ -401,46 +393,14 @@ export class AccordionList<
   };
 
   searchFilter = (item: TItem) => {
-    return this.itemScore(item) < 0.6;
-  };
-
-  itemScore = (item: TItem) => {
-    const {
-      fuzzySearch,
-      searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
-    } = this.props;
-    const { searchText } = this.state;
-
-    if (!searchText || searchText.length === 0) {
-      return 0;
-    }
-
-    if (fuzzySearch) {
-      const { searchResults } = this.state;
-      return searchResults?.get(item) ?? 1;
-    }
-
-    const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
-    for (const member of searchProps) {
-      if (this.searchPredicate(item, member)) {
-        return 0;
-      }
-    }
-
-    return 1;
-  };
-
-  sectionScore = (section: TSection) => {
-    if (!section.items) {
-      return 1;
-    }
-
-    let best = 1;
-    for (const item of section.items) {
-      const score = this.itemScore(item);
-      best = Math.min(best, score);
-    }
-    return best;
+    return (
+      itemScore(item, {
+        searchText: this.state.searchText,
+        fuzzySearch: this.props.fuzzySearch,
+        sections: this.props.sections,
+        searchProp: this.props.searchProp,
+      }) < 0.6
+    );
   };
 
   getRows = (): Row<TItem, TSection>[] => {
@@ -452,6 +412,8 @@ export class AccordionList<
       searchable = (section: TSection) =>
         section?.items && section.items.length > 10,
       sections,
+      searchProp,
+      fuzzySearch,
     } = this.props;
     const { searchText } = this.state;
 
@@ -473,9 +435,17 @@ export class AccordionList<
 
     const rows: Row<TItem, TSection>[] = [];
 
+    const searchOptions = {
+      searchText,
+      sections,
+      fuzzySearch,
+      searchProp,
+    };
+
     const sortedSections = isSearching
       ? Array.from(sections).sort(
-          (a, b) => this.sectionScore(a) - this.sectionScore(b),
+          (a, b) =>
+            sectionScore(a, searchOptions) - sectionScore(b, searchOptions),
         )
       : sections;
 
@@ -535,7 +505,8 @@ export class AccordionList<
       ) {
         const sortedItems = isSearching
           ? Array.from(section.items).sort(
-              (a, b) => this.itemScore(a) - this.itemScore(b),
+              (a, b) =>
+                itemScore(a, searchOptions) - itemScore(b, searchOptions),
             )
           : section.items;
         for (const [itemIndex, item] of sortedItems.entries()) {

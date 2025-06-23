@@ -1,5 +1,6 @@
 import { shallowEqual } from "@mantine/hooks";
 import Fuse from "fuse.js";
+import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
 
@@ -239,3 +240,70 @@ export const search = memoize(function <T>({
   }
   return map;
 });
+
+export function itemScore<TItem extends Item, TSection extends Section<TItem>>(
+  item: TItem,
+  {
+    searchText,
+    sections,
+    fuzzySearch = false,
+    searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
+  }: {
+    searchText: string;
+    sections: TSection[];
+    fuzzySearch?: boolean;
+    searchProp?: SearchProps<TItem>;
+  },
+) {
+  if (!searchText || searchText.length === 0) {
+    return 0;
+  }
+
+  if (fuzzySearch) {
+    const searchIndex = getSearchIndex({
+      sections,
+      searchProp,
+    });
+    const searchResults = search({ searchIndex, searchText });
+    return searchResults?.get(item) ?? 1;
+  }
+
+  const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
+  for (const prop of searchProps) {
+    if (searchPredicate(item, searchText, prop)) {
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+export function sectionScore<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>(
+  section: TSection,
+  options: {
+    searchText: string;
+    sections: TSection[];
+    fuzzySearch?: boolean;
+    searchProp?: SearchProps<TItem>;
+  },
+) {
+  if (!section.items) {
+    return 1;
+  }
+
+  let best = 1;
+  for (const item of section.items) {
+    const score = itemScore(item, options);
+    best = Math.min(best, score);
+  }
+  return best;
+}
+
+function searchPredicate<TItem>(item: TItem, searchText: string, prop: string) {
+  const path = prop.split(".");
+  const itemText = String(getIn(item, path) || "");
+  return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
+}
