@@ -178,8 +178,6 @@ export type TableRowActionDisplaySettings = {
   actionId: WritebackActionId;
   name: string;
   actionType: "data-grid/custom-action";
-  isRowAction?: boolean;
-  isHeaderAction?: boolean;
   parameterMappings?: RowActionFieldSettings[];
   enabled: boolean;
 };

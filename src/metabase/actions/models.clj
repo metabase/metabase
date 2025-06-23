@@ -384,8 +384,6 @@
       (update :id (partial create-or-fix-action-id parent-type parent-id))
       ;; At the time of writing, FE only allows the creation of row actions. Make sure this is explicit.
       (update :actionType #(if (or (not %) (= "data-grid/row-action" %)) "data-grid/custom-action" %))
-      (update :isRowAction #(or % (not (:isHeaderAction grid-action))))
-      (update :isHeaderAction #(or % (not (:isRowAction grid-action))))
       ;; By default actions are enabled.
       (update :enabled #(if (some? %) % true))))
 
