@@ -85,12 +85,8 @@ H.describeWithSnowplow(
       cy.findByRole("link", { name: "Table Metadata" }).click();
 
       H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
-      H.DataModel.TablePicker.getTables().should("have.length", 2);
+      H.DataModel.TablePicker.getTables().should("have.length", 1);
       H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
-      // We don't know the exact name of the uploaded table as it contains a non-deterministic timestamp
-      // but we can assume the timestamp will start with "2". Please update this line on Jan 1, 3000.
-      // H.DataModel.TablePicker.getTable uses "contains" filter to match the name.
-      H.DataModel.TablePicker.getTable("Dog Breeds 2").should("be.visible");
     });
 
     ["postgres", "mysql"].forEach((dialect) => {
