@@ -1,5 +1,5 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 
@@ -41,7 +41,9 @@ interface ChildrenProps<Entity, EntityWrapper> {
 }
 
 interface Props<Entity, EntityWrapper> {
-  ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
+  ComposedComponent: (
+    props: ChildrenProps<Entity, EntityWrapper>,
+  ) => React.ReactNode;
   entityAlias?: string;
   entityId: EntityId | EntityIdSelector | undefined;
   entityQuery?: EntityQuery | EntityQuerySelector;
@@ -274,7 +276,7 @@ export const entityObjectLoader =
   (
     ComposedComponent: (
       props: ChildrenProps<Entity, EntityWrapper>,
-    ) => ReactNode,
+    ) => React.ReactNode,
   ) =>
     function EntityObjectLoaderWrapper(props: any) {
       return (

@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { DashCardMenuItem } from "./dashboard";
 import type { MetabaseQuestion } from "./question";
 
@@ -26,7 +24,7 @@ export type DashboardCardMenuCustomElement = ({
   question,
 }: {
   question: MetabaseQuestion;
-}) => ReactNode;
+}) => React.ReactNode;
 
 export type CustomDashboardCardMenuItem = ({
   question,

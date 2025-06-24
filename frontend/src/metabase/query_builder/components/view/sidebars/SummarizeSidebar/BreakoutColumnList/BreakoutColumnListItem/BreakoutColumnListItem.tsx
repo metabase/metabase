@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type { MouseEvent } from "react";
-import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 

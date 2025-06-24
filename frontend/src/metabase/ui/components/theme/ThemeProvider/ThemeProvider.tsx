@@ -7,7 +7,7 @@ import type {
 } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 
 import { isEmbeddingSdk } from "metabase/env";
 
@@ -15,7 +15,7 @@ import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";
 
 interface ThemeProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 
   /**
    * Extend Metabase's theme overrides.

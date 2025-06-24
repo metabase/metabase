@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type CSSProperties, forwardRef, isValidElement } from "react";
+import { forwardRef, isValidElement } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Flex, type FlexProps, Icon, rem } from "metabase/ui";

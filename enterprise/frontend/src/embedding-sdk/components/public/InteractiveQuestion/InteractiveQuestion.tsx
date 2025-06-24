@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import {
   BackButton,
   Breakout,
@@ -43,7 +41,7 @@ export type BaseInteractiveQuestionProps =
     /**
      * The children of the MetabaseProvider component.s
      */
-    children?: ReactNode;
+    children?: React.ReactNode;
     plugins?: InteractiveQuestionProviderProps["componentPlugins"];
   } & Pick<
       InteractiveQuestionProviderProps,

@@ -1,10 +1,4 @@
-import {
-  type ReactNode,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { resetParameterMapping } from "metabase/dashboard/actions";
@@ -319,7 +313,9 @@ function getLabelError({
   return null;
 }
 
-function SettingLabel(props: BoxProps & { id?: string; children?: ReactNode }) {
+function SettingLabel(
+  props: BoxProps & { id?: string; children?: React.ReactNode },
+) {
   return (
     <Box
       component="label"

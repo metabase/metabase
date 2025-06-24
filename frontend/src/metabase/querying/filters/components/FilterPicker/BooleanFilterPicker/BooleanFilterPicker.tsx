@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { useMemo } from "react";
 
 import { BooleanPicker } from "metabase/querying/filters/components/BooleanPicker";
@@ -37,7 +36,7 @@ export function BooleanFilterPicker({
     onChange(getFilterClause(), opts);
   };
 
-  const handleFormSubmit = (event: FormEvent) => {
+  const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     handleFilterChange({ run: true });
   };

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 
 import Button, { type ButtonProps } from "metabase/common/components/Button";
 import { useMantineTheme } from "metabase/ui";

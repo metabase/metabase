@@ -1,5 +1,3 @@
-import type React from "react";
-
 import type { BoxProps } from "metabase/ui";
 import { Box, Text } from "metabase/ui";
 

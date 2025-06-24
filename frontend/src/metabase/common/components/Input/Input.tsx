@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import type { InputHTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -29,7 +29,7 @@ export interface InputProps extends InputAttributes {
   error?: boolean;
   fullWidth?: boolean;
   leftIcon?: IconName;
-  leftIconTooltip?: ReactNode;
+  leftIconTooltip?: React.ReactNode;
   rightIcon?: IconName;
   rightIconTooltip?: string;
   subtitle?: string;

@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, ReactNode, Ref } from "react";
+import type { ChangeEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { FileInputProps } from "metabase/common/components/FileInput";
@@ -14,7 +14,7 @@ export interface FormFileInputProps
   name: string;
   encoding?: FormFileInputEncoding;
   title?: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
   optional?: boolean;
 }
 

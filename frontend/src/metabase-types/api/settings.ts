@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { GroupId } from "./group";
@@ -273,7 +271,7 @@ export interface SettingDefinition<
   value?: EnterpriseSettingValue<Key>;
   default?: EnterpriseSettingValue<Key>;
   display_name?: string;
-  description?: string | ReactNode | null;
+  description?: string | React.ReactNode | null;
   type?: InputSettingType;
 }
 

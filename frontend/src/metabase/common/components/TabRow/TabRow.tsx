@@ -15,7 +15,6 @@ import {
 } from "@dnd-kit/sortable";
 import { useMergedRef } from "@mantine/hooks";
 import {
-  type ReactNode,
   type Ref,
   forwardRef,
   useCallback,
@@ -141,7 +140,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
 
 export const TabRow = ExplicitSize<TabRowProps<unknown>>()(TabRowInner) as <T>(
   props: TabRowProps<T>,
-) => ReactNode;
+) => React.ReactNode;
 
 interface ScrollArrowProps {
   direction: "left" | "right";

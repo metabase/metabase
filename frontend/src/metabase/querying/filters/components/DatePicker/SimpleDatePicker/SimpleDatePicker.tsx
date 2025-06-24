@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -32,7 +31,7 @@ export function SimpleDatePicker({
 }: SimpleDatePickerProps) {
   const [value, setValue] = useState(initialValue);
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     onChange(value);
   };

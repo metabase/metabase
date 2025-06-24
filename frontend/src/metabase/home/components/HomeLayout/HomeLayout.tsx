@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -18,7 +17,7 @@ import {
 } from "./HomeLayout.styled";
 
 interface HomeLayoutProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const HomeLayout = ({ children }: HomeLayoutProps): JSX.Element => {

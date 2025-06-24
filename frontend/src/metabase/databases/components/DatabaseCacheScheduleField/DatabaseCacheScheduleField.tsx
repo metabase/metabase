@@ -1,5 +1,4 @@
 import { useField, useFormikContext } from "formik";
-import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -34,7 +33,7 @@ const SCHEDULE_OPTIONS: ScheduleType[] = ["daily", "weekly", "monthly"];
 export interface DatabaseCacheScheduleFieldProps {
   name: string;
   title?: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
 }
 
 const DatabaseCacheScheduleField = ({
@@ -115,7 +114,7 @@ const DatabaseCacheScheduleField = ({
 interface ScheduleOptionProps {
   title: string;
   isSelected: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onSelect: () => void;
 }
 

@@ -1,5 +1,5 @@
 // Support React 17 backwards compatibility for the Embedding SDK
-import type React from "react";
+
 import ReactDOM from "react-dom";
 import { type Root, createRoot } from "react-dom/client";
 

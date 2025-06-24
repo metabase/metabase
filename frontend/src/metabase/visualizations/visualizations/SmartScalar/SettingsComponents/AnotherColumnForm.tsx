@@ -1,4 +1,4 @@
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -57,7 +57,7 @@ export function AnotherColumnForm({
     setLabel(e.target.value);
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
     onChange({

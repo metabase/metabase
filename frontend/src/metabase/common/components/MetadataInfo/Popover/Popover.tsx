@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
@@ -28,7 +28,7 @@ export type PopoverProps = Pick<
   "children" | "position" | "disabled"
 > & {
   width?: number;
-  content: ReactNode;
+  content: React.ReactNode;
   openDelay?: number;
 };
 

@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { IconName } from "metabase/ui";
 import type { SearchResult, SearchResultId } from "metabase-types/api";
 
@@ -54,7 +52,7 @@ export type EntityPickerTab<
    */
   models: Model[];
   folderModels: Model[];
-  extraButtons?: ReactNode[];
+  extraButtons?: React.ReactNode[];
 };
 
 export type EntityPickerSearchScope = "everywhere" | "folder";

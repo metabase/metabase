@@ -1,5 +1,4 @@
 import Humanize from "humanize-plus";
-import type { ReactNode } from "react";
 
 import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
@@ -76,7 +75,7 @@ export function formatNumber(
 export function formatNumber(
   number: number | bigint,
   options: FormatNumberJsxOptions = {},
-): string | ReactNode {
+): string | React.ReactNode {
   options = { ...getDefaultNumberOptions(options), ...options };
 
   if (typeof options.scale === "number" && !isNaN(options.scale)) {
@@ -198,7 +197,7 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
 function formatNumberCompact(
   value: number | bigint,
   options: FormatNumberJsxOptions,
-): string | ReactNode {
+): string | React.ReactNode {
   if (options.number_style === "percent") {
     return _formatNumberCompact(multiply(value, 100), options) + "%";
   }
@@ -293,7 +292,7 @@ function replaceNumberSeparators(formatted: any, separators: any) {
 function formatNumberScientific(
   value: number | bigint,
   options: FormatNumberJsxOptions,
-): string | ReactNode {
+): string | React.ReactNode {
   if (typeof value === "bigint") {
     value = Number(value);
   }

@@ -1,4 +1,4 @@
-import type { FunctionComponent, ReactNode, Ref } from "react";
+import type { FunctionComponent, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionFormFieldProps } from "metabase/actions/types";
@@ -30,7 +30,7 @@ const WIDGETS: Record<InputComponentType, FunctionComponent<any>> = {
 interface FormWidgetProps {
   formField: ActionFormFieldProps;
   hidden?: boolean;
-  actions?: ReactNode;
+  actions?: React.ReactNode;
 }
 
 export const ActionFormFieldWidget = forwardRef(function FormFieldWidget(

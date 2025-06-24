@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
@@ -19,7 +18,7 @@ const SCHEDULE_OPTIONS: ScheduleType[] = ["hourly", "daily"];
 export interface DatabaseSyncScheduleFieldProps {
   name: string;
   title?: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
 }
 
 const DatabaseSyncScheduleField = ({

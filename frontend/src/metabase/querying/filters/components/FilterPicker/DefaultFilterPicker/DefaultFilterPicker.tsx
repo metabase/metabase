@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { useMemo } from "react";
 
 import { useDefaultFilter } from "metabase/querying/filters/hooks/use-default-filter";
@@ -50,7 +49,7 @@ export function DefaultFilterPicker({
     }
   };
 
-  const handleFormSubmit = (event: FormEvent) => {
+  const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     handleFilterChange({ run: true });
   };

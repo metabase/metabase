@@ -1,6 +1,6 @@
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import type { CSSProperties, Ref } from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -16,7 +16,7 @@ import {
 
 export interface DateSelectorProps {
   className?: string;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   value?: Moment;
   hasTime?: boolean;
   timeFormat?: string;

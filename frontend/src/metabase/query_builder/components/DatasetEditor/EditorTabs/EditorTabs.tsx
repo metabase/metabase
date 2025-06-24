@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import { alpha, darken } from "metabase/lib/colors";

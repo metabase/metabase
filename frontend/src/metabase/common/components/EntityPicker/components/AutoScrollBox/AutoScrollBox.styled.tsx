@@ -1,6 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import type React from "react";
 
 import type { BoxProps } from "metabase/ui";
 import { Box } from "metabase/ui";

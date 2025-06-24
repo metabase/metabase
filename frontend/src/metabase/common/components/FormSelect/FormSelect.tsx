@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ReactNode, Ref } from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -15,8 +15,8 @@ export interface FormSelectProps<TValue, TOption = SelectOption<TValue>>
   extends Omit<SelectProps<TValue, TOption>, "value"> {
   name: string;
   title?: string;
-  actions?: ReactNode;
-  description?: ReactNode;
+  actions?: React.ReactNode;
+  description?: React.ReactNode;
   optional?: boolean;
 }
 

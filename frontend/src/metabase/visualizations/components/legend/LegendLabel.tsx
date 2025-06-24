@@ -1,10 +1,8 @@
 import cx from "classnames";
-import type React from "react";
 import {
   type FocusEventHandler,
   type MouseEvent,
   type MouseEventHandler,
-  type ReactNode,
   forwardRef,
   useCallback,
 } from "react";
@@ -17,7 +15,7 @@ import { Box } from "metabase/ui";
 import S from "./LegendLabel.module.css";
 
 interface Props {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
   href?: LinkProps["to"];
   onClick?: MouseEventHandler;

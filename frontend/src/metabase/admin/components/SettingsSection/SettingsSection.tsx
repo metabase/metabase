@@ -1,5 +1,3 @@
-import type React from "react";
-
 import {
   Box,
   type BoxProps,

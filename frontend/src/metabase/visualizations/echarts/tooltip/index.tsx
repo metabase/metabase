@@ -1,5 +1,4 @@
 import type { EChartsType } from "echarts/core";
-import type React from "react";
 import { useEffect, useMemo } from "react";
 import _ from "underscore";
 

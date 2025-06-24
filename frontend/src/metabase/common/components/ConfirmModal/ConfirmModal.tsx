@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,9 +12,9 @@ import {
 } from "metabase/ui";
 
 interface ConfirmModal extends ModalProps {
-  title?: string | ReactNode;
+  title?: string | React.ReactNode;
   content?: string;
-  message?: string | ReactNode;
+  message?: string | React.ReactNode;
   onConfirm?: () => void | Promise<void>;
   confirmButtonText?: string;
   confirmButtonProps?: Omit<ButtonProps, "onClick" | "children">;

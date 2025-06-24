@@ -1,4 +1,3 @@
-import type React from "react";
 import { t } from "ttag";
 
 import type { QueryModalType } from "metabase/query_builder/constants";

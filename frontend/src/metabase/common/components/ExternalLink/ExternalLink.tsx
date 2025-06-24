@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
+import type { AnchorHTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -11,7 +11,7 @@ interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   href?: string;
   target?: string;
   className?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const ExternalLink = forwardRef(function ExternalLink(

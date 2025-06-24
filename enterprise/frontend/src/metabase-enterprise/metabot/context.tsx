@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import type React from "react";
 import { createContext, useCallback, useRef } from "react";
 
 import { useStore } from "metabase/lib/redux";

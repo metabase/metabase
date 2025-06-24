@@ -1,4 +1,3 @@
-import type React from "react";
 import { useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 

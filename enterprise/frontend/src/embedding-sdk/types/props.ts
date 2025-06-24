@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 /**
  * @inline
  */
@@ -12,5 +10,5 @@ export type CommonStylingProps = {
   /**
    * A custom style object to be added to the root element.
    */
-  style?: CSSProperties;
+  style?: React.CSSProperties;
 };

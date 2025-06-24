@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 import _ from "underscore";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";

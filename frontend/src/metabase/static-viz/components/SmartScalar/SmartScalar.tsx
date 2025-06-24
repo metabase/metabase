@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 import type { RenderingContext } from "metabase/visualizations/types";
 import {
   CHANGE_TYPE_OPTIONS,

@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 export type AdminPaneProps = {
   title?: React.ReactNode;
   description?: string;
@@ -7,5 +5,5 @@ export type AdminPaneProps = {
   buttonAction?: () => void;
   buttonDisabled?: boolean;
   buttonLink?: string;
-  headingContent?: ReactNode;
+  headingContent?: React.ReactNode;
 };

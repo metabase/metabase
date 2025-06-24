@@ -2,7 +2,6 @@ import React, {
   type ComponentType,
   type Dispatch,
   type HTMLAttributes,
-  type ReactNode,
   type SetStateAction,
   useCallback,
   useMemo,
@@ -482,7 +481,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
 };
 
 export const PLUGIN_APPLICATION_PERMISSIONS = {
-  getRoutes: (): ReactNode => null,
+  getRoutes: (): React.ReactNode => null,
   tabs: [] as any,
   selectors: {
     canAccessSettings: (_state: any) => false,
@@ -533,7 +532,7 @@ export interface SimpleDataPickerProps {
   filterByDatabaseId: number | null;
   selectedEntity?: TableId;
   isInitiallyOpen: boolean;
-  triggerElement: ReactNode;
+  triggerElement: React.ReactNode;
   setSourceTableFn: (tableId: TableId) => void;
   entityTypes: EmbeddingEntityType[];
 }
@@ -544,7 +543,7 @@ export const PLUGIN_EMBEDDING_SDK = {
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK = {
   hasValidLicense: () => false,
-  SdkIframeEmbedRoute: (): ReactNode => null,
+  SdkIframeEmbedRoute: (): React.ReactNode => null,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {

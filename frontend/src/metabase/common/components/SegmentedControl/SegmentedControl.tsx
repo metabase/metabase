@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { useMemo } from "react";
 import _ from "underscore";
 

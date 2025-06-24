@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 
 import type { IconName as InternalIconName } from "metabase/ui";
 
@@ -22,7 +22,7 @@ type _IconName = InternalIconName;
 export type IconName = _IconName;
 
 export type SdkErrorComponentProps = {
-  message: ReactNode;
+  message: React.ReactNode;
 };
 
 export type SdkErrorComponent = ({

@@ -2,7 +2,6 @@ import cx from "classnames";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import Mustache from "mustache";
-import type * as React from "react";
 import ReactMarkdown from "react-markdown";
 
 import ExternalLink from "metabase/common/components/ExternalLink";

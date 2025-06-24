@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type PropsWithChildren, type ReactNode, useState } from "react";
+import { type PropsWithChildren, useState } from "react";
 
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Sortable } from "metabase/common/components/Sortable";
@@ -36,7 +36,7 @@ type ParameterWidgetProps = PropsWithChildren<
       className: string;
       isFullscreen: boolean;
       setEditingParameter: (parameterId: ParameterId | null) => void;
-      dragHandle: ReactNode;
+      dragHandle: React.ReactNode;
     } & Pick<DashboardFullscreenControls, "isFullscreen">
   >
 >;

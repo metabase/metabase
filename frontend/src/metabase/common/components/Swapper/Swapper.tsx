@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 
 import {
@@ -8,8 +8,8 @@ import {
 } from "./Swapper.styled";
 
 export interface SwapperProps extends HTMLAttributes<HTMLDivElement> {
-  defaultElement?: ReactNode;
-  swappedElement?: ReactNode;
+  defaultElement?: React.ReactNode;
+  swappedElement?: React.ReactNode;
   isSwapped?: boolean;
 }
 

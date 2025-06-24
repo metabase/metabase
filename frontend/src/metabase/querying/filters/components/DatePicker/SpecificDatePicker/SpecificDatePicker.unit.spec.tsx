@@ -1,5 +1,4 @@
 import _userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 
 import { renderWithProviders, screen, within } from "__support__/ui";
 import {
@@ -20,7 +19,7 @@ interface SetupOpts {
   value?: SpecificDatePickerValue;
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerUnit[];
-  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => React.ReactNode;
 }
 
 const userEvent = _userEvent.setup({

@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 import { InteractiveQuestion } from "embedding-sdk";
 import { FLEXIBLE_SIZE_DEFAULT_HEIGHT } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
@@ -16,7 +14,7 @@ export type InteractiveQuestionQuestionSettingsDropdownProps = {
   /**
    * Height for the dropdown menu
    */
-  height?: CSSProperties["height"];
+  height?: React.CSSProperties["height"];
 } & Omit<PopoverProps, "children">;
 
 /**

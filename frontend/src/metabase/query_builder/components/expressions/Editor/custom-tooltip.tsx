@@ -12,7 +12,6 @@ import {
 import {
   type KeyboardEvent,
   type FocusEvent as ReactFocusEvent,
-  type ReactNode,
   type RefObject,
   useCallback,
   useMemo,
@@ -28,7 +27,7 @@ type TooltipProps = {
 };
 
 type TooltipOptions = {
-  render: (props: TooltipProps) => ReactNode;
+  render: (props: TooltipProps) => React.ReactNode;
   getPosition: (state: EditorState) => number;
 };
 
@@ -42,7 +41,7 @@ type TooltipOptions = {
 export function useCustomTooltip({
   render,
   getPosition,
-}: TooltipOptions): [Extension[], ReactNode] {
+}: TooltipOptions): [Extension[], React.ReactNode] {
   const tooltipRef = useRef<HTMLDivElement>(null);
   const element = useMemo(() => document.createElement("div"), []);
 

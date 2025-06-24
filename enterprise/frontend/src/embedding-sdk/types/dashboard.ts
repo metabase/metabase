@@ -1,5 +1,4 @@
 import type { MantineColor } from "@mantine/core/lib/core";
-import type { ReactNode } from "react";
 
 import type { MetabaseCollection } from "embedding-sdk/types/collection";
 
@@ -54,7 +53,7 @@ export type DashCardMenuItem = {
   /**
    * Item children
    */
-  children?: ReactNode;
+  children?: React.ReactNode;
 
   /**
    * Key of `theme.colors` or any valid CSS color
@@ -69,12 +68,12 @@ export type DashCardMenuItem = {
   /**
    * Section displayed on the left side of the label
    **/
-  leftSection?: ReactNode;
+  leftSection?: React.ReactNode;
 
   /**
    * Section displayed on the right side of the label
    **/
-  rightSection?: ReactNode;
+  rightSection?: React.ReactNode;
 
   /**
    * Disables item

@@ -1,12 +1,10 @@
-import type { ReactNode } from "react";
-
 import { Box, Stack, type StackProps, Text } from "metabase/ui";
 
 import styles from "./AlertModalSettingsBlock.module.css";
 
 type AlertModalSettingsBlockProps = {
   title: string;
-  children: ReactNode;
+  children: React.ReactNode;
 } & StackProps;
 
 export const AlertModalSettingsBlock = ({

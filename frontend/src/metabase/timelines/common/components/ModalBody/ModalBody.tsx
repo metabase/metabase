@@ -1,9 +1,7 @@
-import type { ReactNode } from "react";
-
 import { BodyRoot } from "./ModalBody.styled";
 
 export interface ModalBodyProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const ModalBody = ({ children }: ModalBodyProps): JSX.Element => {

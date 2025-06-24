@@ -1,9 +1,7 @@
-import type { ReactNode } from "react";
-
 import DeprecationNotice from "../../containers/DeprecationNotice";
 
 export interface AdminAppProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const AdminApp = ({ children }: AdminAppProps): JSX.Element => {

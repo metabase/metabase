@@ -1,4 +1,3 @@
-import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";

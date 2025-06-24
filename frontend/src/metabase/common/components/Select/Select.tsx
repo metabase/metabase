@@ -1,12 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
-import type {
-  CSSProperties,
-  Key,
-  ReactElement,
-  ReactNode,
-  RefObject,
-} from "react";
+import type { CSSProperties, Key, ReactElement, RefObject } from "react";
 import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
@@ -30,7 +24,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
 
   options?: TOption[];
   sections?: SelectSection<TOption>[];
-  children?: ReactNode;
+  children?: React.ReactNode;
 
   value: TValue;
   name?: string;
@@ -43,7 +37,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
 
   // PopoverWithTrigger props
   isInitiallyOpen?: boolean;
-  triggerElement?: ReactNode;
+  triggerElement?: React.ReactNode;
   onClose?: () => void;
 
   // SelectButton props
@@ -68,7 +62,7 @@ export interface SelectProps<TValue, TOption = SelectOption<TValue>> {
   optionClassNameFn?: (option: TOption) => string | undefined;
   optionStylesFn?: (option: TOption) => CSSProperties | undefined;
 
-  footer?: ReactNode;
+  footer?: React.ReactNode;
   "data-testid"?: string;
 }
 
@@ -80,7 +74,7 @@ export interface SelectOption<TValue = Key> {
   iconSize?: number;
   iconColor?: string;
   disabled?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export interface SelectSection<TOption = SelectOption> {
@@ -339,7 +333,7 @@ export default Select;
 export interface OptionSectionProps {
   name?: string;
   icon?: IconName;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export class OptionSection extends Component<OptionSectionProps> {
@@ -353,7 +347,7 @@ export interface OptionProps<TValue> {
 
   // one of these two is required
   name?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 
   icon?: IconName;
   disabled?: boolean;

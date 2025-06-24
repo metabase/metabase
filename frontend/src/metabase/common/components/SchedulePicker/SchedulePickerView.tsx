@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type CSSProperties, Component } from "react";
+import { Component } from "react";
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/common/components/SegmentedControl";
@@ -57,7 +57,7 @@ export interface SchedulePickerProps {
   textBeforeSendTime?: string;
   minutesOnHourPicker?: boolean;
   className?: string;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
 
   onScheduleChange: (
     nextSchedule: ScheduleSettings,

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -12,9 +11,9 @@ import {
 } from "./SetupSection.styled";
 
 interface SetupSectionProps {
-  title: ReactNode;
-  description?: ReactNode;
-  children?: ReactNode;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const SetupSection = ({

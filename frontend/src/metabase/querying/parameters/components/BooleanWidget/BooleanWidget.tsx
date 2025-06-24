@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -24,7 +24,7 @@ export function BooleanWidget({
 }: BooleanParameterWidgetProps) {
   const [pickerValue, setPickerValue] = useState(() => getPickerValue(value));
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     onChange(getParameterValue(pickerValue));
   };

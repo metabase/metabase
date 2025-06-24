@@ -1,5 +1,4 @@
 import type { LocationDescriptor } from "history";
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -24,7 +23,7 @@ type NewMenuItem = {
 export interface NewItemMenuProps {
   className?: string;
   collectionId?: CollectionId;
-  trigger?: ReactNode;
+  trigger?: React.ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
   hasDataAccess: boolean;

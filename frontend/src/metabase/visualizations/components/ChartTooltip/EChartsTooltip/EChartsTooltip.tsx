@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type React from "react";
 
 import { isNotNull } from "metabase/lib/types";
 

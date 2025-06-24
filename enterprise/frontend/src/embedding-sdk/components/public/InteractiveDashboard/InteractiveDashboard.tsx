@@ -1,9 +1,4 @@
-import {
-  type CSSProperties,
-  type ReactNode,
-  useCallback,
-  useEffect,
-} from "react";
+import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -54,12 +49,12 @@ export type InteractiveDashboardProps = {
    * A custom React component to render the question layout.
    * Use namespaced InteractiveQuestion components to build the layout.
    */
-  renderDrillThroughQuestion?: () => ReactNode;
+  renderDrillThroughQuestion?: () => React.ReactNode;
 
   /**
    * Height of a question component when drilled from the dashboard to a question level.
    */
-  drillThroughQuestionHeight?: CSSProperties["height"];
+  drillThroughQuestionHeight?: React.CSSProperties["height"];
 
   /**
    * Props of a question component when drilled from the dashboard to a question level.

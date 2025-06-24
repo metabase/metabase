@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type React from "react";
 import { memo, useMemo } from "react";
 
 import type { CellAlign } from "metabase/data-grid/types";

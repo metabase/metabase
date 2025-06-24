@@ -1,4 +1,3 @@
-import type React from "react";
 import { createContext, useContext } from "react";
 
 // Currently, we use this context to know if a component is rendered inside the provider or not.

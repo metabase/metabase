@@ -1,12 +1,11 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 
 interface MetadataSectionProps {
   first?: boolean;
   last?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const MetadataSection = ({ first, last, children }: MetadataSectionProps) => (

@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { ThemeProvider } from "metabase/ui";
 
 // @ts-expect-error: See metabase/lib/delay

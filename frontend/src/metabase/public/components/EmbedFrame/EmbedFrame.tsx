@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -61,8 +61,8 @@ export type EmbedFrameBaseProps = Partial<{
   description: string | null;
   question: Question;
   dashboard: Dashboard | null;
-  headerButtons: ReactNode;
-  actionButtons: ReactNode;
+  headerButtons: React.ReactNode;
+  actionButtons: React.ReactNode;
   footerVariant: FooterVariant;
   parameters: Parameter[];
   parameterValues: ParameterValuesMap;
@@ -71,8 +71,8 @@ export type EmbedFrameBaseProps = Partial<{
   enableParameterRequiredBehavior: boolean;
   setParameterValue: (parameterId: ParameterId, value: any) => void;
   setParameterValueToDefault: (id: ParameterId) => void;
-  children: ReactNode;
-  dashboardTabs: ReactNode;
+  children: React.ReactNode;
+  dashboardTabs: React.ReactNode;
   pdfDownloadsEnabled: boolean;
   withFooter: boolean;
 }>;

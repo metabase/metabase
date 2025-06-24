@@ -1,11 +1,9 @@
-import type { ReactNode } from "react";
-
 import { CardLink, CardText, TextLink } from "./AuthButton.styled";
 
 interface AuthButtonProps {
   link?: string;
   isCard?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onClick?: () => void;
 }
 

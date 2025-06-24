@@ -1,13 +1,6 @@
 import { useInterval } from "@mantine/hooks";
 import cx from "classnames";
-import {
-  type CSSProperties,
-  Children,
-  type ReactNode,
-  forwardRef,
-  useEffect,
-  useState,
-} from "react";
+import { Children, forwardRef, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
@@ -21,12 +14,12 @@ export interface LoadingAndErrorWrapperProps {
   showSpinner?: boolean;
   getLoadingMessages?: () => string[];
   messageInterval?: number;
-  renderError?: (message?: string) => ReactNode;
-  style?: CSSProperties;
+  renderError?: (message?: string) => React.ReactNode;
+  style?: React.CSSProperties;
   className?: string;
   "data-testid"?: string;
 
-  children?: ReactNode | (() => ReactNode);
+  children?: React.ReactNode | (() => React.ReactNode);
 }
 
 export const LoadingAndErrorWrapper = forwardRef<
@@ -97,7 +90,7 @@ export const LoadingAndErrorWrapper = forwardRef<
     );
   }
 
-  function getChildren(child = children): ReactNode {
+  function getChildren(child = children): React.ReactNode {
     if (Array.isArray(child)) {
       return child.map(getChildren);
     } else if (typeof child === "function") {

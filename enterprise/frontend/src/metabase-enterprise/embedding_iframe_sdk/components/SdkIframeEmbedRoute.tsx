@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { P, match } from "ts-pattern";
 
 import {
@@ -77,7 +76,7 @@ const SdkIframeEmbedView = ({
   settings,
 }: {
   settings: SdkIframeEmbedSettings;
-}): ReactNode => {
+}): React.ReactNode => {
   return match(settings)
     .with({ template: "exploration" }, (settings) => (
       <InteractiveQuestion

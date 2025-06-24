@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
@@ -12,7 +10,7 @@ import {
 } from "./AuthLayout.styled";
 
 interface AuthLayoutProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {

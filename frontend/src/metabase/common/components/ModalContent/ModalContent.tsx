@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -11,10 +10,10 @@ import type { CommonModalProps } from "./types";
 export interface ModalContentProps extends CommonModalProps {
   "data-testid"?: string;
   id?: string;
-  title?: string | ReactNode;
-  footer?: ReactNode;
+  title?: string | React.ReactNode;
+  footer?: React.ReactNode;
   withFooterTopBorder?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 
   className?: string;
 }
@@ -90,7 +89,7 @@ export default class ModalContent extends Component<ModalContentProps> {
 const FORM_WIDTH = 500 + 32 * 2; // includes padding
 
 interface ModalBodyProps extends CommonModalProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const ModalBody = ({
@@ -122,7 +121,7 @@ export const ModalBody = ({
 
 interface ModalFooterProps extends CommonModalProps {
   withTopBorder?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const ModalFooter = ({

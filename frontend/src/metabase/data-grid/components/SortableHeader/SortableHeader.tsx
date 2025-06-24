@@ -2,8 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Header } from "@tanstack/react-table";
 import cx from "classnames";
-import type React from "react";
-import { type CSSProperties, memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 
 import S from "./SortableHeader.module.css";
 

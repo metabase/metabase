@@ -1,5 +1,4 @@
 import type { Location } from "history";
-import type { ReactNode } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 
@@ -19,7 +18,7 @@ import { TasksTable } from "./TasksTable";
 import { urlStateConfig } from "./utils";
 
 type TasksAppProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   location: Location;
 };
 

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { c, jt, t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -25,7 +24,7 @@ function EmptyStateWrapper({
   children,
 }: {
   isNightMode: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <Stack

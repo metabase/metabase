@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { isValidElement } from "react";
 
 import { Box, Flex } from "metabase/ui";
@@ -11,7 +10,7 @@ interface FilterPickerFooterProps {
   isNew: boolean;
   isValid: boolean;
   withAddButton: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onAddButtonClick: () => void;
 }
 

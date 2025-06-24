@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode, Ref } from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -38,7 +38,7 @@ export interface BaseBucketPickerPopoverProps {
   color?: ColorName;
   initiallyVisibleItemsCount: number;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
-  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
+  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => React.ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
   className?: string;
   classNames?: {

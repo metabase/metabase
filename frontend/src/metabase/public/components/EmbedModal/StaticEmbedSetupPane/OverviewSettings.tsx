@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
@@ -19,7 +18,7 @@ import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPa
 
 export interface OverviewSettingsProps {
   resourceType: EmbedResourceType;
-  serverEmbedCodeSlot: ReactNode;
+  serverEmbedCodeSlot: React.ReactNode;
   selectedServerCodeOption: ServerCodeSampleConfig | undefined;
   onClientCodeCopy: (language: string) => void;
 }

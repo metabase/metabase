@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useState } from "react";
+import { type ChangeEvent, useState } from "react";
 import { t } from "ttag";
 
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
@@ -46,7 +46,7 @@ export function StringInputWidget({
     setUnsavedValue(trimmedInputValue.length > 0 ? [trimmedInputValue] : []);
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (isRequired && isEmpty) {
       if (hasValue(parameter.default)) {

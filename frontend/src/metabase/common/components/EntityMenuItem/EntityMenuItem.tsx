@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from "react";
+import type { MouseEvent } from "react";
 
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
@@ -18,7 +18,7 @@ export interface EntityMenuItemProps {
   action?: (event: MouseEvent<HTMLDivElement>) => void;
   link?: string;
   externalLink?: boolean;
-  tooltip?: ReactNode;
+  tooltip?: React.ReactNode;
   color?: ColorName;
   hoverColor?: ColorName;
   hoverBgColor?: ColorName;
@@ -86,9 +86,9 @@ const EntityMenuItem = ({
 
 interface ActionMenuItemProps {
   action?: (event: MouseEvent<HTMLDivElement>) => void;
-  tooltip?: ReactNode;
+  tooltip?: React.ReactNode;
   disabled?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const ActionMenuItem = ({
@@ -105,9 +105,9 @@ const ActionMenuItem = ({
 interface LinkMenuItemProps {
   link: string;
   externalLink?: boolean;
-  tooltip?: ReactNode;
+  tooltip?: React.ReactNode;
   disabled?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onClose?: () => void;
 }
 

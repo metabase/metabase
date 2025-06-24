@@ -1,9 +1,4 @@
-import {
-  type CSSProperties,
-  type MouseEvent,
-  forwardRef,
-  useMemo,
-} from "react";
+import { type MouseEvent, forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -38,7 +33,7 @@ export const ColumnsListItem = forwardRef<HTMLDivElement, ColumnsListItemProps>(
     };
 
     const style = useMemo(() => {
-      const style: CSSProperties = {};
+      const style: React.CSSProperties = {};
       if (isDisabled) {
         style.opacity = 0.5;
         style.pointerEvents = "none";

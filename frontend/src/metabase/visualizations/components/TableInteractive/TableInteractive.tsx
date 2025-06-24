@@ -4,7 +4,6 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import cx from "classnames";
-import type React from "react";
 import {
   type Ref,
   forwardRef,

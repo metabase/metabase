@@ -1,7 +1,7 @@
-import { type ReactNode, useEffect } from "react";
+import { useEffect } from "react";
 
 type VisualizationRenderedWrapperProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   onRendered?: () => void;
 };
 

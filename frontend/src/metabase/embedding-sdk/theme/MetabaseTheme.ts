@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 import type { ColorName } from "metabase/lib/colors/types";
 
 import type { DeepPartial } from "../types/utils";
@@ -174,7 +172,7 @@ export type MetabaseComponentTheme = {
      * This also applies to the primary value in trend charts.
      **/
     value?: {
-      fontSize?: CSSProperties["fontSize"];
+      fontSize?: React.CSSProperties["fontSize"];
       lineHeight?: string;
     };
   };
@@ -230,14 +228,14 @@ export type MetabaseComponentTheme = {
     };
     emptyContent: {
       icon: {
-        width: CSSProperties["width"];
-        height: CSSProperties["width"];
+        width: React.CSSProperties["width"];
+        height: React.CSSProperties["width"];
       };
       title: {
-        fontSize: CSSProperties["fontSize"];
+        fontSize: React.CSSProperties["fontSize"];
       };
       subtitle: {
-        fontSize: CSSProperties["fontSize"];
+        fontSize: React.CSSProperties["fontSize"];
       };
     };
   };

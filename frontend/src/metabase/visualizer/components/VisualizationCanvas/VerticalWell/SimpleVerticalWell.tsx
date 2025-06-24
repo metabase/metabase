@@ -1,4 +1,4 @@
-import { type ReactNode, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -6,7 +6,7 @@ interface SimpleVerticalWellProps {
   hasValues: boolean;
   isHighlighted: boolean;
   isOver: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const SimpleVerticalWell = forwardRef<

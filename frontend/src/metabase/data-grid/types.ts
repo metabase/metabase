@@ -14,7 +14,6 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import type React from "react";
 import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";

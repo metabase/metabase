@@ -1,6 +1,5 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type React from "react";
 import { forwardRef } from "react";
 
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";

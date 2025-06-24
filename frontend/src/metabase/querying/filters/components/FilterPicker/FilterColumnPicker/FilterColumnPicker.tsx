@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/common/components/AccordionList";
@@ -204,6 +204,6 @@ function renderItemIcon(
   }
 }
 
-function renderItemWrapper(content: ReactNode) {
+function renderItemWrapper(content: React.ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }

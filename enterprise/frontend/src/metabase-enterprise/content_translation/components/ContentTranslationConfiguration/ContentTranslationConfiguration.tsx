@@ -2,7 +2,6 @@ import {
   type ChangeEvent,
   type Dispatch,
   type PropsWithChildren,
-  type ReactNode,
   type SetStateAction,
   useCallback,
   useEffect,
@@ -138,7 +137,7 @@ export const ContentTranslationConfiguration = () => {
                 <DescriptionText>{t`Uploading a new dictionary will replace the existing dictionary.`}</DescriptionText>
                 <Markdown
                   components={{
-                    em: ({ children }: { children: ReactNode }) => (
+                    em: ({ children }: { children: React.ReactNode }) => (
                       <ExternalLink href={availableLocalesDocsUrl}>
                         {children}
                       </ExternalLink>

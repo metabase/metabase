@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
 import {
@@ -225,7 +224,7 @@ function renderItemName(item: ColumnListItem) {
   return item.displayName;
 }
 
-function renderItemWrapper(content: ReactNode) {
+function renderItemWrapper(content: React.ReactNode) {
   return <HoverParent className={S.itemWrapper}>{content}</HoverParent>;
 }
 

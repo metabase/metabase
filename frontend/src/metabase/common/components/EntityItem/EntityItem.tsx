@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { c, t } from "ttag";
 
@@ -305,8 +304,8 @@ const EntityItem = ({
   selectable?: boolean;
   variant?: string;
   item: CollectionItem;
-  buttons?: ReactNode;
-  extraInfo?: ReactNode;
+  buttons?: React.ReactNode;
+  extraInfo?: React.ReactNode;
   pinned?: boolean;
   loading?: boolean;
   disabled?: boolean;

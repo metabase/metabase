@@ -1,5 +1,3 @@
-import type { FormEvent, ReactNode } from "react";
-
 import { Box, Divider, Group } from "metabase/ui";
 
 import { renderDefaultSubmitButton } from "../../utils";
@@ -12,7 +10,7 @@ import type { SingleDatePickerValue } from "./types";
 interface SingleDatePickerProps {
   value: SingleDatePickerValue;
   hasTimeToggle: boolean;
-  renderSubmitButton?: () => ReactNode;
+  renderSubmitButton?: () => React.ReactNode;
   onChange: (value: SingleDatePickerValue) => void;
   onSubmit: () => void;
 }
@@ -34,7 +32,7 @@ export function SingleDatePicker({
     onChange({ date: clearTimePart(date), hasTime: !hasTime });
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     onSubmit();
   };

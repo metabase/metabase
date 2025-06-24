@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, forwardRef } from "react";
+import { type Ref, forwardRef } from "react";
 
 import type { IconName } from "embedding-sdk/types/ui";
 import { Button, type ButtonProps, Icon } from "metabase/ui";
@@ -12,7 +12,7 @@ function _ToolbarButton(
     isHighlighted,
     ...buttonProps
   }: {
-    label: ReactNode;
+    label: React.ReactNode;
     icon?: IconName;
     isHighlighted?: boolean;
   } & ButtonProps,

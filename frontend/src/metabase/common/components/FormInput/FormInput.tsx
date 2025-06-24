@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, ReactNode, Ref } from "react";
+import type { ChangeEvent, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -14,8 +14,8 @@ export interface FormInputProps
   > {
   name: string;
   title?: string;
-  actions?: ReactNode;
-  description?: ReactNode;
+  actions?: React.ReactNode;
+  description?: React.ReactNode;
   infoTooltip?: string;
   nullable?: boolean;
   optional?: boolean;

@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes } from "react";
 
 import type { IconName } from "metabase/ui";
 import { Group, Tooltip } from "metabase/ui";
@@ -15,7 +15,7 @@ import {
 
 export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
-  nameRightSection?: ReactNode;
+  nameRightSection?: React.ReactNode;
   description?: string | null;
   icon?: StaticSkeletonIconProps;
   tooltip?: string;

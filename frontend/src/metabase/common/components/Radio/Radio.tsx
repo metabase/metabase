@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Key, ReactNode, Ref } from "react";
+import type { HTMLAttributes, Key, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
@@ -40,7 +40,7 @@ export interface RadioProps<TValue, TOption = RadioOption<TValue>>
   value?: TValue;
   options: TOption[];
   optionKeyFn?: (option: TOption) => Key;
-  optionNameFn?: (option: TOption) => ReactNode;
+  optionNameFn?: (option: TOption) => React.ReactNode;
   optionValueFn?: (option: TOption) => TValue;
   variant?: RadioVariant;
   colorScheme?: RadioColorScheme;
@@ -52,7 +52,7 @@ export interface RadioProps<TValue, TOption = RadioOption<TValue>>
 }
 
 export interface RadioOption<TValue> {
-  name: ReactNode;
+  name: React.ReactNode;
   value: TValue;
 }
 
@@ -119,7 +119,7 @@ const BaseRadio = forwardRef(function Radio<
 interface RadioItemProps<TValue> {
   name: string;
   checked: boolean;
-  label: ReactNode;
+  label: React.ReactNode;
   value: TValue;
   variant: RadioVariant;
   colorScheme: RadioColorScheme;
@@ -187,7 +187,9 @@ const getDefaultOptionKey = <TValue, TOption>(option: TOption): Key => {
   }
 };
 
-const getDefaultOptionName = <TValue, TOption>(option: TOption): ReactNode => {
+const getDefaultOptionName = <TValue, TOption>(
+  option: TOption,
+): React.ReactNode => {
   if (isDefaultOption<TValue>(option)) {
     return option.name;
   } else {

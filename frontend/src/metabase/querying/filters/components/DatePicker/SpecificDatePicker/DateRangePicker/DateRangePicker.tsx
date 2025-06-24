@@ -1,5 +1,3 @@
-import type { FormEvent, ReactNode } from "react";
-
 import { Box, Divider, Group } from "metabase/ui";
 
 import { renderDefaultSubmitButton } from "../../utils";
@@ -12,7 +10,7 @@ import type { DateRangePickerValue } from "./types";
 export type DateRangePickerProps = {
   value: DateRangePickerValue;
   hasTimeToggle: boolean;
-  renderSubmitButton?: () => ReactNode;
+  renderSubmitButton?: () => React.ReactNode;
   onChange: (value: DateRangePickerValue) => void;
   onSubmit: () => void;
 };
@@ -38,7 +36,7 @@ export function DateRangePicker({
     });
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     onSubmit();
   };

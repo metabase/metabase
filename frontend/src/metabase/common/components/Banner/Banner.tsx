@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import CS from "metabase/css/core/index.css";
 import type { FlexProps, IconName } from "metabase/ui";
 import { Flex, Group, Icon } from "metabase/ui";
@@ -7,7 +5,7 @@ import { Flex, Group, Icon } from "metabase/ui";
 interface BaseBannerProps extends FlexProps {
   icon?: IconName;
   iconColor?: string;
-  body: ReactNode;
+  body: React.ReactNode;
 }
 
 export type BannerProps =

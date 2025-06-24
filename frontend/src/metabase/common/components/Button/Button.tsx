@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import cx from "classnames";
-import type { ButtonHTMLAttributes, ElementType, ReactNode, Ref } from "react";
+import type { ButtonHTMLAttributes, ElementType, Ref } from "react";
 import { forwardRef } from "react";
 import _ from "underscore";
 
@@ -59,13 +59,13 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   tooltip?: string; // available when using as={Link}
   href?: string;
 
-  icon?: IconName | ReactNode;
+  icon?: IconName | React.ReactNode;
   iconSize?: number;
   iconColor?: string;
   iconRight?: IconName;
   iconVertical?: boolean;
   labelBreakpoint?: "sm";
-  children?: ReactNode;
+  children?: React.ReactNode;
 
   small?: boolean;
   medium?: boolean;

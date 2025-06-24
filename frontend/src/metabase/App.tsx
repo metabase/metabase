@@ -1,6 +1,5 @@
 import type { Location } from "history";
 import { KBarProvider } from "kbar";
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { AppBanner } from "metabase/common/components/AppBanner";
@@ -66,7 +65,7 @@ interface AppDispatchProps {
 
 interface AppRouterOwnProps {
   location: Location;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 type AppProps = AppStateProps & AppDispatchProps & AppRouterOwnProps;

@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -60,7 +60,7 @@ export function ParameterFieldWidget({
   const isEmpty = unsavedValue.length === 0;
   const isRequired = parameter?.required;
 
-  const handleFormSubmit = (event: FormEvent) => {
+  const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!isValid) {
       return;

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -8,7 +7,7 @@ import { TabContext } from "../Tab";
 
 export interface TabContentProps<T> {
   value?: T;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onChange?: (value: T) => void;
 }
 

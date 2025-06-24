@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 
 import { Flex, Title } from "metabase/ui";
 
@@ -12,7 +11,7 @@ import S from "./ModalHeader.module.css";
 import type { CommonModalProps } from "./types";
 
 export interface ModalHeaderProps extends CommonModalProps {
-  children: ReactNode;
+  children: React.ReactNode;
 
   className?: string;
 }

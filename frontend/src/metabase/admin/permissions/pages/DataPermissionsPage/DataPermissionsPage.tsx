@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import type { Route } from "react-router";
 import { useAsync } from "react-use";
 import _ from "underscore";
@@ -24,7 +23,7 @@ import {
 import { getDiff, getIsDirty } from "../../selectors/data-permissions/diff";
 
 type DataPermissionsPageProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   route: typeof Route;
   params: {
     databaseId: DatabaseId;

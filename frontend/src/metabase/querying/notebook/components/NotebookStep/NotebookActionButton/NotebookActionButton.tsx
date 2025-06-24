@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 
 import Button from "metabase/common/components/Button";
 import type { IconName } from "metabase/ui";

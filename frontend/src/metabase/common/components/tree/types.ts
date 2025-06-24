@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import type { IconName, IconProps } from "metabase/ui";
 
 export interface ITreeNodeItem {

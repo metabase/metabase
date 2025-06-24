@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { c } from "ttag";
 
 import { Box, Flex, Group, Icon } from "metabase/ui";
@@ -12,8 +11,8 @@ import {
 } from "./ModalHeader.styled";
 
 export interface ModalHeaderProps {
-  title?: ReactNode;
-  children?: ReactNode;
+  title?: React.ReactNode;
+  children?: React.ReactNode;
   onClose?: () => void;
   onGoBack?: () => void;
   pathOptions?: {

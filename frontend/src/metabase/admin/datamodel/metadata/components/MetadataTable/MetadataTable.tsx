@@ -1,6 +1,5 @@
 /* eslint-disable ttag/no-module-declaration -- see metabase#55045 */
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -277,7 +276,7 @@ const TableVisibilitySection = ({
 
 interface MetadataVisibilityBadgeProps {
   isChecked: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onClick?: () => void;
 }
 

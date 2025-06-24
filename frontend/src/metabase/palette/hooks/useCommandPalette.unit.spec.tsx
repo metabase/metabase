@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { render, screen } from "__support__/ui";
 import Search from "metabase/entities/search";
 import { Text } from "metabase/ui";

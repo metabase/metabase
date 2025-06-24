@@ -1,6 +1,6 @@
 import { Global } from "@emotion/react";
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, memo, useEffect, useRef } from "react";
+import { type JSX, memo, useEffect, useRef } from "react";
 
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { useInitData } from "embedding-sdk/hooks";
@@ -49,7 +49,7 @@ export interface MetabaseProviderProps
   /**
    * The children of the MetabaseProvider component.
    */
-  children: ReactNode;
+  children: React.ReactNode;
 
   /**
    * Defines how to authenticate with Metabase.

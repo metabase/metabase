@@ -1,6 +1,5 @@
 import cx from "classnames";
 import type { AnchorHTMLAttributes } from "react";
-import type React from "react";
 
 import {
   Box,

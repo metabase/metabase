@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -30,7 +29,7 @@ export type ExpressionWidgetProps = {
   name?: string;
   withName?: boolean;
   reportTimezone?: string;
-  header?: ReactNode;
+  header?: React.ReactNode;
   expressionIndex?: number;
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;

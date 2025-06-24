@@ -1,6 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import type { ReactNode } from "react";
 
 import { Text } from "metabase/ui";
 
@@ -38,8 +37,8 @@ export const SettingsTabLayout = ({
   settingsSlot,
   previewSlot,
 }: {
-  settingsSlot: ReactNode;
-  previewSlot: ReactNode;
+  settingsSlot: React.ReactNode;
+  previewSlot: React.ReactNode;
 }): JSX.Element => {
   return (
     <ContentWrapper>
@@ -56,7 +55,7 @@ export const DisplayOptionSection = ({
 }: {
   title: string;
   titleId?: string;
-  children: ReactNode;
+  children: React.ReactNode;
 }) => (
   <div>
     <Text fw="bold" mb="0.25rem" lh="1rem" id={titleId}>

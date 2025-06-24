@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { Button, Flex, Icon, Title } from "metabase/ui";
 
 import { Sidesheet, type SidesheetSize } from "./Sidesheet";

@@ -4,7 +4,7 @@ import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMergedRef } from "@mantine/hooks";
-import type { ReactNode, Ref } from "react";
+import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { Icon } from "metabase/ui";
@@ -112,7 +112,7 @@ export const ClauseStep = <T,>({
 
 type ClauseStepDndContextProps<T> = {
   items: T[];
-  children: ReactNode;
+  children: React.ReactNode;
   onReorder: (sourceItem: T, targetItem: T) => void;
 };
 
@@ -154,7 +154,7 @@ function ClauseStepDndContext<T>({
 type ClauseStepDndItemProps = {
   index: number;
   readOnly: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
 const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(

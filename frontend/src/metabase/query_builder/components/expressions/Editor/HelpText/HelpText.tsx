@@ -1,11 +1,5 @@
 import cx from "classnames";
-import {
-  Children,
-  Fragment,
-  type MouseEvent,
-  type ReactNode,
-  useCallback,
-} from "react";
+import { Children, Fragment, type MouseEvent, useCallback } from "react";
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
@@ -57,7 +51,7 @@ function getDatabase(query: Lib.Query, metadata: Metadata) {
 }
 
 const components = {
-  code(props: { children: ReactNode }) {
+  code(props: { children: React.ReactNode }) {
     const children = Children.toArray(props.children);
     if (!children.every((child) => typeof child === "string")) {
       return <code>{children}</code>;

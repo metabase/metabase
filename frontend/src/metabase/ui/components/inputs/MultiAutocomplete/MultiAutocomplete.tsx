@@ -12,7 +12,6 @@ import {
   type __InputWrapperProps,
   extractStyleProps,
 } from "@mantine/core";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Icon } from "../../icons";
@@ -33,13 +32,15 @@ export type MultiAutocompleteProps = BoxProps &
     value: string[];
     placeholder?: string;
     autoFocus?: boolean;
-    rightSection?: ReactNode;
-    nothingFoundMessage?: ReactNode;
+    rightSection?: React.ReactNode;
+    nothingFoundMessage?: React.ReactNode;
     "aria-label"?: string;
     "data-testid"?: string;
     parseValue?: (rawValue: string) => string | null;
-    renderValue?: (props: MultiAutocompleteRenderValueProps) => ReactNode;
-    renderOption?: (props: MultiAutocompleteRenderOptionProps) => ReactNode;
+    renderValue?: (props: MultiAutocompleteRenderValueProps) => React.ReactNode;
+    renderOption?: (
+      props: MultiAutocompleteRenderOptionProps,
+    ) => React.ReactNode;
     onChange: (newValues: string[]) => void;
     onSearchChange?: (newValue: string) => void;
   };

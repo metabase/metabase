@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 
 import { NoDataError } from "metabase/common/components/errors/NoDataError";
 import CS from "metabase/css/core/index.css";
@@ -9,7 +8,7 @@ interface ErrorMessageProps {
   title: string;
   type: "timeout" | "serverError" | "noRows";
   message: string;
-  action: ReactNode;
+  action: React.ReactNode;
   className?: string;
 }
 

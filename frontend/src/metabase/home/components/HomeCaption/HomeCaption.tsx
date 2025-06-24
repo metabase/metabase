@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
-
 import { CaptionRoot } from "./HomeCaption.styled";
 
 interface HomeCaptionProps {
   primary?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const HomeCaption = ({

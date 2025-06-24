@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
-
 import { Flex, PopoverBackButton } from "metabase/ui";
 
 interface FilterPickerHeaderProps {
   columnName: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onBack?: () => void;
 }
 

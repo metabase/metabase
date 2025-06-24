@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { jt, t } from "ttag";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";

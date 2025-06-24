@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { useState } from "react";
 import { msgid, ngettext } from "ttag";
 

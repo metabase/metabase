@@ -1,5 +1,3 @@
-import type React from "react";
-
 import CS from "metabase/css/core/index.css";
 import { Box, type MantineStyleProps, Title } from "metabase/ui";
 

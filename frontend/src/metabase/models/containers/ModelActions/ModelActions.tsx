@@ -1,5 +1,4 @@
 import type { LocationDescriptor } from "history";
-import type * as React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { replace } from "react-router-redux";
 import { useMount } from "react-use";
