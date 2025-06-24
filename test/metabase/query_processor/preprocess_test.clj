@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.card-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]

@@ -208,16 +208,6 @@
                        binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
             result-cols))))
 
-(defn- add-original-display-names
-  "Add original display names if they're not already present."
-  [cols]
-  (map (fn [col]
-         (cond-> col
-           (and (not (:lib/original-display-name col))
-                (:display-name col))
-           (assoc :lib/original-display-name (:display-name col))))
-       cols))
-
 (mu/defn card-metadata-columns :- [:maybe CardColumns]
   "Get a normalized version of the saved metadata associated with Card metadata."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
@@ -230,7 +220,6 @@
                           (source-model-cols metadata-providerable card))]
         (-> result-cols
             (cond-> (seq model-cols) (merge-model-metadata model-cols))
-            add-original-display-names
             not-empty)))))
 
 (mu/defn saved-question-metadata :- CardColumns

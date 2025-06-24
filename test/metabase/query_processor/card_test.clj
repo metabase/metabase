@@ -17,7 +17,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]))
 
-(defn- run-query-for-card
+(defn run-query-for-card
   "Run query for Card synchronously."
   [card-id]
   ;; TODO -- we shouldn't do the perms checks if there is no current User context. It seems like API-level perms check

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
+   [metabase.lib.card-test]
    [metabase.lib.core :as lib]
    [metabase.lib.field-test]
    [metabase.lib.field.resolution :as lib.field.resolution]
@@ -754,10 +755,10 @@
                     (#'lib.field.resolution/resolve-column-in-metadata query field-ref stage-cols)))))
         (testing `lib.field.resolution/current-stage-model-metadata
           ;; TODO (Cam 6/23/25) -- not sure why name isn't propagated here =(
-          (is (=? {#_:name #_ "NAME", :description "user description", :display-name "user display name"}
+          (is (=? {#_:name #_"NAME", :description "user description", :display-name "user display name"}
                   (#'lib.field.resolution/current-stage-model-metadata query 0 field-ref))))
         (testing `lib.field.resolution/previous-stage-or-source-card-metadata
-          (is (=? {#_:name #_ "NAME", :description "user description", :display-name "user display name"}
+          (is (=? {#_:name #_"NAME", :description "user description", :display-name "user display name"}
                   (#'lib.field.resolution/previous-stage-or-source-card-metadata query -1 field-ref))))
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name "NAME", :description "user description", :display-name "user display name"}

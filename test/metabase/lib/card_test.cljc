@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,6 +14,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -419,14 +421,12 @@
                             (map #(update-keys % u/->kebab-case-en)
                                  (:result-metadata (lib.metadata/card edited-mp card-id))))))
                   (testing "user edits are preserved in card"
-                    ;; `:lib/original-display-name` should get added. For the purposes of this metadata calculation we
-                    ;; should treat the user-supplied name as the original display name.
-                    (is (=? [{:name "ID",          :description "user description", :display-name "user display name", :lib/original-display-name "user display name", :semantic-type :type/Quantity}
-                             {:name "NAME",        :description "user description", :display-name "user display name", :lib/original-display-name "user display name", :semantic-type :type/Name}
-                             {:name "CATEGORY_ID", :description "user description", :display-name "user display name", :lib/original-display-name "user display name", :semantic-type :type/Quantity}
-                             {:name "LATITUDE",    :description "user description", :display-name "user display name", :lib/original-display-name "user display name", :semantic-type :type/Cost}
-                             {:name "LONGITUDE",   :description "user description", :display-name "user display name", :lib/original-display-name "user display name", :semantic-type :type/Cost}
-                             {:name "PRICE",       :description "user description", :display-name "user display name", :lib/original-display-name "user display name", :semantic-type :type/Quantity}]
+                    (is (=? [{:name "ID",          :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
+                             {:name "NAME",        :description "user description", :display-name "user display name", :semantic-type :type/Name}
+                             {:name "CATEGORY_ID", :description "user description", :display-name "user display name", :semantic-type :type/Quantity}
+                             {:name "LATITUDE",    :description "user description", :display-name "user display name", :semantic-type :type/Cost}
+                             {:name "LONGITUDE",   :description "user description", :display-name "user display name", :semantic-type :type/Cost}
+                             {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
                             (lib.metadata.calculation/returned-columns (lib/query edited-mp (lib.metadata/card edited-mp card-id))))))
                   (testing "nested queries flow user edits"
                     (testing (str "in card id = " nested-id)
@@ -461,3 +461,17 @@
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
       (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+
+(deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
+  (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
+    (binding [lib.metadata.calculation/*display-name-style* :long]
+      (is (=? {:name                      "CATEGORY"
+               :display-name              "Products → Category"
+               :lib/original-display-name (fn [v]
+                                            ;; I'll accept either as correct.
+                                            (#{(symbol "nil #_\"key is not present.\"")
+                                               "Category"}
+                                             v))
+               :effective-type            :type/Text}
+              (m/find-first #(= (:name %) "CATEGORY")
+                            (lib/returned-columns query)))))))
