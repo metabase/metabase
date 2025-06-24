@@ -515,7 +515,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
@@ -579,7 +579,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-email"
-                          to="/admin/settings/email/smtp"
+                          to="/admin/settings/email"
                         >{t`Set up email`}</Link>
                       )} or ${(
                         <Link
