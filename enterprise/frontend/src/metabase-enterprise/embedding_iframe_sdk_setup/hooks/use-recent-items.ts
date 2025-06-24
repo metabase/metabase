@@ -8,7 +8,7 @@ import type { SdkIframeEmbedSetupRecentItem } from "../types";
 const MAX_RECENTS = 6;
 
 export const useRecentItems = () => {
-  const { data: recentItems } = useListRecentsQuery(
+  const { data: recentItems, isLoading } = useListRecentsQuery(
     { context: ["views", "selections"] },
     { refetchOnMountOrArgChange: true },
   );
@@ -79,5 +79,6 @@ export const useRecentItems = () => {
     recentDashboards,
     recentQuestions,
     addRecentItem,
+    isRecentsLoading: isLoading,
   };
 };
