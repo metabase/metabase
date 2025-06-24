@@ -1052,6 +1052,14 @@ describe("scenarios > question > filter", () => {
       cy.findByLabelText("Filter value").should("be.visible");
     });
   });
+
+  it("should show column name and close popover on click", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("Total").click();
+    H.popover().findByText("Filter by this column").click();
+    H.popover().should("contain", "Total").findByText("Total").click();
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+  });
 });
 
 function openExpressionEditorFromFreshlyLoadedPage() {

@@ -35,6 +35,7 @@ export function getFilterPopover({
           onChangeCardAndRun({ nextCard });
           onClose();
         }}
+        onBack={onClose}
       />
     );
   };
