@@ -292,7 +292,6 @@ export class AccordionList<
       const prevCursor = getPrevCursor(
         cursor ?? this.getInitialCursor(),
         this.getRows(),
-        this.isSectionExpanded,
         this.canSelectSection,
       );
 
@@ -308,7 +307,6 @@ export class AccordionList<
       const nextCursor = getNextCursor(
         cursor ?? this.getInitialCursor(),
         this.getRows(),
-        this.isSectionExpanded,
         this.canSelectSection,
       );
 
@@ -390,28 +388,26 @@ export class AccordionList<
       searchProp,
     };
 
-    const sortedSections = isSearching
-      ? Array.from(sections)
-          .filter(
-            (section) => sectionScore(section, searchOptions) < searchThreshold,
-          )
-          .sort(
-            (a, b) =>
-              sectionScore(a, searchOptions) - sectionScore(b, searchOptions),
-          )
-      : sections;
+    const sortedSections = Array.from(sections)
+      .map((section, index) => ({
+        section,
+        sectionScore: isSearching ? sectionScore(section, searchOptions) : 0,
+        sectionIndex: index,
+      }))
+      .filter(({ sectionScore }) => sectionScore < searchThreshold)
+      .sort((a, b) => a.sectionScore - b.sectionScore);
 
-    for (const [sectionIndex, section] of sortedSections.entries()) {
+    for (const { section, sectionIndex } of sortedSections) {
       const isLastSection = sectionIndex === sections.length - 1;
 
-      const sortedItems = isSearching
-        ? Array.from(section.items ?? [])
-            .filter((item) => itemScore(item, searchOptions) < searchThreshold)
-            .sort(
-              (a, b) =>
-                itemScore(a, searchOptions) - itemScore(b, searchOptions),
-            )
-        : (section.items ?? []);
+      const sortedItems = Array.from(section.items ?? [])
+        .map((item, index) => ({
+          item,
+          itemScore: isSearching ? itemScore(item, searchOptions) : 0,
+          itemIndex: index,
+        }))
+        .filter(({ itemScore }) => itemScore < searchThreshold)
+        .sort((a, b) => a.itemScore - b.itemScore);
 
       if (
         section.name &&
@@ -465,7 +461,7 @@ export class AccordionList<
         section.items.length > 0 &&
         !section.loading
       ) {
-        for (const [itemIndex, item] of sortedItems.entries()) {
+        for (const { itemIndex, item } of sortedItems) {
           const isLastItem = itemIndex === section.items.length - 1;
           if (itemIsSelected(item, itemIndex)) {
             this._initialSelectedRowIndex = rows.length;

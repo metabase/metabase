@@ -35,7 +35,6 @@ export function getNextCursor<
 >(
   cursor: Cursor | null,
   rows: Row<TItem, TSection>[],
-  isSectionExpanded: SectionPredicate,
   canSelectSection: SectionPredicate,
   skipInitial: boolean = true,
 ): Cursor | null {
@@ -52,7 +51,6 @@ export function getNextCursor<
     return getNextCursor(
       getCursorForRow(firstRow),
       rows,
-      isSectionExpanded,
       canSelectSection,
       false,
     );
@@ -85,7 +83,6 @@ export function getPrevCursor<
 >(
   cursor: Cursor | null,
   rows: Row<TItem, TSection>[],
-  isSectionExpanded: SectionPredicate,
   canSelectSection: SectionPredicate,
 ): Cursor | null {
   if (!cursor) {
@@ -98,12 +95,7 @@ export function getPrevCursor<
     if (!firstRow) {
       return null;
     }
-    return getPrevCursor(
-      getCursorForRow(firstRow),
-      rows,
-      isSectionExpanded,
-      canSelectSection,
-    );
+    return getPrevCursor(getCursorForRow(firstRow), rows, canSelectSection);
   }
 
   const currentRowIndex = rows.findIndex((row) =>
