@@ -7,3 +7,9 @@ export const trackAddDataEvent = (
     triggered_from: "add-data-modal",
   });
 };
+
+export const trackCSVFileInputSelect = () =>
+  trackSimpleEvent({
+    event: "csv_upload_clicked",
+    triggered_from: "add-data-modal",
+  });

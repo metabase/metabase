@@ -20,7 +20,7 @@ type ValidateEvent<
 
 type CSVUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
-  triggered_from: "left-nav";
+  triggered_from: "left-nav" | "add-data-modal" | "collection";
 }>;
 
 export type DatabaseAddClickedEvent = ValidateEvent<{
