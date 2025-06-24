@@ -91,7 +91,7 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
 
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
   event: "sheets_connection_clicked";
-  triggered_from: "db-page" | "left-nav";
+  triggered_from: "db-page";
 }>;
 
 export type GsheetsImportClickedEvent = ValidateEvent<{
