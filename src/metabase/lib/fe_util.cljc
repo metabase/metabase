@@ -19,6 +19,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.filter :as lib.schema.filter]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -725,6 +726,29 @@
       ;; do not match inner clauses
       _
       nil)))
+
+;; ::lib.schema.expression/expression
+(def ^:private JoinConditionParts
+  [:map
+   [:operator       ::lib.schema.join/condition.operator]
+   [:lhs-expression ::lib.schema.expression/expression]
+   [:rhs-expression ::lib.schema.expression/expression]])
+
+(mu/defn join-condition-clause :- ::lib.schema.expression
+  [operator       :- ::lib.schema.join/condition.operator
+   lhs-expression :- ::lib.schema.expression/expression
+   rhs-expression :- ::lib.schema.expression/expression]
+  (expression-clause operator [lhs-expression rhs-expression] {}))
+
+(mu/defn join-condition-parts :- [:maybe JoinConditionParts]
+  [join-condition :- :lib.schema.join/condition]
+  (lib.util.match/match-one join-condition
+    [(op :guard lib.schema.join/condition-operators) _ lhs rhs]
+    {:operator op, :lhs-expression lhs, :rhs-expression rhs}
+
+    ;; do not match inner clauses
+    _
+    nil))
 
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
