@@ -87,3 +87,15 @@
    [:lib/type [:= :option/join.strategy]]
    [:strategy [:ref ::strategy]]
    [:default {:optional true} :boolean]])
+
+(def ordered-condition-operators
+  "Operators that should be listed as options in join conditions."
+  [:= :!= :> :< :>= :<=])
+
+(def condition-operators
+  "Operators that should be listed as options in join conditions."
+  (set ordered-condition-operators))
+
+(mr/def ::condition.operator
+  "Operators that should be listed as options in join conditions."
+  (into [:enum] condition-operators))

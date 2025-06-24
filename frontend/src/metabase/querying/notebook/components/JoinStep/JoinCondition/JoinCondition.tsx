@@ -39,22 +39,15 @@ export function JoinCondition({
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
   const { operator, lhsExpression, rhsExpression } = useMemo(
-    () => Lib.joinConditionParts(query, stageIndex, condition),
-    [query, stageIndex, condition],
+    () => Lib.joinConditionParts(condition)!,
+    [condition],
   );
 
   const createCondition = (
     newOperator: Lib.JoinConditionOperator,
     newLhsExpression: Lib.ExpressionClause,
     newRhsExpression: Lib.ExpressionClause,
-  ) =>
-    Lib.joinConditionClause(
-      query,
-      stageIndex,
-      newOperator,
-      newLhsExpression,
-      newRhsExpression,
-    );
+  ) => Lib.joinConditionClause(newOperator, newLhsExpression, newRhsExpression);
 
   const syncTemporalBucket = (
     newCondition: Lib.JoinCondition,

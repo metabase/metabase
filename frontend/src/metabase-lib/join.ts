@@ -6,8 +6,6 @@ import type {
   VirtualTableId,
 } from "metabase-types/api";
 
-import { expressionClause, expressionParts } from "./expression";
-import { displayInfo } from "./metadata";
 import type {
   Bucket,
   CardMetadata,
@@ -46,17 +44,17 @@ export function joinClause(
 }
 
 export function joinConditionClause(
-  query: Query,
-  stageIndex: number,
   operator: JoinConditionOperator,
-  lhsExpression: ColumnMetadata | ExpressionClause,
-  rhsExpression: ColumnMetadata | ExpressionClause,
+  lhs: ColumnMetadata | ExpressionClause,
+  rhs: ColumnMetadata | ExpressionClause,
 ): JoinCondition {
-  const operatorInfo = displayInfo(query, stageIndex, operator);
-  return ML.expression_clause(operatorInfo.shortName, [
-    lhsExpression,
-    rhsExpression,
-  ]);
+  return ML.join_condition_clause(operator, lhs, rhs);
+}
+
+export function joinConditionParts(
+  condition: JoinCondition,
+): JoinConditionParts | null {
+  return ML.join_condition_parts(condition);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {
@@ -80,35 +78,6 @@ export function withJoinStrategy(join: Join, strategy: JoinStrategy): Join {
 
 export function joinConditions(join: Join): JoinCondition[] {
   return ML.join_conditions(join);
-}
-
-export function joinConditionParts(
-  query: Query,
-  stageIndex: number,
-  condition: JoinCondition,
-): JoinConditionParts {
-  const {
-    operator: operatorName,
-    args: [lhsExpression, rhsExpression],
-  } = expressionParts(query, stageIndex, condition);
-
-  if (lhsExpression == null || rhsExpression == null) {
-    throw new TypeError("Unexpected join condition");
-  }
-
-  const operator = joinConditionOperators(query, stageIndex).find(
-    (op) => displayInfo(query, stageIndex, op).shortName === operatorName,
-  );
-
-  if (!operator) {
-    throw new TypeError("Unexpected join condition");
-  }
-
-  return {
-    operator,
-    lhsExpression: expressionClause(lhsExpression),
-    rhsExpression: expressionClause(rhsExpression),
-  };
 }
 
 export function withJoinConditions(

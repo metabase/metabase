@@ -68,6 +68,7 @@
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
+   [metabase.lib.fe-util :as lib.fe-util]
    [metabase.lib.field :as lib.field]
    [metabase.lib.join :as lib.join]
    [metabase.lib.js.metadata :as js.metadata]
@@ -1231,6 +1232,20 @@
     (let [{:keys [operator column]} filter-parts]
       #js {:operator (name operator)
            :column   column})))
+
+(defn ^:export join-condition-clause
+  "TBD"
+  [operator lhs-expression rhs-expression]
+  (lib.fe-util/join-condition-clause (keyword operator) lhs-expression rhs-expression))
+
+(defn ^:export join-condition-parts
+  "TBD"
+  [condition]
+  (when-let [parts (lib.fe-util/join-condition-parts condition)]
+    (let [{:keys [operator lhs-expression rhs-expression]} parts]
+      #js {:operator      (name operator)
+           :lhsExpression lhs-expression
+           :rhsExpression rhs-expression})))
 
 (defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.

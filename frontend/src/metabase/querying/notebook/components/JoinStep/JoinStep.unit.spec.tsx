@@ -81,8 +81,6 @@ function getJoinedQuery() {
 
   const stageIndex = -1;
   const condition = Lib.joinConditionClause(
-    query,
-    stageIndex,
     defaultOperator,
     ordersProductId,
     productsId,
@@ -111,8 +109,6 @@ function getJoinedQueryWithMultipleConditions() {
   const productsCreatedAt = findRHSColumn("PRODUCTS", "CREATED_AT");
 
   const condition = Lib.joinConditionClause(
-    query,
-    0,
     defaultOperator,
     ordersCreatedAt,
     productsCreatedAt,
@@ -185,11 +181,8 @@ function setup({
     const fields = Lib.joinFields(join);
 
     const conditions = Lib.joinConditions(join).map((condition) => {
-      const { operator, lhsExpression, rhsExpression } = Lib.joinConditionParts(
-        query,
-        step.stageIndex,
-        condition,
-      );
+      const { operator, lhsExpression, rhsExpression } =
+        Lib.joinConditionParts(condition);
       return {
         operator: Lib.displayInfo(query, step.stageIndex, operator),
         lhsExpression: Lib.displayInfo(query, step.stageIndex, lhsExpression),

@@ -54,13 +54,7 @@ export function JoinConditionDraft({
       const newCondition = updateTemporalBucketing(
         query,
         stageIndex,
-        Lib.joinConditionClause(
-          query,
-          stageIndex,
-          operator,
-          newLhsExpression,
-          newRhsExpression,
-        ),
+        Lib.joinConditionClause(operator, newLhsExpression, newRhsExpression),
         [newLhsExpression, newRhsExpression],
       );
       onChange(newCondition);

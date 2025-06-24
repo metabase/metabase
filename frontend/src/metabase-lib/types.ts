@@ -81,10 +81,7 @@ export type JoinStrategy = unknown & { _opaque: typeof JoinStrategySymbol };
 declare const JoinConditionSymbol: unique symbol;
 export type JoinCondition = unknown & { _opaque: typeof JoinConditionSymbol };
 
-declare const JoinConditionOperatorSymbol: unique symbol;
-export type JoinConditionOperator = unknown & {
-  _opaque: typeof JoinConditionOperatorSymbol;
-};
+export type JoinConditionOperator = "=" | "!=" | ">" | "<" | ">=" | "<=";
 
 export type Clause =
   | AggregationClause
@@ -447,12 +444,6 @@ export type TimeFilterParts = {
 export type DefaultFilterParts = {
   operator: DefaultFilterOperator;
   column: ColumnMetadata;
-};
-
-export type JoinConditionOperatorDisplayInfo = {
-  displayName: string;
-  shortName: string;
-  default?: boolean;
 };
 
 export type JoinConditionParts = {
