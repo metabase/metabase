@@ -1,6 +1,6 @@
 const { H } = cy;
 
-describe("scenarios > embedding > sdk iframe embedding setup flow", () => {
+describe("scenarios > embedding > sdk iframe embed setup > select embed experience", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
