@@ -5,7 +5,7 @@ import { Anchor, Icon, Stack, Text } from "metabase/ui";
 
 import type { SdkIframeEmbedSetupExperience } from "../types";
 
-export const SelectEmbedEntityEmptyState = ({
+export const SelectEmbedEntityMissingRecents = ({
   experience,
   openPicker,
 }: {
