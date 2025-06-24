@@ -289,23 +289,24 @@
                       database
                       {:select [:table_name :column_name :data_type :field_path]
                        :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
-                       :where [:in :table_name table-names]})
+                       :where [:and
+                               [:in :table_name table-names]
+                               ;; we're only interested in nested fields
+                               [:> [:strpos :field_path "."] 0]]})
                      (catch Throwable e
                        (log/warnf e "error in get-nested-columns-for-tables for dataset: %s" dataset-id)))
         nested-column-info (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
                              (let [field-path (str/split field-path-str #"\.")
-                                   nfc-path (not-empty (pop field-path))
                                    [database-type base-type] (raw-type->database+base-type data-type)]
-                               {:name (peek field-path)
-                                :table-name table-name
-                                :table-schema dataset-id
-                                :database-type database-type
-                                :base-type base-type
-                                :nfc-path nfc-path}))]
+                               (when-let [nfc-path (not-empty (pop field-path))]
+                                 {:name (peek field-path)
+                                  :table-name table-name
+                                  :table-schema dataset-id
+                                  :database-type database-type
+                                  :base-type base-type
+                                  :nfc-path nfc-path})))]
     (transduce
-     (comp
-      (map nested-column-info)
-      (filter :nfc-path))
+     (keep nested-column-info)
      (completing
       (fn [accum col]
         (update accum (:nfc-path col) (fnil conj []) col)))
