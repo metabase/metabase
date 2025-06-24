@@ -1,11 +1,9 @@
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { RecentItem } from "metabase-types/api";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+} from "e2e/support/cypress_sample_instance_data";
 
 const { H } = cy;
-
-type RecentActivityIntercept = {
-  response: { body: { recents: RecentItem[] } };
-};
 
 describe("scenarios > embedding > sdk iframe embedding setup > select embed entity", () => {
   beforeEach(() => {
@@ -18,83 +16,49 @@ describe("scenarios > embedding > sdk iframe embedding setup > select embed enti
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  describe("EMB-549: Step 3 - Select entity to embed", () => {
-    it("visiting a new dashboard adds it to the recents list in the embed page", () => {
-      // Visit a specific dashboard to add it to recents
-      const dashboardId = 1;
-      cy.visit(`/dashboard/${dashboardId}`);
+  describe("Selecting entities to embed", () => {
+    it("shows most recently visited dashboard in the recents list", () => {
+      cy.log("add dashboard to activity log");
+      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
       cy.wait("@dashboard");
 
-      // Navigate to embed page
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
+      visitNewEmbedPage();
 
-      // Verify the visited dashboard appears in recents
-      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-        const recentDashboards = intercept.response?.body.recents?.filter(
-          (recent) => recent.model === "dashboard",
-        );
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
+        cy.findByText("Orders in a dashboard").should("be.visible");
 
-        expect(recentDashboards).to.have.length.greaterThan(0);
-        expect(recentDashboards?.[0]?.id).to.equal(dashboardId);
+        cy.log("only one recent item should be visible");
+        cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
       });
 
-      // Verify the dashboard is shown in the preview
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Person overview").should("be.visible");
+      cy.log("dashboard should be displayed in the preview");
+      cy.wait("@dashboard");
+      getPreviewIframe().within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
       });
     });
 
-    it("visiting a new question adds it to the recents list in the embed page", () => {
-      // Visit a specific question to add it to recents
+    it("shows most recently visited question in the recents list", () => {
+      cy.log("add question to activity log");
       cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
       cy.wait("@cardQuery");
 
-      // Navigate to embed page and select chart template
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
+      visitNewEmbedPage();
 
-      getEmbedSidebar().findByText("Chart").click();
-      cy.wait("@cardQuery");
-
-      // Verify the visited question appears in recents
-      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-        const recentQuestions = intercept.response?.body.recents?.filter(
-          (recent) => recent.model === "card",
-        );
-
-        expect(recentQuestions).to.have.length.greaterThan(0);
-        expect(recentQuestions?.[0]?.id).to.equal(ORDERS_COUNT_QUESTION_ID);
-      });
-
-      // Verify the question is shown in the preview
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
+      getEmbedSidebar().within(() => {
+        cy.findByText("Chart").click();
+        cy.findByText("Next").click();
         cy.findByText("Orders, Count").should("be.visible");
+
+        cy.log("only one recent item should be visible");
+        cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
       });
-    });
 
-    it("selecting a question from recents changes the preview to that question", () => {
-      // First, visit a question to ensure it's in recents
-      cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
       cy.wait("@cardQuery");
 
-      // Navigate to embed page
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // Switch to Chart template
-      getEmbedSidebar().findByText("Chart").click();
-      cy.wait("@cardQuery");
-
-      // TODO: Once Step 3 UI is implemented, add test for:
-      // - Click on recent question in the recents list
-      // - Verify preview updates to show the selected question
-
-      // For now, verify the most recent question is displayed
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
+      cy.log("question should be displayed in the preview");
+      getPreviewIframe().within(() => {
         cy.findByText("Orders, Count").should("be.visible");
       });
     });
@@ -277,4 +241,9 @@ const getPreviewIframe = () =>
     .its("body")
     .should("not.be.empty");
 
-const getEmbedSidebar = () => cy.findByTestId("embed-sidebar-content");
+const getEmbedSidebar = () => cy.findByTestId("embed-sidebar");
+
+const visitNewEmbedPage = () => {
+  cy.visit("/embed/new");
+  cy.wait("@dashboard");
+};
