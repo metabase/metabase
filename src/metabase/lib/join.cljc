@@ -815,7 +815,7 @@
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 
-(mu/defn join-condition-operators :- [:sequential ::lib.schema.filter/operator]
+(mu/defn join-condition-operators :- [:sequential ::lib.schema.join/condition.operator]
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
   UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
   filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
@@ -828,7 +828,7 @@
     _lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
     _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
-   lib.filter.operator/join-operators))
+   lib.schema.join/ordered-condition-operators))
 
 (mu/defn- fk-columns-to :- [:maybe [:sequential
                                     {:min 1}
