@@ -62,6 +62,10 @@ jobs:
         run: |
           echo "skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
           echo "negated skip output: ${{ !steps.check_team_and_branch.outputs.skip }}"
+          echo "skip == 'true': ${{ steps.check_team_and_branch.outputs.skip == 'true' }}"
+          echo "negated skip == 'true': ${{ !(steps.check_team_and_branch.outputs.skip == 'true') }}"
+          echo "skip != 'false': ${{ steps.check_team_and_branch.outputs.skip != 'false' }}"
+          echo "negated skip != 'false': ${{ !(steps.check_team_and_branch.outputs.skip != 'false') }}"
   be-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ !needs.determine-driver-skips.outputs.skip }}
