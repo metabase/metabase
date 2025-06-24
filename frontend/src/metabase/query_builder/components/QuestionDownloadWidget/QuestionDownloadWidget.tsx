@@ -40,34 +40,63 @@ type QuestionDownloadWidgetProps = {
   formatPreference?: FormatPreference;
 } & StackProps;
 
-type QuestionDownloadWidgetInnerProps = QuestionDownloadWidgetProps & {
-  setFormatPreference?: (
-    formatPreference: FormatPreference,
-  ) => Promise<{ data?: unknown; error?: unknown }>;
-  canDownloadPng: boolean;
-  initialFormat: ExportFormat;
-  formats: ExportFormat[];
-};
-
+// Helper functions moved outside component
 const canPivotResults = (format: string, display: string) =>
   display === "pivot" && format !== "json";
 const canConfigureFormatting = (format: string) => format !== "png";
 
-export const QuestionDownloadWidgetInner = ({
+const getInitialFormat = (
+  formatPreference: FormatPreference | undefined,
+  formats: ExportFormat[],
+  canDownloadPng: boolean,
+): ExportFormat => {
+  if (!formatPreference) {
+    return formats[0];
+  }
+
+  const preferredFormat = canDownloadPng
+    ? formatPreference.last_download_format
+    : formatPreference.last_table_download_format;
+
+  return formats.includes(preferredFormat) ? preferredFormat : formats[0];
+};
+
+export const QuestionDownloadWidget = ({
   question,
   result,
   onDownload,
   disabled = false,
-  formatPreference,
-  setFormatPreference,
-  formats,
-  canDownloadPng,
-  initialFormat,
+  formatPreference: formatPreferenceOverride,
   ...stackProps
-}: QuestionDownloadWidgetInnerProps) => {
-  const [format, setFormat] = useState<ExportFormat>(initialFormat);
-  const canConfigurePivoting = canPivotResults(format, question.display());
+}: QuestionDownloadWidgetProps) => {
+  const canDownloadPng = canSavePng(question.display());
+  const formats = canDownloadPng
+    ? [...exportFormats, exportFormatPng]
+    : exportFormats;
 
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: formatPreferenceOverride ?? {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+      skip: !!formatPreferenceOverride,
+    });
+
+  const initialFormat = getInitialFormat(
+    formatPreference,
+    formats,
+    canDownloadPng,
+  );
+
+  // Derive format instead of using useEffect
+  const [userSelectedFormat, setUserSelectedFormat] =
+    useState<ExportFormat | null>(null);
+  const format = userSelectedFormat ?? initialFormat;
+
+  const canConfigurePivoting = canPivotResults(format, question.display());
   const [isPivoted, setIsPivoted] = useState(canConfigurePivoting);
   const [isFormatted, setIsFormatted] = useState(true);
 
@@ -78,19 +107,18 @@ export const QuestionDownloadWidgetInner = ({
     t`The maximum download size is 1 million rows.`;
 
   const handleFormatChange = (newFormat: ExportFormat) => {
-    setFormat(newFormat);
+    setUserSelectedFormat(newFormat);
 
-    // If user is logged in, save their preference to the KV store
-    if (formatPreference !== undefined && setFormatPreference) {
-      const newPreference = {
+    // Save preference if user is logged in
+    if (newFormat && setFormatPreference) {
+      setFormatPreference({
         last_download_format: newFormat,
         last_table_download_format:
           newFormat !== "png"
             ? newFormat
-            : (formatPreference?.last_table_download_format as TableExportFormat) ||
+            : (formatPreference.last_table_download_format as TableExportFormat) ||
               "csv",
-      };
-      setFormatPreference(newPreference);
+      });
     }
   };
 
@@ -189,57 +217,5 @@ export const QuestionDownloadWidgetInner = ({
         disabled={disabled}
       >{t`Download`}</Button>
     </Stack>
-  );
-};
-
-export const QuestionDownloadWidget = ({
-  question,
-  formatPreference: formatPreferenceOverride,
-  ...restProps
-}: QuestionDownloadWidgetProps) => {
-  const canDownloadPng = canSavePng(question.display());
-  const formats = canDownloadPng
-    ? [...exportFormats, exportFormatPng]
-    : exportFormats;
-  const { value: formatPreference, setValue: setFormatPreference } =
-    useUserKeyValue({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      defaultValue: formatPreferenceOverride ?? {
-        last_download_format: formats[0],
-        last_table_download_format: exportFormats[0],
-      },
-      skip: !!formatPreferenceOverride,
-    });
-
-  const getInitialFormat = () => {
-    if (!formatPreference) {
-      return formats[0];
-    }
-
-    const { last_download_format, last_table_download_format } =
-      formatPreference;
-
-    if (canDownloadPng) {
-      return formats.includes(last_download_format)
-        ? last_download_format
-        : formats[0];
-    }
-
-    return formats.includes(last_table_download_format)
-      ? last_table_download_format
-      : formats[0];
-  };
-
-  return (
-    <QuestionDownloadWidgetInner
-      question={question}
-      formatPreference={formatPreference}
-      setFormatPreference={setFormatPreference}
-      initialFormat={getInitialFormat()}
-      formats={formats}
-      canDownloadPng={canDownloadPng}
-      {...restProps}
-    />
   );
 };
