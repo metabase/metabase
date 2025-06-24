@@ -1,6 +1,6 @@
 (ns metabase.lib.test-util.notebook-helpers
   "Test helpers meant to mimic the helpers the FE e2e tests use in
-  `/home/cam/metabase/e2e/support/helpers/e2e-notebook-helpers.ts`."
+  `/home/cam/metabase/e2e/support/helpers/e2e-notebook-helpers.ts` so we can easily copy those tests."
   (:require
    #?@(:clj  ([mb.hawk.assert-exprs.approximately-equal :refer [=?-diff]])
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal :refer [=?-diff]]))
@@ -9,21 +9,21 @@
    [metabase.lib.metadata :as lib.metadata]))
 
 (defn match-display-info [query spec item]
-  (let [m (if (string? spec)
-            {:long-display-name spec}
-            spec)]
-    (nil? (=?-diff m (lib/display-info query item)))))
+  (let [spec (if (string? spec)
+               {:display-name spec}
+               spec)]
+    (nil? (=?-diff spec (lib/display-info query item)))))
 
 (defn find-table-with-spec [query table-spec]
-  (let [tables (lib.metadata/tables query)]
+  (let [tables     (lib.metadata/tables query)]
     (or (m/find-first #(match-display-info query table-spec %) tables)
         (throw (ex-info "Failed to find table" {:table-spec table-spec, :found (map #(lib/display-info query %) tables)})))))
 
 (defn find-col-with-spec [query columns group-spec column-spec]
-  (let [groups (lib/group-columns columns)
-        group  (or (m/find-first #(match-display-info query group-spec %) groups)
-                   (throw (ex-info "Failed to find column group"
-                                   {:group-spec group-spec, :found (map #(lib/display-info query %) groups)})))]
+  (let [groups      (lib/group-columns columns)
+        group       (or (m/find-first #(match-display-info query group-spec %) groups)
+                        (throw (ex-info "Failed to find column group"
+                                        {:group-spec group-spec, :found (map #(lib/display-info query %) groups)})))]
     (or (m/find-first #(match-display-info query column-spec %) (lib/columns-group-columns group))
         (throw (ex-info "Failed to find column in group"
                         {:group       group
@@ -45,7 +45,7 @@
          lhs-column  (lhs-col-fn (find-col-with-spec
                                   query
                                   (lib/join-condition-lhs-columns query rhs-table nil nil)
-                                  :is-main-group
+                                  {:is-main-group true}
                                   lhs-col-spec))
          rhs-column  (rhs-col-fn (find-col-with-spec
                                   query
