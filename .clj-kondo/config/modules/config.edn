@@ -1653,6 +1653,7 @@
            query-analysis
            query-processor
            request
+           server
            settings
            system
            users

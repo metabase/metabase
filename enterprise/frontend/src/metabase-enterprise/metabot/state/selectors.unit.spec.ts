@@ -13,12 +13,14 @@ describe("metabot selectors", () => {
       // NOTE: importing default initial state from ./reducer
       // breaks the tests for some reason
       const metabotPlugin: MetabotState = {
+        useStreaming: false,
         isProcessing: false,
-        lastSentContext: undefined,
         messages,
         state: {},
+        history: [],
         visible: true,
         conversationId: uuid(),
+        activeToolCall: undefined,
       };
 
       return createMockState({ plugins: { metabotPlugin } } as any);

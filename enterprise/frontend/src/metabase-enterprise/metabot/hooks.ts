@@ -2,18 +2,20 @@ import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
-import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
+  getActiveToolCall,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
   getMetabotVisible,
+  getUseStreaming,
   resetConversation as resetConversationAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
+  toggleStreaming,
 } from "./state";
 
 export const useMetabotAgent = () => {
@@ -27,10 +29,6 @@ export const useMetabotAgent = () => {
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
   >;
-
-  const [, sendMessageReq] = useMetabotAgentMutation({
-    fixedCacheKey: METABOT_TAG,
-  });
 
   const setVisible = useCallback(
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
@@ -58,8 +56,8 @@ export const useMetabotAgent = () => {
   );
 
   const startNewConversation = useCallback(
-    (message: string, metabotId?: string) => {
-      resetConversation();
+    async (message: string, metabotId?: string) => {
+      await resetConversation();
       setVisible(true);
       if (message) {
         submitInput(message, metabotId);
@@ -92,6 +90,13 @@ export const useMetabotAgent = () => {
     setVisible,
     startNewConversation,
     submitInput,
-    isDoingScience: sendMessageReq.isLoading || isProcessing,
+    isDoingScience: isProcessing,
+    activeToolCall: useSelector(getActiveToolCall as any) as ReturnType<
+      typeof getActiveToolCall
+    >,
+    useStreaming: useSelector(getUseStreaming as any) as ReturnType<
+      typeof getUseStreaming
+    >,
+    toggleStreaming: () => dispatch(toggleStreaming()),
   };
 };
