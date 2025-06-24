@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
 import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import {
   UpsellEmailWhitelabelBanner,
   UpsellHostingBanner,
 } from "metabase/admin/upsells";
@@ -10,7 +14,6 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { Center } from "metabase/ui";
 
 import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { EmailFromAddressWidget } from "../widgets/EmailFromAddressWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";

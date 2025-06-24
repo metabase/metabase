@@ -164,6 +164,11 @@ export type EmbeddingSetupStepSeenEvent = ValidateEvent<{
     | "done";
 }>;
 
+export type EventsClickedEvent = ValidateEvent<{
+  event: "events_clicked";
+  triggered_from: "chart" | "collection";
+}>;
+
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -185,4 +190,5 @@ export type SimpleEvent =
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
-  | EmbeddingSetupStepSeenEvent;
+  | EmbeddingSetupStepSeenEvent
+  | EventsClickedEvent;
