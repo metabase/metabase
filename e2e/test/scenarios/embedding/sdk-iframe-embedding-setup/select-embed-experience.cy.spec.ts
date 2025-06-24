@@ -23,8 +23,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       const dashboardName = "Orders in a dashboard";
 
       visitNewEmbedPage();
-
-      cy.log("assert that the most recent dashboard is the one we expect");
       assertRecentItemName("dashboard", dashboardName);
 
       H.getIframeBody().within(() => {
@@ -44,8 +42,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       cy.wait("@cardQuery");
 
       visitNewEmbedPage();
-
-      cy.log("assert that the most recent dashboard is the one we expect");
       assertRecentItemName("card", questionName);
 
       getEmbedSidebar().findByText("Chart").click();
