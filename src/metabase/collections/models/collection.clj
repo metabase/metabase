@@ -963,6 +963,37 @@
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn perms-for-collection-and-descendants :- [:set perms/PathSchema]
+  "Return the set of Permissions needed for a `collection` and its descendants, without requiring
+  permissions for the parent collection. This is useful for operations that need to modify the
+  collection and its descendants but don't need to modify the parent.
+
+  For example, suppose we have a Collection hierarchy like:
+
+    A > B > C
+
+  To get perms for B and its descendants, you need write permissions for B and C:
+
+  *  B, since it's the Collection we're operating on
+  *  C, since it will by definition be affected too
+
+  You do NOT need permissions for A (the parent)."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  ;; Make sure we're not trying to operate on the Root Collection...
+  (when (collection.root/is-root-collection? collection)
+    (throw (Exception. (tru "You cannot operate on the Root Collection."))))
+  ;; Make sure we're not trying to operate on the Custom Reports Collection...
+  (when (= (audit/default-custom-reports-collection) collection)
+    (throw (Exception. (tru "You cannot operate on the Custom Reports Collection."))))
+  ;; also make sure we're not trying to operate on a PERSONAL Collection
+  (when (t2/exists? :model/Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
+    (throw (Exception. (tru "You cannot operate on a Personal Collection."))))
+  (set
+   (for [collection-or-id (cons
+                           collection
+                           (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")]))]
+     (perms/collection-readwrite-path collection-or-id))))
+
 (mu/defn perms-for-archiving :- [:set perms/PathSchema]
   "Return the set of Permissions needed to archive or unarchive a `collection`. Since archiving a Collection is
   *recursive* (i.e., it applies to all the descendant Collections of that Collection), we require write ('curate')
@@ -972,47 +1003,33 @@
 
     A > B > C
 
-  To move or archive B, you need write permissions for A, B, and C:
+  To archive B, you need write permissions for B and C:
 
-  *  A, because you are taking something out of it (by archiving it)
   *  B, because you are archiving it
-  *  C, because by archiving its parent, you are archiving it as well"
+  *  C, because by archiving its parent, you are archiving it as well
+
+  You do NOT need permissions for A (the parent), as you're not modifying A itself, only removing B from it."
   [collection :- CollectionWithLocationAndIDOrRoot]
-  ;; Make sure we're not trying to archive the Root Collection...
-  (when (collection.root/is-root-collection? collection)
-    (throw (Exception. (tru "You cannot archive the Root Collection."))))
-  ;; Make sure we're not trying to archive the Custom Reports Collection...
-  (when (= (audit/default-custom-reports-collection) collection)
-    (throw (Exception. (tru "You cannot archive the Custom Reports Collection."))))
-  ;; also make sure we're not trying to archive a PERSONAL Collection
-  (when (t2/exists? :model/Collection :id (u/the-id collection), :personal_owner_id [:not= nil])
-    (throw (Exception. (tru "You cannot archive a Personal Collection."))))
-  (set
-   (for [collection-or-id (cons
-                           (parent collection)
-                           (cons
-                            collection
-                            (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")])))]
-     (perms/collection-readwrite-path collection-or-id))))
+  (perms-for-collection-and-descendants collection))
 
 (mu/defn perms-for-moving :- [:set perms/PathSchema]
-  "Return the set of Permissions needed to move a `collection`. Like archiving, moving is recursive, so we require
-  perms for both the Collection and its descendants; we additionally require permissions for its new parent Collection.
+  "Return the set of Permissions needed to move a `collection`. Moving is recursive, so we require
+  perms for the Collection and its descendants, plus permissions for the new parent Collection.
 
-
-  For example, suppose we have a Collection hierarchy of three Collections, A, B, and C, and a forth Collection, D,
+  For example, suppose we have a Collection hierarchy of three Collections, A, B, and C, and a fourth Collection, D,
   and we want to move B from A to D:
 
     A > B > C        A
                ===>
     D                D > B > C
 
-  To move or archive B, you would need write permissions for A, B, C, and D:
+  To move B, you would need write permissions for B, C, and D:
 
-  *  A, because we're moving something out of it
   *  B, since it's the Collection we're operating on
   *  C, since it will by definition be affected too
-  *  D, because it's the new parent Collection, and moving something into it requires write perms."
+  *  D, because it's the new parent Collection, and moving something into it requires write perms
+
+  You do NOT need permissions for A (the current parent), as moving out of a collection doesn't modify the parent."
   [collection :- CollectionWithLocationAndIDOrRoot
    new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
@@ -1025,7 +1042,7 @@
     (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
   (set
    (cons (perms/collection-readwrite-path new-parent)
-         (perms-for-archiving collection))))
+         (perms-for-collection-and-descendants collection))))
 
 (mu/defn- collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
