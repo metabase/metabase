@@ -2,11 +2,11 @@ import { createSelector } from "@reduxjs/toolkit";
 import { createCachedSelector } from "re-reselect";
 import _ from "underscore";
 
-import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
 import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
 import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,

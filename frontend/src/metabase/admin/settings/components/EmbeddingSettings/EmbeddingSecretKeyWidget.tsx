@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import InputBlurChange from "metabase/common/components/InputBlurChange";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import { UtilApi } from "metabase/services";
 import { Box, Button, Flex } from "metabase/ui";
 

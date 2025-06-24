@@ -41,6 +41,7 @@ export interface DatasetColumn {
   display_name: string;
   description?: string | null;
   source: string;
+  aggregation_index?: number;
   database_type?: string;
   active?: boolean;
   entity_id?: string;

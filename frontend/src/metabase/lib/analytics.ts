@@ -41,22 +41,19 @@ export function trackSimpleEvent(event: SimpleEvent) {
 }
 
 export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
-  const shouldSendEvent =
-    Settings.trackingEnabled() && Settings.snowplowEnabled();
+  if (Settings.trackingEnabled() && Settings.snowplowEnabled()) {
+    if (shouldLogAnalytics) {
+      const { event: type, ...other } = event;
+      // eslint-disable-next-line no-console
+      console.log(
+        `%c[SNOWPLOW EVENT]%c, ${type}`,
+        // eslint-disable-next-line no-color-literals
+        "background: #222; color: #bada55",
+        "color: ",
+        other,
+      );
+    }
 
-  if (shouldLogAnalytics) {
-    const { event: type, ...other } = event;
-    // eslint-disable-next-line no-console
-    console.log(
-      `%c[SNOWPLOW EVENT | event sent:${shouldSendEvent}]%c, ${type}`,
-      // eslint-disable-next-line no-color-literals
-      "background: #222; color: #bada55",
-      "color: ",
-      other,
-    );
-  }
-
-  if (shouldSendEvent) {
     Snowplow.trackSelfDescribingEvent({
       event: {
         schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,

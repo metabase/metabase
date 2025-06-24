@@ -1,27 +1,13 @@
 import type {
   BookmarkId,
   BookmarkType,
-  CardId,
   Collection,
   CollectionId,
   CollectionItem,
   Dashboard,
-  TableId,
 } from "metabase-types/api";
-import type { UploadMode } from "metabase-types/store/upload";
 
-export type CollectionOrTableIdProps =
-  | {
-      uploadMode: UploadMode.create;
-      collectionId: CollectionId;
-      tableId?: never;
-    }
-  | {
-      uploadMode: UploadMode.append | UploadMode.replace;
-      collectionId?: never;
-      tableId: TableId;
-      modelId?: CardId;
-    };
+import type { CollectionOrTableIdProps } from "./components/ModelUploadModal";
 
 export type MoveCollectionDestination = Pick<Collection, "id"> & {
   model: "collection";

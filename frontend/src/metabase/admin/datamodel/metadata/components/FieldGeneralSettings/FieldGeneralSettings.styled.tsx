@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import InputBlurChange from "metabase/common/components/InputBlurChange";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 export const FieldNameInput = styled(InputBlurChange)`
   width: auto;

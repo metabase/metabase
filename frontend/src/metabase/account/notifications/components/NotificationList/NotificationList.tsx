@@ -2,7 +2,7 @@ import type { JSX, ReactNode } from "react";
 import { t } from "ttag";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
-import { TextButton } from "metabase/common/components/Button.styled";
+import { TextButton } from "metabase/components/Button.styled";
 import type { User } from "metabase-types/api";
 
 import {

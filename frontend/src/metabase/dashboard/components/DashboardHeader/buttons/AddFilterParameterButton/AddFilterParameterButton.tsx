@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import {
   addParameter,
   hideAddParameterPopover,

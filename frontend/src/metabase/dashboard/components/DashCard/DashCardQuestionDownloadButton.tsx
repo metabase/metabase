@@ -2,9 +2,9 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import CS from "metabase/css/core/index.css";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
+import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";

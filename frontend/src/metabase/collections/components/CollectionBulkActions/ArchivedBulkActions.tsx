@@ -6,8 +6,8 @@ import { canMoveItem, isRootTrashCollection } from "metabase/collections/utils";
 import {
   BulkActionButton,
   BulkActionDangerButton,
-} from "metabase/common/components/BulkActionBar";
-import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+} from "metabase/components/BulkActionBar";
+import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";

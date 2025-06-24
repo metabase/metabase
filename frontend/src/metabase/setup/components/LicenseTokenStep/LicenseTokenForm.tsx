@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import {
   Form,
   FormErrorMessage,

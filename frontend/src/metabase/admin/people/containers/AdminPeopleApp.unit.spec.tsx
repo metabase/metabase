@@ -1,5 +1,3 @@
-import { Route } from "react-router";
-
 import { renderWithProviders, screen } from "__support__/ui";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import {
@@ -10,6 +8,7 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
+
 interface SetupOpts {
   activeUsersCount: number;
   ssoEnabled: boolean;
@@ -29,19 +28,14 @@ const setup = ({ activeUsersCount, ssoEnabled, isSuperUser }: SetupOpts) => {
     }),
   });
 
-  renderWithProviders(
-    <Route path="*" component={() => <AdminPeopleApp>empty</AdminPeopleApp>} />,
-    {
-      storeInitialState: state,
-      withRouter: true,
-      initialRoute: "/admin/people",
-    },
-  );
+  renderWithProviders(<AdminPeopleApp>empty</AdminPeopleApp>, {
+    storeInitialState: state,
+  });
 };
 
 describe("AdminPeopleApp", () => {
   describe("nudge to pro", () => {
-    const nudgeText = /tired of manually managing people/i;
+    const nudgeText = /Get single-sign on/;
     const setupOpts = {
       activeUsersCount: 50,
       ssoEnabled: false,
@@ -51,7 +45,7 @@ describe("AdminPeopleApp", () => {
     it("should be visible when user is admin, has 50 active users, and SSO is not available", () => {
       setup(setupOpts);
       expect(screen.getByText(nudgeText)).toBeInTheDocument();
-      const link = screen.getByRole("link", { name: /try metabase pro/i });
+      const link = screen.getByRole("link", { name: /Learn more/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute(
         "href",

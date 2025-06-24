@@ -41,7 +41,7 @@ const TextEditorMock = ({
   );
 };
 
-jest.mock("metabase/common/components/CodeEditor", () => ({
+jest.mock("metabase/components/CodeEditor", () => ({
   CodeEditor: TextEditorMock,
 }));
 

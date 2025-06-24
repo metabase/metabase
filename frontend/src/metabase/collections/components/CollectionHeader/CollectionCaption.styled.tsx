@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import { EditableDescription } from "metabase/common/components/EditableDescription";
-import EditableText from "metabase/common/components/EditableText";
+import EditableText from "metabase/core/components/EditableText";
 
 export const CaptionTitleContainer = styled.div`
   display: flex;

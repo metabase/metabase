@@ -9,8 +9,8 @@ import {
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Modal from "metabase/common/components/Modal";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import Modal from "metabase/components/Modal";
 import Databases from "metabase/entities/databases";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";

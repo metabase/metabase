@@ -1,11 +1,10 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import { Sortable } from "metabase/common/components/Sortable";
-import type { TabButtonMenuItem } from "metabase/common/components/TabButton";
-import { TabButton } from "metabase/common/components/TabButton";
-import { TabRow } from "metabase/common/components/TabRow";
+import Button from "metabase/core/components/Button";
+import { Sortable } from "metabase/core/components/Sortable";
+import type { TabButtonMenuItem } from "metabase/core/components/TabButton";
+import { TabButton } from "metabase/core/components/TabButton";
+import { TabRow } from "metabase/core/components/TabRow";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
@@ -17,14 +16,12 @@ import { useDashboardTabs } from "./use-dashboard-tabs";
 export type DashboardTabsProps = {
   dashboardId: DashboardId;
   isEditing?: boolean;
-  isNightMode?: boolean;
   className?: string;
 };
 
 export function DashboardTabs({
   dashboardId,
   isEditing = false,
-  isNightMode,
   className,
 }: DashboardTabsProps) {
   const {
@@ -78,14 +75,7 @@ export function DashboardTabs({
   }
 
   return (
-    <Flex
-      align="start"
-      gap="lg"
-      w="100%"
-      className={cx(S.dashboardTabs, className, {
-        [S.isNightMode]: isNightMode,
-      })}
-    >
+    <Flex align="start" gap="lg" w="100%" className={className}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}
@@ -94,6 +84,7 @@ export function DashboardTabs({
       >
         {showPlaceholder ? (
           <TabButton
+            className={S.tabButton}
             label={t`Tab 1`}
             value={null}
             showMenu
@@ -101,7 +92,12 @@ export function DashboardTabs({
           />
         ) : (
           tabs.map((tab) => (
-            <Sortable key={tab.id} id={tab.id} disabled={!isEditing}>
+            <Sortable
+              key={tab.id}
+              id={tab.id}
+              className={S.tabButton}
+              disabled={!isEditing}
+            >
               <TabButton.Renameable
                 value={tab.id}
                 label={tab.name}

@@ -4,7 +4,7 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LeaveConfirmModal } from "metabase/components/LeaveConfirmModal";
 import {
   cancelEditingDashboard,
   fetchDashboard,

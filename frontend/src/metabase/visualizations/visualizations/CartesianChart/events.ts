@@ -608,9 +608,6 @@ const getSeriesOnlyTooltipRowColor = (
   return seriesModel.color;
 };
 
-const signs = ["+", "-"] as const;
-type Sign = (typeof signs)[number];
-
 export const getStackedTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -641,24 +638,8 @@ export const getStackedTooltipModel = (
       };
     });
 
-  type SeriesSlice = { total: number; series: typeof stackSeriesRows };
-  let stackSeriesRowsBySign: Record<Sign, SeriesSlice> = {
-    "+": { total: 0, series: [] },
-    "-": { total: 0, series: [] },
-  };
-  stackSeriesRowsBySign = stackSeriesRows.reduce((acc, row) => {
-    if (typeof row.value !== "number") {
-      return acc;
-    }
-    const sign = row.value < 0 ? "-" : "+";
-    const slice = acc[sign];
-    slice.series.push(row);
-    slice.total += row.value;
-    return acc;
-  }, stackSeriesRowsBySign);
-
-  // Reverse positive rows as they appear reversed on the stacked chart to match the order
-  stackSeriesRowsBySign["+"].series.reverse();
+  // Reverse rows as they appear reversed on the stacked chart to match the order
+  stackSeriesRows.reverse();
 
   const formatter = (value: unknown) =>
     String(
@@ -681,45 +662,21 @@ export const getStackedTooltipModel = (
     }),
   );
 
-  const hasPositivesAndNegatives =
-    stackSeriesRowsBySign["+"].total > 0 &&
-    stackSeriesRowsBySign["-"].total < 0;
-
-  const formattedSeriesRows: EChartsTooltipRow[] = signs
-    .map((sign) => {
-      const slice = stackSeriesRowsBySign[sign];
-      return [
-        ...slice.series
-          .filter((row) => row.value != null)
-          .map((tooltipRow) => {
-            return {
-              isFocused: tooltipRow.isFocused,
-              name: tooltipRow.name,
-              markerColorClass: tooltipRow.color
-                ? getMarkerColorClass(tooltipRow.color)
-                : undefined,
-              values: [
-                formatter(tooltipRow.value),
-                formatPercent(
-                  slice.total
-                    ? (getPercent(slice.total, tooltipRow.value) ?? 0)
-                    : 0,
-                ),
-              ],
-            };
-          }),
-        ...(hasPositivesAndNegatives
-          ? [
-              {
-                name: sign === "-" ? t`Total negative` : t`Total positive`,
-                markerColorClass: " ",
-                values: [formatter(slice.total)],
-              },
-            ]
-          : []),
-      ];
-    })
-    .flat();
+  const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
+    .filter((row) => row.value != null)
+    .map((tooltipRow) => {
+      return {
+        isFocused: tooltipRow.isFocused,
+        name: tooltipRow.name,
+        markerColorClass: tooltipRow.color
+          ? getMarkerColorClass(tooltipRow.color)
+          : undefined,
+        values: [
+          formatter(tooltipRow.value),
+          formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
+        ],
+      };
+    });
 
   const additionalColumnsRows = getAdditionalTooltipRowsData(
     chartModel,
@@ -742,9 +699,7 @@ export const getStackedTooltipModel = (
           name: t`Total`,
           values: [
             formatter(rowsTotal),
-            hasPositivesAndNegatives
-              ? ""
-              : formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
+            formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
           ],
         }
       : undefined,

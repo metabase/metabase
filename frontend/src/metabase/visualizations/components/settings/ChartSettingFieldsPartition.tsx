@@ -8,7 +8,7 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DragDropContext } from "metabase/common/components/DragDropContext";
+import { DragDropContext } from "metabase/core/components/DragDropContext";
 import CS from "metabase/css/core/index.css";
 import { Box, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";

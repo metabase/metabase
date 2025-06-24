@@ -10,7 +10,6 @@ import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
 
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { AddColumnButton } from "metabase/data-grid/components/AddColumnButton/AddColumnButton";
 import { SortableHeader } from "metabase/data-grid/components/SortableHeader/SortableHeader";
 import {
@@ -22,6 +21,7 @@ import {
 import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 
 import { Footer } from "../Footer/Footer";

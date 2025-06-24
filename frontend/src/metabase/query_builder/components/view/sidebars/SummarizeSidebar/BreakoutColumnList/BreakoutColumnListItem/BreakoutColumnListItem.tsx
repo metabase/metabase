@@ -4,12 +4,12 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
+import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import {
   HoverParent,
   QueryColumnInfoIcon,
-} from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
-import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import Button from "metabase/core/components/Button";
 import { Tooltip } from "metabase/ui";
 import { Box, type BoxProps, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";

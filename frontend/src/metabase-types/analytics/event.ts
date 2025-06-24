@@ -142,18 +142,6 @@ export type VisualizerModalEvent = ValidateEvent<
     }
 >;
 
-export type EmbeddingSetupStepSeenEvent = ValidateEvent<{
-  event: "embedding_setup_step_seen";
-  event_detail:
-    | "welcome"
-    | "user-creation"
-    | "data-connection"
-    | "table-selection"
-    | "processing"
-    | "add-to-your-app"
-    | "done";
-}>;
-
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -172,5 +160,4 @@ export type SimpleEvent =
   | NewButtonClickedEvent
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
-  | VisualizerModalEvent
-  | EmbeddingSetupStepSeenEvent;
+  | VisualizerModalEvent;

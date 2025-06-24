@@ -20,7 +20,8 @@ export function SettingsSection({
   title?: React.ReactNode;
   description?: React.ReactNode;
   children?: React.ReactNode;
-} & BoxProps) {
+  boxProps?: BoxProps;
+}) {
   return (
     <Box {...boxProps}>
       {children && (
@@ -53,11 +54,7 @@ export function SettingsPageWrapper({
       {(title || description) && (
         <Box>
           {title && <Title order={1}>{title}</Title>}
-          {description && (
-            <Text c="text-medium" maw="40rem">
-              {description}
-            </Text>
-          )}
+          {description && <Text c="text-medium">{description}</Text>}
         </Box>
       )}
       {children}

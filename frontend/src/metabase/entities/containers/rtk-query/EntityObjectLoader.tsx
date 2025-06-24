@@ -7,7 +7,7 @@ import { skipToken } from "metabase/api";
 import {
   LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
-} from "metabase/common/components/LoadingAndErrorWrapper";
+} from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,

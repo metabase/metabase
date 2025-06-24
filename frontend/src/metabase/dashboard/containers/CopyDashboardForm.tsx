@@ -5,9 +5,9 @@ import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
-import { FormFooter } from "metabase/common/components/FormFooter";
+import Button from "metabase/core/components/Button";
+import { FormFooter } from "metabase/core/components/FormFooter";
 import Dashboards from "metabase/entities/dashboards";
 import {
   Form,

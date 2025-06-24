@@ -2,12 +2,12 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import Link from "metabase/common/components/Link";
 import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
 import type {
   ExportFormat,
   TableExportFormat,
 } from "metabase/common/types/export";
+import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";

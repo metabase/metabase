@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  findRequests,
   setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
   setupSchemaEndpoints,
@@ -17,7 +16,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { UndoListing } from "metabase/common/components/UndoListing";
+import { findRequests } from "__support__/utils";
+import { UndoListing } from "metabase/containers/UndoListing";
 import type { Database } from "metabase-types/api";
 import {
   createMockDatabase,

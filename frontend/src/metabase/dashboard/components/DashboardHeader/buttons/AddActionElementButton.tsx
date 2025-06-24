@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { addActionToDashboard } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

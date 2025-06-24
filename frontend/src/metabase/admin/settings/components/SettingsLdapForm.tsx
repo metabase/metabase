@@ -11,7 +11,7 @@ import {
   useGetSettingsQuery,
   useUpdateLdapMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import {
   Form,
   FormErrorMessage,

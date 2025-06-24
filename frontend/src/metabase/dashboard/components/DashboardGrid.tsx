@@ -6,13 +6,13 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
-import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {

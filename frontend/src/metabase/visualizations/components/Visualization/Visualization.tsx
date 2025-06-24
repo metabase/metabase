@@ -14,8 +14,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SmallGenericError } from "metabase/common/components/ErrorPages";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { SmallGenericError } from "metabase/components/ErrorPages";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";

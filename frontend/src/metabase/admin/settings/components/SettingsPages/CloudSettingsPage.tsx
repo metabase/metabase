@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { ButtonLink } from "metabase/core/components/ExternalLink";
 import { getStoreUrl } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 

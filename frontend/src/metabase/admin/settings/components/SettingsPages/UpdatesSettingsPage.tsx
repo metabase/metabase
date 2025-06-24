@@ -2,8 +2,8 @@ import cx from "classnames";
 import { c, t } from "ttag";
 
 import { UpsellHostingBanner } from "metabase/admin/upsells";
-import { NotFound } from "metabase/common/components/ErrorPages";
 import { useSetting } from "metabase/common/hooks";
+import { NotFound } from "metabase/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
 
 import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";

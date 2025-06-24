@@ -14,17 +14,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import ExplicitSize from "metabase/common/components/ExplicitSize";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import {
-  memoize,
-  useMemoizedCallback,
-} from "metabase/common/hooks/use-memoized-callback";
+import { ErrorMessage } from "metabase/components/ErrorMessage";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
@@ -41,6 +36,10 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
+import {
+  memoize,
+  useMemoizedCallback,
+} from "metabase/hooks/use-memoized-callback";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
@@ -165,9 +164,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
   }: TableProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const getInfoPopoversDisabledRef = useLatest(() => {
-    return clicked !== null || !hasMetadataPopovers || isDashboard;
-  });
   const tableTheme = theme?.other?.table;
   const dispatch = useDispatch();
   const isClientSideSortingEnabled = isDashboard;
@@ -497,7 +493,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
               className={cx({
                 [S.pivotedFirstColumn]: columnIndex === 0 && isPivoted,
               })}
-              getInfoPopoversDisabled={getInfoPopoversDisabledRef.current}
+              infoPopoversDisabled={!hasMetadataPopovers || isDashboard}
               timezone={data.results_timezone}
               question={question}
               column={col}
@@ -548,6 +544,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     });
   }, [
     theme,
+    hasMetadataPopovers,
     data,
     question,
     mode,
@@ -562,7 +559,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     tableTheme,
     isDashboard,
     tc,
-    getInfoPopoversDisabledRef,
   ]);
 
   const handleColumnResize = useCallback(
@@ -740,7 +736,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
           <ErrorMessage
             type="noRows"
             title={t`No results!`}
-            message={t`This may be the answer you're looking for. If not, try removing or changing your filters to make them less specific.`}
+            message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
             action={undefined}
           />
         </Flex>

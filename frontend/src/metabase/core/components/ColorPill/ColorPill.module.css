@@ -1,0 +1,35 @@
+.ColorPill {
+  border-radius: 50%;
+  cursor: pointer;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 1px;
+
+  &:hover {
+    border-color: var(--mb-color-text-light);
+  }
+}
+
+.Selected {
+  border-color: var(--mb-color-text-light);
+
+  &:hover {
+    border-color: var(--mb-color-text-dark);
+  }
+}
+
+.Auto {
+  border-style: dashed;
+}
+
+.Small {
+  width: 1.125rem;
+  height: 1.125rem;
+  padding: 1px;
+}
+
+.Medium {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.1875rem;
+}

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 
 export const FullscreenToggle = ({

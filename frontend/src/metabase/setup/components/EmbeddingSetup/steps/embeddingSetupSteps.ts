@@ -12,13 +12,13 @@ export interface StepDefinition {
 export interface StepProps {
   nextStep: () => void;
   prevStep?: () => void;
-  goToStep: (key: EmbeddingSetupStepKey) => void;
-  stepKey: EmbeddingSetupStepKey; // Be aware that this is sent in the `embedding_setup_step_seen` simple event
+  goToStep: (key: string) => void;
+  stepKey: string;
   stepIndex: number;
   totalSteps: number;
 }
 
-export const STEPS = [
+export const STEPS: StepDefinition[] = [
   {
     key: "welcome",
     get title() {
@@ -30,7 +30,7 @@ export const STEPS = [
   {
     key: "user-creation",
     get title() {
-      return t`Set up your account`;
+      return t`Create User`;
     },
     icon: "person",
     visibleInSidebar: true,
@@ -48,7 +48,7 @@ export const STEPS = [
     get title() {
       return t`Generate starter content`;
     },
-    icon: "bolt_filled",
+    icon: "table2",
     visibleInSidebar: true,
   },
   {
@@ -60,7 +60,7 @@ export const STEPS = [
     visibleInSidebar: false,
   },
   {
-    key: "add-to-your-app",
+    key: "final",
     get title() {
       return t`Add to your app`;
     },
@@ -75,9 +75,7 @@ export const STEPS = [
     icon: "check",
     visibleInSidebar: false,
   },
-] as const satisfies StepDefinition[];
-
-export type EmbeddingSetupStepKey = (typeof STEPS)[number]["key"];
+];
 
 export const getStepIndexByKey = (key: string): number => {
   const index = STEPS.findIndex((step) => step.key === key);

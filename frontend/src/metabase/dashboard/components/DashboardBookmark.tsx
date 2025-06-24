@@ -1,5 +1,5 @@
-import BookmarkToggle from "metabase/common/components/BookmarkToggle";
 import { useBookmarkListQuery } from "metabase/common/hooks";
+import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Bookmark from "metabase/entities/bookmarks";
 import { useDispatch, useSelector } from "metabase/lib/redux";

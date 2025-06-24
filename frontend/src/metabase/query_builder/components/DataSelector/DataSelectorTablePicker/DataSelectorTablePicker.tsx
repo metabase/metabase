@@ -2,13 +2,13 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import AccordionList from "metabase/common/components/AccordionList";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
 import {
   HoverParent,
   TableInfoIcon,
-} from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { useDocsUrl } from "metabase/common/hooks";
+} from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import AccordionList from "metabase/core/components/AccordionList";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";

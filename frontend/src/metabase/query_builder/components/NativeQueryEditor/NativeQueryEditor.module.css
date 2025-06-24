@@ -34,7 +34,6 @@
     display: flex;
     /* A large value for animation */
     max-height: 1000px;
-    flex-direction: column;
   }
 
   &.collapsing {

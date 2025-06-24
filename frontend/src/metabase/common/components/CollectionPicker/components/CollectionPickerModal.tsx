@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useToggle } from "metabase/common/hooks/use-toggle";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
@@ -31,10 +31,9 @@ export interface CollectionPickerModalProps {
   searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
   recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
   models?: CollectionPickerModel[];
-  canSelectItem?: (item: CollectionPickerItem) => boolean;
 }
 
-const baseCanSelectItem = (
+const canSelectItem = (
   item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
 ): item is CollectionPickerValueItem => {
   return (
@@ -60,20 +59,10 @@ export const CollectionPickerModal = ({
   searchResultFilter,
   recentFilter,
   models = ["collection"],
-  canSelectItem: _canSelectItem,
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
-
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
-  );
-  const canSelectItem = useCallback(
-    (
-      item: Pick<CollectionPickerItem, "id" | "can_write" | "model"> | null,
-    ): item is CollectionPickerValueItem => {
-      return baseCanSelectItem(item) && (_canSelectItem?.(item) ?? true);
-    },
-    [_canSelectItem],
   );
 
   const { tryLogRecentItem } = useLogRecentItem();
@@ -116,7 +105,7 @@ export const CollectionPickerModal = ({
         await handleChange(item);
       }
     },
-    [handleChange, options, canSelectItem],
+    [handleChange, options],
   );
 
   const handleConfirm = async () => {
@@ -210,7 +199,7 @@ export const CollectionPickerModal = ({
     } else {
       return "root";
     }
-  }, [selectedItem, value, canSelectItem]);
+  }, [selectedItem, value]);
 
   return (
     <>

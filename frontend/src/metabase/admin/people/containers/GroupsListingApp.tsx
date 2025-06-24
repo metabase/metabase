@@ -1,16 +1,10 @@
-import { t } from "ttag";
-
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
 import {
   useCreatePermissionsGroupMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
   useUpdatePermissionsGroupMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -49,18 +43,14 @@ export const GroupsListingApp = () => {
   };
 
   return (
-    <SettingsPageWrapper title={t`Groups`}>
-      <SettingsSection>
-        <LoadingAndErrorWrapper error={error} loading={isLoading}>
-          <GroupsListing
-            isAdmin={isAdmin}
-            groups={groups}
-            create={handleCreate}
-            update={handleUpdate}
-            delete={handleDelete}
-          />
-        </LoadingAndErrorWrapper>
-      </SettingsSection>
-    </SettingsPageWrapper>
+    <LoadingAndErrorWrapper error={error} loading={isLoading}>
+      <GroupsListing
+        isAdmin={isAdmin}
+        groups={groups}
+        create={handleCreate}
+        update={handleUpdate}
+        delete={handleDelete}
+      />
+    </LoadingAndErrorWrapper>
   );
 };

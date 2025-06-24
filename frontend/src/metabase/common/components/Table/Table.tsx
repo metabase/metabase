@@ -4,7 +4,7 @@ import React from "react";
 import {
   PaginationControls,
   type PaginationControlsProps,
-} from "metabase/common/components/PaginationControls";
+} from "metabase/components/PaginationControls";
 import { Box, Flex, type FlexProps, Icon } from "metabase/ui";
 import { SortDirection } from "metabase-types/api/sorting";
 

@@ -3,7 +3,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Sortable } from "metabase/common/components/Sortable";
+import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";

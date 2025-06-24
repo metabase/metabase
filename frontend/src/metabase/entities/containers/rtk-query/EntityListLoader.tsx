@@ -7,7 +7,7 @@ import _ from "underscore";
 import {
   LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
-} from "metabase/common/components/LoadingAndErrorWrapper";
+} from "metabase/components/LoadingAndErrorWrapper";
 import { capitalize } from "metabase/lib/formatting";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {

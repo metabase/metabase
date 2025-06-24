@@ -6,7 +6,7 @@ import {
   isValidElement,
 } from "react";
 
-import { Badge } from "metabase/common/components/Badge";
+import { Badge } from "metabase/components/Badge";
 import { Box, Flex } from "metabase/ui";
 
 import type { DataSourcePart } from "../QuestionDataSource/utils";

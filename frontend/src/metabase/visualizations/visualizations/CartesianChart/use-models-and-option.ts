@@ -80,11 +80,9 @@ export function useModelsAndOption(
       showWarning,
     );
 
-    if (model.dimensionModel.column) {
-      model.dimensionModel.column.display_name = tc(
-        model.dimensionModel.column.display_name,
-      );
-    }
+    model.dimensionModel.column.display_name = tc(
+      model.dimensionModel.column.display_name,
+    );
     return model;
   }, [
     card.display,

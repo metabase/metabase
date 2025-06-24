@@ -31,7 +31,7 @@ import type {
   ModelFilterControlsProps,
   ModelFilterSettings,
 } from "metabase/browse/models";
-import type { LinkProps } from "metabase/common/components/Link";
+import type { LinkProps } from "metabase/core/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
@@ -117,6 +117,11 @@ export const PLUGIN_ADMIN_TOOLS = {
 export const PLUGIN_WHITELABEL = {
   WhiteLabelBrandingSettingsPage: PluginPlaceholder,
   WhiteLabelConcealSettingsPage: PluginPlaceholder,
+};
+
+export const PLUGIN_ADMIN_TROUBLESHOOTING = {
+  EXTRA_ROUTES: [] as ReactNode[],
+  GET_EXTRA_NAV: (): ReactNode[] => [],
 };
 
 export const PLUGIN_ADMIN_SETTINGS = {

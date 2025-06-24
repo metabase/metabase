@@ -3,8 +3,8 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import QuestionResultLoader from "metabase/common/components/QuestionResultLoader";
+import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
+import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";

@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
+import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { Menu, Stack, Text, rem } from "metabase/ui";
 import type {

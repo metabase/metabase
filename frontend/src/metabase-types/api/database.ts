@@ -19,7 +19,6 @@ export type DatabaseFeature =
   | "case-sensitivity-string-filter-options"
   | "convert-timezone"
   | "datetime-diff"
-  | "database-routing"
   | "dynamic-schema"
   | "expression-aggregations"
   | "expression-literals"

@@ -1,0 +1,1 @@
+export { Ellipsified } from "./Ellipsified";

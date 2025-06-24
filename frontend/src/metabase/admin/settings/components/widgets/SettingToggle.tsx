@@ -2,7 +2,7 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import Toggle from "metabase/common/components/Toggle";
+import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Tooltip } from "metabase/ui";
 

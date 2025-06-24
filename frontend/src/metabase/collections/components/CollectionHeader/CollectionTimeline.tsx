@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Link from "metabase/common/components/Link/Link";
+import Link from "metabase/core/components/Link/Link";
 import * as Urls from "metabase/lib/urls";
 import { Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";

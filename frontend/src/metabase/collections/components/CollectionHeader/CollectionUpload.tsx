@@ -6,7 +6,7 @@ import {
   UploadInput,
   UploadLabel,
   UploadTooltip,
-} from "metabase/common/components/upload";
+} from "metabase/components/upload";
 import type { Collection } from "metabase-types/api";
 
 import { CollectionHeaderButton } from "./CollectionHeader.styled";
