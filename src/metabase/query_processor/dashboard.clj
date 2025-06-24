@@ -48,7 +48,9 @@
          (:type matching-param))
      (:type request-param))))
 
-(defn- convert-request-param-value [request-param matching-param]
+(defn- check-request-param-value [request-param matching-param]
+  ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
+  ;; vector so the parameter handling code doesn't explode.
   (let [value (:value request-param)]
     (when (and (params.ops/operator? (:type matching-param))
                (if (string? value)
@@ -80,15 +82,12 @@
         (log/tracef "Found matching mapping for Card %d, Dashcard %d:\n%s"
                     card-id dashcard-id
                     (u/pprint-to-str (update matching-mapping :dashcard #(select-keys % [:id :parameter_mappings]))))
-        ;; if `request-param` specifies type, then validate that the type is allowed
         (check-request-param request-param matching-param)
         ;; ok, now return the merged parameter info map.
         (merge
          {:type (:type matching-param)}
          request-param
-         ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
-         ;; vector so the parameter handling code doesn't explode.
-         (convert-request-param-value request-param matching-param)
+         (check-request-param-value request-param matching-param)
          {:id     param-id
           :target (:target matching-mapping)})))
     ;; If matching-param is null, which means this parameter haven`t been set for this card in database, use the
@@ -97,7 +96,7 @@
       (check-request-param request-param request-param)
       (merge
        request-param
-       (convert-request-param-value request-param request-param)))))
+       (check-request-param-value request-param request-param)))))
 
 ;; DashboardCard parameter mappings can specify default values, and we need to make sure the parameters map returned
 ;; by [[resolve-params-for-query]] includes entries for any default values. So we'll do this by creating a entries for
