@@ -3,6 +3,7 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { useSelector } from "metabase/lib/redux";
 import type { AIQuestionAnalysisSidebarProps } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -28,6 +29,8 @@ export function AIQuestionAnalysisSidebar({
   className,
   onClose,
 }: AIQuestionAnalysisSidebarProps) {
+  const rootElement = useRootElement();
+
   const previousQuestion = usePrevious(question);
   const [analyzeChart, { data: analysisData }] = useAnalyzeChartMutation();
   const isLoadingComplete = useSelector(getIsLoadingComplete);
@@ -60,9 +63,10 @@ export function AIQuestionAnalysisSidebar({
           );
 
     analysisTimeoutRef.current = setTimeout(async () => {
-      const imageBase64 = await getChartImagePngDataUri(
-        getChartSelector({ cardId: question.id() }),
-      );
+      const imageBase64 = await getChartImagePngDataUri({
+        rootElement,
+        selector: getChartSelector({ cardId: question.id() }),
+      });
 
       if (imageBase64) {
         await analyzeChart({
@@ -84,6 +88,7 @@ export function AIQuestionAnalysisSidebar({
       }
     };
   }, [
+    rootElement,
     analyzeChart,
     isLoadingComplete,
     question,
