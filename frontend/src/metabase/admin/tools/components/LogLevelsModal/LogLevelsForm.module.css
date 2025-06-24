@@ -6,14 +6,4 @@
 
 .code {
   height: 100%;
-
-  :global {
-    .cm-focused {
-      outline: none;
-    }
-
-    .cm-editor {
-      height: 100%;
-    }
-  }
 }
