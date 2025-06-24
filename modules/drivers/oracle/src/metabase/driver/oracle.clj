@@ -405,6 +405,11 @@
   [_driver _coercion-strategy expr]
   [:to_timestamp expr "YYYYMMDDHH24miSS"])
 
+(defmethod sql.qp/cast-temporal-byte [:oracle :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver _coercion-strategy expr]
+  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
+                               [:utl_raw.cast_to_varchar2 expr]))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
   (sql.qp/unix-timestamp->honeysql driver :seconds (h2x// field-or-value [:inline 1000])))
