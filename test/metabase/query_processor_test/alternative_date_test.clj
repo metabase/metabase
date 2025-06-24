@@ -466,6 +466,12 @@
    [2 "bar" "2020-04-21 16:43:00"]
    [3 "baz" "2021-04-21 16:43:00"]])
 
+(defmethod yyyymmddhhmmss-binary-dates-expected-rows :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
 (deftest ^:parallel yyyymmddhhmmss-binary-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
     (mt/dataset yyyymmddhhss-binary-times
