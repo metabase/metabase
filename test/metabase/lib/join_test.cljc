@@ -756,7 +756,20 @@
                    (lib/join-condition-lhs-columns query
                                                    join-for-query-with-join
                                                    lhs-for-query-with-join
-                                                   rhs-for-query-with-join)))))))
+                                                   rhs-for-query-with-join))))))
+  (testing "should ignore non-standard join conditions when marking LHS columns as selected"
+    (let [query (lib.tu/query-with-join)]
+      (is (=? [{:long-display-name "ID"}
+               {:long-display-name "Category ID"}
+               {:long-display-name "Name"}
+               {:long-display-name "Latitude"}
+               {:long-display-name "Longitude"}
+               {:long-display-name "Price"}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-lhs-columns query
+                                                   join-for-query-with-join
+                                                   (lib/+ (meta/field-metadata :venues :id) 1)
+                                                   (lib/+ (meta/field-metadata :categories :id) 1))))))))
 
 (deftest ^:parallel join-condition-rhs-columns-join-table-test
   (testing "RHS columns when building a join against a Table"
@@ -824,7 +837,16 @@
                    (lib/join-condition-rhs-columns query
                                                    join-for-query-with-join
                                                    lhs-for-query-with-join
-                                                   rhs-for-query-with-join)))))))
+                                                   rhs-for-query-with-join))))))
+  (testing "should ignore non-standard join conditions when marking RHS columns as selected"
+    (let [query (lib.tu/query-with-join)]
+      (is (=? [{:display-name "ID"}
+               {:display-name "Name"}]
+              (map (partial lib/display-info query)
+                   (lib/join-condition-rhs-columns query
+                                                   join-for-query-with-join
+                                                   (lib/+ (meta/field-metadata :venues :id) 1)
+                                                   (lib/+ (meta/field-metadata :categories :id) 1))))))))
 
 (deftest ^:parallel join-condition-operators-test
   ;; just make sure that this doesn't barf and returns the expected output given any combination of LHS or RHS fields
