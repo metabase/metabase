@@ -3,6 +3,13 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 
+import {
+  getEmbedSidebar,
+  getPreviewIframe,
+  getRecentItemCards,
+  visitNewEmbedPage,
+} from "./helpers";
+
 const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embed setup > select embed entity", () => {
@@ -34,24 +41,21 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
 
-      cy.log("two dashboards should be visible in the recents list");
-      cy.findAllByTestId("embed-recent-item-card").should("have.length", 2);
+      cy.log("first dashboard should be selected by default");
+      getRecentItemCards()
+        .should("have.length", 2)
+        .first()
+        .should("have.attr", "data-selected", "true");
+
       cy.findByText("Acme Inc").should("be.visible");
       cy.findByText("Orders in a dashboard").should("be.visible");
 
-      cy.findAllByTestId("embed-recent-item-card")
-        .eq(0)
-        .should("have.attr", "data-selected", "true");
-
-      cy.log("select a different dashboard");
+      cy.log("second dashboard can be selected");
       cy.findByText("Acme Inc").click();
-
-      cy.findAllByTestId("embed-recent-item-card")
-        .eq(1)
-        .should("have.attr", "data-selected", "true");
+      getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
-    cy.log("dashboard should be displayed in the preview");
+    cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
     getPreviewIframe().within(() => {
       cy.findByText("Acme Inc").should("be.visible");
@@ -71,7 +75,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
       cy.findByText("Orders, Count").should("be.visible");
 
       cy.log("only one recent item should be visible");
-      cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
+      getRecentItemCards().should("have.length", 1);
     });
 
     cy.wait("@cardQuery");
@@ -169,19 +173,3 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     });
   });
 });
-
-const getPreviewIframe = () =>
-  cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty");
-
-const getEmbedSidebar = () => cy.findByTestId("embed-sidebar");
-
-const visitNewEmbedPage = () => {
-  cy.visit("/embed/new");
-  cy.wait("@dashboard");
-};

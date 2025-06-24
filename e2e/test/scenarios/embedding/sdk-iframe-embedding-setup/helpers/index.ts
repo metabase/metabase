@@ -15,6 +15,9 @@ export const getPreviewIframe = () =>
 
 export const getEmbedSidebar = () => cy.findByRole("complementary");
 
+export const getRecentItemCards = () =>
+  cy.findAllByTestId("embed-recent-item-card");
+
 export const visitNewEmbedPage = () => {
   cy.visit("/embed/new");
   cy.wait("@dashboard");
