@@ -30,7 +30,12 @@ export const SelectEmbedEntityMissingRecents = ({
     .otherwise(() => null);
 
   return (
-    <Stack align="center" gap="md" py="xl" data-testid="embed-empty-state">
+    <Stack
+      align="center"
+      gap="md"
+      py="xl"
+      data-testid="embed-entity-missing-recents"
+    >
       <Icon name={embedIcon} size={48} c="text-light" />
 
       <Stack align="center" gap="xs">
