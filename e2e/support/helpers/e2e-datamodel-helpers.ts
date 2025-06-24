@@ -9,6 +9,7 @@ export const DataModel = {
   visit,
   TablePicker: {
     getDatabase: getTablePickerDatabase,
+    getSchema: getTablePickerSchema,
     getTable: getTablePickerTable,
     getTables: getTablePickerTables,
   },
@@ -131,6 +132,13 @@ function getTablePickerDatabase(name: string) {
   return cy
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
+    .filter(`:contains("${name}")`);
+}
+
+function getTablePickerSchema(name: string) {
+  return cy
+    .findAllByTestId("tree-item")
+    .filter('[data-type="schema"]')
     .filter(`:contains("${name}")`);
 }
 
