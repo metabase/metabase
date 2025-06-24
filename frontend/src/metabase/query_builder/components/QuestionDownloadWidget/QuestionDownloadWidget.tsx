@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import Link from "metabase/common/components/Link";
 import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
   ExportFormat,
   TableExportFormat,
@@ -37,9 +38,6 @@ type QuestionDownloadWidgetProps = {
   }) => void;
   disabled?: boolean;
   formatPreference?: FormatPreference;
-  setFormatPreference?: (
-    preference: FormatPreference,
-  ) => Promise<{ data?: unknown; error?: unknown }>;
 } & StackProps;
 
 const canPivotResults = (format: string, display: string) =>
@@ -51,8 +49,7 @@ export const QuestionDownloadWidget = ({
   result,
   onDownload,
   disabled = false,
-  formatPreference,
-  setFormatPreference,
+  formatPreference: formatPreferenceOverride,
   ...stackProps
 }: QuestionDownloadWidgetProps) => {
   const canDownloadPng = canSavePng(question.display());
@@ -78,6 +75,17 @@ export const QuestionDownloadWidget = ({
       ? last_table_download_format
       : formats[0];
   };
+
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: formatPreferenceOverride ?? {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+      skip: !!formatPreferenceOverride,
+    });
 
   const [format, setFormat] = useState<ExportFormat>(determineInitialFormat());
   const canConfigurePivoting = canPivotResults(format, question.display());
@@ -175,7 +183,7 @@ export const QuestionDownloadWidget = ({
             <Icon
               name="close"
               c="text-medium"
-              tooltip={t`Don’t show me this again.`}
+              tooltip={t`Don't show me this again.`}
               onClick={() => setDismissedExcelPivotExportsBanner(true)}
             />
           </Button>

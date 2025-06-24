@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
@@ -18,11 +17,9 @@ import {
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";
 import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
@@ -62,10 +59,6 @@ export const DashCardMenu = ({
   openUnderlyingQuestionItems,
 }: DashCardMenuProps) => {
   const store = useStore();
-  const canDownloadPng = canSavePng(question.display());
-  const formats = canDownloadPng
-    ? [...exportFormats, exportFormatPng]
-    : exportFormats;
 
   const token = useMemo(() => {
     return getDashcardTokenId(dashcard);
@@ -73,17 +66,6 @@ export const DashCardMenu = ({
   const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
   const dashcardId = dashcard.id;
   const { dashboard, dashboardId, dashcardMenu } = useDashboardContext();
-
-  const { value: formatPreference, setValue: setFormatPreference } =
-    useUserKeyValue({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      defaultValue: {
-        last_download_format: formats[0],
-        last_table_download_format: exportFormats[0],
-      },
-    });
-
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
@@ -119,8 +101,8 @@ export const DashCardMenu = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
-          formatPreference={formatPreference}
-          setFormatPreference={setFormatPreference}
+          // formatPreference={formatPreference}
+          // setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             close();
             handleDownload(opts);
