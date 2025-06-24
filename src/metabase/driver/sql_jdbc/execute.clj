@@ -325,6 +325,8 @@
   []
   (pos? *connection-recursion-depth*))
 
+(def ^:private ^:dynamic *db-conn* nil)
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -339,10 +341,18 @@
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
-    (if-let [conn (:connection db-or-id-or-spec)]
-      (f conn)
+    (cond
+      *db-conn*
+      (f *db-conn*)
+
+      (:connection db-or-id-or-spec)
+      (let [conn (:connection db-or-id-or-spec)]
+        (f conn))
+
+      :else
       (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
-        (f conn)))))
+        (binding [*db-conn* conn]
+          (f conn))))))
 
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
