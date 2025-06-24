@@ -12,8 +12,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # This job will determine if the tier 3 driver tests should be skipped.
+  # It will always run first.
+  determine-skip-tier3-drivers:
+    runs-on: ubuntu-latest
+    outputs:
+      skip_tier3: ${{ steps.check_team_and_branch.outputs.skip }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Read team.json and check if tier3 drivers should run
+        id: check_team_and_branch
+        run: |
+          GITHUB_ACTOR_LOWER=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
+          REQUIRED_TEAM_MEMBERS=$(jq -r '.teams[] | select(.name == "Drivers" or .name == "Querying" or .name == "Semantic Layer") | .members[]' .github/team.json | tr '[:upper:]' '[:lower:]')
+          IS_REQUIRED_MEMBER=false
+          for member in ${REQUIRED_TEAM_MEMBERS}; do
+            if [[ "${GITHUB_ACTOR_LOWER}" == "${member}" ]]; then
+              IS_REQUIRED_MEMBER=true
+              break
+            fi
+          done
+          echo "GitHub Actor: ${{ github.actor }}"
+          echo "Team Members: ${REQUIRED_TEAM_MEMBERS}"
+          echo "Is Required Team Member: ${IS_REQUIRED_MEMBER}"
+          # Logic to determine if tier 3 tests should skip
+          # Skip if not a required team member AND not merging into master or release branches
+          if [[ "${IS_REQUIRED_MEMBER}" == "true" ]]; then
+            echo "::set-output name=skip::false"
+            echo "User is a required team member. Tier 3 driver tests will run."
+          elif [[ "${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}" == "true" ]]; then
+            echo "::set-output name=skip::false"
+            echo "Merging into master or a release branch. Tier 3 driver tests will run."
+          else
+            echo "::set-output name=skip::true"
+            echo "User is not a required team member and not merging into master/release. Tier 3 driver tests will be skipped."
+          fi
+        shell: bash
   be-tests-athena-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -129,7 +167,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -164,7 +203,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-druid-jdbc-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -199,7 +239,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-databricks-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -233,7 +274,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-databricks-multi-catalog-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -421,7 +463,8 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -470,7 +513,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-ssl:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -534,7 +578,8 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-mongo-sharded-cluster-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -567,7 +612,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-oracle:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -742,7 +788,8 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-presto-jdbc-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -898,7 +945,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-sparksql-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -931,7 +979,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-sqlite-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -959,7 +1008,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-sqlserver:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
@@ -1009,7 +1059,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-starburst-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -1046,7 +1097,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-vertica-ee:
-    if: ${{ !inputs.skip }}
+    needs: determine-skip-tier3-drivers
+    if: ${{ !inputs.skip && !needs.determine-skip-tier3-drivers.outputs.skip_tier3 }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
