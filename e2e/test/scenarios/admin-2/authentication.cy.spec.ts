@@ -33,7 +33,7 @@ describe("scenarios > admin > settings > authentication", () => {
 
     describe("ee", () => {
       it("should implement a tab layout for enterprise customers", () => {
-        H.setTokenFeatures("all");
+        H.activateToken("bleeding-edge");
 
         cy.visit("/admin/settings/authentication");
 
@@ -88,7 +88,7 @@ describe("scenarios > admin > settings > user provisioning", () => {
 
   describe("scim settings management", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to setup and manage scim feature", () => {

@@ -315,7 +315,7 @@ describe("scenarios [EE] > public > dashboard", () => {
 
     prepareDashboard();
 
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should set the window title to `{dashboard name} · {application name}`", () => {

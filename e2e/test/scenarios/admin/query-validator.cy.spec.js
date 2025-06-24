@@ -11,7 +11,7 @@ describe("query validator", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
-      H.setTokenFeatures("none");
+      H.deleteToken();
     });
 
     it("Should not show the page in troubleshooting or the setting in general", () => {
@@ -29,7 +29,7 @@ describe("query validator", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("bleeding-edge");
       H.updateSetting("query-analysis-enabled", true);
     });
 
