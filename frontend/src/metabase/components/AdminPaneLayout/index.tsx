@@ -1,1 +1,0 @@
-export { AdminPaneLayout } from "./AdminPaneLayout";

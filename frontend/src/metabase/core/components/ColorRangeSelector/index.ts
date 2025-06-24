@@ -1,1 +1,0 @@
-export { ColorRangeSelector } from "./ColorRangeSelector";

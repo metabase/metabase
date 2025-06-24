@@ -1,1 +1,0 @@
-export { ItemsTable } from "./ItemsTable";
