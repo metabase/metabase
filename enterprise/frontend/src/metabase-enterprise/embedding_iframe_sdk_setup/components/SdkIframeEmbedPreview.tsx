@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 
-import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
@@ -15,35 +14,37 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
-  const instanceUrl = useSetting("site-url");
+  const { settings, isEmbedOptionsLoaded } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
-  const initialSettingRef = useRef(settings);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
 
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "/app/embed.js";
-    document.body.appendChild(script);
+    if (!scriptRef.current && isEmbedOptionsLoaded) {
+      const script = document.createElement("script");
 
-    script.onload = () => {
-      const { MetabaseEmbed } = window["metabase.embed"];
+      script.src = "/app/embed.js";
+      document.body.appendChild(script);
 
-      embedJsRef.current = new MetabaseEmbed({
-        ...initialSettingRef.current,
+      script.onload = () => {
+        const { MetabaseEmbed } = window["metabase.embed"];
 
-        instanceUrl,
-        target: "#iframe-embed-container",
-        iframeClassName: S.EmbedPreviewIframe,
-        useExistingUserSession: true,
-      });
-    };
+        embedJsRef.current = new MetabaseEmbed({
+          ...settings,
+          target: "#iframe-embed-container",
+          iframeClassName: S.EmbedPreviewIframe,
+          useExistingUserSession: true,
+        });
+
+        scriptRef.current = script;
+      };
+    }
 
     return () => {
       embedJsRef.current?.destroy();
-      script.remove();
+      scriptRef.current?.remove();
     };
-  }, [instanceUrl]);
+  }, [isEmbedOptionsLoaded, settings]);
 
   useEffect(() => {
     if (embedJsRef.current) {
