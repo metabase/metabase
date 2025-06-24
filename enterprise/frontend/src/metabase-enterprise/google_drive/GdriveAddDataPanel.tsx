@@ -73,6 +73,8 @@ export const GdriveAddDataPanel = () => {
   );
 
   const NO_STORAGE_SUBTITLE = t`To work with spreadsheets, you can add storage to your instance.`;
+  // eslint-disable-next-line no-literal-metabase-strings -- admin only
+  const ERROR_MESSAGE = t`Please check that the folder is shared with the Metabase Service Account.`;
 
   if (!isAdmin) {
     return (
@@ -95,12 +97,7 @@ export const GdriveAddDataPanel = () => {
   if (!showGdrive) {
     return (
       <PanelWrapper>
-        <ErrorAlert
-          error={getErrorMessage(
-            // eslint-disable-next-line no-literal-metabase-strings -- admin only
-            t`Please check that the folder is shared with the Metabase Service Account.`,
-          )}
-        />
+        <ErrorAlert error={getErrorMessage(ERROR_MESSAGE)} />
       </PanelWrapper>
     );
   }
@@ -165,7 +162,9 @@ export const GdriveAddDataPanel = () => {
         {buttonText}
       </Button>
 
-      {status === "error" && <ErrorAlert error={getErrorMessage(error)} />}
+      {status === "error" && (
+        <ErrorAlert error={getErrorMessage(ERROR_MESSAGE)} />
+      )}
     </PanelWrapper>
   );
 };

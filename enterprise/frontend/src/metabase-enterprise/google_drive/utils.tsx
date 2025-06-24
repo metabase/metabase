@@ -20,7 +20,6 @@ export function useShowGdrive() {
   const userIsAdmin = useSelector(getUserIsAdmin);
 
   const shouldGetServiceAccount = gSheetsEnabled && userIsAdmin && hasDwh;
-
   const { data: serviceAccount } = useGetServiceAccountQuery(
     shouldGetServiceAccount ? undefined : skipToken,
   );
