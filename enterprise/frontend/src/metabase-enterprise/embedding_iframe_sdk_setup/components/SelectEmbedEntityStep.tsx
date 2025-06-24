@@ -12,7 +12,7 @@ import type {
   SdkIframeEmbedSetupRecentItem,
 } from "../types";
 
-import { SelectEmbedEntityMissingRecents } from "./SelectEmbedEntityEmptyState";
+import { SelectEmbedEntityMissingRecents } from "./SelectEmbedEntityMissingRecents";
 import S from "./SelectEmbedEntityStep.module.css";
 
 export const SelectEmbedEntityStep = () => {
