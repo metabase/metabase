@@ -9,7 +9,6 @@ import {
 } from "metabase/api";
 import {
   useDeleteEmailSMTPSettingsMutation,
-  useSendTestEmailMutation,
   useUpdateEmailSMTPSettingsMutation,
 } from "metabase/api/email";
 import { getErrorMessage } from "metabase/api/utils";
@@ -23,16 +22,7 @@ import {
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Modal,
-  Radio,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Flex, Group, Modal, Radio, Stack } from "metabase/ui";
 import type {
   EmailSMTPSettings,
   SettingDefinitionMap,
@@ -89,7 +79,6 @@ export const SelfHostedSMTPConnectionForm = ({
   onClose: () => void;
 }) => {
   const [updateEmailSMTPSettings] = useUpdateEmailSMTPSettingsMutation();
-  const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
   const [deleteEmailSMTPSettings] = useDeleteEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
   const { data: settingValues } = useGetSettingsQuery();
@@ -143,22 +132,6 @@ export const SelfHostedSMTPConnectionForm = ({
     },
     [updateEmailSMTPSettings, sendToast, onClose],
   );
-
-  const handleSendTestEmail = useCallback(async () => {
-    try {
-      await sendTestEmail().unwrap();
-      sendToast({
-        message: t`Email sent!`,
-        toastColor: "success",
-      });
-    } catch (error) {
-      sendToast({
-        icon: "warning",
-        toastColor: "error",
-        message: getTestEmailErrorMessage(error),
-      });
-    }
-  }, [sendTestEmail, sendToast]);
 
   const allSetByEnvVars = useMemo(() => {
     return (
@@ -266,27 +239,7 @@ export const SelfHostedSMTPConnectionForm = ({
                     placeholder={"Shhh..."}
                   />
                 </SetByEnvVarWrapper>
-
-                {Boolean(sendTestEmailResult.error) && (
-                  <Text
-                    role="alert"
-                    aria-label={getTestEmailErrorMessage(
-                      sendTestEmailResult.error,
-                    )}
-                    color="error"
-                    mb="1rem"
-                  >
-                    {getTestEmailErrorMessage(sendTestEmailResult.error)}
-                  </Text>
-                )}
                 <Flex mt="1rem" gap="md" justify="end">
-                  {!dirty && isValid && !isSubmitting && (
-                    <Button onClick={handleSendTestEmail}>
-                      {sendTestEmailResult.isLoading
-                        ? t`Sending...`
-                        : t`Send test email`}
-                    </Button>
-                  )}
                   <Button
                     onClick={handleClearEmailSettings}
                     disabled={allSetByEnvVars}
@@ -307,9 +260,3 @@ export const SelfHostedSMTPConnectionForm = ({
     </Modal>
   );
 };
-
-function getTestEmailErrorMessage(error: unknown): string {
-  return isErrorWithMessage(error)
-    ? error.data.message
-    : t`Error sending test email`;
-}

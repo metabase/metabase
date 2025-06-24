@@ -12,7 +12,6 @@ export const SMTPConnectionCard = () => {
   const hasCloudSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
   const [showModal, { open: openModal, close: closeModal }] =
     useDisclosure(false);
-
   const isHosted = useSetting("is-hosted?");
 
   if (!isHosted) {

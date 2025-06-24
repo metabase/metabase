@@ -9,7 +9,6 @@ import {
 } from "metabase/api";
 import {
   useDeleteCloudEmailSMTPSettingsMutation,
-  useSendCloudTestEmailMutation,
   useUpdateCloudEmailSMTPSettingsMutation,
 } from "metabase/api/email";
 import { getErrorMessage } from "metabase/api/utils";
@@ -22,7 +21,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { Box, Button, Chip, Flex, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Chip, Flex, Modal, Stack } from "metabase/ui";
 import type {
   CloudEmailSMTPSettings,
   SettingDefinitionMap,
@@ -93,7 +92,6 @@ export const CloudSMTPConnectionForm = ({
 }) => {
   const [updateCloudEmailSMTPSettings] =
     useUpdateCloudEmailSMTPSettingsMutation();
-  const [sendTestEmail, sendTestEmailResult] = useSendCloudTestEmailMutation();
   const [deleteCloudEmailSMTPSettings] =
     useDeleteCloudEmailSMTPSettingsMutation();
   const [sendToast] = useToast();
@@ -160,22 +158,6 @@ export const CloudSMTPConnectionForm = ({
     },
     [updateCloudEmailSMTPSettings, sendToast, onClose],
   );
-
-  const handleSendTestEmail = useCallback(async () => {
-    try {
-      await sendTestEmail().unwrap();
-      sendToast({
-        message: t`Email sent!`,
-        toastColor: "success",
-      });
-    } catch (error) {
-      sendToast({
-        icon: "warning",
-        toastColor: "error",
-        message: getTestEmailErrorMessage(error),
-      });
-    }
-  }, [sendTestEmail, sendToast]);
 
   const allSetByEnvVars = useMemo(() => {
     return (
@@ -287,26 +269,7 @@ export const CloudSMTPConnectionForm = ({
                   />
                 </SetByEnvVarWrapper>
 
-                {Boolean(sendTestEmailResult.error) && (
-                  <Text
-                    role="alert"
-                    aria-label={getTestEmailErrorMessage(
-                      sendTestEmailResult.error,
-                    )}
-                    color="error"
-                    mb="1rem"
-                  >
-                    {getTestEmailErrorMessage(sendTestEmailResult.error)}
-                  </Text>
-                )}
                 <Flex mt="1rem" gap="md" justify="end">
-                  {!dirty && isValid && !isSubmitting && (
-                    <Button onClick={handleSendTestEmail}>
-                      {sendTestEmailResult.isLoading
-                        ? t`Sending...`
-                        : t`Send test email`}
-                    </Button>
-                  )}
                   <Button
                     onClick={handleClearEmailSettings}
                     disabled={allSetByEnvVars}
@@ -327,9 +290,3 @@ export const CloudSMTPConnectionForm = ({
     </Modal>
   );
 };
-
-function getTestEmailErrorMessage(error: unknown): string {
-  return isErrorWithMessage(error)
-    ? error.data.message
-    : t`Error sending test email`;
-}

@@ -17,6 +17,7 @@ import { SMTPConnectionCard } from "../Email/SMTPConnectionCard";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { EmailFromAddressWidget } from "../widgets/EmailFromAddressWidget";
 import { EmailReplyToWidget } from "../widgets/EmailReplyToWidget";
+import { SendTestEmailWidget } from "../widgets/SendTestEmailWidget";
 
 export function EmailSettingsPage() {
   const { data: settingValues, isLoading } = useGetSettingsQuery();
@@ -79,6 +80,7 @@ export function EmailSettingsPage() {
                 { value: "none", label: t`Don't show suggestions` },
               ]}
             />
+            <SendTestEmailWidget />
           </SettingsSection>
         )}
         <Center>

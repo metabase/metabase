@@ -117,9 +117,6 @@ describe("CloudSMTPConnectionForm", () => {
     expect(screen.getByLabelText(/SMTP password/i)).toHaveDisplayValue(
       "*****chu",
     );
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
   });
 
   it("disable save button correctly", async () => {
@@ -168,8 +165,9 @@ describe("CloudSMTPConnectionForm", () => {
     );
 
     const puts = await findRequests("PUT");
-    const { body } = puts[0];
+    const { url, body } = puts[0];
 
+    expect(url).toContain("/api/email/cloud");
     expect(body).toEqual({
       "cloud-email-smtp-host": "smtp.treeko.com",
       "cloud-email-smtp-port": 587,
@@ -213,37 +211,5 @@ describe("CloudSMTPConnectionForm", () => {
 
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
-  });
-
-  it("should hide test email button when fields are missing", async () => {
-    await setup({});
-    await userEvent.clear(screen.getByLabelText(/SMTP Host/i));
-
-    expect(
-      screen.queryByRole("button", { name: /send test email/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should hide test email button when form is dirty", async () => {
-    await setup({});
-
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
-    await userEvent.type(
-      screen.getByLabelText(/SMTP host/i),
-      "smtp.treeko.com",
-    );
-    expect(
-      screen.queryByRole("button", { name: /send test email/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("should enable test email button when all fields are set by environment variables (metabase#45445)", async () => {
-    await setup({ setEnvVars: "all" });
-
-    expect(
-      await screen.findByRole("button", { name: /send test email/i }),
-    ).toBeEnabled();
   });
 });
