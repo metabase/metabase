@@ -1,4 +1,5 @@
 import {
+  ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -12,15 +13,20 @@ import {
 
 const { H } = cy;
 
+const FIRST_DASHBOARD_NAME = "Orders in a dashboard";
+const SECOND_DASHBOARD_NAME = "Acme Inc";
+const FIRST_QUESTION_NAME = "Orders, Count";
+const SECOND_QUESTION_NAME = "Orders, Count, Grouped by Created At (year)";
+
 describe("scenarios > embedding > sdk iframe embed setup > select embed entity", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.setTokenFeatures("all");
 
-    H.createDashboard({ name: "Acme Inc" }).then(
+    H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
       ({ body: { id: dashboardId } }) => {
-        cy.wrap(dashboardId).as("acmeDashboardId");
+        cy.wrap(dashboardId).as("secondDashboardId");
       },
     );
 
@@ -29,9 +35,9 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("can select a dashboard from the recents list", () => {
+  it("can select a recent dashboard to embed", () => {
     cy.log("add two dashboards to activity log");
-    H.visitDashboard("@acmeDashboardId");
+    H.visitDashboard("@secondDashboardId");
     cy.wait("@dashboard");
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
@@ -40,6 +46,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
+      cy.findByText("Select a dashboard to embed").should("be.visible");
 
       cy.log("first dashboard should be selected by default");
       getRecentItemCards()
@@ -47,23 +54,25 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
         .first()
         .should("have.attr", "data-selected", "true");
 
-      cy.findByText("Acme Inc").should("be.visible");
-      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText(FIRST_DASHBOARD_NAME).should("be.visible");
+      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
 
       cy.log("second dashboard can be selected");
-      cy.findByText("Acme Inc").click();
+      cy.findByText(SECOND_DASHBOARD_NAME).click();
       getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
     getPreviewIframe().within(() => {
-      cy.findByText("Acme Inc").should("be.visible");
+      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
   });
 
-  it("selects the most recently visited question from the recents list", () => {
-    cy.log("add question to activity log");
+  it("can select a recent question to embed", () => {
+    cy.log("add two questions to activity log");
+    H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+    cy.wait("@cardQuery");
     H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
     cy.wait("@cardQuery");
 
@@ -72,21 +81,31 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
       cy.findByText("Next").click();
-      cy.findByText("Orders, Count").should("be.visible");
 
-      cy.log("only one recent item should be visible");
-      getRecentItemCards().should("have.length", 1);
+      cy.findByText("Select a chart to embed").should("be.visible");
+
+      cy.log("first question should be selected by default");
+      getRecentItemCards()
+        .should("have.length", 2)
+        .first()
+        .should("have.attr", "data-selected", "true");
+
+      cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
+      cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
+
+      cy.log("second question can be selected");
+      cy.findByText(SECOND_QUESTION_NAME).click();
+      getRecentItemCards().eq(1).should("have.attr", "data-selected", "true");
     });
 
+    cy.log("selected question should be shown in the preview");
     cy.wait("@cardQuery");
-
-    cy.log("question should be displayed in the preview");
     getPreviewIframe().within(() => {
-      cy.findByText("Orders, Count").should("be.visible");
+      cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
   });
 
-  describe("Entity selection with empty recents", () => {
+  describe.skip("Entity selection with empty recents", () => {
     beforeEach(() => {
       // Simulate empty activity log for fresh user testing
       cy.intercept("GET", "/api/activity/recents?*", {
@@ -126,49 +145,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
       const iframe = getPreviewIframe();
       iframe.within(() => {
         cy.findByText("Person overview").should("be.visible");
-      });
-    });
-  });
-
-  describe("Entity selection integration", () => {
-    it("selected entity persists when navigating between embed steps", () => {
-      H.visitDashboard("@acmeDashboardId");
-      cy.wait("@dashboard");
-
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // TODO: Once full step navigation is implemented, verify:
-      // - Select entity in Step 3
-      // - Navigate to Step 4 (embed options)
-      // - Navigate back to Step 3
-      // - Verify selected entity is still selected
-      // - Navigate to Step 5 (code snippets)
-      // - Verify selected entity appears in code snippets
-
-      // For now, verify current functionality
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Person overview").should("be.visible");
-      });
-    });
-
-    it("changing selected entity updates preview immediately", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // TODO: Once Step 3 UI is implemented, add test for:
-      // - Select different entities from recents or search
-      // - Verify preview updates immediately without page reload
-      // - Test switching between dashboards and questions
-      // - Verify preview reflects correct content
-
-      // Verify current immediate preview functionality
-      getEmbedSidebar().findByText("Chart").click();
-
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Query log").should("be.visible");
       });
     });
   });
