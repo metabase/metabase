@@ -48,9 +48,9 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
     }
 
     const eventMapping = {
-      db: "database_setup_clicked",
-      csv: "csv_upload_clicked",
-      gsheet: "sheets_connection_clicked",
+      db: "database_tab_clicked",
+      csv: "csv_tab_clicked",
+      gsheet: "sheets_tab_clicked",
     } as const;
 
     trackAddDataEvent(eventMapping[tabValue]);
