@@ -41,13 +41,13 @@ describe("DisplayValuesPicker", () => {
 
     const dropdown = within(screen.getByRole("listbox"));
     expect(
-      dropdown.getByRole("option", { name: "Use original value" }),
+      dropdown.getByRole("option", { name: /Use original value/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
     expect(
-      dropdown.getByRole("option", { name: "Use foreign key" }),
+      dropdown.getByRole("option", { name: /Use foreign key/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
     expect(
-      dropdown.getByRole("option", { name: "Custom mapping" }),
+      dropdown.getByRole("option", { name: /Custom mapping/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
   });
 
@@ -58,13 +58,13 @@ describe("DisplayValuesPicker", () => {
 
     const dropdown = within(screen.getByRole("listbox"));
     expect(
-      dropdown.getByRole("option", { name: "Use original value" }),
+      dropdown.getByRole("option", { name: /Use original value/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
     expect(
-      dropdown.getByRole("option", { name: "Use foreign key" }),
+      dropdown.getByRole("option", { name: /Use foreign key/ }),
     ).toHaveAttribute("data-combobox-disabled", "true");
     expect(
-      dropdown.getByRole("option", { name: "Custom mapping" }),
+      dropdown.getByRole("option", { name: /Custom mapping/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
   });
 
@@ -111,13 +111,13 @@ describe("DisplayValuesPicker", () => {
 
     const dropdown = within(screen.getByRole("listbox"));
     expect(
-      dropdown.getByRole("option", { name: "Use original value" }),
+      dropdown.getByRole("option", { name: /Use original value/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
     expect(
-      dropdown.getByRole("option", { name: "Use foreign key" }),
+      dropdown.getByRole("option", { name: /Use foreign key/ }),
     ).toHaveAttribute("data-combobox-disabled", "true");
     expect(
-      dropdown.getByRole("option", { name: "Custom mapping" }),
+      dropdown.getByRole("option", { name: /Custom mapping/ }),
     ).not.toHaveAttribute("data-combobox-disabled");
   });
 });
