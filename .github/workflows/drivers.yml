@@ -21,40 +21,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Read team.json and check if tier3 drivers should run
+      - name: Check if tier3 drivers should run
         id: check_team_and_branch
         run: |
-          GITHUB_ACTOR_LOWER=$(echo "${{ github.actor }}" | tr '[:upper:]' '[:lower:]')
-          REQUIRED_TEAM_MEMBERS=$(jq -r '.teams[] | select(.name == "Drivers" or .name == "Querying" or .name == "Semantic Layer") | .members[]' .github/team.json | tr '[:upper:]' '[:lower:]')
-          IS_REQUIRED_MEMBER=false
-          for member in ${REQUIRED_TEAM_MEMBERS}; do
-            if [[ "${GITHUB_ACTOR_LOWER}" == "${member}" ]]; then
-              IS_REQUIRED_MEMBER=true
-              break
-            fi
-          done
-          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/pulls/60016') }}"
-          HAS_RUN_TESTS_LABEL="${{ contains(github.event.pull_request.labels.*.name, 'run-tests') }}"
+          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
+          HAS_TEAM_LABEL="${{ contains(github.event.pull_request.labels.*.name, '.Team/Drivers') || contains(github.event.pull_request.labels.*.name, '.Team/Querying') || contains(github.event.pull_request.labels.*.name, '.Team/SemanticLayer') }}"
 
-          echo "GitHub Actor: ${{ github.actor }}"
-          echo "Team Members: ${REQUIRED_TEAM_MEMBERS}"
-          echo "Is Required Team Member: ${IS_REQUIRED_MEMBER}"
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
-          echo "Has 'run-tests' label: ${HAS_RUN_TESTS_LABEL}"
-          # Logic to determine if tier 3 tests should skip
-          # Skip if not a required team member AND not on master or release branches
-          if [[ "${IS_REQUIRED_MEMBER}" == "true" ]]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "User is a required team member. Tier 3 driver tests will run."
-          elif [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
+          echo "Has '.Team/Drivers' or '.Team/Querying' or '.Team/SemanticLayer' label: ${HAS_TEAM_LABEL}"
+          if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
-          elif [[ "${HAS_RUN_TESTS_LABEL}" == "true" ]]; then
+          elif [[ "${HAS_TEAM_LABEL}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "The 'run-tests' label is present. Tier 3 driver tests will run."
+            echo "A relevant team label is present. Tier 3 driver tests will run."
           else
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "User is not a required team member and not merging into master/release. Tier 3 driver tests will be skipped."
+            echo "Not labeled with required team and not merging into master/release. Tier 3 driver tests will be skipped."
           fi
         shell: bash
   be-tests-athena-ee:
