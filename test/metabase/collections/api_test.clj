@@ -1050,6 +1050,44 @@
                  (into #{} (map #(select-keys % [:name :authority_level]))
                        items))))))))
 
+(deftest collection-items-include-can-run-adhoc-query-test
+  (testing "GET /api/collection/:id/items and GET /api/collection/root/items"
+    (testing "include_can_run_adhoc_query parameter controls hydration of can_run_adhoc_query flag"
+      (mt/with-temp [:model/Collection {collection-id :id} {}
+                     :model/Card {card-id :id} {:collection_id collection-id}
+                     :model/Card {root-card-id :id} {:collection_id nil}]
+        (testing "When include_can_run_adhoc_query=false (default), can_run_adhoc_query is not included"
+          (let [collection-items (:data (mt/user-http-request :rasta :get 200
+                                                              (str "collection/" collection-id "/items")))
+                root-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))]
+            (is (not (contains? (first collection-items) :can_run_adhoc_query)))
+            (is (not (some #(contains? % :can_run_adhoc_query) root-items)))))
+
+        (testing "When include_can_run_adhoc_query=true, can_run_adhoc_query is included for cards"
+          (let [collection-items (:data (mt/user-http-request :rasta :get 200
+                                                              (str "collection/" collection-id "/items")
+                                                              :include_can_run_adhoc_query true))
+                root-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items"
+                                                        :include_can_run_adhoc_query true))
+                card-item (first (filter #(= (:id %) card-id) collection-items))
+                root-card-item (first (filter #(= (:id %) root-card-id) root-items))]
+            (is (contains? card-item :can_run_adhoc_query))
+            (is (boolean? (:can_run_adhoc_query card-item)))
+            (is (contains? root-card-item :can_run_adhoc_query))
+            (is (boolean? (:can_run_adhoc_query root-card-item)))))
+
+        (testing "can_run_adhoc_query is only added to card-like models (card, dataset, metric)"
+          (mt/with-temp [:model/Dashboard {dashboard-id :id} {:collection_id collection-id}
+                         :model/Collection {subcoll-id :id} {:location (collection/children-location
+                                                                        (t2/select-one :model/Collection :id collection-id))}]
+            (let [items (:data (mt/user-http-request :rasta :get 200
+                                                     (str "collection/" collection-id "/items")
+                                                     :include_can_run_adhoc_query true))
+                  dashboard-item (first (filter #(= (:id %) dashboard-id) items))
+                  collection-item (first (filter #(= (:id %) subcoll-id) items))]
+              (is (not (contains? dashboard-item :can_run_adhoc_query)))
+              (is (not (contains? collection-item :can_run_adhoc_query))))))))))
+
 (deftest collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
     (testing "Includes datasets"
@@ -2128,87 +2166,87 @@
                           :fully_parameterized true}]
                         (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
                             :data
-                            (results-matching {:name "Business Card", :model "card"})))))))
+                            (results-matching {:name "Business Card", :model "card"}))))))
 
-    (testing "a card with only a reference to another card is considered fully parameterized (#25022)"
-      (mt/with-temp [:model/Card card-1 {:dataset_query (mt/mbql-query venues)}]
-        (let [card-tag (format "#%d" (u/the-id card-1))]
-          (mt/with-temp [:model/Card card-2 {:name "Business Card"
-                                             :dataset_query
-                                             (mt/native-query {:template-tags
-                                                               {card-tag
-                                                                {:id (str (random-uuid))
-                                                                 :name card-tag
-                                                                 :display-name card-tag
-                                                                 :type :card
-                                                                 :card-id (u/the-id card-1)}}
-                                                               :query (format "SELECT * FROM {{#%d}}" (u/the-id card-1))})}]
-            (is (partial= [{:name               "Business Card"
-                            :entity_id          (:entity_id card-2)
-                            :model              "card"
-                            :fully_parameterized true}]
-                          (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
-                              :data
-                              (results-matching {:name "Business Card", :model "card"}))))))))))
+      (testing "a card with only a reference to another card is considered fully parameterized (#25022)"
+        (mt/with-temp [:model/Card card-1 {:dataset_query (mt/mbql-query venues)}]
+          (let [card-tag (format "#%d" (u/the-id card-1))]
+            (mt/with-temp [:model/Card card-2 {:name "Business Card"
+                                               :dataset_query
+                                               (mt/native-query {:template-tags
+                                                                 {card-tag
+                                                                  {:id (str (random-uuid))
+                                                                   :name card-tag
+                                                                   :display-name card-tag
+                                                                   :type :card
+                                                                   :card-id (u/the-id card-1)}}
+                                                                 :query (format "SELECT * FROM {{#%d}}" (u/the-id card-1))})}]
+              (is (partial= [{:name               "Business Card"
+                              :entity_id          (:entity_id card-2)
+                              :model              "card"
+                              :fully_parameterized true}]
+                            (-> (mt/user-http-request :crowberto :get 200 "collection/root/items")
+                                :data
+                                (results-matching {:name "Business Card", :model "card"}))))))))
 
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
-(defn- api-get-root-collection-children
-  [& additional-get-params]
-  (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params))))
+      (defn- api-get-root-collection-children
+        [& additional-get-params]
+        (mt/boolean-ids-and-timestamps (:data (apply mt/user-http-request :rasta :get 200 "collection/root/items" additional-get-params))))
 
-(defn- remove-non-test-collections [items]
-  (filter (fn [{collection-name :name}]
-            (or (str/includes? collection-name "Personal Collection")
-                (#{"A" "B" "C" "D" "E" "F" "G"} collection-name)))
-          items))
+      (defn- remove-non-test-collections [items]
+        (filter (fn [{collection-name :name}]
+                  (or (str/includes? collection-name "Personal Collection")
+                      (#{"A" "B" "C" "D" "E" "F" "G"} collection-name)))
+                items)))
 
-(deftest fetch-root-collection-items-test
-  (testing "sanity check"
-    (is (collection/user->personal-collection (mt/user->id :rasta))))
-  (testing "GET /api/collection/root/items"
-    (testing "Do top-level collections show up as children of the Root Collection?"
-      (with-collection-hierarchy! [a b c d e f g]
-        (testing "children"
-          (is (partial= (map collection-item ["A"])
-                        (remove-non-test-collections (api-get-root-collection-children)))))))
+    (deftest fetch-root-collection-items-test
+      (testing "sanity check"
+        (is (collection/user->personal-collection (mt/user->id :rasta))))
+      (testing "GET /api/collection/root/items"
+        (testing "Do top-level collections show up as children of the Root Collection?"
+          (with-collection-hierarchy! [a b c d e f g]
+            (testing "children"
+              (is (partial= (map collection-item ["A"])
+                            (remove-non-test-collections (api-get-root-collection-children)))))))
 
-    (testing "...and collapsing children should work for the Root Collection as well"
-      (with-collection-hierarchy! [b d e f g]
-        (testing "children"
-          (is (partial= (map collection-item ["B" "D" "F"])
-                        (remove-non-test-collections (api-get-root-collection-children)))))))
+        (testing "...and collapsing children should work for the Root Collection as well"
+          (with-collection-hierarchy! [b d e f g]
+            (testing "children"
+              (is (partial= (map collection-item ["B" "D" "F"])
+                            (remove-non-test-collections (api-get-root-collection-children)))))))
 
-    (testing "does `archived` work on Collections as well?"
-      (with-collection-hierarchy! [a b d e f g]
-        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
-                              {:archived true})
-        (is (= [] (remove-non-test-collections (api-get-root-collection-children)))))
-      (with-collection-hierarchy! [a b d e f g]
-        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
-                              {:archived true})
-        (is (= [] (remove-non-test-collections (api-get-root-collection-children))))))
+        (testing "does `archived` work on Collections as well?"
+          (with-collection-hierarchy! [a b d e f g]
+            (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
+                                  {:archived true})
+            (is (= [] (remove-non-test-collections (api-get-root-collection-children)))))
+          (with-collection-hierarchy! [a b d e f g]
+            (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
+                                  {:archived true})
+            (is (= [] (remove-non-test-collections (api-get-root-collection-children))))))
 
-    (testing "\n?namespace= parameter"
-      (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
-                     :model/Collection {coins-id :id}  {:name "Coin Collection", :namespace "currency"}]
-        (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
-        (letfn [(collection-names [items]
-                  (->> (:data items)
-                       (filter #(and (= (:model %) "collection")
-                                     (#{normal-id coins-id} (:id %))))
-                       (map :name)))]
-          (testing "should only show Collections in the 'default' namespace by default"
-            (is (= ["Normal Collection"]
-                   (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
+        (testing "\n?namespace= parameter"
+          (mt/with-temp [:model/Collection {normal-id :id} {:name "Normal Collection"}
+                         :model/Collection {coins-id :id}  {:name "Coin Collection", :namespace "currency"}]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) coins-id)
+            (letfn [(collection-names [items]
+                      (->> (:data items)
+                           (filter #(and (= (:model %) "collection")
+                                         (#{normal-id coins-id} (:id %))))
+                           (map :name)))]
+              (testing "should only show Collections in the 'default' namespace by default"
+                (is (= ["Normal Collection"]
+                       (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items")))))
 
-          (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
-            (testing "?namespace=currency"
-              (is (= ["Coin Collection"]
-                     (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=currency")))))
-            (testing "?namespace=stamps"
-              (is (= []
-                     (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=stamps")))))))))))
+              (testing "By passing `:namespace` we should be able to see Collections in that `:namespace`"
+                (testing "?namespace=currency"
+                  (is (= ["Coin Collection"]
+                         (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=currency")))))
+                (testing "?namespace=stamps"
+                  (is (= []
+                         (collection-names (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=stamps")))))))))))))
 
 (deftest root-collection-snippets-test
   (testing "GET /api/collection/root/items?namespace=snippets"
