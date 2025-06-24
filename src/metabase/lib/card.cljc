@@ -1,5 +1,6 @@
 (ns metabase.lib.card
   (:require
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
@@ -78,14 +79,22 @@
 
   * `source-metadata-col` = (possibly snake_cased) column metadata from Card `:source-metadata`
   * `field-metadata`      = Field metadata (`:metadata/column`) from the metadata provider for the Field with ID"
-  [source-metadata-col :- :map
-   card-id             :- [:maybe ::lib.schema.id/card]
-   field-metadata      :- [:maybe ::lib.schema.metadata/column]]
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   source-metadata-col   :- :map
+   card-id               :- [:maybe ::lib.schema.id/card]
+   field-metadata        :- [:maybe ::lib.schema.metadata/column]]
   (let [source-metadata-col (-> source-metadata-col
                                 (update-keys u/->kebab-case-en))
-        ;; use the (possibly user-specified) display name as the "original display name" going forward
+        ;; use the (possibly user-specified) display name as the "original display name" going forward ONLY IF THE
+        ;; CARD THIS CAME FROM WAS A MODEL! BUT DON'T USE IT IF IT ALREADY CONTAINS A `→`!!!
         source-metadata-col (cond-> source-metadata-col
-                              (:display-name source-metadata-col) (assoc :lib/original-display-name (:display-name source-metadata-col)))
+                              (and (:display-name source-metadata-col)
+                                   ;; TODO (Cam 6/23/25) -- a little silly to fetch this Card like 100 times, maybe we
+                                   ;; should just change this function to take `card` instead.
+                                   (when card-id
+                                     (when-some [card (lib.metadata/card metadata-providerable card-id)]
+                                       (= (:type card) :model))))
+                              (assoc :lib/model-display-name (:display-name source-metadata-col)))
         col (cond-> (merge
                      {:base-type :type/*, :lib/type :metadata/column}
                      (m/filter-keys some? field-metadata)
@@ -133,7 +142,7 @@
            field-ids         (keep :id cols)
            fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
            field-id->field   (m/index-by :id fields)]
-       (mapv #(->card-metadata-column % card-id (get field-id->field (:id %))) cols)))))
+       (mapv #(->card-metadata-column metadata-provider % card-id (get field-id->field (:id %))) cols)))))
 
 (def ^:private CardColumnMetadata
   [:merge
@@ -172,7 +181,8 @@
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top."
-  [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type])
+  [:id :description :display-name :semantic-type :fk-target-field-id :settings :visibility-type
+   :lib/source-display-name])
 
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these

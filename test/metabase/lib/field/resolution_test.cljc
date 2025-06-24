@@ -211,63 +211,65 @@
 ;;; this is adapted from [[metabase.query-processor.preprocess-test/model-display-names-test]]; the `query` below is
 ;;; meant to look like the results of [[metabase.query-processor.preprocess/preprocess]] (what we will actually see
 ;;; in [[metabase.lib.metadata.result-metadata/returned-columns]])
+;;;
+;;; TODO (Cam 6/23/25) -- rework this to use the [[mock-preprocess]] stuff I added below
 (deftest ^:parallel model-display-names-test
   (testing "Preserve display names from models"
     (let [native-cols (for [col [{:name "EXAMPLE_TIMESTAMP", :base-type :type/DateTime}
                                  {:name "EXAMPLE_WEEK", :base-type :type/DateTime}]]
                         (assoc col :lib/type :metadata/column, :display-name (:name col)))
-          mp (as-> meta/metadata-provider mp
-               (lib.tu/mock-metadata-provider
-                mp
-                {:cards
-                 [{:id              1
-                   :name            "NATIVE"
-                   :database-id     (meta/id)
-                   :dataset-query   {:database (meta/id), :type :native, :native {:query "SELECT * FROM some_table;"}}
-                   :result-metadata native-cols}]})
-               ;; Card 2 is a model that uses the Card 1 (a native query) as a source
-               (lib.tu/mock-metadata-provider
-                mp
-                {:cards
-                 [(let [query (lib.tu.macros/mbql-query nil
-                                {:fields [[:field "EXAMPLE_TIMESTAMP" {:base-type :type/DateTime}]
-                                          [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]]
-                                 :source-table "card__1"})]
-                    {:id              2
-                     :type            :model
-                     :name            "MODEL"
-                     :database-id     (meta/id)
-                     :dataset-query   query
-                     :result-metadata (for [col (lib.metadata.result-metadata/returned-columns (lib/query mp query))]
-                                        (assoc col :display-name (u.humanization/name->human-readable-name :simple (:name col))))})]}))
-          query {:lib/type     :mbql/query
-                 :lib/metadata mp
-                 :database     (meta/id)
-                 :stages       [{:lib/type :mbql.stage/native
-                                 :lib/stage-metadata {:lib/type :metadata/results
-                                                      :columns (lib.card/card-metadata-columns mp (lib.metadata/card mp 1))}
-                                 :native   "SELECT * FROM some_table;"
-                                 ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
-                                 :qp/stage-is-from-source-card 1}
-                                {:lib/type :mbql.stage/mbql
-                                 :lib/stage-metadata {:lib/type :metadata/results
-                                                      :columns (lib.card/card-metadata-columns mp (lib.metadata/card mp 2))}
-                                 :fields [[:field {:base-type :type/DateTime, :lib/uuid "48052020-59e3-47e7-bfdc-38ab12c27292"}
-                                           "EXAMPLE_TIMESTAMP"]
-                                          [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}
-                                           "EXAMPLE_WEEK"]]
-                                 :qp/stage-had-source-card 1
-                                 :qp/stage-is-from-source-card 2
-                                 :source-query/model? false}
-                                {:lib/type :mbql.stage/mbql
-                                 :fields [[:field {:base-type :type/DateTime, :lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
-                                           "EXAMPLE_TIMESTAMP"]
-                                          [:field {:base-type :type/DateTime, :inherited-temporal-unit :week, :lib/uuid "2b33e40b-3537-4126-aef0-96a7792d339b"}
-                                           "EXAMPLE_WEEK"]]
-                                 :qp/stage-had-source-card 2
-                                 ;; i.e., the previous stage was from a model. Added
-                                 ;; by [[metabase.query-processor.middleware.fetch-source-query/resolve-source-cards-in-stage]]]
-                                 :source-query/model? true}]}]
+          mp          (as-> meta/metadata-provider mp
+                        (lib.tu/mock-metadata-provider
+                         mp
+                         {:cards
+                          [{:id              1
+                            :name            "NATIVE"
+                            :database-id     (meta/id)
+                            :dataset-query   {:database (meta/id), :type :native, :native {:query "SELECT * FROM some_table;"}}
+                            :result-metadata native-cols}]})
+                        ;; Card 2 is a model that uses the Card 1 (a native query) as a source
+                        (lib.tu/mock-metadata-provider
+                         mp
+                         {:cards
+                          [(let [query (lib.tu.macros/mbql-query nil
+                                         {:fields       [[:field "EXAMPLE_TIMESTAMP" {:base-type :type/DateTime}]
+                                                         [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]]
+                                          :source-table "card__1"})]
+                             {:id              2
+                              :type            :model
+                              :name            "MODEL"
+                              :database-id     (meta/id)
+                              :dataset-query   query
+                              :result-metadata (for [col (lib.metadata.result-metadata/returned-columns (lib/query mp query))]
+                                                 (assoc col :display-name (u.humanization/name->human-readable-name :simple (:name col))))})]}))
+          query       {:lib/type     :mbql/query
+                       :lib/metadata mp
+                       :database     (meta/id)
+                       :stages       [{:lib/type                     :mbql.stage/native
+                                       :lib/stage-metadata           {:lib/type :metadata/results
+                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 1))}
+                                       :native                       "SELECT * FROM some_table;"
+                                       ;; `:qp` and `:source-query` keys get added by QP middleware during preprocessing.
+                                       :qp/stage-is-from-source-card 1}
+                                      {:lib/type                     :mbql.stage/mbql
+                                       :lib/stage-metadata           {:lib/type :metadata/results
+                                                                      :columns  (lib.card/card-metadata-columns mp (lib.metadata/card mp 2))}
+                                       :fields                       [[:field {:base-type :type/DateTime, :lib/uuid "48052020-59e3-47e7-bfdc-38ab12c27292"}
+                                                                       "EXAMPLE_TIMESTAMP"]
+                                                                      [:field {:base-type :type/DateTime, :temporal-unit :week, :lib/uuid "dd9bdda4-688c-4a14-8ff6-88d4e2de6628"}
+                                                                       "EXAMPLE_WEEK"]]
+                                       :qp/stage-had-source-card     1
+                                       :qp/stage-is-from-source-card 2
+                                       :source-query/model?          false}
+                                      {:lib/type                 :mbql.stage/mbql
+                                       :fields                   [[:field {:base-type :type/DateTime, :lib/uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
+                                                                   "EXAMPLE_TIMESTAMP"]
+                                                                  [:field {:base-type :type/DateTime, :inherited-temporal-unit :week, :lib/uuid "2b33e40b-3537-4126-aef0-96a7792d339b"}
+                                                                   "EXAMPLE_WEEK"]]
+                                       :qp/stage-had-source-card 2
+                                       ;; i.e., the previous stage was from a model. Added
+                                       ;; by [[metabase.query-processor.middleware.fetch-source-query/resolve-source-cards-in-stage]]]
+                                       :source-query/model?      true}]}]
       (testing `lib.field.resolution/previous-stage-or-source-card-metadata
         (is (=? {:display-name "Example Timestamp"
                  :lib/source   :source/card}
@@ -286,9 +288,11 @@
                   (lib.field.resolution/resolve-field-ref query -1 field-ref)))
           (testing "preserve display names from field refs"
             (let [ref' (lib.options/update-options field-ref assoc :display-name "My Cool Timestamp")]
-              (is (=? {:name            "EXAMPLE_TIMESTAMP"
-                       :display-name    "My Cool Timestamp"
-                       :lib/source-uuid "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
+              (is (=? {:name                   "EXAMPLE_TIMESTAMP"
+                       :display-name           "My Cool Timestamp"
+                       :lib/ref-display-name   "My Cool Timestamp"
+                       :lib/model-display-name "Example Timestamp"
+                       :lib/source-uuid        "40bb920d-d197-4ed2-ad2f-9400427b0c16"}
                       (lib.field.resolution/resolve-field-ref query -1 ref')))))))
       (testing `lib/returned-columns
         (is (= ["Example Timestamp"
@@ -449,7 +453,7 @@
                                                      :binning       {:strategy :default}}]]})}]})
           query (lib/query mp {:type :query, :database (meta/id), :query {:source-table "card__1"}})
           expected {:base-type                        :type/Text
-                    :display-name                     "C → Name: Month" #_"C → Name: Auto binned: Month" ; not sure which is 'correct'
+                    :display-name                     "C → Name: Auto binned: Month"
                     :effective-type                   :type/Text
                     :fingerprint                      map?
                     :id                               (meta/id :categories :name)
@@ -457,7 +461,7 @@
                     :semantic-type                    :type/Name
                     :table-id                         (meta/id :categories)
                     :visibility-type                  :normal
-                    :was-binned                       true #_false
+                    :was-binned                       true
                     :lib/card-id                      1
                     :lib/desired-column-alias         "C__NAME"
                     :lib/original-display-name        "Name"

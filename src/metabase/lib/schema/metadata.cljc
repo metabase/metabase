@@ -287,10 +287,23 @@
     [:lib/hack-original-name {:optional true} ::original-name]
     ;;
     ;; the original display name of this column before adding join/temporal bucketing/binning stuff to it. `Join ->
-    ;; <whatever>` or `<whatever>: Month` or `<whatever>: Auto-binned`. This should be equal to the display name when
-    ;; it first came out of the metadata provider -- so it might be something user-supplied in a Model
-    ;; `:result-metadata`.
+    ;; <whatever>` or `<whatever>: Month` or `<whatever>: Auto-binned`. Should be equal to the very first
+    ;; `:display-name` we see when the column comes out of a metadata provider. Usually this is auto-generated with
+    ;; humanized names from `:name`, but may differ.
+    ;;
+    ;; TODO (Cam 6/23/25) -- not super clear if `:lib/original-display-name` and `:lib/model-display-name` should be
+    ;; equal or not if a column comes from a model. I think the answer should be YES, but I broke a bunch of stuff
+    ;; when I tried to make that change.
     [:lib/original-display-name {:optional true} [:maybe :string]]
+    ;;
+    ;; If this column came from a Model, the (possibly user-edited) display name for this column in the model.
+    ;; Generally model display names should override everything else (including the original display name) except for
+    ;; `:lib/ref-display-name`.
+    [:lib/model-display-name {:optional true} [:maybe :string]]
+    ;;
+    ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
+    ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.
+    [:lib/ref-display-name {:optional true} [:maybe :string]]
     ;;
     ;; when column metadata is returned by certain things
     ;; like [[metabase.lib.aggregation/selected-aggregation-operators]] or [[metabase.lib.field/fieldable-columns]], it

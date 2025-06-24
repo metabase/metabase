@@ -279,13 +279,13 @@
                {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
               (lib.card/saved-question-metadata edited-mp 1)))
       (doseq [card-id [1 2]]
-        (testing card-id
-          (is (=? [{:name "ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
-                   {:name "NAME", :description "user description", :display_name "user display name", :semantic_type :type/Name}
+        (testing (format "Card ID = %d" card-id)
+          (is (=? [{:name "ID",          :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
+                   {:name "NAME",        :description "user description", :display_name "user display name", :semantic_type :type/Name}
                    {:name "CATEGORY_ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
-                   {:name "LATITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
-                   {:name "LONGITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
-                   {:name "PRICE", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
+                   {:name "LATITUDE",    :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                   (qp.store/with-metadata-provider edited-mp
                     (qp.preprocess/query->expected-cols
                      {:database (meta/id)
@@ -295,10 +295,10 @@
         (let [card  (lib.metadata/card edited-mp 1)
               query (-> (:dataset-query card)
                         (assoc-in [:info :metadata/model-metadata] (:result-metadata card)))]
-          (is (=? [{:name "ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
-                   {:name "NAME", :description "user description", :display_name "user display name", :semantic_type :type/Name}
+          (is (=? [{:name "ID",          :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
+                   {:name "NAME",        :description "user description", :display_name "user display name", :semantic_type :type/Name}
                    {:name "CATEGORY_ID", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}
-                   {:name "LATITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
-                   {:name "LONGITUDE", :description "user description", :display_name "user display name", :semantic_type :type/Cost}
-                   {:name "PRICE", :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
+                   {:name "LATITUDE",    :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
+                   {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                   (qp.preprocess/query->expected-cols (lib/query mp query)))))))))

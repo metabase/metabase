@@ -211,7 +211,8 @@
    :source-field            :fk-field-id
    :source-field-join-alias :fk-join-alias
    :source-field-name       :fk-field-name
-   :temporal-unit           :metabase.lib.field/temporal-unit})
+   :temporal-unit           :metabase.lib.field/temporal-unit
+   :display-name            :lib/ref-display-name}) ; display-name gets copied to both display-name and lib/ref-display-name
 
 (def ^:private opts-metadata-fns
   "Map of
@@ -307,6 +308,7 @@
 (def ^:private previous-stage-propagated-keys
   #{::debug.origin
     :lib/original-display-name
+    :lib/model-display-name
     :lib/original-join-alias
     :lib/original-name
     :converted-timezone
