@@ -105,47 +105,24 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     });
   });
 
-  describe.skip("Entity selection with empty recents", () => {
-    beforeEach(() => {
-      // Simulate empty activity log for fresh user testing
-      cy.intercept("GET", "/api/activity/recents?*", {
-        recents: [],
-      }).as("emptyRecentItems");
+  it.skip("shows an empty state on the sidebar when there is no recent activity", () => {
+    cy.intercept("GET", "/api/activity/recents?*", {
+      recents: [],
+    }).as("emptyRecentItems");
+
+    visitNewEmbedPage();
+    cy.wait("@emptyRecentItems");
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click();
+
+      cy.findByText("Choose from your recently visited dashboards").should(
+        "not.exist",
+      );
     });
 
-    it("shows empty state for fresh user with no recent activities", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-      cy.wait("@emptyRecentItems");
-
-      // TODO: Once Step 3 UI is implemented, verify:
-      // - Empty state is shown when no recent activities
-      // - Empty state has illustration and search button
-      // - Search button opens dashboard/question search modal
-
-      // For now, verify fallback behavior (default entities)
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Person overview").should("be.visible");
-      });
-    });
-
-    it("allows searching for entities when recents list is empty", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-      cy.wait("@emptyRecentItems");
-
-      // TODO: Once Step 3 UI is implemented, add test for:
-      // - Empty state with search button is visible
-      // - Click search button opens modal
-      // - Can search and select dashboards/questions
-      // - Selected entity updates preview
-
-      // Placeholder verification
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Person overview").should("be.visible");
-      });
-    });
+    // - Empty state is shown when no recent activities
+    // - Empty state has illustration and search button
+    // - Search button opens dashboard/question search modal
   });
 });
