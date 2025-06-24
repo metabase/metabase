@@ -11,7 +11,7 @@ redirect_from:
 
 # Metabase Cloud
 
-Metabase Cloud is what we call our hosted service for our [Starter](https://www.metabase.com/product/starter), [Pro](https:www.metabase.com/product/pro), and [Enterprise](https://www.metabase.com/product/enterprise) plans. We deal with running your Metabase server for you, manage uptime and backups, and handle all the upgrades so you're always on the latest version of Metabase.
+Metabase Cloud is what we call our hosted service for our [Starter](https://www.metabase.com/product/starter), [Pro](https://www.metabase.com/product/pro), and [Enterprise](https://www.metabase.com/product/enterprise) plans. We deal with running your Metabase server for you, manage uptime and backups, and handle all the upgrades so you're always on the latest version of Metabase.
 
 ## Metabase Cloud documentation
 
