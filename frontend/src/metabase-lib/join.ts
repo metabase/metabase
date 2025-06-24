@@ -126,8 +126,8 @@ export function joinConditionLHSColumns(
   query: Query,
   stageIndex: number,
   joinOrJoinable?: JoinOrJoinable,
-  lhsColumn?: ColumnMetadataOrFieldRef,
-  rhsColumn?: ColumnMetadataOrFieldRef,
+  lhsColumn?: ExpressionClause,
+  rhsColumn?: ExpressionClause,
 ): ColumnMetadata[] {
   return ML.join_condition_lhs_columns(
     query,
