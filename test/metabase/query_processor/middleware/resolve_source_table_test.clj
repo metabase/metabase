@@ -1,8 +1,8 @@
 (ns metabase.query-processor.middleware.resolve-source-table-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
    [metabase.test :as mt]))

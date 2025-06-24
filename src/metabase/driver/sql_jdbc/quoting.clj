@@ -7,7 +7,7 @@
   "Helper macro for quoting identifiers."
   [driver & body]
   `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
-             sql/*quoted*  true]
+             sql/*options* (assoc @#'sql/*options* :quoted true)]
      ~@body))
 
 (defn quote-table

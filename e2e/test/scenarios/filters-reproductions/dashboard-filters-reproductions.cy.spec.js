@@ -1,7 +1,11 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -1150,7 +1154,7 @@ describe("issue 21528", () => {
 
     cy.log("The following scenario breaks on 46");
     // Navigating to another page via JavaScript is faster than using `cy.visit("/admin/datamodel")` to load the whole page again.
-    H.appBar().icon("gear").click();
+    H.appBar().findByRole("button", { name: "Settings" }).click();
     H.popover().findByText("Admin settings").click();
     H.appBar().findByText("Table Metadata").click();
     cy.findByRole("main")
@@ -1158,7 +1162,7 @@ describe("issue 21528", () => {
         "Select any table to see its schema and add or edit metadata.",
       )
       .should("be.visible");
-    cy.findByRole("navigation").findByText("Exit admin").click();
+    cy.findByTestId("admin-navbar").findByText("Exit admin").click();
 
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Our analytics").click();
@@ -1192,7 +1196,7 @@ describe("issue 22482", () => {
 
     H.filterWidget().click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
   });
 
   it("should round relative date range (metabase#22482)", () => {
@@ -1202,8 +1206,8 @@ describe("issue 22482", () => {
     cy.findByText("months").click();
 
     const expectedRange = getFormattedRange(
-      moment().startOf("month").add(-15, "month"),
-      moment().add(-1, "month").endOf("month"),
+      dayjs().startOf("month").add(-15, "month"),
+      dayjs().add(-1, "month").endOf("month"),
     );
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1240,7 +1244,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2158,7 +2162,7 @@ describe("issue 27768", () => {
 
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("Gizmo");
+      H.fieldValuesCombobox().type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -4239,7 +4243,7 @@ describe("issue 52918", () => {
     H.setFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("Between").should("be.visible");
     });
     cy.log("check that there is no overflow in the popover");
@@ -4262,7 +4266,7 @@ describe("issue 54236", () => {
     H.setFilter("Date picker", "All Options");
     H.sidebar().findByLabelText("No default").click();
     H.popover().within(() => {
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Next").click();
       cy.findByDisplayValue("30").clear().type("1");
       cy.findAllByDisplayValue("day").filter(":visible").click();
@@ -4470,5 +4474,306 @@ describe("issue 55678", () => {
       .findByText("Created At is Apr 1–30, 2022")
       .should("be.visible");
     H.assertQueryBuilderRowCount(1);
+  });
+});
+
+describe("issue 14595", () => {
+  const dialect = "postgres";
+  const tableName = "many_data_types";
+
+  function createDashboard() {
+    return H.getTableId({ name: tableName }).then((tableId) => {
+      return H.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [
+            createMockParameter({
+              id: "p1",
+              slug: "p1",
+              name: "p1",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "p2",
+              slug: "p2",
+              name: "p2",
+              type: "string/=",
+              sectionId: "string",
+            }),
+            createMockParameter({
+              id: "p3",
+              slug: "p3",
+              name: "p3",
+              type: "string/=",
+              sectionId: "string",
+            }),
+          ],
+        },
+        questions: [
+          {
+            name: "Orders",
+            query: { "source-table": ORDERS_ID },
+          },
+          {
+            name: "Products",
+            query: { "source-table": PRODUCTS_ID },
+          },
+          {
+            name: "Many data types",
+            query: { "source-table": tableId },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        return dashboard.id;
+      });
+    });
+  }
+
+  function mapParameters() {
+    cy.findByTestId("fixed-width-filters").findByText("p1").click();
+    H.selectDashboardFilter(H.getDashboardCard(0), "Source");
+    cy.findByTestId("fixed-width-filters").findByText("p2").click();
+    H.selectDashboardFilter(H.getDashboardCard(1), "Category");
+    cy.findByTestId("fixed-width-filters").findByText("p3").click();
+    H.selectDashboardFilter(H.getDashboardCard(2), "String");
+  }
+
+  function assertLinkedFilterSettings({
+    parameterName,
+    compatibleParameterNames,
+    incompatibleParameterNames,
+  }) {
+    cy.findByTestId("fixed-width-filters").findByText(parameterName).click();
+    H.sidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      compatibleParameterNames.forEach((compatibleParameterName) => {
+        cy.findByTestId("compatible-parameters")
+          .findByText(compatibleParameterName)
+          .should("be.visible");
+      });
+      incompatibleParameterNames.forEach((incompatibleParameterName) => {
+        cy.findByTestId("incompatible-parameters")
+          .findByText(incompatibleParameterName)
+          .should("be.visible");
+      });
+    });
+  }
+
+  function assertParameterSettings() {
+    assertLinkedFilterSettings({
+      parameterName: "p1",
+      compatibleParameterNames: ["p2"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p2",
+      compatibleParameterNames: ["p1"],
+      incompatibleParameterNames: ["p3"],
+    });
+    assertLinkedFilterSettings({
+      parameterName: "p3",
+      compatibleParameterNames: [],
+      incompatibleParameterNames: ["p1", "p2"],
+    });
+  }
+
+  beforeEach(() => {
+    H.restore(`${dialect}-writable`);
+    H.resetTestTable({ type: dialect, table: tableName });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName });
+  });
+
+  it("should not see parameters that cannot be linked to the current parameter in parameter settings (metabase#14595)", () => {
+    createDashboard().then((dashboardId) => H.visitDashboard(dashboardId));
+    H.editDashboard();
+    mapParameters();
+    assertParameterSettings();
+  });
+});
+
+describe("issue 44090", () => {
+  const parameterDetails = {
+    name: "p1",
+    slug: "string",
+    id: "f8ec7c71",
+    type: "string/=",
+  };
+
+  const questionDetails = {
+    name: "Orders",
+    query: {
+      "source-table": REVIEWS_ID,
+    },
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(questionDetails).then(({ body: { id: card_id } }) => {
+      H.createDashboard(dashboardDetails).then(
+        ({ body: { id: dashboard_id } }) => {
+          H.addOrUpdateDashboardCard({
+            dashboard_id,
+            card_id,
+            card: {
+              parameter_mappings: [
+                {
+                  card_id,
+                  parameter_id: parameterDetails.id,
+                  target: ["dimension", ["field", REVIEWS.BODY, {}]],
+                },
+              ],
+            },
+          });
+          H.visitDashboard(dashboard_id);
+        },
+      );
+    });
+  });
+
+  it("should not overflow the dashboard header when a filter contains a long value that contains spaces (metabase#44090)", () => {
+    const LONG_VALUE =
+      "Minima non hic doloribus ipsa dolore ratione in numquam. Minima eos vel harum velit. Consequatur consequuntur culpa sed eum";
+
+    H.filterWidget().click();
+    H.popover()
+      .first()
+      .within(() => {
+        cy.findByPlaceholderText("Search the list").type(LONG_VALUE);
+        cy.button("Add filter").click();
+      });
+
+    H.filterWidget().then(($el) => {
+      const { width } = $el[0].getBoundingClientRect();
+      cy.wrap(width).should("be.lt", 300);
+    });
+  });
+
+  it("should not overflow the dashboard header when a filter contains a long value that does not contain spaces (metabase#44090)", () => {
+    const LONG_VALUE =
+      "MinimanonhicdoloribusipsadolorerationeinnumquamMinimaeosvelharumvelitConsequaturconsequunturculpasedeum";
+
+    H.filterWidget().click();
+    H.popover()
+      .first()
+      .within(() => {
+        cy.findByPlaceholderText("Search the list").type(LONG_VALUE);
+        cy.button("Add filter").click();
+      });
+
+    H.filterWidget().then(($el) => {
+      const { width } = $el[0].getBoundingClientRect();
+      cy.wrap(width).should("be.lt", 300);
+    });
+  });
+});
+
+describe.skip("issue 47951", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+  });
+
+  it("should do X (metabase#47951)", () => {
+    cy.log("set up permissions");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+      [USER_GROUPS.DATA_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+    });
+
+    cy.log("set up remapping");
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      has_field_values: "list",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
+      has_field_values: "list",
+    });
+    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+      name: "Product ID",
+      type: "external",
+      human_readable_field_id: PRODUCTS.TITLE,
+    });
+    cy.request("POST", `/api/field/${REVIEWS.PRODUCT_ID}/dimension`, {
+      name: "Product ID",
+      type: "external",
+      human_readable_field_id: PRODUCTS.TITLE,
+    });
+
+    cy.log("create a dashboard");
+    const parameter = createMockParameter({
+      id: "p1",
+      slug: "p1",
+      type: "id",
+      sectionId: "id",
+      default: 1,
+    });
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [parameter],
+      },
+      questions: [
+        { name: "q1", query: { "source-table": ORDERS_ID } },
+        { name: "q2", query: { "source-table": REVIEWS_ID } },
+      ],
+    }).then(({ dashboard: dashboard, questions: [card1, card2] }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card1.id,
+            parameter_mappings: [
+              {
+                card_id: card1.id,
+                parameter_id: parameter.id,
+                target: ["dimension", ["field", ORDERS.PRODUCT_ID, null]],
+              },
+            ],
+          },
+          {
+            card_id: card2.id,
+            parameter_mappings: [
+              {
+                card_id: card2.id,
+                parameter_id: parameter.id,
+                target: ["dimension", ["field", REVIEWS.PRODUCT_ID, null]],
+              },
+            ],
+          },
+        ],
+      });
+      cy.wrap(dashboard.id).as("dashboardId");
+    });
+
+    cy.log("log in as a normal user and open the dashboard");
+    cy.signInAsNormalUser();
+    H.visitDashboard("@dashboardId");
+
+    cy.log("check remapping for default values");
+    H.filterWidget().findByText("Rustic Paper Wallet").should("be.visible");
+
+    cy.log("check remapping for dropdown values");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+      cy.findByText("Aerodynamic Bronze Hat").should("be.visible");
+    });
   });
 });

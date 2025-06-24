@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
@@ -84,26 +85,16 @@ export const UserProvisioningRegenerateTokenModal = ({
 
   if (!confirmed) {
     return (
-      <Modal
-        size="35rem"
-        padding="2rem"
+      <ConfirmModal
         opened={opened}
         onClose={onClose}
         title={t`Regenerate token?`}
-      >
-        <Stack gap="lg">
-          <Text>
-            {/* eslint-disable-next-line no-literal-metabase-strings -- in admin settings */}
-            {t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
-          </Text>
-          <Flex justify="end" gap="md">
-            <Button onClick={onClose}>{t`Cancel`}</Button>
-            <Button variant="filled" onClick={handleConfirmRegenerate}>
-              {t`Regenerate now`}
-            </Button>
-          </Flex>
-        </Stack>
-      </Modal>
+        // eslint-disable-next-line no-literal-metabase-strings -- admin settings
+        message={t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
+        confirmButtonText={t`Regenerate now`}
+        confirmButtonProps={{ variant: "filled", color: "brand" }}
+        onConfirm={handleConfirmRegenerate}
+      />
     );
   }
 

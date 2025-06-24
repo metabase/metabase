@@ -21,4 +21,8 @@ export const Grid = styled.div`
   ${breakpointMaxMedium} {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  &:not(:last-child) {
+    margin-bottom: ${GAP_REM}rem;
+  }
 `;

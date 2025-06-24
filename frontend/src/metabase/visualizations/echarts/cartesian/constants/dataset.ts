@@ -17,14 +17,19 @@ export const IS_WATERFALL_TOTAL_DATA_KEY = `${NULL_CHAR}_is_total` as const;
 // Key of x-axis values
 export const X_AXIS_DATA_KEY = `${NULL_CHAR}_x` as const;
 
+// Key used to store original x-axis values in the transformed dataset
+// When working with time series or numeric scales, we process x-axis values for ECharts
+// to handle timezone adjustments or apply transformations (log, pow). Since this processing
+// is also applied to interpolated data points which are not in the original dataset, we store the unprocessed
+// x-axis values using this key to display accurate information in tooltips.
+export const X_AXIS_RAW_VALUE_DATA_KEY = `${NULL_CHAR}_x_raw` as const;
+
 // Key for the "other" series created by the `graph.max_categories` setting
 export const OTHER_DATA_KEY = `${NULL_CHAR}_other` as const;
 
-// In some cases a datum in `chartModel.transformedDataset` may include this
-// key, its value is equal to the index of that same datum in the original
-// dataset (e.g. `chartModel.dataset`)
-export const ORIGINAL_INDEX_DATA_KEY =
-  `${NULL_CHAR}_original_dataset_key` as const;
+// Stores the index that links this data point to its source in the original dataset (chartModel.dataset)
+// This reference allows tracking the origin of each point after dataset transformations are applied.
+export const INDEX_KEY = `${NULL_CHAR}_index` as const;
 
 // For ticks we want to pick the largest interval that exist 3 times in the
 // range. For example, if data has week granularity but the range is more than 3

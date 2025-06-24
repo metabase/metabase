@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 
 import { useToast } from "./use-toast";
 
@@ -17,7 +17,7 @@ const TestComponent = () => {
             // @ts-expect-error - we shouldn't hardcode ids in application code
             id: TEST_TOAST_ID,
             message: "Yeah Toast!",
-            icon: "check",
+            icon: "check_filled",
             timeout: 9000,
           })
         }
@@ -52,6 +52,9 @@ describe("useToast hook", () => {
 
     const removeButton = screen.getByText("Remove Toast");
     await userEvent.click(removeButton);
-    expect(screen.queryByText("Yeah Toast!")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.queryByText("Yeah Toast!")).not.toBeInTheDocument();
+    });
   });
 });

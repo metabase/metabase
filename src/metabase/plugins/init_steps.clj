@@ -5,7 +5,7 @@
 
   The entire list of possible init steps is below, as impls for the `do-init-step!` multimethod."
   (:require
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.util :as u]
    [metabase.util.log :as log]))

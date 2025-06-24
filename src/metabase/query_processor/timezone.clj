@@ -2,7 +2,7 @@
   "Functions for fetching the timezone for the current query."
   (:require
    [java-time.api :as t]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]

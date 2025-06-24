@@ -26,6 +26,7 @@
          (u/add-period "   "))))
 
 (deftest ^:parallel url?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected] (= expected
                        (u/url? s))
     "http://google.com"                                                                      true
@@ -60,7 +61,18 @@
     ;; nil .getAuthority needs to be handled or NullPointerException
     "http:/"                                                                                 false))
 
+#?(:clj
+   (deftest ^:parallel domain?-test
+     #_{:clj-kondo/ignore [:equals-true]}
+     (are [s expected] (= expected (u/domain? s))
+       "metabase.com"         true
+       "metabase.co.uk"       true
+       "sub.metabase.com"     true
+       "https://metabase.com" false
+       "email@metabase.com"   false)))
+
 (deftest ^:parallel state?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [x expected] (= expected
                        (u/state? x))
     "louisiana"            true
@@ -159,6 +171,7 @@
     {}                                         [:c]              {}))
 
 (deftest ^:parallel base64-string?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [s expected]    (= expected
                           (u/base64-string? s))
     "ABc="         true
@@ -296,6 +309,7 @@
     "metabase.com"   "cam.saul+1@metabase.com"))
 
 (deftest ^:parallel email-in-domain-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [in-domain? email domain] (= in-domain?
                                     (u/email-in-domain? email domain))
     true  "cam@metabase.com"          "metabase.com"
@@ -440,6 +454,7 @@
                         :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
+  #_{:clj-kondo/ignore [:equals-true]}
   (are [xs expected] (= expected
                         (u/empty-or-distinct? xs))
     nil     true
@@ -582,3 +597,19 @@
   (testing "safe min behaves like clojure.core/min"
     (is (= nil (u/safe-min nil)))
     (is (= 2 (u/safe-min nil 2 nil 3)))))
+
+(deftest ^:parallel find-first-map-indexed-test
+  (testing "find-first-map-indexed"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map-indexed nil [:a :b] 1)))
+      (is (= [1 {:a {:b 2}}]
+             (u/find-first-map-indexed test-maps [:a :b] 2)))
+      (is (nil? (u/find-first-map-indexed test-maps [:a :b] 5))))))
+
+(deftest ^:parallel find-first-map-test
+  (testing "find-first-map"
+    (let [test-maps [{:a {:b 1}} {:a {:b 2}} {:a {:b 2}} {:a {:b 3}}]]
+      (is (nil? (u/find-first-map nil [:a :b] 1)))
+      (is (nil? (u/find-first-map test-maps [:a :b] 5)))
+      (is (= {:a {:b 2}}
+             (u/find-first-map test-maps [:a :b] 2))))))

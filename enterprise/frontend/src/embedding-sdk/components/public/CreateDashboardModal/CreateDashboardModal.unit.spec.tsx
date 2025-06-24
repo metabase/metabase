@@ -8,7 +8,8 @@ import {
 import { screen, waitFor } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
 import {
   createMockCollection,
@@ -20,6 +21,12 @@ import {
   CreateDashboardModal,
   type CreateDashboardModalProps,
 } from "./CreateDashboardModal";
+
+jest.mock("metabase/common/hooks/use-locale", () => ({
+  useLocale: jest.fn(),
+}));
+
+const useLocaleMock = useLocale as jest.Mock;
 
 const CURRENT_USER = createMockUser({
   id: getNextId(),
@@ -43,7 +50,13 @@ const PERSONAL_COLLECTION = createMockCollection({
 const COLLECTIONS = [ROOT_COLLECTION, PERSONAL_COLLECTION];
 
 describe("CreateDashboardModal", () => {
-  it("should render", () => {
+  it("should render a loader when a locale is loading", async () => {
+    setup({ isLocaleLoading: true });
+
+    expect(screen.queryByText("New dashboard")).not.toBeInTheDocument();
+  });
+
+  it("should render", async () => {
     setup();
 
     expect(screen.getByText("New dashboard")).toBeInTheDocument();
@@ -120,14 +133,24 @@ describe("CreateDashboardModal", () => {
   });
 });
 
-function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
+function setup(
+  {
+    isLocaleLoading,
+    props,
+  }: {
+    isLocaleLoading?: boolean;
+    props?: Partial<CreateDashboardModalProps>;
+  } = { isLocaleLoading: false, props: {} },
+) {
+  useLocaleMock.mockReturnValue({ isLocaleLoading });
+
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
   return renderWithSDKProviders(
     <CreateDashboardModal onCreate={jest.fn()} {...props} />,
     {
       sdkProviderProps: {
-        authConfig: createMockAuthProviderUriConfig(),
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: {
         currentUser: CURRENT_USER,

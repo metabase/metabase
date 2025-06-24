@@ -10,7 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
@@ -84,9 +84,7 @@ const setup = ({
     </InteractiveQuestion>,
     {
       sdkProviderProps: {
-        authConfig: createMockAuthProviderUriConfig({
-          authProviderUri: "http://TEST_URI/sso/metabase",
-        }),
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
     },

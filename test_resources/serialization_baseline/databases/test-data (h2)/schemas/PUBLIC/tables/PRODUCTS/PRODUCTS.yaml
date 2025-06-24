@@ -21,4 +21,3 @@ serdes/meta:
 - id: PRODUCTS
   model: Table
 database_require_filter: null
-entity_id: rKyV6tg0Gg8YKC-Rq24__

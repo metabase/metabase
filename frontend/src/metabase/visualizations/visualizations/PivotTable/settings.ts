@@ -16,6 +16,7 @@ import { displayNameForColumn } from "metabase/lib/formatting";
 import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
 import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -23,6 +24,7 @@ import type {
   DatasetColumn,
   DatasetData,
   PivotTableColumnSplitSetting,
+  RawSeries,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -71,7 +73,9 @@ export const settings = {
     },
   },
   [COLUMN_SPLIT_SETTING]: {
-    section: t`Columns`,
+    get section() {
+      return t`Columns`;
+    },
     widget: "fieldsPartition",
     persistDefault: true,
     getHidden: ([{ data }]: [{ data: DatasetData }]) =>
@@ -140,22 +144,56 @@ export const settings = {
     },
   },
   "pivot.show_row_totals": {
-    section: t`Columns`,
-    title: t`Show row totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show row totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
   "pivot.show_column_totals": {
-    section: t`Columns`,
-    title: t`Show column totals`,
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Show column totals`;
+    },
     widget: "toggle",
     default: true,
     inline: true,
   },
+  "pivot.condense_duplicate_totals": {
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Condense duplicate totals`;
+    },
+    get hint() {
+      return t`Hide additional total elements if the totals are the same`;
+    },
+    widget: "toggle",
+    default: true,
+    inline: true,
+    getHidden: (
+      _series: RawSeries,
+      settings: ComputedVisualizationSettings,
+    ) => {
+      return (
+        !settings["pivot.show_row_totals"] &&
+        !settings["pivot.show_column_totals"]
+      );
+    },
+    readDependencies: ["pivot.show_row_totals", "pivot.show_column_totals"],
+  },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
-    section: t`Conditional Formatting`,
+    get section() {
+      return t`Conditional Formatting`;
+    },
     widget: ChartSettingsTableFormatting,
     default: [],
     getDefault: (
@@ -222,7 +260,9 @@ export const settings = {
 
 export const _columnSettings = {
   [COLUMN_SORT_ORDER]: {
-    title: t`Sort order`,
+    get title() {
+      return t`Sort order`;
+    },
     widget: ChartSettingIconRadio,
     inline: true,
     borderBottom: true,
@@ -242,7 +282,9 @@ export const _columnSettings = {
       source === "aggregation",
   },
   [COLUMN_SHOW_TOTALS]: {
-    title: t`Show totals`,
+    get title() {
+      return t`Show totals`;
+    },
     widget: "toggle",
     inline: true,
     getDefault: (
@@ -277,7 +319,9 @@ export const _columnSettings = {
     },
   },
   column_title: {
-    title: t`Column title`,
+    get title() {
+      return t`Column title`;
+    },
     widget: "input",
     getDefault: displayNameForColumn,
   },

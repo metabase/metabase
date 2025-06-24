@@ -5,7 +5,7 @@ import { useTimeout } from "react-use";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { isMac } from "metabase/lib/browser";
@@ -79,6 +79,7 @@ export default function QueryVisualization(props) {
           <VisualizationError
             className={CS.spread}
             error={result.error}
+            errorType={result.error_type}
             via={result.via}
             question={question}
             duration={result.duration}
@@ -94,14 +95,16 @@ export default function QueryVisualization(props) {
           <VisualizationEmptyState
             className={CS.spread}
             isCompact={isNativeEditorOpen}
-          />
+          >
+            {t`Here's where your results will appear`}
+          </VisualizationEmptyState>
         ) : null}
       </div>
     </div>
   );
 }
 
-const VisualizationEmptyState = ({ isCompact }) => {
+const VisualizationEmptyState = ({ isCompact, children }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
@@ -122,7 +125,7 @@ const VisualizationEmptyState = ({ isCompact }) => {
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{t`Query results will appear here.`}</Text>
+        <Text c="text-medium">{children}</Text>
       </Stack>
     </Flex>
   );
@@ -146,7 +149,7 @@ export function VisualizationRunningState({ className = "" }) {
       align="center"
     >
       <LoadingSpinner />
-      <Title className={CS.textUppercase} c="brand" order={2} mt="lg">
+      <Title c="brand" order={3} mt="lg">
         {message}
       </Title>
     </Flex>

@@ -58,14 +58,6 @@ const DatabaseEngineWarning = ({
 
   if (engineSourceType === "community") {
     warnings.push(<CommunityEngineWarning key="community" />);
-  } else if (engineSourceType === "partner") {
-    warnings.push(
-      <PartnerEngineWarning
-        key="partner"
-        sourceName={engine?.source?.contact?.name}
-        sourceContact={engine?.source?.contact?.address}
-      />,
-    );
   }
 
   return <>{warnings}</>;
@@ -110,37 +102,6 @@ const CommunityEngineWarning = () => (
     {t`This is a community-developed driver and not supported by Metabase. `}
   </Warning>
 );
-
-interface PartnerEngineWarningProps {
-  sourceName: string | undefined;
-  sourceContact: string | undefined;
-}
-
-const PartnerEngineWarning = ({
-  sourceName,
-  sourceContact,
-}: PartnerEngineWarningProps) => {
-  const contactLink = sourceContact ? (
-    <WarningLink
-      href={
-        sourceContact.includes("@") ? `mailto:${sourceContact}` : sourceContact
-      }
-      rel="noopener noreferrer"
-      target="_blank"
-    >
-      {sourceName || "our partner"}
-    </WarningLink>
-  ) : null;
-
-  return (
-    <Warning icon="info">
-      {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-      {t`This is a partner-developed driver. Though Metabase can’t provide support for it, if you need help you can contact the fine folks at `}
-      {contactLink}
-      {!contactLink && (sourceName || "our partner")}.
-    </Warning>
-  );
-};
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseEngineWarning;

@@ -19,7 +19,7 @@ H.describeWithSnowplow(
       const testFile = H.VALID_CSV_FILES[0];
       const EMPTY_SCHEMA_NAME = "empty_uploads";
 
-      cy.intercept("PUT", "/api/setting").as("saveSettings");
+      cy.intercept("PUT", "/api/setting/*").as("saveSettings");
       cy.intercept("GET", "/api/database").as("databaseList");
 
       H.restore("postgres-writable");
@@ -43,11 +43,11 @@ H.describeWithSnowplow(
       cy.visit("/admin/settings/uploads");
 
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a database")
+        .findByPlaceholderText("Select a database")
         .click();
       H.popover().findByText("Writable Postgres12").click();
       cy.findByLabelText("Upload Settings Form")
-        .findByText("Select a schema")
+        .findByPlaceholderText("Select a schema")
         .click();
 
       H.popover().findByText(EMPTY_SCHEMA_NAME).click();
@@ -77,7 +77,9 @@ H.describeWithSnowplow(
         "Ensure that table is visible in admin without refreshing (metabase#38041)",
       );
 
-      cy.findByTestId("app-bar").button(/gear/).click();
+      cy.findByTestId("app-bar")
+        .findByRole("button", { name: "Settings" })
+        .click();
       H.popover().findByText("Admin settings").click();
 
       cy.findByRole("link", { name: "Table Metadata" }).click();
@@ -119,7 +121,7 @@ H.describeWithSnowplow(
           it(`Can upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "csv_upload_successful",
             });
 
@@ -145,7 +147,7 @@ H.describeWithSnowplow(
           it(`Cannot upload ${testFile.fileName} to a collection`, () => {
             uploadFileToCollection(testFile);
 
-            H.expectGoodSnowplowEvent({
+            H.expectUnstructuredSnowplowEvent({
               event: "csv_upload_failed",
             });
 
@@ -154,6 +156,17 @@ H.describeWithSnowplow(
             H.queryWritableDB(tableQuery, dialect).then((result) => {
               expect(result.rows.length).to.equal(0);
             });
+
+            cy.log("metabase#55382");
+            cy.findByRole("dialog", { name: "Upload error details" })
+              .findByRole("button", { name: "Close" })
+              .click();
+
+            H.openCollectionMenu();
+            H.popover().findByText("Move to trash").click();
+            cy.findByRole("dialog", { name: "Upload error details" }).should(
+              "not.exist",
+            );
           });
         });
 

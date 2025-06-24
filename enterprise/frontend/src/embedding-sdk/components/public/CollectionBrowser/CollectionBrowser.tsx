@@ -8,17 +8,20 @@ import {
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import { getCollectionIdSlugFromReference } from "embedding-sdk/store/collections";
 import { useSdkSelector } from "embedding-sdk/store/use-sdk-selector";
-import type { SdkCollectionId } from "embedding-sdk/types/collection";
+import type {
+  MetabaseCollectionItem,
+  SdkCollectionId,
+} from "embedding-sdk/types/collection";
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import { isNotNull } from "metabase/lib/types";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs/CollectionBreadcrumbs";
 import { Stack } from "metabase/ui";
 import type {
   CollectionEssentials,
   CollectionId,
-  CollectionItem,
   CollectionItemModel,
 } from "metabase-types/api";
 
@@ -31,7 +34,7 @@ const USER_FACING_ENTITY_NAMES = [
 
 type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
 
-type CollectionBrowserListColumns =
+export type CollectionBrowserListColumns =
   | "type"
   | "name"
   | "lastEditedBy"
@@ -55,6 +58,7 @@ const ENTITY_NAME_MAP: Partial<
 
 /**
  * @interface
+ * @expand
  * @category CollectionBrowser
  */
 export type CollectionBrowserProps = {
@@ -86,7 +90,7 @@ export type CollectionBrowserProps = {
   /**
    * A function to call when an item is clicked.
    */
-  onClick?: (item: CollectionItem) => void;
+  onClick?: (item: MetabaseCollectionItem) => void;
 } & CommonStylingProps;
 
 export const CollectionBrowserInner = ({
@@ -112,13 +116,13 @@ export const CollectionBrowserInner = ({
     setCurrentCollectionId(baseCollectionId);
   }, [baseCollectionId]);
 
-  const onClickItem = (item: CollectionItem) => {
+  const onClickItem = (item: MetabaseCollectionItem) => {
     if (onClick) {
       onClick(item);
     }
 
     if (item.model === "collection") {
-      setCurrentCollectionId(item.id);
+      setCurrentCollectionId(item.id as CollectionId);
     }
   };
 
@@ -153,11 +157,12 @@ const CollectionBrowserWrapper = ({
   collectionId = "personal",
   ...restProps
 }: CollectionBrowserProps) => {
+  const { isLocaleLoading } = useLocale();
   const { id, isLoading } = useTranslatedCollectionId({
     id: collectionId,
   });
 
-  if (isLoading) {
+  if (isLocaleLoading || isLoading) {
     return <SdkLoader />;
   }
 

@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { DATE_PICKER_UNITS } from "metabase/querying/filters/constants";
@@ -7,6 +8,8 @@ import type {
   RelativeDatePickerValue,
   RelativeIntervalDirection,
 } from "metabase/querying/filters/types";
+
+import type { DatePickerSubmitButtonProps } from "../../types";
 
 import { DateIntervalPicker } from "./DateIntervalPicker";
 
@@ -23,13 +26,13 @@ function getDefaultValue(
 interface SetupOpts {
   value: RelativeDatePickerValue;
   availableUnits?: DatePickerUnit[];
-  submitButtonLabel?: string;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
 }
 
 function setup({
   value,
   availableUnits = DATE_PICKER_UNITS,
-  submitButtonLabel = "Apply",
+  renderSubmitButton,
 }: SetupOpts) {
   const onChange = jest.fn();
   const onSubmit = jest.fn();
@@ -38,7 +41,7 @@ function setup({
     <DateIntervalPicker
       value={value}
       availableUnits={availableUnits}
-      submitButtonLabel={submitButtonLabel}
+      renderSubmitButton={renderSubmitButton}
       onChange={onChange}
       onSubmit={onSubmit}
     />,
@@ -218,6 +221,15 @@ describe("DateIntervalPicker", () => {
         const rangeText =
           direction === "last" ? "Dec 2, 2019 – Jan 1, 2020" : "Jan 1–31, 2020";
         expect(screen.getByText(rangeText)).toBeInTheDocument();
+      });
+
+      it("should pass the value to the submit button callback", async () => {
+        const renderSubmitButton = jest.fn().mockReturnValue(null);
+        setup({ value: defaultValue, renderSubmitButton });
+        expect(renderSubmitButton).toHaveBeenCalledWith({
+          value: defaultValue,
+          isDisabled: false,
+        });
       });
     },
   );

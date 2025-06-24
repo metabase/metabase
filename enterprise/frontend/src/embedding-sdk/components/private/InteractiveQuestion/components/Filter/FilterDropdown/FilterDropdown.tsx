@@ -17,6 +17,7 @@ import { FilterBadgeList } from "../FilterBadgeList";
 import { FilterPicker } from "../FilterPicker/FilterPicker";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionFilterDropdownProps = {

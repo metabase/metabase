@@ -30,7 +30,7 @@ export const InteractiveAdHocQuestion = ({
   children = null,
   onBeforeSave,
   onSave,
-  entityTypeFilter,
+  entityTypes,
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
@@ -63,7 +63,7 @@ export const InteractiveAdHocQuestion = ({
       componentPlugins={plugins}
       onBeforeSave={onBeforeSave}
       onSave={onSave}
-      entityTypeFilter={entityTypeFilter}
+      entityTypes={entityTypes}
       isSaveEnabled={isSaveEnabled}
       targetCollection={targetCollection}
       initialSqlParameters={initialSqlParameters}

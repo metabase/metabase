@@ -408,7 +408,7 @@
   (->> (cond-> m
          ;; Following construct ensures that transformation mbql -> pmbql -> mbql, does not add base-type where those
          ;; were not present originally. Base types are added in [[metabase.lib.query/add-types-to-fields]].
-         (contains? m :metabase.lib.query/transformation-added-base-type)
+         (:metabase.lib.query/transformation-added-base-type m)
          (dissoc :metabase.lib.query/transformation-added-base-type :base-type)
 
          ;; Removing the namespaces from a few
@@ -461,7 +461,8 @@
 
 (doseq [tag [:count :avg :count-where :distinct :distinct-where
              :max :median :min :percentile
-             :share :stddev :sum :sum-where]]
+             :share :stddev :sum :sum-where
+             :cum-sum :cum-count]]
   (lib.hierarchy/derive tag ::aggregation))
 
 (doseq [tag [:+ :- :* :/
@@ -470,7 +471,7 @@
              :relative-datetime :time :absolute-datetime :now :convert-timezone
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
-             :datetime-add :datetime-subtract :date
+             :datetime-add :datetime-subtract :date :datetime
              :concat :substring :replace :regex-match-first :split-part
              :length :trim :ltrim :rtrim :upper :lower :text :integer]]
   (lib.hierarchy/derive tag ::expression))

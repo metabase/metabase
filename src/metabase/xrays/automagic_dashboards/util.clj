@@ -38,13 +38,16 @@
   [tablespec tables]
   (filter #(-> % :entity_type (isa? tablespec)) tables))
 
-(def ^{:arglists '([metric]) :doc "Is metric a saved metric?"} saved-metric?
+(def ^{:arglists '([metric])} saved-metric?
+  "Is metric a saved (V2) metric? (Note that X-Rays do not currently know how to handle Saved V2 Metrics.)"
   (partial mbql.u/is-clause? :metric))
 
-(def ^{:arglists '([metric]) :doc "Is this a custom expression?"} custom-expression?
+(def ^{:arglists '([metric])} custom-expression?
+  "Is this a custom expression?"
   (partial mbql.u/is-clause? :aggregation-options))
 
-(def ^{:arglists '([metric]) :doc "Is this an adhoc metric?"} adhoc-metric?
+(def ^{:arglists '([metric])} adhoc-metric?
+  "Is this an adhoc metric?"
   (complement (some-fn saved-metric? custom-expression?)))
 
 (def ^{:arglists '([x]) :doc "Base64 encode"} encode-base64-json
@@ -85,3 +88,8 @@
            (analyze/run-classifiers field {}))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context\n%s" field-id-or-name-or-clause (u/pprint-to-str root)))))
+
+(defn filter-id-for-field
+  "Generate a parameter ID for the given field. In X-ray dashboards a parameter is mapped to a single field only."
+  [field]
+  (-> field ((juxt :id :name :unit)) hash str))

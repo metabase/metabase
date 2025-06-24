@@ -43,7 +43,7 @@
   e.g. [[metabase.driver.snowflake-test/report-timezone-test]].
 
   This is a function because [[unique-prefix]] can't be calculated until the application database is initialized
-  because it relies on [[public-settings/site-uuid]]."
+  because it relies on [[system/site-uuid]]."
   #'sql.tu.unique-prefix/unique-prefix)
 
 (defn qualified-db-name
@@ -98,20 +98,15 @@
 (defn- old-dataset-names
   "Return a collection of all dataset names that are old -- prefixed with a date two days ago or older?"
   []
-  (sql-jdbc.execute/do-with-connection-with-options
-   :snowflake
-   (no-db-connection-spec)
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (let [metadata (.getMetaData conn)]
-       (with-open [rset (.getCatalogs metadata)]
-         (loop [acc []]
-           (if-not (.next rset)
-             acc
-             (let [catalog (.getString rset "TABLE_CAT")
-                   acc     (cond-> acc
-                             (sql.tu.unique-prefix/old-dataset-name? catalog) (conj catalog))]
-               (recur acc)))))))))
+  ;; modified the query from the snowflake driver:
+  ;; https://github.com/snowflakedb/snowflake-jdbc/blob/fa58e3496809395d039ee4d8fb2cf2767997cdd4/src/main/java/net/snowflake/client/jdbc/SnowflakeDatabaseMetaData.java#L1644C21-L1644C90
+  ;; We run into issues where this returns more than 10,000 items and we get an error: "The result set size exceeded
+  ;; the max number of rows(10000) supported for SHOW statements. Use LIMIT option to limit result set"
+  (let [query "show /* JDBC:DatabaseMetaData.getCatalogs() with limit */ databases in account limit 10000"]
+    (into []
+          (comp (map :name)
+                (filter sql.tu.unique-prefix/old-dataset-name?))
+          (jdbc/reducible-query (no-db-connection-spec) [query] {:raw? true}))))
 
 (defn- delete-old-datasets!
   "Delete any datasets prefixed by a date that is two days ago or older. See comments above."
@@ -230,3 +225,49 @@
                                   #_types          (into-array String ["TABLE"]))]
        ;; if the ResultSet returns anything we know the catalog has been created
        (.next rset)))))
+
+(defn drop-if-exists-and-create-roles!
+  [driver details roles]
+  (let [spec  (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (doseq [statement [(format "DROP ROLE IF EXISTS %s;" role-name)
+                         (format "CREATE ROLE %s;" role-name)]]
+        (jdbc/execute! spec [statement] {:transaction? false})))))
+
+(defn grant-table-perms-to-roles!
+  [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        wh-name (:warehouse details)
+        db-name (sql.tx/qualify-and-quote driver (:db details))
+        schema-name (format "%s.\"PUBLIC\"" db-name)]
+    (doseq [[role-name table-perms] roles]
+      (doseq [statement [(format "GRANT USAGE ON WAREHOUSE %s TO ROLE %s" wh-name role-name)
+                         (format "GRANT USAGE ON DATABASE %s TO ROLE %s" db-name role-name)
+                         (format "GRANT USAGE ON SCHEMA %s TO ROLE %s" schema-name role-name)]]
+        (jdbc/execute! spec [statement] {:transaction? false}))
+      (doseq [[table-name _perms] table-perms]
+        (jdbc/execute! spec
+                       (format "GRANT SELECT ON TABLE %s TO ROLE %s" table-name role-name)
+                       {:transaction? false})))))
+
+(defn grant-roles-to-user!
+  [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (jdbc/execute! spec
+                     [(format "GRANT ROLE %s TO USER \"%s\"" role-name user-name)]
+                     {:transaction? false}))))
+
+(defmethod tx/create-and-grant-roles! :snowflake
+  [driver details roles user-name _default-role]
+  (drop-if-exists-and-create-roles! driver details roles)
+  (grant-table-perms-to-roles! driver details roles)
+  (grant-roles-to-user! driver details roles user-name))
+
+(defmethod tx/drop-roles! :snowflake
+  [driver details roles _user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (jdbc/execute! spec
+                     [(format "DROP ROLE IF EXISTS %s;" role-name)]
+                     {:transaction? false}))))

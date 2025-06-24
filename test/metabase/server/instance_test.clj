@@ -1,7 +1,7 @@
 (ns metabase.server.instance-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.server.instance :as server.instance]))
 
 (deftest config-test

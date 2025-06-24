@@ -595,7 +595,7 @@ describe("scenarios > question > custom column", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByLabelText("Start date").clear().type("12/10/2024");
       cy.findByLabelText("End date").clear().type("01/05/2025");
       cy.button("Add filter").click();
@@ -619,7 +619,7 @@ describe("scenarios > question > custom column", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("MiscDate").click();
-      cy.findByText("Relative dates…").click();
+      cy.findByText("Relative date range…").click();
       cy.findByText("Previous").click();
       cy.findByDisplayValue("days").click();
     });
@@ -636,7 +636,7 @@ describe("scenarios > question > custom column", () => {
 
     H.queryBuilderMain().findByText("MiscDate").should("be.visible");
     cy.findByTestId("qb-filters-panel")
-      .findByText("MiscDate is in the previous 30 years")
+      .findByText("MiscDate is in the previous 30 years or this year")
       .should("be.visible");
   });
 
@@ -686,6 +686,46 @@ describe("scenarios > question > custom column", () => {
     // That's because the caret position after refocusing on textarea
     // would still be after the 3rd character
     H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should format the expression when pressing the format keyboard shortcut", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+1" });
+
+    // `1+1` (3 chars) is reformatted to `1 + 1` (5 chars)
+    H.CustomExpressionEditor.focus();
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    H.CustomExpressionEditor.formatButton().should("be.visible");
+    H.CustomExpressionEditor.get()
+      .get(".cm-editor")
+      .realPress(["Shift", metaKey, "f"]);
+    H.CustomExpressionEditor.value().should("equal", "1 + 1");
+
+    // Make sure the cursor is at the end of the expression
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1 + 12");
+  });
+
+  it("should not try formatting the expression when it's invalid using the keyboard shortcut", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    cy.findByLabelText("Custom column").click();
+
+    H.enterCustomColumnDetails({ formula: "1+" });
+
+    H.CustomExpressionEditor.focus();
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+
+    cy.realPress(["Shift", metaKey, "f"]);
+    H.CustomExpressionEditor.value().should("equal", "1+");
+
+    // Make sure the cursor is at the end of the expression
+    H.CustomExpressionEditor.type("2");
+    H.CustomExpressionEditor.value().should("equal", "1+2");
   });
 
   it("should format long expressions on multiple lines", () => {
@@ -827,6 +867,9 @@ describe("scenarios > question > custom column", () => {
     H.getNotebookStep("expression").button("Filter").click();
     H.clauseStepPopover().within(() => {
       cy.findByText("If").click();
+    });
+    H.selectFilterOperator("Is");
+    H.clauseStepPopover().within(() => {
       cy.findByPlaceholderText("Enter some text").type("Other");
       cy.button("Add filter").click();
     });
@@ -960,6 +1003,42 @@ describe("scenarios > question > custom column", () => {
     H.visualize();
     cy.findByTestId("scalar-value").should("have.text", "198");
   });
+
+  it("should handle expression references", () => {
+    H.openProductsTable({ mode: "notebook" });
+
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: "[Price]",
+      name: "Foo",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Foo]",
+      name: "Bar",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: "[Bar]",
+      name: "Quu",
+    });
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should("eq", "[Price]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Bar").click();
+    H.CustomExpressionEditor.value().should("eq", "[Foo]");
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.getNotebookStep("expression").findByText("Quu").click();
+    H.CustomExpressionEditor.value().should("eq", "[Bar]");
+  });
 });
 
 describe(
@@ -1059,7 +1138,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("DoB").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1079,7 +1158,7 @@ describe(
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1098,7 +1177,7 @@ describe(
       H.popover().within(() => {
         cy.findByText("MiscDate").click();
         cy.findByPlaceholderText("Enter a number").should("not.exist");
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Previous").click();
         cy.findByDisplayValue("days").should("be.visible");
       });
@@ -1123,7 +1202,7 @@ describe("scenarios > question > custom column > error feedback", () => {
     });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Unknown Field: abcdef/i);
+    cy.contains(/^Unknown column: abcdef/i);
   });
 
   it("should fail on expression validation errors", () => {
@@ -1569,13 +1648,6 @@ describe("scenarios > question > custom column > function browser", () => {
 
     H.CustomExpressionEditor.functionBrowser()
       .findByText("datetimeAdd")
-      .should("be.visible");
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("Adds some units of time to a date or timestamp value.")
-      .should("be.visible");
-
-    H.CustomExpressionEditor.functionBrowser()
-      .findByText("datetimeAdd")
       .click();
 
     H.CustomExpressionEditor.value().should("equal", "datetimeAdd()");
@@ -1622,7 +1694,7 @@ describe("scenarios > question > custom column > function browser", () => {
       cy.findByText("second").should("be.visible");
       //
       cy.findByPlaceholderText("Search functions…").clear();
-      cy.findByText("datetimeAdd").should("be.visible");
+      cy.findByText("datetimeAdd").should("exist");
     });
   });
 
@@ -1661,13 +1733,13 @@ describe("scenarios > question > custom column > function browser", () => {
     });
   });
 
-  it("should not insert parens when the clause has no arguments", () => {
+  it("should insert parens even when the clause has no arguments", () => {
     H.expressionEditorWidget().button("Function browser").click();
     H.CustomExpressionEditor.functionBrowser().within(() => {
       cy.findByPlaceholderText("Search functions…").type("now");
       cy.findByText("now").click();
     });
-    H.CustomExpressionEditor.value().should("equal", "now");
+    H.CustomExpressionEditor.value().should("equal", "now()");
   });
 });
 

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { closeSidebar, setSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
@@ -22,7 +22,7 @@ export const DashboardInfoButton = () => {
   useRegisterShortcut(
     [
       {
-        id: "info-dashboard",
+        id: "dashboard-toggle-info-sidebar",
         perform: handleClick,
       },
     ],

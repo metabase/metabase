@@ -1,6 +1,7 @@
 /* istanbul ignore file */
 
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -308,7 +309,7 @@ export const getJoinQueryHelpers = (
   stageIndex: number,
   tableId: TableId,
 ) => {
-  const table = Lib.tableOrCardMetadata(query, tableId);
+  const table = checkNotNull(Lib.tableOrCardMetadata(query, tableId));
 
   const findLHSColumn = columnFinder(
     query,

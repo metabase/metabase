@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
 import { jt, t } from "ttag";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getIsNightMode } from "metabase/dashboard/selectors";
 import { color, lighten } from "metabase/lib/colors";
@@ -319,7 +319,7 @@ function PreviousValueComparison({
       : "var(--mb-color-text-secondary)";
 
     return (
-      <Title order={4} style={{ whiteSpace: "pre", color: detailColor }}>
+      <Title order={5} style={{ whiteSpace: "pre", color: detailColor }}>
         <Separator inTooltip={inTooltip} />
         {children}
       </Title>
@@ -363,7 +363,7 @@ function PreviousValueComparison({
 }
 
 Object.assign(SmartScalar, {
-  uiName: t`Trend`,
+  getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
   canSavePng: true,
@@ -373,12 +373,16 @@ Object.assign(SmartScalar, {
 
   settings: {
     ...fieldSetting("scalar.field", {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Data`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Primary number`,
       fieldFilter: isSuitableScalarColumn,
     }),
     "scalar.comparisons": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Data`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Comparisons`,
       widget: SmartScalarComparisonWidget,
       getValue: (series, vizSettings) => getComparisons(series, vizSettings),
@@ -399,20 +403,25 @@ Object.assign(SmartScalar, {
       readDependencies: ["scalar.field"],
     },
     "scalar.switch_positive_negative": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Switch positive / negative colors?`,
       widget: "toggle",
       inline: true,
       default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
     },
     "scalar.compact_primary_number": {
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       title: t`Compact number`,
       widget: "toggle",
       inline: true,
       default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
     },
     ...columnSettings({
+      // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
       section: t`Display`,
       getColumns: (
         [

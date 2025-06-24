@@ -26,6 +26,7 @@ describe("Scalar", () => {
         rawSeries={series()}
         settings={settings}
         isDashboard
+        showTitle
         visualizationIsClickable={() => false}
       />,
     );
@@ -54,6 +55,7 @@ describe("Scalar", () => {
         rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
         isDashboard
+        showTitle
         visualizationIsClickable={() => false}
       />,
     );
@@ -72,6 +74,7 @@ describe("Scalar", () => {
         rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
         isDashboard
+        showTitle
         visualizationIsClickable={() => false}
       />,
     );
@@ -100,6 +103,7 @@ describe("Scalar", () => {
     render(
       <Scalar
         isDashboard // displays title
+        showTitle
         series={series(null)}
         rawSeries={series(null)}
         settings={settings}

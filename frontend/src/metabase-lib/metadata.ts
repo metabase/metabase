@@ -180,7 +180,7 @@ export function describeTemporalUnit(
 export function tableOrCardMetadata(
   queryOrMetadataProvider: Query | MetadataProvider,
   tableID: TableId,
-): CardMetadata | TableMetadata {
+): CardMetadata | TableMetadata | null {
   return ML.table_or_card_metadata(queryOrMetadataProvider, tableID);
 }
 
@@ -234,4 +234,16 @@ export function tableOrCardDependentMetadata(
 
 export function columnKey(column: ColumnMetadata): string {
   return ML.column_key(column);
+}
+
+export function isColumnMetadata(arg: unknown): arg is ColumnMetadata {
+  return ML.column_metadata_QMARK_(arg);
+}
+
+export function isMetricMetadata(arg: unknown): arg is MetricMetadata {
+  return ML.metric_metadata_QMARK_(arg);
+}
+
+export function isSegmentMetadata(arg: unknown): arg is SegmentMetadata {
+  return ML.segment_metadata_QMARK_(arg);
 }

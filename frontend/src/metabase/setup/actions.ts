@@ -25,6 +25,7 @@ import {
 import {
   getAvailableLocales,
   getInvite,
+  getIsEmbeddingUseCase,
   getLocale,
   getNextStep,
   getSetupToken,
@@ -226,6 +227,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
   async (_, { getState, dispatch }) => {
     const usageReason = getUsageReason(getState());
     const tokenFeatures = getSetting(getState(), "token-features");
+    const isEmbeddingUseCase = getIsEmbeddingUseCase(getState());
 
     const interestedInEmbedding =
       usageReason === "embedding" || usageReason === "both";
@@ -233,7 +235,7 @@ export const setEmbeddingHomepageFlags = createAsyncThunk(
 
     const settingsToChange: Partial<Settings> = {};
 
-    if (interestedInEmbedding) {
+    if (isEmbeddingUseCase || interestedInEmbedding) {
       settingsToChange["embedding-homepage"] = "visible";
     }
 

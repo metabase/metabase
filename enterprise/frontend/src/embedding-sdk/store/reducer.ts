@@ -1,14 +1,15 @@
 import { createAction, createReducer } from "@reduxjs/toolkit";
 
-import type { MetabaseFetchRequestTokenFn } from "embedding-sdk";
+import { samlTokenStorage } from "embedding/auth-common";
 import type {
+  MetabaseAuthConfig,
+  MetabaseFetchRequestTokenFn,
   SdkErrorComponent,
-  SdkState,
-  SdkStoreState,
-} from "embedding-sdk/store/types";
+} from "embedding-sdk";
+import type { SdkState, SdkStoreState } from "embedding-sdk/store/types";
 import type { SdkEventHandlersConfig } from "embedding-sdk/types/events";
+import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type { SdkUsageProblem } from "embedding-sdk/types/usage-problem";
-import type { MetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { createAsyncThunk } from "metabase/lib/redux";
 
 import { initAuth, refreshTokenAsync } from "./auth";
@@ -35,9 +36,18 @@ const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 
 export const getOrRefreshSession = createAsyncThunk(
   GET_OR_REFRESH_SESSION,
-  async (url: string, { dispatch, getState }) => {
+  async (
+    authConfig: Pick<
+      MetabaseAuthConfig,
+      "metabaseInstanceUrl" | "preferredAuthMethod"
+    >,
+    { dispatch, getState },
+  ) => {
+    // necessary to ensure that we don't use a popup every time the user
+    // refreshes the page
+    const storedAuthToken = samlTokenStorage.get();
     const state = getSessionTokenState(getState() as SdkStoreState);
-    const token = state?.token;
+    const token = storedAuthToken ?? state?.token;
 
     const isTokenValid = token && token.exp * 1000 >= Date.now();
 
@@ -45,7 +55,7 @@ export const getOrRefreshSession = createAsyncThunk(
       return token;
     }
 
-    return dispatch(refreshTokenAsync(url)).unwrap();
+    return dispatch(refreshTokenAsync(authConfig)).unwrap();
   },
 );
 

@@ -1,10 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { screen } from "__support__/ui";
 
 import { setup } from "./setup";
 
 describe("EmbeddingDataPicker", () => {
+  beforeEach(() => {
+    setupEnterprisePlugins();
+  });
+
   describe("multi-stage data picker", () => {
     it("should show tables when there is no models", async () => {
       setup({ hasModels: false });

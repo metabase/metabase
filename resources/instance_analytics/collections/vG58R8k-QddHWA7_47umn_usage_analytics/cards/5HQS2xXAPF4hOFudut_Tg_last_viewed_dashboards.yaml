@@ -168,7 +168,6 @@ result_metadata:
   semantic_type: type/PK
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -200,7 +199,6 @@ result_metadata:
   semantic_type: type/Name
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public
@@ -232,7 +230,6 @@ result_metadata:
   semantic_type: type/Description
   settings: null
   source: fields
-  source_alias: Content - Entity Qualified
   table_id:
   - Internal Metabase Database
   - public

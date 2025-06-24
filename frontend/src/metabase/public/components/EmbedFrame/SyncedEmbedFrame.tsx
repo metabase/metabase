@@ -11,14 +11,8 @@ const SyncedEmbedFrameInner = ({
   children,
   ...embedFrameProps
 }: Partial<EmbedFrameProps> & WithRouterProps) => {
-  const {
-    background,
-    bordered,
-    hide_download_button,
-    hide_parameters,
-    theme,
-    titled,
-  } = useEmbedFrameOptions({ location });
+  const { background, bordered, hide_parameters, theme, titled } =
+    useEmbedFrameOptions({ location });
 
   return (
     <EmbedFrame
@@ -28,7 +22,6 @@ const SyncedEmbedFrameInner = ({
       titled={titled}
       theme={theme}
       hide_parameters={hide_parameters}
-      hide_download_button={hide_download_button}
     >
       {children}
     </EmbedFrame>

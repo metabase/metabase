@@ -29,13 +29,13 @@ export function createDestinationDatabasesViaAPI({
   router_database_id: number;
   databases: DatabaseData[];
 }) {
-  cy.request("POST", "/api/ee/database-routing/mirror-database", {
+  cy.request("POST", "/api/ee/database-routing/destination-database", {
     router_database_id,
-    mirrors: databases,
+    destinations: databases,
   });
 }
 
-export const BASE_POSTGRES_MIRROR_DB_INFO = {
+export const BASE_POSTGRES_DESTINATION_DB_INFO = {
   is_on_demand: false,
   is_full_sync: true,
   is_sample: false,
@@ -55,7 +55,7 @@ export const BASE_POSTGRES_MIRROR_DB_INFO = {
     "tunnel-enabled": false,
     "advanced-options": false,
   },
-  name: "Destination DB",
+  name: "DestinationDB",
   engine: "postgres",
 };
 
@@ -181,24 +181,24 @@ export function createDbWithIdentifierTable({ dbName }: { dbName: string }) {
 
           -- Revoke existing privileges first
           REVOKE ALL ON db_identifier FROM blue_role;
-          
+
           -- Drop policy if it exists
           IF EXISTS (
-              SELECT 1 FROM pg_policies 
-              WHERE tablename = 'db_identifier' 
+              SELECT 1 FROM pg_policies
+              WHERE tablename = 'db_identifier'
               AND policyname = 'blue_policy'
           ) THEN
               DROP POLICY blue_policy ON db_identifier;
               RAISE NOTICE 'Dropped existing blue_policy';
           END IF;
-          
+
           -- Grant fresh permissions
           GRANT SELECT ON db_identifier TO blue_role;
           ALTER TABLE db_identifier ENABLE ROW LEVEL SECURITY;
-        
+
         -- Create policy
-          CREATE POLICY blue_policy ON db_identifier 
-          FOR SELECT TO blue_role 
+          CREATE POLICY blue_policy ON db_identifier
+          FOR SELECT TO blue_role
           USING (color = 'blue');
       END
       $$;

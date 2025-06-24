@@ -21,7 +21,7 @@ Use the `case` expression whenever you need to:
 
 | Example                                                                                                          |
 | ---------------------------------------------------------------------------------------------------------------- |
-| `case(isempty("glass half full"), "empty glass", isnull("glass half full"), "missing glass", "glass half full")` |
+| `case(isempty("glass half full"), "empty glass", isNull("glass half full"), "missing glass", "glass half full")` |
 | "glass half full"                                                                                                |
 
 ## Bucketing data for frequency tables or histograms
@@ -49,8 +49,8 @@ case([Amount] >= 0  AND [Amount] <=  9,  "0-9",
 | ----------- | --------- | -------- | ------------- |
 | 1           | True      | True     | Bird          |
 | 2           | True      | False    | Plane         |
-| 3           | False     | False    | Superman      |
-| 4           | False     | True     | Unknown       |
+| 3           | False     | True     | Superman      |
+| 4           | False     | False    | Unknown       |
 
 where **Sighting Type** is a custom column with the expression:
 
@@ -102,13 +102,13 @@ For example, if we want to count the unique number of orders for each order date
 
 All of the outputs must have the same data type.
 
-**Avoid:**:
+**Avoid**:
 
 ```
 case(condition1, "string", condition2, TRUE, condition3, 1)
 ```
 
-**Do:**:
+**Do**:
 
 ```
 case(condition1, "string", condition2, "TRUE", condition3, "1")
@@ -337,8 +337,8 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 [data-sandboxing-docs]: ../../../permissions/data-sandboxes.md
 [data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [filter-learn]: https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/searching-tables
-[notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
+[notebook-editor-def]: https://www.metabase.com/glossary/notebook-editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
-[sql-reference-guide]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides
+[sql-reference-guide]: https://www.metabase.com/learn/sql/debugging-sql/sql-syntax#common-sql-reference-guides
 [sumif]: ./sumif.md

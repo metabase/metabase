@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.http-client :as client]))
+   [metabase.test.http-client :as client]))
 
 (deftest test-public-routes
   (binding [client/*url-prefix* ""]

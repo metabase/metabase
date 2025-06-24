@@ -1,6 +1,6 @@
 import { jt, t } from "ttag";
 
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { Group, Icon, Paper, Stack, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -15,7 +15,7 @@ interface Props {
 function ModelActions({ model, shouldShowActionsUI }: Props) {
   return (
     <Stack p="3rem 4rem" mih="90dvh" gap="lg">
-      <Title>
+      <Title order={2}>
         <Group gap="sm">
           {jt`Actions for ${(
             <Group gap="xs">

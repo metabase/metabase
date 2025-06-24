@@ -14,7 +14,7 @@ import {
   REVIEWS_ID,
 } from "metabase-types/api/mocks/presets";
 
-import { sharedMetadata } from "../__support__/shared";
+import { sharedMetadata } from "../test/shared";
 
 import { complete } from "./__support__";
 import { suggestFields } from "./fields";

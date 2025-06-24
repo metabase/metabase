@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { tag_names } from "cljs/metabase.models.params.shared";
+import { tag_names } from "cljs/metabase.parameters.shared";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isActionDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { getGroupName } from "metabase/querying/filters/utils/groups";

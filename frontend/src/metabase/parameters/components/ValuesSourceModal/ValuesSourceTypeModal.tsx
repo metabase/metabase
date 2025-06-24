@@ -3,17 +3,17 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import type { RadioOption } from "metabase/core/components/Radio";
-import Radio from "metabase/core/components/Radio";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select, { Option } from "metabase/core/components/Select";
-import SelectButton from "metabase/core/components/SelectButton";
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import ModalContent from "metabase/common/components/ModalContent";
+import type { RadioOption } from "metabase/common/components/Radio";
+import Radio from "metabase/common/components/Radio";
+import type { SelectChangeEvent } from "metabase/common/components/Select";
+import Select, { Option } from "metabase/common/components/Select";
+import SelectButton from "metabase/common/components/SelectButton";
+import { useSafeAsyncFunction } from "metabase/common/hooks/use-safe-async-function";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import { connect, useSelector } from "metabase/lib/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
@@ -23,7 +23,10 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getQueryType,
+  isValidSourceConfig,
+} from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
   getParameterType,
   isNumberParameter,
@@ -497,7 +500,7 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    ...(isNumberParameter(parameter)
+    ...(isNumberParameter(parameter) && getQueryType(parameter) === "search"
       ? []
       : ([
           { name: t`From another model or question`, value: "card" },

@@ -1,17 +1,12 @@
-import _ from "underscore";
-
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import type { SdkCollectionId } from "embedding-sdk/types/collection";
-import {
-  CreateDashboardModal as CreateDashboardModalCore,
-  type CreateDashboardModalProps as CreateDashboardModalCoreProps,
-} from "metabase/dashboard/containers/CreateDashboardModal";
-import Collections from "metabase/entities/collections";
-import type { Dashboard } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { MetabaseDashboard } from "embedding-sdk/types/dashboard";
+import { useCollectionQuery, useLocale } from "metabase/common/hooks";
+import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
 
 /**
+ * @expand
  * @category CreateDashboardModal
  */
 export interface CreateDashboardModalProps {
@@ -28,7 +23,7 @@ export interface CreateDashboardModalProps {
   /**
    * Handler to react on dashboard creation.
    */
-  onCreate: (dashboard: Dashboard) => void;
+  onCreate: (dashboard: MetabaseDashboard) => void;
 
   /**
    * Handler to close modal component
@@ -42,31 +37,31 @@ const CreateDashboardModalInner = ({
   onCreate,
   onClose,
 }: CreateDashboardModalProps) => {
-  const { id, isLoading } = useTranslatedCollectionId({
-    id: initialCollectionId,
+  const { isLocaleLoading } = useLocale();
+  const { id, isLoading: isTranslateCollectionLoading } =
+    useTranslatedCollectionId({
+      id: initialCollectionId,
+    });
+
+  const { isLoading: isCollectionQueryLoading } = useCollectionQuery({
+    id,
   });
 
-  if (isLoading) {
+  const isLoading = isTranslateCollectionLoading && isCollectionQueryLoading;
+
+  if (isLocaleLoading || isLoading) {
     return null;
   }
 
   return (
-    <CreateDashboardModalCoreWithLoading
+    <CreateDashboardModalCore
       opened={!isLoading && isOpen}
       onCreate={onCreate}
-      onClose={onClose}
+      onClose={() => onClose?.()}
       collectionId={id}
     />
   );
 };
-
-const CreateDashboardModalCoreWithLoading = _.compose(
-  Collections.load({
-    id: (_state: State, props: CreateDashboardModalCoreProps) =>
-      props.collectionId,
-    loadingAndErrorWrapper: false,
-  }),
-)(CreateDashboardModalCore);
 
 /**
  * Creates a dashboard

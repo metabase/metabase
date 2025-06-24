@@ -18,9 +18,10 @@ import type {
 Object.assign(
   LineChart,
   getCartesianChartDefinition({
-    uiName: t`Line`,
+    getUiName: () => t`Line`,
     identifier: "line",
     iconName: "line",
+    // eslint-disable-next-line ttag/no-module-declaration
     noun: t`line chart`,
     minSize: getMinSize("line"),
     defaultSize: getDefaultSize("line"),

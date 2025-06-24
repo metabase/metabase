@@ -55,7 +55,7 @@ export const updateQuestionSdk =
     nextQuestion = nextQuestion.applyTemplateTagParameters();
 
     const rawSeries = createRawSeries({
-      question: nextQuestion,
+      card: nextQuestion.card(),
       queryResult: queryResults?.[0],
       datasetQuery: undefined,
     });

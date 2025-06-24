@@ -126,3 +126,17 @@
         (lib.drill-thru.tu/test-drill-application
          (test-case "PRODUCT_ID" [:field {}
                                   (lib.drill-thru.tu/field-key= "PRODUCT_ID" (meta/id :orders :product-id))]))))))
+
+(deftest ^:parallel apply-when-binning-supported
+  (testing "distribution drill is not available if binning is not supported"
+    (let [query     (-> (lib/query (meta/updated-metadata-provider update :features disj :binning)
+                                   (meta/table-metadata :orders))
+                        (lib/order-by (meta/field-metadata :orders :subtotal))
+                        (lib/limit 100))
+          subtotal-col (m/find-first (fn [col]
+                                       (= (:display-name col) "Subtotal"))
+                                     (lib/returned-columns query))
+          context   {:column     subtotal-col
+                     :column-ref (lib/ref subtotal-col)
+                     :value      nil}]
+      (is (nil? (lib.drill-thru.distribution/distribution-drill query -1 context))))))

@@ -6,8 +6,9 @@ import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import cx from "classnames";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
+import { c } from "ttag";
 
-import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { Box, DelayGroup, Icon, type IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Completion } from "metabase-lib/v1/expressions/complete";
@@ -15,7 +16,6 @@ import type { Completion } from "metabase-lib/v1/expressions/complete";
 import S from "./Listbox.module.css";
 import { MatchText } from "./MatchText";
 import { useCompletions } from "./util";
-
 export function Listbox({
   state,
   view,
@@ -135,11 +135,19 @@ function CompletionItem({
 function Footer() {
   return (
     <Box className={S.footer}>
-      <KeyIcon name="arrow_up" />
-      <KeyIcon name="arrow_down" />
-      to navigate.
-      <span />
-      <KeyIcon name="enter_or_return" /> to select.
+      {c(
+        "{0} is an icon representing the up and down arrows on a keyboard. {1} is an icon representing the Enter key",
+      ).jt`${(
+        <>
+          <KeyIcon name="arrow_up" key="arrow_up" />
+          <KeyIcon name="arrow_down" key="arrow_down" />
+        </>
+      )} to navigate. ${(
+        <>
+          <span key="space" />
+          <KeyIcon name="enter_or_return" key="enter_or_return" />
+        </>
+      )} to select.`}
     </Box>
   );
 }

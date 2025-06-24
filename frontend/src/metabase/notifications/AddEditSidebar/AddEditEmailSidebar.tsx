@@ -2,17 +2,19 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SendTestPulse from "metabase/components/SendTestPulse";
 import SchedulePicker, {
   type ScheduleChangeProp,
-} from "metabase/containers/SchedulePicker";
-import Toggle from "metabase/core/components/Toggle";
+} from "metabase/common/components/SchedulePicker";
+import SendTestPulse from "metabase/common/components/SendTestPulse";
+import Toggle from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import { useSelector } from "metabase/lib/redux";
 import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+import { canAccessSettings } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -77,6 +79,7 @@ export const AddEditEmailSidebar = ({
   setPulseParameters,
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
+  const userCanAccessSettings = useSelector(canAccessSettings);
 
   return (
     <Sidebar
@@ -102,7 +105,9 @@ export const AddEditEmailSidebar = ({
               onChannelPropertyChange("recipients", recipients)
             }
             invalidRecipientText={(domains) =>
-              t`You're only allowed to email subscriptions to addresses ending in ${domains}`
+              userCanAccessSettings
+                ? t`You're only allowed to email subscriptions to addresses ending in ${domains}`
+                : t`You're only allowed to email subscriptions to allowed domains`
             }
           />
         </div>

@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [hash])
   (:require
    [java-time.api :as t]
-   [metabase.util.date-2 :as u.date]
-   [metabase.util.urls :as urls])
+   [metabase.channel.urls :as urls]
+   [metabase.util.date-2 :as u.date])
   (:import
    (com.github.jknack.handlebars
     Options Handlebars Helper Handlebars$SafeString)))

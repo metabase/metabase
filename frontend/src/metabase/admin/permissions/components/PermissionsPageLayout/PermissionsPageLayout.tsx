@@ -15,12 +15,12 @@ import {
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import Modal from "metabase/common/components/Modal";
+import ModalContent from "metabase/common/components/ModalContent";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
@@ -129,7 +129,7 @@ export function PermissionsPageLayout({
           </ModalContent>
         </Modal>
 
-        <LeaveConfirmationModal isEnabled={!!isDirty} route={route} />
+        <LeaveRouteConfirmModal isEnabled={!!isDirty} route={route} />
 
         <TabsContainer className={CS.borderBottom}>
           <PermissionsTabs tab={tab} onChangeTab={navigateToTab} />
@@ -162,12 +162,11 @@ export function PermissionsPageLayout({
         onClose={() => true}
       >
         <Text mb="1rem">
-          To edit permissions, you need to start from the latest version. Please
-          refresh the page.
+          {t`To edit permissions, you need to start from the latest version. Please refresh the page.`}
         </Text>
         <Group justify="flex-end">
           <NewButton onClick={() => location.reload()} variant="filled">
-            Refresh the page
+            {t`Refresh the page`}
           </NewButton>
         </Group>
       </NewModal>

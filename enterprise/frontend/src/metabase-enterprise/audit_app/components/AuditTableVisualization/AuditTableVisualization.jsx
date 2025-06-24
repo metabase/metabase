@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import EmptyState from "metabase/components/EmptyState";
-import CheckBox from "metabase/core/components/CheckBox";
+import CheckBox from "metabase/common/components/CheckBox";
+import EmptyState from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";
@@ -47,6 +47,7 @@ export class AuditTableVisualization extends Component {
   static identifier = "audit-table";
   static noHeader = true;
   static hidden = true;
+  static getUiName = () => "Audit Table";
 
   // copy Table's settings and columnSettings
   static settings = Table.settings;

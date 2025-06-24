@@ -29,12 +29,23 @@ jobs:
       - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: .github/scripts/write-poms.sh
-      - name: Run snyk
+      - name: Run snyk main project
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: snyk test --all-projects --sarif-file-output=snyk.sarif
+        run: snyk test --all-projects --exclude="modules" --sarif-file-output=snyk-main.sarif
       - name: Upload result to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: snyk.sarif
+          sarif_file: snyk-main.sarif
+          category: main-project
+      - name: Run snyk drivers
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+        run: cd modules && snyk test --all-projects --sarif-file-output=snyk-drivers.sarif
+      - name: Upload result to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: modules/snyk-drivers.sarif
+          category: drivers

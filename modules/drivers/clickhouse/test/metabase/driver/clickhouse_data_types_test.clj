@@ -371,7 +371,7 @@
         [{:field-name "mystring" :base-type :type/Text}]
         [["foo"] ["bar"] ["   "] [""] [nil]]])
       (testing "null strings count"
-        (is (= 2M ;; BigDecimal
+        (is (= 2M
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:is-null $mystring]
                       :aggregation [:count]})

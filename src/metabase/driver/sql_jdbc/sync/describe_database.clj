@@ -3,16 +3,13 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.interface :as mi]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
@@ -32,15 +29,21 @@
    (fn [^ResultSet rs]
      #(.getString rs "TABLE_SCHEM"))))
 
+(defn include-schema-logging-exclusion
+  "Wrapper for [[metabase.driver.sync/include-schema?]] which logs an info message in case of exclusion"
+  [schema-inclusion-filters schema-exclusion-filters table-schema]
+  (or (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
+      (log/infof "Skipping schema '%s' because it does not match the current schema filtering settings" table-schema)))
+
 (defmethod sql-jdbc.sync.interface/filtered-syncable-schemas :sql-jdbc
-  [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
+  [driver _ metadata schema-inclusion-filters schema-exclusion-filters]
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
             ;; remove the persisted_model schemas
             (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
-            (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
+            (filter #(include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters %))
             (all-schemas metadata)))
 
-(mu/defn simple-select-probe-query :- [:cat ::lib.schema.common/non-blank-string [:* :any]]
+(mu/defn simple-select-probe-query :- [:cat driver-api/schema.common.non-blank-string [:* :any]]
   "Simple (ie. cheap) SELECT on a given table to test for access and get column metadata. Doesn't return
   anything useful (only used to check whether we can execute a SELECT query)
 
@@ -58,6 +61,10 @@
         honeysql (sql.qp/apply-top-level-clause driver :limit honeysql {:limit 0})]
     (sql.qp/format-honeysql driver honeysql)))
 
+(def ^:dynamic *select-probe-query-timeout-seconds*
+  "time to wait on the select probe query"
+  15)
+
 (defn- execute-select-probe-query
   "Execute the simple SELECT query defined above. The main goal here is to check whether we're able to execute a SELECT
   query against the Table in question -- we don't care about the results themselves -- so the query and the logic
@@ -70,7 +77,7 @@
     ;; truthy wheter or not it returns a ResultSet, but we can ignore that since we have enough info to proceed at
     ;; this point.
     (doto stmt
-      (.setQueryTimeout 15)
+      (.setQueryTimeout *select-probe-query-timeout-seconds*)
       (.execute))))
 
 (defmethod sql-jdbc.sync.interface/have-select-privilege? :sql-jdbc
@@ -91,26 +98,20 @@
                         (str (pr-str table-schema) \.))
                       (pr-str table-name)))
       true
-      (catch java.sql.SQLTimeoutException _
-        (log/infof "%s: Assuming SELECT privileges: caught timeout exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        true)
       (catch Throwable e
-        (log/infof e "%s: Assuming no SELECT privileges: caught exception"
-                   (str (when table-schema
-                          (str (pr-str table-schema) \.))
-                        (pr-str table-name)))
-        ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
-        ;; affecting anything higher
-        (try (when-not (.getAutoCommit conn)
-               (.rollback conn))
-             (catch Throwable _))
-        false))))
+        (let [allow? (driver/query-canceled? driver e)]
+          (log/info (if allow?
+                      "%s: Assuming SELECT privileges: caught timeout exception"
+                      "%s: Assuming no SELECT privileges: caught exception")
+                    (str (when table-schema
+                           (str (pr-str table-schema) \.))
+                         (pr-str table-name)))
+          ;; if the connection was closed this will throw an error and fail the sync loop so we prevent this error from
+          ;; affecting anything higher
+          (try (when-not (.getAutoCommit conn)
+                 (.rollback conn))
+               (catch Throwable _))
+          allow?)))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]
@@ -170,6 +171,8 @@
       (fn [{schema :schema table :name ttype :type}]
         ;; driver/current-user-table-privileges does not return privileges for external table on redshift, and foreign
         ;; table on postgres, so we need to use the select method on them
+        ;;
+        ;; TODO FIXME What the hecc!!! We should NOT be hardcoding driver-specific hacks in functions like this!!!!
         (if (#{[:postgres "FOREIGN TABLE"]}
              [driver ttype])
           (sql-jdbc.sync.interface/have-select-privilege? driver conn schema table)
@@ -211,7 +214,7 @@
       (filter (let [excluded (sql-jdbc.sync.interface/excluded-schemas driver)]
                 (fn [{table-schema :schema :as table}]
                   (and (not (contains? excluded table-schema))
-                       (driver.s/include-schema? schema-inclusion-filters schema-exclusion-filters table-schema)
+                       (include-schema-logging-exclusion schema-inclusion-filters schema-exclusion-filters table-schema)
                        (have-select-privilege-fn? table)))))
       (map #(dissoc % :type)))
      (db-tables driver (.getMetaData conn) nil db-name-or-nil))))
@@ -219,12 +222,12 @@
 (defn db-or-id-or-spec->database
   "Get database instance from `db-or-id-or-spec`."
   [db-or-id-or-spec]
-  (cond (mi/instance-of? :model/Database db-or-id-or-spec)
+  (cond (driver-api/instance-of? :model/Database db-or-id-or-spec)
         db-or-id-or-spec
 
         (int? db-or-id-or-spec)
-        (qp.store/with-metadata-provider db-or-id-or-spec
-          (lib.metadata/database (qp.store/metadata-provider)))
+        (driver-api/with-metadata-provider db-or-id-or-spec
+          (driver-api/database (driver-api/metadata-provider)))
 
         :else
         nil))

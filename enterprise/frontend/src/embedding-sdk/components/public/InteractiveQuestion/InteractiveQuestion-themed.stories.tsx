@@ -6,12 +6,13 @@ import {
   defineMetabaseTheme,
 } from "embedding-sdk";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import { questionIds } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
 import { Box } from "metabase/ui";
 
 import { InteractiveQuestion } from "./InteractiveQuestion";
 
-const QUESTION_ID = (window as any).QUESTION_ID || 12;
+const QUESTION_ID = (window as any).QUESTION_ID || questionIds.numberId;
 
 export default {
   title: "EmbeddingSDK/InteractiveQuestion/Themed",

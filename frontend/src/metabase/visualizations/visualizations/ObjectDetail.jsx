@@ -12,10 +12,14 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 const ObjectDetailProperties = {
-  uiName: t`Detail`,
+  getUiName() {
+    return t`Detail`;
+  },
   identifier: "object",
   iconName: "document",
-  noun: t`object`,
+  get noun() {
+    return t`object`;
+  },
   minSize: getMinSize("object"),
   defaultSize: getDefaultSize("object"),
   hidden: false,

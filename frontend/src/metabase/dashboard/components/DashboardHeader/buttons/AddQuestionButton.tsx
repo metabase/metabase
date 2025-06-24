@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { toggleSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getSidebar } from "metabase/dashboard/selectors";
@@ -22,12 +22,16 @@ export const AddQuestionButton = () => {
   useRegisterShortcut(
     [
       {
-        id: "add-notebook-question",
+        id: "dashboard-add-notebook-question",
         perform: () => dispatch(addDashboardQuestion("notebook")),
       },
       {
-        id: "add-native-question",
+        id: "dashboard-add-native-question",
         perform: () => dispatch(addDashboardQuestion("native")),
+      },
+      {
+        id: "dashboard-toggle-add-question-sidepanel",
+        perform: () => dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion)),
       },
     ],
     [sidebarOpen],

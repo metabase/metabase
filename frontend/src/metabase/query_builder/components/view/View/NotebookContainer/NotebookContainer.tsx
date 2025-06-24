@@ -21,6 +21,8 @@ import {
 import { NotebookNativePreview } from "metabase/querying/notebook/components/NotebookNativePreview";
 import { Box, Flex, rem } from "metabase/ui";
 
+import { canShowNativePreview } from "../../ViewHeader/utils";
+
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component
 const delayBeforeNotRenderingNotebook = 10;
@@ -51,6 +53,10 @@ export const NotebookContainer = ({
 
   const { isShowingNotebookNativePreview, notebookNativePreviewSidebarWidth } =
     useSelector(getUiControls);
+
+  const renderNativePreview =
+    isShowingNotebookNativePreview &&
+    canShowNativePreview({ question, queryBuilderMode: "notebook" });
 
   const minNotebookWidth = 640;
   const minSidebarWidth = 428;
@@ -163,7 +169,7 @@ export const NotebookContainer = ({
         </Box>
       )}
 
-      {isShowingNotebookNativePreview && screenSize && (
+      {renderNativePreview && screenSize && (
         <>
           {screenSize === "small" && (
             <Box pos="absolute" inset={0}>

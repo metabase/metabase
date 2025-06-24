@@ -11,7 +11,7 @@
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
    [metabase.util.yaml :as yaml]
@@ -358,7 +358,7 @@
 
               (testing "for settings"
                 (let [settings (get @entities "Setting")]
-                  (is (every? @#'setting/export?
+                  (is (every? setting/export?
                               (set (map (comp symbol :key) settings))))
                   (is (= (into {} (for [{:keys [key value]} settings]
                                     [key value]))
@@ -855,7 +855,7 @@
 (deftest extra-files-test
   (testing "Adding some extra files does not break deserialization"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (let [coll (ts/create! :model/Collection :name "coll")
               _    (ts/create! :model/Card :name "card" :collection_id (:id coll))]
           (storage/store! (extract/extract {:no-settings   true
@@ -1009,7 +1009,7 @@
 
 (deftest schema-coercion-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Dashboard _dash {:name       "Dash"
                                              :parameters [{:id             "abcd"
                                                            :type           :temporal-unit

@@ -19,6 +19,7 @@ export type ParameterSectionId =
   | "location"
   | "string"
   | "number"
+  | "boolean"
   | "id";
 
 export function getOperatorDisplayName(

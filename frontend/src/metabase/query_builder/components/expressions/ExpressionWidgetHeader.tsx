@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import Button from "metabase/common/components/Button";
 import { Flex } from "metabase/ui";
 
 import ExpressionWidgetHeaderS from "./ExpressionWidgetHeader.module.css";
 
+// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const DEFAULT_SECTION_NAME = t`Custom Expression`;
 
 interface Props {

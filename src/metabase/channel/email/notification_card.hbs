@@ -4,6 +4,15 @@
       <tr>
         <td>
           <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 30px;">
+            {{#if context.include_branding}}
+              <a href="https://www.metabase.com?utm_source=product&utm_medium=export&utm_campaign=exports_branding&utm_content=alert">
+                <div style="text-align: right; height: 28px; margin-bottom: 16px; color: {{payload.style.color_text_dark}};">
+                  <span style="font-size: 12px; vertical-align: middle;">Made with</span>
+                  <img width="22.4" height="28" src="{{context.application_logo_url}}" style="vertical-align: middle; margin-inline: 4px;"/>
+                  <span style='font-size: 16px; font-weight: 700; vertical-align: middle;'>Metabase</span>
+                </div>
+              </a>
+            {{/if}}
             <table class="header">
               <tr>
                 <td width="28px" style="vertical-align: top;">

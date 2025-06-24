@@ -1,13 +1,20 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
-import type { ExportFormat } from "metabase/common/types/export";
+import Link from "metabase/common/components/Link";
+import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import type {
+  ExportFormat,
+  TableExportFormat,
+} from "metabase/common/types/export";
+import CS from "metabase/css/core/index.css";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   Box,
   Button,
+  Flex,
   Icon,
   Stack,
   type StackProps,
@@ -18,6 +25,8 @@ import { canSavePng } from "metabase/visualizations";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import type { FormatPreference } from "../QuestionDownloadPopover/QuestionDownloadPopover";
+
 type QuestionDownloadWidgetProps = {
   question: Question;
   result: Dataset;
@@ -27,6 +36,10 @@ type QuestionDownloadWidgetProps = {
     enablePivot: boolean;
   }) => void;
   disabled?: boolean;
+  formatPreference?: FormatPreference;
+  setFormatPreference?: (
+    preference: FormatPreference,
+  ) => Promise<{ data?: unknown; error?: unknown }>;
 } & StackProps;
 
 const canPivotResults = (format: string, display: string) =>
@@ -38,6 +51,8 @@ export const QuestionDownloadWidget = ({
   result,
   onDownload,
   disabled = false,
+  formatPreference,
+  setFormatPreference,
   ...stackProps
 }: QuestionDownloadWidgetProps) => {
   const canDownloadPng = canSavePng(question.display());
@@ -45,7 +60,26 @@ export const QuestionDownloadWidget = ({
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const [format, setFormat] = useState<ExportFormat>(formats[0]);
+  const determineInitialFormat = () => {
+    if (!formatPreference) {
+      return formats[0];
+    }
+
+    const { last_download_format, last_table_download_format } =
+      formatPreference;
+
+    if (canDownloadPng) {
+      return formats.includes(last_download_format)
+        ? last_download_format
+        : formats[0];
+    }
+
+    return formats.includes(last_table_download_format)
+      ? last_table_download_format
+      : formats[0];
+  };
+
+  const [format, setFormat] = useState<ExportFormat>(determineInitialFormat());
   const canConfigurePivoting = canPivotResults(format, question.display());
 
   const [isPivoted, setIsPivoted] = useState(canConfigurePivoting);
@@ -57,21 +91,50 @@ export const QuestionDownloadWidget = ({
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
     t`The maximum download size is 1 million rows.`;
 
-  const handleDownload = useCallback(() => {
+  const handleFormatChange = (newFormat: ExportFormat) => {
+    setFormat(newFormat);
+
+    // If user is logged in, save their preference to the KV store
+    if (formatPreference !== undefined && setFormatPreference) {
+      const newPreference = {
+        last_download_format: newFormat,
+        last_table_download_format:
+          newFormat !== "png"
+            ? newFormat
+            : (formatPreference?.last_table_download_format as TableExportFormat) ||
+              "csv",
+      };
+      setFormatPreference(newPreference);
+    }
+  };
+
+  const { url: pivotExcelExportsDocsLink, showMetabaseLinks } = useDocsUrl(
+    "questions/exporting-results",
+    { anchor: "exporting-pivot-tables" },
+  );
+
+  const [
+    dismissedExcelPivotExportsBanner,
+    setDismissedExcelPivotExportsBanner,
+  ] = useUserSetting("dismissed-excel-pivot-exports-banner");
+
+  const handleDownload = () => {
     onDownload({
       type: format,
       enableFormatting: isFormatted,
       enablePivot: isPivoted,
     });
-  }, [format, isFormatted, isPivoted, onDownload]);
+  };
+
+  const showPivotXlsxExportHint =
+    format === "xlsx" &&
+    isPivoted &&
+    !dismissedExcelPivotExportsBanner &&
+    showMetabaseLinks;
 
   return (
-    <Stack
-      w={hasTruncatedResults ? "18.75rem" : "16.25rem"}
-      p="sm"
-      {...stackProps}
-    >
-      <Title order={4}>{t`Download`}</Title>
+    <Stack {...stackProps} w={336} p="0.75rem" gap="lg">
+      <Title order={5}>{t`Download data`}</Title>
       <ExportSettingsWidget
         selectedFormat={format}
         formats={formats}
@@ -79,10 +142,45 @@ export const QuestionDownloadWidget = ({
         isPivotingEnabled={isPivoted}
         canConfigureFormatting={canConfigureFormatting(format)}
         canConfigurePivoting={canConfigurePivoting}
-        onChangeFormat={setFormat}
+        onChangeFormat={handleFormatChange}
         onToggleFormatting={() => setIsFormatted((prev) => !prev)}
         onTogglePivoting={() => setIsPivoted((prev) => !prev)}
       />
+      {showPivotXlsxExportHint && (
+        <Flex
+          p="md"
+          bg="var(--mb-color-background-light)"
+          align="center"
+          justify="space-between"
+          className={CS.rounded}
+        >
+          <Text fz="12px" lh="16px" c="text-medium">
+            {t`Trying to pivot this data in Excel? You should download the raw data instead.`}{" "}
+            <Link
+              target="_new"
+              to={pivotExcelExportsDocsLink}
+              style={{ color: "var(--mb-color-brand)" }}
+            >
+              {t`Read the docs`}
+            </Link>
+          </Text>
+          <Button
+            aria-label={t`Close hint`}
+            pl={8}
+            pr={0}
+            variant="subtle"
+            size="compact-md"
+            style={{ flexShrink: 0 }}
+          >
+            <Icon
+              name="close"
+              c="text-medium"
+              tooltip={t`Don’t show me this again.`}
+              onClick={() => setDismissedExcelPivotExportsBanner(true)}
+            />
+          </Button>
+        </Flex>
+      )}
       {hasTruncatedResults && (
         <Box>
           <Text
@@ -98,7 +196,8 @@ export const QuestionDownloadWidget = ({
       )}
       <Button
         data-testid="download-results-button"
-        leftSection={<Icon name="download" />}
+        mt="auto"
+        ml="auto"
         variant="filled"
         onClick={handleDownload}
         disabled={disabled}

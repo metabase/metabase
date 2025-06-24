@@ -79,7 +79,7 @@
 .label {
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
-  line-height: var(--mantine-line-height-sm);
+  line-height: var(--mantine-line-height-md);
   cursor: pointer;
 }
 

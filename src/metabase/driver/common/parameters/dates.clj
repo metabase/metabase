@@ -1,5 +1,6 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -398,7 +399,7 @@
 
 (mu/defn- adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
   "Make an inclusive date range exclusive as needed."
-  [{:keys [inclusive-start? inclusive-end?]} temporal-range :- [:maybe TemporalRange]]
+  [temporal-range :- [:maybe TemporalRange] {:keys [inclusive-start? inclusive-end?]}]
   (-> temporal-range
       (m/update-existing :start #(if inclusive-start?
                                    %
@@ -434,6 +435,20 @@
       (m/update-existing :end u.date/format)
       (dissoc :unit)))
 
+(defn- date-string->raw-range
+  [date-string]
+  (let [now (t/local-date-time)]
+    ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
+    ;; days depending on the user timezone
+    (or (execute-decoders relative-date-string-decoders :range now date-string)
+        ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
+        ;; against the db field value that is casted granularity level of a day in the db time zone
+        (execute-decoders absolute-date-string-decoders :range nil date-string)
+        ;; if both of the decoders above fail, then the date string is invalid
+        (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
+                        {:param date-string
+                         :type  qp.error-type/invalid-parameter})))))
+
 (mu/defn date-string->range :- DateStringRange
   "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
   `:start` and/or `:end` keys, as ISO-8601 *date* strings. By default, `:start` and `:end` are inclusive,
@@ -456,22 +471,10 @@
   ([date-string  :- ::lib.schema.common/non-blank-string
     {:keys [inclusive-start? inclusive-end?]
      :or   {inclusive-start? true inclusive-end? true}}]
-   (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
-         now (t/local-date-time)]
-     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
-     ;; days depending on the user timezone
-     (or (->> (execute-decoders relative-date-string-decoders :range now date-string)
-              (adjust-inclusive-range-if-needed options)
-              format-date-range)
-         ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
-         ;; against the db field value that is casted granularity level of a day in the db time zone
-         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-              (adjust-inclusive-range-if-needed options)
-              format-date-range)
-         ;; if both of the decoders above fail, then the date string is invalid
-         (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
-                         {:param date-string
-                          :type  qp.error-type/invalid-parameter}))))))
+   (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}]
+     (-> (date-string->raw-range date-string)
+         (adjust-inclusive-range-if-needed options)
+         format-date-range))))
 
 (defn- date-str->qp-aware-offset-dt
   "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
@@ -539,14 +542,16 @@
   [raw-date-str field-type]
   (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
         ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
-        range-raw (try (date-string->range raw-date-str)
-                       (catch Throwable _
-                         (fallback-raw-range raw-date-str)))
+        [range-raw unit] (try (let [r (date-string->raw-range raw-date-str)]
+                                [(format-date-range r) (:unit r)])
+                              (catch Throwable _
+                                [(fallback-raw-range raw-date-str) :day]))
         date-str-conversion (if (isa? field-type :type/DateTimeWithTZ)
                               date-str->qp-aware-offset-dt
                               date-str->local-dt)]
     (-> (update-vals range-raw date-str-conversion)
-        (m/update-existing :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        (m/update-existing :end exclusive-datetime-range-end (or ({:second t/seconds, :hour t/hours} unit)
+                                                                 (date-str->unit-fn (:end range-raw))))
         (maybe-adjust-open-range (date-str->unit-fn ((some-fn :start :end) range-raw)))
         format-date-range)))
 

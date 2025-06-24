@@ -121,3 +121,5 @@ export type DateFilterDisplayOpts = {
   // whether to include `On` prefix for a single date filter
   withPrefix?: boolean;
 };
+
+export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";

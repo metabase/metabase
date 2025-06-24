@@ -66,6 +66,18 @@
   (and (clause? clause)
        (lib.hierarchy/isa? (first clause) ::lib.schema.ref/ref)))
 
+(defn segment-clause?
+  "Returns true if this is a segment clause"
+  [clause]
+  (and (clause? clause)
+       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/segment)))
+
+(defn metric-clause?
+  "Returns true if this is a metric clause"
+  [clause]
+  (and (clause? clause)
+       (lib.hierarchy/isa? (first clause) ::lib.schema.ref/metric)))
+
 (defn original-isa?
   "Returns whether the type of `expression` isa? `typ`.
    If the expression has an original-effective-type due to bucketing, check that."
@@ -321,6 +333,12 @@
     (when (< (inc stage-number) (count stages))
       (inc stage-number))))
 
+(defn last-stage?
+  "Whether a `stage-number` is referring to the last stage of a query or not."
+  [query stage-number]
+  ;; Call canonical-stage-index to ensure this throws when given an invalid stage-number.
+  (not (next-stage-number query (canonical-stage-index query stage-number))))
+
 (mu/defn query-stage :- [:maybe ::lib.schema/stage]
   "Fetch a specific `stage` of a query. This handles negative indices as well, e.g. `-1` will return the last stage of
   the query."
@@ -348,6 +366,14 @@
         stage-number'               (canonical-stage-index query stage-number)
         stages'                     (apply update (vec stages) stage-number' f args)]
     (assoc query :stages stages')))
+
+(mu/defn drop-later-stages :- ::lib.schema/query
+  "Drop any stages in the `query` that come after `stage-number`."
+  [query        :- LegacyOrPMBQLQuery
+   stage-number :- :int]
+  (cond-> (pipeline query)
+    (not (last-stage? query stage-number))
+    (update :stages #(take (inc (canonical-stage-index query stage-number)) %))))
 
 (defn native-stage?
   "Is this query stage a native stage?"
@@ -557,6 +583,17 @@
                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           (update :stages #(into [] (take (inc (canonical-stage-index query stage-number))) %)))
       new-query)))
+
+(defn find-stage-index-and-clause-by-uuid
+  "Find the clause in `query` with the given `lib-uuid`. Return a [stage-index clause] pair, if found."
+  ([query lib-uuid]
+   (find-stage-index-and-clause-by-uuid query -1 lib-uuid))
+  ([query stage-number lib-uuid]
+   (first (keep-indexed (fn [idx stage]
+                          (lib.util.match/match-one stage
+                            (clause :guard #(= lib-uuid (lib.options/uuid %)))
+                            [idx clause]))
+                        (:stages (drop-later-stages query stage-number))))))
 
 (defn fresh-uuids
   "Recursively replace all the :lib/uuids in `x` with fresh ones. Useful if you need to attach something to a query more

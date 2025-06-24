@@ -31,6 +31,7 @@ export interface GaugeContainerProps {
   card: Card;
   data: Data;
   getColor: ColorGetter;
+  hasDevWatermark?: boolean;
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
@@ -38,6 +39,7 @@ export default function GaugeContainer({
   card,
   data,
   getColor,
+  hasDevWatermark = false,
 }: GaugeContainerProps) {
   const settings = card.visualization_settings;
   const columnSettings =
@@ -150,6 +152,7 @@ export default function GaugeContainer({
       gaugeLabels={gaugeLabels}
       center={center}
       getColor={getColor}
+      hasDevWatermark={hasDevWatermark}
     />
   );
 }

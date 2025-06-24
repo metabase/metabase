@@ -624,8 +624,6 @@ describe(
 );
 
 H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
-  const NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS = 2;
-
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -645,15 +643,12 @@ H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
 
     H.openDashboardSettingsSidebar();
     H.sidesheet().within(() => {
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
-      );
       cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("not.be.checked");
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS + 1,
-      );
+      H.expectUnstructuredSnowplowEvent({
+        event: "auto_apply_filters_disabled",
+      });
     });
   });
 
@@ -664,15 +659,12 @@ H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
 
     H.openDashboardSettingsSidebar();
     H.sidesheet().within(() => {
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
-      );
       cy.findByText(filterToggleLabel).click();
       cy.wait("@updateDashboard");
       cy.findByLabelText(filterToggleLabel).should("be.checked");
-      H.expectGoodSnowplowEvents(
-        NUMBERS_OF_GOOD_SNOWPLOW_EVENTS_BEFORE_DISABLING_AUTO_APPLY_FILTERS,
-      );
+      H.assertNoUnstructuredSnowplowEvent({
+        event: "auto_apply_filters_disabled",
+      });
     });
   });
 });

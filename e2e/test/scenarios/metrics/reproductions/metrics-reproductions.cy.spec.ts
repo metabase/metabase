@@ -109,6 +109,7 @@ describe("issue 44171", () => {
 
   it("should not save viz settings on metrics", () => {
     cy.intercept("PUT", "/api/card/*").as("saveCard");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.openQuestionActions();
     H.popover().findByText("Edit metric definition").click();
@@ -135,8 +136,13 @@ describe("issue 44171", () => {
     H.sidebar().findByText("Metric 44171-A").click();
 
     H.showDashboardCardActions(0);
-    H.getDashboardCard(0).findByLabelText("Add series").click();
-    H.modal().findByText("Metric 44171-B").should("be.visible");
+    H.findDashCardAction(H.getDashboardCard(0), "Edit visualization").click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset("Metric 44171-B");
+      H.chartLegendItem("Metric 44171-A").should("exist");
+      H.chartLegendItem("Metric 44171-B").should("exist");
+    });
   });
 });
 

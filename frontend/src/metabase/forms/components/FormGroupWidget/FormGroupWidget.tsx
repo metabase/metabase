@@ -56,7 +56,7 @@ export const FormGroupWidget = forwardRef(function FormGroupWidget(
       ref={ref}
       name={name}
       value={value == null ? undefined : String(value)}
-      error={touched ? <div role="alert">{error}</div> : null}
+      error={touched && error ? <div role="alert">{error}</div> : null}
       data={groupOptions}
       onChange={handleChange}
       onBlur={handleBlur}

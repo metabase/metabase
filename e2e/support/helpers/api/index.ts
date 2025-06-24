@@ -22,6 +22,7 @@ export type {
 } from "./createQuestion";
 export { createQuestionAndAddToDashboard } from "./createQuestionAndAddToDashboard";
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
+export { createSnippet } from "./createSnippet";
 export { createTimeline } from "./createTimeline";
 export { createTimelineEvent } from "./createTimelineEvent";
 export { createTimelineWithEvents } from "./createTimelineWithEvents";

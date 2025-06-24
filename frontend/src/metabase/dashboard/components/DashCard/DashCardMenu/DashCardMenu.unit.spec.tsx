@@ -1,7 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { setupCardQueryDownloadEndpoint } from "__support__/server-mocks";
+import {
+  setupCardQueryDownloadEndpoint,
+  setupLastDownloadFormatEndpoints,
+} from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
@@ -109,12 +112,18 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
 
   setupCardQueryDownloadEndpoint(card, "json");
 
+  setupLastDownloadFormatEndpoints();
+
   const { history } = renderWithProviders(
     <>
       <Route
         path="dashboard/:slug"
         component={() => (
-          <DashCardMenu question={question} result={result} downloadsEnabled />
+          <DashCardMenu
+            question={question}
+            result={result}
+            downloadsEnabled={{ results: true }}
+          />
         )}
       />
       <Route path="question/:slug" component={() => <div />} />

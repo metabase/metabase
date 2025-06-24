@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { areParameterValuesIdentical } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-const UPDATE = t`Update filter`;
-const ADD = t`Add filter`;
-const RESET = t`Set to default`;
+const getUpdateLabel = () => t`Update filter`;
+const getAddLabel = () => t`Add filter`;
+const getResetLabel = () => t`Set to default`;
 
 /**
  * This is used to show the correct button when picking filter values.
@@ -20,31 +20,37 @@ export function getUpdateButtonProps(
   defaultValue?: unknown,
   required?: boolean,
 ): { label: string; isDisabled: boolean } {
+  const isDefaultValue = areParameterValuesIdentical(
+    unsavedValue,
+    defaultValue,
+  );
+  const isEmpty = !hasValue(unsavedValue);
+  const isUnchanged = areParameterValuesIdentical(value, unsavedValue);
+
   if (required) {
+    if (isDefaultValue || isEmpty) {
+      return {
+        label: getResetLabel(),
+        isDisabled: isDefaultValue,
+      };
+    }
+
     return {
-      label:
-        !hasValue(unsavedValue) ||
-        areParameterValuesIdentical(unsavedValue, defaultValue)
-          ? RESET
-          : UPDATE,
-      isDisabled:
-        areParameterValuesIdentical(unsavedValue, value) &&
-        hasValue(unsavedValue),
+      label: getUpdateLabel(),
+      isDisabled: isUnchanged,
     };
   }
 
   if (hasValue(defaultValue)) {
     return {
-      label: areParameterValuesIdentical(unsavedValue, defaultValue)
-        ? RESET
-        : UPDATE,
-      isDisabled: areParameterValuesIdentical(value, unsavedValue),
+      label: isDefaultValue ? getResetLabel() : getUpdateLabel(),
+      isDisabled: isUnchanged,
     };
   }
 
   return {
-    label: hasValue(value) ? UPDATE : ADD,
-    isDisabled: areParameterValuesIdentical(value, unsavedValue),
+    label: hasValue(value) ? getUpdateLabel() : getAddLabel(),
+    isDisabled: isUnchanged,
   };
 }
 

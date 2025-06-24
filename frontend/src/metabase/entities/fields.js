@@ -29,7 +29,6 @@ import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
-import { MetabaseApi } from "metabase/services";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 
@@ -46,7 +45,6 @@ export const ADD_REMAPPINGS = "metabase/entities/fields/ADD_REMAPPINGS";
 
 // ADDITIONAL OTHER ACTIONS
 
-export const ADD_PARAM_VALUES = "metabase/entities/fields/ADD_PARAM_VALUES";
 export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 
 /**
@@ -115,9 +113,11 @@ const Fields = createEntity({
       ),
       withNormalize(FieldSchema),
     )((field) => async (dispatch) => {
-      const { field_id, ...data } = await MetabaseApi.field_values({
-        fieldId: field.id,
-      });
+      const { field_id, ...data } = await entityCompatibleQuery(
+        field.id,
+        dispatch,
+        fieldApi.endpoints.getFieldValues,
+      );
       const table_id = field.table_id;
 
       // table_id is required for uniqueFieldId as it's a way to know if field is virtual
@@ -195,7 +195,6 @@ const Fields = createEntity({
   },
 
   actions: {
-    addParamValues: createAction(ADD_PARAM_VALUES),
     addFields: createAction(ADD_FIELDS, (fields) =>
       normalize(fields, [FieldSchema]),
     ),
@@ -205,18 +204,6 @@ const Fields = createEntity({
 
   reducer: handleActions(
     {
-      [ADD_PARAM_VALUES]: {
-        next: (state, { payload: paramValues }) => {
-          for (const fieldValues of Object.values(paramValues)) {
-            state = assocIn(
-              state,
-              [fieldValues.field_id, "values"],
-              fieldValues,
-            );
-          }
-          return state;
-        },
-      },
       [ADD_REMAPPINGS]: (state, { payload: { fieldId, remappings } }) =>
         updateIn(state, [fieldId, "remappings"], (existing = []) =>
           Array.from(new Map(existing.concat(remappings))),

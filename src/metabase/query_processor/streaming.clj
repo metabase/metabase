@@ -1,5 +1,7 @@
 (ns metabase.query-processor.streaming
   (:require
+   [metabase.analytics.core :as analytics]
+   [metabase.driver :as driver]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -134,6 +136,7 @@
          {:data initial-metadata})
 
         ([result]
+         (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "success"})
          (assoc result
                 :row_count @row-count
                 :status :completed))
@@ -216,9 +219,3 @@
   {:style/indent 1}
   [[map-binding export-format filename-prefix] & body]
   `(-streaming-response ~export-format ~filename-prefix (^:once fn* [~map-binding] ~@body)))
-
-(defn export-formats
-  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
-  with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
-  []
-  (set (keys (methods qp.si/stream-options))))

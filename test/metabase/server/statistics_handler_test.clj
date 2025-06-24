@@ -226,3 +226,27 @@
           (a/>!! chan-finish-handle :done) ;; finish the async thread
           (a/<!! chan-done-request)        ;; finished the outer async listener
           (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/responses-total {:code "5xx"}))))))))
+
+(deftest test-request-duration-metrics
+  (mt/with-prometheus-system! [_ system]
+    (testing "when sync server responds 200"
+      (with-server 200 false
+        [^LocalConnector connector chan-start-handle chan-finish-handle chan-done-request]
+        (.executeRequest connector "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        (a/>!! chan-start-handle :done)
+        (Thread/sleep 1000)
+        (a/>!! chan-finish-handle :done) ;; finish the synchronous handler
+        (a/<!! chan-done-request)        ;; finished the synchronous wrapper
+        (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/request-time-max-seconds) 0.5)))))
+  (mt/with-prometheus-system! [_ system]
+    (testing "when sync server responds 200"
+      (with-server 200 true
+        [^LocalConnector connector chan-start-handle chan-finish-handle chan-done-request]
+        (.executeRequest connector "GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        (a/>!! chan-start-handle :done)
+        (Thread/sleep 1000)
+        (a/>!! chan-finish-handle :done) ;; finish the synchronous handler
+        (a/<!! chan-done-request)        ;; finished the synchronous wrapper
+        (a/>!! chan-finish-handle :done) ;; finish the asynchronous handler
+        (a/<!! chan-done-request)        ;; finished the asynchronous wrapper
+        (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/request-time-max-seconds) 0.5))))))

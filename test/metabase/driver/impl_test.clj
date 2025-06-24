@@ -41,8 +41,8 @@
           (tu.async/wait-for-result started-loading-chan 500)
           (is (= ::race-condition-test
                  (driver/the-initialized-driver ::race-condition-test)))
-          (is (= true
-                 @finished-loading)))))))
+          (is (true?
+               @finished-loading)))))))
 
 ;;;; [[driver-multimethods-in-changelog-test]]
 
@@ -85,7 +85,8 @@
     (->> (map ns-publics nss)
          (mapcat vals)
          (filter #(instance? clojure.lang.MultiFn (deref %)))
-         (map meta))))
+         (map meta)
+         (filter (comp #(str/starts-with? % "metabase.driver") str :ns)))))
 
 (defn- older-than-42?
   [version]

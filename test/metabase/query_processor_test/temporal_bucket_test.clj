@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 

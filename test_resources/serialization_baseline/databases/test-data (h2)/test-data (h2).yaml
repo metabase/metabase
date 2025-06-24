@@ -27,8 +27,7 @@ initial_sync_status: complete
 serdes/meta:
 - id: test-data (h2)
   model: Database
-entity_id: ymbeYS8YN6P6Vltnq81Ib
+router_database_id: null
 uploads_enabled: false
 uploads_schema_name: null
 uploads_table_prefix: null
-router_database_id: null

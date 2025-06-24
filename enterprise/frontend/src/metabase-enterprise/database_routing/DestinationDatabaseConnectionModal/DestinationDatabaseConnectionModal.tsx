@@ -4,10 +4,11 @@ import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 
 import { DatabaseEditConnectionForm } from "metabase/admin/databases/components/DatabaseEditConnectionForm";
+import S from "metabase/admin/databases/containers/DatabaseConnectionModal.module.css";
 import { useGetDatabaseQuery, useUpdateDatabaseMutation } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import title from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -18,7 +19,7 @@ import type { Database, DatabaseData } from "metabase-types/api";
 
 import { paramIdToGetQuery } from "../utils";
 
-import S from "./DestinationDatabaseConnectionModal.module.css";
+import { pickPrefillFieldsFromPrimaryDb } from "./utils";
 
 export const DestinationDatabaseConnectionModalInner = ({
   params: { databaseId, destinationDatabaseId },
@@ -29,9 +30,8 @@ export const DestinationDatabaseConnectionModalInner = ({
 }) => {
   const dispatch = useDispatch();
 
-  // TODO: get the final docs url from the writing team
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
-  const { url: docsUrl } = useDocsUrl("databases/db-routing");
+  const { url: docsUrl } = useDocsUrl("permissions/database-routing");
 
   const primaryDbReq = useGetDatabaseQuery(paramIdToGetQuery(databaseId));
   const destinationDbReq = useGetDatabaseQuery(
@@ -45,12 +45,13 @@ export const DestinationDatabaseConnectionModalInner = ({
   const isNewDatabase = destinationDatabaseId === undefined;
 
   const destinationDatabase = useMemo<Partial<Database> | undefined>(() => {
-    return isNewDatabase
-      ? {
-          engine: primaryDbReq.currentData?.engine,
-          details: { "destination-database": true },
-        }
-      : destinationDbReq.currentData;
+    const primaryDb = primaryDbReq.currentData;
+
+    if (isNewDatabase) {
+      return primaryDb ? pickPrefillFieldsFromPrimaryDb(primaryDb) : undefined;
+    }
+
+    return destinationDbReq.currentData;
   }, [isNewDatabase, primaryDbReq.currentData, destinationDbReq.currentData]);
 
   const addingNewDatabase = destinationDatabaseId === undefined;

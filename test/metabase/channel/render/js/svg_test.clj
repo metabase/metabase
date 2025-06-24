@@ -13,7 +13,7 @@
    [metabase.util.json :as json])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
-   (org.graalvm.polyglot Context Value)
+   (org.graalvm.polyglot Value)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -78,9 +78,6 @@
       (is (no-html-elements tag-set) (str "Contained html elements: "
                                           (set/intersection #{"div" "span" "p"}))))))
 
-(defn- context ^Context []
-  (#'js.svg/context))
-
 (deftest ^:parallel progress-test
   (let [value    1234
         goal     1337
@@ -88,14 +85,15 @@
     (testing "It returns bytes"
       (let [svg-bytes (js.svg/progress value goal settings)]
         (is (bytes? svg-bytes))))
-    (let [svg-string (.asString ^Value
-                      (js.engine/execute-fn-name
-                       (context)
-                       "progress"
-                       (json/encode {:value value :goal goal})
-                       (json/encode settings)
-                       (json/encode {})))]
-      (validate-svg-string :progress svg-string))))
+    (js.svg/with-static-viz-context context
+      (let [svg-string (.asString ^Value (js.engine/execute-fn-name
+                                          context
+                                          "progress"
+                                          (json/encode {:value value :goal goal})
+                                          (json/encode settings)
+                                          (json/encode {})
+                                          (json/encode {})))]
+        (validate-svg-string :progress svg-string)))))
 
 (deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"

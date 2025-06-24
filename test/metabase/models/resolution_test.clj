@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.models.resolution :as models.resolution]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util.jvm :as u.jvm]
    [toucan2.core :as t2]))
 

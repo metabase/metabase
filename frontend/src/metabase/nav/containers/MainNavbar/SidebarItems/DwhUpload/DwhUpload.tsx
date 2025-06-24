@@ -1,13 +1,13 @@
 import { type ChangeEvent, useCallback, useRef, useState } from "react";
 import { c, t } from "ttag";
 
-import {
-  type CollectionOrTableIdProps,
-  ModelUploadModal,
-} from "metabase/collections/components/ModelUploadModal";
-import type { OnFileUpload } from "metabase/collections/types";
-import { UploadInput } from "metabase/components/upload";
-import { useToggle } from "metabase/hooks/use-toggle";
+import { ModelUploadModal } from "metabase/collections/components/ModelUploadModal";
+import type {
+  CollectionOrTableIdProps,
+  OnFileUpload,
+} from "metabase/collections/types";
+import { UploadInput } from "metabase/common/components/upload";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_UPLOAD_MANAGEMENT } from "metabase/plugins";
 import {
@@ -74,7 +74,7 @@ export const DwhUploadMenu = () => {
 
   return (
     <Box data-testid="dwh-upload" mt="md" px="md">
-      <Menu position="right">
+      <Menu position="right-start">
         <Menu.Target>
           <Button
             fullWidth

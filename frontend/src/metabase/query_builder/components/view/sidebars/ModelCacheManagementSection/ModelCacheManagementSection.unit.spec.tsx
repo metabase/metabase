@@ -1,5 +1,5 @@
+import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
 import { createMockMetadata } from "__support__/metadata";
 import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist";
@@ -96,7 +96,7 @@ describe("ModelCacheManagementSection", () => {
 
   it("displays 'persisted' state correctly", async () => {
     const { modelCacheInfo } = await setup({ state: "persisted" });
-    const expectedTimestamp = moment(modelCacheInfo.refresh_end).fromNow();
+    const expectedTimestamp = dayjs(modelCacheInfo.refresh_end).fromNow();
     expect(
       await screen.findByText(`Model last cached ${expectedTimestamp}`),
     ).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("ModelCacheManagementSection", () => {
 
   it("displays 'error' state correctly", async () => {
     const { modelCacheInfo } = await setup({ state: "error" });
-    const expectedTimestamp = moment(modelCacheInfo.refresh_end).fromNow();
+    const expectedTimestamp = dayjs(modelCacheInfo.refresh_end).fromNow();
 
     expect(
       await screen.findByText("Failed to update model cache"),

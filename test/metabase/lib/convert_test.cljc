@@ -2,6 +2,7 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -9,6 +10,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -761,8 +763,7 @@
                                                                                          :percent-email 0
                                                                                          :percent-state 0
                                                                                          :average-length 6.375}}}
-                                                        :base_type :type/Text
-                                                        :source_alias "Products"}
+                                                        :base_type :type/Text}
                                                        {:name "count"
                                                         :display_name "Count"
                                                         :base_type :type/Integer
@@ -782,8 +783,7 @@
                                                                           :percent-email 0
                                                                           :percent-state 0
                                                                           :average-length 6.375}}}
-                                         :base_type :type/Text
-                                         :source_alias "Products"}
+                                         :base_type :type/Text}
                                         {:name "count"
                                          :display_name "Count"
                                          :base_type :type/Integer
@@ -1155,21 +1155,41 @@
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
 
 (deftest ^:parallel cumulative-count-test
-  (is (=? {:query {:aggregation [[:aggregation-options
-                                  [:cum-count [:field 48400 {:base-type :type/BigInteger}]]
-                                  {:name "count"}]]}}
-          (lib.convert/->legacy-MBQL
-           {:lib/type :mbql/query
-            :database 48001
-            :stages   [{:lib/type     :mbql.stage/mbql
-                        :source-table 48040
-                        :aggregation  [[:cum-count
-                                        {:lib/uuid "4b4c18e3-5a8c-4735-9476-815eb910cb0a", :name "count"}
-                                        [:field
-                                         {:base-type      :type/BigInteger,
-                                          :effective-type :type/BigInteger,
-                                          :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
-                                         48400]]]}]}))))
+  (is (=? (m/dissoc-in (lib.tu.macros/mbql-query
+                         venues
+                         {:source-table $$venues
+                          :aggregation [[:aggregation-options
+                                         [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                                         {:name "count"}]]})
+                       [:query :aggregation-idents])
+          (m/dissoc-in (lib.convert/->legacy-MBQL
+                        (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                            (lib/aggregate (lib.options/update-options
+                                            (lib/cum-count (meta/field-metadata :venues :id))
+                                            assoc :name "count"))))
+                       [:query :aggregation-idents]))))
+
+(deftest ^:parallel cumulative-aggregations-in-expression-test
+  (is (=?  (m/dissoc-in (lib.tu.macros/mbql-query
+                          venues
+                          {:source-table $$venues
+                           :aggregation [[:aggregation-options
+                                          [:+
+                                           [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                                           [:aggregation-options [:cum-count] {:name "b"}]]
+                                          {:name "xixix"}]]})
+                        [:query :aggregation-idents])
+           (m/dissoc-in (lib.convert/->legacy-MBQL
+                         (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                             (lib/aggregate (lib.options/update-options
+                                             (lib/+ (lib.options/update-options
+                                                     (lib/cum-sum (meta/field-metadata :venues :id))
+                                                     assoc :name "a")
+                                                    (lib.options/update-options
+                                                     (lib/cum-count)
+                                                     assoc :name "b"))
+                                             assoc :name "xixix"))))
+                        [:query :aggregation-idents]))))
 
 (deftest ^:parallel blank-queries-test
   (testing "minimal legacy"

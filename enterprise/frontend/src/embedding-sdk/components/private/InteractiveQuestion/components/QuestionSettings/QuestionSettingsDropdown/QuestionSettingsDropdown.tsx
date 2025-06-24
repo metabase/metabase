@@ -9,6 +9,7 @@ import { ToolbarButton } from "../../util/ToolbarButton";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionQuestionSettingsDropdownProps = {
@@ -41,6 +42,7 @@ export const QuestionSettingsDropdown = ({
           </Center>
         }
         className={ToolbarButtonS.PrimaryToolbarButton}
+        data-testid="viz-settings-button"
       />
     </Popover.Target>
     <Popover.Dropdown miw="20rem" mah={height ?? FLEXIBLE_SIZE_DEFAULT_HEIGHT}>

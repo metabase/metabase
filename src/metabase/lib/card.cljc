@@ -5,6 +5,7 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
@@ -31,7 +32,8 @@
   (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata)
     (= (:type card-metadata) :question) (assoc :question? true)
     (= (:type card-metadata) :model) (assoc :model? true)
-    (= (:type card-metadata) :metric) (assoc :metric? true)))
+    (= (:type card-metadata) :metric) (assoc :metric? true)
+    (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query
@@ -58,29 +60,27 @@
           (fallback-display-name source-card)))))
 
 (mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   card-query            :- :map]
+  [metadata-providerable                :- ::lib.schema.metadata/metadata-providerable
+   {card-query :dataset-query :as card} :- :map]
   (when (some? card-query)
-    (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))))
+    (let [cols      (lib.metadata.calculation/returned-columns (lib.query/query metadata-providerable card-query))
+          model-eid (when (= (:type card) :model)
+                      (or (:entity-id card)
+                          (throw (ex-info "Cannot infer columns for a model with no :entity-id!"
+                                          {:card card}))))]
+      (cond->> cols
+        model-eid (map #(lib.metadata.ident/add-model-ident % model-eid))))))
 
 (def ^:private Card
   [:map
    {:error/message "Card with :dataset-query"}
    [:dataset-query :map]])
 
-(def ^:dynamic *force-broken-card-refs*
-  "Things are fundamentally broken because of #29763, and every time I try to fix this is ends up being a giant mess to
-  untangle. The FE currently ignores results metadata for ad-hoc queries, and thus cannot match up 'correct' Field
-  refs like 'Products__CATEGORY'... for the time being we'll have to force ID refs even when we should be using
-  nominal refs so as to not completely destroy the FE. Once we port more stuff over maybe we can fix this."
-  false)
-
 (defn- ->card-metadata-column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
   accept both `card-id` and `card`."
   [col
    card-id
-   card
    field]
   (let [col (-> col
                 (update-keys u/->kebab-case-en))
@@ -95,16 +95,7 @@
                    (assoc :lib/card-id card-id)
 
                    (:metabase.lib.field/temporal-unit col)
-                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
-
-                   (and *force-broken-card-refs*
-                        ;; never force broken refs for Models, because Models can have give columns with completely
-                        ;; different names the Field ID of a different column, somehow. See #22715
-                        (or
-                         ;; we can only do this check if `card-id` is passed in.
-                         (not card-id)
-                         (not= (:type card) :model)))
-                   (assoc ::force-broken-id-refs true)
+                   (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit col)))
 
                    ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
                    ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be
@@ -112,7 +103,7 @@
                    (not= (:semantic-type col) :type/FK)
                    (assoc :fk-target-field-id nil))]
     ;; :effective-type is required, but not always set, see e.g.,
-    ;; metabase.api.table/card-result-metadata->virtual-fields
+    ;; [[metabase.warehouse-schema.api.table/card-result-metadata->virtual-fields]]
     (u/assoc-default col-meta :effective-type (:base-type col-meta))))
 
 (mu/defn ->card-metadata-columns :- [:sequential ::lib.schema.metadata/column]
@@ -125,11 +116,10 @@
     cols                  :- [:sequential :map]]
    (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
          card-id           (when card-or-id (u/the-id card-or-id))
-         card              (when card-id (lib.metadata/card metadata-providerable card-id))
          field-ids         (keep :id cols)
          fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
          field-id->field   (m/index-by :id fields)]
-     (mapv #(->card-metadata-column % card-id card (get field-id->field (:id %))) cols))))
+     (mapv #(->card-metadata-column % card-id (get field-id->field (:id %))) cols))))
 
 (def ^:private CardColumnMetadata
   [:merge
@@ -153,13 +143,21 @@
     (binding [*card-metadata-columns-card-ids* (conj *card-metadata-columns-card-ids* (:id card))]
       (when-let [result-metadata (or (:fields card)
                                      (:result-metadata card)
-                                     (infer-returned-columns metadata-providerable (:dataset-query card)))]
+                                     (infer-returned-columns metadata-providerable card))]
         ;; Card `result-metadata` SHOULD be a sequence of column infos, but just to be safe handle a map that
         ;; contains` :columns` as well.
         (when-let [cols (not-empty (cond
                                      (map? result-metadata)        (:columns result-metadata)
                                      (sequential? result-metadata) result-metadata))]
-          (->card-metadata-columns metadata-providerable card cols))))))
+          (let [cols (->card-metadata-columns metadata-providerable card cols)]
+            (when-let [invalid-idents (and lib.metadata.ident/*enforce-idents-present*
+                                           (= (:type card) :model)
+                                           (seq (remove #(lib.metadata.ident/valid-model-ident? % (:entity-id card))
+                                                        cols)))]
+              (throw (ex-info "Model columns do not have model[...]__ idents"
+                              {:card       card
+                               :bad-idents invalid-idents})))
+            cols))))))
 
 (mu/defn saved-question-metadata :- CardColumns
   "Metadata associated with a Saved Question with `card-id`."

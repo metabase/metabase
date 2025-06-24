@@ -3,8 +3,8 @@ import { jt, t } from "ttag";
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -37,7 +37,7 @@ export const DataPermissionsHelp = () => {
   return (
     <Flex direction="column" py={rem(22)} px="1rem">
       <Box px={rem(12)}>
-        <Title order={4}>{t`Data permissions`}</Title>
+        <Title order={3}>{t`Data permissions`}</Title>
         <Text my="1rem">{t`People can be members of multiple groups, and Metabase grants them the most permissive level of access across all of a person's groups.`}</Text>
       </Box>
 

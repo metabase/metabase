@@ -9,6 +9,7 @@ import {
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { shouldRunCardQuery } from "embedding-sdk/lib/interactive-question";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
 import type Question from "metabase-lib/v1/Question";
@@ -17,6 +18,7 @@ import { useInteractiveQuestionContext } from "../context";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionQuestionVisualizationProps = FlexibleSizeProps;
@@ -34,6 +36,7 @@ export const QuestionVisualization = ({
   className,
   style,
 }: InteractiveQuestionQuestionVisualizationProps) => {
+  const { isLocaleLoading } = useLocale();
   const {
     question,
     queryResults,
@@ -45,21 +48,17 @@ export const QuestionVisualization = ({
     updateQuestion,
     variant,
     originalId,
-    isCardIdError,
   } = useInteractiveQuestionContext();
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
     question && shouldRunCardQuery(question) && !queryResults;
 
-  if (isQuestionLoading || isQueryResultLoading) {
+  if (isLocaleLoading || isQuestionLoading || isQueryResultLoading) {
     return <SdkLoader />;
   }
 
-  if (
-    !question ||
-    (isCardIdError && originalId !== "new" && originalId !== null)
-  ) {
+  if (!question) {
     if (originalId) {
       return <QuestionNotFoundError id={originalId} />;
     } else {

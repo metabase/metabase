@@ -1,5 +1,4 @@
 import fs from "fs";
-
 import path from "path";
 
 import { getProjectDependenciesFromPackageJson } from "../utils/get-package-version";

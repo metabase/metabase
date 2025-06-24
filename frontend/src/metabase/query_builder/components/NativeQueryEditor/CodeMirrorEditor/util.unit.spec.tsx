@@ -1,6 +1,10 @@
 import { EditorState } from "@codemirror/state";
 
-import { matchTagAtCursor } from "./util";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
+import { getPlaceholderText, matchTagAtCursor } from "./util";
 
 describe("matchTagAtCursor", () => {
   function setup(
@@ -157,5 +161,40 @@ describe("matchTagAtCursor", () => {
     });
     const match = matchTagAtCursor(state);
     expect(match).toBeNull();
+  });
+});
+
+describe("getPlaceholderText", () => {
+  it("should return sql placeholder text", () => {
+    expect(getPlaceholderText("sql")).toBe("SELECT * FROM TABLE_NAME");
+  });
+
+  it("should return nosql placeholder text", () => {
+    expect(getPlaceholderText("mongo")).toBe(
+      '[ { "$project": { "_id": "$_id" } } ]',
+    );
+  });
+
+  describe("metabot is enabled", () => {
+    beforeAll(() => {
+      const tokenFeatures = createMockTokenFeatures({
+        ai_sql_generation: true,
+      });
+
+      mockSettings({ "token-features": tokenFeatures });
+      setupEnterpriseOnlyPlugin("ai-sql-generation");
+    });
+
+    it("should return metabot placeholder text for sql", () => {
+      expect(getPlaceholderText("sql")).toBe(
+        "Write and select text to generate SQL with Metabot, or type SQL directly",
+      );
+    });
+
+    it("should return regular placeholder text for nosql", () => {
+      expect(getPlaceholderText("mongo")).toBe(
+        '[ { "$project": { "_id": "$_id" } } ]',
+      );
+    });
   });
 });

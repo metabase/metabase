@@ -1,19 +1,35 @@
+import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
+  InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import { modal, updateSetting } from "e2e/support/helpers";
+import {
+  chartPathWithFillColor,
+  createDashboard,
+  createQuestion,
+  getDashboardCard,
+  modal,
+  moveDnDKitElement,
+  openVizSettingsSidebar,
+  tooltip,
+  updateSetting,
+} from "e2e/support/helpers";
+import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-  mockAuthProviderAndJwtSignIn,
-  signInAsAdminAndEnableEmbeddingSdk,
-} from "e2e/support/helpers/component-testing-sdk";
-import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
+import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
+import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
+
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding-sdk > styles", () => {
   beforeEach(() => {
@@ -354,6 +370,117 @@ describe("scenarios > embedding-sdk > styles", () => {
 
       // TODO: good place for a visual regression test
     });
+
+    describe("tooltips/overlays styles", () => {
+      beforeEach(() => {
+        signInAsAdminAndEnableEmbeddingSdk();
+
+        createQuestion({
+          name: "Tooltip test",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+            ],
+          },
+          display: "bar",
+        })
+          .then(({ body: { id: ordersQuestionId } }) =>
+            createDashboard({
+              dashcards: [
+                {
+                  id: 1,
+                  size_x: 10,
+                  size_y: 20,
+                  row: 0,
+                  col: 0,
+                  card_id: ordersQuestionId,
+                },
+              ],
+            }),
+          )
+          .then((dashboard) => {
+            cy.wrap(dashboard.body.id).as("dashboardId");
+          });
+
+        cy.signOut();
+
+        cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+        cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+          "dashcardQuery",
+        );
+      });
+
+      it("should render Mantine tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        getSdkRoot().findByText("Tooltip test").click();
+        getSdkRoot().findByLabelText("Back to Test Dashboard").realHover();
+
+        tooltip()
+          .findByText("Back to Test Dashboard")
+          .should("have.css", "font-family", "Impact");
+      });
+
+      it("should render echarts tooltip with our styles", () => {
+        cy.get("@dashboardId").then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />, {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          });
+        });
+
+        getDashboardCard(0).within(() => {
+          chartPathWithFillColor("#509EE3").eq(0).realHover();
+        });
+
+        cy.findAllByTestId("echarts-tooltip")
+          .eq(0)
+          .should("exist")
+          .get(".echarts-tooltip-container")
+          .should("have.css", "font-family", "Impact");
+      });
+
+      it("should render DragOverlay of SortableList with our styles", () => {
+        mountSdkContent(
+          <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+          {
+            sdkProviderProps: {
+              theme: {
+                fontFamily: "Impact",
+              },
+            },
+          },
+        );
+
+        openVizSettingsSidebar();
+
+        moveDnDKitElement(cy.findByTestId("draggable-item-ID"), {
+          vertical: -100,
+          onBeforeDragEnd: () => {
+            cy.get(".drag-overlay").within(() => {
+              cy.findByTestId("draggable-item-ID").should(
+                "have.css",
+                "font-family",
+                "Impact",
+              );
+            });
+          },
+        });
+      });
+    });
   });
 
   describe("styles should not leak outside of the provider", () => {
@@ -388,6 +515,66 @@ describe("scenarios > embedding-sdk > styles", () => {
       for (const { tag } of elements) {
         expectElementToHaveNoAppliedCssRules(tag);
       }
+    });
+
+    it("css variables should not leak outside of mb-wrapper", () => {
+      cy.mount(
+        <MantineProvider
+          theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
+        >
+          <Button color="brand">outside sdk provider</Button>
+
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
+          >
+            <Button color="brand">outside sdk wrapper</Button>
+
+            <InteractiveQuestion
+              questionId={ORDERS_QUESTION_ID}
+              isSaveEnabled
+            />
+          </MetabaseProvider>
+        </MantineProvider>,
+      );
+
+      cy.log(
+        "Customer's elements outside of the SDK provider should have their brand color intact",
+      );
+
+      cy.contains("button", "outside sdk provider").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 0, 255)",
+      );
+
+      cy.log(
+        "Customer's elements outside of the SDK components should have their brand color intact",
+      );
+
+      cy.contains("button", "outside sdk wrapper").should(
+        "have.css",
+        "background-color",
+        "rgb(255, 0, 255)",
+      );
+
+      cy.log(
+        "SDK elements should have the brand color from the Metabase theme",
+      );
+
+      getSdkRoot().within(() => {
+        cy.get("button")
+          .contains("Filter")
+          .should("have.css", "color", "rgb(255, 0, 0)");
+
+        cy.findByTestId("notebook-button").click();
+
+        cy.findByRole("button", { name: "Visualize" }).should(
+          "have.css",
+          "background-color",
+          "rgb(255, 0, 0)",
+        );
+      });
     });
   });
 });
@@ -425,3 +612,17 @@ function wrapBrowserDefaultFont() {
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });
 }
+
+export const colorTuple = (value: string) =>
+  [
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+    value,
+  ] as const;

@@ -21,8 +21,8 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.events :as events]
-   [metabase.models.collection :as collection]
+   [metabase.collections.models.collection :as collection]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
@@ -95,7 +95,7 @@
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
       (throw (ex-info (tru "dashboard ID of a dashboard subscription cannot be modified") notification))))
-  (u/prog1 (t2/changes notification)
+  (u/prog1 notification
     (assert-valid-parameters notification)
     (collection/check-collection-namespace :model/Pulse (:collection_id notification))))
 

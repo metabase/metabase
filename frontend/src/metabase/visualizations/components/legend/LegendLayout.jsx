@@ -28,9 +28,7 @@ const propTypes = {
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
   onToggleSeriesVisibility: PropTypes.func,
-  onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
-  canRemoveSeries: PropTypes.func,
 };
 
 export const LegendLayout = ({
@@ -47,9 +45,7 @@ export const LegendLayout = ({
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,
-  onRemoveSeries,
   isReversed,
-  canRemoveSeries,
 }) => {
   const hasDimensions = width != null && height != null;
   const itemHeight = !isFullscreen ? MIN_ITEM_HEIGHT : MIN_ITEM_HEIGHT_LARGE;
@@ -78,9 +74,7 @@ export const LegendLayout = ({
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
             onToggleSeriesVisibility={onToggleSeriesVisibility}
-            onRemoveSeries={onRemoveSeries}
             isReversed={isReversed}
-            canRemoveSeries={canRemoveSeries}
           />
           {!isVertical && actionButtons && (
             <LegendActions>{actionButtons}</LegendActions>

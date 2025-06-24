@@ -6,7 +6,9 @@ import type { TypeOption } from "./types";
 
 const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
   {
-    label: t`Today`,
+    get label() {
+      return t`Today`;
+    },
     shortcut: "today",
     value: {
       type: "relative",
@@ -15,7 +17,9 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Yesterday`,
+    get label() {
+      return t`Yesterday`;
+    },
     shortcut: "yesterday",
     value: {
       type: "relative",
@@ -24,7 +28,9 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Previous week`,
+    get label() {
+      return t`Previous week`;
+    },
     shortcut: "previous-week",
     value: {
       type: "relative",
@@ -33,7 +39,9 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Previous 7 days`,
+    get label() {
+      return t`Previous 7 days`;
+    },
     shortcut: "previous-7-days",
     value: {
       type: "relative",
@@ -42,7 +50,9 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Previous 30 days`,
+    get label() {
+      return t`Previous 30 days`;
+    },
     shortcut: "previous-30-days",
     value: {
       type: "relative",
@@ -54,7 +64,9 @@ const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
 
 const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
   {
-    label: t`Previous month`,
+    get label() {
+      return t`Previous month`;
+    },
     shortcut: "previous-month",
     value: {
       type: "relative",
@@ -63,7 +75,9 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Previous 3 months`,
+    get label() {
+      return t`Previous 3 months`;
+    },
     shortcut: "previous-3-months",
     value: {
       type: "relative",
@@ -72,7 +86,9 @@ const MONTH_SHORTCUT_OPTIONS: ShortcutOption[] = [
     },
   },
   {
-    label: t`Previous 12 months`,
+    get label() {
+      return t`Previous 12 months`;
+    },
     shortcut: "previous-12-months",
     value: {
       type: "relative",
@@ -89,17 +105,23 @@ export const SHORTCUT_OPTION_GROUPS: ShortcutOption[][] = [
 
 export const TYPE_OPTIONS: TypeOption[] = [
   {
-    label: t`Specific dates…`,
+    get label() {
+      return t`Fixed date range…`;
+    },
     type: "specific",
     operators: ["=", "<", ">", "between"],
   },
   {
-    label: t`Relative dates…`,
+    get label() {
+      return t`Relative date range…`;
+    },
     type: "relative",
     operators: [],
   },
   {
-    label: t`Exclude…`,
+    get label() {
+      return t`Exclude…`;
+    },
     type: "exclude",
     operators: ["!=", "is-null", "not-null"],
   },

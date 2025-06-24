@@ -1773,3 +1773,86 @@ describe("issue 44937", () => {
     );
   });
 });
+
+describe("issue 56716", () => {
+  function setupDashboard() {
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.RATING, null],
+        ],
+      },
+    };
+
+    const parameterDetails = {
+      id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+      type: "number/=",
+      target: ["dimension", ["field", PRODUCTS.RATING, null]],
+      name: "Number",
+      slug: "number",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    const vizSettings = {
+      column_settings: {
+        '["name","RATING"]': {
+          click_behavior: {
+            type: "crossfilter",
+            parameterMapping: {
+              [parameterDetails.id]: {
+                id: parameterDetails.id,
+                source: { id: "RATING", name: "RATING", type: "column" },
+                target: {
+                  id: parameterDetails.id,
+                  type: "parameter",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const getParameterMapping = (cardId) => ({
+      card_id: cardId,
+      parameter_id: parameterDetails.id,
+      target: ["dimension", ["field", PRODUCTS.RATING, null]],
+    });
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails,
+    }).then(({ body: dashcard, questionId }) => {
+      const { dashboard_id } = dashcard;
+
+      H.editDashboardCard(dashcard, {
+        parameter_mappings: [getParameterMapping(questionId)],
+        visualization_settings: vizSettings,
+      });
+
+      H.visitDashboard(dashboard_id);
+    });
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should reset the filter when clicking on a column value twice with a click behavior enabled (metabase#56716)", () => {
+    setupDashboard();
+
+    H.getDashboardCard().findByText("4.6").click();
+    H.filterWidget().should("contain.text", "4.6");
+    H.getDashboardCard().findByText("4 rows").should("be.visible");
+
+    H.getDashboardCard().findAllByText("4.6").first().click();
+    H.filterWidget().should("not.contain.text", "4.6");
+    H.getDashboardCard().findByText("200 rows").should("be.visible");
+  });
+});

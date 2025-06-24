@@ -2,14 +2,15 @@ import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-trans
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
-} from "metabase/components/SaveQuestionForm";
-import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
+} from "metabase/common/components/SaveQuestionForm";
+import { SaveQuestionProvider } from "metabase/common/components/SaveQuestionForm/context";
 import { Stack, Title } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
 /**
  * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionSaveQuestionFormProps = {
@@ -54,7 +55,7 @@ export const SdkSaveQuestionForm = ({
       targetCollection={id}
     >
       <Stack p="md">
-        <Title>
+        <Title order={2}>
           <SaveQuestionTitle />
         </Title>
         <SaveQuestionForm onCancel={() => onCancel?.()} />

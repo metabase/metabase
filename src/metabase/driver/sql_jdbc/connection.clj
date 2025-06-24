@@ -3,24 +3,16 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase.config :as config]
-   [metabase.connection-pool :as connection-pool]
-   [metabase.database-routing.core :as database-routing]
-   [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
-   [metabase.logger :as logger]
-   [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
-   [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.ssh :as ssh]
+   [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -29,6 +21,13 @@
    (org.apache.logging.log4j Level)))
 
 (set! *warn-on-reflection* true)
+
+;;; these are provided as conveniences because these settings used to live here; prefer getting them from
+;;; `driver.settings` instead going forward.
+(p/import-vars
+ [driver.settings
+  jdbc-data-warehouse-unreturned-connection-timeout-seconds
+  jdbc-data-warehouse-debug-unreturned-connection-stack-traces])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Interface                                                    |
@@ -83,43 +82,6 @@
             :catalog)
    details))
 
-(setting/defsetting jdbc-data-warehouse-max-connection-pool-size
-  "Maximum size of the c3p0 connection pool."
-  :visibility :internal
-  :type       :integer
-  :default    15
-  :audit      :getter
-  :doc "Change this to a higher value if you notice that regular usage consumes all or close to all connections.
-
-When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
-
-For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
-
-(setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
-  "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
-  will kill connections that time out, but in practice it seems that connections disappear into the ether every once
-  in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
-  timeout in [[metabase.query-processor.context/query-timeout-ms]] by default."
-  :visibility :internal
-  :type       :integer
-  :getter     (fn []
-                (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-                    (long (/ qp.pipeline/*query-timeout-ms* 1000))))
-  :setter     :none)
-
-(setting/defsetting jdbc-data-warehouse-debug-unreturned-connection-stack-traces
-  "Tell c3p0 to log a stack trace for any connections killed due to exceeding the timeout specified in
-  [[jdbc-data-warehouse-unreturned-connection-timeout-seconds]].
-
-  Note: You also need to update the com.mchange log level to INFO or higher in the log4j configs in order to see the
-  stack traces in the logs."
-  :visibility :internal
-  :type       :boolean
-  :default    false
-  :export?    false
-  :setter     :none
-  :doc        false) ; This setting is documented in other-env-vars.md.
-
 (defmethod data-warehouse-connection-pool-properties :default
   [driver database]
   {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
@@ -129,14 +91,14 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; While a couple queries may fail during a reboot, this should allow quicker recovery and less spinning on outdated
    ;; credentials
    ;; However, keep 1 retry for the tests to reduce flakiness.
-   "acquireRetryAttempts"         (if config/is-test? 1 0)
+   "acquireRetryAttempts"         (if driver-api/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  (if (:router-database-id database)
                                     0 1)
    "initialPoolSize"              (if (:router-database-id database)
                                     0 1)
-   "maxPoolSize"                  (jdbc-data-warehouse-max-connection-pool-size)
+   "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]
@@ -171,7 +133,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; This should be the same as the query timeout. This theoretically shouldn't happen since the QP should kill
    ;; things after a certain timeout but it's better to be safe than sorry -- it seems like in practice some
    ;; connections disappear into the ether
-   "unreturnedConnectionTimeout"  (jdbc-data-warehouse-unreturned-connection-timeout-seconds)
+   "unreturnedConnectionTimeout"  (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)
    ;; [From dox] If true, and if unreturnedConnectionTimeout is set to a positive value, then the pool will capture
    ;; the stack trace (via an Exception) of all Connection checkouts, and the stack traces will be printed when
    ;; unreturned checked-out Connections timeout. This is intended to debug applications with Connection leaks, that
@@ -184,8 +146,8 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    ;; compared to the overhead added by testConnectionCheckout, above. The memory usage will depend on the size of the
    ;; stack trace, but clj-memory-meter reports ~800 bytes for a fresh Exception created at the REPL (which presumably
    ;; has a smaller-than-average stack).
-   "debugUnreturnedConnectionStackTraces" (u/prog1 (jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
-                                            (when (and <> (not (logger/level-enabled? 'com.mchange Level/INFO)))
+   "debugUnreturnedConnectionStackTraces" (u/prog1 (driver.settings/jdbc-data-warehouse-debug-unreturned-connection-stack-traces)
+                                            (when (and <> (not (driver-api/level-enabled? 'com.mchange Level/INFO)))
                                               (log/warn "jdbc-data-warehouse-debug-unreturned-connection-stack-traces"
                                                         "is enabled, but INFO logging is not enabled for the"
                                                         "com.mchange namespace. You must raise the log level for"
@@ -202,8 +164,8 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   "Like [[connection-pool/connection-pool-spec]] but also handles situations when the unpooled spec is a `:datasource`."
   [{:keys [^DataSource datasource], :as spec} pool-properties]
   (if datasource
-    {:datasource (DataSources/pooledDataSource datasource (connection-pool/map->properties pool-properties))}
-    (connection-pool/connection-pool-spec spec pool-properties)))
+    {:datasource (DataSources/pooledDataSource datasource (driver-api/map->properties pool-properties))}
+    (driver-api/connection-pool-spec spec pool-properties)))
 
 (defn ^:private default-ssh-tunnel-target-port  [driver]
   (when-let [port-info (some
@@ -211,6 +173,11 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                         (driver/connection-properties driver))]
     (or (:default port-info)
         (:placeholder port-info))))
+
+(defn- select-internal-keys-for-spec
+  "Keep the ssh tunnel keys and others that might be carried on a connection spec or on details."
+  [spec-or-details]
+  (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
@@ -229,13 +196,14 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
     (merge
      (connection-pool-spec spec properties)
      ;; also capture entries related to ssh tunneling for later use
-     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host])
+     (select-internal-keys-for-spec details-with-auth)
+     (select-internal-keys-for-spec spec)
      ;; remember when the password expires
      (select-keys details-with-auth [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
-  (connection-pool/destroy-connection-pool! pool-spec)
+  (driver-api/destroy-connection-pool! pool-spec)
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
@@ -293,18 +261,18 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
   (when-let [db-id (u/id db-or-id-or-spec)]
-    (database-routing/check-allowed-access! db-id))
+    (driver-api/check-allowed-access! db-id))
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)
     (let [database-id (u/the-id db-or-id-or-spec)
           ;; we need the Database instance no matter what (in order to compare details hash with cached value)
-          db          (or (when (mi/instance-of? :model/Database db-or-id-or-spec)
-                            (lib.metadata.jvm/instance->metadata db-or-id-or-spec :metadata/database))
+          db          (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
+                            (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
                             db-or-id-or-spec)
-                          (qp.store/with-metadata-provider database-id
-                            (lib.metadata/database (qp.store/metadata-provider))))
+                          (driver-api/with-metadata-provider database-id
+                            (driver-api/database (driver-api/metadata-provider))))
           get-fn      (fn [db-id log-invalidation?]
                         (let [details (get @database-id->connection-pool db-id ::not-found)]
                           (cond
@@ -312,7 +280,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
                             (:is-audit db)
-                            {:datasource (mdb/data-source)}
+                            {:datasource (driver-api/data-source)}
 
                             (= ::not-found details)
                             nil

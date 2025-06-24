@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [clojure.tools.macro :as tools.macro]
    [clojure.walk :as walk]
-   [metabase.config :as config]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
@@ -274,8 +274,10 @@
   (is (= 'Integer
          (-> '(^{:private true} add-ints :- :int ^{:tag Integer} [x :- :int y :- :int] (+ x y))
              mu.fn/parse-fn-tail
+             :values
              :arities
-             second
+             :value
+             :values
              :args
              meta
              :tag))))

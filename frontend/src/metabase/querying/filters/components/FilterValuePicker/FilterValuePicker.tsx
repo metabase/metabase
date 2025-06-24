@@ -15,7 +15,9 @@ import {
   canListFieldValues,
   canLoadFieldValues,
   canSearchFieldValues,
-  isKeyColumn,
+  getNothingFoundMessage,
+  getSearchPlaceholder,
+  getStaticPlaceholder,
 } from "./utils";
 
 interface FilterValuePickerProps<T> {
@@ -25,12 +27,8 @@ interface FilterValuePickerProps<T> {
   values: T[];
   autoFocus?: boolean;
   comboboxProps?: ComboboxProps;
-  onCreate?: (rawValue: string) => string | null;
+  parseValue?: (rawValue: string) => string | null;
   onChange: (newValues: T[]) => void;
-}
-
-interface FilterValuePickerOwnProps extends FilterValuePickerProps<string> {
-  placeholder: string;
 }
 
 function FilterValuePicker({
@@ -38,12 +36,11 @@ function FilterValuePicker({
   stageIndex,
   column,
   values: selectedValues,
-  placeholder,
   autoFocus = false,
   comboboxProps,
-  onCreate,
+  parseValue,
   onChange,
-}: FilterValuePickerOwnProps) {
+}: FilterValuePickerProps<string>) {
   const fieldInfo = useMemo(
     () => Lib.fieldValuesSearchInfo(query, column),
     [query, column],
@@ -75,7 +72,9 @@ function FilterValuePicker({
   }
 
   if (canSearchFieldValues(fieldInfo, fieldData)) {
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
+    const searchColumn = checkNotNull(fieldInfo.searchField);
+    const searchColumInfo = Lib.displayInfo(query, stageIndex, searchColumn);
+    const searchColumName = searchColumInfo.displayName;
 
     return (
       <SearchValuePicker
@@ -83,10 +82,11 @@ function FilterValuePicker({
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        columnDisplayName={columnInfo.displayName}
+        placeholder={getSearchPlaceholder(column, searchColumName)}
+        nothingFoundMessage={getNothingFoundMessage(searchColumName)}
         autoFocus={autoFocus}
         comboboxProps={comboboxProps}
-        onCreate={onCreate}
+        parseValue={parseValue}
         onChange={onChange}
       />
     );
@@ -95,28 +95,17 @@ function FilterValuePicker({
   return (
     <StaticValuePicker
       selectedValues={selectedValues}
-      placeholder={placeholder}
+      placeholder={getStaticPlaceholder(column)}
       autoFocus={autoFocus}
       comboboxProps={comboboxProps}
-      onCreate={onCreate}
+      parseValue={parseValue}
       onChange={onChange}
     />
   );
 }
 
-export function StringFilterValuePicker({
-  column,
-  values,
-  ...props
-}: FilterValuePickerProps<string>) {
-  return (
-    <FilterValuePicker
-      {...props}
-      column={column}
-      values={values}
-      placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter some text`}
-    />
-  );
+export function StringFilterValuePicker(props: FilterValuePickerProps<string>) {
+  return <FilterValuePicker {...props} />;
 }
 
 export function NumberFilterValuePicker({
@@ -125,7 +114,7 @@ export function NumberFilterValuePicker({
   onChange,
   ...props
 }: FilterValuePickerProps<Lib.NumberFilterValue>) {
-  const handleCreate = (rawValue: string) => {
+  const parseValue = (rawValue: string) => {
     const number = parseNumber(rawValue);
     return number != null ? String(number) : null;
   };
@@ -139,8 +128,7 @@ export function NumberFilterValuePicker({
       {...props}
       column={column}
       values={values.map((value) => String(value))}
-      placeholder={isKeyColumn(column) ? t`Enter an ID` : t`Enter a number`}
-      onCreate={handleCreate}
+      parseValue={parseValue}
       onChange={handleChange}
     />
   );

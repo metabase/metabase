@@ -22,6 +22,7 @@ import {
   SummarizeDropdown,
   Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
+import { VisualizationButton } from "embedding-sdk/components/private/InteractiveQuestion/components/VisualizationButton/VisualizationButton";
 import {
   InteractiveQuestionProvider,
   type InteractiveQuestionProviderProps,
@@ -35,6 +36,7 @@ import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/component
 
 /**
  * @interface
+ * @expand
  */
 export type BaseInteractiveQuestionProps =
   InteractiveQuestionQuestionIdProps & {
@@ -47,15 +49,30 @@ export type BaseInteractiveQuestionProps =
       InteractiveQuestionProviderProps,
       | "onBeforeSave"
       | "onSave"
-      | "entityTypeFilter"
+      | "entityTypes"
       | "isSaveEnabled"
       | "initialSqlParameters"
       | "withDownloads"
       | "targetCollection"
+      | "onRun"
     >;
 
 /**
+ * Props for the drill-through question
+ *
  * @interface
+ * @expand
+ * @category InteractiveQuestion
+ */
+export type DrillThroughQuestionProps = Omit<
+  BaseInteractiveQuestionProps,
+  "questionId"
+> &
+  InteractiveQuestionDefaultViewProps;
+
+/**
+ * @interface
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
@@ -73,23 +90,25 @@ export const _InteractiveQuestion = ({
   children = null,
   onBeforeSave,
   onSave,
-  entityTypeFilter,
+  entityTypes,
   isSaveEnabled,
   targetCollection,
   withChartTypeSelector = true,
   withDownloads = false,
   initialSqlParameters,
+  onRun,
 }: InteractiveQuestionProps): JSX.Element | null => (
   <InteractiveQuestionProvider
     questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
-    entityTypeFilter={entityTypeFilter}
+    entityTypes={entityTypes}
     isSaveEnabled={isSaveEnabled}
     targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
     withDownloads={withDownloads}
+    onRun={onRun}
   >
     {children ?? (
       <InteractiveQuestionDefaultView
@@ -129,6 +148,7 @@ const InteractiveQuestion = withPublicComponentWrapper(
   NotebookButton: typeof EditorButton;
   EditorButton: typeof EditorButton;
   QuestionVisualization: typeof QuestionVisualization;
+  VisualizationButton: typeof VisualizationButton;
   SaveQuestionForm: typeof SdkSaveQuestionForm;
   SaveButton: typeof SaveButton;
   ChartTypeSelector: typeof ChartTypeSelector;
@@ -163,5 +183,6 @@ InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
 InteractiveQuestion.DownloadWidget = DownloadWidget;
 InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
+InteractiveQuestion.VisualizationButton = VisualizationButton;
 
 export { InteractiveQuestion };

@@ -5,7 +5,7 @@
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -31,7 +31,7 @@
                   [:visibility_type :visibility_type]
                   [:metabase_database.name :database-name]])
    (let [model-symb (symbol (str/capitalize model))
-         self-qualify #(mdb.query/qualify model-symb %)]
+         self-qualify #(app-db/qualify model-symb %)]
      {:where [:in (self-qualify :id) ids]
       :left-join (case model
                    "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
@@ -78,7 +78,9 @@
                                              {:group-by  [:model :model_id]
                                               :where     [:and
                                                           [:= :context "view"]
-                                                          [:in :model #{"dashboard" "table"}]]
+                                                          [:in :model #{"dashboard" "table"}]
+                                                          [:or [:= :active true] [:= :active nil]]
+                                                          [:or [:= :archived false] [:= :archived nil]]]
                                               :order-by  [[:max_ts :desc] [:model :desc]]
                                               :limit     views-limit
                                               :left-join [[:report_dashboard :d]
@@ -91,10 +93,10 @@
                                                            [:= :t.id :model_id]]]})
         card-runs                 (->> (t2/select [:model/QueryExecution
                                                    [:%min.executor_id :user_id]
-                                                   [(mdb.query/qualify :model/QueryExecution :card_id) :model_id]
+                                                   [(app-db/qualify :model/QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt]
                                                    [:%max.started_at :max_ts]]
-                                                  {:group-by [(mdb.query/qualify :model/QueryExecution :card_id) :context]
+                                                  {:group-by [(app-db/qualify :model/QueryExecution :card_id) :context]
                                                    :where    [:and
                                                               [:= :context (h2x/literal :question)]]
                                                    :order-by [[:max_ts :desc]]
@@ -119,10 +121,11 @@
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
   [_route-params
-   {:keys [context]} :- [:map
-                         [:context (ms/QueryVectorOf [:enum :selections :views])]]]
+   {:keys [context include_metadata]} :- [:map
+                                          [:context (ms/QueryVectorOf [:enum :selections :views])]
+                                          [:include_metadata {:default false} [:maybe :boolean]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
-  (recent-views/get-recents *current-user-id* context))
+  (recent-views/get-recents *current-user-id* context {:include-metadata? include_metadata}))
 
 (api.macros/defendpoint :post "/recents"
   "Adds a model to the list of recently selected items."

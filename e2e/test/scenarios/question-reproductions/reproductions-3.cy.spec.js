@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -571,9 +575,8 @@ describe(
           H.popover().within(() => {
             cy.findAllByText("ID").should("have.length", 2).first().click();
             cy.findByLabelText("Filter value").type(id).click();
-            cy.button("Add filter").click();
+            cy.button("Apply filter").click();
           });
-          H.runButtonOverlay().click();
           H.assertQueryBuilderRowCount(1);
           removeFilter();
 
@@ -591,7 +594,7 @@ describe(
 
           cy.findByTestId("string-filter-picker").within(() => {
             cy.findByLabelText("Filter operator").should("have.text", "Is");
-            cy.findByPlaceholderText("Search by ID").type(id);
+            cy.findByLabelText("Filter value").type(id);
             cy.button("Add filter").click();
           });
 
@@ -713,7 +716,22 @@ describe("issue 42957", () => {
     H.entityPickerModal().within(() => {
       H.entityPickerModalTab("Collections").click();
 
-      cy.findByText("Collection without models").should("not.exist");
+      // wait for data to load
+      H.entityPickerModalLevel(1).should("contain", "Orders, Count");
+
+      // open filter
+      cy.findByRole("button", { name: /Filter/ }).click();
+    });
+
+    H.popover().findByLabelText("Saved questions").click();
+
+    H.entityPickerModal().within(() => {
+      // close filter
+      cy.findByRole("button", { name: /Filter/ }).click();
+      H.entityPickerModalLevel(1).should(
+        "not.contain",
+        "Collection without models",
+      );
     });
   });
 });
@@ -1131,7 +1149,7 @@ describe("issue 33441", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: 'datetimeDiff([Created At] , now, "days")',
+      formula: 'datetimeDiff([Created At] , now(), "days")',
       name: "Date",
     });
     H.popover().within(() => {
@@ -1322,7 +1340,7 @@ describe("issue 43057", () => {
     H.tableHeaderClick("Created At");
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
       cy.findByLabelText("Date").clear().type("November 18, 2024");
       cy.button("Add filter").click();
@@ -1802,14 +1820,13 @@ describe("issue 45063", { tags: "@flaky" }, () => {
 
   function verifySearchFilter({
     fieldDisplayName,
+    fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
   }) {
     H.tableHeaderClick(fieldDisplayName);
     H.popover().findByText("Filter by this column").click();
-    H.popover()
-      .findByPlaceholderText(`Search by ${fieldDisplayName}`)
-      .type(fieldValueLabel);
+    H.popover().findByPlaceholderText(fieldPlaceholder).type(fieldValueLabel);
     H.selectDropdown().findByText(fieldValueLabel).click();
     cy.findByTestId("number-filter-picker")
       .click()
@@ -1824,6 +1841,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     visitCard,
     fieldId,
     fieldDisplayName,
+    fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
     expectedRowCount,
@@ -1841,7 +1859,12 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     setSearchValues({ fieldId });
     cy.signInAsNormalUser();
     visitCard();
-    verifySearchFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    verifySearchFilter({
+      fieldDisplayName,
+      fieldPlaceholder,
+      fieldValue,
+      fieldValueLabel,
+    });
     H.assertQueryBuilderRowCount(expectedRowCount);
   }
 
@@ -1857,6 +1880,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => H.visitQuestion("@questionId"),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
+        fieldPlaceholder: "Search by Name or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Hudson Borer",
         expectedRowCount: 1,
@@ -1869,6 +1893,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
+        fieldPlaceholder: "Search by Name or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Hudson Borer",
         expectedRowCount: 1,
@@ -1886,6 +1911,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: PEOPLE.ID,
         fieldDisplayName: "ID",
+        fieldPlaceholder: "Search by Name or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Hudson Borer",
         expectedRowCount: 1,
@@ -1908,6 +1934,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => H.visitQuestion("@questionId"),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "Product ID",
+        fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
         expectedRowCount: 93,
@@ -1920,6 +1947,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "Product ID",
+        fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
         expectedRowCount: 93,
@@ -1937,6 +1965,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
         fieldDisplayName: "PRODUCT_ID",
+        fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
         expectedRowCount: 93,
@@ -2265,7 +2294,7 @@ describe("issue 48829", () => {
     H.modal().should("not.exist");
   });
 
-  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter modal (metabase#48829)", () => {
+  it("should not show the unsaved changes warning when switching back to chill mode from the notebook editor after adding a filter via the filter picker (metabase#48829)", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.queryBuilderHeader()
@@ -2274,9 +2303,8 @@ describe("issue 48829", () => {
     H.popover().within(() => {
       cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
 
     H.queryBuilderHeader()
       .button(/Editor/)
@@ -2496,5 +2524,150 @@ describe("issue 53036", () => {
       cy.icon("play").should("be.visible");
       cy.icon("add").click();
     });
+  });
+});
+
+describe("issue 57697", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.PRICE, { binning: { strategy: "default" } }],
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show the binning in the name of the column when binning in the summarize sidebar  (metabase#57697)", () => {
+    H.summarize();
+    H.sidebar()
+      .filter(":visible")
+      .within(() => {
+        cy.findByText("Price").should("be.visible");
+        cy.findByText("Price: Auto binned").should("not.exist");
+      });
+  });
+});
+
+describe("issue 32499", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("Self-join columns can be edited independently", () => {
+    H.createQuestion(
+      {
+        name: "Model",
+        type: "model",
+        query: {
+          "source-table": ORDERS_ID,
+          fields: [
+            ["field", ORDERS.ID, null],
+            ["field", ORDERS.USER_ID, null],
+          ],
+          joins: [
+            {
+              fields: [["field", ORDERS.USER_ID, { "join-alias": "Orders" }]],
+              alias: "Orders",
+              "source-table": ORDERS_ID,
+              strategy: "left-join",
+              condition: [
+                "=",
+                ["field", ORDERS.ID, null],
+                ["field", ORDERS.ID, { "join-alias": "Orders" }],
+              ],
+            },
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions("Edit metadata");
+
+    const columns = [
+      { original: "Orders → User ID", modified: "JOIN COLUMN" },
+      { original: "User ID", modified: "ORIGINAL COLUMN" },
+    ];
+
+    // we can click the headers and modify their names
+    for (const { original, modified } of columns) {
+      H.tableHeaderClick(original);
+      cy.findByLabelText("Display name")
+        .should("have.value", original)
+        .click()
+        .clear()
+        .type(modified);
+    }
+
+    // the modified names are now in the headers
+    for (const { modified } of columns) {
+      H.tableHeaderColumn(modified).should("exist");
+    }
+  });
+});
+
+describe("issue 23449", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  const checkTable = () => {
+    H.assertTableData({
+      columns: ["ID", "Product ID", "Reviewer", "Rating", "Created At"],
+      firstRows: [[1, 1, "christ", "E", "May 15, 2024, 8:25 PM"]],
+    });
+  };
+
+  it("Remapped fields should work in a model (metabase#23449)", () => {
+    cy.log("set the metadata for review");
+    cy.visit(
+      `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${SAMPLE_DATABASE.REVIEWS_ID}`,
+    );
+
+    cy.findByTestId("column-RATING").findByLabelText("Field settings").click();
+    cy.findAllByTestId("select-button").contains("Use original value").click();
+    cy.findByLabelText("Custom mapping").click();
+
+    cy.findByDisplayValue("1").clear().type("A");
+    cy.findByDisplayValue("2").clear().type("B");
+    cy.findByDisplayValue("3").clear().type("C");
+    cy.findByDisplayValue("4").clear().type("D");
+    cy.findByDisplayValue("5").clear().type("E");
+
+    cy.button("Save").click();
+
+    cy.log("make a model on Reviews");
+    cy.findByRole("link", { name: "Exit admin" }).click();
+    H.navigationSidebar().findByLabelText("Browse models").click();
+    cy.findByLabelText("Create a new model").click();
+    cy.findByRole("link", { name: /Use the notebook editor/ }).click();
+    H.entityPickerModal().findByText("Reviews").click();
+
+    cy.log("Remove Body column");
+    cy.findByLabelText("Pick columns").click();
+    H.popover().findByText("Body").click();
+
+    cy.log("save model");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.log("confirm save in a modal");
+    H.modal().button("Save").click();
+
+    cy.log("check that the data renders");
+    checkTable();
+
+    cy.log("reload to flush cached results and check again");
+    cy.findByTestId("qb-header").button("Refresh").click();
+    checkTable();
   });
 });

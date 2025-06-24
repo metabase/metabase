@@ -88,9 +88,9 @@
 
 (defn- metadatas-for-table [metadata-provider cache metadata-type table-id]
   (let [k     (case metadata-type
-                :metadata/column        ::table-fields
-                :metadata/metric        ::table-metrics
-                :metadata/segment       ::table-segments)
+                :metadata/column  ::table-fields
+                :metadata/metric  ::table-metrics
+                :metadata/segment ::table-segments)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id)]
                   (doseq [metadata objects]
@@ -100,7 +100,7 @@
 
 (defn- metadatas-for-card [metadata-provider cache metadata-type card-id]
   (let [k     (case metadata-type
-                :metadata/metric        ::table-metrics)
+                :metadata/metric ::table-metrics)
         thunk (fn []
                 (let [objects (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id)]
                   (doseq [metadata objects]

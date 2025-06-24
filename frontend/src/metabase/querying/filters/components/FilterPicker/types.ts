@@ -1,22 +1,19 @@
 import type * as Lib from "metabase-lib";
 
-export interface FilterPickerWidgetProps {
+export type FilterPickerWidgetProps = {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  filter?: Lib.FilterClause;
+  filter?: Lib.Filterable;
   isNew: boolean;
-  onChange: (filter: Lib.ExpressionClause) => void;
+  withAddButton: boolean;
+  onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
-}
+};
 
-export interface PickerOperatorOption<Operator> {
-  operator: Operator;
-
-  // An operator's longDisplayName is going to be used by default,
-  // but widgets can overwrite it with a custom name.
-  name?: string;
-}
+export type FilterChangeOpts = {
+  run?: boolean;
+};
 
 export type ColumnListItem = {
   name: string;

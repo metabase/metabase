@@ -30,7 +30,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
         .findAllByRole("link", { name: "Learn more" })
         .click();
       // link opens in new tab
-      H.expectGoodSnowplowEvent({
+      H.expectUnstructuredSnowplowEvent({
         event: "upsell_viewed",
         promoted_feature: "cloud",
       });
@@ -77,7 +77,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     const emailInput = () =>
       cy
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        .contains("Email Address for Help Requests")
+        .contains(/Email Address for Help Requests/i)
         .parent()
         .parent()
         .find("input");
@@ -105,8 +105,8 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.intercept("GET", "**/api/health", "ok").as("httpsCheck");
 
     cy.findByTestId("admin-layout-content").within(() => {
-      cy.contains("Site Url");
-      cy.contains("Redirect to HTTPS").should("not.exist");
+      cy.contains(/Site Url/i);
+      cy.contains(/Redirect to HTTPS/i).should("not.exist");
 
       // switch site url to use https
       cy.findByTestId("site-url-setting")
@@ -152,16 +152,16 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
     cy.visit("/admin/settings/localization");
 
-    cy.findByTestId("custom-formatting-setting")
+    cy.findByTestId("date_style-formatting-setting")
       .findByDisplayValue("January 31, 2018")
       .click({ force: true });
 
     H.popover().findByText("2018/1/31").click({ force: true });
     cy.wait("@saveFormatting");
 
-    cy.findByTestId("chart-settings-widget-date_style")
-      .findByTestId("chart-setting-select")
-      .should("have.value", "2018/1/31");
+    cy.findByTestId("date_style-formatting-setting").findByDisplayValue(
+      "2018/1/31",
+    );
 
     cy.findByTestId("custom-formatting-setting")
       .findByText("17:24 (24-hour clock)")
@@ -220,21 +220,12 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
   it("should search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
-
     cy.visit("/admin/settings/localization");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Report Timezone")
-      .closest("li")
-      .findByTestId("report-timezone-select-button")
-      .click();
-
-    cy.findByPlaceholderText("Find...").type("Centr");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("US/Central").click({ force: true });
-
+    const timezoneSelect = cy.findByRole("textbox", { name: /timezone/i });
+    timezoneSelect.clear().type("Centr");
+    cy.findByRole("listbox").findByText("US/Central").click();
     cy.wait("@reportTimezone");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("US/Central");
+    timezoneSelect.should("have.value", "US/Central");
   });
 
   it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {
@@ -297,15 +288,17 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/notifications/slack");
+      cy.visit("/admin/settings/notifications");
+      cy.findByTestId("admin-layout-content")
+        .findByText("Connect to Slack")
+        .click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Metabase on Slack");
-      cy.findByLabelText("Slack Bot User OAuth Token").type("xoxb");
+      H.modal().findByText("Metabase on Slack");
+
+      cy.findByLabelText(/Slack Bot User OAuth Token/i).type("xoxb");
       cy.button("Save changes").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(": invalid token");
+      H.modal().findByText(/invalid token/i);
     });
   });
 });
@@ -319,9 +312,7 @@ describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   it("should show the store link when running Metabase OSS", () => {
     cy.visit("/admin/settings/general");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon");
+    cy.findByLabelText("Navigation bar").findByLabelText("store icon");
   });
 });
 
@@ -344,11 +335,11 @@ describe("scenarios > admin > settings (EE)", () => {
   });
 
   it("should hide the store link when running Metabase EE", () => {
-    cy.visit("/admin/settings/general");
+    cy.visit("/admin/settings/license");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    cy.findByLabelText("store icon").should("not.exist");
+    cy.findByTestId("admin-layout-content")
+      .findByLabelText("store icon")
+      .should("not.exist");
   });
 });
 
@@ -483,28 +474,22 @@ describe("Cloud settings section", () => {
   it("should be visible when running Metabase Cloud", () => {
     // Setting to none will give us an instance where token-features.hosting is set to true
     // Allowing us to pretend that we are a hosted instance (seems backwards though haha)
-
     H.setTokenFeatures("none");
-    cy.visit("/admin");
-    cy.findByTestId("admin-list-settings-items").findByText("Cloud").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Cloud Settings/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Go to the Metabase Store").should(
-      "have.attr",
-      "href",
-      "https://store.metabase.com/",
-    );
+
+    cy.visit("/admin/settings");
+    cy.findByTestId("admin-layout-sidebar").findByText(/Cloud/i).click();
+    cy.findByTestId("admin-layout-content")
+      .findByText("Go to the Metabase Store")
+      .should("have.attr", "href", "https://store.metabase.com/");
   });
 
   it("should prompt us to migrate to cloud if we are not hosted", () => {
     H.setTokenFeatures("all");
-    cy.visit("/admin");
+    cy.visit("/admin/settings/cloud");
     cy.findAllByTestId("settings-sidebar-link")
       .filter(":contains(Cloud)")
       .should("have.descendants", ".Icon-gem")
       .click();
-    cy.location("pathname").should("contain", "/admin/settings/cloud");
 
     cy.findByRole("heading", { name: "Migrate to Metabase Cloud" }).should(
       "exist",
@@ -515,42 +500,50 @@ describe("Cloud settings section", () => {
 
 describe("scenarios > admin > settings > email settings", () => {
   beforeEach(() => {
+    cy.intercept("PUT", "api/email").as("smtpSaved");
+
     H.restore();
     cy.signInAsAdmin();
   });
 
   it("should be able to save and clear email settings", () => {
-    // first time SMTP setup should redirect user to SMTP connection form
-    // at "/admin/settings/email/smtp"
     cy.visit("/admin/settings/email");
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email/smtp",
-    );
+    cy.findByTestId("smtp-connection-card").button("Configure").click();
 
-    // SMTP connection setup
-    cy.findByLabelText("SMTP Host").type("localhost").blur();
-    cy.findByLabelText("SMTP Port").type(SMTP_PORT).blur();
-    cy.findByLabelText("SMTP Username").type("admin").blur();
-    cy.findByLabelText("SMTP Password").type("admin").blur();
-
-    // SMTP settings need to manually be saved
-    cy.intercept("PUT", "api/email").as("smtpSaved");
-    H.main().within(() => {
-      cy.findByText("Save changes").click();
+    H.modal().within(() => {
+      // SMTP connection setup
+      cy.findByLabelText(/SMTP Host/i)
+        .type("localhost")
+        .blur();
+      cy.findByLabelText(/SMTP Port/i)
+        .type(SMTP_PORT)
+        .blur();
+      cy.findByLabelText(/SMTP Username/i)
+        .type("admin")
+        .blur();
+      cy.findByLabelText(/SMTP Password/i)
+        .type("admin")
+        .blur();
+      cy.button("Save changes").click();
     });
-    cy.wait("@smtpSaved");
 
-    // after first time setup, user is redirected top-level page
-    // which contains additional email settings
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
-    cy.findByTestId("smtp-connection-card").should("exist");
+    cy.wait("@smtpSaved");
+    // should show as active now
+    cy.findByTestId("smtp-connection-card")
+      .findByText("Active")
+      .should("be.visible");
+
+    // button should be different
+    cy.findByTestId("smtp-connection-card")
+      .button("Edit configuration")
+      .should("be.visible");
 
     // Non SMTP-settings should save automatically
-    cy.findByLabelText("From Address").type("mailer@metabase.test").blur();
+    cy.findByLabelText("From Address")
+      .clear()
+      .type("mailer@metabase.test")
+      .blur();
+
     cy.findByLabelText("From Name").type("Sender Name").blur();
     cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
@@ -559,12 +552,6 @@ describe("scenarios > admin > settings > email settings", () => {
     // Refresh page to confirm changes persist
     cy.reload();
 
-    // validate that there is no-redirect after initial setup
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
-
     // validate additional settings
     cy.findByDisplayValue("mailer@metabase.test");
     cy.findByDisplayValue("Sender Name");
@@ -572,37 +559,28 @@ describe("scenarios > admin > settings > email settings", () => {
 
     // validate SMTP connection settings
     cy.findByTestId("smtp-connection-card")
-      .findByText("Edit Configuration")
+      .findByText("Edit configuration")
       .click();
     cy.findByDisplayValue("localhost");
     cy.findByDisplayValue(SMTP_PORT);
     cy.findAllByDisplayValue("admin");
 
-    // breadcrumbs should now show up since it is not a first time configuration
-    // and should back navigate to top-level email settings
-    cy.findByTestId("breadcrumbs").findByText("Email").click();
-    cy.url().should(
-      "equal",
-      Cypress.config().baseUrl + "/admin/settings/email",
-    );
-
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Edit Configuration")
-      .click();
-
     // should not offer to save email changes when there aren't any (metabase#14749)
     cy.button("Save changes").should("be.disabled");
 
     // should be able to clear email settings
-    H.main().findByText("Clear").click();
+    H.modal().button("Clear").click();
 
     cy.reload();
 
-    cy.findByLabelText("SMTP Host").should("have.value", "");
-    cy.findByLabelText("SMTP Port").should("have.value", "");
-    cy.findByLabelText("SMTP Username").should("have.value", "");
-    cy.findByLabelText("SMTP Password").should("have.value", "");
-    cy.findByTestId("breadcrumbs").should("not.exist");
+    cy.findByTestId("smtp-connection-card").findByText("Configure").click();
+
+    H.modal().within(() => {
+      cy.findByLabelText("SMTP Host").should("have.value", "");
+      cy.findByLabelText("SMTP Port").should("have.value", "");
+      cy.findByLabelText("SMTP Username").should("have.value", "");
+      cy.findByLabelText("SMTP Password").should("have.value", "");
+    });
   });
 
   it("should show an error if test email fails", () => {
@@ -617,9 +595,12 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-security": "none",
       "email-smtp-username": null,
     });
-    cy.visit("/admin/settings/email/smtp");
-    H.main().findByText("Send test email").click();
-    cy.findAllByText(
+    cy.visit("/admin/settings/email");
+    cy.findByTestId("smtp-connection-card")
+      .findByText("Edit configuration")
+      .click();
+    H.modal().findByText("Send test email").click();
+    H.modal().findByText(
       "Couldn't connect to host, port: localhost, 1234; timeout -1",
     );
   });
@@ -629,9 +610,13 @@ describe("scenarios > admin > settings > email settings", () => {
     { tags: "@external" },
     () => {
       H.setupSMTP();
-      cy.visit("/admin/settings/email/smtp");
-      H.main().findByText("Send test email").click();
-      H.main().findByText("Sent!");
+      cy.visit("/admin/settings/email");
+
+      cy.findByTestId("smtp-connection-card")
+        .findByText("Edit configuration")
+        .click();
+      H.modal().findByText("Send test email").click();
+      H.undoToast().findByText("Email sent!").should("be.visible");
 
       cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
         ({ body }) => {
@@ -864,20 +849,6 @@ describe("scenarios > admin > localization", () => {
     });
   });
 
-  it("should not display excessive options in localization tab (metabase#14426)", () => {
-    cy.visit("/admin/settings/localization");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Instance language/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Report timezone/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/First day of the week/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Localization options/i);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/Column title/i).should("not.exist");
-  });
-
   it("should use currency settings for number columns with style set to currency (metabase#10787)", () => {
     cy.visit("/admin/settings/localization");
 
@@ -928,10 +899,9 @@ describe("scenarios > admin > localization", () => {
     cy.wait("@updateFormatting");
 
     cy.findByTestId("custom-formatting-setting").within(() => {
-      cy.findByTestId("chart-settings-widget-date_style")
-        .findByTestId("chart-setting-select")
-        .should("have.value", "2018/1/31");
-
+      cy.findByTestId("date_style-formatting-setting").findByDisplayValue(
+        "2018/1/31",
+      );
       // update the time style setting to 24 hour
       cy.findByText("17:24 (24-hour clock)").click();
       cy.wait("@updateFormatting");
@@ -945,7 +915,7 @@ describe("scenarios > admin > localization", () => {
 
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      cy.findByText("Specific dates…").click();
+      cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
 
       // ensure the date picker is ready
@@ -1286,29 +1256,37 @@ describe("admin > settings > updates", () => {
     cy.signInAsAdmin();
     cy.visit("/admin/settings/updates");
 
-    cy.intercept("GET", "/api/session/properties", (req, res) => {
+    cy.intercept("GET", "/api/session/properties", (req) => {
       req.continue((res) => {
-        res.body["version-info"] = versionInfo;
         res.body.version.tag = currentVersion;
         return res.body;
       });
     });
+
+    cy.intercept("GET", "/api/setting/version-info", (req) => {
+      req.reply(versionInfo);
+    });
   });
 
   it("should show the updates page", () => {
-    cy.findByLabelText("Check for updates").should("be.visible");
+    cy.findByTestId("check-for-updates-setting")
+      .findByText("Check for updates")
+      .should("be.visible");
+
     cy.findByTestId("update-channel-setting")
       .findByText("Types of releases to check for")
       .should("be.visible");
 
     cy.findByTestId("settings-updates").within(() => {
-      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70");
+      cy.findByText("Metabase 1.86.76 is available. You're running 1.86.70.");
       cy.findByText("Some old feature").should("be.visible");
     });
 
     cy.log("hide most things if updates are turned off");
 
-    cy.findByLabelText("Check for updates").click();
+    cy.findByTestId("check-for-updates-setting")
+      .findByText("Check for updates")
+      .click();
 
     cy.findByTestId("settings-updates").within(() => {
       cy.findByText("Types of releases to check for").should("not.exist");
@@ -1321,7 +1299,7 @@ describe("admin > settings > updates", () => {
       cy.findByText(/Metabase 1\.86\.76 is available/).should("be.visible");
       cy.findByText("Some old feature").should("be.visible");
       cy.findByText("New latest feature").should("be.visible");
-      cy.findByText("Stable releases").click();
+      cy.findByDisplayValue("Stable releases").click();
     });
 
     H.popover().findByText("Beta releases").click();
@@ -1331,7 +1309,7 @@ describe("admin > settings > updates", () => {
         "be.visible",
       );
       cy.findByText("New beta feature").should("be.visible");
-      cy.findByText("Beta releases").click();
+      cy.findByDisplayValue("Beta releases").click();
     });
 
     H.popover().findByText("Nightly builds").click();

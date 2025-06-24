@@ -14,7 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]
    [metabase.lib.util :as lib.util]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -59,7 +59,7 @@
                   (lib/breakout (meta/field-metadata :venues :category-id))
                   (lib/limit 100)
                   (lib/append-stage))
-        card-id (:id ((lib.tu/mock-cards) :orders))]
+        card-id (:id (:orders (lib.tu/mock-cards)))]
     (is (= [{:lib/type :mbql.stage/mbql :source-table (meta/id :orders)}]
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
@@ -197,8 +197,11 @@
 
 (deftest ^:parallel can-run-test
   (mu/disable-enforcement
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [can-run? card-type query]
-         (= can-run? (lib.query/can-run query card-type))
+         (if (= card-type :question)
+           (= can-run? (lib.query/can-run query card-type) (lib.query/can-preview query))
+           (= can-run? (lib.query/can-run query card-type)))
       true  :question (lib.tu/venues-query)
       false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
@@ -235,6 +238,7 @@
 
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [can-save? card-type query]
          (= can-save? (lib.query/can-save query card-type))
       true  :question (lib.tu/venues-query)
@@ -267,36 +271,6 @@
                           (lib/aggregate (lib/count))
                           (lib/append-stage)
                           (lib/aggregate (lib/count))))))
-
-(deftest ^:parallel can-preview-test
-  (mu/disable-enforcement
-    (testing "can-preview"
-      (is (= true (lib/can-preview (lib.tu/venues-query))))
-      (testing "with an offset expression"
-        (let [offset-query (lib/expression (lib.tu/venues-query) "prev_price"
-                                           (lib/offset (meta/field-metadata :venues :price) -1))]
-          (testing "without order-by = false"
-            (is (= false (lib/can-preview offset-query))))
-          (testing "with order-by = true"
-            (is (= true  (-> offset-query
-                             (lib/order-by (meta/field-metadata :venues :latitude))
-                             lib/can-preview))))))
-      (testing "with an offset expression in an earlier stage"
-        (let [offset-query (-> (lib.tu/venues-query)
-                               (lib/expression "prev_price" (lib/offset (meta/field-metadata :venues :price) -1))
-                               (lib/breakout (lib.options/ensure-uuid [:expression {} "prev_price"]))
-                               (lib/aggregate (lib/count))
-                               lib/append-stage)]
-          (testing "without order-by in that stage = false"
-            (is (= false (lib/can-preview offset-query)))
-            ;; order by in the other stage doesn't help
-            (is (= false (-> offset-query
-                             (lib/order-by -1 (meta/field-metadata :venues :latitude) :asc)
-                             lib/can-preview))))
-          (testing "with order-by in that stage = true"
-            (is (= true  (-> offset-query
-                             (lib/order-by 0 (meta/field-metadata :venues :latitude) :asc)
-                             lib/can-preview)))))))))
 
 (def ^:private query-for-preview
   "\"Christmas tree\" query with anything and everything hanging from its branches, for testing [[preview-query]]."

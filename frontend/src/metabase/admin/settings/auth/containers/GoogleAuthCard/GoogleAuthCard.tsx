@@ -1,28 +1,47 @@
 import { t } from "ttag";
 
-import { updateSettings } from "metabase/admin/settings/settings";
-import { connect } from "metabase/lib/redux";
-import { getSetting } from "metabase/selectors/settings";
-import type { Dispatch, State } from "metabase-types/store";
+import { useAdminSetting } from "metabase/api/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import type { EnterpriseSettings } from "metabase-types/api";
 
-import type { AuthCardProps } from "../../components/AuthCard";
-import AuthCard from "../../components/AuthCard";
+import { AuthCard } from "../../components/AuthCard";
 import { GOOGLE_SCHEMA } from "../../constants";
 
-type StateProps = Omit<AuthCardProps, "setting" | "onChange" | "onDeactivate">;
-type DispatchProps = Pick<AuthCardProps, "onDeactivate">;
+export function GoogleAuthCard() {
+  const {
+    value: isConfigured,
+    updateSetting,
+    updateSettings,
+    settingDetails,
+    isLoading,
+  } = useAdminSetting("google-auth-configured");
+  const { value: isEnabled } = useAdminSetting("google-auth-enabled");
 
-const mapStateToProps = (state: State): StateProps => ({
-  type: "google",
-  name: t`Google Sign-in`,
-  title: t`Sign in with Google`,
-  description: t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`,
-  isConfigured: getSetting(state, "google-auth-configured"),
-});
+  const handleDeactivate = () => {
+    return updateSettings(
+      GOOGLE_SCHEMA.getDefault() as Partial<EnterpriseSettings>,
+    );
+  };
 
-const mapDispatchToProps = (dispatch: Dispatch): DispatchProps => ({
-  onDeactivate: () => dispatch(updateSettings(GOOGLE_SCHEMA.getDefault())),
-});
+  if (isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps, mapDispatchToProps)(AuthCard);
+  return (
+    <AuthCard
+      type="google"
+      name={t`Sign in with Google`}
+      description={t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
+      isConfigured={!!isConfigured}
+      isEnabled={!!isEnabled}
+      onDeactivate={handleDeactivate}
+      onChange={(newValue) =>
+        updateSetting({
+          key: "google-auth-enabled",
+          value: newValue,
+        })
+      }
+      setting={settingDetails}
+    />
+  );
+}

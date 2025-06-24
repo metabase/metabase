@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 
 import { type SetupOpts, setup } from "./setup";
@@ -17,6 +18,10 @@ function setupCommon(opts?: Partial<SetupOpts>) {
 }
 
 describe("PublicOrEmbeddedQuestion", () => {
+  beforeEach(() => {
+    setupLastDownloadFormatEndpoints();
+  });
+
   it("should render data", async () => {
     await setupCommon();
     expect(await screen.findByText("John W.")).toBeInTheDocument();

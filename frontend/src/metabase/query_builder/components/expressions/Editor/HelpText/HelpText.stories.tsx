@@ -29,6 +29,7 @@ const Template: StoryFn<typeof HelpText> = () => {
           arg: null,
         }}
         reportTimezone="America/Los_Angeles"
+        expressionMode="expression"
       />
     </ReduxProvider>
   );

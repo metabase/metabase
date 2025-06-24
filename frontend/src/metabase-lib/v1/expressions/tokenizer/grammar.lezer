@@ -1,6 +1,6 @@
 @top Expression { expression }
 
-@external tokens reference from "./tokens" { Reference }
+@external tokens field from "./tokens" { Field }
 
 @skip { space }
 
@@ -24,7 +24,7 @@ expression {
   Number
 | String
 | Boolean
-| Reference
+| Field
 | BinaryExpression
 | ParenExpression
 | CallExpression

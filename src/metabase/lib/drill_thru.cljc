@@ -20,6 +20,7 @@
    [metabase.lib.drill-thru.zoom-in-bins :as lib.drill-thru.zoom-in-bins]
    [metabase.lib.drill-thru.zoom-in-geographic :as lib.drill-thru.zoom-in-geographic]
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.native :as lib.native]
@@ -51,22 +52,22 @@
   "Some drill thru functions are expected to return drills for just the specified `:column`; others are expected to
   ignore that column and return drills for all of the columns specified in `:dimensions`.
   `:return-drills-for-dimensions?` specifies which type we have."
-  [{:f #'lib.drill-thru.automatic-insights/automatic-insights-drill,             :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.quick-filter/quick-filter-drill,                         :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.column-extract/column-extract-drill,                     :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.combine-columns/combine-columns-drill,                   :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}
-   {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}
-   {:f #'lib.drill-thru.zoom-in-bins/zoom-in-binning-drill,                      :return-drills-for-dimensions? true}])
+  [{:f lib.drill-thru.automatic-insights/automatic-insights-drill,             :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.column-filter/column-filter-drill,                       :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.distribution/distribution-drill,                         :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.fk-filter/fk-filter-drill,                               :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.object-details/object-detail-drill,                      :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.pivot/pivot-drill,                                       :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.quick-filter/quick-filter-drill,                         :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.sort/sort-drill,                                         :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.summarize-column/summarize-column-drill,                 :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.summarize-column-by-time/summarize-column-by-time-drill, :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.column-extract/column-extract-drill,                     :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.combine-columns/combine-columns-drill,                   :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.underlying-records/underlying-records-drill,             :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill,             :return-drills-for-dimensions? false}
+   {:f lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}
+   {:f lib.drill-thru.zoom-in-bins/zoom-in-binning-drill,                      :return-drills-for-dimensions? true}])
 
 (mu/defn- dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
   "Create new context maps (with updated `:column` and `:value` keys) for each of the `:dimensions` passed in. Some
@@ -102,14 +103,24 @@
   ([query context]
    (available-drill-thrus query -1 context))
 
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    context      :- ::lib.schema.drill-thru/context]
+  ([query                                   :- ::lib.schema/query
+    stage-number                            :- :int
+    {:keys [column column-ref] :as context} :- ::lib.schema.drill-thru/context]
    (try
      (into []
            (when (and (lib.metadata/editable? query)
                       (not (lib.native/has-template-tag-variables? query)))
-             (let [{:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
+             (let [;; when querying against a model, the column metadata returned by the query processor uses the
+                   ;; underlying table id instead of "card__blah", and that can cause issues with drills in certain
+                   ;; scenarios.  Changing the returned column metadata would be a large and scary change, so we just
+                   ;; grab the equivalent column from returned-columns here instead
+                   new-column (and column-ref
+                                   (->> (lib.metadata.calculation/returned-columns query stage-number)
+                                        (lib.equality/find-matching-column query stage-number column-ref)))
+                   old-types (select-keys column [:base-type :effective-type :semantic-type])
+                   context (cond-> context
+                             (and column column-ref new-column) (assoc :column (merge new-column old-types)))
+                   {:keys [query stage-number]} (lib.query/wrap-native-query-with-mbql
                                                  query stage-number (:card-id context))
                    context                      (context-with-dimensions-or-row-dimensions query context)
                    dim-contexts                 (dimension-contexts context)]

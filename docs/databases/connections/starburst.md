@@ -89,7 +89,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Model features
 
-There aren't (yet) any model features for ClickHouse.
+There aren't (yet) any model features for Starburst.
 
 ## Danger zone
 

@@ -7,10 +7,10 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models.field :as field]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field :as field]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

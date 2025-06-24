@@ -290,9 +290,13 @@
           field-metadatas (if (= fields :all)
                             join-cols
                             (for [field-ref fields
-                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)]]
-                              (assoc (lib.equality/find-matching-column join-field join-cols)
-                                     :lib/source-uuid (lib.options/uuid join-field))))
+                                  :let [join-field (lib.options/update-options field-ref dissoc :join-alias)
+                                        match      (lib.equality/find-matching-column join-field join-cols)]
+                                  :when match]
+                              (assoc match :lib/source-uuid (lib.options/uuid join-field))))
+          ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
+          ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
+          field-metadatas (if (empty? field-metadatas) join-cols field-metadatas)
           cols  (mapv (fn [field-metadata]
                         (->> (column-from-join-fields query stage-number field-metadata join-alias)
                              (adjust-ident join)
@@ -890,12 +894,7 @@
                     (m/distinct-by #(-> % ::target :id))
                     not-empty))
              (filter-clause [x y]
-               ;; DO NOT force broken refs for fields that come from Cards (broken refs in this case means use Field
-               ;; ID refs instead of nominal field literal refs), that will break things if a Card returns the same
-               ;; Field more than once (there would be no way to disambiguate). See #34227 for more info
-               (let [x (dissoc x ::lib.card/force-broken-id-refs)
-                     y (dissoc y ::lib.card/force-broken-id-refs)]
-                 (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y)))]
+               (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
         (when-let [fks (fks stage joinable)]

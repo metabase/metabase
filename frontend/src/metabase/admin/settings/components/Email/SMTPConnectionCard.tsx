@@ -1,31 +1,38 @@
-import { Link } from "react-router";
 import { t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
+import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
-import { Box, Button, Flex, Paper, Title } from "metabase/ui";
+import { Button, Flex, Paper, Title } from "metabase/ui";
 
-export const SMTPConnectionCard = () => {
+export const SMTPConnectionCard = ({
+  onOpenSMTPModal,
+}: {
+  onOpenSMTPModal: () => void;
+}) => {
+  const isEmailConfigured = useSetting("email-configured?");
+
   return (
-    <Box data-testid="smtp-connection-card" w="100%" mb="2.5rem" ml="1rem">
-      <Paper shadow="sm" withBorder w="34rem" maw="100%" p="1.75rem">
+    <>
+      <SettingsSection data-testid="smtp-connection-card">
         <Flex justify="space-between" align="center">
           <Flex align="center" gap="sm">
-            <Title>{t`SMTP`}</Title>
-            <Paper
-              fw="bold"
-              c={color("brand")}
-              bg={color("brand-light")}
-              p={"0.25rem 0.375rem"}
-              radius="xs"
-            >{t`Active`}</Paper>
+            <Title order={2}>{t`SMTP`}</Title>
+            {isEmailConfigured && (
+              <Paper
+                fw="bold"
+                c={"brand"}
+                bg={color("brand-light")}
+                p={"0.25rem 0.375rem"}
+                radius="xs"
+              >{t`Active`}</Paper>
+            )}
           </Flex>
-          <Button
-            component={Link}
-            to="/admin/settings/email/smtp"
-            variant="filled"
-          >{t`Edit Configuration`}</Button>
+          <Button onClick={onOpenSMTPModal} variant="filled">
+            {isEmailConfigured ? t`Edit configuration` : t`Configure`}
+          </Button>
         </Flex>
-      </Paper>
-    </Box>
+      </SettingsSection>
+    </>
   );
 };

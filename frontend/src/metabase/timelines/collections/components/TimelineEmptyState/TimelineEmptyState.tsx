@@ -1,7 +1,7 @@
 import { c, t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";
-import Link from "metabase/core/components/Link";
+import Link from "metabase/common/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -34,8 +34,7 @@ const TimelineEmptyState = ({
       </Tooltip>
       <Box maw="25rem">
         <Title
-          order={2}
-          size="lg"
+          order={4}
           mb="sm"
         >{t`Add context to your time series charts`}</Title>
         <Text fz="md">

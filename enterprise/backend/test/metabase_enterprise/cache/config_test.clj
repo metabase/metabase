@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.cache.config :as cache.config]
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -100,11 +100,13 @@
                                            {:order-by [[:id :desc]]})))
               (testing "Deletes backing tables of models that have state='off'"
                 (let [unpersisted-ids (atom #{})
-                      test-refresher  (reify task.persist-refresh/Refresher
-                                        (unpersist! [_ _database persisted-info]
-                                          (swap! unpersisted-ids conj (:id persisted-info))))
                       deleted?        (fn [{id :id}]
-                                        (not (t2/exists? :model/PersistedInfo :id id)))]
+                                        (not (t2/exists? :model/PersistedInfo :id id)))
+                      test-refresher
+                      #_{:clj-kondo/ignore [:missing-protocol-method]}
+                      (reify task.persist-refresh/Refresher
+                        (unpersist! [_ _database persisted-info]
+                          (swap! unpersisted-ids conj (:id persisted-info))))]
                   (#'task.persist-refresh/prune-all-deletable! test-refresher)
                   (is (set/subset? (set [(:id pdeletable) (:id poff)])
                                    @unpersisted-ids))

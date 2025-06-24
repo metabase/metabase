@@ -3,18 +3,20 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.color :as js.color]
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
-   [metabase.formatter :as formatter]
+   [metabase.channel.render.util :as render.util]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
@@ -145,7 +147,7 @@
     card
     {:keys [cols rows viz-settings], :as _data}]
    (let [remapping-lookup (create-remapping-lookup cols)
-         row-limit        (min (public-settings/attachment-table-row-limit) 100)]
+         row-limit        (min (channel.settings/attachment-table-row-limit) 100)]
      (cons
       (query-results->header-row remapping-lookup card cols)
       (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
@@ -227,12 +229,12 @@
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
-                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                       :col-names             (streaming.common/column-titles filtered-cols viz-settings format-rows?)}
                                       (prep-for-html-rendering timezone-id card data)
                                       filtered-cols
                                       viz-settings
                                       minibar-cols)
-                                     (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
+                                     (render-truncation-warning (channel.settings/attachment-table-row-limit) (count rows))]]
     {:content     table-body
      :attachments nil}))
 
@@ -298,7 +300,7 @@
   [x-col y-col {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [x-col-settings (settings-from-column x-col column-settings)
         y-col-settings (settings-from-column y-col column-settings)]
-    (cond-> {:colors (public-settings/application-colors)
+    (cond-> {:colors (appearance/application-colors)
              :visualization_settings (or viz-settings {})}
       x-col-settings
       (assoc :x x-col-settings)
@@ -310,7 +312,7 @@
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
   that will handle this but this is here in the meantime."
   ([value]
-   (format-percentage value (get-in (public-settings/custom-formatting) [:type/Number :number_separators])))
+   (format-percentage value (get-in (appearance/custom-formatting) [:type/Number :number_separators])))
   ([value [decimal grouping]]
    (let [base "#,###.##%"
          fmt (if (or decimal grouping)
@@ -368,11 +370,24 @@
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
 
+(defn- get-col-by-name
+  [cols col-name]
+  (->> (map-indexed vector cols)
+       (some (fn [[idx col]]
+               (when (= col-name (:name col))
+                 [idx col])))))
+
+(defn- raise-data-one-level
+  "Raise the :data key inside the given result map up to the top level.
+   This is the expected shape of `add-dashcard-timeline`."
+  [{:keys [result] :as m}]
+  (-> m
+      (assoc :data (:data result))
+      (dissoc :result)))
+
 (mu/defmethod render :row :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols] :as _data}]
+  [_chart-type render-type _timezone-id card _dashcard data]
   (let [viz-settings (get card :visualization_settings)
-        data {:rows rows
-              :cols cols}
         image-bundle   (image-bundle/make-image-bundle
                         render-type
                         (js.svg/row-chart viz-settings data))]
@@ -384,13 +399,6 @@
      [:div
       [:img {:style (style/style {:display :block :width :100%})
              :src   (:image-src image-bundle)}]]}))
-
-(defn- get-col-by-name
-  [cols col-name]
-  (->> (map-indexed (fn [idx m] [idx m]) cols)
-       (some (fn [[idx col]]
-               (when (= col-name (:name col))
-                 [idx col])))))
 
 (mu/defmethod render :scalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
@@ -409,12 +417,15 @@
       (h value)]
      :render/text (str value)}))
 
-(defn- raise-data-one-level
-  "Raise the :data key inside the given result map up to the top level. This is the expected shape of `add-dashcard-timeline`."
-  [{:keys [result] :as m}]
-  (-> m
-      (assoc :data (:data result))
-      (dissoc :result)))
+(defn- series-cards-with-data
+  "Take series results of dashcard and add timeline events"
+  [dashcard card data]
+  (->> (:series-results dashcard)
+       (map raise-data-one-level)
+       (cons {:card card :data data})
+       ;; TODO - remove timeline event code for static viz as it was never officially added
+       (map add-dashcard-timeline-events)
+       (m/distinct-by #(get-in % [:card :id]))))
 
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
@@ -424,15 +435,10 @@
 ;; Trend charts were added more recently and will not have multi-series.
 (mu/defmethod render :javascript_visualization :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard data]
-  (let [series-cards-results                   (:series-results dashcard)
-        cards-with-data                        (->> series-cards-results
-                                                    (map raise-data-one-level)
-                                                    (cons {:card card :data data})
-                                                    (map add-dashcard-timeline-events)
-                                                    (m/distinct-by #(get-in % [:card :id])))
-        viz-settings                           (or (get dashcard :visualization_settings)
-                                                   (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/javascript-visualization cards-with-data viz-settings)]
+  (let [cards-with-data  (series-cards-with-data dashcard card data)
+        viz-settings     (or (get dashcard :visualization_settings)
+                             (get card :visualization_settings))
+        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle
@@ -551,10 +557,22 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
+(defn- get-funnel-axis-fns
+  "Return [x-axis-fn y-axis-fn] tuple for indexing into the funnel data for the appropriate axis' data"
+  [card dashcard data]
+  (if (render.util/is-visualizer-dashcard? dashcard)
+    ;; x-axis looks for :funnel.dimension
+    ;; y-axis looks for :funnel.metric
+    (let [x-axis-is-first (= (:name (first (:cols data))) (get-in data [:viz-settings :funnel.dimension]))]
+      (if x-axis-is-first
+        [first second]
+        [second first]))
+    (formatter/graphing-column-row-fns card data)))
+
 (mu/defmethod render :funnel_normal :- ::RenderedPartCard
-  [_chart-type render-type _timezone-id card _dashcard {:keys [rows cols viz-settings] :as data}]
+  [_chart-type render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
   (let [[x-axis-rowfn
-         y-axis-rowfn] (formatter/graphing-column-row-fns card data)
+         y-axis-rowfn] (get-funnel-axis-fns card dashcard data)
         funnel-viz    (:funnel.rows viz-settings)
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
@@ -577,11 +595,32 @@
              :src   (:image-src image-bundle)}]]}))
 
 (mu/defmethod render :funnel :- ::RenderedPartCard
+  "Fork the rendering implementation as such:
+   +----------------------+--------------+---------------------------+
+   | (visualizer?, type)  | Merge Data   | Viz Method                |
+   +----------------------+--------------+---------------------------+
+   | (true,  'bar')       |              | :javascript_visualization |
+   +----------------------+--------------+---------------------------+
+   | (true,  'funnel')    | true         | :funnel_normal            |
+   +----------------------+--------------+---------------------------+
+   | (false, 'bar')       |              | :javascript_visualization |
+   +----------------------+--------------+---------------------------+
+   | (false, 'funnel')    |              | :funnel_normal            |
+   +----------------------+--------------+---------------------------+"
   [_chart-type render-type timezone-id card dashcard data]
-  (let [viz-settings (get card :visualization_settings)]
-    (if (= (get viz-settings :funnel.type) "bar")
-      (render :javascript_visualization render-type timezone-id card dashcard data)
-      (render :funnel_normal render-type timezone-id card dashcard data))))
+  (let [visualizer?    (render.util/is-visualizer-dashcard? dashcard)
+        viz-settings   (if visualizer?
+                         (get-in dashcard [:visualization_settings :visualization])
+                         (get card :visualization_settings))
+        funnel-type    (if visualizer?
+                         (get-in viz-settings [:settings :funnel.type] "funnel")
+                         (get viz-settings :funnel.type))
+        processed-data (if (and visualizer? (= "funnel" funnel-type))
+                         (render.util/merge-visualizer-data (series-cards-with-data dashcard card data) viz-settings)
+                         data)]
+    (if (= "bar" funnel-type)
+      (render :javascript_visualization render-type timezone-id card dashcard processed-data)
+      (render :funnel_normal render-type timezone-id card dashcard processed-data))))
 
 (mu/defmethod render :empty :- ::RenderedPartCard
   [_chart-type render-type _timezone-id _card _dashcard _data]

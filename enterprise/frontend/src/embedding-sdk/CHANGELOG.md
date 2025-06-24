@@ -1,3 +1,58 @@
+## [0.55.5-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.4-metabot...embedding-sdk-0.55.5-metabot) (2025-05-07)
+
+
+### Bug Fixes
+
+* **sdk:** clicking on "and X more" in chart legend throws error ([#57175](https://github.com/metabase/metabase/issues/57175)) ([6b427ef](https://github.com/metabase/metabase/commit/6b427efbfcf2dfc114cdc892a4bf9ec9cee3f38d))
+* **sdk:** custom GeoJSON maps does not load due to wrong domain ([#57539](https://github.com/metabase/metabase/issues/57539)) ([7f92780](https://github.com/metabase/metabase/commit/7f92780e9e1641fb79054e4f9b99c7819f5d9833))
+* **sdk:** Ensure that questions don't flicker when fetching entity IDs ([#57073](https://github.com/metabase/metabase/issues/57073)) ([af0188a](https://github.com/metabase/metabase/commit/af0188ade10002d948efe3199839cb3f000f164d))
+* **sdk:** manual fixes for module level ttag calls causing broken translations ([#57391](https://github.com/metabase/metabase/issues/57391)) ([2adc027](https://github.com/metabase/metabase/commit/2adc0271787a0a07b1ec5e704198432166071ac3))
+* **sdk:** updating collection's entity id crashes InteractiveQuestion and CollectionBrowser ([#57529](https://github.com/metabase/metabase/issues/57529)) ([92fac6c](https://github.com/metabase/metabase/commit/92fac6cabb08e59ef39a80a5c589df458c749cb5))
+* **sdk:** use background color in sankey chart text outline ([#57135](https://github.com/metabase/metabase/issues/57135)) ([dd76006](https://github.com/metabase/metabase/commit/dd76006c42a5220db0097bdc583ffd110cf174ae))
+
+
+
+## [0.55.4-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.3-metabot...embedding-sdk-0.55.4-metabot) (2025-04-23)
+
+
+
+## [0.55.3-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.2-metabot...embedding-sdk-0.55.3-metabot) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** css variables leak from Mantine to the host app ([#56985](https://github.com/metabase/metabase/issues/56985)) ([2b3f683](https://github.com/metabase/metabase/commit/2b3f6833e71696827cb61a4b5a504859ce674f01))
+
+
+
+## [0.55.2-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-metabot...embedding-sdk-0.55.2-metabot) (2025-04-22)
+
+
+### Bug Fixes
+
+* **sdk:** use instance locale if no locale is passed ([#56683](https://github.com/metabase/metabase/issues/56683)) ([88a8827](https://github.com/metabase/metabase/commit/88a88270be99c24095deb6bbf3bf6eb61ca73e1a))
+
+
+### Features
+
+* **sdk:** Add question details to Metabot ([#56601](https://github.com/metabase/metabase/issues/56601)) ([5b7c4ec](https://github.com/metabase/metabase/commit/5b7c4ec58799d5669eea2cd0df07d80a96374d1e))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([debae53](https://github.com/metabase/metabase/commit/debae5382881a4f824a547dc955ed03de80da626))
+* **sdk:** Automatically set a sensible display to interactive questions ([#56584](https://github.com/metabase/metabase/issues/56584)) ([#56667](https://github.com/metabase/metabase/issues/56667)) ([b7a74d0](https://github.com/metabase/metabase/commit/b7a74d02c7082b1dd180d059c255e2ebb1d0cbaf))
+* **sdk:** Export more public SDK types ([#56838](https://github.com/metabase/metabase/issues/56838)) ([764b236](https://github.com/metabase/metabase/commit/764b2366015df4594d3e7745234fdef126abc3b5))
+* **sdk:** Export public plugin and icon types ([#56851](https://github.com/metabase/metabase/issues/56851)) ([fe1df8d](https://github.com/metabase/metabase/commit/fe1df8df8839eca275dd1dd2c02d1a8872278643))
+* **sdk:** Use public types for Dashboard/Collection/User and other entities ([#56875](https://github.com/metabase/metabase/issues/56875)) ([9bb5e3e](https://github.com/metabase/metabase/commit/9bb5e3ec502f6a2bb80ad0be0c01124668abf387))
+
+
+
+## [0.55.1-metabot](https://github.com/metabase/metabase/compare/embedding-sdk-0.55.1-nightly...embedding-sdk-0.55.1-metabot) (2025-04-04)
+
+
+### Features
+
+* **sdk:** Add a Metabot SDK component ([#56271](https://github.com/metabase/metabase/issues/56271)) ([adaa23d](https://github.com/metabase/metabase/commit/adaa23dc4111498e8e7a5a5eed928789a36038f9))
+
+
+
 ## [0.55.1-nightly](https://github.com/metabase/metabase/compare/embedding-sdk-0.54.3-nightly...embedding-sdk-0.55.1-nightly) (2025-04-04)
 
 

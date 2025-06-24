@@ -14,7 +14,7 @@ import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { screen, waitFor } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
-import { createMockAuthProviderUriConfig } from "embedding-sdk/test/mocks/config";
+import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { Box } from "metabase/ui";
 import {
@@ -23,8 +23,10 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
+  createMockDashboardTab,
   createMockDatabase,
   createMockDataset,
+  createMockParameter,
   createMockStructuredDatasetQuery,
   createMockTextDashboardCard,
   createMockUser,
@@ -47,24 +49,54 @@ const dataset_query = createMockStructuredDatasetQuery({
   query: { "source-table": ORDERS_ID },
 });
 
+const dashboardTabs = [
+  createMockDashboardTab({ id: 1, name: "Foo Tab 1" }),
+  createMockDashboardTab({ id: 2, name: "Foo Tab 2" }),
+];
+
 const tableCard = createMockCard({
   id: 1,
   dataset_query,
   name: "Here is a card title",
 });
 
+const parameter = createMockParameter({
+  id: "1",
+  type: "string/contains",
+  slug: "title",
+  name: "Title",
+});
+
 const tableDashcard = createMockDashboardCard({
   id: 1,
   card_id: tableCard.id,
   card: tableCard,
+  dashboard_tab_id: dashboardTabs[0].id,
+  parameter_mappings: [
+    {
+      card_id: tableCard.id,
+      parameter_id: parameter.id,
+      target: [
+        "dimension",
+        ["field", parameter.slug, { "base-type": "type/Text" }],
+      ],
+    },
+  ],
 });
 
 const textDashcard = createMockTextDashboardCard({
   id: 2,
   text: "Some card text",
+  dashboard_tab_id: dashboardTabs[0].id,
 });
 
-const dashcards = [tableDashcard, textDashcard];
+const textDashcard2 = createMockTextDashboardCard({
+  id: 3,
+  text: "Some card text",
+  dashboard_tab_id: dashboardTabs[1].id,
+});
+
+const dashcards = [tableDashcard, textDashcard, textDashcard2];
 
 const setup = async ({
   props,
@@ -79,6 +111,8 @@ const setup = async ({
   const dashboard = createMockDashboard({
     id: dashboardId,
     dashcards,
+    tabs: dashboardTabs,
+    parameters: [parameter],
   });
 
   setupDashboardEndpoints(dashboard);
@@ -126,14 +160,11 @@ const setup = async ({
     {
       sdkProviderProps: {
         ...providerProps,
-        authConfig: createMockAuthProviderUriConfig({
-          authProviderUri: "http://TEST_URI/sso/metabase",
-        }),
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
     },
   );
-
   expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 
   return {
@@ -144,7 +175,6 @@ const setup = async ({
 describe("InteractiveDashboard", () => {
   it("should render dashboard cards", async () => {
     await setup();
-
     expect(screen.getByText("Here is a card title")).toBeInTheDocument();
     expect(screen.getByText("Some card text")).toBeInTheDocument();
   });
@@ -246,33 +276,12 @@ describe("InteractiveDashboard", () => {
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
   });
 
-  describe("withFooter", () => {
-    it("should hide the footer when withFooter=true", async () => {
-      await setup({
-        props: {
-          withFooter: true,
-        },
-      });
+  it("does not show the footer in the dashboard", async () => {
+    await setup();
 
-      expect(screen.getByTestId("embed-frame-footer")).toBeInTheDocument();
-      expect(
-        screen.getAllByTestId("dashboard-header-row-button").length,
-      ).toBeGreaterThan(0);
-    });
-
-    it("should hide the footer when withFooter=false", async () => {
-      await setup({
-        props: {
-          withFooter: false,
-        },
-      });
-
-      expect(
-        screen.queryByTestId("embed-frame-footer"),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryAllByTestId("dashboard-header-row-button").length,
-      ).toBe(0);
-    });
+    expect(screen.queryByTestId("embed-frame-footer")).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("dashboard-header-row-button").length).toBe(
+      0,
+    );
   });
 });

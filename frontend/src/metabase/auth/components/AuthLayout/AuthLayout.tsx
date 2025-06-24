@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import LogoIcon from "metabase/components/LogoIcon";
+import LogoIcon from "metabase/common/components/LogoIcon";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 
@@ -19,7 +19,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
   const loginPageIllustration = useSelector(getLoginPageIllustration);
 
   return (
-    <LayoutRoot>
+    <LayoutRoot data-testid="login-page">
       {loginPageIllustration && (
         <LayoutIllustration
           data-testid="login-page-illustration"

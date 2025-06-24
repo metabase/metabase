@@ -2,9 +2,9 @@
   (:require
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.models.field :as field]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.warehouse-schema.models.field :as field]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
@@ -68,8 +68,8 @@
 
 (defn- filter-for-card
   [card field]
-  (some->> ((:fk-map field) (:table_id card))
-           (vector :dimension)))
+  (when-let [field-ref ((:fk-map field) (:table_id card))]
+    [:dimension field-ref {:stage-number 0}]))
 
 (defn- add-filter
   [dashcard filter-id field]
@@ -84,14 +84,29 @@
       (nil? (:card dashcard)) dashcard
       mappings                (update dashcard :parameter_mappings concat mappings))))
 
-(defn- filter-type
-  "Return filter type for a given field."
-  [{:keys [semantic_type] :as field}]
+(defn- filter-type-info
+  "Return parameter type and section id for a given field."
+  [{:keys [effective_type semantic_type] :as _field}]
   (cond
-    (temporal? field)                   "date/all-options"
-    (isa? semantic_type :type/State)    "location/state"
-    (isa? semantic_type :type/Country)  "location/country"
-    (isa? semantic_type :type/Category) "category"))
+    (or (isa? effective_type :type/Date) (isa? effective_type :type/DateTime))
+    {:type "date/all-options"
+     :sectionId "date"}
+
+    (or (isa? effective_type :type/Text) (isa? effective_type :type/TextLike))
+    {:type "string/="
+     :sectionId (if (isa? semantic_type :type/Address) "location" "string")}
+
+    (isa? effective_type :type/Number)
+    (if (or (isa? semantic_type :type/PK) (isa? semantic_type :type/FK))
+      {:type "id"
+       :sectionId "id"}
+      {:type "number/="
+       :sectionId "number"})
+
+    ;; TODO this needs to be `boolean/=` once we introduce boolean parameters in #57435
+    (isa? effective_type :type/Boolean)
+    {:type "string/="
+     :sectionId "string"}))
 
 (def ^:private ^{:arglists '([dimensions])} remove-unqualified
   (partial remove (fn [{:keys [fingerprint]}]
@@ -112,18 +127,19 @@
          (take max-filters)
          (reduce
           (fn [dashboard candidate]
-            (let [filter-id     (-> candidate ((juxt :id :name :unit)) hash str)
+            (let [filter-id     (magic.util/filter-id-for-field candidate)
                   candidate     (assoc candidate :fk-map (build-fk-map fks candidate))
                   dashcards     (:dashcards dashboard)
-                  dashcards-new (keep #(add-filter % filter-id candidate) dashcards)]
-              ;; Only add filters that apply to all cards.
-              (if (= (count dashcards) (count dashcards-new))
+                  dashcards-new (keep #(add-filter % filter-id candidate) dashcards)
+                  filter-info   (filter-type-info candidate)]
+              ;; Only add filters that apply to all cards and when we have a parameter type for the field
+              (if (and (= (count dashcards) (count dashcards-new)) (some? filter-info))
                 (-> dashboard
                     (assoc :dashcards dashcards-new)
-                    (update :parameters conj {:id   filter-id
-                                              :type (filter-type candidate)
-                                              :name (:display_name candidate)
-                                              :slug (:name candidate)}))
+                    (update :parameters conj (merge {:id   filter-id
+                                                     :name (:display_name candidate)
+                                                     :slug (:name candidate)}
+                                                    filter-info)))
                 dashboard)))
           dashboard))))
 

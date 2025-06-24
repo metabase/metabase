@@ -6,10 +6,10 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.driver :as driver]
-   [metabase.models.task-history :as task-history]
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
+   [metabase.task-history.core :as task-history]
+   [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -102,29 +102,33 @@
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
         notification-id (:notification_id subscription)
         notification    (t2/select-one :model/Notification notification-id)]
-    (cond
-      (:active notification)
-      (try
-        (log/infof "Sending notification %d for subscription %d" notification-id subscription-id)
-        (task-history/with-task-history {:task         "notification-trigger"
-                                         :task_details {:trigger_type                 :notification-subscription/cron
-                                                        :notification_subscription_id subscription-id
-                                                        :cron_schedule                (:cron_schedule subscription)
-                                                        :notification_ids             [notification-id]}}
-          (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
-        (log/infof "Sent notification %d for subscription %d" notification-id subscription-id)
-        (catch Exception e
-          (log/errorf e "Failed to send notification %d for subscription %d" notification-id subscription-id)
-          (throw e)))
+    (log/with-context {:subscription-id subscription-id
+                       :notification-id notification-id}
 
-      (nil? notification)
-      (do
-        (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)
-        (delete-trigger-for-subscription! subscription-id))
-      (not (:active notification))
-      (do
-        (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
-        (delete-trigger-for-subscription! subscription-id)))))
+      (cond
+        (:active notification)
+        (try
+          (log/info "Submitting to the notification queue")
+          (task-history/with-task-history {:task         "notification-trigger"
+                                           :task_details {:trigger_type                 :notification-subscription/cron
+                                                          :notification_subscription_id subscription-id
+                                                          :cron_schedule                (:cron_schedule subscription)
+                                                          :notification_ids             [notification-id]}}
+            (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
+          (log/info "Submitted to the notification queue")
+          (catch Exception e
+            (log/error e "Failed to submit to the notification queue")
+            (throw e)))
+
+        (nil? notification)
+        (do
+          (log/warnf "Skipping and deleting trigger for subscription %d because it does not exist." subscription-id)
+          (delete-trigger-for-subscription! subscription-id))
+
+        (not (:active notification))
+        (do
+          (log/warnf "Skipping and deleting trigger for subscription %d because the notification is deactivated" subscription-id)
+          (delete-trigger-for-subscription! subscription-id))))))
 
 (defn- active-cron-subscription-id->subscription
   []
@@ -137,9 +141,8 @@
                                [:= :ns.type "notification-subscription/cron"]
                                [:= :n.active true]]}))
 
-;; called in [driver/report-timezone] setter
 (defn update-send-notification-triggers-timezone!
-  "Update the timezone of all SendPulse triggers if the report timezone changes."
+  "Update the timezone of all SendNotification triggers if the report timezone changes."
   []
   (let [triggers              (-> send-notification-job-key task/job-info :triggers)
         new-timezone          (send-notification-timezone)
@@ -162,7 +165,7 @@
 
   Called when starting the instance."
   []
-  (assert (task/scheduler) "Scheduler must be started before initializing SendPulse triggers")
+  (assert (task/scheduler) "Scheduler must be started before initializing SendNotification triggers")
 
   ;; Get all existing triggers and subscription IDs
   (let [existing-triggers                  (:triggers (task/job-info send-notification-job-key))
@@ -178,7 +181,12 @@
 (task/defjob
   ^{:doc
     "Find all notification subscriptions with cron schedules and create a trigger for each.
-    Run once on startup."
+    Run once on startup.
+
+    Context: We've migrated alerts from pulse to notifications, see the `v53.2024-12-12T08:05:00` migration.
+    This job is needed to create triggers for all existing notification subscriptions after the migration.
+    The fact that it runs on every startup is because we have no way to have it run only once.
+    Ideally this should be a migration."
     DisallowConcurrentExecution true}
   InitNotificationTriggers
   [_context]

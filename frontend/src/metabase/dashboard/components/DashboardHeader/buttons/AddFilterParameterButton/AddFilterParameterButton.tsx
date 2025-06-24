@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import {
   addParameter,
   hideAddParameterPopover,
   showAddParameterPopover,
-} from "metabase/dashboard/actions";
+} from "metabase/dashboard/actions/parameters";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -44,7 +44,7 @@ export const AddFilterParameterButton = () => {
   useRegisterShortcut(
     [
       {
-        id: "add-filter",
+        id: "dashboard-add-filter",
         perform: () =>
           isOpened
             ? dispatch(hideAddParameterPopover())

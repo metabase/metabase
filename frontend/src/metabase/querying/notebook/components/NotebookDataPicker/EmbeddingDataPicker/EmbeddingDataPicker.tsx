@@ -1,13 +1,14 @@
-import { useMemo } from "react";
-
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import { PLUGIN_EMBEDDING } from "metabase/plugins";
+import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
 import { getEmbedOptions } from "metabase/selectors/embed";
+import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import type { TableId } from "metabase-types/api";
+import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { CardType, TableId } from "metabase-types/api";
+import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
@@ -42,38 +43,47 @@ export function EmbeddingDataPicker({
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
   );
+  /**
+   * This is when we change the starting query source, and `card` is already cached.
+   * If we use `card` as is, it will use the cached data from a different query source
+   * which is incorrect.
+   */
+  const normalizedCard = pickerInfo?.cardId ? card : undefined;
 
-  const metadata = useSelector(getMetadata);
-  const databases = useMemo(() => {
-    // We're joining data
-    if (!canChangeDatabase) {
-      return [
-        metadata.database(databaseId),
-        metadata.savedQuestionsDatabase(),
-      ].filter(Boolean);
-    }
-
-    /**
-     * When not joining data, we want to use all databases loaded inside `DataSourceSelector`
-     *
-     * @see https://github.com/metabase/metabase/blob/fb25682fe8dbafe2062e37bce832f62440872ab7/frontend/src/metabase/query_builder/components/DataSelector/DataSelector.jsx#L1163-L1168
-     */
-    return undefined;
-  }, [canChangeDatabase, databaseId, metadata]);
-
-  const entityTypes = useSelector(
-    (state) => getEmbedOptions(state).entity_types,
+  const entityTypes = useSelector(getEntityTypes);
+  const forceMultiStagedDataPicker = useSelector(
+    (state) => getEmbedOptions(state).data_picker === "staged",
   );
+
+  // a table or a virtual table (card)
+  const sourceTable = useSourceTable(query);
+  const {
+    collectionId: sourceModelCollectionId,
+    isFetching: isSourceModelFetching,
+  } = useSourceEntityCollectionId(query);
 
   if (isDataSourceCountLoading) {
     return null;
   }
 
   const shouldUseSimpleDataPicker =
-    dataSourceCountData != null && dataSourceCountData.total < 100;
+    !forceMultiStagedDataPicker &&
+    dataSourceCountData != null &&
+    dataSourceCountData.total < 100;
   if (shouldUseSimpleDataPicker) {
+    const ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES: EmbeddingEntityType[] = [
+      "model",
+      "table",
+    ];
+    const filteredEntityTypes = entityTypes.filter((entityType) =>
+      ALLOWED_SIMPLE_DATA_PICKER_ENTITY_TYPES.includes(entityType),
+    );
+    const simpleDataPickerEntityTypes =
+      filteredEntityTypes.length > 0
+        ? filteredEntityTypes
+        : DEFAULT_EMBEDDING_ENTITY_TYPES;
     return (
-      <PLUGIN_EMBEDDING_SDK.SimpleDataPicker
+      <PLUGIN_EMBEDDING.SimpleDataPicker
         filterByDatabaseId={canChangeDatabase ? null : databaseId}
         selectedEntity={pickerInfo?.tableId}
         isInitiallyOpen={!table}
@@ -91,25 +101,30 @@ export function EmbeddingDataPicker({
           />
         }
         setSourceTableFn={onChange}
-        entityTypes={entityTypes}
+        entityTypes={simpleDataPickerEntityTypes}
       />
     );
   }
 
+  const isSourceSelected = Boolean(pickerInfo?.tableId);
   return (
-    <DataSourceSelector
-      key={pickerInfo?.tableId}
-      isInitiallyOpen={!table}
-      databases={databases}
+    <PLUGIN_EMBEDDING.DataSourceSelector
+      key={
+        isSourceSelected
+          ? pickerInfo?.tableId
+          : `${sourceTable?.id}:${isSourceModelFetching}`
+      }
+      isInitiallyOpen={isSourceModelFetching ? false : !table}
+      querySourceType={sourceTable?.type}
       canChangeDatabase={canChangeDatabase}
       selectedDatabaseId={databaseId}
       selectedTableId={pickerInfo?.tableId}
-      selectedCollectionId={card?.collection_id}
-      databaseQuery={{ saved: true }}
+      selectedCollectionId={
+        normalizedCard?.collection_id ?? sourceModelCollectionId
+      }
       canSelectModel={entityTypes.includes("model")}
       canSelectTable={entityTypes.includes("table")}
-      canSelectMetric={false}
-      canSelectSavedQuestion={false}
+      canSelectQuestion={entityTypes.includes("question")}
       triggerElement={
         <DataPickerTarget
           tableInfo={tableInfo}
@@ -120,4 +135,24 @@ export function EmbeddingDataPicker({
       setSourceTableFn={onChange}
     />
   );
+}
+
+function useSourceTable(query: Lib.Query) {
+  const metadata = useSelector(getMetadata);
+  return metadata.table(Lib.sourceTableOrCardId(query));
+}
+
+function useSourceEntityCollectionId(query: Lib.Query) {
+  const sourceTable = useSourceTable(query);
+  const isCard =
+    sourceTable?.type &&
+    (["model", "question"] as CardType[]).includes(sourceTable.type);
+  const cardId = isCard
+    ? getQuestionIdFromVirtualTableId(sourceTable?.id)
+    : undefined;
+  const { data: card, isFetching } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
+  );
+
+  return { collectionId: card?.collection_id, isFetching };
 }

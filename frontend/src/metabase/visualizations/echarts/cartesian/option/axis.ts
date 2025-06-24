@@ -389,6 +389,7 @@ export const buildMetricAxis = (
     show: true,
     scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
+    splitNumber: axisModel.splitNumber,
     ...range,
     ...getAxisNameDefaultOption(
       renderingContext,

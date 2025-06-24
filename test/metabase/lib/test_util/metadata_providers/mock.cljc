@@ -22,10 +22,10 @@
   [:map
    {:closed true}
    [:database {:optional true} [:maybe (with-optional-lib-type ::lib.schema.metadata/database :metadata/database)]]
-   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table         :metadata/table)]]]
-   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column        :metadata/column)]]]
-   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card          :metadata/card)]]]
-   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment       :metadata/segment)]]]
+   [:tables   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/table   :metadata/table)]]]
+   [:fields   {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/column  :metadata/column)]]]
+   [:cards    {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/card    :metadata/card)]]]
+   [:segments {:optional true} [:maybe [:sequential (with-optional-lib-type ::lib.schema.metadata/segment :metadata/segment)]]]
    [:settings {:optional true} [:maybe [:map-of :keyword any?]]]])
 
 (defn- mock-database [metadata]
@@ -35,10 +35,10 @@
 
 (defn- mock-metadatas [metadata metadata-type ids]
   (let [k   (case metadata-type
-              :metadata/table         :tables
-              :metadata/column        :fields
-              :metadata/card          :cards
-              :metadata/segment       :segments)
+              :metadata/table   :tables
+              :metadata/column  :fields
+              :metadata/card    :cards
+              :metadata/segment :segments)
         ids (set ids)]
     (into []
           (keep (fn [object]
@@ -54,9 +54,9 @@
 
 (defn- mock-metadatas-for-table [metadata metadata-type table-id]
   (let [k (case metadata-type
-            :metadata/column        :fields
-            :metadata/metric        :cards
-            :metadata/segment       :segments)]
+            :metadata/column  :fields
+            :metadata/metric  :cards
+            :metadata/segment :segments)]
     (into []
           (keep (fn [object]
                   (when (and (= (:table-id object) table-id)

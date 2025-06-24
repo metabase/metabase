@@ -2,8 +2,8 @@
   (:require
    [medley.core :as m]
    [metabase.models.interface :as mi]
-   [metabase.models.query :as query]
    [metabase.models.serialization :as serdes]
+   [metabase.queries.models.query :as query]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -250,7 +250,7 @@
                                              (filter #(contains? implicit-action-model-ids (:id %)))
                                              distinct)
                                         (when (seq implicit-action-model-ids)
-                                          (t2/select 'Card :id [:in implicit-action-model-ids])))
+                                          (t2/select :model/Card :id [:in implicit-action-model-ids])))
         model-id->db-id               (into {} (for [card implicit-action-models]
                                                  [(:id card) (:database_id card)]))
         model-id->implicit-parameters (when (seq implicit-action-models)

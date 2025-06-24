@@ -1330,9 +1330,8 @@ describe("issue 45300", () => {
       cy.findAllByText("Product").should("have.length", 2).first().click();
       cy.findByText("Category").click();
       cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
+      cy.button("Apply filter").click();
     });
-    H.runButtonOverlay().click();
     cy.wait("@dataset");
 
     cy.findByTestId("filter-pill").should(

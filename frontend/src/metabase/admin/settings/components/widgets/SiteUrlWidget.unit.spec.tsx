@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -40,12 +40,14 @@ const setup = () => {
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
     setup();
-    expect(await screen.findByText("Site Url")).toBeInTheDocument();
+    expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {
     setup();
-    const selectInput = await screen.findByLabelText("input-prefix");
+    const selectInput = await screen.findByRole("textbox", {
+      name: "input-prefix",
+    });
     expect(selectInput).toHaveValue("http://");
 
     const textInput = await screen.findByDisplayValue("mysite.biz");
@@ -67,7 +69,9 @@ describe("siteUrlWidget", () => {
 
   it("can change from http to https", async () => {
     setup();
-    await userEvent.click(await screen.findByLabelText("input-prefix"));
+    await userEvent.click(
+      await screen.findByRole("textbox", { name: "input-prefix" }),
+    );
     await userEvent.click(await screen.findByText("https://"));
 
     const [putUrl, putDetails] = await findPut();
@@ -83,7 +87,9 @@ describe("siteUrlWidget", () => {
     await fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
-    expect(await screen.findByLabelText("check icon")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("check_filled icon"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 

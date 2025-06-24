@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Group, Icon, Menu, Text } from "metabase/ui";
+import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
+import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { useAdminSetting } from "metabase/api/utils";
+import { Box, Button, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
-const SAME_SITE_OPTIONS: Options[] = [
+import { EmbeddingAppSameSiteCookieDescription } from "./EmbeddingAppSameSiteCookieDescription";
+
+const getSameSiteOptions = (): Options[] => [
   {
     value: "lax",
     name: t`Lax (default)`,
@@ -13,7 +18,7 @@ const SAME_SITE_OPTIONS: Options[] = [
   {
     value: "strict",
     name: t`Strict (not recommended)`,
-    // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
+    // eslint-disable-next-line no-literal-metabase-strings -- admin settings
     description: t`Never allows cookies to be sent on a cross-site request. Warning: this will prevent users from following external links to Metabase.`,
   },
   {
@@ -29,50 +34,69 @@ interface Options {
   description: string;
 }
 
-interface SameSiteSelectWidgetProps {
-  onChange: (value: SessionCookieSameSite) => void;
-  setting: {
-    key: "session-cookie-samesite";
-    value?: SessionCookieSameSite;
-  };
-}
-
 const DEFAULT_SAME_SITE_VALUE = "lax";
-export function SameSiteSelectWidget({
-  setting,
-  onChange,
-}: SameSiteSelectWidgetProps) {
+export function SameSiteSelectWidget() {
   const [opened, setOpened] = useState(false);
+  const { value, updateSetting, settingDetails } = useAdminSetting(
+    "session-cookie-samesite",
+  );
 
-  const selectedValue = setting.value ?? DEFAULT_SAME_SITE_VALUE;
+  const SAME_SITE_OPTIONS = useMemo(getSameSiteOptions, []);
+
+  const selectedValue = value ?? DEFAULT_SAME_SITE_VALUE;
   const selectedOption = SAME_SITE_OPTIONS.find(
     ({ value }) => value === selectedValue,
   );
 
-  return (
-    <Menu
-      opened={opened}
-      onChange={setOpened}
-      position="bottom-start"
-      shadow="sm"
-    >
-      <Menu.Target>
-        <Button variant={opened ? "outline" : "default"}>
-          <Group justify="space-between" miw="10rem">
-            <span>{selectedOption?.name}</span>
-            <Icon name="chevrondown" size="12" />
-          </Group>
-        </Button>
-      </Menu.Target>
+  const handleChange = (newValue: SessionCookieSameSite) => {
+    updateSetting({
+      key: "session-cookie-samesite",
+      value: newValue,
+    });
+  };
 
-      <Menu.Dropdown maw={"21rem"}>
-        {SAME_SITE_OPTIONS.map(({ value, name, description }) => (
-          <Menu.Item key="value" onClick={() => onChange(value)}>
-            <Text>{name}</Text>
-            <Text c="text-light">{description}</Text>
-          </Menu.Item>
-        ))}
-      </Menu.Dropdown>
-    </Menu>
+  return (
+    <SetByEnvVarWrapper
+      settingDetails={settingDetails}
+      settingKey="session-cookie-samesite"
+    >
+      <Stack gap="md">
+        <SettingHeader
+          id="session-cookie-samesite"
+          title={t`SameSite cookie setting`}
+          description={<EmbeddingAppSameSiteCookieDescription />}
+        />
+        <Box>
+          <Menu
+            opened={opened}
+            onChange={setOpened}
+            position="bottom-start"
+            shadow="sm"
+          >
+            <Menu.Target>
+              <Button variant={opened ? "outline" : "default"}>
+                <Group justify="space-between" miw="10rem">
+                  <span>{selectedOption?.name}</span>
+                  <Icon name="chevrondown" size="12" />
+                </Group>
+              </Button>
+            </Menu.Target>
+
+            <Menu.Dropdown>
+              {SAME_SITE_OPTIONS.map(({ value, name, description }) => (
+                <Menu.Item
+                  key={value}
+                  onClick={() => handleChange(value)}
+                  maw="21rem"
+                >
+                  <Text>{name}</Text>
+                  <Text c="text-light">{description}</Text>
+                </Menu.Item>
+              ))}
+            </Menu.Dropdown>
+          </Menu>
+        </Box>
+      </Stack>
+    </SetByEnvVarWrapper>
   );
 }

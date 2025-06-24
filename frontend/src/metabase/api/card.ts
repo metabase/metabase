@@ -1,3 +1,4 @@
+import { PLUGIN_API } from "metabase/plugins";
 import type {
   Card,
   CardId,
@@ -8,9 +9,11 @@ import type {
   CreateCardRequest,
   DashboardId,
   Dataset,
+  FieldValue,
   GetCardRequest,
   GetEmbeddableCard,
   GetPublicCard,
+  GetRemappedCardParameterValueRequest,
   ListCardsRequest,
   UpdateCardKeyRequest,
   UpdateCardRequest,
@@ -25,6 +28,7 @@ import {
   provideCardQueryMetadataTags,
   provideCardQueryTags,
   provideCardTags,
+  provideParameterValuesTags,
 } from "./tags";
 
 const PERSISTED_MODEL_REFRESH_DELAY = 200;
@@ -83,6 +87,21 @@ export const cardApi = Api.injectEndpoints({
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
       }),
+      getRemappedCardParameterValue: builder.query<
+        FieldValue,
+        GetRemappedCardParameterValueRequest
+      >({
+        query: ({ card_id, parameter_id, ...params }) => ({
+          method: "GET",
+          url: PLUGIN_API.getRemappedCardParameterValueUrl(
+            card_id,
+            parameter_id,
+          ),
+          params,
+        }),
+        providesTags: (_response, _error, { parameter_id }) =>
+          provideParameterValuesTags(parameter_id),
+      }),
       createCard: builder.mutation<Card, CreateCardRequest>({
         query: (body) => ({
           method: "POST",
@@ -99,7 +118,7 @@ export const cardApi = Api.injectEndpoints({
 
           return {
             method: "POST",
-            url: "/api/card/from-csv",
+            url: "/api/upload/csv",
             body: { formData },
             formData: true,
             fetch: true,
@@ -293,6 +312,7 @@ export const {
   useLazyGetCardQuery,
   useGetCardQueryMetadataQuery,
   useGetCardQueryQuery,
+  useGetRemappedCardParameterValueQuery,
   useCreateCardMutation,
   useUpdateCardMutation,
   useDeleteCardMutation,

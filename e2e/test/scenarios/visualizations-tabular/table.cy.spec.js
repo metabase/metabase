@@ -377,26 +377,15 @@ describe("scenarios > visualizations > table", () => {
       .and("contain", "No description");
   });
 
-  it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
+  it("should close the colum popover on subsequent click (metabase#16789)", () => {
     H.openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    H.popover().within(() => {
-      cy.icon("arrow_up");
-      cy.icon("arrow_down");
-      cy.icon("gear");
-      cy.findByText("Filter by this column");
-      cy.findByText("Distribution");
-      cy.findByText("Distinct values");
-    });
+    H.tableHeaderColumn("City").click();
+    H.clickActionsPopover().should("be.visible");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
-    // Although arbitrary waiting is considered an anti-pattern and a really bad practice, I couldn't find any other way to reproduce this issue.
-    // Cypress is too fast and is doing the assertions in that split second while popover is reloading which results in a false positive result.
-    cy.wait(100);
-    H.popover().should("not.exist");
+    H.tableHeaderColumn("City").click();
+    cy.wait(100); // Ensure popover is closed
+    H.clickActionsPopover({ skipVisibilityCheck: true }).should("not.exist");
   });
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
@@ -567,8 +556,8 @@ describe("scenarios > visualizations > table > dashboards context", () => {
         size_y: 12,
       },
     }).then(({ body: { dashboard_id } }) => {
-      const wrappedRowInitialHeight = 104;
-      const updatedRowHeight = 87;
+      const wrappedRowInitialHeight = 87;
+      const updatedRowHeight = 70;
       H.visitDashboard(dashboard_id);
 
       H.assertRowHeight(0, wrappedRowInitialHeight);
@@ -629,6 +618,81 @@ describe("scenarios > visualizations > table > dashboards context", () => {
       .findAllByTestId("row-id-cell")
       .eq(0)
       .should("have.text", 1);
+  });
+
+  it("should expand columns to the full width of the dashcard (metabase#57381)", () => {
+    const sideColumnsWidth = 200;
+    const expandedSideColumnsWidth = 2 * sideColumnsWidth;
+    const idColumnWidth = 54;
+    const idExpandedWidth = 2 * idColumnWidth;
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "reviews",
+        type: "model",
+        query: {
+          "source-table": SAMPLE_DATABASE.REVIEWS_ID,
+        },
+        visualization_settings: {
+          "table.column_widths": [sideColumnsWidth, null, sideColumnsWidth], // middle column width is not set
+          column_settings: {
+            '["name","BODY"]': {
+              text_wrapping: true,
+            },
+          },
+          "table.columns": [
+            {
+              name: "BODY",
+              enabled: true,
+            },
+            {
+              name: "CREATED_AT",
+              enabled: false,
+            },
+            {
+              name: "ID",
+              enabled: true,
+            },
+            {
+              name: "PRODUCT_ID",
+              enabled: false,
+            },
+            {
+              name: "REVIEWER",
+              enabled: false,
+            },
+            {
+              name: "RATING",
+              enabled: true,
+            },
+          ],
+        },
+      },
+      dashboardDetails: {
+        name: "Dashboard",
+      },
+      cardDetails: {
+        size_x: 24,
+        size_y: 12,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+
+      // Column widths should be expanded to the full width of the dashcard
+      H.getColumnWidth("Body").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("Rating").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("ID").should("be.gt", idExpandedWidth);
+
+      // Resize Body column
+      H.resizeTableColumn("BODY", -100);
+
+      // Ensure columns are not expanded to the full width of the dashcard after manual resizing
+      H.getColumnWidth("Body")
+        .should("be.gt", expandedSideColumnsWidth - 100)
+        .should("be.lt", expandedSideColumnsWidth);
+      H.getColumnWidth("Rating").should("be.gt", expandedSideColumnsWidth);
+      H.getColumnWidth("ID").should("be.gt", idExpandedWidth);
+    });
   });
 
   it("should support resizing columns in dashcard viz settings", () => {

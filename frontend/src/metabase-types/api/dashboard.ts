@@ -8,12 +8,15 @@ import type {
   CollectionId,
   Database,
   Field,
+  FieldId,
   Parameter,
   ParameterId,
   ParameterTarget,
+  ParameterValueOrArray,
   Table,
   UserId,
   VirtualCardDisplay,
+  VisualizerVizDefinition,
 } from "metabase-types/api";
 
 import type {
@@ -74,12 +77,31 @@ export interface Dashboard {
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
   width: DashboardWidth;
+  param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+
+  /* For x-ray dashboards */
+  transient_name?: string;
+  related?: RelatedDashboardXRays;
+  more?: string | null;
 }
+
+export type RelatedDashboardXRays = {
+  related?: RelatedDashboardXRayItem[];
+  "zoom-in"?: RelatedDashboardXRayItem[];
+  "zoom-out"?: RelatedDashboardXRayItem[];
+  compare?: RelatedDashboardXRayItem[];
+};
+
+export type RelatedDashboardXRayItem = {
+  description: string;
+  title: string;
+  url: string;
+};
 
 /** Dashboards with string ids, like x-rays, cannot have cache configurations */
 export type CacheableDashboard = Omit<Dashboard, "id"> & { id: number };
@@ -155,6 +177,12 @@ export type QuestionDashboardCard = BaseDashboardCard & {
   series?: Card[];
 };
 
+export type VisualizerDashboardCard = QuestionDashboardCard & {
+  visualization_settings: BaseDashboardCard["visualization_settings"] & {
+    visualization: VisualizerVizDefinition;
+  };
+};
+
 export type VirtualDashboardCard = BaseDashboardCard & {
   card_id: null;
   card: VirtualCard;
@@ -162,6 +190,7 @@ export type VirtualDashboardCard = BaseDashboardCard & {
   visualization_settings: BaseDashboardCard["visualization_settings"] & {
     virtual_card: VirtualCard;
     link?: LinkCardSettings;
+    text?: string;
   };
 };
 
@@ -240,7 +269,6 @@ export type ListDashboardsResponse = Omit<
   | "collection_authority_level"
   | "can_write"
   | "param_fields"
-  | "param_values"
 >[];
 
 export type GetDashboardRequest = {
@@ -305,3 +333,14 @@ export type UpdateDashboardPropertyRequest<
 export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
+
+export type GetRemappedDashboardParameterValueRequest = {
+  dashboard_id: DashboardId;
+  parameter_id: ParameterId;
+  value: ParameterValueOrArray;
+};
+
+export type GetValidDashboardFilterFieldsRequest = {
+  filtered: FieldId[];
+  filtering: FieldId[];
+};

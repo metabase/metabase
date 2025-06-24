@@ -24,7 +24,7 @@
 
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection parent {:name "Some Collection"}
                          :model/Collection child  {:name "Child Collection" :location (format "/%d/" (:id parent))}]
         (let [export          (into [] (extract/extract nil))
@@ -60,7 +60,7 @@
 
 (deftest collection-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection  grandparent {:name     "Grandparent Collection"
                                                          :location "/"}
                          :model/Collection  parent      {:name     "Parent Collection"
@@ -72,7 +72,7 @@
                          :model/Card        c3          {:name "parent card" :collection_id (:id parent)}
                          :model/Card        c4          {:name "child card" :collection_id (:id child)}
                          :model/Dashboard   d1          {:name "parent dash" :collection_id (:id parent)}]
-        (let [export (into [] (extract/extract nil))]
+        (let [export (into [] (extract/extract {}))]
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
@@ -90,7 +90,7 @@
 
 (deftest snippets-collections-nesting-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Collection         grandparent {:name      "Grandparent Collection"
                                                                 :namespace :snippets
                                                                 :location  "/"}
@@ -124,7 +124,7 @@
 
 (deftest embedded-slash-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Database    db      {:name "My Company Data"}
                          :model/Table       table   {:name "Customers" :db_id (:id db)}
                          :model/Field       website {:name "Company/organization website" :table_id (:id table)}
@@ -152,7 +152,7 @@
 
 (deftest yaml-sorted-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (ts/with-temp-dpc [:model/Database           db  {:name "My Company Data"}
                          :model/Table              t   {:name "Customers" :db_id (:id db)}
                          :model/Field              w   {:name "Company/organization website" :table_id (:id t)}
@@ -203,7 +203,7 @@
             (storage/store! export dump-dir)))))))
 
 (deftest store-error-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (testing "destination not writable"
       (ts/with-random-dump-dir [parent-dir "serdesv2-"]
         (let [dump-dir (str parent-dir "/test")]
@@ -224,7 +224,7 @@
 
 (deftest nested-fields-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-    (mt/with-empty-h2-app-db
+    (mt/with-empty-h2-app-db!
       (let [db  (ts/create! :model/Database :name "mydb")
             t   (ts/create! :model/Table :name "table" :db_id (:id db))
             f1  (ts/create! :model/Field :name "parent" :table_id (:id t))
@@ -236,3 +236,20 @@
           (is (= #{["parent.yaml"]
                    ["parent.child.yaml"]}
                  (file-set (io/file dump-dir "databases" "mydb" "tables" "table" "fields")))))))))
+
+(deftest name-too-long-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    ;; that's a char that takes 3 bytes in utf-8
+    (ts/with-temp-dpc [:model/Card card {:name (str/join (repeat 100 "ป"))}]
+      (let [export        (into [] (extract/extract {:no-settings   true
+                                                     :no-data-model true
+                                                     :targets       [["Card" (:id card)]]}))
+            ;; 66 is 'char-count * max-bytes / byte-count'
+            card-filename (format "%s_%s" (:entity_id card) (str/join (repeat 66 "ป")))]
+        (storage/store! export dump-dir)
+        ;; we could also test loading here, but file names do not play significant part in how everything's loaded,
+        ;; `:serdes/meta` does and that one is not shortened or anything
+        (testing "the right files in the right places"
+          (is (= #{["cards" (str card-filename ".yaml")]}
+                 (file-set (io/file dump-dir "collections")))
+              "collections form a tree, with same-named files"))))))

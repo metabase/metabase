@@ -1,8 +1,7 @@
-import { isa as cljs_isa } from "cljs/metabase.types";
+import { isa as cljs_isa } from "cljs/metabase.types.core";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   BOOLEAN,
-  CATEGORY,
   COORDINATE,
   FOREIGN_KEY,
   INTEGER,
@@ -107,8 +106,6 @@ export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
 export const isStringLike = isFieldType.bind(null, STRING_LIKE);
 export const isSummable = isFieldType.bind(null, SUMMABLE);
-export const isCategory = isFieldType.bind(null, CATEGORY);
-export const isLocation = isFieldType.bind(null, LOCATION);
 
 const hasNonMetricName = (col) => {
   const name = col.name.toLowerCase();
@@ -123,6 +120,8 @@ export const isFK = (field) => field && isTypeFK(field.semantic_type);
 export const isPK = (field) => field && isTypePK(field.semantic_type);
 export const isEntityName = (field) =>
   field && isa(field.semantic_type, TYPE.Name);
+export const isAddress = (field) =>
+  field && isa(field.semantic_type, TYPE.Address);
 
 export const isAny = (col) => true;
 

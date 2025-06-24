@@ -189,3 +189,13 @@ export const PinToZero = {
     renderingContext,
   },
 };
+
+export const Watermark = {
+  render: Template,
+
+  args: {
+    rawSeries: data.default as any,
+    renderingContext,
+    hasDevWatermark: true,
+  },
+};

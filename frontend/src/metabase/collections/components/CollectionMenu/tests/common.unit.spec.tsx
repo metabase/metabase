@@ -36,6 +36,7 @@ describe("CollectionMenu", () => {
       collection: createMockCollection({
         personal_owner_id: 1,
         can_write: true,
+        is_personal: true,
       }),
       isAdmin: true,
     });
@@ -47,9 +48,9 @@ describe("CollectionMenu", () => {
     setup({
       collection: createMockCollection({
         can_write: true,
+        is_personal: true,
       }),
       isAdmin: true,
-      isPersonalCollectionChild: true,
     });
 
     await userEvent.click(getIcon("ellipsis"));

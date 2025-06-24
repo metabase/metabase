@@ -4,6 +4,7 @@ import { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 export {
   CollectionBrowser,
   type CollectionBrowserProps,
+  type CollectionBrowserListColumns,
 } from "./CollectionBrowser";
 export {
   CreateDashboardModal,
@@ -20,6 +21,7 @@ export {
 } from "./InteractiveDashboard";
 export {
   InteractiveQuestion,
+  type BaseInteractiveQuestionProps,
   type InteractiveQuestionProps,
   type InteractiveQuestionBackButtonProps,
   type InteractiveQuestionBreakoutDropdownProps,
@@ -39,6 +41,7 @@ export {
   type InteractiveQuestionSaveQuestionFormProps,
   type InteractiveQuestionSummarizeDropdownProps,
   type InteractiveQuestionTitleProps,
+  type DrillThroughQuestionProps,
 } from "./InteractiveQuestion";
 export {
   MetabaseProvider,
@@ -71,3 +74,5 @@ export { defineMetabaseTheme };
  * @internal
  */
 export { SdkDebugInfo } from "./debug/SdkDebugInfo";
+
+export { MetabotQuestion } from "./MetabotQuestion";

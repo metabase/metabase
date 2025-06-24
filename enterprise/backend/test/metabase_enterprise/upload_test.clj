@@ -5,7 +5,7 @@
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.upload-test :as upload-test]))
+   [metabase.upload.impl-test :as upload-test]))
 
 (set! *warn-on-reflection* true)
 

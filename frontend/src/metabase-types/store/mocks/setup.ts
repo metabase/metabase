@@ -42,6 +42,7 @@ export const createMockSetupState = (
   opts?: Partial<SetupState>,
 ): SetupState => ({
   step: "welcome",
+  isEmbeddingUseCase: false,
   isLocaleLoaded: false,
   isTrackingAllowed: true,
   ...opts,

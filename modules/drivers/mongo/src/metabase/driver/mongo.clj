@@ -4,8 +4,9 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.database :as mongo.db]
@@ -15,11 +16,6 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -296,19 +292,19 @@
 
 (mu/defn- describe-table :- [:sequential
                              [:map {:closed true}
-                              [:path  ::lib.schema.common/non-blank-string]
-                              [:type  ::lib.schema.common/non-blank-string]
+                              [:path  driver-api/schema.common.non-blank-string]
+                              [:type  driver-api/schema.common.non-blank-string]
                               [:index :int]]]
   "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
   Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
   [db table]
   (let [query (describe-table-query {:collection-name (:name table)
-                                     :sample-size     (* metadata-queries/nested-field-sample-limit 2)
+                                     :sample-size     (* table-rows-sample/nested-field-sample-limit 2)
                                      :max-depth       describe-table-query-depth})
-        data  (:data (qp/process-query {:database (:id db)
-                                        :type     "native"
-                                        :native   {:collection (:name table)
-                                                   :query      (json/encode query)}}))
+        data  (:data (driver-api/process-query {:database (:id db)
+                                                :type     "native"
+                                                :native   {:collection (:name table)
+                                                           :query      (json/encode query)}}))
         cols  (map (comp keyword :name) (:cols data))]
     (map #(zipmap cols %) (:rows data))))
 
@@ -392,9 +388,12 @@
                   (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path)))
                 {}
                 fields)
-        ;; replace maps from name to field with sets of fields
+        ;; replace maps from name to field with sets of fields and set visibility-type for parent fields
         fields (walk/postwalk (fn [x]
                                 (cond-> x
+                                  (and (map? x) (:nested-fields x))
+                                  (assoc :visibility-type :details-only)
+
                                   (map? x)
                                   (m/update-existing :nested-fields #(set (vals %)))))
                               (set (vals fields)))
@@ -415,7 +414,13 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
-                              :index-info                      true}]
+                              :saved-question-sandboxing       false
+                              :expressions/date                true
+                              :expressions/text                true
+                              :expressions/datetime            true
+                              ;; Index sync is turned off across the application as it is not used ATM.
+                              :index-info                      false
+                              :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:mongo :schemas] [_driver _feat _db] false)
@@ -470,7 +475,7 @@
 (defmethod driver/execute-reducible-query :mongo
   [_driver query _context respond]
   (assert (string? (get-in query [:native :collection])) "Cannot execute MongoDB query without a :collection name")
-  (mongo.connection/with-mongo-client [_ (lib.metadata/database (qp.store/metadata-provider))]
+  (mongo.connection/with-mongo-client [_ (driver-api/database (driver-api/metadata-provider))]
     (mongo.execute/execute-reducible-query query respond)))
 
 (defmethod driver/substitute-native-parameters :mongo
@@ -485,14 +490,14 @@
   (some (fn [field]
           (when (= (:name field) "_id")
             (:id field)))
-        (lib.metadata.protocols/fields (qp.store/metadata-provider) (u/the-id table))))
+        (driver-api/fields (driver-api/metadata-provider) (u/the-id table))))
 
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
-  (qp.store/with-metadata-provider (:db_id table)
-    (let [mongo-opts {:limit    metadata-queries/nested-field-sample-limit
+  (driver-api/with-metadata-provider (:db_id table)
+    (let [mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
                       :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
-      (metadata-queries/table-rows-sample table fields rff (merge mongo-opts opts)))))
+      (table-rows-sample/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
 (defn- encode-mongo
   "Converts a Clojure representation of a Mongo aggregation pipeline to a formatted JSON-like string"

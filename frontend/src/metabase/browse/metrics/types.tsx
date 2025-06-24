@@ -17,3 +17,5 @@ export type MetricFilterControlsProps = {
   metricFilters: MetricFilterSettings;
   setMetricFilters: (settings: MetricFilterSettings) => void;
 };
+
+export type SortColumn = "name" | "collection" | "description";

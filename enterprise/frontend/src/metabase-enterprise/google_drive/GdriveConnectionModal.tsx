@@ -1,12 +1,12 @@
+import dayjs from "dayjs";
 import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
-import { CopyButton } from "metabase/components/CopyButton";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import Markdown from "metabase/core/components/Markdown";
+import { CopyButton } from "metabase/common/components/CopyButton";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import Markdown from "metabase/common/components/Markdown";
 import { useDispatch } from "metabase/lib/redux";
 import { getUserName } from "metabase/lib/user";
 import {
@@ -22,6 +22,7 @@ import {
 } from "metabase/ui";
 import {
   useDeleteGsheetsFolderLinkMutation,
+  useGetGsheetsFolderQuery,
   useGetServiceAccountQuery,
   useSaveGsheetsFolderLinkMutation,
 } from "metabase-enterprise/api";
@@ -29,6 +30,7 @@ import {
 import Styles from "./Gdrive.module.css";
 import { getStrings } from "./GdriveConnectionModal.strings";
 import { trackSheetImportClick } from "./analytics";
+import { getErrorMessage, getStatus, useShowGdrive } from "./utils";
 
 export function GdriveConnectionModal({
   isModalOpen,
@@ -39,23 +41,27 @@ export function GdriveConnectionModal({
   onClose: () => void;
   reconnect: boolean;
 }) {
-  const gSheetsSetting = useSetting("gsheets");
+  const shouldShow = useShowGdrive();
   const { data: { email: serviceAccountEmail } = {} } =
-    useGetServiceAccountQuery();
+    useGetServiceAccountQuery(shouldShow ? undefined : skipToken);
 
-  if (!gSheetsSetting || !serviceAccountEmail) {
+  const { data: gSheetData, error } = useGetGsheetsFolderQuery(
+    shouldShow ? undefined : skipToken,
+  );
+
+  if (!shouldShow) {
     return null;
   }
 
-  const { status, folder_url } = gSheetsSetting;
+  const status = getStatus({ status: gSheetData?.status, error });
 
   return (
     isModalOpen &&
     (status === "not-connected" ? (
       <GoogleSheetsConnectModal
         onClose={onClose}
-        serviceAccountEmail={serviceAccountEmail ?? t`Email not found`}
-        folderUrl={folder_url}
+        serviceAccountEmail={serviceAccountEmail ?? "email not found"}
+        folderUrl={gSheetData?.url ?? ""}
       />
     ) : (
       <GoogleSheetsDisconnectModal onClose={onClose} reconnect={reconnect} />
@@ -217,12 +223,11 @@ function GoogleSheetsDisconnectModal({
   reconnect: boolean;
 }) {
   const [errorMessage, setErrorMessage] = useState("");
-  const dispatch = useDispatch();
 
-  const gSheetsSetting = useSetting("gsheets");
+  const { data: gdriveInfo } = useGetGsheetsFolderQuery();
 
-  const connectingUserId = gSheetsSetting?.["created-by-id"];
-  const folderUrl = gSheetsSetting?.folder_url;
+  const connectingUserId = gdriveInfo?.created_by_id;
+  const folderUrl = gdriveInfo?.url;
 
   const { data: connectingUser } = useGetUserQuery(
     connectingUserId ? connectingUserId : skipToken,
@@ -236,17 +241,20 @@ function GoogleSheetsDisconnectModal({
     await deleteFolderLink()
       .unwrap()
       .then(() => {
-        dispatch(reloadSettings());
         if (!reconnect) {
           onClose();
         }
       })
-      .catch((response) => {
-        setErrorMessage(response?.data?.message ?? "Something went wrong");
+      .catch((response: unknown) => {
+        setErrorMessage(getErrorMessage(response));
       });
   };
 
   const userName = getUserName(connectingUser);
+
+  const relativeConnectionTime = gdriveInfo?.created_at
+    ? dayjs.unix(gdriveInfo.created_at).fromNow()
+    : "";
 
   return (
     <ModalWrapper
@@ -257,6 +265,7 @@ function GoogleSheetsDisconnectModal({
         <DriveConnectionDisplay
           folderUrl={folderUrl ?? ""}
           userName={userName ?? ""}
+          relativeConnectionTime={relativeConnectionTime}
         />
         <Text c="text-medium" pb="md">
           {reconnect
@@ -286,14 +295,32 @@ function GoogleSheetsDisconnectModal({
     </ModalWrapper>
   );
 }
+
+const MaybeLink = ({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) =>
+  href ? (
+    <ExternalLink href={href} target="_blank" className={Styles.plainLink}>
+      {children}
+    </ExternalLink>
+  ) : (
+    <Box>{children}</Box>
+  );
+
 const DriveConnectionDisplay = ({
   folderUrl,
   userName,
+  relativeConnectionTime,
 }: {
   folderUrl: string;
   userName: string;
+  relativeConnectionTime: string;
 }) => (
-  <ExternalLink href={folderUrl} target="_blank" className={Styles.plainLink}>
+  <MaybeLink href={folderUrl}>
     <Flex
       bg="bg-light"
       w="100%"
@@ -304,10 +331,12 @@ const DriveConnectionDisplay = ({
       <Icon name="google_drive" mt="xs" />
       <Box>
         <Text fw="bold">{t`Google Drive connected`}</Text>
-        <Text c="text-medium" fz="sm" lh="140%">
-          {t`Connected by ${userName}`}
-        </Text>
+        {!!userName && (
+          <Text c="text-medium" fz="sm" lh="140%">
+            {t`Connected by ${userName} ${relativeConnectionTime}`}
+          </Text>
+        )}
       </Box>
     </Flex>
-  </ExternalLink>
+  </MaybeLink>
 );

@@ -143,11 +143,11 @@ export const isNavigationAllowed = ({
 };
 
 export const createRawSeries = (options: {
-  question: Question;
+  card: Card;
   queryResult: any;
   datasetQuery?: any;
 }): Series => {
-  const { question, queryResult, datasetQuery } = options;
+  const { card, queryResult, datasetQuery } = options;
 
   // we want to provide the visualization with a card containing the latest
   // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
@@ -157,7 +157,7 @@ export const createRawSeries = (options: {
       {
         ...queryResult,
         card: {
-          ...question.card(),
+          ...card,
           ...(datasetQuery && { dataset_query: datasetQuery }),
         },
       },

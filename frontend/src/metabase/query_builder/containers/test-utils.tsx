@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { ComponentPropsWithoutRef } from "react";
@@ -14,7 +15,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupFieldValuesEndpoints,
+  setupFieldValuesEndpoint,
   setupGetUserKeyValueEndpoint,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
@@ -30,8 +31,8 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import NewItemMenu from "metabase/containers/NewItemMenu";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hooks/use-favicon";
+import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { LOAD_COMPLETE_FAVICON } from "metabase/common/hooks/use-favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
@@ -244,7 +245,7 @@ export const setup = async ({
   setupBookmarksEndpoints([]);
   setupTimelinesEndpoints([]);
   setupCollectionByIdEndpoint({ collections: [TEST_COLLECTION] });
-  setupFieldValuesEndpoints(
+  setupFieldValuesEndpoint(
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);
@@ -376,7 +377,7 @@ export const triggerVisualizationQueryChange = async () => {
   await userEvent.click(within(popover).getByText("Total"));
   const maxInput = within(popover).getByPlaceholderText("Max");
   await userEvent.type(maxInput, "1000");
-  await userEvent.click(await screen.findByText("Add filter"));
+  await userEvent.click(await screen.findByText("Apply filter"));
 };
 
 export const triggerNotebookQueryChange = async () => {

@@ -6,7 +6,7 @@ import {
   type BaseInteractiveQuestionProps,
   InteractiveQuestion,
 } from "embedding-sdk/components/public/InteractiveQuestion";
-import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
+import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
 import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
@@ -144,7 +144,7 @@ export const QuestionEditor = ({
   onBeforeSave,
   onSave,
   plugins,
-  entityTypeFilter,
+  entityTypes,
   targetCollection,
 }: BaseInteractiveQuestionProps) => (
   <InteractiveQuestion
@@ -153,7 +153,7 @@ export const QuestionEditor = ({
     onSave={onSave}
     onBeforeSave={onBeforeSave}
     isSaveEnabled={isSaveEnabled}
-    entityTypeFilter={entityTypeFilter}
+    entityTypes={entityTypes}
     targetCollection={targetCollection}
   >
     <QuestionEditorInner />

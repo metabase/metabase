@@ -5,10 +5,11 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.api.common.validation :as validation]
    [metabase.api.macros :as api.macros]
    [metabase.channel.email :as email]
-   [metabase.models.setting :as setting]
+   [metabase.channel.settings :as channel.settings]
+   [metabase.permissions.core :as perms]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
@@ -94,17 +95,17 @@
   [_route-params
    _query-params
    settings :- :map]
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (let [;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
         ;; the obfuscated version
-        obfuscated? (and (:email-smtp-password settings) (email/email-smtp-password)
-                         (= (:email-smtp-password settings) (setting/obfuscate-value (email/email-smtp-password))))
+        obfuscated? (and (:email-smtp-password settings) (channel.settings/email-smtp-password)
+                         (= (:email-smtp-password settings) (setting/obfuscate-value (channel.settings/email-smtp-password))))
         ;; override `nil` values in the request with environment variables for testing the SMTP connection
         env-var-settings (env-var-values-by-email-setting)
         settings         (merge settings env-var-settings)
         settings         (-> (cond-> settings
                                obfuscated?
-                               (assoc :email-smtp-password (email/email-smtp-password)))
+                               (assoc :email-smtp-password (channel.settings/email-smtp-password)))
                              (select-keys (keys mb-to-smtp-settings))
                              (set/rename-keys mb-to-smtp-settings))
         settings         (cond-> settings
@@ -128,7 +129,7 @@
 (api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
-  (validation/check-has-application-permission :setting)
+  (perms/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
@@ -136,8 +137,8 @@
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
-  (validation/check-has-application-permission :setting)
-  (when-not (and (email/email-smtp-port) (email/email-smtp-host))
+  (perms/check-has-application-permission :setting)
+  (when-not (and (channel.settings/email-smtp-port) (channel.settings/email-smtp-host))
     {:status 400
      :body   "Wrong host or port"})
   (let [response (email/send-message-or-throw!

@@ -4,11 +4,11 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
-   [metabase.models.field-values :as field-values]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -21,6 +21,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
    (com.google.cloud.bigquery TableResult)))
@@ -68,10 +69,10 @@
               [3 "The Apple Pan"]
               [4 "Wurstküche"]
               [5 "Brite Spot Family Restaurant"]]
-             (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                      [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                       (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                      (constantly conj))
+             (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                       [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                        (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                       (constantly conj))
                   (sort-by first)
                   (take 5)))))
 
@@ -84,10 +85,10 @@
             page-callback   (fn [] (swap! pages-retrieved inc))]
         (with-bindings {#'bigquery/*page-size*     25
                         #'bigquery/*page-callback* page-callback}
-          (let [results (->> (metadata-queries/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
-                                                                 [(t2/select-one :model/Field :id (mt/id :venues :id))
-                                                                  (t2/select-one :model/Field :id (mt/id :venues :name))]
-                                                                 (constantly conj))
+          (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
+                                                                  [(t2/select-one :model/Field :id (mt/id :venues :id))
+                                                                   (t2/select-one :model/Field :id (mt/id :venues :name))]
+                                                                  (constantly conj))
                              (sort-by first)
                              (take 5))]
             (is (= [[1 "Red Medicine"]
@@ -852,7 +853,8 @@
                                     :database-type "STRING",
                                     :base-type :type/Text,
                                     :nfc-path ["primary"],
-                                    :database-position 2}}}
+                                    :database-position 2}}
+                                 :visibility-type :details-only}
                                 {:name "participants",
                                  :table-name tbl-nm
                                  :table-schema test-db-name
@@ -1237,3 +1239,25 @@
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
+
+(deftest user-agent-is-set-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "User agent is set for bigquery requests"
+      (let [client (#'bigquery/database-details->client (:details (mt/db)))
+            mb-version (:tag config/mb-version-info)
+            run-mode   (name config/run-mode)
+            user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
+        (is (= user-agent
+               (-> client .getOptions .getUserAgent)))))))
+
+(deftest timestamp-precision-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [sql (str "select"
+                   " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"
+                   " datetime  '2024-12-11T16:23:55.123456' col_datetime")
+          query {:database (mt/id)
+                 :type :native
+                 :native {:query sql}}]
+      (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
+              (-> (qp/process-query query)
+                  mt/rows))))))

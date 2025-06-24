@@ -37,13 +37,14 @@ describe("HelpText (OSS)", () => {
       enclosingFunction: {
         name: "cum-count",
       },
+      expressionMode: "aggregation",
     });
 
     const exampleCodeEl = screen.getByTestId(
       "expression-helper-popover-structure",
     );
     expect(
-      await within(exampleCodeEl).findByText("CumulativeCount"),
+      await within(exampleCodeEl).findByText("CumulativeCount()"),
     ).toBeInTheDocument();
 
     expect(
@@ -68,8 +69,10 @@ describe("HelpText (OSS)", () => {
       ).toHaveTextContent(name);
 
       expect(
-        within(argumentsBlock).getByTestId(`arg-${name}-description`),
-      ).toHaveTextContent(description.replaceAll("`", "").replaceAll("$", ""));
+        within(argumentsBlock).getByTestId(`arg-${name}-description`) ?? "",
+      ).toHaveTextContent(
+        description?.replaceAll("`", "").replaceAll("$", "") ?? "",
+      );
     });
   });
 

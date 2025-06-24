@@ -7,7 +7,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.types :as types]
+   [metabase.types.core :as types]
    [metabase.util.malli.registry :as mr]))
 
 (defn- valid-interval-for-type? [[_tag _opts _n unit :as _interval] expr-type]
@@ -222,4 +222,8 @@
     :type/Float))
 
 (mbql-clause/define-tuple-mbql-clause :integer :- :type/BigInteger
+  [:schema [:or [:ref ::expression/string]
+            [:ref ::expression/number]]])
+
+(mbql-clause/define-tuple-mbql-clause :float :- :type/Float
   [:schema [:ref ::expression/string]])

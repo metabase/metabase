@@ -1,6 +1,6 @@
 (ns metabase.internal-stats.questions
   (:require
-   [metabase.db :as db]
+   [metabase.app-db.core :as db]
    [metabase.internal-stats.util :as u]
    [metabase.models.interface :as mi]
    [toucan2.core :as t2]))

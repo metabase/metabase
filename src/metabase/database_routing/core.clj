@@ -24,7 +24,7 @@
   (f))
 
 (defmacro with-database-routing-off
-  "Turns database routing off. Access to a mirror database within this block will result in an error."
+  "Turns database routing off. Access to a destination database within this block will result in an error."
   [& body]
   `(with-database-routing-off-fn
      (fn []
@@ -34,4 +34,10 @@
   "OSS version, does nothing"
   metabase-enterprise.database-routing.common
   [_db-or-id-or-spec]
+  nil)
+
+(defenterprise delete-associated-database-router!
+  "OSS version, does nothing"
+  metabase-enterprise.database-routing.model
+  [_db-id]
   nil)

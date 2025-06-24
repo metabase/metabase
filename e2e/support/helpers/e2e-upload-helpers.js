@@ -56,7 +56,7 @@ export function uploadFile(
   testFile,
   uploadMode = "upload",
 ) {
-  cy.intercept("POST", "/api/card/from-csv").as("uploadCSV");
+  cy.intercept("POST", "/api/upload/csv").as("uploadCSV");
   cy.intercept("POST", "/api/table/*/append-csv").as("appendCSV");
   cy.intercept("POST", "/api/table/*/replace-csv").as("replaceCSV");
 
@@ -104,7 +104,7 @@ export function headlessUpload(collectionId, file) {
       formData.append("collection_id", collectionId);
 
       cy.request({
-        url: "/api/card/from-csv",
+        url: "/api/upload/csv",
         method: "POST",
         headers: {
           "content-type": "multipart/form-data",

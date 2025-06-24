@@ -4,18 +4,17 @@ import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { isPublicCollection } from "metabase/collections/utils";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import SelectList from "metabase/components/SelectList";
-import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
-import Input from "metabase/core/components/Input";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import Input from "metabase/common/components/Input";
+import SelectList from "metabase/common/components/SelectList";
+import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
+import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { isEmbeddingSdk } from "metabase/env";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { getCrumbs } from "metabase/lib/collections";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
-import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Button, Flex, Icon, type IconProps } from "metabase/ui";
@@ -71,20 +70,6 @@ function QuestionPickerInner({
 
   const onNewQuestion = (type: "native" | "notebook") =>
     dispatch(addDashboardQuestion(type));
-
-  useRegisterShortcut(
-    [
-      {
-        id: "add-notebook-question",
-        perform: () => onNewQuestion("notebook"),
-      },
-      {
-        id: "add-native-question",
-        perform: () => onNewQuestion("native"),
-      },
-    ],
-    [dashboard],
-  );
 
   return (
     <div className={S.questionPickerRoot}>

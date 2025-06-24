@@ -33,7 +33,7 @@ describe("DatePicker", () => {
   it("should add a specific date filter", async () => {
     const { onChange } = setup();
 
-    await userEvent.click(screen.getByText("Specific dates…"));
+    await userEvent.click(screen.getByText("Fixed date range…"));
     await userEvent.click(screen.getByText("After"));
     await userEvent.clear(screen.getByLabelText("Date"));
     await userEvent.type(screen.getByLabelText("Date"), "Feb 15, 2020");
@@ -71,7 +71,7 @@ describe("DatePicker", () => {
   it("should add a relative date filter", async () => {
     const { onChange } = setup();
 
-    await userEvent.click(screen.getByText("Relative dates…"));
+    await userEvent.click(screen.getByText("Relative date range…"));
     await userEvent.clear(screen.getByLabelText("Interval"));
     await userEvent.type(screen.getByLabelText("Interval"), "20");
     await userEvent.click(screen.getByText("Apply"));

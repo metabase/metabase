@@ -6,7 +6,7 @@ files:
   # migrations related files
   'resources/migrations/**':
     - team:core-workflows
-  'src/metabase/db/custom_migrations.clj':
+  'src/metabase/app_db/custom_migrations.clj':
     - team:core-workflows
 
 options:

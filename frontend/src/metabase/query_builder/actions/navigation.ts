@@ -78,14 +78,21 @@ export const popState = createThunkAction(
       }
     }
 
-    const { queryBuilderMode: queryBuilderModeFromURL, ...uiControls } =
-      getQueryBuilderModeFromLocation(location);
+    const {
+      queryBuilderMode: queryBuilderModeFromURL,
+      datasetEditorTab: datasetEditorTabFromURL,
+      ...uiControls
+    } = getQueryBuilderModeFromLocation(location);
 
-    if (getQueryBuilderMode(getState()) !== queryBuilderModeFromURL) {
+    if (
+      getQueryBuilderMode(getState()) !== queryBuilderModeFromURL ||
+      getDatasetEditorTab(getState()) !== datasetEditorTabFromURL
+    ) {
       await dispatch(
         setQueryBuilderMode(queryBuilderModeFromURL, {
+          datasetEditorTab: datasetEditorTabFromURL,
           ...uiControls,
-          shouldUpdateUrl: queryBuilderModeFromURL === "dataset",
+          shouldUpdateUrl: false,
         }),
       );
     }
@@ -148,13 +155,14 @@ export const updateUrl = createThunkAction(
         }
       }
 
+      const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+        question,
+        originalQuestion,
+      );
+
       if (dirty == null) {
-        const originalQuestion = getOriginalQuestion(getState());
         const uiControls = getUiControls(getState());
-        const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
-          question,
-          originalQuestion,
-        );
         dirty =
           !originalQuestion ||
           (!isAdHocModelOrMetric &&
@@ -176,8 +184,9 @@ export const updateUrl = createThunkAction(
         datasetEditorTab = getDatasetEditorTab(getState());
       }
 
+      const card = isAdHocModelOrMetric ? getCard(getState()) : question.card();
       const newState = {
-        card: question._doNotCallSerializableCard(),
+        card,
         cardId: question.id(),
         objectId,
       };

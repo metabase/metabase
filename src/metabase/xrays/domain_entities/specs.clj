@@ -59,7 +59,7 @@
   (partial m/map-kv-vals (fn [k v]
                            (assoc v :name k))))
 
-(def ^:private LegacyMetrics
+(def ^:private Metrics
   [:map-of
    {:decode/domain-entity-spec add-name-from-key}
    Identifier
@@ -87,7 +87,7 @@
    [:required_attributes Attributes]
    [:description         {:optional true} Description]
    [:optional_attributes {:optional true} Attributes]
-   [:metrics             {:optional true} LegacyMetrics]
+   [:metrics             {:optional true} Metrics]
    [:segments            {:optional true} Segments]
    [:breakout_dimensions {:optional true} BreakoutDimensions]])
 

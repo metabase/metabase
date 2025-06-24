@@ -9,7 +9,7 @@ dayjs.extend(timezone);
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import {
-  computeTimeseriesDataInverval,
+  computeTimeseriesDataInterval,
   computeTimeseriesTicksInterval,
   getTimezoneOrOffset,
   normalizeDate,
@@ -19,7 +19,7 @@ import registerVisualizations from "metabase/visualizations/register";
 registerVisualizations();
 
 describe("visualization.lib.timeseries", () => {
-  describe("computeTimeseriesDataInvervalIndex", () => {
+  describe("computeTimeseriesDataIntervalIndex", () => {
     const TEST_CASES = [
       ["ms", 1, [["2015-01-01T00:00:00.000Z"], ["2016-05-04T03:02:01.001Z"]]],
       [
@@ -79,8 +79,8 @@ describe("visualization.lib.timeseries", () => {
         [["2015-01-01T00:00:00.000Z"], ["2015-02-01T00:00:00.000Z"]],
       ],
       [
-        "month",
-        3,
+        "quarter",
+        1,
         [["2015-01-01T00:00:00.000Z"], ["2015-04-01T00:00:00.000Z"]],
       ],
       ["year", 1, [["2015-01-01T00:00:00.000Z"], ["2016-01-01T00:00:00.000Z"]]],
@@ -99,7 +99,7 @@ describe("visualization.lib.timeseries", () => {
 
     TEST_CASES.map(([expectedUnit, expectedCount, data]) => {
       it(`should return ${expectedCount} ${expectedUnit}`, () => {
-        const { unit, count } = computeTimeseriesDataInverval(
+        const { unit, count } = computeTimeseriesDataInterval(
           data.map((d) => new Date(d)),
         );
         expect(unit).toBe(expectedUnit);
@@ -111,7 +111,7 @@ describe("visualization.lib.timeseries", () => {
 
     units.forEach((testUnit) => {
       it(`should return one ${testUnit} when ${testUnit} interval is set`, () => {
-        const { unit, count } = computeTimeseriesDataInverval(
+        const { unit, count } = computeTimeseriesDataInterval(
           [
             new Date("2019-01-01").toISOString(),
             new Date("2020-01-01").toISOString(),
@@ -123,20 +123,20 @@ describe("visualization.lib.timeseries", () => {
       });
     });
 
-    it("should return 3 months for quarter interval", () => {
-      const { unit, count } = computeTimeseriesDataInverval(
+    it("should return 1 quarter for quarter interval", () => {
+      const { unit, count } = computeTimeseriesDataInterval(
         [
           new Date("2019-01-01").toISOString(),
           new Date("2020-01-01").toISOString(),
         ],
         "quarter",
       );
-      expect(unit).toBe("month");
-      expect(count).toBe(3);
+      expect(unit).toBe("quarter");
+      expect(count).toBe(1);
     });
 
     it("should should ignore null X values", () => {
-      const { unit, count } = computeTimeseriesDataInverval([
+      const { unit, count } = computeTimeseriesDataInterval([
         null,
         new Date("2020-01-01").toISOString(),
         null,
@@ -147,8 +147,6 @@ describe("visualization.lib.timeseries", () => {
       expect(count).toBe(1);
     });
   });
-
-  describe("getTimezone", () => {});
 
   describe("computeTimeseriesTicksInterval", () => {
     // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
@@ -172,7 +170,7 @@ describe("visualization.lib.timeseries", () => {
           chartWidth: 700,
           tickFormat: fakeTickFormat,
         },
-        { expectedUnit: "month", expectedCount: 3 },
+        { expectedUnit: "quarter", expectedCount: 1 },
       ],
       // even narrower and we should show yearly ticks
       [

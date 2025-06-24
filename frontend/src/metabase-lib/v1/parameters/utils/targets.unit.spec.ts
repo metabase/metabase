@@ -301,8 +301,8 @@ describe("parameters/utils/targets", () => {
             ...withColumnsStage(0, productsColumns),
             ...withColumnsStage(1, [
               ["Orders", "Created At: Month"],
-              ["Products", "Created At: Year"],
-              ["Reviews", "Created At: Quarter"],
+              ["Products", "Product → Created At: Year"],
+              ["Reviews", "Reviews - Product → Created At: Quarter"],
               [undefined, "User's 18th birthday"],
               [undefined, "Count"],
               [undefined, "Sum of Total"],
@@ -324,8 +324,8 @@ describe("parameters/utils/targets", () => {
             ...withColumnsStage(0, productsColumns),
             ...withColumnsStage(1, [
               ["Orders", "Created At: Month"],
-              ["Products", "Created At: Year"],
-              ["Reviews", "Created At: Quarter"],
+              ["Products", "Product → Created At: Year"],
+              ["Reviews", "Reviews - Product → Created At: Quarter"],
               [undefined, "User's 18th birthday"],
               [undefined, "Count"],
               [undefined, "Sum of Total"],

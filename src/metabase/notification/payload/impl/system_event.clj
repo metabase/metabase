@@ -1,9 +1,12 @@
 (ns metabase.notification.payload.impl.system-event
   (:require
+   [metabase.appearance.core :as appearance]
    [metabase.channel.email.messages :as messages]
-   [metabase.models.user :as user]
    [metabase.notification.payload.core :as notification.payload]
-   [metabase.public-settings :as public-settings]
+   [metabase.session.core :as session]
+   [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]))
 
@@ -11,10 +14,10 @@
   [user-id]
   ;; TODO: the reset token should come from the event-info, not generated here!
   (let [reset-token               (user/set-password-reset-token! user-id)
-        should-link-to-login-page (and (public-settings/sso-enabled?)
-                                       (not (public-settings/enable-password-login)))]
+        should-link-to-login-page (and (sso/sso-enabled?)
+                                       (not (session/enable-password-login)))]
     (if should-link-to-login-page
-      (str (public-settings/site-url) "/auth/login")
+      (str (system/site-url) "/auth/login")
       ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
       (str (user/form-password-reset-url reset-token) "#new"))))
 
@@ -26,7 +29,7 @@
   [topic event-info]
   (case topic
     :event/user-invited
-    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (public-settings/site-name) (messages/app-name-trs))
+    {:user_invited_email_subject (trs "You''re invited to join {0}''s {1}" (appearance/site-name) (messages/app-name-trs))
      :user_invited_join_url      (-> event-info :object :id join-url)}
     {}))
 

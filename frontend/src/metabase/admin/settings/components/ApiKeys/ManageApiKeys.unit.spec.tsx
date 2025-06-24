@@ -76,19 +76,19 @@ async function setup(
 describe("ManageApiKeys", () => {
   it("should render the component", async () => {
     await setup();
-    expect(screen.getByText("Manage API Keys")).toBeInTheDocument();
+    expect(screen.getByText("API keys")).toBeInTheDocument();
   });
 
   it("should render component empty state", async () => {
     await setup({ apiKeys: [] });
-    expect(screen.getByText("Manage API Keys")).toBeInTheDocument();
+    expect(screen.getByText("API keys")).toBeInTheDocument();
     expect(screen.getByText("No API keys here yet")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "You can create an API key to make API calls programatically.",
+        "You can create an API key to make API calls programmatically.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Create API Key")).toHaveLength(2);
+    expect(screen.getAllByText("Create API key")).toHaveLength(2);
   });
 
   it("should load API keys from api", async () => {
@@ -98,11 +98,17 @@ describe("ManageApiKeys", () => {
 
   it("should create a new API key", async () => {
     await setup();
-    await userEvent.click(screen.getByText("Create API Key"));
-    expect(await screen.findByText("Create a new API Key")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Create API key"));
+    expect(await screen.findByText("Create a new API key")).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText(/Key name/), "New key");
     await userEvent.click(await screen.findByLabelText(/which group/i));
     await userEvent.click(await screen.findByText("flamingos"));
+
+    // Blur the select
+    await userEvent.click(await screen.findByText(/We don't version/));
+    expect(
+      await screen.findByRole("textbox", { name: /which group/i }),
+    ).not.toHaveAttribute("data-error");
 
     const createButton = screen.getByRole("button", { name: "Create" });
     await waitFor(() => expect(createButton).toBeEnabled());
@@ -138,9 +144,9 @@ describe("ManageApiKeys", () => {
         }),
       ).getByRole("img", { name: /pencil/i }),
     );
-    await screen.findByText("Edit API Key");
+    await screen.findByText("Edit API key");
     await userEvent.click(
-      screen.getByRole("button", { name: "Regenerate API Key" }),
+      screen.getByRole("button", { name: "Regenerate API key" }),
     );
     await userEvent.click(
       await screen.findByRole("button", { name: "Regenerate" }),
@@ -169,7 +175,7 @@ describe("ManageApiKeys", () => {
         }),
       ).getByRole("img", { name: /pencil/i }),
     );
-    await screen.findByText("Edit API Key");
+    await screen.findByText("Edit API key");
 
     const group = await screen.findByLabelText(/which group/i);
     await userEvent.click(group);
@@ -205,7 +211,7 @@ describe("ManageApiKeys", () => {
       ).getByRole("img", { name: /trash/i }),
     );
     await userEvent.click(
-      await screen.findByRole("button", { name: "Delete API Key" }),
+      await screen.findByRole("button", { name: "Delete API key" }),
     );
     await waitFor(() => {
       expect(fetchMock.calls(DELETE_URL, { method: "DELETE" })).toHaveLength(1);

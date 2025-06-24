@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 
-import ActionButton from "metabase/components/ActionButton";
+import ActionButton from "metabase/common/components/ActionButton";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import {
   setEditingDashboard,
@@ -40,7 +40,7 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
   useRegisterShortcut([
     {
-      id: "save-dashboard",
+      id: "dashboard-save",
       perform: onSave,
     },
   ]);

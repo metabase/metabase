@@ -328,7 +328,6 @@ describe("scenarios [EE] > public > dashboard", () => {
     });
   });
 
-  // here
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
     cy.intercept("/app/locales/de.json").as("deLocale");
@@ -341,9 +340,10 @@ describe("scenarios [EE] > public > dashboard", () => {
 
     cy.wait("@deLocale");
 
-    cy.findByTestId("embed-frame-header")
-      .findByText("Reiter als PDF exportieren")
-      .should("be.visible");
+    cy.findByRole("button", {
+      name: "Automatische Aktualisierung",
+    }).should("exist");
+
     cy.url().should("include", "locale=de");
   });
 });

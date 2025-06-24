@@ -6,13 +6,12 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 
 export const settings = {
-  uiName: "Link",
+  getUiName: () => "Link",
   canSavePng: false,
   identifier: "link",
   iconName: "link",
   disableSettingsConfig: true,
   noHeader: true,
-  supportsSeries: false,
   hidden: true,
   supportPreviewing: false,
   minSize: getMinSize("link"),
@@ -21,7 +20,9 @@ export const settings = {
   settings: {
     "card.title": {
       dashboard: false,
-      default: t`Link card`,
+      get default() {
+        return t`Link card`;
+      },
     },
     "card.description": {
       dashboard: false,

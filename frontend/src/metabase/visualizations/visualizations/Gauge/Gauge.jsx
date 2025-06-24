@@ -16,7 +16,7 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { isNumeric } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { GaugeArcPath } from "./Gauge.styled";
 import { getValue } from "./utils";
@@ -59,7 +59,7 @@ const degrees = (radians) => (radians * 180) / Math.PI;
 const segmentIsValid = (s) => !isNaN(s.min) && !isNaN(s.max);
 
 export default class Gauge extends Component {
-  static uiName = t`Gauge`;
+  static getUiName = () => t`Gauge`;
   static identifier = "gauge";
   static iconName = "gauge";
 
@@ -75,7 +75,7 @@ export default class Gauge extends Component {
       data: { cols, rows },
     },
   ]) {
-    if (!isNumeric(cols[0])) {
+    if (!isNumeric(cols[0]) || isDate(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
   }
@@ -117,8 +117,12 @@ export default class Gauge extends Component {
       readDependencies: ["gauge.segments"],
     },
     "gauge.segments": {
-      section: t`Display`,
-      title: t`Gauge ranges`,
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Gauge ranges`;
+      },
       getDefault(series) {
         let value = 100;
         try {

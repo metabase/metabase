@@ -29,10 +29,10 @@ export function menu() {
   return cy.findByRole("menu");
 }
 
-export function modal() {
+export function modal(options = {}) {
   const MODAL_SELECTOR = ".mb-mantine-Modal-content[role='dialog']";
   const LEGACY_MODAL_SELECTOR = "[data-testid=modal]";
-  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
+  return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","), options);
 }
 
 export function tooltip() {
@@ -264,9 +264,9 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0 } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd } = {},
 ) => {
-  element
+  const chainable = element
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
@@ -286,7 +286,11 @@ export const moveDnDKitElement = (
       isPrimary: true,
       button: 0,
     })
-    .wait(200)
+    .wait(200);
+
+  onBeforeDragEnd?.();
+
+  chainable
     .trigger("pointerup", horizontal, vertical, {
       force: true,
       isPrimary: true,
@@ -339,6 +343,10 @@ export const queryBuilderMain = () => {
 
 export const dashboardParametersContainer = () => {
   return cy.findByTestId("dashboard-parameters-widget-container");
+};
+
+export const editingDashboardParametersContainer = () => {
+  return cy.findByTestId("edit-dashboard-parameters-widget-container");
 };
 
 export const undoToast = () => {
@@ -427,6 +435,13 @@ export function assertRowHeight(index, height) {
     .should("have.css", "height", `${height}px`);
 }
 
+export function getColumnWidth(columnId) {
+  return cy
+    .findAllByTestId("header-cell")
+    .filter(`:contains(${columnId})`)
+    .invoke("width");
+}
+
 export function tableAllFieldsHiddenImage() {
   return cy.findByTestId("Table-all-fields-hidden-image");
 }
@@ -445,8 +460,8 @@ export function tableHeaderClick(headerString) {
   tableHeaderColumn(headerString).click();
 }
 
-export function clickActionsPopover() {
-  return popover({ testId: "click-actions-popover" });
+export function clickActionsPopover({ skipVisibilityCheck = false } = {}) {
+  return popover({ testId: "click-actions-popover", skipVisibilityCheck });
 }
 
 export function segmentEditorPopover() {
@@ -499,9 +514,12 @@ export function multiAutocompleteInput(filter = ":eq(0)") {
   return cy.findAllByRole("combobox").filter(filter).get("input").first();
 }
 
-export function fieldValuesInput(filter = ":eq(0)") {
-  // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByRole("textbox").filter(filter).get("input").last();
+export function fieldValuesCombobox() {
+  return cy.findByRole("combobox");
+}
+
+export function fieldValuesTextbox() {
+  return cy.findByRole("textbox");
 }
 
 export function fieldValuesValue(index) {
@@ -511,7 +529,11 @@ export function fieldValuesValue(index) {
 
 export function removeFieldValuesValue(index) {
   // eslint-disable-next-line no-unsafe-element-filtering
-  return cy.findAllByTestId("token-field").icon("close").eq(index).click();
+  return cy
+    .findAllByTestId("token-field")
+    .findAllByLabelText("Remove")
+    .eq(index)
+    .click();
 }
 
 export function multiAutocompleteValue(index, filter = ":eq(0)") {

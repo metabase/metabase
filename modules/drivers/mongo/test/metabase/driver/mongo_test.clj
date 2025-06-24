@@ -5,15 +5,15 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.downloads-exports-test :as downloads-test]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -338,159 +338,164 @@
                           {:name "mixed_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 7}
                           {:name "mixed_not_uuid", :database-type "binData", :base-type :type/MongoBinData, :database-position 6}
                           {:name "nested_mixed_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 8,
-                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}}
+                           :nested-fields #{{:name "nested_data", :database-type "binData", :base-type :type/MongoBinData, :database-position 9}}
+                           :visibility-type :details-only}
                           {:name "nested_mixed_not_uuid", :database-type "object", :base-type :type/Dictionary, :database-position 4,
-                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}}}}
+                           :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5}}
+                           :visibility-type :details-only}}}
                (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
-(deftest sync-indexes-info-test
-  (mt/test-driver :mongo
-    (mt/dataset (mt/dataset-definition "composite-index"
-                                       ["singly-index"
-                                        [{:field-name "indexed" :indexed? true :base-type :type/Integer}
-                                         {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]]
-                                       ["compound-index"
-                                        [{:field-name "first" :indexed? false :base-type :type/Integer}
-                                         {:field-name "second" :indexed? false :base-type :type/Integer}]
-                                        [[1 2]]]
-                                       ["multi-key-index"
-                                        [{:field-name "url" :indexed? false :base-type :type/Text}]
-                                        [[{:small "http://example.com/small.jpg" :large "http://example.com/large.jpg"}]]])
+;; Index sync is turned off across the application as it is not used ATM.
+#_(deftest sync-indexes-info-test
+    (mt/test-driver :mongo
+      (mt/dataset (mt/dataset-definition "composite-index"
+                                         ["singly-index"
+                                          [{:field-name "indexed" :indexed? true :base-type :type/Integer}
+                                           {:field-name "not-indexed" :indexed? false :base-type :type/Integer}]
+                                          [[1 2]]]
+                                         ["compound-index"
+                                          [{:field-name "first" :indexed? false :base-type :type/Integer}
+                                           {:field-name "second" :indexed? false :base-type :type/Integer}]
+                                          [[1 2]]]
+                                         ["multi-key-index"
+                                          [{:field-name "url" :indexed? false :base-type :type/Text}]
+                                          [[{:small "http://example.com/small.jpg" :large "http://example.com/large.jpg"}]]])
 
-      (try
-        (testing "singly index"
-          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
-          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
+        (try
+          (testing "singly index"
+            (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
+            (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-        (testing "compount index"
-          (mongo.connection/with-mongo-database [db (mt/db)]
-            (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
-          (sync/sync-database! (mt/db))
-          (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
-          (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
+          (testing "compount index"
+            (mongo.connection/with-mongo-database [db (mt/db)]
+              (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
+            (sync/sync-database! (mt/db))
+            (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
+            (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
 
-        (testing "multi key index"
-          (mongo.connection/with-mongo-database [db (mt/db)]
-            (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "url.small" 1)))
-          (sync/sync-database! (mt/db))
-          (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
-          (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
+          (testing "multi key index"
+            (mongo.connection/with-mongo-database [db (mt/db)]
+              (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "url.small" 1)))
+            (sync/sync-database! (mt/db))
+            (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
+            (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
 
-        (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (finally
+            (t2/delete! :model/Database (mt/id)))))))
 
-(deftest sync-indexes-top-level-and-nested-column-with-same-name-test
-  (mt/test-driver :mongo
-    (testing "when a table has fields at the top level and nested level with the same name
+;; Index sync is turned off across the application as it is not used ATM.
+#_(deftest sync-indexes-top-level-and-nested-column-with-same-name-test
+    (mt/test-driver :mongo
+      (testing "when a table has fields at the top level and nested level with the same name
              we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
-      (mt/dataset (mt/dataset-definition "index-duplicate-name"
-                                         ["top-level-indexed"
-                                          [{:field-name "name" :indexed? true :base-type :type/Text}
-                                           {:field-name "class" :indexed? false :base-type :type/Text}]
-                                          [["Metabase" {"name" "Physics"}]]]
-                                         ["nested-indexed"
-                                          [{:field-name "name" :indexed? false :base-type :type/Text}
-                                           {:field-name "class" :indexed? false :base-type :type/Text}]
-                                          [["Metabase" {"name" "Physics"}]]])
-        (mongo.connection/with-mongo-database [db (mt/db)]
-          (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
-        (sync/sync-database! (mt/db) {:scan :schema})
-        (testing "top level indexed, nested not"
-          (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
-                                       :table_id (mt/id :top-level-indexed) :name "name")]
-            (testing "sanity check that we have 2 `name` fields"
-              (is (= 2 (count name-fields))))
-            (testing "only the top level field is indexed"
-              (is (=? [{:name             "name"
-                        :parent_id        nil
-                        :database_indexed true}
-                       {:name             "name"
-                        :parent_id        (mt/malli=? int?)
-                        :database_indexed false}]
-                      (sort-by :parent_id name-fields))))))
-        (testing "nested field indexed, top level not"
-          (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
-                                       :table_id (mt/id :nested-indexed) :name "name")]
-            (testing "sanity check that we have 2 `name` fields"
-              (is (= 2 (count name-fields))))
-            (testing "only the nested field is indexed"
-              (is (=? [{:name             "name"
-                        :parent_id        nil
-                        :database_indexed false}
-                       {:name             "name"
-                        :parent_id        (mt/malli=? int?)
-                        :database_indexed true}]
-                      (sort-by :parent_id name-fields))))))))))
-
-(deftest describe-table-indexes-test
-  (mt/test-driver :mongo
-    (mt/dataset (mt/dataset-definition "indexing"
-                                       ["singly-index"
-                                        [{:field-name "a" :base-type :type/Text}]
-                                        [[1]]]
-                                       ["compound-index"
-                                        [{:field-name "a" :base-type :type/Text}]
-                                        [[1]]]
-                                       ["compound-index-big"
-                                        [{:field-name "a" :base-type :type/Text}]
-                                        [[1]]]
-                                       ["multi-key-index"
-                                        [{:field-name "a" :base-type :type/Text}]
-                                        [[1]]]
-                                       ["advanced-index"
-                                        [{:field-name "hashed-field" :indexed? false :base-type :type/Text}
-                                         {:field-name "text-field" :indexed? false :base-type :type/Text}
-                                         {:field-name "geospatial-field" :indexed? false :base-type :type/Text}]
-                                        [["Ngoc" "Khuat" [10 20]]]])
-
-      (sync/sync-database! (mt/db))
-      (try
-        (let [describe-indexes (fn [table-name]
-                                 (driver/describe-table-indexes :mongo (mt/db) (t2/select-one :model/Table (mt/id table-name))))]
+        (mt/dataset (mt/dataset-definition "index-duplicate-name"
+                                           ["top-level-indexed"
+                                            [{:field-name "name" :indexed? true :base-type :type/Text}
+                                             {:field-name "class" :indexed? false :base-type :type/Text}]
+                                            [["Metabase" {"name" "Physics"}]]]
+                                           ["nested-indexed"
+                                            [{:field-name "name" :indexed? false :base-type :type/Text}
+                                             {:field-name "class" :indexed? false :base-type :type/Text}]
+                                            [["Metabase" {"name" "Physics"}]]])
           (mongo.connection/with-mongo-database [db (mt/db)]
-            (testing "single column index"
-              (mongo.util/create-index (mongo.util/collection db "singly-index") {"a" 1})
-              (is (= #{{:type :normal-column-index :value "_id"}
-                       {:type :normal-column-index :value "a"}}
-                     (describe-indexes :singly-index))))
+            (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (testing "top level indexed, nested not"
+            (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                         :table_id (mt/id :top-level-indexed) :name "name")]
+              (testing "sanity check that we have 2 `name` fields"
+                (is (= 2 (count name-fields))))
+              (testing "only the top level field is indexed"
+                (is (=? [{:name             "name"
+                          :parent_id        nil
+                          :database_indexed true}
+                         {:name             "name"
+                          :parent_id        (mt/malli=? int?)
+                          :database_indexed false}]
+                        (sort-by :parent_id name-fields))))))
+          (testing "nested field indexed, top level not"
+            (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                         :table_id (mt/id :nested-indexed) :name "name")]
+              (testing "sanity check that we have 2 `name` fields"
+                (is (= 2 (count name-fields))))
+              (testing "only the nested field is indexed"
+                (is (=? [{:name             "name"
+                          :parent_id        nil
+                          :database_indexed false}
+                         {:name             "name"
+                          :parent_id        (mt/malli=? int?)
+                          :database_indexed true}]
+                        (sort-by :parent_id name-fields))))))))))
 
-            (testing "compound index column index"
+;; Index sync is turned off across the application as it is not used ATM.
+#_(deftest describe-table-indexes-test
+    (mt/test-driver :mongo
+      (mt/dataset (mt/dataset-definition "indexing"
+                                         ["singly-index"
+                                          [{:field-name "a" :base-type :type/Text}]
+                                          [[1]]]
+                                         ["compound-index"
+                                          [{:field-name "a" :base-type :type/Text}]
+                                          [[1]]]
+                                         ["compound-index-big"
+                                          [{:field-name "a" :base-type :type/Text}]
+                                          [[1]]]
+                                         ["multi-key-index"
+                                          [{:field-name "a" :base-type :type/Text}]
+                                          [[1]]]
+                                         ["advanced-index"
+                                          [{:field-name "hashed-field" :indexed? false :base-type :type/Text}
+                                           {:field-name "text-field" :indexed? false :base-type :type/Text}
+                                           {:field-name "geospatial-field" :indexed? false :base-type :type/Text}]
+                                          [["Ngoc" "Khuat" [10 20]]]])
+
+        (sync/sync-database! (mt/db))
+        (try
+          (let [describe-indexes (fn [table-name]
+                                   (driver/describe-table-indexes :mongo (mt/db) (t2/select-one :model/Table (mt/id table-name))))]
+            (mongo.connection/with-mongo-database [db (mt/db)]
+              (testing "single column index"
+                (mongo.util/create-index (mongo.util/collection db "singly-index") {"a" 1})
+                (is (= #{{:type :normal-column-index :value "_id"}
+                         {:type :normal-column-index :value "a"}}
+                       (describe-indexes :singly-index))))
+
+              (testing "compound index column index"
              ;; first index column is :a
-              (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :a 1 :b 1 :c 1))
+                (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :a 1 :b 1 :c 1))
              ;; first index column is :e
-              (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :e 1 :d 1 :f 1))
-              (is (= #{{:type :normal-column-index :value "_id"}
-                       {:type :normal-column-index :value "a"}
-                       {:type :normal-column-index :value "e"}}
-                     (describe-indexes :compound-index))))
+                (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map :e 1 :d 1 :f 1))
+                (is (= #{{:type :normal-column-index :value "_id"}
+                         {:type :normal-column-index :value "a"}
+                         {:type :normal-column-index :value "e"}}
+                       (describe-indexes :compound-index))))
 
-            (testing "compound index that has many keys can still determine the first key"
+              (testing "compound index that has many keys can still determine the first key"
               ;; first index column is :j
-              (mongo.util/create-index (mongo.util/collection db "compound-index-big")
-                                       (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1))
-              (is (= #{{:type :normal-column-index :value "_id"}
-                       {:type :normal-column-index :value "j"}}
-                     (describe-indexes :compound-index-big))))
+                (mongo.util/create-index (mongo.util/collection db "compound-index-big")
+                                         (array-map "j" 1 "b" 1 "c" 1 "d" 1 "e" 1 "f" 1 "g" 1 "h" 1 "a" 1))
+                (is (= #{{:type :normal-column-index :value "_id"}
+                         {:type :normal-column-index :value "j"}}
+                       (describe-indexes :compound-index-big))))
 
-            (testing "multi key indexes"
-              (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "a.b" 1))
-              (is (= #{{:type :nested-column-index :value ["a" "b"]}
-                       {:type :normal-column-index :value "_id"}}
-                     (describe-indexes :multi-key-index))))
+              (testing "multi key indexes"
+                (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "a.b" 1))
+                (is (= #{{:type :nested-column-index :value ["a" "b"]}
+                         {:type :normal-column-index :value "_id"}}
+                       (describe-indexes :multi-key-index))))
 
-            (testing "advanced-index: hashed index, text index, geospatial index"
-              (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "hashed-field" "hashed"))
-              (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "text-field" "text"))
-              (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "geospatial-field" "2d"))
-              (is (= #{{:type :normal-column-index :value "geospatial-field"}
-                       {:type :normal-column-index :value "hashed-field"}
-                       {:type :normal-column-index :value "_id"}
-                       {:type :normal-column-index :value "text-field"}}
-                     (describe-indexes :advanced-index))))))
+              (testing "advanced-index: hashed index, text index, geospatial index"
+                (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "hashed-field" "hashed"))
+                (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "text-field" "text"))
+                (mongo.util/create-index (mongo.util/collection db "advanced-index") (array-map "geospatial-field" "2d"))
+                (is (= #{{:type :normal-column-index :value "geospatial-field"}
+                         {:type :normal-column-index :value "hashed-field"}
+                         {:type :normal-column-index :value "_id"}
+                         {:type :normal-column-index :value "text-field"}}
+                       (describe-indexes :advanced-index))))))
 
-        (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (finally
+            (t2/delete! :model/Database (mt/id)))))))
 
 (deftest nested-columns-test
   (mt/test-driver :mongo
@@ -537,7 +542,7 @@
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
-    (with-redefs [metadata-queries/nested-field-sample-limit 2]
+    (with-redefs [table-rows-sample/nested-field-sample-limit 2]
       (binding [tdm/*remove-nil?* true]
         (mt/with-temp-test-data
           [["bird_species"
@@ -568,7 +573,7 @@
       (let [table (t2/select-one :model/Table :id (mt/id :venues))
             fields (map #(t2/select-one :model/Field :id (mt/id :venues %)) [:name :category_id])
             rff (constantly conj)]
-        (with-redefs [metadata-queries/nested-field-sample-limit 5]
+        (with-redefs [table-rows-sample/nested-field-sample-limit 5]
           (is (= [["Mohawk Bend" 46]
                   ["Golden Road Brewing" 10]
                   ["Lucky Baldwin's Pub" 7]
@@ -825,11 +830,11 @@
                                       :active   true
                                       :table_id (mt/id :coll)
                                       {:order-by [:database_position]}))]
-          (is (=? [{:name "_id",    :database_type "long",   :base_type :type/Integer,   :semantic_type :type/PK}
+          (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
                    {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                   {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type nil}
                    {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
                    {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
                    {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]
@@ -908,7 +913,11 @@
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :query
-                                                         :query    {:source-table (mt/id :coll)}}}]
+                                                         :query    {:source-table (mt/id :coll)
+                                                                    :fields [(mt/id :coll :id)
+                                                                             (mt/id :coll :a)
+                                                                             (mt/id :coll :b)
+                                                                             (mt/id :coll :c)]}}}]
           (let [results (downloads-test/card-download card {:export-format :csv :format-rows true})]
             (is (= [["ID" "A" "B" "C"]
                     ["1"

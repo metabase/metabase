@@ -1,11 +1,18 @@
 (ns metabase-enterprise.analytics.stats-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.analytics.stats :as ee-stats]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(deftest ee-snowplow-features-test
+  (testing "Every feature returned by `ee-snowplow-features-data` has a corresponding OSS fallback"
+    (let [ee-features (map :name (ee-stats/ee-snowplow-features-data))
+          oss-features (map :name (@#'stats/ee-snowplow-features-data'))]
+      (is (= (sort ee-features) (sort oss-features))))))
 
 (deftest metabase-analytics-metrics-test
   (testing "Metabase Analytics doesn't contribute to stats"

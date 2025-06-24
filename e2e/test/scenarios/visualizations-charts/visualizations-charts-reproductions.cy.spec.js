@@ -56,6 +56,10 @@ describe("issue 16170", { tags: "@mongo" }, () => {
     });
 
     H.popover().contains(value).click();
+    H.popover().findByDisplayValue(value);
+
+    // click outside popover
+    cy.findByTestId("chartsettings-list-container").click();
   }
 
   function assertOnTheYAxis() {
@@ -92,13 +96,12 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       replaceMissingValuesWith(replacementValue);
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Done").click();
-
       assertOnTheYAxis();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
-      H.cartesianChartCircle().eq(-2).trigger("mousemove");
+      H.cartesianChartCircle()
+        .should("have.length", 6)
+        .eq(-2)
+        .trigger("mousemove");
 
       H.assertEChartsTooltip({
         header: "2019",
@@ -185,9 +188,8 @@ describe("issue 17524", () => {
       H.selectFilterOperator("Greater than");
       H.popover().within(() => {
         cy.findByLabelText("Filter value").type("1");
-        cy.button("Add filter").click();
+        cy.button("Apply filter").click();
       });
-      H.runButtonOverlay().click();
       cy.get("polygon");
     });
   });
@@ -539,13 +541,15 @@ describe("issue 21452", () => {
       .findByDisplayValue("Cumulative sum of Quantity")
       .clear()
       .type("Foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Display type").click();
-    // Dismiss the popup and close settings
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    H.cartesianChartCircle().first().realHover();
+    H.popover().findByText("Display type").click();
+
+    cy.log("Dismiss the popup and close settings");
+    H.leftSidebar().button("Done").click();
+
+    // trigger("mousemove") is more reliable than realHover
+    // maybe related to https://github.com/dmtrKovalenko/cypress-real-events/issues/691
+    H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
       header: "2022",
@@ -604,6 +608,7 @@ describe("issue 21665", () => {
     native: { query: "select 2" },
     display: "scalar",
   };
+
   function editQ2NativeQuery(query, questionId) {
     cy.request("PUT", `/api/card/${questionId}`, {
       dataset_query: {
@@ -617,6 +622,8 @@ describe("issue 21665", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     H.createNativeQuestionAndDashboard({
       questionDetails: Q1,
@@ -638,12 +645,15 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    cy.findByTestId("add-series-button").click({ force: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(Q2.name).click();
-
-    cy.findByTestId("add-series-modal").button("Done").click();
+    H.findDashCardAction(
+      H.getDashboardCard(0),
+      "Visualize another way",
+    ).click();
+    H.modal().within(() => {
+      H.switchToAddMoreData();
+      H.addDataset(Q2.name);
+      cy.button("Save").click();
+    });
 
     H.saveDashboard();
     cy.wait("@getDashboard");

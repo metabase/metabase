@@ -1,13 +1,13 @@
 (ns metabase.task.bootstrap
   (:require
-   [metabase.plugins.classloader :as classloader]))
+   [metabase.classloader.core :as classloader]))
 
 (set! *warn-on-reflection* true)
 
 ;; Custom `ConnectionProvider` implementation that uses our application DB connection pool to provide connections.
 
 (defn- app-db ^javax.sql.DataSource []
-  ((requiring-resolve 'metabase.db/app-db)))
+  ((requiring-resolve 'metabase.app-db.core/app-db)))
 
 (defrecord ^:private ConnectionProvider []
   org.quartz.utils.ConnectionProvider

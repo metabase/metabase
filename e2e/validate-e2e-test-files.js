@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 const { execSync } = require("child_process");
+const path = require("path");
 
 const chalk = require("chalk");
 const glob = require("glob");
-const path = require("path");
 
 const E2E_FILE_EXTENSION = /\.cy\.spec\.(js|ts)$/;
 const E2E_HOME = "e2e/test/";

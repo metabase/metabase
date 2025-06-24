@@ -31,7 +31,7 @@ These tasks execute once when Metabase starts up. They're useful for initializat
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.triggers :as triggers]
    [clojurewerkz.quartzite.schedule.simple :as simple]
-   [metabase.task :as task]))
+   [metabase.task.core :as task]))
 
 (def startup-job-key     (jobs/key "my.startup.task.job"))
 (def startup-trigger-key (triggers/key "my.startup.task.trigger"))
@@ -39,12 +39,12 @@ These tasks execute once when Metabase starts up. They're useful for initializat
 (task/defjob StartupTask [_]
   (println "Running startup initialization task"))
 
-(defmethod task/init! ::StartupTask [_]  
-  (let [job (jobs/build                  
+(defmethod task/init! ::StartupTask [_]
+  (let [job (jobs/build
              (jobs/of-type StartupTask)   ; Specify the job class to execute (the StartupTask we defined earlier)
              (jobs/with-identity startup) ; Set the job's identity using the startup-job-key defined above
              (jobs/with-description "One-time startup initialization task") )
-        trigger (triggers/build                
+        trigger (triggers/build
                  (triggers/with-identity startup)
                  (triggers/for-job startup)       ; Associate this trigger with the job defined above
                  (triggers/start-now))]           ; Configure the trigger to fire immediately when scheduled
@@ -133,7 +133,7 @@ By default, Quartz allows multiple instances of the same job to run concurrently
   (println "This job will not run concurrently with itself"))
 ```
 
-When this annotation is applied, Quartz will block a new instance of the job from starting if a previous instance is still running. 
+When this annotation is applied, Quartz will block a new instance of the job from starting if a previous instance is still running.
 This is particularly important for long-running tasks that:
 - we need to make sure they don't run concurrently across instances
 - operate on shared resources

@@ -5,8 +5,7 @@ import { forwardRef, useCallback } from "react";
 import type { NumberInputProps } from "metabase/ui";
 import { NumberInput } from "metabase/ui";
 
-export interface FormNumberInputProps
-  extends Omit<NumberInputProps, "value" | "error"> {
+export interface FormNumberInputProps extends Omit<NumberInputProps, "value"> {
   name: string;
   nullable?: boolean;
 }
@@ -40,13 +39,13 @@ export const FormNumberInput = forwardRef(function FormNumberInput(
 
   return (
     <NumberInput
-      {...props}
       ref={ref}
       name={name}
       value={value ?? ""}
       error={touched ? error : null}
       onChange={handleChange}
       onBlur={handleBlur}
+      {...props}
     />
   );
 });

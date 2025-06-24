@@ -6,6 +6,7 @@ import type { StackProps } from "metabase/ui";
 import { useSensibleVisualizations } from "../hooks/use-sensible-visualizations";
 
 /**
+ * @expand
  * @category InteractiveQuestion
  */
 export type InteractiveQuestionChartTypeSelectorProps = StackProps;

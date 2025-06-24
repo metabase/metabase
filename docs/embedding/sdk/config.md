@@ -6,29 +6,49 @@ title: Embedded analytics SDK - config
 
 {% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
 
+## Passing a configuration object to `MetabaseProvider`
+
 To use the SDK in your app, you need to import the `MetabaseProvider` component and provide it with an `authConfig` object.
 
-Docs: [MetabaseProvider](./api/MetabaseProvider.html)
+### `MetabaseProvider`
+
+A component that configures the SDK and provides the Metabase SDK's context and theme.
+
+#### API Reference
+
+- [Component](./api/MetabaseProvider.html)
+- [Props](./api/MetabaseProviderProps.html)
+
+#### Example
 
 ```typescript
-{% include_file "{{ dirname }}/snippets/config/config-base.tsx" snippet="example" %}
+{% include_file "{{ dirname }}/snippets/config/config-base.tsx" %}
 ```
 
-## Example `config` object passed to `MetabaseProvider`
+#### Props
 
-```typescript
-{% include_file "{{ dirname }}/snippets/config/config-with-theme.tsx" %}
-```
+{% include_file "{{ dirname }}/api/snippets/MetabaseProviderProps.md" snippet="properties" %}
 
 ## Global event handlers
 
-`MetabaseProvider` also supports `eventHandlers`.
+You can listen for events by defining the `eventHandlers` prop for `MetabaseProvider`.
 
-Docs: [SdkEventHandlersConfig](./api/internal/SdkEventHandlersConfig.html)
+### `SdkEventHandlersConfig`
 
+Accepts an object where each key is an event type and the corresponding value is the event handler function.
+
+#### API Reference
+
+- [Type](./api/SdkEventHandlersConfig.html)
+
+#### Example
 ```typescript
 {% include_file "{{ dirname }}/snippets/config/config-with-event-handlers.tsx" snippet="example" %}
 ```
+
+#### Props
+
+{% include_file "{{ dirname }}/api/snippets/SdkEventHandlersConfig.md" snippet="properties" %}
 
 ## Reloading Metabase components
 

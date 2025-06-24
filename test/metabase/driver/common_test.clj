@@ -5,8 +5,8 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.util :as driver.u]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]))
 
 (deftest ^:parallel base-type-inference-test
@@ -67,6 +67,7 @@
 
 (deftest ^:parallel json-unfolding-default-test
   (testing "JSON Unfolding database support details behave as they're supposed to"
+    #_{:clj-kondo/ignore [:equals-true]}
     (are [details expected] (= expected
                                (driver.common/json-unfolding-default {:details details}))
       {}                      true

@@ -130,14 +130,14 @@ describe("isa", () => {
       });
     });
 
-    it("should still recognize some types as a string regardless of its base type", () => {
+    it("should not recognize some types as a string regardless of its base type", () => {
       // TYPE.Float can occur in a field filter
       expect(
         getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Name }),
-      ).toEqual(STRING);
+      ).toEqual(NUMBER);
       expect(
         getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Category }),
-      ).toEqual(STRING);
+      ).toEqual(NUMBER);
     });
 
     it("should know a bool regardless of semantic_type", () => {

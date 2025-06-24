@@ -121,8 +121,6 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
       });
     });
 
@@ -161,8 +159,6 @@ describe("metabase/services > runQuestionQuery", () => {
         collection_preview: false,
         ignore_cache: false,
         parameters: [],
-        pivot_cols: [],
-        pivot_rows: [],
       });
     });
   });
@@ -191,6 +187,8 @@ describe("metabase/services > runQuestionQuery", () => {
         parameters: [],
         pivot_cols: [],
         pivot_rows: [],
+        show_column_totals: true,
+        show_row_totals: true,
       });
     });
 

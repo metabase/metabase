@@ -1,4 +1,6 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
+
+import "metabase/lib/dayjs";
 
 const { H } = cy;
 
@@ -13,7 +15,7 @@ const STARTING_FROM_UNITS = [
 ];
 
 describe("scenarios > question > relative-datetime", () => {
-  const now = moment().utc();
+  const now = dayjs().utc();
 
   beforeEach(() => {
     H.restore();
@@ -93,7 +95,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.clickActionsPopover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
       });
 
       addStartingFrom();
@@ -124,9 +126,9 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Specific dates…").click();
+        cy.findByText("Fixed date range…").click();
         cy.icon("chevronleft").first().click();
-        cy.findByText("Specific dates…").should("exist");
+        cy.findByText("Fixed date range…").should("exist");
         cy.findByText("Between").should("not.exist");
       });
     });
@@ -137,7 +139,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Current").click();
         cy.findByText("Year").click();
       });
@@ -158,7 +160,7 @@ describe("scenarios > question > relative-datetime", () => {
       H.tableHeaderClick("Created At");
       H.popover().within(() => {
         cy.findByText("Filter by this column").click();
-        cy.findByText("Relative dates…").click();
+        cy.findByText("Relative date range…").click();
         cy.findByText("Day").should("not.exist");
         cy.findByText("Quarter").should("not.exist");
         cy.findByText("Month").should("not.exist");
@@ -237,7 +239,7 @@ const nativeSQL = (values) => {
   cy.intercept("POST", "/api/dataset").as("dataset");
 
   const queries = values.map((value) => {
-    const date = moment(value).utc();
+    const date = dayjs(value).utc();
     return `SELECT '${date.toISOString()}'::timestamp as "testcol"`;
   });
 
@@ -259,7 +261,7 @@ const openCreatedAt = (tab) => {
   H.tableHeaderClick("Created At");
   H.popover().within(() => {
     cy.findByText("Filter by this column").click();
-    cy.findByText("Relative dates…").click();
+    cy.findByText("Relative date range…").click();
     tab && cy.findByText(tab).click();
   });
 };
@@ -290,7 +292,7 @@ const setStartingFromValue = (value) => {
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   H.tableHeaderClick("testcol");
   cy.findByTextEnsureVisible("Filter by this column").click();
-  cy.findByTextEnsureVisible("Relative dates…").click();
+  cy.findByTextEnsureVisible("Relative date range…").click();
   H.clickActionsPopover().within(() => {
     cy.findByText(dir).click();
   });

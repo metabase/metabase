@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
+import type { GroupId } from "./group";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -68,7 +69,7 @@ export interface EngineFieldOption {
 }
 
 export interface EngineSource {
-  type: "official" | "community" | "partner";
+  type: "official" | "community";
   contact: EngineSourceContact | null;
 }
 
@@ -142,6 +143,20 @@ export type LoadingMessage =
 
 export type TokenStatusStatus = "unpaid" | "past-due" | "invalid" | string;
 
+export type GdrivePayload = {
+  status: "not-connected" | "syncing" | "active" | "paused" | "error";
+  url?: string;
+  message?: string; // only for errors
+  created_at?: number;
+  created_by_id?: UserId;
+  sync_started_at?: number;
+  last_sync_at?: number;
+  next_sync_at?: number;
+  error_message?: string;
+  db_id?: number;
+  error?: string;
+};
+
 const tokenStatusFeatures = [
   "advanced-config",
   "advanced-permissions",
@@ -150,6 +165,7 @@ const tokenStatusFeatures = [
   "collection-cleanup",
   "config-text-file",
   "content-management",
+  "content-translation",
   "content-verification",
   "dashboard-subscription-filters",
   "database-auth-providers",
@@ -158,6 +174,7 @@ const tokenStatusFeatures = [
   "email-restrict-recipients",
   "embedding-sdk",
   "embedding",
+  "embedding-iframe-sdk",
   "hosting",
   "metabase-store-managed",
   "metabot-v3",
@@ -165,6 +182,7 @@ const tokenStatusFeatures = [
   "official-collections",
   "query-reference-validation",
   "question-error-logs",
+  "refresh-token-features",
   "sandboxes",
   "scim",
   "serialization",
@@ -204,12 +222,13 @@ export const tokenFeatures = [
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
-  "disable_password_login",
+  "content_translation",
   "content_verification",
+  "disable_password_login",
   "embedding",
   "embedding_sdk",
+  "embedding_iframe_sdk",
   "hosting",
-  "llm_autodescription",
   "official_collections",
   "sandboxes",
   "scim",
@@ -226,9 +245,13 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
-  "query_reference_validation",
   "cache_preemptive",
+  "metabot_v3",
+  "ai_sql_fixer",
+  "ai_sql_generation",
+  "ai_entity_analysis",
   "database_routing",
+  "development-mode",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -241,16 +264,24 @@ export type PasswordComplexity = {
 
 export type SessionCookieSameSite = "lax" | "strict" | "none";
 
-export interface SettingDefinition<Key extends SettingKey = SettingKey> {
+export interface SettingDefinition<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> {
   key: Key;
   env_name?: string;
   is_env_setting?: boolean;
-  value?: SettingValue<Key>;
-  default?: SettingValue<Key>;
+  value?: EnterpriseSettingValue<Key>;
+  default?: EnterpriseSettingValue<Key>;
   display_name?: string;
   description?: string | ReactNode | null;
   type?: InputSettingType;
 }
+
+export type SettingDefinitionMap<
+  T extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = {
+  [K in T]: SettingDefinition<K>;
+};
 
 export type UpdateChannel = "latest" | "beta" | "nightly";
 
@@ -269,8 +300,21 @@ export interface UploadsSettings {
   table_prefix: string | null;
 }
 
+export type CustomGeoJSONMap = {
+  name: string;
+  url: string;
+  region_key: string;
+  region_name: string;
+  builtin?: boolean;
+};
+
+export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
+
 interface InstanceSettings {
   "admin-email": string;
+  "email-from-name": string | null;
+  "email-from-address": string | null;
+  "email-reply-to": string[] | null;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
   "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
@@ -309,6 +353,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "custom-geojson-enabled": boolean;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
   "redirect-all-requests-to-https": boolean;
@@ -316,22 +361,19 @@ interface AdminSettings {
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
   "google-auth-configured": boolean;
-  "jwt-configured"?: boolean;
-  "jwt-enabled"?: boolean;
   "premium-embedding-token": string | null;
-  "saml-configured"?: boolean;
-  "saml-enabled"?: boolean;
-  "saml-identity-provider-uri": string | null;
   "other-sso-enabled?"?: boolean; // yes the question mark is in the variable name
   "show-database-syncing-modal": boolean;
   "token-status": TokenStatus | null;
-  "version-info": VersionInfo | null;
+  "version-info"?: VersionInfo | null;
   "last-acknowledged-version": string | null;
   "show-static-embed-terms": boolean | null;
   "show-sdk-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
   "store-url": string;
+  gsheets: Partial<GdrivePayload>;
+  "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
 }
 interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
@@ -358,39 +400,50 @@ interface PublicSettings {
   "application-favicon-url": string;
   "available-fonts": string[];
   "available-locales": LocaleData[] | null;
+  "available-timezones": string[] | null;
   "bug-reporting-enabled": boolean;
   "check-for-updates": boolean;
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
+  "custom-geojson": CustomGeoJSONSetting;
   "custom-homepage": boolean;
   "custom-homepage-dashboard": DashboardId | null;
+  "development-mode?": boolean;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
   "embedding-app-origins-sdk": string | null;
   "embedding-app-origins-interactive": string | null;
-  "enable-enhancements?": boolean;
   "enable-password-login": boolean;
   "enable-pivoted-exports": boolean;
+  "enable-sandboxes?": boolean;
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
-  gsheets: {
-    status: "not-connected" | "loading" | "complete" | "error";
-    folder_url: string | null;
-    error?: string;
-    "created-by-id"?: UserId;
-  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
   "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
+  "jwt-identity-provider-uri"?: string | null;
   "ldap-configured?": boolean;
   "ldap-enabled": boolean;
+  "ldap-host": string | null;
   "ldap-port": number;
-  "ldap-group-membership-filter": string;
+  "ldap-security": "none" | "ssl" | "starttls" | null;
+  "ldap-bind-dn": string | null;
+  "ldap-password": string | null;
+  "ldap-user-base": string | null;
+  "ldap-user-filter": string | null;
+  "ldap-attribute-email": string | null;
+  "ldap-attribute-firstname": string | null;
+  "ldap-attribute-lastname": string | null;
+  "ldap-group-sync": boolean;
+  "ldap-group-base": string | null;
+  "ldap-group-mappings": Record<string /*ldap group name */, GroupId[]> | null;
+  "ldap-group-membership-filter"?: string;
+  "ldap-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
@@ -398,6 +451,7 @@ interface PublicSettings {
   "password-complexity": PasswordComplexity;
   "persisted-models-enabled": boolean;
   "persisted-model-refresh-cron-schedule": string;
+  "report-timezone": string | null;
   "report-timezone-long": string;
   "report-timezone-short": string;
   "session-cookies": boolean | null;
@@ -415,13 +469,14 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "non-table-chart-generated": boolean;
 }
 
 export type UserSettings = {
+  "dismissed-excel-pivot-exports-banner"?: boolean;
   "dismissed-collection-cleanup-banner"?: boolean;
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
-  "dismissed-onboarding-sidebar-link"?: boolean;
   "last-used-native-database-id"?: number | null;
   "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
@@ -472,9 +527,13 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
+export type ColorSettings = Record<string, string>;
+
 export type IllustrationSettingValue = "default" | "none" | "custom";
+export type TimeoutValue = { amount: number; unit: string };
+
 export interface EnterpriseSettings extends Settings {
-  "application-colors"?: Record<string, string>;
+  "application-colors"?: ColorSettings | null;
   "application-logo-url"?: string;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
@@ -488,10 +547,35 @@ export interface EnterpriseSettings extends Settings {
   "ee-ai-features-enabled"?: boolean;
   "ee-openai-api-key"?: string;
   "ee-openai-model"?: string;
-  "saml-user-provisioning-enabled?"?: boolean;
+  "session-timeout": TimeoutValue | null;
   "scim-enabled"?: boolean | null;
   "scim-base-url"?: string;
   "send-new-sso-user-admin-email?"?: boolean;
+  "jwt-configured"?: boolean;
+  "jwt-enabled"?: boolean;
+  "jwt-user-provisioning-enabled?": boolean;
+  "jwt-identity-provider-uri": string | null;
+  "jwt-shared-secret": string | null;
+  "jwt-attribute-email": string | null;
+  "jwt-attribute-firstname": string | null;
+  "jwt-attribute-lastname": string | null;
+  "jwt-group-sync": boolean | null;
+  "saml-enabled": boolean;
+  "saml-configured": boolean;
+  "saml-user-provisioning-enabled?": boolean;
+  "saml-identity-provider-uri": string | null;
+  "saml-identity-provider-issuer": string | null;
+  "saml-identity-provider-certificate": string | null;
+  "saml-application-name": string | null;
+  "saml-keystore-path": string | null;
+  "saml-keystore-password": string | null;
+  "saml-keystore-alias": string | null;
+  "saml-attribute-email": string | null;
+  "saml-attribute-firstname": string | null;
+  "saml-attribute-lastname": string | null;
+  "saml-attribute-group": string | null;
+  "saml-group-sync": boolean | null;
+  "saml-group-mappings": Record<string, GroupId[]> | null;
   /**
    * @deprecated
    */

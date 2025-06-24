@@ -32,6 +32,7 @@
 (deftest ^:parallel nil-column-test
   (testing "Fields with missing names shouldn't blow up visible-columns"
     (let [metadata-provider
+          #_{:clj-kondo/ignore [:missing-protocol-method]}
           (reify
             metadata.protocols/MetadataProvider
             (database [_this]

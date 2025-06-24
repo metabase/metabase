@@ -32,7 +32,7 @@ If you don't have access to the Metabase Admin panel, you'll need to ask the per
 
    - If you can access the server from a bastion host or another machine, [check if your Metabase's IP address has access to your database server](#checking-your-server-access).
 
-   - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
+   - If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist).
 
 3. Make sure that Metabase is using a role with the necessary privileges to connect to your data warehouse. See [Granting database privileges](../databases/users-roles-privileges.md).
 
@@ -80,7 +80,7 @@ To verify that your Metabase's IP address can access the database server:
 
 1. Use the [netcat](https://en.wikipedia.org/wiki/Netcat) command `nc` (or your operating system’s equivalent) to check if you can connect to the host on a given port. Note that different databases use different ports by default.
 
-2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist).
+2. If you're running Metabase Cloud, check that you've [whitelisted our IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist).
 
 3. Check that your database credentials are correct.
 

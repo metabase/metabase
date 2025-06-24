@@ -1,4 +1,5 @@
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { collections as Collections } from "metabase/entities";
+import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 
 describe("Collection selectors", () => {
   const CANONICAL_ROOT_COLLECTION_ID = null;

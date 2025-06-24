@@ -3,7 +3,7 @@ import { type Diagnostic, linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 
 import type * as Lib from "metabase-lib";
-import type { ExpressionError, StartRule } from "metabase-lib/v1/expressions";
+import type { ExpressionError } from "metabase-lib/v1/expressions";
 import { diagnoseAndCompile } from "metabase-lib/v1/expressions";
 import { parser } from "metabase-lib/v1/expressions/tokenizer/parser";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -16,7 +16,7 @@ const expressionLanguage = LRLanguage.define({
 });
 
 type LintOptions = {
-  startRule: StartRule;
+  expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number | undefined;

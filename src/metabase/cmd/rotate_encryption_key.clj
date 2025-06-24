@@ -1,6 +1,6 @@
 (ns metabase.cmd.rotate-encryption-key
   (:require
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.util.log :as log]))
 
 (defn rotate-encryption-key!

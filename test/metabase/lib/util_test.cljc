@@ -5,6 +5,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
@@ -359,3 +360,77 @@
     (is (not= (get-in query       aggregation-ref-path)
               (get-in fresh-query aggregation-ref-path)))
     (is (lib.equality/= query fresh-query))))
+
+(def ^:private single-stage-query
+  (lib.tu/venues-query))
+
+(def ^:private two-stage-query
+  (-> (lib/append-stage single-stage-query)
+      (lib/filter (lib/= 1 (meta/field-metadata :venues :id)))))
+
+(deftest ^:parallel first-stage?-test
+  (testing "should return true for the first stage"
+    (is (true? (lib.util/first-stage? single-stage-query 0)))
+    (is (true? (lib.util/first-stage? two-stage-query 0))))
+  (testing "should return false for the second stage"
+    (is (false? (lib.util/first-stage? two-stage-query 1))))
+  (testing "should throw for invalid index"
+    (are [form] (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"Stage .* does not exist"
+                 form)
+      (lib.util/first-stage? single-stage-query 1)
+      (lib.util/first-stage? single-stage-query -2)
+      (lib.util/first-stage? two-stage-query 2)
+      (lib.util/first-stage? two-stage-query -3))))
+
+(deftest ^:parallel last-stage?-test
+  (testing "should return true for the last stage"
+    (is (true? (lib.util/last-stage? single-stage-query 0)))
+    (is (true? (lib.util/last-stage? two-stage-query 1))))
+  (testing "should return false for a non-last stage"
+    (is (false? (lib.util/last-stage? two-stage-query 0))))
+  (testing "should throw for invalid index"
+    (are [form] (thrown-with-msg?
+                 #?(:clj Throwable :cljs js/Error)
+                 #"Stage .* does not exist"
+                 form)
+      (lib.util/last-stage? single-stage-query 1)
+      (lib.util/last-stage? single-stage-query -2)
+      (lib.util/last-stage? two-stage-query 2)
+      (lib.util/last-stage? two-stage-query -3))))
+
+(deftest ^:parallel drop-later-stages-test
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages single-stage-query 0))))
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages single-stage-query -1))))
+  (is (= single-stage-query (lib.util/drop-later-stages single-stage-query 0)))
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages two-stage-query 0))))
+  (is (= 1 (lib/stage-count (lib.util/drop-later-stages two-stage-query -2))))
+  (is (= 2 (lib/stage-count (lib.util/drop-later-stages two-stage-query 1))))
+  (is (= 2 (lib/stage-count (lib.util/drop-later-stages two-stage-query -1))))
+  (is (= two-stage-query (lib.util/drop-later-stages two-stage-query -1))))
+
+(deftest ^:parallel find-stage-index-and-clause-by-uuid-test
+  (let [query {:database 1
+               :lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 2
+                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]}
+                          {:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                                       [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+                                       "wow"]]}]}]
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000001")))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (lib.util/find-stage-index-and-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
+    (is (= [1 [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
+    (is (= [1 [:=
+               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+               [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+               "wow"]]
+           (lib.util/find-stage-index-and-clause-by-uuid query "a1898aa6-4928-4e97-837d-e440ce21085e")))
+    (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query "00000000-0000-0000-0000-000000000002")))
+    (is (nil? (lib.util/find-stage-index-and-clause-by-uuid query 0 "a1898aa6-4928-4e97-837d-e440ce21085e")))))

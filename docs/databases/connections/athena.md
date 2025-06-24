@@ -204,6 +204,7 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
   ]
 }
 ```
+
 ## Model features
 
 There aren't (yet) any model features available for Athena.

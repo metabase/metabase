@@ -2,15 +2,15 @@
   "Logic for updating FK properties of Fields from metadata fetched from a physical DB."
   (:require
    [honey.sql :as sql]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.driver.util :as driver.u]
-   [metabase.models.table :as table]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn ^:private mark-fk-sql

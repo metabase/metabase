@@ -10,17 +10,26 @@ import { trackNotebookNativePreviewShown } from "metabase/query_builder/analytic
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
 import { getUiControls } from "metabase/query_builder/selectors";
 import { Button, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { canShowNativePreview } from "../../utils";
+
 const BUTTON_TEXT = {
-  sql: t`View SQL`,
-  json: t`View native query`,
+  get sql() {
+    return t`View SQL`;
+  },
+  get json() {
+    return t`View native query`;
+  },
 };
 
 const BUTTON_CLOSE_TEXT = {
-  sql: t`Hide SQL`,
-  json: t`Hide native query`,
+  get sql() {
+    return t`Hide SQL`;
+  },
+  get json() {
+    return t`Hide native query`;
+  },
 };
 
 interface ToggleNativeQueryPreviewProps {
@@ -68,23 +77,4 @@ export const ToggleNativeQueryPreview = ({
   );
 };
 
-interface ToggleNativeQueryPreviewOpts {
-  question: Question;
-  queryBuilderMode: string;
-}
-
-ToggleNativeQueryPreview.shouldRender = ({
-  question,
-  queryBuilderMode,
-}: ToggleNativeQueryPreviewOpts) => {
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isMetric = question.type() === "metric";
-
-  return (
-    !isNative &&
-    !isMetric &&
-    question.database()?.native_permissions === "write" &&
-    queryBuilderMode === "notebook" &&
-    !question.isArchived()
-  );
-};
+ToggleNativeQueryPreview.shouldRender = canShowNativePreview;

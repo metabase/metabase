@@ -5,6 +5,8 @@
    [honey.sql :as sql]
    [java-time.api :as t]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -14,7 +16,6 @@
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -30,10 +31,12 @@
 
 (doseq [[feature supported?] {:convert-timezone          true
                               :datetime-diff             true
+                              :expression-literals       true
                               :now                       true
                               :identifiers-with-spaces   true
                               :percentile-aggregations   false
-                              :test/jvm-timezone-setting false}]
+                              :test/jvm-timezone-setting false
+                              :database-routing          false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -134,7 +137,7 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
-          (h2x/at-time-zone expr (or source-timezone (qp.timezone/results-timezone-id))))
+          (h2x/at-time-zone expr (or source-timezone (driver-api/results-timezone-id))))
         (h2x/at-time-zone target-timezone)
         (h2x/with-database-type-info "timestamp"))))
 
@@ -196,6 +199,10 @@
   [_driver _unit x y]
   (h2x/->integer [:trunc (h2x/- (extract :epoch y) (extract :epoch x))]))
 
+(defmethod sql.qp/float-dbtype :vertica
+  [_]
+  "DOUBLE PRECISION")
+
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
@@ -253,6 +260,11 @@
 (defmethod sql.qp/->honeysql [:vertica java.time.ZonedDateTime]
   [driver t]
   (sql.qp/->honeysql driver (t/offset-date-time t)))
+
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/expression-literal-text-value]
+  [driver [_ value]]
+  (->> (sql.qp/->honeysql driver value)
+       (h2x/cast "long varchar")))
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
@@ -317,3 +329,11 @@
         (let [t (u.date/parse s timezone)]
           (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
           t)))))
+
+(defmethod sql.qp/->honeysql [:vertica ::sql.qp/cast-to-text]
+  [driver [_ expr]]
+  (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar"]))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "42V01"))

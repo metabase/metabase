@@ -370,6 +370,14 @@ redirect_from:
         "type" : "string",
         "enum" : [ "question", "metric", "model" ]
       },
+      "metabase.api.logger/log-level" : {
+        "type" : "string",
+        "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ]
+      },
+      "metabase.api.logger/time-unit" : {
+        "type" : "string",
+        "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ]
+      },
       "metabase.api.user/user-group-membership" : {
         "description" : "Group Membership info of a User.\n  In which :is_group_manager is only included if `advanced-permissions` is enabled.",
         "type" : "object",
@@ -2716,7 +2724,7 @@ redirect_from:
     "/api/card/{card-id}/query/{export-format}" : {
       "post" : {
         "summary" : "POST /api/card/{card-id}/query/{export-format}",
-        "description" : "Run the query associated with a Card, and return its results as a file in the specified format.\n\n  `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint\n  is normally used to power 'Download Results' buttons that use HTML `form` actions).",
+        "description" : "Run the query associated with a Card, and return its results as a file in the specified format.\n\n  `parameters`, `pivot-results?` and `format-rows?` should be passed as application/x-www-form-urlencoded form content\n  or json in the body. This is because this endpoint is normally used to power 'Download Results' buttons that use\n  HTML `form` actions).",
         "parameters" : [ {
           "in" : "path",
           "name" : "card-id",
@@ -4855,6 +4863,15 @@ redirect_from:
             "type" : "boolean",
             "default" : false
           }
+        }, {
+          "in" : "query",
+          "name" : "router_database_id",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
         } ],
         "tags" : [ "/api/database" ]
       },
@@ -4976,6 +4993,20 @@ redirect_from:
           "schema" : {
             "type" : "string",
             "enum" : [ "tables", "tables.fields" ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
+          }
+        }, {
+          "in" : "query",
+          "name" : "exclude_uneditable_details",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean"
           }
         } ],
         "tags" : [ "/api/database" ]
@@ -6049,56 +6080,91 @@ redirect_from:
         "tags" : [ "/api/ee/billing" ]
       }
     },
-    "/api/ee/data-editing/table/{table-id}" : {
+    "/api/ee/database-routing/destination-database" : {
       "post" : {
-        "summary" : "POST /api/ee/data-editing/table/{table-id}",
-        "description" : "Insert row(s) into the given table.",
+        "summary" : "POST /api/ee/database-routing/destination-database",
+        "description" : "Create new destination Databases.\n\n  Note that unlike the normal `POST /api/database` endpoint, does NOT check the details before adding the Database.\n\n  This is OK, it's not an invariant that all database details are always valid, but it's something to note.",
         "parameters" : [ {
-          "in" : "path",
-          "name" : "table-id",
-          "required" : true,
+          "in" : "query",
+          "name" : "check_connection_details",
+          "required" : false,
           "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
+            "type" : "boolean"
+          }
         } ],
-        "tags" : [ "/api/ee/data-editing" ]
-      },
-      "put" : {
-        "summary" : "PUT /api/ee/data-editing/table/{table-id}",
-        "description" : "Update row(s) within the given table.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "table-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/ee/data-editing" ]
-      },
-      "delete" : {
-        "summary" : "DELETE /api/ee/data-editing/table/{table-id}",
-        "description" : "Delete row(s) from the given table",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "table-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "tags" : [ "/api/ee/data-editing" ]
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "destinations" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "object",
+                      "properties" : {
+                        "details" : {
+                          "description" : "Value must be a map.",
+                          "type" : "object",
+                          "properties" : { }
+                        },
+                        "name" : {
+                          "description" : "value must be a non-blank string.",
+                          "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                        }
+                      },
+                      "required" : [ "name", "details" ]
+                    }
+                  },
+                  "router_database_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "router_database_id", "destinations" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-routing" ]
       }
     },
-    "/api/ee/gsheets/folder" : {
+    "/api/ee/database-routing/router-database/{id}" : {
+      "put" : {
+        "summary" : "PUT /api/ee/database-routing/router-database/{id}",
+        "description" : "Updates an existing Database with the `user_attribute` to route on. Will either:\n  - turn an existing Database into a Router database\n  - change the `user_attribute` used to route for an existing Router database, or\n  - turn a Router database into a regular Database\n  depending on the value of `user_attribute`",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "user_attribute" : {
+                    "description" : "value must be a non-blank string.",
+                    "$ref" : "#/components/schemas/metabase.lib.schema.common~1non-blank-string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/database-routing" ]
+      }
+    },
+    "/api/ee/gsheets/connection" : {
       "post" : {
-        "summary" : "POST /api/ee/gsheets/folder",
+        "summary" : "POST /api/ee/gsheets/connection",
         "description" : "Hook up a new google drive folder that will be watched and have its content ETL'd into Metabase.",
         "parameters" : [ ],
         "requestBody" : {
@@ -6120,14 +6186,22 @@ redirect_from:
         "tags" : [ "/api/ee/gsheets" ]
       },
       "get" : {
-        "summary" : "GET /api/ee/gsheets/folder",
+        "summary" : "GET /api/ee/gsheets/connection",
         "description" : "Check the status of a newly created gsheets folder creation. This endpoint gets polled by FE to determine when to\n  stop showing the setup widget.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
         "parameters" : [ ],
         "tags" : [ "/api/ee/gsheets" ]
       },
       "delete" : {
-        "summary" : "DELETE /api/ee/gsheets/folder",
+        "summary" : "DELETE /api/ee/gsheets/connection",
         "description" : "Disconnect the google service account. There is only one (or zero) at the time of writing.",
+        "parameters" : [ ],
+        "tags" : [ "/api/ee/gsheets" ]
+      }
+    },
+    "/api/ee/gsheets/folder/sync" : {
+      "post" : {
+        "summary" : "POST /api/ee/gsheets/folder/sync",
+        "description" : "Force a sync of the folder now.\n\n  Returns the gsheets shape, with the attached datawarehouse db id at `:db_id`.",
         "parameters" : [ ],
         "tags" : [ "/api/ee/gsheets" ]
       }
@@ -8013,6 +8087,52 @@ redirect_from:
           }
         },
         "tags" : [ "/api/ldap" ]
+      }
+    },
+    "/api/logger/adjustment" : {
+      "post" : {
+        "summary" : "POST /api/logger/adjustment",
+        "description" : "Temporarily adjust the log levels.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "duration" : {
+                    "type" : "integer"
+                  },
+                  "duration_unit" : {
+                    "$ref" : "#/components/schemas/metabase.api.logger~1time-unit"
+                  },
+                  "log_levels" : {
+                    "type" : "object",
+                    "additionalProperties" : {
+                      "$ref" : "#/components/schemas/metabase.api.logger~1log-level"
+                    }
+                  }
+                },
+                "required" : [ "duration", "duration_unit", "log_levels" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/logger" ]
+      },
+      "delete" : {
+        "summary" : "DELETE /api/logger/adjustment",
+        "description" : "Undo any log level adjustments.",
+        "parameters" : [ ],
+        "tags" : [ "/api/logger" ]
+      }
+    },
+    "/api/logger/presets" : {
+      "get" : {
+        "summary" : "GET /api/logger/presets",
+        "description" : "Get all known presets.",
+        "parameters" : [ ],
+        "tags" : [ "/api/logger" ]
       }
     },
     "/api/login-history/current" : {
@@ -10924,6 +11044,14 @@ redirect_from:
             "type" : "boolean",
             "default" : false
           }
+        }, {
+          "in" : "query",
+          "name" : "include_metadata",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
         } ],
         "tags" : [ "/api/search" ]
       }
@@ -11881,6 +12009,14 @@ redirect_from:
       "get" : {
         "summary" : "GET /api/task/info",
         "description" : "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).",
+        "parameters" : [ ],
+        "tags" : [ "/api/task" ]
+      }
+    },
+    "/api/task/unique-tasks" : {
+      "get" : {
+        "summary" : "GET /api/task/unique-tasks",
+        "description" : "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique\n  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should\n  reflect that.",
         "parameters" : [ ],
         "tags" : [ "/api/task" ]
       }

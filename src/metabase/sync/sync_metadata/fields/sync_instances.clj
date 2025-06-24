@@ -49,7 +49,7 @@
                                             database-required database-type effective-type field-comment json-unfolding nfc-path visibility-type]
                                      field-name :name :as field} new-field-metadatas
                                     :let [semantic-type (common/semantic-type field)
-                                          has-field-values (when (sync-util/can-be-category-or-list? base-type semantic-type)
+                                          has-field-values (when (sync-util/can-be-list? base-type semantic-type)
                                                              :auto-list)]]
                                 (do
                                   (when (and effective-type

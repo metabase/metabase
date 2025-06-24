@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import SchedulePicker from "metabase/components/SchedulePicker";
-import FormField from "metabase/core/components/FormField";
+import FormField from "metabase/common/components/FormField";
+import SchedulePicker from "metabase/common/components/SchedulePicker/SchedulePickerView";
 import type {
   DatabaseData,
   ScheduleSettings,
@@ -55,17 +55,28 @@ const DatabaseCacheScheduleField = ({
   const handleFullSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", true);
     setFieldValue("is_on_demand", false);
-  }, [setFieldValue]);
+    const isChangingOption = !values.is_full_sync;
+    if (isChangingOption) {
+      // We only want to set the default schedule if user is changing a schedule option.
+      setValue(DEFAULT_SCHEDULE);
+    } else {
+      // "Regularly, on a schedule" ScheduleOption has a form inside.
+      // Interacting with form elements causes this handleFullSyncSelect handler to be called.
+      // We don't want to reset schedule state in this case.
+    }
+  }, [setFieldValue, setValue, values]);
 
   const handleOnDemandSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", false);
     setFieldValue("is_on_demand", true);
-  }, [setFieldValue]);
+    setValue(null);
+  }, [setFieldValue, setValue]);
 
   const handleNoneSyncSelect = useCallback(() => {
     setFieldValue("is_full_sync", false);
     setFieldValue("is_on_demand", false);
-  }, [setFieldValue]);
+    setValue(null);
+  }, [setFieldValue, setValue]);
 
   return (
     <FormField title={title} description={description}>

@@ -7,12 +7,12 @@ import "./shared";
 
 // PLUGINS:
 
-import "./hosting";
 import "./tools";
 import "./sandboxes";
 import "./auth";
 import "./caching";
 import "./collections";
+import "./content_translation";
 import "./content_verification";
 import "./database_routing";
 import "./whitelabel";
@@ -21,18 +21,18 @@ import "./embedding-sdk";
 import "./snippets";
 import "./sharing";
 import "./moderation";
-import "./email_allow_list";
-import "./email_restrict_recipients";
 import "./advanced_permissions";
+import "./ai-sql-fixer";
+import "./ai-sql-generation";
+import "./ai-entity-analysis";
 import "./audit_app";
 import "./license";
 import "./model_persistence";
 import "./feature_level_permissions";
 import "./application_permissions";
 import "./group_managers";
-import "./llm_autodescription";
 import "./upload_management";
 import "./resource_downloads";
 import "./user_provisioning";
 import "./clean_up";
-import "./troubleshooting";
+import "./metabot";

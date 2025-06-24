@@ -169,7 +169,7 @@ See [Model persistence](./model-persistence.md)
 - [Troubleshooting models][troubleshooting-models].
 
 [column-type]: ./field-types.md
-[cte]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-cte
+[cte]: https://www.metabase.com/learn/sql/working-with-sql/sql-cte
 [measures-dimensions]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/dimensions-and-measures
 [question]: ../questions/start.md
 [learn-models]: https://www.metabase.com/learn/metabase-basics/getting-started/models

@@ -2,9 +2,8 @@
   "EE implementation of NativeQuerySnippet permissions."
   (:require
    [metabase.models.interface :as mi]
-   [metabase.models.native-query-snippet.permissions :as snippet.perms]
-   [metabase.permissions.models.permissions :as perms]
-   [metabase.permissions.util :as perms-util]
+   [metabase.native-query-snippets.core :as snippets]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -20,8 +19,8 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (perms-util/sandboxed-user?))
-    (snippet.perms/has-any-native-permissions?)
+    (not (perms/sandboxed-user?))
+    (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :read)))
   ([model id]
    (can-read? (t2/select-one [model :collection_id] :id id))))
@@ -31,8 +30,8 @@
   :feature :snippet-collections
   ([snippet]
    (and
-    (not (perms-util/sandboxed-user?))
-    (snippet.perms/has-any-native-permissions?)
+    (not (perms/sandboxed-user?))
+    (snippets/has-any-native-permissions?)
     (has-parent-collection-perms? snippet :write)))
   ([model id]
    (can-write? (t2/select-one [model :collection_id] :id id))))
@@ -42,8 +41,8 @@
   :feature :snippet-collections
   [_model m]
   (and
-   (not (perms-util/sandboxed-user?))
-   (snippet.perms/has-any-native-permissions?)
+   (not (perms/sandboxed-user?))
+   (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? m :write)))
 
 (defenterprise can-update?
@@ -51,8 +50,8 @@
   :feature :snippet-collections
   [snippet changes]
   (and
-   (not (perms-util/sandboxed-user?))
-   (snippet.perms/has-any-native-permissions?)
+   (not (perms/sandboxed-user?))
+   (snippets/has-any-native-permissions?)
    (has-parent-collection-perms? snippet :write)
    (or (not (contains? changes :collection_id))
        (has-parent-collection-perms? changes :write))))

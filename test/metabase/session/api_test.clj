@@ -5,16 +5,17 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver.h2 :as h2]
-   [metabase.http-client :as client]
-   [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.request.core :as request]
+   [metabase.request.settings :as request.settings]
    [metabase.session.api :as api.session]
    [metabase.session.models.session :as session]
+   [metabase.settings.core :as setting :refer [defsetting]]
+   [metabase.settings.models.setting]
    [metabase.sso.ldap-test-util :as ldap.test]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -148,7 +149,7 @@
   (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  request.settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -169,7 +170,7 @@
   (testing "The same as above, but ensure that throttling is done on a per request source basis."
     (with-redefs [api.session/login-throttlers          (cleaned-throttlers #'api.session/login-throttlers
                                                                             [:username :ip-address])
-                  public-settings/source-address-header (constantly "x-forwarded-for")]
+                  request.settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -241,8 +242,8 @@
                    (mt/user-http-request :rasta :post 204 "session/forgot_password"
                                          {:email (:username (mt/user->credentials :rasta))}))
                 "Request should return no content")
-            (is (= true
-                   (reset-fields-set?))
+            (is (true?
+                 (reset-fields-set?))
                 "User `:reset_token` and `:reset_triggered` should be updated")
             (is (mt/received-email-subject? :rasta #"Password Reset")))))
       (testing "We use `site-url` in the email"
@@ -479,7 +480,7 @@
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
@@ -522,7 +523,35 @@
              (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
                  keys #{:premium-embedding-token}))))))
 
+(deftest properties-skip-include-in-list?=false
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the version-info property"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:version-info}))))))
+
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
+
+(deftest google-auth-remember-test
+  (reset-throttlers!)
+  (testing "POST /google_auth"
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"]
+      (mt/with-model-cleanup [:model/User]
+        (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
+        (testing "Google auth works with remember me and rasta"
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"first_name\":\"test\","
+                                                 "\"last_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
+            (testing "Test that 'remember me' checkbox sets expiration on session"
+              (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember true})]
+                (is (some? (get-in response [:cookies session-cookie :expires])) "Session should have expiration set when remember=true"))
+              (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember false})]
+                (is (nil? (get-in response [:cookies session-cookie :expires])) "Session should not have expiration set when remember=false")))))))))
 
 (deftest google-auth-test
   (reset-throttlers!)
@@ -643,3 +672,21 @@
              clojure.lang.ExceptionInfo
              #"Password did not match stored password"
              (#'api.session/login (:email user) "password" device-info)))))))
+
+(deftest ^:parallel password-check-test
+  (testing "POST /api/session/password-check"
+    (testing "Test for required params"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {}))))))
+
+(deftest ^:parallel password-check-test-2
+  (testing "POST /api/session/password-check"
+    (testing "Test complexity check"
+      (is (=? {:errors {:password "password is too common."}}
+              (mt/client :post 400 "session/password-check" {:password "blah"}))))))
+
+(deftest ^:parallel password-check-test-3
+  (testing "POST /api/session/password-check"
+    (testing "Should be a valid password"
+      (is (= {:valid true}
+             (mt/client :post 200 "session/password-check" {:password "something123"}))))))

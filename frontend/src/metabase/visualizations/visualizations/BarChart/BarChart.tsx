@@ -18,9 +18,10 @@ import type {
 Object.assign(
   BarChart,
   getCartesianChartDefinition({
-    uiName: t`Bar`,
+    getUiName: () => t`Bar`,
     identifier: "bar",
     iconName: "bar",
+    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     noun: t`bar chart`,
     minSize: getMinSize("bar"),
     defaultSize: getDefaultSize("bar"),

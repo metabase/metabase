@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -332,5 +333,107 @@ where x < {{param}}`,
     // Still renders a scatter chart with numeric x-axis
     H.echartsContainer().findByText("1,500");
     H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+  });
+});
+
+describe("issue 47757", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show correct tooltips for interpolated data points (metabase#47757)", () => {
+    H.visitQuestionAdhoc({
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+        series_settings: { Y: { "line.missing": "zero" } },
+      },
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select '2020-01-01' x, 10 y
+union all select '2020-03-01' x, 30 y
+union all select '2020-04-01' x, 40 y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(0).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "January 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 10,
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(1).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "February 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 0,
+          secondaryValue: "-100%",
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+
+    H.cartesianChartCircleWithColor("#88BF4D").eq(2).trigger("mousemove");
+    H.assertEChartsTooltip({
+      header: "March 2020",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Y",
+          value: 30,
+          secondaryValue: "+∞%",
+        },
+      ],
+      footer: null,
+      blurAfter: true,
+    });
+  });
+});
+
+describe("issue 59671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not crash when removing dimension aggregation column from the query (metabase#59671)", () => {
+    const questionDetails: StructuredQuestionDetails = {
+      display: "line" as const,
+      query: {
+        "source-table": ORDERS_ID,
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+        aggregation: [["count"]],
+      },
+      visualization_settings: {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"],
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+    H.openNotebook();
+    H.removeSummaryGroupingField({
+      field: "Created At: Month",
+      stage: 0,
+      index: 0,
+    });
+    H.visualize();
   });
 });

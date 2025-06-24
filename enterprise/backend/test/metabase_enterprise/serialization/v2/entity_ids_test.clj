@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -29,7 +29,7 @@
             (is (= nil
                    (entity-id)))
             (testing "Should return truthy on success"
-              (is (= true (v2.entity-ids/seed-entity-ids!))))
+              (is (true? (v2.entity-ids/seed-entity-ids!))))
             (is (= "998b109c"
                    (entity-id))))
           (testing "Error: duplicate entity IDs"
@@ -59,7 +59,7 @@
                         (messages)))))))))))
 
 (deftest drop-entity-ids-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (testing "With a temp Collection with an entity ID"
       (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
         (mt/test-helpers-set-global-values!
@@ -70,8 +70,8 @@
                       (some-> (t2/select-one-fn :entity_id :model/Collection :id (:id c)) str/trim))]
               (is (some? (entity-id)))
               (testing "Should return truthy on success"
-                (is (= true
-                       (v2.entity-ids/drop-entity-ids!))))
+                (is (true?
+                     (v2.entity-ids/drop-entity-ids!))))
               (is (nil? (entity-id))))))))
     (testing "empty table"
       (testing "has no entity ids"
@@ -80,8 +80,8 @@
                                               :slug "no_entity_id_collection"}]
             (is (nil? (t2/select-fn-set :entity-id :model/Dashboard)))
             (testing "but doesn't crash drop-entity-ids"
-              (is (= true
-                     (v2.entity-ids/drop-entity-ids!)))
+              (is (true?
+                   (v2.entity-ids/drop-entity-ids!)))
               (is (nil? (t2/select-fn-set :entity-id :model/Dashboard))))))))))
 
 (deftest entity-ids-are-nullable

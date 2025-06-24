@@ -146,6 +146,128 @@ describe("EmailAttachmentPicker", () => {
       expect(screen.getByLabelText("card1")).not.toBeChecked();
     });
   });
+
+  describe("when instantiated with duplicate card IDs (visualizer scenario)", () => {
+    it("should allow selecting cards independently", () => {
+      const pulse = createPulseWithDuplicateCardId();
+      const { setPulse } = setup({ pulse });
+
+      // Enable attachments first
+      const enableToggle = screen.getByLabelText("Attach results");
+      fireEvent.click(enableToggle);
+
+      const originalCardCheckbox = screen.getByLabelText("Original Card");
+      const visualizerCardCheckbox = screen.getByLabelText("Visualizer Card");
+
+      // Initially, neither should be checked
+      expect(originalCardCheckbox).not.toBeChecked();
+      expect(visualizerCardCheckbox).not.toBeChecked();
+
+      // Click the original card
+      fireEvent.click(originalCardCheckbox);
+
+      // Assert only original is checked
+      expect(originalCardCheckbox).toBeChecked();
+      expect(visualizerCardCheckbox).not.toBeChecked();
+
+      // Check setPulse call
+      expect(setPulse).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cards: expect.arrayContaining([
+            expect.objectContaining({
+              id: 10,
+              dashboard_card_id: 20,
+              include_csv: true, // Default is csv
+              include_xls: false,
+            }),
+            expect.objectContaining({
+              id: 10,
+              dashboard_card_id: 21,
+              include_csv: false,
+              include_xls: false,
+            }),
+          ]),
+        }),
+      );
+
+      // Click the visualizer card
+      fireEvent.click(visualizerCardCheckbox);
+
+      // Assert both are checked now
+      expect(originalCardCheckbox).toBeChecked();
+      expect(visualizerCardCheckbox).toBeChecked();
+
+      // Check setPulse call again
+      expect(setPulse).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cards: expect.arrayContaining([
+            expect.objectContaining({
+              id: 10,
+              dashboard_card_id: 20,
+              include_csv: true,
+              include_xls: false,
+            }),
+            expect.objectContaining({
+              id: 10,
+              dashboard_card_id: 21,
+              include_csv: true,
+              include_xls: false,
+            }),
+          ]),
+        }),
+      );
+
+      // Unclick the original card
+      fireEvent.click(originalCardCheckbox);
+
+      // Assert only visualizer is checked
+      expect(originalCardCheckbox).not.toBeChecked();
+      expect(visualizerCardCheckbox).toBeChecked();
+
+      // Check setPulse call
+      expect(setPulse).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          cards: expect.arrayContaining([
+            expect.objectContaining({
+              id: 10,
+              dashboard_card_id: 20,
+              include_csv: false,
+              include_xls: false,
+            }),
+            expect.objectContaining({
+              id: 10,
+              dashboard_card_id: 21,
+              include_csv: true,
+              include_xls: false,
+            }),
+          ]),
+        }),
+      );
+    });
+
+    it("'Select All' should toggle both cards independently", () => {
+      const pulse = createPulseWithDuplicateCardId();
+      setup({ pulse });
+
+      // Enable attachments first
+      const enableToggle = screen.getByLabelText("Attach results");
+      fireEvent.click(enableToggle);
+
+      const toggleAllCheckbox = screen.getByLabelText("Questions to attach");
+      const originalCardCheckbox = screen.getByLabelText("Original Card");
+      const visualizerCardCheckbox = screen.getByLabelText("Visualizer Card");
+
+      // Click select all
+      fireEvent.click(toggleAllCheckbox);
+      expect(originalCardCheckbox).toBeChecked();
+      expect(visualizerCardCheckbox).toBeChecked();
+
+      // Click select all again (deselect)
+      fireEvent.click(toggleAllCheckbox);
+      expect(originalCardCheckbox).not.toBeChecked();
+      expect(visualizerCardCheckbox).not.toBeChecked();
+    });
+  });
 });
 
 function createPulse() {
@@ -203,5 +325,50 @@ function createPulse() {
     collection_id: null,
     parameters: [],
     dashboard_id: 1,
+  };
+}
+
+function createPulseWithDuplicateCardId() {
+  return {
+    name: "Duplicate Card ID Pulse",
+    cards: [
+      {
+        id: 10,
+        collection_id: null,
+        description: null,
+        display: "table",
+        name: "Original Card",
+        include_csv: false,
+        include_xls: false,
+        dashboard_card_id: 20,
+        dashboard_id: 2,
+        parameter_mappings: [],
+      },
+      {
+        id: 10, // Same card ID as above
+        collection_id: null,
+        description: null,
+        display: "line",
+        name: "Visualizer Card",
+        include_csv: false,
+        include_xls: false,
+        dashboard_card_id: 21, // Different dashboard_card_id
+        dashboard_id: 2,
+        parameter_mappings: [],
+      },
+    ],
+    channels: [
+      {
+        channel_type: "email",
+        enabled: true,
+        recipients: [],
+        details: {},
+        schedule_type: "hourly",
+      },
+    ],
+    skip_if_empty: false,
+    collection_id: null,
+    parameters: [],
+    dashboard_id: 2,
   };
 }

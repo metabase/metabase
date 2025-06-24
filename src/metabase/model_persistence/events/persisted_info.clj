@@ -1,6 +1,6 @@
 (ns metabase.model-persistence.events.persisted-info
   (:require
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
    [metabase.util.log :as log]

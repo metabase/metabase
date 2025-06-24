@@ -1,6 +1,6 @@
 (ns metabase-enterprise.llm.settings
   (:require
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting ee-openai-model

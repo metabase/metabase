@@ -11,23 +11,27 @@
    [medley.core :as m]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
-   [metabase.config :as config]
-   [metabase.db :as db]
-   [metabase.db.query :as mdb.query]
+   [metabase.app-db.core :as app-db]
+   [metabase.appearance.core :as appearance]
+   [metabase.channel.slack :as slack]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.integrations.slack :as slack]
-   [metabase.internal-stats :as internal-stats]
+   [metabase.internal-stats.core :as internal-stats]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
-   [metabase.models.setting :as setting]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
-   [metabase.public-settings :as public-settings]
+   [metabase.session.settings :as session.settings]
+   [metabase.settings.core :as setting]
+   [metabase.sso.core :as sso]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.version.core :as version]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -107,28 +111,28 @@
 (defn- appearance-ui-colors-changed?
   "Returns true if the 'User Interface Colors' have been customized"
   []
-  (boolean (seq (select-keys (public-settings/application-colors) ui-colors))))
+  (boolean (seq (select-keys (appearance/application-colors) ui-colors))))
 
 (defn- appearance-chart-colors-changed?
   "Returns true if the 'Chart Colors' have been customized"
   []
-  (boolean (seq (apply dissoc (public-settings/application-colors) ui-colors))))
+  (boolean (seq (apply dissoc (appearance/application-colors) ui-colors))))
 
 (defn- instance-settings
   "Figure out global info about this instance"
   []
   {:version                              (config/mb-version-info :tag)
    :running_on                           (environment-type)
-   :startup_time_millis                  (int (public-settings/startup-time-millis))
+   :startup_time_millis                  (int (system/startup-time-millis))
    :application_database                 (config/config-str :mb-db-type)
-   :check_for_updates                    (public-settings/check-for-updates)
+   :check_for_updates                    (version/check-for-updates)
    :report_timezone                      (driver/report-timezone)
    ;; We deprecated advanced humanization but have this here anyways
    :friendly_names                       (= (humanization/humanization-strategy) "advanced")
    :email_configured                     (setting/get :email-configured?)
    :slack_configured                     (slack/slack-configured?)
    :sso_configured                       (setting/get :google-auth-enabled)
-   :instance_started                     (snowplow/instance-creation)
+   :instance_started                     (analytics.settings/instance-creation)
    :has_sample_data                      (t2/exists? :model/Database, :is_sample true)
    :enable_embedding                     #_{:clj-kondo/ignore [:deprecated-var]} (setting/get :enable-embedding)
    :enable_embedding_sdk                 (setting/get :enable-embedding-sdk)
@@ -140,19 +144,19 @@
    :embedding_app_origin_sdk_set         (boolean (let [sdk-origins (setting/get :embedding-app-origins-sdk)]
                                                     (and sdk-origins (not= "localhost:*" sdk-origins))))
    :embedding_app_origin_interactive_set (setting/get :embedding-app-origins-interactive)
-   :appearance_site_name                 (not= (public-settings/site-name) "Metabase")
-   :appearance_help_link                 (public-settings/help-link)
-   :appearance_logo                      (not= (public-settings/application-logo-url) "app/assets/img/logo.svg")
-   :appearance_favicon                   (not= (public-settings/application-favicon-url) "app/assets/img/favicon.ico")
-   :appearance_loading_message           (not= (public-settings/loading-message) :doing-science)
-   :appearance_metabot_greeting          (not (public-settings/show-metabot))
-   :appearance_login_page_illustration   (public-settings/login-page-illustration)
-   :appearance_landing_page_illustration (public-settings/landing-page-illustration)
-   :appearance_no_data_illustration      (public-settings/no-data-illustration)
-   :appearance_no_object_illustration    (public-settings/no-object-illustration)
+   :appearance_site_name                 (not= (appearance/site-name) "Metabase")
+   :appearance_help_link                 (appearance/help-link)
+   :appearance_logo                      (not= (appearance/application-logo-url) "app/assets/img/logo.svg")
+   :appearance_favicon                   (not= (appearance/application-favicon-url) "app/assets/img/favicon.ico")
+   :appearance_loading_message           (not= (appearance/loading-message) :doing-science)
+   :appearance_metabot_greeting          (not (appearance/show-metabot))
+   :appearance_login_page_illustration   (appearance/login-page-illustration)
+   :appearance_landing_page_illustration (appearance/landing-page-illustration)
+   :appearance_no_data_illustration      (appearance/no-data-illustration)
+   :appearance_no_object_illustration    (appearance/no-object-illustration)
    :appearance_ui_colors                 (appearance-ui-colors-changed?)
    :appearance_chart_colors              (appearance-chart-colors-changed?)
-   :appearance_show_mb_links             (not (public-settings/show-metabase-links))})
+   :appearance_show_mb_links             (not (appearance/show-metabase-links))})
 
 (defn- user-metrics
   "Get metrics based on user records.
@@ -235,9 +239,9 @@
 
     ;; Include `WHERE` clause that includes conditions for a Table related by an FK relationship:
     ;; (Number of Tables per DB engine)
-    (db-frequencies Table (mdb.query/qualify Database :engine)
-      {:left-join [Database [:= (mdb.query/qualify Database :id)
-                                (mdb.query/qualify Table :db_id)]]})
+    (db-frequencies Table (app-db/qualify Database :engine)
+      {:left-join [Database [:= (app-db/qualify Database :id)
+                                (app-db/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
@@ -252,15 +256,15 @@
      ;; Pulses only (filter out Alerts)
      (num-notifications-with-xls-or-csv-cards [:= :alert_condition nil])"
   [& where-conditions]
-  (-> (mdb.query/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
-                        :from      [:pulse]
-                        :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
-                        :where     (into
-                                    [:and
-                                     [:or
-                                      [:= :pulse_card.include_csv true]
-                                      [:= :pulse_card.include_xls true]]]
-                                    where-conditions)})
+  (-> (app-db/query {:select    [[[::h2x/distinct-count :pulse.id] :count]]
+                     :from      [:pulse]
+                     :left-join [:pulse_card [:= :pulse.id :pulse_card.pulse_id]]
+                     :where     (into
+                                 [:and
+                                  [:or
+                                   [:= :pulse_card.include_csv true]
+                                   [:= :pulse_card.include_xls true]]]
+                                 where-conditions)})
       first
       :count))
 
@@ -279,7 +283,7 @@
      :num_cards_per_pulses (medium-histogram (vals (db-frequencies :model/PulseCard :pulse_id   pulse-conditions)))}))
 
 (defn- alert-metrics []
-  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (mdb.query/qualify :model/Pulse :alert_condition) nil]}]
+  (let [alert-conditions {:left-join [:pulse [:= :pulse.id :pulse_id]], :where [:not= (app-db/qualify :model/Pulse :alert_condition) nil]}]
     {:alerts               (t2/count :model/Pulse :alert_condition [:not= nil])
      :with_table_cards     (num-notifications-with-xls-or-csv-cards [:not= :alert_condition nil])
      :first_time_only      (t2/count :model/Pulse :alert_condition [:not= nil], :alert_first_only true)
@@ -342,11 +346,6 @@
   []
   {:segments (t2/count :model/Segment)})
 
-(defn- metric-metrics
-  "Get metrics based on Metrics."
-  []
-  {:metrics (t2/count :model/LegacyMetric)})
-
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
@@ -354,11 +353,11 @@
   ;; ZONE. This can cause discrepancies when subtracting 30 days if the calculation crosses a DST boundary (e.g., in the
   ;; Pacific/Auckland timezone). To avoid this, we ensure all date computations are done in UTC on Postgres to prevent
   ;; any time shifts due to DST. See PR #48204
-  (let [thirty-days-ago (case (db/db-type)
+  (let [thirty-days-ago (case (app-db/db-type)
                           :postgres "CURRENT_TIMESTAMP AT TIME ZONE 'UTC' - INTERVAL '30 days'"
                           :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
                           :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")
-        started-at      (case (db/db-type)
+        started-at      (case (app-db/db-type)
                           :postgres "started_at AT TIME ZONE 'UTC'"
                           :h2       "started_at"
                           :mysql    "started_at")
@@ -465,7 +464,7 @@
   "generate a map of the usage stats for this instance"
   []
   (merge (instance-settings)
-         {:uuid      (public-settings/site-uuid)
+         {:uuid      (system/site-uuid)
           :timestamp (t/offset-date-time)
           :stats     {:cache      (cache-metrics)
                       :collection (collection-metrics)
@@ -474,7 +473,6 @@
                       :execution  (execution-metrics)
                       :field      (field-metrics)
                       :group      (group-metrics)
-                      :metric     (metric-metrics)
                       :pulse      (pulse-metrics)
                       :alert      (alert-metrics)
                       :question   (question-metrics)
@@ -521,7 +519,7 @@
         (t2/count :model/User {:where [:and
                                        [:<=
                                         :date_joined
-                                        (t/plus (t/offset-date-time (setting/get :instance-creation))
+                                        (t/plus (t/offset-date-time (analytics.settings/instance-creation))
                                                 (t/days activation-days))]
                                        (mi/exclude-internal-content-hsql :model/User)]
                                :limit (inc num-users)})]
@@ -747,7 +745,7 @@
 
 (defenterprise ee-snowplow-features-data
   "OSS values to use for features which require calling EE code to check whether they are available/enabled."
-  metabase-enterprise.stats
+  metabase-enterprise.analytics.stats
   []
   (ee-snowplow-features-data'))
 
@@ -764,7 +762,7 @@
     :enabled   (setting/get :google-auth-configured)}
    {:name      :sso-ldap
     :available true
-    :enabled   (public-settings/ldap-enabled?)}
+    :enabled   (sso/ldap-enabled)}
    {:name      :sample-data
     :available true
     :enabled   (t2/exists? :model/Database, :is_sample true)}
@@ -773,7 +771,7 @@
     :enabled   (and
                 (setting/get :enable-embedding-interactive)
                 (boolean (setting/get :embedding-app-origins-interactive))
-                (public-settings/sso-enabled?))}
+                (sso/sso-enabled?))}
    {:name      :static-embedding
     :available true
     :enabled   (and
@@ -817,10 +815,15 @@
     :enabled   (premium-features/enable-database-auth-providers?)}
    {:name      :database-routing
     :available (premium-features/enable-database-routing?)
-    :enabled   (premium-features/enable-database-routing?)}
+    :enabled   (if (premium-features/enable-database-routing?)
+                 (t2/exists? :model/DatabaseRouter)
+                 false)}
    {:name      :config-text-file
     :available (premium-features/enable-config-text-file?)
     :enabled   (some? (get env/env :mb-config-file-path))}
+   {:name      :content-translation
+    :available (premium-features/enable-content-translation?)
+    :enabled   (premium-features/enable-content-translation?)}
    {:name      :content-verification
     :available (premium-features/enable-content-verification?)
     :enabled   (t2/exists? :model/ModerationReview)}
@@ -829,7 +832,7 @@
     :enabled   (t2/exists? :model/Pulse {:where [:not= :parameters "[]"]})}
    {:name      :disable-password-login
     :available (premium-features/can-disable-password-login?)
-    :enabled   (not (public-settings/enable-password-login))}
+    :enabled   (not (session.settings/enable-password-login))}
    {:name      :email-restrict-recipients
     :available (premium-features/enable-email-restrict-recipients?)
     :enabled   (not= (setting/get-value-of-type :keyword :user-visibility) :all)}
@@ -842,6 +845,18 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
+   {:name      :metabot-v3
+    :available (premium-features/enable-metabot-v3?)
+    :enabled   (premium-features/enable-metabot-v3?)}
+   {:name      :ai-entity-analysis
+    :available (premium-features/enable-ai-entity-analysis?)
+    :enabled   (premium-features/enable-ai-entity-analysis?)}
+   {:name      :ai-sql-fixer
+    :available (premium-features/enable-ai-sql-fixer?)
+    :enabled   (premium-features/enable-ai-sql-fixer?)}
+   {:name      :ai-sql-generation
+    :available (premium-features/enable-ai-sql-generation?)
+    :enabled   (premium-features/enable-ai-sql-generation?)}
    {:name      :sdk-embedding
     :available true
     :enabled   (setting/get :enable-embedding-sdk)}
@@ -885,19 +900,19 @@
    {:key "chart_colors" :value (comp bool->default-or-changed :appearance_chart_colors) :tags ["appearance"]}
    {:key "show_mb_links" :value :appearance_show_mb_links :tags ["appearance"]}
    {:key "font"
-    :value (fn [_] (public-settings/application-font))
+    :value (fn [_] (appearance/application-font))
     :tags ["appearance"]}
    {:key "samesite"
     :value (fn [_] (str (or (setting/get :session-cookie-samesite) "lax")))
     :tags ["embedding" "auth"]}
    {:key "site_locale"
-    :value (fn [_] (public-settings/site-locale))
+    :value (fn [_] (system/site-locale))
     :tags ["locale"]}
    {:key "report_timezone"
     :value (fn [_] (or (setting/get :report-timezone) (System/getProperty "user.timezone")))
     :tags ["locale"]}
    {:key "start_of_week"
-    :value (fn [_] (str (public-settings/start-of-week)))
+    :value (fn [_] (str (lib-be/start-of-week)))
     :tags ["locale"]}])
 
 (defn- snowplow-settings
@@ -939,7 +954,7 @@
 (defn phone-home-stats!
   "Collect usage stats and phone them home"
   []
-  (when (public-settings/anon-tracking-enabled)
+  (when (analytics.settings/anon-tracking-enabled)
     (let [start-time-ms                  (System/currentTimeMillis)
           {:keys [stats snowplow-stats]} (generate-instance-stats!)
           end-time-ms                    (System/currentTimeMillis)

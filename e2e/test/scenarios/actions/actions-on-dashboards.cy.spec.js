@@ -117,7 +117,7 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "new_action_card_created",
           });
 
@@ -154,7 +154,7 @@ const MODEL_NAME = "Test Action Model";
             actionName: "Create",
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "new_action_card_created",
           });
 
@@ -194,7 +194,7 @@ const MODEL_NAME = "Test Action Model";
             idFilter: true,
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "new_action_card_created",
           });
 
@@ -251,7 +251,7 @@ const MODEL_NAME = "Test Action Model";
             actionName: "Delete",
           });
 
-          H.expectGoodSnowplowEvent({
+          H.expectUnstructuredSnowplowEvent({
             event: "new_action_card_created",
           });
 
@@ -1163,7 +1163,7 @@ describe(
 
         H.filterWidget().click();
         H.dashboardParametersPopover().within(() => {
-          H.fieldValuesInput().type("{backspace}10");
+          H.fieldValuesCombobox().type("{backspace}10");
         });
         cy.button("Update filter").click();
 

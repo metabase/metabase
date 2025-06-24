@@ -1,0 +1,1232 @@
+diff --git a/node_modules/kbar/lib/InternalEvents.js b/node_modules/kbar/lib/InternalEvents.js
+index 7900f50..a298b91 100644
+--- a/node_modules/kbar/lib/InternalEvents.js
++++ b/node_modules/kbar/lib/InternalEvents.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+@@ -18,13 +22,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
+     __setModuleDefault(result, mod);
+     return result;
+ };
+-var __importDefault = (this && this.__importDefault) || function (mod) {
+-    return (mod && mod.__esModule) ? mod : { "default": mod };
+-};
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.InternalEvents = void 0;
+ var React = __importStar(require("react"));
+-var tinykeys_1 = __importDefault(require("./tinykeys"));
++var tinykeys_1 = require("./tinykeys");
+ var types_1 = require("./types");
+ var useKBar_1 = require("./useKBar");
+ var utils_1 = require("./utils");
+@@ -61,7 +62,7 @@ function useToggleHandler() {
+             return;
+         }
+         var shortcut = options.toggleShortcut || "$mod+k";
+-        var unsubscribe = (0, tinykeys_1.default)(window, (_a = {},
++        var unsubscribe = (0, tinykeys_1.tinykeys)(window, (_a = {},
+             _a[shortcut] = function (event) {
+                 var _a, _b, _c, _d;
+                 if (event.defaultPrevented)
+@@ -221,7 +222,7 @@ function useShortcuts() {
+                     (_c = (_b = options.callbacks) === null || _b === void 0 ? void 0 : _b.onOpen) === null || _c === void 0 ? void 0 : _c.call(_b);
+                 }
+                 else {
+-                    (_d = action.command) === null || _d === void 0 ? void 0 : _d.perform();
++                    (_d = action.command) === null || _d === void 0 ? void 0 : _d.perform(event);
+                     (_f = (_e = options.callbacks) === null || _e === void 0 ? void 0 : _e.onSelectAction) === null || _f === void 0 ? void 0 : _f.call(_e, action);
+                 }
+             });
+@@ -230,7 +231,7 @@ function useShortcuts() {
+             var action = actionsWithShortcuts_1[_b];
+             _loop_1(action);
+         }
+-        var unsubscribe = (0, tinykeys_1.default)(window, shortcutsMap, {
++        var unsubscribe = (0, tinykeys_1.tinykeys)(window, shortcutsMap, {
+             timeout: 400,
+         });
+         return function () {
+diff --git a/node_modules/kbar/lib/KBarAnimator.js b/node_modules/kbar/lib/KBarAnimator.js
+index 5734700..5d7ebd1 100644
+--- a/node_modules/kbar/lib/KBarAnimator.js
++++ b/node_modules/kbar/lib/KBarAnimator.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+@@ -100,10 +104,10 @@ var KBarAnimator = function (_a) {
+                     }
+                     outer_1.animate([
+                         {
+-                            height: previousHeight.current + "px",
++                            height: "".concat(previousHeight.current, "px"),
+                         },
+                         {
+-                            height: cr.height + "px",
++                            height: "".concat(cr.height, "px"),
+                         },
+                     ], {
+                         duration: enterMs / 2,
+diff --git a/node_modules/kbar/lib/KBarContextProvider.js b/node_modules/kbar/lib/KBarContextProvider.js
+index 2d86fe5..81f08ca 100644
+--- a/node_modules/kbar/lib/KBarContextProvider.js
++++ b/node_modules/kbar/lib/KBarContextProvider.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/KBarPortal.js b/node_modules/kbar/lib/KBarPortal.js
+index fb5b022..a9d1dd0 100644
+--- a/node_modules/kbar/lib/KBarPortal.js
++++ b/node_modules/kbar/lib/KBarPortal.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/KBarPositioner.js b/node_modules/kbar/lib/KBarPositioner.js
+index dbbafae..0a00c4c 100644
+--- a/node_modules/kbar/lib/KBarPositioner.js
++++ b/node_modules/kbar/lib/KBarPositioner.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/KBarResults.js b/node_modules/kbar/lib/KBarResults.js
+index a622591..6d650a6 100644
+--- a/node_modules/kbar/lib/KBarResults.js
++++ b/node_modules/kbar/lib/KBarResults.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+@@ -145,7 +149,7 @@ var KBarResults = function (props) {
+             overflow: "auto",
+         } },
+         React.createElement("div", { role: "listbox", id: KBarSearch_1.KBAR_LISTBOX, style: {
+-                height: rowVirtualizer.totalSize + "px",
++                height: "".concat(rowVirtualizer.totalSize, "px"),
+                 width: "100%",
+             } }, rowVirtualizer.virtualItems.map(function (virtualRow) {
+             var item = itemsRef.current[virtualRow.index];
+@@ -164,7 +168,7 @@ var KBarResults = function (props) {
+                     top: 0,
+                     left: 0,
+                     width: "100%",
+-                    transform: "translateY(" + virtualRow.start + "px)",
++                    transform: "translateY(".concat(virtualRow.start, "px)"),
+                 } }, handlers), React.cloneElement(props.onRender({
+                 item: item,
+                 active: active,
+diff --git a/node_modules/kbar/lib/KBarSearch.js b/node_modules/kbar/lib/KBarSearch.js
+index de5506a..a649382 100644
+--- a/node_modules/kbar/lib/KBarSearch.js
++++ b/node_modules/kbar/lib/KBarSearch.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+@@ -46,7 +50,7 @@ var React = __importStar(require("react"));
+ var types_1 = require("./types");
+ var useKBar_1 = require("./useKBar");
+ exports.KBAR_LISTBOX = "kbar-listbox";
+-var getListboxItemId = function (id) { return "kbar-listbox-item-" + id; };
++var getListboxItemId = function (id) { return "kbar-listbox-item-".concat(id); };
+ exports.getListboxItemId = getListboxItemId;
+ function KBarSearch(props) {
+     var _a = (0, useKBar_1.useKBar)(function (state) { return ({
+diff --git a/node_modules/kbar/lib/__tests__/useMatches.test.js b/node_modules/kbar/lib/__tests__/useMatches.test.js
+index 9788f03..5f64608 100644
+--- a/node_modules/kbar/lib/__tests__/useMatches.test.js
++++ b/node_modules/kbar/lib/__tests__/useMatches.test.js
+@@ -15,7 +15,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/action/ActionImpl.js b/node_modules/kbar/lib/action/ActionImpl.js
+index 42fddf4..05557e3 100644
+--- a/node_modules/kbar/lib/action/ActionImpl.js
++++ b/node_modules/kbar/lib/action/ActionImpl.js
+@@ -13,7 +13,7 @@ var utils_1 = require("../utils");
+  */
+ var extendKeywords = function (_a) {
+     var _b = _a.keywords, keywords = _b === void 0 ? "" : _b, _c = _a.section, section = _c === void 0 ? "" : _c;
+-    return (keywords + " " + (typeof section === "string" ? section : section.name)).trim();
++    return "".concat(keywords, " ").concat(typeof section === "string" ? section : section.name).trim();
+ };
+ var ActionImpl = /** @class */ (function () {
+     function ActionImpl(action, options) {
+@@ -30,7 +30,7 @@ var ActionImpl = /** @class */ (function () {
+         this.command =
+             perform &&
+                 new Command_1.Command({
+-                    perform: function () { return perform(_this); },
++                    perform: function (e) { return perform(_this, e); },
+                 }, {
+                     history: options.history,
+                 });
+@@ -38,7 +38,7 @@ var ActionImpl = /** @class */ (function () {
+         this.perform = (_a = this.command) === null || _a === void 0 ? void 0 : _a.perform;
+         if (action.parent) {
+             var parentActionImpl = options.store[action.parent];
+-            (0, tiny_invariant_1.default)(parentActionImpl, "attempted to create an action whos parent: " + action.parent + " does not exist in the store.");
++            (0, tiny_invariant_1.default)(parentActionImpl, "attempted to create an action whos parent: ".concat(action.parent, " does not exist in the store."));
+             parentActionImpl.addChild(this);
+         }
+     }
+diff --git a/node_modules/kbar/lib/action/ActionInterface.js b/node_modules/kbar/lib/action/ActionInterface.js
+index 05b2b78..4ed855c 100644
+--- a/node_modules/kbar/lib/action/ActionInterface.js
++++ b/node_modules/kbar/lib/action/ActionInterface.js
+@@ -29,7 +29,7 @@ var ActionInterface = /** @class */ (function () {
+         for (var i = 0; i < actions.length; i++) {
+             var action = actions[i];
+             if (action.parent) {
+-                (0, tiny_invariant_1.default)(this.actions[action.parent], "Attempted to create action \"" + action.name + "\" without registering its parent \"" + action.parent + "\" first.");
++                (0, tiny_invariant_1.default)(this.actions[action.parent], "Attempted to create action \"".concat(action.name, "\" without registering its parent \"").concat(action.parent, "\" first."));
+             }
+             this.actions[action.id] = ActionImpl_1.ActionImpl.create(action, {
+                 history: this.options.historyManager,
+diff --git a/node_modules/kbar/lib/action/Command.js b/node_modules/kbar/lib/action/Command.js
+index 8003f6d..9f49978 100644
+--- a/node_modules/kbar/lib/action/Command.js
++++ b/node_modules/kbar/lib/action/Command.js
+@@ -3,10 +3,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.Command = void 0;
+ var Command = /** @class */ (function () {
+     function Command(command, options) {
+-        var _this = this;
+         if (options === void 0) { options = {}; }
+-        this.perform = function () {
+-            var negate = command.perform();
++        var _this = this;
++        this.perform = function (e) {
++            var negate = command.perform(e);
+             // no need for history if non negatable
+             if (typeof negate !== "function")
+                 return;
+diff --git a/node_modules/kbar/lib/action/index.js b/node_modules/kbar/lib/action/index.js
+index 5c43cfe..ed5855d 100644
+--- a/node_modules/kbar/lib/action/index.js
++++ b/node_modules/kbar/lib/action/index.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/index.js b/node_modules/kbar/lib/index.js
+index 71c46a0..e989022 100644
+--- a/node_modules/kbar/lib/index.js
++++ b/node_modules/kbar/lib/index.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/tinykeys.d.ts b/node_modules/kbar/lib/tinykeys.d.ts
+index 72c30c7..288e8bd 100644
+--- a/node_modules/kbar/lib/tinykeys.d.ts
++++ b/node_modules/kbar/lib/tinykeys.d.ts
+@@ -1,26 +1,74 @@
++/**
++ * A single press of a keybinding sequence
++ */
++export type KeyBindingPress = [mods: string[], key: string | RegExp];
+ /**
+  * A map of keybinding strings to event handlers.
+  */
+ export interface KeyBindingMap {
+     [keybinding: string]: (event: KeyboardEvent) => void;
+ }
++export interface KeyBindingHandlerOptions {
++    /**
++     * Keybinding sequences will wait this long between key presses before
++     * cancelling (default: 1000).
++     *
++     * **Note:** Setting this value too low (i.e. `300`) will be too fast for many
++     * of your users.
++     */
++    timeout?: number;
++}
+ /**
+  * Options to configure the behavior of keybindings.
+  */
+-export interface KeyBindingOptions {
++export interface KeyBindingOptions extends KeyBindingHandlerOptions {
+     /**
+      * Key presses will listen to this event (default: "keydown").
+      */
+     event?: "keydown" | "keyup";
+     /**
+-     * Keybinding sequences will wait this long between key presses before
+-     * cancelling (default: 1000).
+-     *
+-     * **Note:** Setting this value too low (i.e. `300`) will be too fast for many
+-     * of your users.
++     * Key presses will use a capture listener (default: false)
+      */
+-    timeout?: number;
++    capture?: boolean;
+ }
++/**
++ * Parses a "Key Binding String" into its parts
++ *
++ * grammar    = `<sequence>`
++ * <sequence> = `<press> <press> <press> ...`
++ * <press>    = `<key>` or `<mods>+<key>`
++ * <mods>     = `<mod>+<mod>+...`
++ * <key>      = `<KeyboardEvent.key>` or `<KeyboardEvent.code>` (case-insensitive)
++ * <key>      = `(<regex>)` -> `/^<regex>$/` (case-sensitive)
++ */
++export declare function parseKeybinding(str: string): KeyBindingPress[];
++/**
++ * This tells us if a single keyboard event matches a single keybinding press.
++ */
++export declare function matchKeyBindingPress(event: KeyboardEvent, [mods, key]: KeyBindingPress): boolean;
++/**
++ * Creates an event listener for handling keybindings.
++ *
++ * @example
++ * ```js
++ * import { createKeybindingsHandler } from "../src/keybindings"
++ *
++ * let handler = createKeybindingsHandler({
++ * 	"Shift+d": () => {
++ * 		alert("The 'Shift' and 'd' keys were pressed at the same time")
++ * 	},
++ * 	"y e e t": () => {
++ * 		alert("The keys 'y', 'e', 'e', and 't' were pressed in order")
++ * 	},
++ * 	"$mod+d": () => {
++ * 		alert("Either 'Control+d' or 'Meta+d' were pressed")
++ * 	},
++ * })
++ *
++ * window.addEvenListener("keydown", handler)
++ * ```
++ */
++export declare function createKeybindingsHandler(keyBindingMap: KeyBindingMap, options?: KeyBindingHandlerOptions): EventListener;
+ /**
+  * Subscribes to keybindings.
+  *
+@@ -28,9 +76,9 @@ export interface KeyBindingOptions {
+  *
+  * @example
+  * ```js
+- * import keybindings from "../src/keybindings"
++ * import { tinykeys } from "../src/tinykeys"
+  *
+- * keybindings(window, {
++ * tinykeys(window, {
+  * 	"Shift+d": () => {
+  * 		alert("The 'Shift' and 'd' keys were pressed at the same time")
+  * 	},
+@@ -43,4 +91,4 @@ export interface KeyBindingOptions {
+  * })
+  * ```
+  */
+-export default function keybindings(target: Window | HTMLElement, keyBindingMap: KeyBindingMap, options?: KeyBindingOptions): () => void;
++export declare function tinykeys(target: Window | HTMLElement, keyBindingMap: KeyBindingMap, { event, capture, timeout }?: KeyBindingOptions): () => void;
+diff --git a/node_modules/kbar/lib/tinykeys.js b/node_modules/kbar/lib/tinykeys.js
+index 97d1fb3..0596765 100644
+--- a/node_modules/kbar/lib/tinykeys.js
++++ b/node_modules/kbar/lib/tinykeys.js
+@@ -1,7 +1,6 @@
+ "use strict";
+-// Fixes special character issues; `?` -> `shift+/` + build issue
+-// https://github.com/jamiebuilds/tinykeys
+ Object.defineProperty(exports, "__esModule", { value: true });
++exports.tinykeys = exports.createKeybindingsHandler = exports.matchKeyBindingPress = exports.parseKeybinding = void 0;
+ /**
+  * These are the modifier keys that change the meaning of keybindings.
+  *
+@@ -17,20 +16,33 @@ var DEFAULT_TIMEOUT = 1000;
+  * Keybinding sequences should bind to this event by default.
+  */
+ var DEFAULT_EVENT = "keydown";
++/**
++ * Platform detection code.
++ * @see https://github.com/jamiebuilds/tinykeys/issues/184
++ */
++var PLATFORM = typeof navigator === "object" ? navigator.platform : "";
++var APPLE_DEVICE = /Mac|iPod|iPhone|iPad/.test(PLATFORM);
+ /**
+  * An alias for creating platform-specific keybinding aliases.
+  */
+-var MOD = typeof navigator === "object" &&
+-    /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+-    ? "Meta"
+-    : "Control";
++var MOD = APPLE_DEVICE ? "Meta" : "Control";
++/**
++ * Meaning of `AltGraph`, from MDN:
++ * - Windows: Both Alt and Ctrl keys are pressed, or AltGr key is pressed
++ * - Mac: ⌥ Option key pressed
++ * - Linux: Level 3 Shift key (or Level 5 Shift key) pressed
++ * - Android: Not supported
++ * @see https://github.com/jamiebuilds/tinykeys/issues/185
++ */
++var ALT_GRAPH_ALIASES = PLATFORM === "Win32" ? ["Control", "Alt"] : APPLE_DEVICE ? ["Alt"] : [];
+ /**
+  * There's a bug in Chrome that causes event.getModifierState not to exist on
+  * KeyboardEvent's for F1/F2/etc keys.
+  */
+ function getModifierState(event, mod) {
+     return typeof event.getModifierState === "function"
+-        ? event.getModifierState(mod)
++        ? event.getModifierState(mod) ||
++            (ALT_GRAPH_ALIASES.includes(mod) && event.getModifierState("AltGraph"))
+         : false;
+ }
+ /**
+@@ -40,55 +52,58 @@ function getModifierState(event, mod) {
+  * <sequence> = `<press> <press> <press> ...`
+  * <press>    = `<key>` or `<mods>+<key>`
+  * <mods>     = `<mod>+<mod>+...`
++ * <key>      = `<KeyboardEvent.key>` or `<KeyboardEvent.code>` (case-insensitive)
++ * <key>      = `(<regex>)` -> `/^<regex>$/` (case-sensitive)
+  */
+-function parse(str) {
++function parseKeybinding(str) {
+     return str
+         .trim()
+         .split(" ")
+         .map(function (press) {
+         var mods = press.split(/\b\+/);
+         var key = mods.pop();
++        var match = key.match(/^\((.+)\)$/);
++        if (match) {
++            key = new RegExp("^".concat(match[1], "$"));
++        }
+         mods = mods.map(function (mod) { return (mod === "$mod" ? MOD : mod); });
+         return [mods, key];
+     });
+ }
++exports.parseKeybinding = parseKeybinding;
+ /**
+- * This tells us if a series of events matches a key binding sequence either
+- * partially or exactly.
++ * This tells us if a single keyboard event matches a single keybinding press.
+  */
+-function match(event, press) {
+-    // Special characters; `?` `!`
+-    if (/^[^A-Za-z0-9]$/.test(event.key) && press[1] === event.key) {
+-        return true;
+-    }
++function matchKeyBindingPress(event, _a) {
++    var mods = _a[0], key = _a[1];
+     // prettier-ignore
+     return !(
+     // Allow either the `event.key` or the `event.code`
+     // MDN event.key: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+     // MDN event.code: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+-    (press[1].toUpperCase() !== event.key.toUpperCase() &&
+-        press[1] !== event.code) ||
++    (key instanceof RegExp ? !(key.test(event.key) || key.test(event.code)) :
++        (key.toUpperCase() !== event.key.toUpperCase() &&
++            key !== event.code)) ||
+         // Ensure all the modifiers in the keybinding are pressed.
+-        press[0].find(function (mod) {
++        mods.find(function (mod) {
+             return !getModifierState(event, mod);
+         }) ||
+         // KEYBINDING_MODIFIER_KEYS (Shift/Control/etc) change the meaning of a
+         // keybinding. So if they are pressed but aren't part of the current
+         // keybinding press, then we don't have a match.
+         KEYBINDING_MODIFIER_KEYS.find(function (mod) {
+-            return !press[0].includes(mod) && press[1] !== mod && getModifierState(event, mod);
++            return !mods.includes(mod) && key !== mod && getModifierState(event, mod);
+         }));
+ }
++exports.matchKeyBindingPress = matchKeyBindingPress;
+ /**
+- * Subscribes to keybindings.
+- *
+- * Returns an unsubscribe method.
++ * Creates an event listener for handling keybindings.
+  *
+  * @example
+  * ```js
+- * import keybindings from "../src/keybindings"
++ * import { createKeybindingsHandler } from "../src/keybindings"
+  *
+- * keybindings(window, {
++ * let handler = createKeybindingsHandler({
+  * 	"Shift+d": () => {
+  * 		alert("The 'Shift' and 'd' keys were pressed at the same time")
+  * 	},
+@@ -99,19 +114,20 @@ function match(event, press) {
+  * 		alert("Either 'Control+d' or 'Meta+d' were pressed")
+  * 	},
+  * })
++ *
++ * window.addEvenListener("keydown", handler)
+  * ```
+  */
+-function keybindings(target, keyBindingMap, options) {
+-    var _a, _b;
++function createKeybindingsHandler(keyBindingMap, options) {
++    var _a;
+     if (options === void 0) { options = {}; }
+     var timeout = (_a = options.timeout) !== null && _a !== void 0 ? _a : DEFAULT_TIMEOUT;
+-    var event = (_b = options.event) !== null && _b !== void 0 ? _b : DEFAULT_EVENT;
+     var keyBindings = Object.keys(keyBindingMap).map(function (key) {
+-        return [parse(key), keyBindingMap[key]];
++        return [parseKeybinding(key), keyBindingMap[key]];
+     });
+     var possibleMatches = new Map();
+     var timer = null;
+-    var onKeyEvent = function (event) {
++    return function (event) {
+         // Ensure and stop any event that isn't a full keyboard event.
+         // Autocomplete option navigation and selection would fire a instanceof Event,
+         // instead of the expected KeyboardEvent
+@@ -124,7 +140,7 @@ function keybindings(target, keyBindingMap, options) {
+             var prev = possibleMatches.get(sequence);
+             var remainingExpectedPresses = prev ? prev : sequence;
+             var currentExpectedPress = remainingExpectedPresses[0];
+-            var matches = match(event, currentExpectedPress);
++            var matches = matchKeyBindingPress(event, currentExpectedPress);
+             if (!matches) {
+                 // Modifier keydown events shouldn't break sequences
+                 // Note: This works because:
+@@ -146,12 +162,38 @@ function keybindings(target, keyBindingMap, options) {
+         if (timer) {
+             clearTimeout(timer);
+         }
+-        // @ts-ignore
+         timer = setTimeout(possibleMatches.clear.bind(possibleMatches), timeout);
+     };
+-    target.addEventListener(event, onKeyEvent);
++}
++exports.createKeybindingsHandler = createKeybindingsHandler;
++/**
++ * Subscribes to keybindings.
++ *
++ * Returns an unsubscribe method.
++ *
++ * @example
++ * ```js
++ * import { tinykeys } from "../src/tinykeys"
++ *
++ * tinykeys(window, {
++ * 	"Shift+d": () => {
++ * 		alert("The 'Shift' and 'd' keys were pressed at the same time")
++ * 	},
++ * 	"y e e t": () => {
++ * 		alert("The keys 'y', 'e', 'e', and 't' were pressed in order")
++ * 	},
++ * 	"$mod+d": () => {
++ * 		alert("Either 'Control+d' or 'Meta+d' were pressed")
++ * 	},
++ * })
++ * ```
++ */
++function tinykeys(target, keyBindingMap, _a) {
++    var _b = _a === void 0 ? {} : _a, _c = _b.event, event = _c === void 0 ? DEFAULT_EVENT : _c, capture = _b.capture, timeout = _b.timeout;
++    var onKeyEvent = createKeybindingsHandler(keyBindingMap, { timeout: timeout });
++    target.addEventListener(event, onKeyEvent, capture);
+     return function () {
+-        target.removeEventListener(event, onKeyEvent);
++        target.removeEventListener(event, onKeyEvent, capture);
+     };
+ }
+-exports.default = keybindings;
++exports.tinykeys = tinykeys;
+diff --git a/node_modules/kbar/lib/types.d.ts b/node_modules/kbar/lib/types.d.ts
+index 0f55bc8..ee411f2 100644
+--- a/node_modules/kbar/lib/types.d.ts
++++ b/node_modules/kbar/lib/types.d.ts
+@@ -1,12 +1,12 @@
+ import * as React from "react";
+ import { ActionImpl } from "./action/ActionImpl";
+-export declare type ActionId = string;
+-export declare type Priority = number;
+-export declare type ActionSection = string | {
++export type ActionId = string;
++export type Priority = number;
++export type ActionSection = string | {
+     name: string;
+     priority: Priority;
+ };
+-export declare type Action = {
++export type Action = {
+     id: ActionId;
+     name: string;
+     shortcut?: string[];
+@@ -14,12 +14,12 @@ export declare type Action = {
+     section?: ActionSection;
+     icon?: string | React.ReactElement | React.ReactNode;
+     subtitle?: string;
+-    perform?: (currentActionImpl: ActionImpl) => any;
++    perform?: (currentActionImpl: ActionImpl, event?: KeyboardEvent) => any;
+     parent?: ActionId;
+     priority?: Priority;
+ };
+-export declare type ActionStore = Record<ActionId, ActionImpl>;
+-export declare type ActionTree = Record<string, ActionImpl>;
++export type ActionStore = Record<ActionId, ActionImpl>;
++export type ActionTree = Record<string, ActionImpl>;
+ export interface ActionGroup {
+     name: string;
+     actions: ActionImpl[];
+diff --git a/node_modules/kbar/lib/types.js b/node_modules/kbar/lib/types.js
+index 5904550..15e5c1f 100644
+--- a/node_modules/kbar/lib/types.js
++++ b/node_modules/kbar/lib/types.js
+@@ -7,4 +7,4 @@ var VisualState;
+     VisualState["showing"] = "showing";
+     VisualState["animatingOut"] = "animating-out";
+     VisualState["hidden"] = "hidden";
+-})(VisualState = exports.VisualState || (exports.VisualState = {}));
++})(VisualState || (exports.VisualState = VisualState = {}));
+diff --git a/node_modules/kbar/lib/useKBar.d.ts b/node_modules/kbar/lib/useKBar.d.ts
+index 659e886..837df41 100644
+--- a/node_modules/kbar/lib/useKBar.d.ts
++++ b/node_modules/kbar/lib/useKBar.d.ts
+@@ -3,6 +3,6 @@ interface BaseKBarReturnType {
+     query: KBarQuery;
+     options: KBarOptions;
+ }
+-declare type useKBarReturnType<S = null> = S extends null ? BaseKBarReturnType : S & BaseKBarReturnType;
++type useKBarReturnType<S = null> = S extends null ? BaseKBarReturnType : S & BaseKBarReturnType;
+ export declare function useKBar<C = null>(collector?: (state: KBarState) => C): useKBarReturnType<C>;
+ export {};
+diff --git a/node_modules/kbar/lib/useKBar.js b/node_modules/kbar/lib/useKBar.js
+index fbe81e5..71406f7 100644
+--- a/node_modules/kbar/lib/useKBar.js
++++ b/node_modules/kbar/lib/useKBar.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/useMatches.js b/node_modules/kbar/lib/useMatches.js
+index 0d3b4e7..0571622 100644
+--- a/node_modules/kbar/lib/useMatches.js
++++ b/node_modules/kbar/lib/useMatches.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+@@ -195,7 +199,7 @@ function useInternalMatches(filtered, search, fuse) {
+         matches = searchResults.map(function (_a) {
+             var action = _a.item, score = _a.score;
+             return ({
+-                score: 1 / ((score !== null && score !== void 0 ? score : 0) + 1),
++                score: 1 / ((score !== null && score !== void 0 ? score : 0) + 1), // Convert the Fuse score to the format used in the original code
+                 action: action,
+             });
+         });
+diff --git a/node_modules/kbar/lib/useRegisterActions.js b/node_modules/kbar/lib/useRegisterActions.js
+index 1385827..03045ec 100644
+--- a/node_modules/kbar/lib/useRegisterActions.js
++++ b/node_modules/kbar/lib/useRegisterActions.js
+@@ -1,7 +1,11 @@
+ "use strict";
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/useStore.d.ts b/node_modules/kbar/lib/useStore.d.ts
+index 43e6778..7db7045 100644
+--- a/node_modules/kbar/lib/useStore.d.ts
++++ b/node_modules/kbar/lib/useStore.d.ts
+@@ -1,4 +1,4 @@
+ import type { IKBarContext, KBarProviderProps } from "./types";
+-declare type useStoreProps = KBarProviderProps;
++type useStoreProps = KBarProviderProps;
+ export declare function useStore(props: useStoreProps): IKBarContext;
+ export {};
+diff --git a/node_modules/kbar/lib/useStore.js b/node_modules/kbar/lib/useStore.js
+index 3209604..7861e41 100644
+--- a/node_modules/kbar/lib/useStore.js
++++ b/node_modules/kbar/lib/useStore.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/lib/utils.js b/node_modules/kbar/lib/utils.js
+index d515424..2663d65 100644
+--- a/node_modules/kbar/lib/utils.js
++++ b/node_modules/kbar/lib/utils.js
+@@ -12,7 +12,11 @@ var __assign = (this && this.__assign) || function () {
+ };
+ var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
++    var desc = Object.getOwnPropertyDescriptor(m, k);
++    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
++      desc = { enumerable: true, get: function() { return m[k]; } };
++    }
++    Object.defineProperty(o, k2, desc);
+ }) : (function(o, m, k, k2) {
+     if (k2 === undefined) k2 = k;
+     o[k2] = m[k];
+diff --git a/node_modules/kbar/src/InternalEvents.tsx b/node_modules/kbar/src/InternalEvents.tsx
+index 652ce9b..f1a7236 100644
+--- a/node_modules/kbar/src/InternalEvents.tsx
++++ b/node_modules/kbar/src/InternalEvents.tsx
+@@ -1,6 +1,6 @@
+ import * as React from "react";
+ import { ActionImpl } from "./action";
+-import tinykeys from "./tinykeys";
++import {tinykeys} from "./tinykeys";
+ import { VisualState } from "./types";
+ import { useKBar } from "./useKBar";
+ import { getScrollbarWidth, shouldRejectKeystrokes } from "./utils";
+@@ -218,7 +218,7 @@ function useShortcuts() {
+           query.toggle();
+           options.callbacks?.onOpen?.();
+         } else {
+-          action.command?.perform();
++          action.command?.perform(event);
+           options.callbacks?.onSelectAction?.(action);
+         }
+       });
+diff --git a/node_modules/kbar/src/action/ActionImpl.ts b/node_modules/kbar/src/action/ActionImpl.ts
+index 07a4d00..ef8b9a7 100644
+--- a/node_modules/kbar/src/action/ActionImpl.ts
++++ b/node_modules/kbar/src/action/ActionImpl.ts
+@@ -2,6 +2,7 @@ import invariant from "tiny-invariant";
+ import { Command } from "./Command";
+ import type { Action, ActionStore, History } from "../types";
+ import { Priority } from "../utils";
++import { KeyboardEvent } from "react";
+ 
+ interface ActionImplOptions {
+   store: ActionStore;
+@@ -49,7 +50,7 @@ export class ActionImpl implements Action {
+       perform &&
+       new Command(
+         {
+-          perform: () => perform(this),
++          perform: (e?: KeyboardEvent) => perform(this, e),
+         },
+         {
+           history: options.history,
+diff --git a/node_modules/kbar/src/action/Command.ts b/node_modules/kbar/src/action/Command.ts
+index 34f954d..625a0b8 100644
+--- a/node_modules/kbar/src/action/Command.ts
++++ b/node_modules/kbar/src/action/Command.ts
+@@ -18,8 +18,8 @@ export class Command {
+     command: { perform: Command["perform"] },
+     options: CommandOptions = {}
+   ) {
+-    this.perform = () => {
+-      const negate = command.perform();
++    this.perform = (e?: KeyboardEvent) => {
++      const negate = command.perform(e);
+       // no need for history if non negatable
+       if (typeof negate !== "function") return;
+       // return if no history enabled
+diff --git a/node_modules/kbar/src/tinykeys.ts b/node_modules/kbar/src/tinykeys.ts
+index 0ba405f..942f15d 100644
+--- a/node_modules/kbar/src/tinykeys.ts
++++ b/node_modules/kbar/src/tinykeys.ts
+@@ -1,32 +1,39 @@
+-// Fixes special character issues; `?` -> `shift+/` + build issue
+-// https://github.com/jamiebuilds/tinykeys
+-
+-type KeyBindingPress = [string[], string];
++/**
++ * A single press of a keybinding sequence
++ */
++export type KeyBindingPress = [mods: string[], key: string | RegExp]
+ 
+ /**
+  * A map of keybinding strings to event handlers.
+  */
+ export interface KeyBindingMap {
+-  [keybinding: string]: (event: KeyboardEvent) => void;
++	[keybinding: string]: (event: KeyboardEvent) => void
++}
++
++export interface KeyBindingHandlerOptions {
++	/**
++	 * Keybinding sequences will wait this long between key presses before
++	 * cancelling (default: 1000).
++	 *
++	 * **Note:** Setting this value too low (i.e. `300`) will be too fast for many
++	 * of your users.
++	 */
++	timeout?: number
+ }
+ 
+ /**
+  * Options to configure the behavior of keybindings.
+  */
+-export interface KeyBindingOptions {
+-  /**
+-   * Key presses will listen to this event (default: "keydown").
+-   */
+-  event?: "keydown" | "keyup";
+-
+-  /**
+-   * Keybinding sequences will wait this long between key presses before
+-   * cancelling (default: 1000).
+-   *
+-   * **Note:** Setting this value too low (i.e. `300`) will be too fast for many
+-   * of your users.
+-   */
+-  timeout?: number;
++export interface KeyBindingOptions extends KeyBindingHandlerOptions {
++	/**
++	 * Key presses will listen to this event (default: "keydown").
++	 */
++	event?: "keydown" | "keyup"
++
++	/**
++	 * Key presses will use a capture listener (default: false)
++	 */
++	capture?: boolean
+ }
+ 
+ /**
+@@ -34,36 +41,51 @@ export interface KeyBindingOptions {
+  *
+  * Note: Ignoring "AltGraph" because it is covered by the others.
+  */
+-let KEYBINDING_MODIFIER_KEYS = ["Shift", "Meta", "Alt", "Control"];
++let KEYBINDING_MODIFIER_KEYS = ["Shift", "Meta", "Alt", "Control"]
+ 
+ /**
+  * Keybinding sequences should timeout if individual key presses are more than
+  * 1s apart by default.
+  */
+-let DEFAULT_TIMEOUT = 1000;
++let DEFAULT_TIMEOUT = 1000
+ 
+ /**
+  * Keybinding sequences should bind to this event by default.
+  */
+-let DEFAULT_EVENT = "keydown";
++let DEFAULT_EVENT = "keydown" as const
++
++/**
++ * Platform detection code.
++ * @see https://github.com/jamiebuilds/tinykeys/issues/184
++ */
++let PLATFORM = typeof navigator === "object" ? navigator.platform : ""
++let APPLE_DEVICE = /Mac|iPod|iPhone|iPad/.test(PLATFORM)
+ 
+ /**
+  * An alias for creating platform-specific keybinding aliases.
+  */
+-let MOD =
+-  typeof navigator === "object" &&
+-  /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+-    ? "Meta"
+-    : "Control";
++let MOD = APPLE_DEVICE ? "Meta" : "Control"
++
++/**
++ * Meaning of `AltGraph`, from MDN:
++ * - Windows: Both Alt and Ctrl keys are pressed, or AltGr key is pressed
++ * - Mac: ⌥ Option key pressed
++ * - Linux: Level 3 Shift key (or Level 5 Shift key) pressed
++ * - Android: Not supported
++ * @see https://github.com/jamiebuilds/tinykeys/issues/185
++ */
++let ALT_GRAPH_ALIASES =
++	PLATFORM === "Win32" ? ["Control", "Alt"] : APPLE_DEVICE ? ["Alt"] : []
+ 
+ /**
+  * There's a bug in Chrome that causes event.getModifierState not to exist on
+  * KeyboardEvent's for F1/F2/etc keys.
+  */
+ function getModifierState(event: KeyboardEvent, mod: string) {
+-  return typeof event.getModifierState === "function"
+-    ? event.getModifierState(mod)
+-    : false;
++	return typeof event.getModifierState === "function"
++		? event.getModifierState(mod) ||
++				(ALT_GRAPH_ALIASES.includes(mod) && event.getModifierState("AltGraph"))
++		: false
+ }
+ 
+ /**
+@@ -73,41 +95,45 @@ function getModifierState(event: KeyboardEvent, mod: string) {
+  * <sequence> = `<press> <press> <press> ...`
+  * <press>    = `<key>` or `<mods>+<key>`
+  * <mods>     = `<mod>+<mod>+...`
++ * <key>      = `<KeyboardEvent.key>` or `<KeyboardEvent.code>` (case-insensitive)
++ * <key>      = `(<regex>)` -> `/^<regex>$/` (case-sensitive)
+  */
+-function parse(str: string): KeyBindingPress[] {
+-  return str
+-    .trim()
+-    .split(" ")
+-    .map((press) => {
+-      let mods = press.split(/\b\+/);
+-      let key = mods.pop() as string;
+-      mods = mods.map((mod) => (mod === "$mod" ? MOD : mod));
+-      return [mods, key];
+-    });
++export function parseKeybinding(str: string): KeyBindingPress[] {
++	return str
++		.trim()
++		.split(" ")
++		.map(press => {
++			let mods = press.split(/\b\+/)
++			let key: string | RegExp = mods.pop() as string
++			let match = key.match(/^\((.+)\)$/)
++			if (match) {
++				key = new RegExp(`^${match[1]}$`)
++			}
++			mods = mods.map(mod => (mod === "$mod" ? MOD : mod))
++			return [mods, key]
++		})
+ }
+ 
+ /**
+- * This tells us if a series of events matches a key binding sequence either
+- * partially or exactly.
++ * This tells us if a single keyboard event matches a single keybinding press.
+  */
+-function match(event: KeyboardEvent, press: KeyBindingPress): boolean {
+-  // Special characters; `?` `!`
+-  if (/^[^A-Za-z0-9]$/.test(event.key) && press[1] === event.key) {
+-    return true;
+-  }
+-
+-  // prettier-ignore
+-  return !(
++export function matchKeyBindingPress(
++	event: KeyboardEvent,
++	[mods, key]: KeyBindingPress,
++): boolean {
++	// prettier-ignore
++	return !(
+ 		// Allow either the `event.key` or the `event.code`
+ 		// MDN event.key: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+ 		// MDN event.code: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+ 		(
+-			press[1].toUpperCase() !== event.key.toUpperCase() &&
+-			press[1] !== event.code
++			key instanceof RegExp ? !(key.test(event.key) || key.test(event.code)) :
++			(key.toUpperCase() !== event.key.toUpperCase() &&
++			key !== event.code)
+ 		) ||
+ 
+ 		// Ensure all the modifiers in the keybinding are pressed.
+-		press[0].find(mod => {
++		mods.find(mod => {
+ 			return !getModifierState(event, mod)
+ 		}) ||
+ 
+@@ -115,11 +141,89 @@ function match(event: KeyboardEvent, press: KeyBindingPress): boolean {
+ 		// keybinding. So if they are pressed but aren't part of the current
+ 		// keybinding press, then we don't have a match.
+ 		KEYBINDING_MODIFIER_KEYS.find(mod => {
+-			return !press[0].includes(mod) && press[1] !== mod && getModifierState(event, mod)
++			return !mods.includes(mod) && key !== mod && getModifierState(event, mod)
+ 		})
+ 	)
+ }
+ 
++/**
++ * Creates an event listener for handling keybindings.
++ *
++ * @example
++ * ```js
++ * import { createKeybindingsHandler } from "../src/keybindings"
++ *
++ * let handler = createKeybindingsHandler({
++ * 	"Shift+d": () => {
++ * 		alert("The 'Shift' and 'd' keys were pressed at the same time")
++ * 	},
++ * 	"y e e t": () => {
++ * 		alert("The keys 'y', 'e', 'e', and 't' were pressed in order")
++ * 	},
++ * 	"$mod+d": () => {
++ * 		alert("Either 'Control+d' or 'Meta+d' were pressed")
++ * 	},
++ * })
++ *
++ * window.addEvenListener("keydown", handler)
++ * ```
++ */
++export function createKeybindingsHandler(
++	keyBindingMap: KeyBindingMap,
++	options: KeyBindingHandlerOptions = {},
++): EventListener {
++	let timeout = options.timeout ?? DEFAULT_TIMEOUT
++
++	let keyBindings = Object.keys(keyBindingMap).map(key => {
++		return [parseKeybinding(key), keyBindingMap[key]] as const
++	})
++
++	let possibleMatches = new Map<KeyBindingPress[], KeyBindingPress[]>()
++	let timer: number | null = null
++
++	return event => {
++		// Ensure and stop any event that isn't a full keyboard event.
++		// Autocomplete option navigation and selection would fire a instanceof Event,
++		// instead of the expected KeyboardEvent
++		if (!(event instanceof KeyboardEvent)) {
++			return
++		}
++
++		keyBindings.forEach(keyBinding => {
++			let sequence = keyBinding[0]
++			let callback = keyBinding[1]
++
++			let prev = possibleMatches.get(sequence)
++			let remainingExpectedPresses = prev ? prev : sequence
++			let currentExpectedPress = remainingExpectedPresses[0]
++
++			let matches = matchKeyBindingPress(event, currentExpectedPress)
++
++			if (!matches) {
++				// Modifier keydown events shouldn't break sequences
++				// Note: This works because:
++				// - non-modifiers will always return false
++				// - if the current keypress is a modifier then it will return true when we check its state
++				// MDN: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/getModifierState
++				if (!getModifierState(event, event.key)) {
++					possibleMatches.delete(sequence)
++				}
++			} else if (remainingExpectedPresses.length > 1) {
++				possibleMatches.set(sequence, remainingExpectedPresses.slice(1))
++			} else {
++				possibleMatches.delete(sequence)
++				callback(event)
++			}
++		})
++
++		if (timer) {
++			clearTimeout(timer)
++		}
++
++		timer = setTimeout(possibleMatches.clear.bind(possibleMatches), timeout)
++	}
++}
++
+ /**
+  * Subscribes to keybindings.
+  *
+@@ -127,9 +231,9 @@ function match(event: KeyboardEvent, press: KeyBindingPress): boolean {
+  *
+  * @example
+  * ```js
+- * import keybindings from "../src/keybindings"
++ * import { tinykeys } from "../src/tinykeys"
+  *
+- * keybindings(window, {
++ * tinykeys(window, {
+  * 	"Shift+d": () => {
+  * 		alert("The 'Shift' and 'd' keys were pressed at the same time")
+  * 	},
+@@ -142,67 +246,14 @@ function match(event: KeyboardEvent, press: KeyBindingPress): boolean {
+  * })
+  * ```
+  */
+-export default function keybindings(
+-  target: Window | HTMLElement,
+-  keyBindingMap: KeyBindingMap,
+-  options: KeyBindingOptions = {}
++export function tinykeys(
++	target: Window | HTMLElement,
++	keyBindingMap: KeyBindingMap,
++	{ event = DEFAULT_EVENT, capture, timeout }: KeyBindingOptions = {},
+ ): () => void {
+-  let timeout = options.timeout ?? DEFAULT_TIMEOUT;
+-  let event = options.event ?? DEFAULT_EVENT;
+-
+-  let keyBindings = Object.keys(keyBindingMap).map((key) => {
+-    return [parse(key), keyBindingMap[key]] as const;
+-  });
+-
+-  let possibleMatches = new Map<KeyBindingPress[], KeyBindingPress[]>();
+-  let timer: number | null = null;
+-
+-  let onKeyEvent: EventListener = (event) => {
+-    // Ensure and stop any event that isn't a full keyboard event.
+-    // Autocomplete option navigation and selection would fire a instanceof Event,
+-    // instead of the expected KeyboardEvent
+-    if (!(event instanceof KeyboardEvent)) {
+-      return;
+-    }
+-
+-    keyBindings.forEach((keyBinding) => {
+-      let sequence = keyBinding[0];
+-      let callback = keyBinding[1];
+-
+-      let prev = possibleMatches.get(sequence);
+-      let remainingExpectedPresses = prev ? prev : sequence;
+-      let currentExpectedPress = remainingExpectedPresses[0];
+-
+-      let matches = match(event, currentExpectedPress);
+-
+-      if (!matches) {
+-        // Modifier keydown events shouldn't break sequences
+-        // Note: This works because:
+-        // - non-modifiers will always return false
+-        // - if the current keypress is a modifier then it will return true when we check its state
+-        // MDN: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/getModifierState
+-        if (!getModifierState(event, event.key)) {
+-          possibleMatches.delete(sequence);
+-        }
+-      } else if (remainingExpectedPresses.length > 1) {
+-        possibleMatches.set(sequence, remainingExpectedPresses.slice(1));
+-      } else {
+-        possibleMatches.delete(sequence);
+-        callback(event);
+-      }
+-    });
+-
+-    if (timer) {
+-      clearTimeout(timer);
+-    }
+-
+-    // @ts-ignore
+-    timer = setTimeout(possibleMatches.clear.bind(possibleMatches), timeout);
+-  };
+-
+-  target.addEventListener(event, onKeyEvent);
+-
+-  return () => {
+-    target.removeEventListener(event, onKeyEvent);
+-  };
++	let onKeyEvent = createKeybindingsHandler(keyBindingMap, { timeout })
++	target.addEventListener(event, onKeyEvent, capture)
++	return () => {
++		target.removeEventListener(event, onKeyEvent, capture)
++	}
+ }
+diff --git a/node_modules/kbar/src/types.ts b/node_modules/kbar/src/types.ts
+index 0910420..eb0bf8c 100644
+--- a/node_modules/kbar/src/types.ts
++++ b/node_modules/kbar/src/types.ts
+@@ -20,7 +20,7 @@ export type Action = {
+   section?: ActionSection;
+   icon?: string | React.ReactElement | React.ReactNode;
+   subtitle?: string;
+-  perform?: (currentActionImpl: ActionImpl) => any;
++  perform?: (currentActionImpl: ActionImpl, event?: KeyboardEvent) => any;
+   parent?: ActionId;
+   priority?: Priority;
+ };

@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { useMemo, useState } from "react";
+import { useAsync } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -135,8 +136,8 @@ export const StaticEmbedSetupPane = ({
     embeddingParams,
   });
 
-  const iframeUrlWithoutHash = useMemo(
-    () =>
+  const { value: iframeUrlWithoutHash = null } = useAsync(
+    async () =>
       getSignedPreviewUrlWithoutHash(
         siteUrl,
         resourceType,
@@ -146,17 +147,18 @@ export const StaticEmbedSetupPane = ({
         embeddingParams,
       ),
     [
-      embeddingParams,
-      previewParametersBySlug,
-      resource.id,
-      resourceType,
-      secretKey,
       siteUrl,
+      resourceType,
+      resource.id,
+      previewParametersBySlug,
+      secretKey,
+      embeddingParams,
     ],
   );
 
-  const iframeUrl =
-    iframeUrlWithoutHash + getIframeQueryWithoutDefaults(displayOptions);
+  const iframeUrl = iframeUrlWithoutHash
+    ? iframeUrlWithoutHash + getIframeQueryWithoutDefaults(displayOptions)
+    : null;
 
   const handleSave = async () => {
     if (!resource.enable_embedding) {
@@ -241,6 +243,7 @@ export const StaticEmbedSetupPane = ({
   const [activeTab, setActiveTab] = useState<
     (typeof EMBED_MODAL_TABS)[keyof typeof EMBED_MODAL_TABS]
   >(EMBED_MODAL_TABS.Overview);
+
   return (
     <Stack gap={0}>
       <EmbedModalContentStatusBar

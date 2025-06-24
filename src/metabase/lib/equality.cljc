@@ -126,10 +126,14 @@
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
 (mu/defn- matching-join? :- :boolean
-  [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
+  [[_ref-kind {:keys [join-alias source-field source-field-name
+                      source-field-join-alias]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
   (if source-field
-    (clojure.core/= source-field (:fk-field-id column))
+    (and (clojure.core/= source-field (:fk-field-id column))
+         ;; `source-field-name` is not available on old refs
+         (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
+         (clojure.core/= source-field-join-alias (:fk-join-alias column)))
     ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
     ;; an own column.
     (clojure.core/= (column-join-alias column) join-alias)))
@@ -204,12 +208,12 @@
   unit."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (or (when-let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
-        (let [matching-columns (filter (fn [col]
-                                         (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
-                                       columns)]
-          (when (= (count matching-columns) 1)
-            (first matching-columns))))
+  (or (let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)
+            matching-columns (filter (fn [col]
+                                       (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
+                                     columns)]
+        (when (= (count matching-columns) 1)
+          (first matching-columns)))
       (disambiguate-matches-find-match-with-same-binning a-ref columns)))
 
 (mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]

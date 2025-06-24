@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [environ.core :as env]
    [hashp.preload]
+   [metabase.classloader.core :as classloader]
    [metabase.core.bootstrap]
-   [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [nrepl.cmdline]))
 
@@ -39,8 +39,8 @@
 (u/ignore-exceptions
   (classloader/require 'pjstadig.humane-test-output)
  ;; Initialize Humane Test Output if it's not already initialized. Don't enable humane-test-output when running tests
- ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config]] so we don't load that namespace
- ;; before we load [[metabase.core.bootstrap]]
+ ;; from the CLI, it breaks diffs. This uses [[env/env]] rather than [[metabase.config.core]] so we don't load that
+ ;; namespace before we load [[metabase.core.bootstrap]]
   (when-not (= (env/env :mb-run-mode) "test")
     ((resolve 'pjstadig.humane-test-output/activate!))))
 
@@ -51,11 +51,19 @@
   (in-ns 'dev)
   :loaded)
 
+(def ^:dynamic *enable-hot-reload* false)
+
 (defn -main
   "This is called by the `:dev-start` cli alias.
 
-  Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev`"
-  [& _args]
+  Try it out: `clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev`
+
+  Command Line Args:
+
+  `--hot` - Checks for modified files and reloads them during a request."
+  [& args]
+  (when (contains? (set args) "--hot")
+    (alter-var-root #'*enable-hot-reload* (constantly true)))
   (future (nrepl.cmdline/-main "-p" "50605" "-b" "0.0.0.0"))
   ((requiring-resolve 'dev/start!))
   (deref (promise)))

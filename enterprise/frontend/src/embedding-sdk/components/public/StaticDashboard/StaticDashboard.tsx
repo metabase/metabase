@@ -12,36 +12,48 @@ import {
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
+import type { DashboardEventHandlersProps } from "embedding-sdk/types/dashboard";
+import { useLocale } from "metabase/common/hooks/use-locale";
 import CS from "metabase/css/core/index.css";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
-import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { setErrorPage } from "metabase/redux/app";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
+import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
 import { Box } from "metabase/ui";
+import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+
+import { StaticQuestionSdkMode } from "../StaticQuestion/mode";
 
 /**
  * @interface
+ * @expand
  * @category StaticDashboard
  */
 export type StaticDashboardProps = SdkDashboardDisplayProps &
-  PublicOrEmbeddedDashboardEventHandlersProps;
+  DashboardEventHandlersProps;
 
 export const StaticDashboardInner = ({
-  dashboardId,
+  dashboardId: dashboardIdProp,
   initialParameters = {},
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
-  withFooter = true,
   hiddenParameters = [],
   onLoad,
   onLoadWithoutCards,
   style,
   className,
 }: StaticDashboardProps) => {
+  const errorPage = useSdkSelector(getErrorPage);
+
+  const { isLocaleLoading } = useLocale();
+  const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
+    onLoad,
+    onLoadWithoutCards,
+  });
+
   const {
     displayOptions,
     ref,
@@ -50,16 +62,32 @@ export const StaticDashboardInner = ({
     refreshPeriod,
     onRefreshPeriodChange,
     setRefreshElapsedHook,
-  } = useSdkDashboardParams({
     dashboardId,
+    isLoading,
+  } = useSdkDashboardParams({
+    dashboardId: dashboardIdProp,
     initialParameters,
     withTitle,
     withDownloads,
-    withFooter,
     hiddenParameters,
   });
 
   const { theme } = useEmbedTheme();
+
+  const dispatch = useSdkDispatch();
+  useEffect(() => {
+    if (dashboardId) {
+      dispatch(resetErrorPage());
+    }
+  }, [dashboardId, dispatch]);
+
+  if (isLocaleLoading || isLoading) {
+    return <SdkLoader />;
+  }
+
+  if (!dashboardId || errorPage?.status === 404) {
+    return <DashboardNotFoundError id={dashboardIdProp} />;
+  }
 
   return (
     <Box
@@ -82,13 +110,18 @@ export const StaticDashboardInner = ({
         onRefreshPeriodChange={onRefreshPeriodChange}
         setRefreshElapsedHook={setRefreshElapsedHook}
         bordered={displayOptions.bordered}
-        onLoad={onLoad}
-        onLoadWithoutCards={onLoadWithoutCards}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
         downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
         isNightMode={false}
         onNightModeChange={_.noop}
         hasNightModeToggle={false}
-        withFooter={displayOptions.withFooter}
+        withFooter={false}
+        getClickActionMode={({ question }) =>
+          getEmbeddingMode({ question, queryMode: StaticQuestionSdkMode })
+        }
+        navigateToNewCardFromDashboard={null}
       />
     </Box>
   );
@@ -100,31 +133,7 @@ export const StaticDashboardInner = ({
  * @function
  * @category StaticDashboard
  */
-const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
-  ({ dashboardId: initialDashboardId, ...rest }) => {
-    const { isLoading, id: resolvedDashboardId } = useValidatedEntityId({
-      type: "dashboard",
-      id: initialDashboardId,
-    });
-
-    const errorPage = useSdkSelector(getErrorPage);
-    const dispatch = useSdkDispatch();
-    useEffect(() => {
-      if (resolvedDashboardId) {
-        dispatch(setErrorPage(null));
-      }
-    }, [dispatch, resolvedDashboardId]);
-
-    if (isLoading) {
-      return <SdkLoader />;
-    }
-
-    if (!resolvedDashboardId || errorPage?.status === 404) {
-      return <DashboardNotFoundError id={initialDashboardId} />;
-    }
-
-    return <StaticDashboardInner dashboardId={resolvedDashboardId} {...rest} />;
-  },
-);
+const StaticDashboard =
+  withPublicComponentWrapper<StaticDashboardProps>(StaticDashboardInner);
 
 export { EmbedDisplayParams, StaticDashboard };

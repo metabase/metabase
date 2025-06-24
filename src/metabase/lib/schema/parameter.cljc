@@ -137,7 +137,8 @@
    :string/contains         {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/contains}}
    :string/does-not-contain {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/does-not-contain}}
    :string/ends-with        {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/ends-with}}
-   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}})
+   :string/starts-with      {:type :string, :operator :variadic, :options-fn variadic-opts-first, :allowed-for #{:string/starts-with}}
+   :boolean/=               {:type :boolean, :operator :variadic, :allowed-for #{:boolean/=}}})
 
 (mr/def ::type
   (into [:enum {:error/message    "valid parameter type"

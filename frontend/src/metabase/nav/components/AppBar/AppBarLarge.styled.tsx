@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 interface AppBarRootProps {
-  isNavBarOpen?: boolean;
+  hasSidebarOpen?: boolean;
 }
 
 export const AppBarRoot = styled.div<AppBarRootProps>`
@@ -16,7 +16,7 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   padding-right: 1rem;
   border-bottom: 1px solid
     ${(props) =>
-      props.isNavBarOpen ? "var(--mb-color-border)" : "transparent"};
+      props.hasSidebarOpen ? "var(--mb-color-border)" : "transparent"};
   background-color: var(--mb-color-bg-white);
   transition: border-bottom-color 200ms ease;
 `;

@@ -1,6 +1,6 @@
 (ns metabase.search.appdb.specialization.api
   (:require
-   [metabase.db :as mdb]))
+   [metabase.app-db.core :as mdb]))
 
 (defn- db-type [& _] (mdb/db-type))
 

@@ -2,12 +2,12 @@ import { useFormikContext } from "formik";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
+import FormErrorMessage from "metabase/common/components/FormErrorMessage";
+import { FormFooter } from "metabase/common/components/FormFooter";
+import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import { useDocsUrl } from "metabase/common/hooks";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
-import { FormFooter } from "metabase/core/components/FormFooter";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { Flex } from "metabase/ui";
@@ -158,7 +158,7 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form data-testid="database-form">
+    <Form data-testid="database-form" className="database-form">
       {engineFieldState !== "hidden" && (
         <>
           <DatabaseEngineField
@@ -217,9 +217,11 @@ const DatabaseFormFooter = ({
   // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup + admin pages only
   const { url: docsUrl } = useDocsUrl("databases/connecting");
 
+  const className = "database-form-footer";
+
   if (isAdvanced) {
     return (
-      <FormFooter data-testid="form-footer">
+      <FormFooter data-testid="form-footer" className={className}>
         <FormErrorMessage />
         <Flex justify="space-between" align="center" w="100%">
           {isNew ? (
@@ -247,7 +249,7 @@ const DatabaseFormFooter = ({
     );
   } else if (values.engine) {
     return (
-      <FormFooter>
+      <FormFooter className={className}>
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Skip`}</Button>
         <FormSubmitButton title={t`Connect database`} primary />
@@ -255,7 +257,7 @@ const DatabaseFormFooter = ({
     );
   } else {
     return (
-      <LinkFooter>
+      <LinkFooter className={className}>
         <LinkButton type="button" onClick={onCancel}>
           {t`I'll add my data later`}
         </LinkButton>

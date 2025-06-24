@@ -11,6 +11,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
+   [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -299,6 +300,29 @@
                                  (m/find-first (comp #{"metadata"} :name))
                                  :steps
                                  (m/find-first (comp #{"sync-fields"} first)))]
+        (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info)))))
+
+  (testing "Two tables with same lower-case name can be synced (SEM-258)"
+    (one-off-dbs/with-blank-db
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
+                         "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
+                         ;; Keep DB open until we say otherwise :)
+                         "SET DB_CLOSE_DELAY -1;"
+                         ;; create table & load data
+                         "DROP TABLE IF EXISTS \"birds\";"
+                         "DROP TABLE IF EXISTS \"BIRDS\";"
+                         "CREATE TABLE \"birds\" (\"event\" VARCHAR);"
+                         "CREATE TABLE \"BIRDS\" (\"event\" VARCHAR);"
+                         "GRANT ALL ON \"birds\" TO GUEST;"
+                         "GRANT ALL ON \"BIRDS\" TO GUEST;"
+                         "INSERT INTO \"birds\" (\"event\") VALUES ('a'), ('b')"
+                         "INSERT INTO \"BIRDS\" (\"event\") VALUES ('c'), ('d')"]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (let [sync-info (sync/sync-database! (mt/db))
+            field-sync-info (->> sync-info
+                                 (m/find-first (comp #{"metadata"} :name))
+                                 :steps
+                                 (m/find-first (comp #{"sync-fields"} first)))]
         (is (=? ["sync-fields" {:total-fields 2 :updated-fields 2}] field-sync-info))))))
 
 (mt/defdataset country
@@ -310,7 +334,7 @@
      {:field-name "continent_id", :base-type :type/Integer :fk :continent}]
     [["Ghana" 1]]]])
 
-(deftest sync-fks-and-fields-test
+(deftest ^:synchronized sync-fks-and-fields-test
   (testing (str "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
                 "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
@@ -327,8 +351,21 @@
               (t2/with-transaction [_ t2.connection/*current-connectable* {:rollback-only true}]
                 ;; 1. delete the fields that were just synced
                 (t2/delete! :model/Field :table_id [:in (map :id tables)])
-                ;; 2. sync the metadata for each table
-                (sync-fields-and-fks!)
+                ;; 2. reset the sync status for each table
+                (t2/update! :model/Table :id [:in (map :id tables)] {:initial_sync_status "incomplete"})
+                ;; 3. sync the metadata for each table
+                (if (= "for entire DB" message)
+                  (let [tables-updated (atom nil)
+                        original-set-initial-table-sync-complete-for-db! sync-util/set-initial-table-sync-complete-for-db!]
+                    (with-redefs [sync-util/set-initial-table-sync-complete-for-db!
+                                  (fn [& args]
+                                    (let [r (apply original-set-initial-table-sync-complete-for-db! args)]
+                                      (reset! tables-updated r)
+                                      r))]
+                      (sync-fields-and-fks!)
+                      (testing "Correct number fo tables updated by set-initial-table-sync-complete-for-db! in batches"
+                        (is (= 2 @tables-updated)))))
+                  (sync-fields-and-fks!))
                 (let [continent-id-field (t2/select-one :model/Field :%lower.name "id" :table_id (mt/id :continent))]
                   (is (= [{:name "continent_id", :semantic_type :type/FK, :fk_target_field_id (u/the-id continent-id-field)}
                           {:name "id",           :semantic_type :type/PK, :fk_target_field_id nil}
@@ -373,3 +410,11 @@
              (->> (db->fields db)
                   (mapv :visibility_type)
                   frequencies))))))
+
+(deftest sync-fields-resilient-to-non-existence-test
+  (testing "[[sync-fields/sync-fields-for-table!]] doesn't crash on a non-existent table (SEM-39)"
+    (mt/test-drivers (mt/normal-drivers)
+      (let [table (t2/instance :model/Table {:id 321 :name "tbl"})]
+        (is (not= ::thrown
+                  (try (sync-fields/sync-fields-for-table! (mt/db) table)
+                       (catch Throwable _ ::thrown))))))))

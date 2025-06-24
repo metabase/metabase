@@ -6,7 +6,7 @@
    [metabase.notification.models :as models.notification]
    [metabase.notification.task.send :as task.notification]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2])

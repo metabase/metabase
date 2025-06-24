@@ -15,11 +15,9 @@ import type {
   TableId,
 } from "./table";
 import type { Timeline, TimelineEventId } from "./timeline";
-import type { User } from "./user";
 
 export type NormalizedWritebackAction = WritebackAction;
 export type NormalizedDashboard = Dashboard;
-export type NormalizedUser = User;
 export type NormalizedCard = Card;
 export type NormalizedNativeQuerySnippet = NativeQuerySnippet;
 

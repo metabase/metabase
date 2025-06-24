@@ -23,10 +23,12 @@ import type {
   GetUserKeyValueRequest,
   Group,
   GroupListQuery,
+  LoggerPreset,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
   NotificationChannel,
+  ParameterId,
   PopularItem,
   RecentItem,
   Revision,
@@ -221,6 +223,21 @@ export function provideCollectionTags(
   return [idTag("collection", collection.id)];
 }
 
+export function provideLoggerPresetListTags(
+  presets: LoggerPreset[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("logger-preset"),
+    ...presets.flatMap(provideLoggerPresetTags),
+  ];
+}
+
+export function provideLoggerPresetTags(
+  preset: LoggerPreset,
+): TagDescription<TagType>[] {
+  return [idTag("logger-preset", preset.id)];
+}
+
 export function provideModelIndexTags(
   modelIndex: ModelIndex,
 ): TagDescription<TagType>[] {
@@ -300,6 +317,12 @@ export function provideDashboardListTags(
   ];
 }
 
+export function provideParameterValuesTags(
+  parameterId: ParameterId,
+): TagDescription<TagType>[] {
+  return [idTag("parameter-values", parameterId)];
+}
+
 export function provideDashboardTags(
   dashboard: Dashboard,
 ): TagDescription<TagType>[] {
@@ -314,6 +337,15 @@ export function provideDashboardTags(
       ? provideCollectionTags(dashboard.collection)
       : []),
   ];
+}
+
+export function provideValidDashboardFilterFieldTags(
+  filteredIds: FieldId[],
+  filteringIds: FieldId[],
+): TagDescription<TagType>[] {
+  return [...filteredIds, ...filteringIds].map((fieldId) =>
+    idTag("field", fieldId),
+  );
 }
 
 export function provideDashboardQueryMetadataTags(
@@ -379,6 +411,16 @@ export function provideFieldDimensionTags(
 
 export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
+}
+
+export function provideRemappedFieldValuesTags(
+  id: FieldId,
+  searchFieldId: FieldId,
+): TagDescription<TagType>[] {
+  return [
+    ...provideFieldValuesTags(id),
+    ...provideFieldValuesTags(searchFieldId),
+  ];
 }
 
 export function provideNotificationListTags(
@@ -545,6 +587,10 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
 
 export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
   return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideUniqueTasksListTags(): TagDescription<TagType>[] {
+  return [listTag("unique-tasks")];
 }
 
 export function provideTaskTags(task: Task): TagDescription<TagType>[] {

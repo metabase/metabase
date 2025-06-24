@@ -16,6 +16,7 @@ export const buttonOverrides = {
     classNames: {
       root: ButtonStyles.root,
       label: ButtonStyles.label,
+      inner: ButtonStyles.inner,
     },
   }),
 };

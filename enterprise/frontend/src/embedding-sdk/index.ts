@@ -3,35 +3,64 @@
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 
-// polyfills useSyncExternalStore for React 17
-import "./lib/polyfill/use-sync-external-store";
-
 import "metabase/lib/dayjs";
 
-import "ee-plugins";
+// Import the EE plugins required by the embedding sdk.
+import "sdk-ee-plugins";
 
-// we need to manually import them here to make sure they are included in the bundle
-// as they're dynamically loaded in the main codebase
-import "html2canvas-pro";
-import "jspdf";
+// Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
+import "sdk-specific-imports";
 
 export * from "./hooks/public";
 export * from "./components/public";
-export * from "metabase/embedding-sdk/types/plugins";
-
-export type { MetabaseAuthConfig, SdkDashboardLoadEvent } from "./types";
-
-export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 
 export type {
+  ButtonProps,
+  ChartColor,
+  CustomDashboardCardMenuItem,
+  DashCardMenuItem,
+  DashboardCardCustomMenuItem,
+  DashboardCardMenuCustomElement,
+  EntityTypeFilterKeys,
+  IconName,
+  LoginStatus,
+  MetabaseAuthConfig,
+  MetabaseAuthConfigWithApiKey,
+  MetabaseAuthConfigWithJwt,
+  MetabaseAuthConfigWithSaml,
+  MetabaseClickActionPluginsConfig,
+  MetabaseColors,
+  MetabaseClickAction,
+  MetabaseComponentTheme,
+  MetabaseCollection,
+  MetabaseCollectionItem,
+  MetabaseDataPointObject,
+  MetabaseDashboard,
+  MetabaseDashboardPluginsConfig,
+  MetabaseFontFamily,
+  MetabasePluginsConfig,
+  MetabaseQuestion,
+  MetabaseTheme,
+  MetabaseUser,
+  SdkCollectionId,
+  SdkDashboardId,
+  SdkDashboardLoadEvent,
+  SdkEntityId,
+  SdkErrorComponent,
+  SdkErrorComponentProps,
+  SdkEventHandlersConfig,
+  SdkQuestionId,
+  SdkQuestionTitleProps,
+  SdkUserId,
+  SqlParameterValues,
+} from "./types";
+
+export type {
+  UserBackendJwtResponse,
   MetabaseFetchRequestTokenFn,
   MetabaseEmbeddingSessionToken,
 } from "./types/refresh-token";
 
-export type {
-  MetabaseTheme,
-  MetabaseColors,
-  MetabaseComponentTheme,
-} from "metabase/embedding-sdk/theme";
+export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
-export type { Dashboard as MetabaseDashboard } from "metabase-types/api";
+export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";

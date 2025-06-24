@@ -119,7 +119,7 @@ describe("issue 13751", { tags: "@external" }, () => {
   it("should allow using strings in filter based on a custom column (metabase#13751)", () => {
     H.addCustomColumn();
     H.enterCustomColumnDetails({
-      formula: 'regexextract([State], "^C[A-Z]")',
+      formula: 'regexExtract([State], "^C[A-Z]")',
       name: CC_NAME,
     });
     cy.button("Done").should("not.be.disabled").click();
@@ -161,11 +161,11 @@ describe.skip(
     });
 
     it("should not remove regex escape characters (metabase#14517)", () => {
-      cy.log("Create custom column using `regexextract()`");
+      cy.log("Create custom column using `regexExtract()`");
       cy.findByLabelText("Custom Column").click();
       H.popover().within(() => {
         cy.get("[contenteditable='true']")
-          .type(`regexextract([State], "${ESCAPED_REGEX}")`)
+          .type(`regexExtract([State], "${ESCAPED_REGEX}")`)
           .blur();
 
         // It removes escaped characters already on blur
@@ -291,7 +291,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     H.filterWidget().click();
     H.dashboardParametersPopover().within(() => {
-      H.fieldValuesInput().type("14");
+      H.fieldValuesCombobox().type("14");
       cy.button("Add filter").click();
     });
   }
@@ -1259,6 +1259,76 @@ describe("issue 49304", () => {
   });
 });
 
+describe("issue 49305", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should be able to use a custom column in sort for a nested query (metabase#49305)", () => {
+    const ccName = "CC Title";
+
+    // This bug does not reproduce if the base question is created via H.createQuestion or H.visitQuestionAdhoc, so create it manually in the UI.
+    cy.visit("/");
+    H.newButton("Question").click();
+    H.entityPickerModalTab("Tables").click();
+    H.entityPickerModalItem(2, "Products").click();
+    H.getNotebookStep("data").button("Custom column").click();
+    H.enterCustomColumnDetails({
+      formula: 'concat("49305 ", [Title])',
+      name: ccName,
+      allowFastSet: true,
+    });
+    H.popover().button("Done").click();
+    H.saveQuestion(
+      "49305 Base question",
+      { wrapId: true },
+      { tab: "Browse", path: ["Our analytics"], select: true },
+    );
+
+    cy.get("@questionId").then((id) => {
+      const nestedQuestion = {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": `card__${id}`,
+            aggregation: [["count"]],
+            breakout: [["field", ccName, { "base-type": "type/Text" }]],
+            limit: 2,
+          },
+          type: "query",
+        },
+      };
+
+      H.visitQuestionAdhoc(nestedQuestion, { mode: "notebook" });
+
+      // Verify that a sort step can be added via the UI. This is the bug we are validating.
+      cy.button("Sort").click();
+      H.popover().contains(ccName).click();
+      H.getNotebookStep("sort").contains(ccName).click();
+
+      H.verifyNotebookQuery("49305 Base question", [
+        {
+          aggregations: ["Count"],
+          breakouts: [ccName],
+          limit: 2,
+          sort: [{ column: ccName, order: "desc" }],
+        },
+      ]);
+
+      H.visualize();
+      cy.findByLabelText("Switch to data").click();
+      H.assertTableData({
+        columns: ["CC Title", "Count"],
+        firstRows: [
+          ["49305 Synergistic Wool Coat", "1"],
+          ["49305 Synergistic Steel Chair", "1"],
+        ],
+      });
+    });
+  });
+});
+
 describe("issue 50925", () => {
   const questionDetails = {
     query: {
@@ -1394,7 +1464,7 @@ describe("issue 48562", () => {
       expressions: {
         CustomColumn: ["contains", ["field", 10000, null], "abc"],
       },
-      filter: ["segment", 10001],
+      filter: ["+", 1, ["segment", 10001]],
       aggregation: [["metric", 10002]],
     },
   };
@@ -1412,8 +1482,7 @@ describe("issue 48562", () => {
     H.CustomExpressionEditor.value().should("contain", "[Unknown Field]");
     H.expressionEditorWidget().button("Cancel").click();
 
-    H.getNotebookStep("filter").findByText("[Unknown Segment]").click();
-    H.popover().findByText("Custom Expression").click();
+    H.getNotebookStep("filter").findByText("1 + [Unknown Segment]").click();
     H.CustomExpressionEditor.value().should("contain", "[Unknown Segment]");
     H.expressionEditorWidget().button("Cancel").click();
 
@@ -1610,5 +1679,380 @@ describe("issue 56152", () => {
     `);
 
     H.CustomExpressionEditor.helpText().should("be.visible");
+  });
+});
+
+describe("issue 56596", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, null]],
+        limit: 1,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openNotebook();
+  });
+
+  it("should not remove backslashes from escaped characters (metabase#56596)", () => {
+    H.addCustomColumn();
+    const expr = dedent`
+      regexExtract([Vendor], "\\s.*")
+    `;
+    H.enterCustomColumnDetails({
+      formula: expr,
+      name: "Last name",
+    });
+    H.CustomExpressionEditor.format();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Done").click();
+
+    H.getNotebookStep("expression").findByText("Last name").click();
+    H.CustomExpressionEditor.value().should("equal", expr);
+    H.expressionEditorWidget().button("Cancel").click();
+
+    H.visualize();
+    H.assertTableData({
+      columns: ["ID", "Last name"],
+      firstRows: [["1", " Casper and Hilll"]],
+    });
+  });
+});
+
+describe("issue 55300", () => {
+  describe("fields", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsNormalUser();
+
+      const questionDetails = {
+        query: {
+          "source-table": PRODUCTS_ID,
+          fields: [["field", PRODUCTS.ID, null]],
+          expressions: {
+            now: ["field", PRODUCTS.CREATED_AT, null],
+            Count: ["+", 1, 1],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.openNotebook();
+    });
+
+    it("should be possible to disambiguate between fields and no-argument functions (metabase#55300)", () => {
+      H.getNotebookStep("expression").icon("add").click();
+      H.CustomExpressionEditor.type("now() > now");
+
+      cy.log("Move cursor over now");
+      H.CustomExpressionEditor.type("{leftarrow}");
+      H.CustomExpressionEditor.helpTextHeader().should("not.exist");
+
+      cy.log("Move cursor over now()");
+      H.CustomExpressionEditor.type("{home}");
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should("equal", "now() > [now]");
+    });
+
+    it("should be possible to disambiguate between fields and no-argument aggregations (metabase#55300)", () => {
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("Count() + Sum(Count)");
+
+      cy.log("Move cursor over Count");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(2));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Sum");
+
+      cy.log("Move cursor over Count()");
+      H.CustomExpressionEditor.type("{home}");
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "Count() + Sum([Count])",
+      );
+    });
+  });
+
+  describe("segments", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.createSegment({
+        name: "now",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      H.createSegment({
+        name: "Count",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.openNotebook();
+    });
+
+    it("should be possible to disambiguate between segments and no-argument functions (metabase#55300)", () => {
+      H.addCustomColumn();
+
+      H.CustomExpressionEditor.type("case(now, now(), 0)");
+
+      cy.log("Move cursor over now()");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "now()");
+
+      cy.log("Move cursor over now");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(13));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should("equal", "case([now], now(), 0)");
+    });
+
+    it("should be possible to disambiguate between segments and no-argument aggregations (metabase#55300)", () => {
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("Sum(case(Count, Count(), 0))");
+
+      cy.log("Move cursor over now()");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(7));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
+
+      cy.log("Move cursor over now");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(18));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "case");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should(
+        "equal",
+        "Sum(case([Count], Count(), 0))",
+      );
+    });
+  });
+
+  describe("metrics", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+
+      H.createQuestion({
+        name: "Count",
+        type: "metric",
+        description: "A metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      });
+
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+      H.openNotebook();
+    });
+
+    it("should be possible to disambiguate between metrics and no-argument aggregations (metabase#55300)", () => {
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.type("Count + Count()");
+
+      cy.log("Move cursor over Count()");
+      H.CustomExpressionEditor.type("{leftarrow}".repeat(5));
+      H.CustomExpressionEditor.helpTextHeader().should("contain", "Count()");
+
+      cy.log("Move cursor over Count");
+      H.CustomExpressionEditor.type("{home}");
+      H.CustomExpressionEditor.helpTextHeader().should("not.exist");
+
+      H.CustomExpressionEditor.format();
+      H.CustomExpressionEditor.value().should("equal", "[Count] + Count()");
+    });
+  });
+});
+
+describe("issue 55687", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    const questionDetails = {
+      query: {
+        "source-table": PRODUCTS_ID,
+        limit: 1,
+      },
+    };
+
+    H.createQuestion(questionDetails, { visitQuestion: true });
+
+    H.openNotebook();
+  });
+
+  function addExpression(name, expression) {
+    H.getNotebookStep("expression").icon("add").click();
+    H.enterCustomColumnDetails({
+      formula: expression,
+      name,
+    });
+    H.popover().button("Done").click();
+  }
+
+  it("should allow passing stringly-typed expressions to is-empty and not-empty (metabase#55687)", () => {
+    H.addCustomColumn();
+    H.popover().button("Cancel").click();
+
+    addExpression("isEmpty - title", "isEmpty([Title])");
+    addExpression("isEmpty - ltrim - title", "isEmpty(lTrim([Title]))");
+    addExpression("isEmpty - literal", "isEmpty('AAA')");
+    addExpression("isEmpty - ltrim - literal", "isEmpty(lTrim('AAA'))");
+
+    addExpression("notEmpty - title", "notEmpty([Title])");
+    addExpression("notEmpty - ltrim - title", "notEmpty(lTrim([Title]))");
+    addExpression("notEmpty - literal", "notEmpty('AAA')");
+    addExpression("notEmpty - ltrim - literal", "notEmpty(lTrim('AAA'))");
+
+    H.visualize();
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("There was a problem with your question")
+      .should("not.exist");
+  });
+});
+
+// TODO: re-enable this test when we have a fix for metabase/metabase#58371
+describe.skip("issue 58371", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      display_name: null,
+    });
+
+    const baseQuestion = {
+      name: "Base Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [
+          [
+            "aggregation-options",
+            ["count-where", ["=", ["field", PRODUCTS.TITLE, null], "OK"]],
+            { "display-name": "Aggregation with Dash-in-name" },
+          ],
+        ],
+        breakout: [["field", PRODUCTS.ID, null]],
+      },
+    };
+
+    H.createQuestion(baseQuestion, { wrapId: true }).then((questionId) => {
+      const questionDetails = {
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              fields: "all",
+              "source-table": `card__${questionId}`,
+              alias: "Other Question",
+              condition: [
+                "=",
+                ["field", ORDERS.PRODUCT_ID, null],
+                ["field", PRODUCTS.ID, { "join-alias": "Other Question" }],
+              ],
+            },
+          ],
+          expressions: {
+            Foo: [
+              "+",
+              0,
+              [
+                "field",
+                "Aggregation with Dash-in-name",
+                {
+                  "base-type": "type/Float",
+                  "join-alias": "Other Question",
+                },
+              ],
+            ],
+          },
+        },
+      };
+
+      H.createQuestion(questionDetails, { visitQuestion: true });
+    });
+
+    H.openNotebook();
+  });
+
+  it("should allow using names with a dash in them from joined tables (metabase#58371)", () => {
+    H.getNotebookStep("expression").findByText("Foo").click();
+    H.CustomExpressionEditor.value().should(
+      "eq",
+      "0 + [Other Question → Aggregation with Dash-in-name]",
+    );
+  });
+});
+
+describe("Issue 58230", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.openOrdersTable({ mode: "notebook" });
+  });
+
+  it("should display an error when using an aggregation function in a custom column (metabase#58230)", () => {
+    H.getNotebookStep("data").button("Custom column").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom expression",
+    );
+  });
+
+  it("should display an error when using an aggregation function in a custom filter (metabase#58230)", () => {
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.popover().findByText(
+      "Aggregations like Average are not allowed when building a custom filter",
+    );
+  });
+
+  it("should not display an error when using an aggregation function in a custom aggregation (metabase#58230)", () => {
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").click();
+    H.CustomExpressionEditor.type("Average([Total])");
+    H.CustomExpressionEditor.nameInput().type("Foo");
+    H.popover().button("Done").should("be.enabled");
   });
 });

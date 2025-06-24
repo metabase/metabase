@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.models.query.permissions :as query-perms]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
@@ -28,7 +28,7 @@
 
 (defmethod current-user-download-perms-level :native
   [{database-id :database}]
-  (data-perms/native-download-permission-for-user api/*current-user-id* database-id))
+  (perms/native-download-permission-for-user api/*current-user-id* database-id))
 
 (defmethod current-user-download-perms-level :query
   [{db-id :database, :as query}]
@@ -36,9 +36,9 @@
         table-perms (if native?
                       ;; If we detect any native subqueries/joins, even with source-card IDs, require full native
                       ;; download perms
-                      #{(data-perms/native-download-permission-for-user api/*current-user-id* db-id)}
+                      #{(perms/native-download-permission-for-user api/*current-user-id* db-id)}
                       (set (map (fn table-perms-lookup [table-id]
-                                  (data-perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
+                                  (perms/table-permission-for-user api/*current-user-id* :perms/download-results db-id table-id))
                                 table-ids)))
         card-perms  (set
                      ;; If we have any card references in the query, check perms recursively

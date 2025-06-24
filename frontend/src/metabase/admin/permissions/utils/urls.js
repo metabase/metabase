@@ -13,7 +13,7 @@ export const getDatabaseFocusPermissionsUrl = (entityId) => {
   }
 
   if (isTableEntityId(entityId)) {
-    return entityId.schemaName != null
+    return entityId.schemaName != null && entityId.schemaName !== ""
       ? `${DATABASES_BASE_PATH}/${
           entityId.databaseId
         }/schema/${encodeURIComponent(entityId.schemaName)}/table/${

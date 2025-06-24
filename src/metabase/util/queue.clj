@@ -111,7 +111,10 @@
                                   :max-batch-messages {:optional true} number?
                                   :max-next-ms {:optional true} number?]])
 
-(defonce ^:private ^{:malli/schema [:map-of :string (ms/InstanceOfClass ScheduledExecutorService)]} listeners (atom {}))
+(defonce
+  ^:private
+  ^{:malli/schema [:map-of :string (ms/InstanceOfClass ScheduledExecutorService)]}
+  listeners (atom {}))
 
 (defn listener-exists?
   "Returns true if there is a running listener with the given name"

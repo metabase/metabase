@@ -16,16 +16,14 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
-   [metabase.api.common :as api]
-   [metabase.config :as config]
+   [metabase.api-keys.core :as api-key]
+   [metabase.app-db.core :as mdb]
+   [metabase.config.core :as config]
    [metabase.core.initialization-status :as init-status]
-   [metabase.db :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.api-key :as api-key]
-   [metabase.models.user :as user]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.password :as u.password]
@@ -102,10 +100,17 @@
                 :where     [:and
                             [:= :user.is_active true]
                             [:or [:= :session.id [:raw "?"]] [:= :session.key_hashed [:raw "?"]]]
-                            (let [oldest-allowed [:inline (sql.qp/add-interval-honeysql-form db-type
-                                                                                             :%now
-                                                                                             (- max-age-minutes)
-                                                                                             :minute)]]
+                            (let [oldest-allowed (case db-type
+                                                   :postgres [:-
+                                                              [:raw "current_timestamp"]
+                                                              [:raw (format "INTERVAL '%d minute'" max-age-minutes)]]
+                                                   :h2       [:dateadd
+                                                              (h2x/literal "minute")
+                                                              [:inline (- max-age-minutes)]
+                                                              :%now]
+                                                   :mysql    [:date_add
+                                                              :%now
+                                                              [:raw (format "INTERVAL -%d minute" max-age-minutes)]])]
                               [:> :session.created_at oldest-allowed])
                             [:= :session.anti_csrf_token (case session-type
                                                            :normal         nil
@@ -149,8 +154,9 @@
 (defn- valid-session-key?
   "Validates that the given session-key looks like it could be a session id. Returns a 403 if it does not.
 
-  SECURITY NOTE: Because functions will directly compare the session-key against the core_session.id table for backwards-compatibility reasons,
-  if this is NOT called before those queries against core_session.id, attackers with access to the database can impersonate users by passing the core_session.id as their session cookie"
+  SECURITY NOTE: Because functions will directly compare the session-key against the core_session.id table for
+  backwards-compatibility reasons, if this is NOT called before those queries against core_session.id, attackers with
+  access to the database can impersonate users by passing the core_session.id as their session cookie"
   [session-key]
   (or (not session-key) (string/valid-uuid? session-key)))
 
@@ -217,29 +223,13 @@
 ;;; |                                               bind-current-user                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;;; this is actually used by [[metabase.permissions.models.permissions/clear-current-user-cached-permissions!]]
-;;;
-;;; TODO -- then why doesn't it live there??? Not one single thing this touches is part of this namespace.
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
-(defn clear-current-user-cached-permissions-set!
-  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
-  Called by [[metabase.permissions.models.permissions/delete-related-permissions!]]
-  and [[metabase.permissions.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a current user
-  and then grant or revoke permissions for that user without rebinding it."
-  []
-  (when-let [current-user-id api/*current-user-id*]
-    ;; [[api/*current-user-permissions-set*]] is dynamically bound
-    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
-      (.set #'api/*current-user-permissions-set* (delay (user/permissions-set current-user-id)))))
-  nil)
-
 (defmacro ^:private with-current-user-for-request
   [request & body]
   `(request/do-with-current-user ~request (fn [] ~@body)))
 
 (defn bind-current-user
   "Middleware that binds [[metabase.api.common/*current-user*]], [[*current-user-id*]], [[*is-superuser?*]],
-  [[*current-user-permissions-set*]], and [[metabase.models.setting/*user-local-values*]].
+  [[*current-user-permissions-set*]], and [[metabase.settings.models.setting/*user-local-values*]].
 
   *  `*current-user-id*`                int ID or nil of user associated with request
   *  `*current-user*`                   delay that returns current user (or nil) from DB

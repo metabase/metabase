@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupLastDownloadFormatEndpoints } from "__support__/server-mocks";
 import {
   act,
   getIcon,
@@ -7,6 +8,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  within,
 } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
@@ -89,7 +91,6 @@ function setup({
       isEditing={false}
       isEditingParameter={false}
       {...props}
-      onAddSeries={jest.fn()}
       onReplaceCard={onReplaceCard}
       isTrashedOnRemove={false}
       onRemove={jest.fn()}
@@ -99,9 +100,10 @@ function setup({
       onUpdateVisualizationSettings={jest.fn()}
       showClickBehaviorSidebar={jest.fn()}
       onChangeLocation={jest.fn()}
-      downloadsEnabled
+      downloadsEnabled={{ results: true }}
       autoScroll={false}
       reportAutoScrolledToDashcard={jest.fn()}
+      onEditVisualization={jest.fn()}
     />,
     {
       storeInitialState: {
@@ -125,6 +127,7 @@ describe("DashCard", () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    setupLastDownloadFormatEndpoints();
   });
 
   afterEach(() => {
@@ -157,11 +160,14 @@ describe("DashCard", () => {
     act(() => {
       jest.runAllTimers();
     });
-    expect(screen.getByText("My Card")).toBeVisible();
-    expect(screen.getByRole("grid")).toBeVisible();
-    expect(screen.getByText("NAME")).toBeVisible();
-    expect(screen.getByText("Davy Crocket")).toBeVisible();
-    expect(screen.getByText("Daniel Boone")).toBeVisible();
+
+    // Scoping to visualization root because there can be other elements with the same text used for column widths measurements
+    const visualizationRoot = screen.getByTestId("visualization-root");
+    expect(within(visualizationRoot).getByText("My Card")).toBeVisible();
+    expect(within(visualizationRoot).getByRole("grid")).toBeVisible();
+    expect(within(visualizationRoot).getByText("NAME")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Davy Crocket")).toBeVisible();
+    expect(within(visualizationRoot).getByText("Daniel Boone")).toBeVisible();
   });
 
   it("should show a text card", () => {
@@ -240,9 +246,133 @@ describe("DashCard", () => {
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
     });
 
+    it("should not show the chevron icon (VIZ-1111)", () => {
+      setup({
+        isEditing: true,
+        dashcard: createMockDashboardCard({
+          series: [
+            createMockCard({
+              id: 115,
+              display: "line",
+              visualization_settings: {
+                "graph.x_axis.scale": "timeseries",
+                "graph.dimensions": ["CREATED_AT"],
+                "graph.metrics": ["avg"],
+              },
+            }),
+          ],
+          card: createMockCard({
+            name: "Hello I'm a card",
+            type: "question",
+            id: 49,
+          }),
+          visualization_settings: {
+            visualization: {
+              display: "line",
+              columnValuesMapping: {
+                COLUMN_1: [
+                  {
+                    sourceId: "card:49",
+                    originalName: "DATE_RECEIVED",
+                    name: "COLUMN_1",
+                  },
+                ],
+                COLUMN_2: [
+                  {
+                    sourceId: "card:49",
+                    originalName: "avg",
+                    name: "COLUMN_2",
+                  },
+                ],
+                COLUMN_3: [
+                  {
+                    sourceId: "card:115",
+                    originalName: "avg",
+                    name: "COLUMN_3",
+                  },
+                ],
+                COLUMN_4: [
+                  {
+                    sourceId: "card:115",
+                    originalName: "CREATED_AT",
+                    name: "COLUMN_4",
+                  },
+                ],
+              },
+              settings: {
+                "graph.x_axis.scale": "timeseries",
+                "graph.dimensions": ["COLUMN_1", "COLUMN_4"],
+                "graph.metrics": ["COLUMN_2", "COLUMN_3"],
+                "card.title": "Oh my, another card",
+              },
+            },
+          },
+          dashboard_id: 21,
+        }),
+      });
+
+      expect(queryIcon("chevrondown")).not.toBeInTheDocument();
+    });
+
     it("should show a 'replace card' action for erroring queries", async () => {
       setup({ isEditing: true, dashcardData: erroringDashcardData });
       expect(screen.getByLabelText("Replace")).toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "bar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(screen.getByLabelText("Edit visualization")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Visualize another way"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Show visualization options"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show correct editing actions for viz types not supported by visualizer", () => {
+      const dashcard = createMockDashboardCard({
+        card: createMockCard({
+          name: "My Card",
+          description: "This is a table card",
+          display: "smartscalar",
+        }),
+      });
+
+      setup({
+        dashboard: {
+          ...testDashboard,
+          dashcards: [dashcard],
+        },
+        dashcard,
+        isEditing: true,
+      });
+
+      expect(
+        screen.getByLabelText("Visualize another way"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Show visualization options"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Edit visualization"),
+      ).not.toBeInTheDocument();
     });
 
     it.each([

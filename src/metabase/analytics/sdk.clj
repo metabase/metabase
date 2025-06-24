@@ -39,27 +39,16 @@
       (update :embedding_client (fn [client] (or *client* client)))
       (update :embedding_version (fn [version] (or *version* version)))))
 
-(mu/defn- categorize-response :- [:maybe [:enum :ok :error]]
-  [{:keys [status]}]
-  (when status
-    (cond
-      (<= 200 status 299) :ok
-      (<= 400 status 599) :error
-      ;; ignore other status codes
-      :else nil)))
-
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedding-iframe-client "embedding-iframe")
 
 (defn- track-sdk-response
-  "Tabulates the number of ok and erroring requests made by clients of the SDK."
-  [sdk-client status]
-  (condp = [sdk-client status]
-    [embedding-sdk-client :ok]       (prometheus/inc! :metabase-sdk/response-ok)
-    [embedding-sdk-client :error]    (prometheus/inc! :metabase-sdk/response-error)
-    [embedding-iframe-client :ok]    (prometheus/inc! :metabase-embedding-iframe/response-ok)
-    [embedding-iframe-client :error] (prometheus/inc! :metabase-embedding-iframe/response-error)
-    (log/infof "Unknown client or status. client: %s status %s" sdk-client status)))
+  "Tabulates the number of responses by status code made by clients of the SDK."
+  [sdk-client {:keys [status]}]
+  (case sdk-client
+    "embedding-sdk-react"    (prometheus/inc! :metabase-sdk/response {:status (str status)})
+    "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
+    (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn- embedding-context?
   "Should we track this request as being made by an embedding client?"
@@ -78,11 +67,13 @@
                 *version* version]
         (handler request
                  (fn responder [response]
-                   (when-let [response-status (and (embedding-context? sdk-client)
-                                                   (categorize-response response))]
-                     (track-sdk-response sdk-client response-status))
+                   (when (embedding-context? sdk-client)
+                     (track-sdk-response sdk-client response))
                    (respond response))
                  (fn raiser [response]
                    (when (embedding-context? sdk-client)
-                     (track-sdk-response sdk-client :error))
+                     (track-sdk-response sdk-client
+                                         (if (:status response)
+                                           response
+                                           {:status 500})))
                    (raise response)))))))

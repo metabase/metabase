@@ -64,10 +64,6 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   },
   question: {
     backgroundColor: "transparent",
-
-    toolbar: {
-      backgroundColor: "var(--mb-color-background-disabled)",
-    },
   },
 
   table: {
@@ -110,7 +106,6 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.em,
-      backgroundColor: "white",
     },
   },
   pivotTable: {
@@ -174,6 +169,14 @@ export function getEmbeddingComponentOverrides(): MantineThemeOverride["componen
           target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
         },
       }, // satisfies Partial<PopoverProps>,
+    },
+    Tooltip: {
+      defaultProps: {
+        withinPortal: true,
+        portalProps: {
+          target: `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`,
+        },
+      }, // satisfies Partial<TooltipProps>,
     },
   };
 }

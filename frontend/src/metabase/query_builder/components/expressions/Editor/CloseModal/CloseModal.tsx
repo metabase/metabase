@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 
 export function CloseModal({
   onKeepEditing,
@@ -20,7 +20,7 @@ export function CloseModal({
       onConfirm={onDiscardChanges}
       onClose={onKeepEditing || _.noop}
       confirmButtonText={t`Discard changes`}
-      confirmButtonPrimary
+      confirmButtonProps={{ color: "brand", variant: "filled" }}
       closeButtonText={t`Keep editing`}
     />
   );

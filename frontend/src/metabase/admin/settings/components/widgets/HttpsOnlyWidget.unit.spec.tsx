@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -50,13 +50,13 @@ const setup = (
   );
 };
 
-const mockAccessible = () => {
+const mockAccessible = (delay = 10) => {
   fetchMock.get(
     "https://mysite.biz/api/health",
     {
       status: 200,
     },
-    { delay: 10 },
+    { delay },
   );
 };
 
@@ -120,9 +120,15 @@ describe("HttpsOnlyWidget", () => {
   });
 
   it("should display a message while checking", async () => {
-    mockAccessible();
+    // Use a longer delay to ensure we can catch the "checking" state
+    mockAccessible(300);
     setup();
+
+    // Wait for the checking status to appear
     expect(await screen.findByText("Checking HTTPS...")).toBeInTheDocument();
+
+    // Then wait for it to complete to maintain test flow
+    expect(await screen.findByText("Redirect to HTTPS")).toBeInTheDocument();
   });
 
   it("should display the setting if the https site is reachable", async () => {

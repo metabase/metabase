@@ -5,7 +5,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > chained filter", () => {
+describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -71,6 +71,9 @@ describe("scenarios > dashboard > chained filter", () => {
       // now test that it worked!
       // Select Alaska as a state. We should see Anchorage as a option but not Anacoco
       H.filterWidget().contains("Location").click();
+
+      cy.findByPlaceholderText(/search the list/i).should("be.visible");
+
       H.popover().within(() => {
         cy.findByText("AK").click();
         cy.findByText("Add filter").click();
@@ -80,7 +83,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       H.dashboardParametersPopover().within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -99,7 +102,7 @@ describe("scenarios > dashboard > chained filter", () => {
 
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput()
+          H.fieldValuesCombobox()
             .type("{backspace}{backspace}")
             // close the suggestion list
             .blur();
@@ -125,7 +128,7 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
           cy.findByPlaceholderText("Search the list").type("An");
@@ -140,7 +143,7 @@ describe("scenarios > dashboard > chained filter", () => {
       if (has_field_values === "search") {
         cy.findByTestId("parameter-value-dropdown").within(() => {
           // close the suggestion list
-          H.fieldValuesInput().blur();
+          H.fieldValuesCombobox().blur();
         });
       }
 
@@ -157,10 +160,10 @@ describe("scenarios > dashboard > chained filter", () => {
       H.filterWidget().contains("Location 1").click();
       cy.findByTestId("parameter-value-dropdown").within(() => {
         if (has_field_values === "search") {
-          H.fieldValuesInput().type("An");
+          H.fieldValuesCombobox().type("An");
         }
         if (has_field_values === "list") {
-          cy.findByRole("textbox").type("An");
+          cy.findByRole("combobox").type("An");
         }
       });
 

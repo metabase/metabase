@@ -1,9 +1,14 @@
 :root {
   --default-border-radius: 8px;
+  --border-radius-xl: 99px;
 }
 
 .rounded {
   border-radius: var(--default-border-radius);
+}
+
+.roundedSm {
+  border-radius: var(--mantine-radius-sm);
 }
 
 .circular {

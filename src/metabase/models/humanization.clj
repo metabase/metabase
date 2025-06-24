@@ -10,7 +10,7 @@
   There used to also be `:advanced`, which was the default until enough customers
   complained that we first fixed it and then the fix wasn't good enough so we removed it."
   (:require
-   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -75,6 +75,10 @@
                  (name old-strategy) (name new-strategy))
       (re-humanize-table-and-field-names! old-strategy))))
 
+;;; these kondo warnings are ignored for now because I'm planning on moving this namespace out of `util` to eliminate
+;;; the dependency of `util` of `settings` -- will fix them after this namespace gets moved. -- Cam
+
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting ^{:added "0.28.0"} humanization-strategy
   (deferred-tru
    (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "

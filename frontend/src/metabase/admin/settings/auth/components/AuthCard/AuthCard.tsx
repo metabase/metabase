@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
@@ -19,33 +19,30 @@ import {
   CardTitle,
 } from "./AuthCard.styled";
 
-export type AuthSetting = Omit<SettingDefinition, "value"> & {
-  value: boolean | null;
-};
-
 export interface AuthCardProps {
-  setting: AuthSetting;
+  setting?: Pick<SettingDefinition, "is_env_setting" | "env_name">;
   type: string;
   name: string;
   title?: string;
   description: string;
+  isEnabled: boolean;
   isConfigured: boolean;
   onChange: (value: boolean) => void;
   onDeactivate: () => void;
 }
 
-const AuthCard = ({
+export const AuthCard = ({
   setting,
   type,
   name,
   title = name,
   description,
+  isEnabled,
   isConfigured,
   onChange,
   onDeactivate,
 }: AuthCardProps) => {
-  const isEnabled = setting.value ?? false;
-  const isEnvSetting = setting.is_env_setting;
+  const isEnvSetting = setting?.is_env_setting;
 
   const [isOpened, setIsOpened] = useState(false);
 
@@ -62,12 +59,12 @@ const AuthCard = ({
     handleClose();
   }, [onDeactivate, handleClose]);
 
-  const { url: docsUrl } = useGetEnvVarDocsUrl(setting.env_name);
+  const { url: docsUrl } = useGetEnvVarDocsUrl(setting?.env_name);
 
   const footer = isEnvSetting ? (
     <Text>
-      Set with env var{" "}
-      <Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>
+      {c("{0} is the name of a variable")
+        .jt`Set with env var ${(<Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>)}`}
     </Text>
   ) : null;
 
@@ -87,13 +84,15 @@ const AuthCard = ({
           onDeactivate={handleOpen}
         />
       )}
-      {isOpened && (
-        <AuthCardModal
-          name={name}
-          onDeactivate={handleDeactivate}
-          onClose={handleClose}
-        />
-      )}
+      <ConfirmModal
+        opened={isOpened}
+        title={c("{0} is the name of an authentication service")
+          .t`Deactivate ${name}?`}
+        message={t`This will clear all your settings.`}
+        confirmButtonText={t`Deactivate`}
+        onConfirm={handleDeactivate}
+        onClose={handleClose}
+      />
     </AuthCardBody>
   );
 };
@@ -126,25 +125,27 @@ export const AuthCardBody = ({
   const buttonLabel = buttonText ?? (isConfigured ? t`Edit` : t`Set up`);
 
   return (
-    <CardRoot>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {isConfigured && (
-          <CardBadge isEnabled={isEnabled} data-testid="card-badge">
-            {badgeContent}
-          </CardBadge>
+    <SettingsSection>
+      <CardRoot data-testid={`${type}-setting`}>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+          {isConfigured && (
+            <CardBadge isEnabled={isEnabled} data-testid="card-badge">
+              {badgeContent}
+            </CardBadge>
+          )}
+          {children}
+        </CardHeader>
+        <CardDescription>{description}</CardDescription>
+        {footer ? (
+          footer
+        ) : (
+          <Link to={`/admin/settings/authentication/${type}`}>
+            <Button>{buttonLabel}</Button>
+          </Link>
         )}
-        {children}
-      </CardHeader>
-      <CardDescription>{description}</CardDescription>
-      {footer ? (
-        footer
-      ) : (
-        <Link to={`/admin/settings/authentication/${type}`}>
-          <Button>{buttonLabel}</Button>
-        </Link>
-      )}
-    </CardRoot>
+      </CardRoot>
+    </SettingsSection>
   );
 };
 
@@ -178,39 +179,3 @@ const AuthCardMenu = ({
 
   return <CardMenu triggerIcon="ellipsis" items={menuItems} />;
 };
-
-interface AuthCardModalProps {
-  name: string;
-  onDeactivate: () => void;
-  onClose: () => void;
-}
-
-const AuthCardModal = ({
-  name,
-  onDeactivate,
-  onClose,
-}: AuthCardModalProps): JSX.Element => {
-  return (
-    <Modal small onClose={onClose}>
-      <ModalContent
-        title={t`Deactivate ${name}?`}
-        footer={[
-          <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-          <Button
-            key="submit"
-            onClick={onDeactivate}
-            variant="filled"
-            color="error"
-          >
-            {t`Deactivate`}
-          </Button>,
-        ]}
-      >
-        {t`This will clear all your settings.`}
-      </ModalContent>
-    </Modal>
-  );
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default AuthCard;

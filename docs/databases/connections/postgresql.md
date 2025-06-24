@@ -16,6 +16,10 @@ Fill out the fields for that database, and click **Save changes** at the bottom.
 
 Metabase supports the oldest supported version of PostgreSQL through the latest stable version. See [PostgreSQL versions](https://www.postgresql.org/support/versioning/).
 
+## Connect to Supabase
+
+To connect to a Supabase database, select PostgreSQL. For more details, check out the [Supabase docs](https://supabase.com/docs/guides/database/metabase).
+
 ## Connection and sync
 
 After connecting to a database, you'll see the "Connection and sync" section that displays the current connection status and options to manage your database connection.
@@ -185,6 +189,10 @@ Turn this setting on to allow [actions](../../actions/introduction.md) from mode
 ### Model persistence
 
 We'll create tables with model data and refresh them on a schedule you define. To enable [model persistence](../../data-modeling/model-persistence.md), you need to grant this connection's credentials read and write permissions on a schema Metabase provides.
+
+## Database routing
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

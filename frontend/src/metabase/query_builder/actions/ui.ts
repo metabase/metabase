@@ -1,15 +1,19 @@
 import { createAction } from "redux-actions";
 
+import { updateSetting } from "metabase/admin/settings/settings";
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { getOriginalCard } from "metabase/query_builder/selectors";
 import { updateUserSetting } from "metabase/redux/settings";
 import { UserApi } from "metabase/services";
+import type { Card } from "metabase-types/api";
 import type {
   Dispatch,
   GetState,
   QueryBuilderMode,
 } from "metabase-types/store";
+
+import { trackFirstNonTableChartGenerated } from "../analytics";
 
 import { updateUrl } from "./navigation";
 import { cancelQuery } from "./querying";
@@ -53,6 +57,13 @@ export const setQueryBuilderMode =
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
+
+export const onOpenAIQuestionAnalysisSidebar = createAction(
+  "metabase/qb/OPEN_AI_QUESTION_ANALYSIS_SIDEBAR",
+);
+export const onCloseAIQuestionAnalysisSidebar = createAction(
+  "metabase/qb/CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR",
+);
 
 export const onOpenChartSettings = createAction(
   "metabase/qb/OPEN_CHART_SETTINGS",
@@ -106,6 +117,14 @@ export const setNotebookNativePreviewState = (isShown: boolean) =>
     key: "notebook-native-preview-shown",
     value: isShown,
   });
+
+export const setDidFirstNonTableChartRender = (card: Card) => {
+  trackFirstNonTableChartGenerated(card);
+  return updateSetting({
+    key: "non-table-chart-generated",
+    value: true,
+  });
+};
 
 export const setNotebookNativePreviewSidebarWidth = (width: number) =>
   updateUserSetting({

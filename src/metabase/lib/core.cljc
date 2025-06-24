@@ -2,7 +2,7 @@
   "Currently this is mostly a convenience namespace for REPL and test usage. We'll probably have a slightly different
   version of this for namespace for QB and QP usage in the future -- TBD."
   (:refer-clojure :exclude [filter remove replace and or not = < <= > ->> >= not-empty case count distinct max min
-                            + - * / time abs concat replace ref var])
+                            + - * / time abs concat replace ref var float])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -32,6 +32,7 @@
    [metabase.lib.native :as lib.native]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
+   [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.remove-replace :as lib.remove-replace]
@@ -96,6 +97,7 @@
   avg
   count-where
   distinct
+  distinct-where
   max
   median
   min
@@ -163,6 +165,7 @@
   round
   power
   date
+  datetime
   interval
   relative-datetime
   time
@@ -173,11 +176,11 @@
   get-year
   get-month
   get-day
+  get-day-of-week
   get-hour
   get-minute
   get-second
   get-quarter
-  get-day-of-week
   datetime-add
   datetime-subtract
   concat
@@ -193,7 +196,8 @@
   offset
   text
   split-part
-  integer]
+  integer
+  float]
  [lib.extraction
   column-extractions
   extract
@@ -300,9 +304,20 @@
  [lib.metadata.composed-provider
   composed-metadata-provider]
  [lib.metadata.ident
+  add-model-ident
+  assert-idents-present!
+  explicitly-joined-ident
   implicit-join-clause-ident
+  implicitly-joined-ident
   model-ident
-  native-ident]
+  native-ident
+  placeholder-card-entity-id-for-adhoc-query
+  remove-model-ident
+  replace-placeholder-idents
+  valid-basic-ident?
+  valid-model-ident?
+  valid-native-ident?
+  valid-native-model-ident?]
  [lib.native
   engine
   extract-template-tags
@@ -315,6 +330,7 @@
   template-tag-card-ids
   template-tags-referenced-cards
   template-tags
+  validate-native-query
   with-different-database
   with-native-extras
   with-native-query
@@ -327,6 +343,8 @@
   orderable-columns]
  [lib.normalize
   normalize]
+ [lib.parse
+  parse]
  [lib.query
   ->query
   can-preview

@@ -11,7 +11,6 @@
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor.middleware.limit :as limit]
    [metabase.test :as mt]
    [metabase.util :as u]
    [ring.util.codec :as codec]
@@ -210,11 +209,11 @@
           (testing "sanity check that the file exists in the first place"
             (is (notification.payload/is-cleanable? @f)))
           (testing "the files are cleaned up"
-            (is (not (.exists (.file @f))))))))))
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
-    (mt/with-temporary-setting-values [limit/attachment-row-limit 10]
+    (mt/with-temporary-setting-values [attachment-row-limit 10]
       (notification.tu/with-card-notification [notification {:card     {:dataset_query (mt/mbql-query orders)}
                                                              :handlers [@notification.tu/default-email-handler]}]
 
@@ -286,22 +285,22 @@
         goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
     (testing "Progress bar"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (progress-result 6))))))
+        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
+        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (progress-result 6)))))))
+        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
+        (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
+        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6)))))))
     (testing "Timeseries"
       (testing "alert above"
-        (testing "value below goal"  (is (= false (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (=  true (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (=  true (goal-met? alert-above-pulse (timeseries-result 6))))))
+        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))
       (testing "alert below"
-        (testing "value below goal"  (is (=  true (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
+        (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
+        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6)))))))))
 
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
@@ -408,14 +407,15 @@
 (deftest send-once-archive-on-first-successful-send
   (notification.tu/with-card-notification
     [notification {:notification-card {:send_once true}}]
-    (testing "do not archive if the send fail for any reason"
-      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
-        (u/ignore-exceptions (notification/send-notification! notification))
-        (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
+    (let [notification (t2/select-one :model/Notification (:id notification))]
+      (testing "do not archive if the send fail for any reason"
+        (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _args] (throw (ex-info "error" {})))]
+          (u/ignore-exceptions (notification/send-notification! notification))
+          (is (true? (t2/select-one-fn :active :model/Notification (:id notification))))))
 
-    (testing "archive if the send is successful"
-      (notification/send-notification! notification)
-      (is (false? (t2/select-one-fn :active :model/Notification (:id notification)))))))
+      (testing "archive if the send is successful"
+        (notification/send-notification! notification)
+        (is (false? (t2/select-one-fn :active :model/Notification (:id notification))))))))
 
 (deftest non-user-email-test
   (notification.tu/with-card-notification
@@ -564,3 +564,22 @@
            {:channel/email
             (fn [emails]
               (is (= 11 (email->attachment-line-count (first emails)))))}))))))
+
+(deftest audit-alert-send-event-test
+  (testing "When we send an alert, we also log the event:"
+    (mt/when-ee-evailable
+     (mt/with-premium-features #{:audit-app}
+       (notification.tu/with-card-notification [notification {:handlers [{:channel_type :channel/email,
+                                                                          :recipients [{:type :notification-recipient/user
+                                                                                        :user_id (mt/user->id :rasta)}
+                                                                                       {:type :notification-recipient/raw-value
+                                                                                        :details {:value "ngoc@metabase.com"}}]}]}]
+         (notification/send-notification! notification :notification/sync? true)
+         (is (=? {:topic    :alert-send
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "Pulse"
+                  :model_id (:id notification)
+                  :details  {:recipients [{:id (mt/user->id :rasta)}
+                                          "ngoc@metabase.com"]
+                             :filters    nil}}
+                 (mt/latest-audit-log-entry :alert-send (:id notification)))))))))

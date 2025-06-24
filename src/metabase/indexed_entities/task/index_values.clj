@@ -7,7 +7,7 @@
    [metabase.driver :as driver]
    [metabase.indexed-entities.models.model-index :as model-index]
    [metabase.query-processor.timezone :as qp.timezone]
-   [metabase.task :as task]
+   [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])

@@ -8,8 +8,8 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
@@ -104,7 +104,7 @@
                                                                         :stages
                                                                         :parameters
                                                                         :constraints
-                                                                        :mirror-database/id
+                                                                        :destination-database/id
                                                                         :impersonation/role])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)
@@ -224,7 +224,7 @@
 (defmacro with-execute-async
   "Execute body asynchronously in a pooled executor.
 
-  Used for side effects during query execution like saving query execution info or capturing FieldUsages."
+  Used for side effects during query execution like saving query execution info."
   [thunk]
   `(do-with-execute-async ~thunk))
 

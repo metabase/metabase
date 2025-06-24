@@ -13,15 +13,14 @@
    [mb.hawk.hooks]
    [mb.hawk.init]
    [medley.core :as m]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
+   [metabase.classloader.core :as classloader]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.sync.describe-table]
-   [metabase.models.field :as field]
-   [metabase.models.setting :refer [defsetting]]
-   [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.settings.core :refer [defsetting]]
    [metabase.test.data.env :as tx.env]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -30,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.random :as u.random]
+   [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [potemkin.types :as p.types]
    [pretty.core :as pretty]
@@ -357,6 +357,77 @@
   [driver]
   (log/infof "%s has no after-run hooks." driver))
 
+(defmulti drop-if-exists-and-create-db!
+  "Drop a database named `db-name` if it already exists, then create a new empty one with that name"
+  {:added "0.55.0" :arglists '([driver db-name & [just-drop]])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-if-exists-and-create-db! ::test-extensions
+  [_driver _db-name & [_just-drop]]
+  nil)
+
+(defn with-temp-database-fn!
+  "Creates a new database, dropping it first if necessary, runs `f`, then drops the db"
+  [driver db-name f]
+  (try
+    (drop-if-exists-and-create-db! driver db-name)
+    (f)
+    (finally
+      (drop-if-exists-and-create-db! driver db-name :just-drop))))
+
+(defmacro with-temp-database!
+  "Creates a new database, dropping it first if necessary, that will be dropped after execution"
+  [driver db-name & body]
+  `(with-temp-database-fn!
+     ~driver
+     ~db-name
+     (fn [] ~@body)))
+
+(defmulti create-and-grant-roles!
+  "Creates the given roles and permissions for the database user
+   `roles` is a map of role names to table permissions of the form
+   {role-name {table-name {:columns [col1 col2 ...]
+                           :rls    honey-sql-form}}}
+   where colN is a column name as a string and honey-sql-form is a predicate"
+  {:added "0.55.0" :arglists '([driver details roles db-user default-role])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod create-and-grant-roles! ::test-extensions
+  [_driver _details _roles _db-user _default-role]
+  nil)
+
+(defmulti drop-roles!
+  "Drops the given roles, and drops the database user if necessary"
+  {:added "0.55.0" :arglists '([driver details roles db-user])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod drop-roles! ::test-extensions
+  [_driver _details _roles _db-user]
+  nil)
+
+(defn with-temp-roles-fn!
+  "Creates the given roles and permissions for the database user, and drops them after execution"
+  [driver details roles db-user default-role f]
+  (try
+    (create-and-grant-roles! driver details roles db-user default-role)
+    (f)
+    (finally
+      (drop-roles! driver details roles db-user))))
+
+(defmacro with-temp-roles!
+  "Creates the given roles and permissions for the database user, and drops them after execution"
+  [driver details roles db-user default-role & body]
+  `(with-temp-roles-fn!
+     ~driver
+     ~details
+     ~roles
+     ~db-user
+     ~default-role
+     (fn [] ~@body)))
+
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
@@ -482,6 +553,18 @@
   `field-name`."
   {:arglists '([driver table-name field-name]
                [driver table-name field-name sample-value])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti arbitrary-select-query
+  "Generate a native query that selects some arbitrary sql from the top 2 rows from a Table with `table-name`"
+  {:arglists `([driver table-name to-insert])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti field-reference
+  "Generate a sql fragment that references a particular field"
+  {:arglists `([driver field-id])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -975,3 +1058,23 @@
    group by category_id
    order by 1 asc
    limit 2;")
+
+(doseq [driver [:postgres :clickhouse]]
+  (defmethod driver/database-supports? [driver :test/rls-impersonation]
+    [_driver _feature _database]
+    true))
+
+(doseq [driver [:redshift]]
+  (defmethod driver/database-supports? [driver :test/rls-impersonation]
+    [_driver _feature _database]
+    false))
+
+(doseq [driver [:postgres :sqlserver :mysql]]
+  (defmethod driver/database-supports? [driver :test/column-impersonation]
+    [_driver _feature _database]
+    true))
+
+(doseq [driver [:redshift]]
+  (defmethod driver/database-supports? [driver :test/column-impersonation]
+    [_driver _feature _database]
+    false))

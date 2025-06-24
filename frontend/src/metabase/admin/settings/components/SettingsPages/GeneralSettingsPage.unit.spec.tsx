@@ -8,7 +8,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockDashboard,
@@ -68,14 +68,14 @@ describe("GeneralSettingsPage", () => {
     await setup();
 
     [
-      "Site Name",
-      "Site Url",
+      "Site name",
+      "Site url",
       "Redirect to HTTPS",
-      "Custom Homepage",
-      "Email Address for Help Requests",
-      "Anonymous Tracking",
-      "Friendly Table and Field Names",
-      "Enable X-Ray Features",
+      "Custom homepage",
+      "Email address for help requests",
+      "Anonymous tracking",
+      "Friendly table and field names",
+      "Enable X-Ray features",
       "Allowed domains for iframes in dashboards",
     ].forEach((text) => {
       expect(screen.getByText(text)).toBeInTheDocument();
@@ -111,7 +111,7 @@ describe("GeneralSettingsPage", () => {
     await setup();
 
     const blur = async () => {
-      const elementOutside = screen.getByText("Friendly Table and Field Names");
+      const elementOutside = screen.getByText("Friendly table and field names");
       await userEvent.click(elementOutside); // blur
     };
 
@@ -143,7 +143,7 @@ describe("GeneralSettingsPage", () => {
     expect(emailPutDetails).toEqual({ value: "support@mySite.biz" });
 
     await waitFor(() => {
-      const toasts = screen.getAllByLabelText("check icon");
+      const toasts = screen.getAllByLabelText("check_filled icon");
       expect(toasts).toHaveLength(2);
     });
   });

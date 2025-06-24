@@ -51,6 +51,13 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     );
   });
 
+  it("should correctly insert function suggestion with the template when it has no arguments", () => {
+    addCustomColumn();
+    H.enterCustomColumnDetails({ formula: "now", blur: false });
+    H.CustomExpressionEditor.acceptCompletion();
+    H.CustomExpressionEditor.value().should("equal", "now()");
+  });
+
   it("should show expression function helper if a proper function is typed", () => {
     addCustomColumn();
     H.enterCustomColumnDetails({ formula: "lower(", blur: false });
@@ -195,6 +202,12 @@ describe("scenarios > question > custom column > typing suggestion", () => {
     cy.log("move cursor to baz using the mouse");
     H.CustomExpressionEditor.get().findByText('"baz"').click();
     verifyHelptextPosition('"baz"');
+  });
+
+  it("should not show helptext for functions that are not supported by the expression mode", () => {
+    addCustomColumn();
+    H.CustomExpressionEditor.type("Average([Price]){leftarrow}{leftarrow}");
+    H.CustomExpressionEditor.helpText().should("not.exist");
   });
 });
 

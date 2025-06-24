@@ -97,6 +97,7 @@ const defaultArgs: Partial<
   bordered: true,
   getParameters: () => [],
   setCard: () => {},
+  downloadsEnabled: { pdf: true, results: true },
   result: createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -130,7 +131,7 @@ export const LightThemeDownload = {
 
   args: {
     ...LightThemeDefault.args,
-    downloadsEnabled: true,
+    downloadsEnabled: { pdf: true, results: true },
   },
 
   play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
@@ -163,7 +164,7 @@ export const DarkThemeDownload = {
 
   args: {
     ...DarkThemeDefault.args,
-    downloadsEnabled: true,
+    downloadsEnabled: { pdf: true, results: true },
   },
 
   play: LightThemeDownload.play,
@@ -350,7 +351,9 @@ const downloadQuestionAsPng = async (
 ) => {
   const canvas = within(canvasElement);
 
-  const downloadButton = await canvas.findByTestId("download-button");
+  const downloadButton = await canvas.findByTestId(
+    "question-results-download-button",
+  );
   await userEvent.click(downloadButton!);
 
   const documentElement = within(document.documentElement);

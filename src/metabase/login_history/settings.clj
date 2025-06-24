@@ -1,6 +1,6 @@
 (ns metabase.login-history.settings
   (:require
-   [metabase.models.setting :refer [defsetting]]))
+   [metabase.settings.core :refer [defsetting]]))
 
 (defsetting send-email-on-first-login-from-new-device
   ;; no need to i18n -- this isn't user-facing

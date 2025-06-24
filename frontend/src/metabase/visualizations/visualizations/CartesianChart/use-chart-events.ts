@@ -10,7 +10,7 @@ import {
 
 import {
   GOAL_LINE_SERIES_ID,
-  ORIGINAL_INDEX_DATA_KEY,
+  INDEX_KEY,
   TIMELINE_EVENT_DATA_NAME,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import type {
@@ -35,6 +35,7 @@ import {
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
+import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
 import {
@@ -50,6 +51,8 @@ export const useChartEvents = (
   {
     card,
     rawSeries,
+    isVisualizerViz,
+    visualizerRawSeries = [],
     selectedTimelineEventIds,
     settings,
     visualizationIsClickable,
@@ -69,15 +72,17 @@ export const useChartEvents = (
 
   const onOpenQuestion = useCallback(
     (cardId?: CardId) => {
-      const nextCard =
-        rawSeries.find((series) => series.card.id === cardId)?.card ?? card;
-      if (onChangeCardAndRun) {
-        onChangeCardAndRun({
-          nextCard,
-        });
+      if (isVisualizerViz) {
+        const index = getVisualizerSeriesCardIndex(cardId);
+        const nextCard = visualizerRawSeries[index].card;
+        onChangeCardAndRun?.({ nextCard });
+      } else {
+        const nextCard =
+          rawSeries.find((series) => series.card.id === cardId)?.card ?? card;
+        onChangeCardAndRun?.({ nextCard });
       }
     },
-    [card, onChangeCardAndRun, rawSeries],
+    [card, rawSeries, visualizerRawSeries, isVisualizerViz, onChangeCardAndRun],
   );
 
   const hoveredSeriesDataKey = useMemo(
@@ -151,7 +156,11 @@ export const useChartEvents = (
           }
 
           if (event.seriesId === GOAL_LINE_SERIES_ID) {
-            const eventData = getGoalLineHoverData(settings, event);
+            const eventData = getGoalLineHoverData(
+              settings,
+              event,
+              chartModel.leftAxisModel?.formatGoal,
+            );
 
             onHoverChange?.(eventData);
             return;
@@ -218,7 +227,7 @@ export const useChartEvents = (
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
           const eventData = getBrushData(
-            rawSeries,
+            isVisualizerViz ? visualizerRawSeries : rawSeries,
             metadata,
             chartModel,
             event,
@@ -245,6 +254,8 @@ export const useChartEvents = (
       onDeselectTimelineEvents,
       onOpenQuestion,
       rawSeries,
+      visualizerRawSeries,
+      isVisualizerViz,
       metadata,
       onChangeCardAndRun,
     ],
@@ -417,7 +428,7 @@ function getTransformedDatumIndex(
   originalDatumIndex: number,
 ) {
   const transformedDatumIndex = transformedDataset.findIndex(
-    (datum) => datum[ORIGINAL_INDEX_DATA_KEY] === originalDatumIndex,
+    (datum) => datum[INDEX_KEY] === originalDatumIndex,
   );
 
   if (transformedDatumIndex === -1) {

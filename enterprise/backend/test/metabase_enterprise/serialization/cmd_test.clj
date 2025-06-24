@@ -1,14 +1,15 @@
 (ns metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.load :as load]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
-   [metabase-enterprise.serialization.v2.load :as v2.load]
+   [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
    [metabase-enterprise.serialization.v2.storage :as v2.storage]
    [metabase.analytics.snowplow-test :as snowplow-test]
-   [metabase.cmd :as cmd]
+   [metabase.cmd.core :as cmd]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.initialize.test-users :as test-users]
@@ -27,10 +28,10 @@
     ;; while also not deleting or messing with any existing user personal collections that the real app DB might have,
     ;; since that will interfere with other tests)
     ;;
-    ;; making use of the functionality in the [[metabase.db.schema-migrations-test.impl]] namespace for this (since it
+    ;; making use of the functionality in the [[metabase.app-db.schema-migrations-test.impl]] namespace for this (since it
     ;; already does what we need)
     (mt/with-premium-features #{:serialization}
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         ;; create a single dummy User to own a Card and a Database for it to reference
         (let [user  (t2/insert! (t2/table-name :model/User)
                                 :email        "nobody@nowhere.com"
@@ -154,7 +155,7 @@
                                 (cmd/dump dump-dir "--user" "crowberto@metabase.com"))))
 
         (testing "load should fail"
-          (mt/with-empty-h2-app-db
+          (mt/with-empty-h2-app-db!
             (is (thrown-with-msg? Exception #"Please upgrade"
                                   (cmd/load dump-dir
                                             "--mode"     "update"
@@ -174,7 +175,7 @@
 (deftest snowplow-events-test
   (testing "Snowplow events are correctly sent"
     (mt/with-premium-features #{:serialization}
-      (mt/with-empty-h2-app-db
+      (mt/with-empty-h2-app-db!
         (snowplow-test/with-fake-snowplow-collector
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
             (let [coll (ts/create! :model/Collection :name "coll")
@@ -198,8 +199,8 @@
                              (filter #(= "serialization" (get % "event")))
                              first))))
 
-              (cmd/import dump-dir)
               (testing "Snowplow import event was sent"
+                (cmd/import dump-dir)
                 (is (=? {"event"         "serialization"
                          "direction"     "import"
                          "duration_ms"   pos?
@@ -232,14 +233,13 @@
                                (filter #(= "serialization" (get % "event")))
                                first)))))
 
-              (let [load-one! @#'v2.load/load-one!]
-                (with-redefs [v2.load/load-one! (fn [ctx path & [modfn]]
-                                                  (load-one! ctx path
-                                                             (or modfn
-                                                                 (fn [ingested]
-                                                                   (cond-> ingested
-                                                                     (= (:entity_id ingested) (:entity_id card))
-                                                                     (assoc :collection_id "DoesNotExist"))))))]
+              (let [ingest-file @#'v2.ingest/ingest-file]
+                ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
+                ;; override that reliably
+                (with-redefs [v2.ingest/ingest-file (fn [file]
+                                                      (cond-> (ingest-file file)
+                                                        (str/includes? (.getName file) (:entity_id card))
+                                                        (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))
                   (testing "Snowplow import event about error was sent"

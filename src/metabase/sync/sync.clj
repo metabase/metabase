@@ -9,10 +9,8 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
-   [metabase.driver.h2 :as h2]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.models.field :as field]
-   [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.field-values :as sync.field-values]
@@ -20,7 +18,9 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.util :as sync-util]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouse-schema.models.table :as table])
   (:import
    (java.time.temporal Temporal)))
 
@@ -91,7 +91,7 @@
         database (table/database table)]
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
-    (if (binding [h2/*allow-testing-h2-connections* true]
+    (if (binding [driver.settings/*allow-testing-h2-connections* true]
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))

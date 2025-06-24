@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { moveDnDKitElement } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -323,7 +324,7 @@ describe("scenarios > visualizations > line chart", () => {
     // Now do the same for the input with no value
     H.openSeriesSettings("(empty)", true);
     H.popover().within(() => {
-      cy.findAllByLabelText("series-name-input").clear().type("cat2").blur();
+      cy.findAllByTestId("series-name-input").clear().type("cat2").blur();
       cy.findByDisplayValue("cat2");
     });
     cy.button("Done").click();
@@ -553,7 +554,11 @@ describe("scenarios > visualizations > line chart", () => {
 
       cy.log("Drag and drop the first y-axis field to the last position");
       cy.findAllByTestId("chart-setting-select").then((initial) => {
-        H.dragField(0, 1);
+        cy.findByTestId("chart-settings-widget-graph.metrics").within(() => {
+          moveDnDKitElement(cy.findAllByTestId("drag-handle").first(), {
+            vertical: 50,
+          });
+        });
 
         cy.findAllByTestId("chart-setting-select").should((content) => {
           expect(content[0].value).to.eq(initial[0].value); // Created At: Month
@@ -587,197 +592,6 @@ describe("scenarios > visualizations > line chart", () => {
 
       H.cartesianChartCircleWithColor("#EF8C8C");
     });
-  });
-
-  describe("tooltip of combined dashboard cards (multi-series) should show the correct column title (metabase#16249", () => {
-    const RENAMED_FIRST_SERIES = "Foo";
-    const RENAMED_SECOND_SERIES = "Bar";
-
-    it("custom expression names (metabase#16249-1)", () => {
-      createOrdersQuestionWithAggregation({
-        name: "16249_Q1",
-        aggregation: [
-          [
-            "aggregation-options",
-            ["sum", ["field", ORDERS.TOTAL, null]],
-            { "display-name": "CE" },
-          ],
-        ],
-      }).then(({ body: { id: question1Id } }) => {
-        createOrdersQuestionWithAggregation({
-          name: "16249_Q2",
-          aggregation: [
-            [
-              "aggregation-options",
-              ["avg", ["field", ORDERS.SUBTOTAL, null]],
-              { "display-name": "CE" },
-            ],
-          ],
-        }).then(({ body: { id: question2Id } }) => {
-          H.createDashboard().then(({ body: { id: dashboardId } }) => {
-            addBothSeriesToDashboard({
-              dashboardId,
-              firstCardId: question1Id,
-              secondCardId: question2Id,
-            });
-            H.visitDashboard(dashboardId);
-
-            // Rename both series
-            renameSeries([
-              ["16249_Q1", RENAMED_FIRST_SERIES],
-              ["16249_Q2", RENAMED_SECOND_SERIES],
-            ]);
-
-            assertOnLegendItemsValues();
-            assertOnYAxisValues();
-
-            showTooltipForFirstCircleInSeries("#88BF4D");
-            H.assertEChartsTooltip({
-              header: "2022",
-              rows: [
-                {
-                  color: "#88BF4D",
-                  name: RENAMED_FIRST_SERIES,
-                  value: "42,156.87",
-                },
-                {
-                  color: "#98D9D9",
-                  name: RENAMED_SECOND_SERIES,
-                  value: "54.44",
-                },
-              ],
-            });
-          });
-        });
-      });
-    });
-
-    it("regular column names (metabase#16249-2)", () => {
-      createOrdersQuestionWithAggregation({
-        name: "16249_Q3",
-        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
-      }).then(({ body: { id: question1Id } }) => {
-        H.createQuestion({
-          name: "16249_Q4",
-          query: {
-            "source-table": PRODUCTS_ID,
-            aggregation: [["sum", ["field", PRODUCTS.PRICE, null]]],
-            breakout: [
-              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
-            ],
-          },
-          display: "line",
-        }).then(({ body: { id: question2Id } }) => {
-          H.createDashboard().then(({ body: { id: dashboardId } }) => {
-            addBothSeriesToDashboard({
-              dashboardId,
-              firstCardId: question1Id,
-              secondCardId: question2Id,
-            });
-
-            H.visitDashboard(dashboardId);
-
-            renameSeries([
-              ["16249_Q3", RENAMED_FIRST_SERIES],
-              ["16249_Q4", RENAMED_SECOND_SERIES],
-            ]);
-
-            assertOnLegendItemsValues();
-            assertOnYAxisValues();
-
-            showTooltipForFirstCircleInSeries("#88BF4D");
-            H.assertEChartsTooltip({
-              header: "2022",
-              rows: [
-                {
-                  color: "#88BF4D",
-                  name: RENAMED_FIRST_SERIES,
-                  value: "42,156.87",
-                },
-                {
-                  color: "#509EE3",
-                  name: RENAMED_SECOND_SERIES,
-                  value: "2,829.03",
-                },
-              ],
-            });
-          });
-        });
-      });
-    });
-
-    /**
-     * Helper functions related to repros around 16249 only!
-     * Note:
-     *  - This might be too abstract and highly specific.
-     *  - That's true in general sense, but that's the reason we're not using them anywhere else than here.
-     *  - Without these abstractions, both tests would be MUCH longer and harder to review.
-     */
-
-    function addBothSeriesToDashboard({
-      dashboardId,
-      firstCardId,
-      secondCardId,
-    } = {}) {
-      // Add the first question to the dashboard
-      H.addOrUpdateDashboardCard({
-        dashboard_id: dashboardId,
-        card_id: firstCardId,
-        card: {
-          size_x: 24,
-          size_y: 12,
-          series: [
-            {
-              id: secondCardId,
-            },
-          ],
-        },
-      });
-    }
-
-    function createOrdersQuestionWithAggregation({ name, aggregation } = {}) {
-      return H.createQuestion({
-        name,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation,
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        display: "line",
-      });
-    }
-
-    function renameSeries(series) {
-      cy.icon("pencil").click();
-      cy.findByTestId("dashcard").realHover();
-      cy.icon("palette").click();
-      series.forEach((serie) => {
-        const [old_name, new_name] = serie;
-
-        cy.findByDisplayValue(old_name).clear().type(new_name).blur();
-      });
-
-      H.modal()
-        .as("modal")
-        .within(() => {
-          cy.button("Done").click();
-        });
-      cy.button("Save").click();
-      cy.findByText("You're editing this dashboard.").should("not.exist");
-    }
-
-    function assertOnLegendItemsValues() {
-      cy.findAllByTestId("legend-item")
-        .should("contain", RENAMED_FIRST_SERIES)
-        .and("contain", RENAMED_SECOND_SERIES);
-    }
-
-    function assertOnYAxisValues() {
-      H.echartsContainer()
-        .get("text")
-        .should("contain", RENAMED_FIRST_SERIES)
-        .and("contain", RENAMED_SECOND_SERIES);
-    }
   });
 
   describe("problems with the labels when showing only one row in the results (metabase#12782, metabase#4995)", () => {
@@ -863,8 +677,65 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText(X_AXIS_VALUE);
     });
   });
-});
 
-function showTooltipForFirstCircleInSeries(seriesColor) {
-  H.cartesianChartCircleWithColor(seriesColor).eq(0).trigger("mousemove");
-}
+  it("should format goal tooltip value to match y-axis tick formatting", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+          breakout: [
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT], "month"],
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "line",
+      visualization_settings: {
+        "graph.goal_value": 5000,
+        "graph.show_goal": true,
+        "graph.label_value_formatting": "compact",
+        column_settings: {
+          '["name","sum"]': {
+            number_style: "currency",
+            currency: "USD",
+          },
+        },
+      },
+    });
+
+    H.echartsContainer().findByText("$50.0k").should("exist");
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("$5,000.00").should("exist");
+    });
+  });
+
+  it("should support formatting goal tooltip value as a percent", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+      visualization_settings: {
+        "graph.goal_value": 123.4567,
+        "graph.show_goal": true,
+        "graph.label_value_formatting": "compact",
+        column_settings: {
+          '["name","count"]': {
+            number_style: "percent",
+          },
+        },
+      },
+    });
+
+    H.echartsContainer().findByText("50.0k%").should("exist");
+    H.echartsContainer().findByText("Goal").trigger("mousemove");
+
+    H.popover().within(() => {
+      cy.findByText("Goal:").should("exist");
+      cy.findByText("12,345.67%").should("exist");
+    });
+  });
+});

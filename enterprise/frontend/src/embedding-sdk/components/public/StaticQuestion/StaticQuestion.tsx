@@ -10,6 +10,7 @@ import type { InteractiveQuestionQuestionIdProps } from "../InteractiveQuestion/
 
 /**
  * @interface
+ * @expand
  * @category StaticQuestion
  */
 export type StaticQuestionProps = InteractiveQuestionQuestionIdProps & {

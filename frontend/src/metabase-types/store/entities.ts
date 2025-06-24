@@ -9,7 +9,6 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
-  NormalizedUser,
   NormalizedWritebackAction,
 } from "metabase-types/api";
 
@@ -24,6 +23,5 @@ export interface EntitiesState {
   segments: Record<string, NormalizedSegment>;
   indexedEntities: Record<string, NormalizedIndexedEntity>;
   snippets: Record<string, NormalizedNativeQuerySnippet>;
-  users: Record<string, NormalizedUser>;
   questions: Record<string, NormalizedCard>;
 }

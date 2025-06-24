@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";

@@ -1,10 +1,10 @@
 (ns metabase.server.auth-wrapper-test
   (:require
    [clojure.test :refer :all]
-   [metabase.config :as config]
-   [metabase.http-client :as client]
+   [metabase.config.core :as config]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]))
 
 (use-fixtures
   :once

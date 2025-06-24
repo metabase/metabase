@@ -4,42 +4,58 @@ import type { OperatorOption } from "./types";
 
 export const OPERATOR_OPTIONS: OperatorOption[] = [
   {
-    label: t`All time`,
+    get label() {
+      return t`All time`;
+    },
     value: "none",
     operators: [],
   },
   {
-    label: t`Previous`,
+    get label() {
+      return t`Previous`;
+    },
     value: "last",
     operators: [],
   },
   {
-    label: t`Next`,
+    get label() {
+      return t`Next`;
+    },
     value: "next",
     operators: [],
   },
   {
-    label: t`Current`,
+    get label() {
+      return t`Current`;
+    },
     value: "current",
     operators: [],
   },
   {
-    label: t`Before`,
+    get label() {
+      return t`Before`;
+    },
     value: "<",
     operators: ["<"],
   },
   {
-    label: t`After`,
+    get label() {
+      return t`After`;
+    },
     value: ">",
     operators: [">"],
   },
   {
-    label: t`On`,
+    get label() {
+      return t`On`;
+    },
     value: "=",
     operators: ["="],
   },
   {
-    label: t`Between`,
+    get label() {
+      return t`Between`;
+    },
     value: "between",
     operators: ["between"],
   },

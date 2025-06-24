@@ -12,18 +12,21 @@ interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
   isEnabled: boolean;
   hasTokenFeature: boolean;
+  isDevelopmentMode?: boolean;
 }
 
 export const USAGE_PROBLEM_MESSAGES = {
   API_KEYS_WITHOUT_LICENSE: `The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, a license is required and you need to implement SSO.`,
   API_KEYS_WITH_LICENSE: `The embedding SDK is using API keys. This is intended for evaluation purposes and works only on localhost. To use on other sites, implement SSO.`,
   SSO_WITHOUT_LICENSE: `Usage without a valid license for this feature is only allowed for evaluation purposes, using API keys and only on localhost. Attempting to use this in other ways is in breach of our usage policy.`,
-  CONFLICTING_AUTH_METHODS: `You cannot use both an Auth Provider URI and API key authentication at the same time.`,
-  JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri config property has been deprecated. Replace it with authProviderUri.`,
-  NO_AUTH_METHOD_PROVIDED: `You must provide either an Auth Provider URI or an API key for authentication.`,
+  JWT_PROVIDER_URI_DEPRECATED: `The jwtProviderUri and authProviderUri config properties have been removed. Configure your authProviderUri within your instance settings.`,
+  JWT_AUTH_CONFIG_NOT_VALID: `The JWT Provider URI is not set. Please set it in the instance settings. Alternatively, you can set a fetchRequestToken function in the embedding SDK config.`,
 
   // This message only works on localhost at the moment, as we cannot detect if embedding is disabled due to CORS restrictions on /api/session/properties.
   EMBEDDING_SDK_NOT_ENABLED: `The embedding SDK is not enabled for this instance. Please enable it in settings to start using the SDK.`,
+
+  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
+  DEVELOPMENT_MODE_CLOUD_INSTANCE: `This Metabase is in development mode intended exclusively for testing. Using this Metabase for everyday BI work or when embedding in production is considered unfair usage.`,
 } as const;
 
 export const SDK_AUTH_DOCS_URL =
@@ -41,10 +44,10 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
   API_KEYS_WITHOUT_LICENSE: METABASE_UPGRADE_URL,
   API_KEYS_WITH_LICENSE: SDK_AUTH_DOCS_URL,
   SSO_WITHOUT_LICENSE: METABASE_UPGRADE_URL,
-  CONFLICTING_AUTH_METHODS: SDK_AUTH_DOCS_URL,
   JWT_PROVIDER_URI_DEPRECATED: SDK_AUTH_DOCS_URL,
-  NO_AUTH_METHOD_PROVIDED: SDK_AUTH_DOCS_URL,
+  JWT_AUTH_CONFIG_NOT_VALID: SDK_AUTH_DOCS_URL,
   EMBEDDING_SDK_NOT_ENABLED: SDK_INTRODUCTION_DOCS_URL,
+  DEVELOPMENT_MODE_CLOUD_INSTANCE: METABASE_UPGRADE_URL,
 } as const;
 
 /**
@@ -54,13 +57,12 @@ export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
 export function getSdkUsageProblem(
   options: SdkProblemOptions,
 ): SdkUsageProblem | null {
-  const { isEnabled, hasTokenFeature, authConfig } = options;
-  const { authProviderUri, apiKey } = authConfig;
+  const { isEnabled, hasTokenFeature, authConfig, isDevelopmentMode } = options;
+  const { apiKey } = authConfig;
 
-  const isSSO = !!authProviderUri;
+  const isSSO = !apiKey;
   const isApiKey = !!apiKey;
   const isLocalhost = getIsLocalhost();
-  const hasJwtProviderUriProperty = "jwtProviderUri" in authConfig;
 
   /**
    * TODO: these checks for non-localhost environments are pending on
@@ -70,7 +72,6 @@ export function getSdkUsageProblem(
    * 2: (isSSO: true, hasTokenFeature: false) -> PROBLEMS.SSO_WITHOUT_LICENSE
    * 3: (isApiKey: true, hasTokenFeature: false) -> PROBLEMS.API_KEYS_WITHOUT_LICENSE
    */
-
   return (
     match({
       hasTokenFeature,
@@ -78,32 +79,20 @@ export function getSdkUsageProblem(
       isApiKey,
       isLocalhost,
       isEnabled,
-      hasJwtProviderUriProperty,
+      isDevelopmentMode,
     })
-      .with({ hasJwtProviderUriProperty: true }, () =>
-        toError("JWT_PROVIDER_URI_DEPRECATED"),
-      )
-      .with({ isSSO: false, isApiKey: false }, () =>
-        toError("NO_AUTH_METHOD_PROVIDED"),
-      )
-      .with({ isSSO: true, isApiKey: true }, () =>
-        toError("CONFLICTING_AUTH_METHODS"),
-      )
-      // For SSO, the token features and the toggle must both be enabled.
-      .with({ isSSO: true, hasTokenFeature: true, isEnabled: true }, () => null)
-      // We cannot detect if embedding is disabled on non-localhost environments,
-      // as CORS is disabled on /api/session/properties.
-      .with(
-        {
-          isSSO: true,
-          hasTokenFeature: true,
-          isLocalhost: true,
-          isEnabled: false,
-        },
-        () => toError("EMBEDDING_SDK_NOT_ENABLED"),
+      .with({ isDevelopmentMode: true }, () =>
+        toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
       )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
+      )
+      .with(
+        {
+          hasTokenFeature: true,
+          isEnabled: false,
+        },
+        () => toError("EMBEDDING_SDK_NOT_ENABLED"),
       )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
@@ -126,6 +115,7 @@ export function getSdkUsageProblem(
 const toError = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   type,
   severity: "error",
+  title: "Error",
   message: USAGE_PROBLEM_MESSAGES[type],
   documentationUrl: USAGE_PROBLEM_DOC_URLS[type],
 });
@@ -133,6 +123,8 @@ const toError = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
   type,
   severity: "warning",
+  // eslint-disable-next-line no-literal-metabase-strings -- only shown in development.
+  title: "This embed is powered by the Metabase SDK.",
   message: USAGE_PROBLEM_MESSAGES[type],
   documentationUrl: USAGE_PROBLEM_DOC_URLS[type],
 });

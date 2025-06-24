@@ -2,13 +2,13 @@
   "Classifier that determines whether a Field should be marked as a `:type/Category` and/or as a `list` Field based on
   the number of distinct values it has.
 
-  As of Metabase v0.29, the Category now longer has any use inside of the Metabase backend; it is used
-  only for frontend purposes (e.g. deciding which widget to show). Previously, makring something as a Category meant
+  As of Metabase v0.29, the Category no longer has any use inside of the Metabase backend; it is used
+  only for frontend purposes (e.g. deciding which widget to show). Previously, marking something as a Category meant
   that its values should be cached and saved in a FieldValues object. With the changes in v0.29, this is instead
   managed by a column called `has-field-values`.
 
   A value of `list` now means the values should be cached. Deciding whether a Field should be a `list` Field is still
-  determined by the cardinality of the Field, like Category status. Thus it is entirely possibly for a Field to be
+  determined by the cardinality of the Field, like Category status. Thus it is entirely possible for a Field to be
   both a Category and a `list` Field."
   (:require
    [metabase.analyze.fingerprint.schema :as fingerprint.schema]
@@ -35,8 +35,7 @@
         nil%           (get-in fingerprint [:global :nil%])]
     ;; Only mark a Field as a Category if it doesn't already have a semantic type.
     (when (and (nil? (:semantic_type field))
-               (or (some-> nil% (< 1))
-                   (isa? (:base_type field) :type/Boolean))
+               (some-> nil% (< 1))
                (some-> distinct-count (<= category-cardinality-threshold)))
       (log/debugf "%s has %d distinct values. Since that is less than %d, we're marking it as a category."
                   (sync-util/name-for-logging field)
@@ -48,6 +47,6 @@
   "Classifier that attempts to determine whether `field` ought to be marked as a Category based on its distinct count."
   [field       :- analyze.schema/Field
    fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
-  (when (and (sync-util/can-be-category-or-list? (:base_type field) (:semantic_type field))
+  (when (and (sync-util/can-be-category? (:base_type field) (:semantic_type field))
              (field-should-be-category? fingerprint field))
     (assoc field :semantic_type :type/Category)))

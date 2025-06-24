@@ -2,12 +2,12 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
-   [metabase.config :as config]
-   [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.app-db.connection :as mdb.connection]
+   [metabase.app-db.core :as mdb]
+   [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.interface :as mi]
-   [metabase.public-settings :as public-settings]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
@@ -20,7 +20,7 @@
 (use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest has-user-setup-ignores-internal-user-test
-  (mt/with-empty-h2-app-db
+  (mt/with-empty-h2-app-db!
     (is (t2/exists? :model/User :id config/internal-mb-user-id)
         "Sense check the internal user exists")
     (testing "`has-user-setup` should return false for an empty instance with only an internal user"
@@ -36,8 +36,8 @@
     (t2/with-call-count [call-count]
       ;; call has-user-setup several times.
       (dotimes [_ 5]
-        (is (= true
-               (setup/has-user-setup))))
+        (is (true?
+             (setup/has-user-setup))))
       ;; `has-user-setup` should have done at most one application database call, as opposed to one call per call to
       ;; the getter
       (is (contains? #{0 1} (call-count)))))
@@ -55,8 +55,8 @@
                   10)))))) ;; in dev/test we check settings for an override
   (testing "Switch back to the 'normal' app DB; value should still be cached for it"
     (t2/with-call-count [call-count]
-      (is (= true
-             (setup/has-user-setup)))
+      (is (true?
+           (setup/has-user-setup)))
       (is (zero? (call-count))))))
 
 (deftest has-example-dashboard-id-setting-test
@@ -64,18 +64,18 @@
     (mdb/setup-db! :create-sample-content? true)
     (testing "The example-dashboard-id setting should be set if the example content is loaded"
       (is (= 1
-             (public-settings/example-dashboard-id)))))
+             (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be nil if the example content isn't loaded"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (is (nil? (public-settings/example-dashboard-id)))))
+      (is (nil? (appearance/example-dashboard-id)))))
   (testing "The example-dashboard-id setting should be reset to nil if the example dashboard is archived"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? true)
       (is (= 1
-             (public-settings/example-dashboard-id)))
+             (appearance/example-dashboard-id)))
       (t2/update! :model/Dashboard 1 {:archived true})
-      (is (nil? (public-settings/example-dashboard-id))))))
+      (is (nil? (appearance/example-dashboard-id))))))
 
 (deftest sample-content-permissions-test
   (mt/with-temp-empty-app-db [_conn :h2]

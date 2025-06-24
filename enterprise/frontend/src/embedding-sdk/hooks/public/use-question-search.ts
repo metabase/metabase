@@ -2,6 +2,7 @@ import { useMemo } from "react";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getIsLoggedIn } from "embedding-sdk/store/selectors";
+import type { MetabaseCollectionItem } from "embedding-sdk/types/collection";
 import { useSearchListQuery } from "metabase/common/hooks";
 
 export const useQuestionSearch = (searchQuery?: string) => {
@@ -18,8 +19,13 @@ export const useQuestionSearch = (searchQuery?: string) => {
         };
   }, [searchQuery]);
 
-  return useSearchListQuery({
+  return useSearchListQuery<MetabaseCollectionItem, null>({
     query,
     enabled: isLoggedIn,
-  });
+  }) as {
+    data?: MetabaseCollectionItem[];
+    isLoaded: boolean;
+    isLoading: boolean;
+    error: unknown;
+  };
 };

@@ -7,8 +7,8 @@ import { getTextColorForBackground } from "metabase/lib/colors/palette";
 import { getObjectValues } from "metabase/lib/objects";
 import { isNotNull } from "metabase/lib/types";
 import {
+  INDEX_KEY,
   NEGATIVE_STACK_TOTAL_DATA_KEY,
-  ORIGINAL_INDEX_DATA_KEY,
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
@@ -371,8 +371,7 @@ export const buildEChartsStackLabelOptions = (
     ),
     formatter: (params: CallbackDataParams) => {
       const transformedDatum = params.data as Datum;
-      const originalIndex =
-        transformedDatum[ORIGINAL_INDEX_DATA_KEY] ?? params.dataIndex;
+      const originalIndex = transformedDatum[INDEX_KEY] ?? params.dataIndex;
       const datum = originalDataset[originalIndex];
       const value = datum[seriesModel.dataKey];
 
@@ -599,7 +598,6 @@ const buildEChartsLineAreaSeries = (
       },
     },
     blur: {
-      label: getBlurLabelStyle(settings, hasMultipleSeries),
       itemStyle: {
         opacity: isSymbolVisible ? blurOpacity : 0,
       },

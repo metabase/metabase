@@ -12,33 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  be-tests-h2:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-    name: H2
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test H2 driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-h2'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
   be-tests-athena-ee:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
@@ -108,6 +81,53 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+  be-tests-clickhouse-ee:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: clickhouse
+      MB_CLICKHOUSE_TEST_HOST: localhost
+      MB_CLICKHOUSE_TEST_PORT: 8123
+      MB_CLICKHOUSE_TEST_OLD_PORT: 8124
+      MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
+    name: Clickhouse
+    steps:
+    - uses: actions/checkout@v4
+    - name: Add ClickHouse TLS instance to /etc/hosts
+      run: |
+        sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+    - name: Start ClickHouse in Docker
+      uses: hoverkraft-tech/compose-action@v2.0.0
+      with:
+        compose-file: "modules/drivers/clickhouse/docker-compose.yml"
+        down-flags: "--volumes"
+        services: |
+          clickhouse
+          clickhouse_tls
+          clickhouse_older_version
+          clickhouse_cluster_node1
+          clickhouse_cluster_node2
+          nginx
+    - name: Test Clickhouse driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-clickhouse-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
   be-tests-druid-ee:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
@@ -129,6 +149,41 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-druid-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-druid-jdbc-ee:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+      DRIVERS: druid-jdbc
+    services:
+      druid:
+        image: metabase/druid:29.0.1-json-no-ingestion
+        ports:
+          - "8888:8888"
+        env:
+          CLUSTER_SIZE: nano-quickstart
+    name: Druid (JDBC)
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test Druid JDBC driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-druid-jdbc-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
@@ -177,27 +232,54 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-druid-jdbc-ee:
+  be-tests-databricks-multi-catalog-ee:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       CI: 'true'
-      DRIVERS: druid-jdbc
-    services:
-      druid:
-        image: metabase/druid:29.0.1-json-no-ingestion
-        ports:
-          - "8888:8888"
-        env:
-          CLUSTER_SIZE: nano-quickstart
-    name: Druid (JDBC)
+      DRIVERS: databricks
+      MB_DATABRICKS_TEST_MULTI_LEVEL_SCHEMA: true
+      MB_DATABRICKS_TEST_HOST: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HOST }}
+      MB_DATABRICKS_TEST_HTTP_PATH: ${{ secrets.MB_DATABRICKS_JDBC_TEST_HTTP_PATH }}
+      MB_DATABRICKS_TEST_TOKEN: ${{ secrets.MB_DATABRICKS_JDBC_TEST_TOKEN }}
+      MB_DATABRICKS_TEST_CATALOG: 'metabase_ci'
+      MB_DATABRICKS_TEST_CLIENT_ID: ${{ secrets.MB_DATABRICKS_JDBC_TEST_CLIENT_ID }}
+      MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
+    name: Databricks (Multi-Catalog)
     steps:
     - uses: actions/checkout@v4
-    - name: Test Druid JDBC driver
+    - name: Test Databricks driver with multi-catalog
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-druid-jdbc-ee'
+        junit-name: 'be-tests-databricks-multi-catalog-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-h2:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    env:
+      CI: 'true'
+    name: H2
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test H2 driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-h2'
         test-args: >-
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results
@@ -346,12 +428,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MongoDB 4.4
-            junit-name: be-tests-mongo-4-4-ee
-            image: metabase/qa-databases:mongo-sample-4.4
-          - name: MongoDB 5.0
-            junit-name: be-tests-mongo-5-0-ee
-            image: metabase/qa-databases:mongo-sample-5.0
+          - name: MongoDB 6.0
+            junit-name: be-tests-mongo-6-0-ee
+            image: metabase/qa-databases:mongo-sample-6
           - name: MongoDB Latest
             junit-name: be-tests-mongo-latest-ee
             image: mongo:latest
@@ -398,12 +477,9 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - name: MongoDB 4.4
-            junit-name: be-tests-mongo-4-4-ee
-            image: metabase/qa-databases:mongo-sample-4.4
-          - name: MongoDB 5.0
-            junit-name: be-tests-mongo-5-0-ssl-ee
-            image: metabase/qa-databases:mongo-sample-5.0
+          - name: MongoDB 6.0
+            junit-name: be-tests-mongo-6-0-ssl-ee
+            image: metabase/qa-databases:mongo-sample-6
     env:
       CI: 'true'
       DRIVERS: mongo
@@ -990,53 +1066,6 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-vertica-ee'
-        test-args: >-
-          :only-tags [:mb/driver-tests]
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-tests-clickhouse-ee:
-    if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
-    env:
-      CI: 'true'
-      DRIVERS: clickhouse
-      MB_CLICKHOUSE_TEST_HOST: localhost
-      MB_CLICKHOUSE_TEST_PORT: 8123
-      MB_CLICKHOUSE_TEST_OLD_PORT: 8124
-      MB_CLICKHOUSE_TEST_NGINX_PORT: 8127
-    name: Clickhouse
-    steps:
-    - uses: actions/checkout@v4
-    - name: Add ClickHouse TLS instance to /etc/hosts
-      run: |
-        sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
-    - name: Start ClickHouse in Docker
-      uses: hoverkraft-tech/compose-action@v2.0.0
-      with:
-        compose-file: "modules/drivers/clickhouse/docker-compose.yml"
-        down-flags: "--volumes"
-        services: |
-          clickhouse
-          clickhouse_tls
-          clickhouse_older_version
-          clickhouse_cluster_node1
-          clickhouse_cluster_node2
-          nginx
-    - name: Test Clickhouse driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-clickhouse-ee'
         test-args: >-
           :only-tags [:mb/driver-tests]
     - name: Upload Test Results

@@ -1,15 +1,15 @@
 /* eslint "react/prop-types": "warn" */
 import cx from "classnames";
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import dayjs from "dayjs";
 import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
-import List from "metabase/components/List";
-import S from "metabase/components/List/List.module.css";
-import ListItem from "metabase/components/ListItem";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
+import List from "metabase/common/components/List";
+import S from "metabase/common/components/List/List.module.css";
+import ListItem from "metabase/common/components/ListItem";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -55,18 +55,16 @@ class TableQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,
     metadata: PropTypes.object.isRequired,
-    style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
     loading: PropTypes.bool,
     loadingError: PropTypes.object,
   };
 
   render() {
-    const { entities, style, loadingError, loading, table, metadata } =
-      this.props;
+    const { entities, loadingError, loading, table, metadata } = this.props;
 
     return (
-      <div style={style} className={CS.full}>
+      <div>
         <ReferenceHeader
           name={t`Questions about ${this.props.table.display_name}`}
           type="questions"
@@ -88,7 +86,7 @@ class TableQuestions extends Component {
                         <ListItem
                           key={entity.id}
                           name={entity.display_name || entity.name}
-                          description={t`Created ${moment(
+                          description={t`Created ${dayjs(
                             entity.created_at,
                           ).fromNow()} by ${entity.creator.common_name}`}
                           url={Urls.question(entity)}

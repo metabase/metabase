@@ -2,9 +2,9 @@
   "Tests for /api/segment endpoints."
   (:require
    [clojure.test :refer :all]
-   [metabase.http-client :as client]
-   [metabase.request.core :as request]
+   [metabase.api.response :as api.response]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -13,7 +13,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
 
 (defn- segment-response [segment]
   (-> (into {} segment)
@@ -28,10 +28,10 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :get 401 "segment")))
 
-  (is (= (get request/response-unauthentic :body)
+  (is (= (get api.response/response-unauthentic :body)
          (client/client :put 401 "segment/13"))))
 
 ;; ## POST /api/segment
@@ -164,8 +164,8 @@
       (mt/with-temp [:model/Segment {:keys [id]}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "segment/" id)
                                         {:archived true, :revision_message "Archive the Segment"})))
-        (is (= true
-               (t2/select-one-fn :archived :model/Segment :id id)))))))
+        (is (true?
+             (t2/select-one-fn :archived :model/Segment :id id)))))))
 
 (deftest unarchive-test
   (testing "PUT /api/segment/:id"

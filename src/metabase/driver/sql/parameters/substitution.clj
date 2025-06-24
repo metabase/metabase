@@ -9,27 +9,27 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.common.parameters.dates :as params.dates]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.parameter :as lib.schema.parameter]
-   [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
-   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
    (java.util UUID)
-   (metabase.driver.common.parameters Date DateRange DateTimeRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
+   (metabase.driver.common.parameters
+    Date
+    DateRange
+    DateTimeRange
+    FieldFilter
+    ReferencedCardQuery
+    ReferencedQuerySnippet)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -174,13 +174,13 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
-(mu/defn- maybe-parse-temporal-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
+(mu/defn- maybe-parse-temporal-literal :- (driver-api/instance-of-class java.time.temporal.Temporal)
   [x]
   (condp instance? x
     String   (u.date/parse x)
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
-                    {:type      qp.error-type/invalid-parameter
+                    {:type      driver-api/qp.error-type.invalid-parameter
                      :parameter x}))))
 
 (defmethod ->replacement-snippet-info [:sql Date]
@@ -261,10 +261,10 @@
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn- field->clause :- mbql.s/field
+(mu/defn- field->clause :- driver-api/mbql.schema.field
   [driver     :- :keyword
-   field      :- ::lib.schema.metadata/column
-   param-type :- ::lib.schema.parameter/type
+   field      :- driver-api/schema.metadata.column
+   param-type :- driver-api/schema.parameter.type
    value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
@@ -274,13 +274,13 @@
   ;; I haven't figured out what that is yet
   [:field
    (u/the-id field)
-   {:base-type                (:base-type field)
-    :temporal-unit            (align-temporal-unit-with-param-type-and-value driver field param-type value)
-    ::add/source-table        (:table-id field)
+   {:base-type                     (:base-type field)
+    :temporal-unit                 (align-temporal-unit-with-param-type-and-value driver field param-type value)
+    driver-api/qp.add.source-table (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
-    ::compiling-field-filter? true}])
+    ::compiling-field-filter?      true}])
 
-(mu/defn- field->identifier :- ::lib.schema.common/non-blank-string
+(mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
@@ -314,16 +314,16 @@
       (params.ops/operator? param-type)
       (->> (assoc params :target [:template-tag (field->clause driver field param-type value)])
            params.ops/to-clause
-           mbql.u/desugar-filter-clause
-           qp.wrap-value-literals/wrap-value-literals-in-mbql
+           driver-api/desugar-filter-clause
+           driver-api/wrap-value-literals-in-mbql
            ->honeysql
            (honeysql->replacement-snippet-info driver))
 
       (params.dates/exclusion-date-type param-type value)
       (let [field-clause (field->clause driver field param-type value)]
         (->> (params.dates/date-string->filter value field-clause)
-             mbql.u/desugar-filter-clause
-             qp.wrap-value-literals/wrap-value-literals-in-mbql
+             driver-api/desugar-filter-clause
+             driver-api/wrap-value-literals-in-mbql
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
@@ -349,7 +349,7 @@
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
    {:keys [value], :as field-filter} :- [:map
-                                         [:field ::lib.schema.metadata/column]
+                                         [:field driver-api/schema.metadata.column]
                                          [:value :any]]]
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
@@ -378,3 +378,23 @@
   [_ {:keys [content]}]
   {:prepared-statement-args nil
    :replacement-snippet     content})
+
+(defmulti time-grouping->replacement-snippet-info
+  "Like ->replacement-snipped-info, but specialized for converting time-groupings.  This is separate from the main
+  ->replacement-snippet-info because it requires an extra argument."
+  {:arglists '([driver column temporal-unit])
+   :added "0.55.0"}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(def date-groupings
+  "Set of time groupings that should be coerced to dates"
+  #{"day" "week" "month" "quarter" "year"})
+
+(defmethod time-grouping->replacement-snippet-info :sql
+  [driver column {:keys [value]}]
+  (honeysql->replacement-snippet-info driver
+                                      (if (= value params/no-value)
+                                        [:raw column]
+                                        (cond-> (sql.qp/date driver (keyword value) [:raw column])
+                                          (date-groupings value) h2x/->date))))

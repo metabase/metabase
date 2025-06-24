@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/components/ToolbarButton";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { setEditingDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
@@ -22,7 +22,7 @@ export const EditDashboardButton = ({
   useRegisterShortcut(
     [
       {
-        id: "edit-dashboard",
+        id: "dashboard-edit",
         perform: onBeginEditing,
       },
     ],

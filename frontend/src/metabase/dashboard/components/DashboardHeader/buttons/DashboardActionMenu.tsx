@@ -4,13 +4,13 @@ import type { WithRouterProps } from "react-router/lib/withRouter";
 import { push } from "react-router-redux";
 import { c, t } from "ttag";
 
-import Button from "metabase/core/components/Button";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useRefreshDashboard } from "metabase/dashboard/hooks";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
 import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Icon, Menu, Tooltip } from "metabase/ui";
+import { Icon, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 type DashboardActionMenuProps = {
@@ -60,7 +60,7 @@ const DashboardActionMenuInner = ({
   useRegisterShortcut(
     [
       {
-        id: "trash-dashboard",
+        id: "dashboard-send-to-trash",
         perform: () => dispatch(push(`${location?.pathname}/archive`)),
       },
     ],
@@ -71,13 +71,11 @@ const DashboardActionMenuInner = ({
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
       <Menu.Target>
         <div>
-          <Tooltip label={t`Move, trash, and more…`} disabled={opened}>
-            <Button
-              onlyIcon
-              icon="ellipsis"
-              aria-label={t`Move, trash, and more…`}
-            />
-          </Tooltip>
+          <ToolbarButton
+            icon="ellipsis"
+            aria-label={t`Move, trash, and more…`}
+            tooltipLabel={t`Move, trash, and more…`}
+          />
         </div>
       </Menu.Target>
       <Menu.Dropdown>

@@ -2,14 +2,13 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
-   [metabase.db :as mdb]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.models.field-values :as field-values]
+   [metabase.app-db.core :as mdb]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
 (mu/defn- clear-field-values-for-field!
@@ -83,7 +82,7 @@
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
     (let [conditions [:field_id   (:id field)
                       :type       [:in field-values/advanced-field-values-types]
-                      :created_at [:< (sql.qp/add-interval-honeysql-form
+                      :created_at [:< ((requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
                                        (mdb/db-type)
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))
@@ -94,7 +93,8 @@
 
 (mu/defn delete-expired-advanced-field-values-for-table!
   "Delete all expired advanced FieldValues for a table and returns the number of deleted rows.
-  For more info about advanced FieldValues, check the docs in [[metabase.models.field-values/field-values-types]]"
+  For more info about advanced FieldValues, check the docs
+  in [[metabase.warehouse-schema.models.field-values/field-values-types]]"
   [table :- i/TableInstance]
   (->> (table->fields-to-scan table)
        (map delete-expired-advanced-field-values-for-field!)

@@ -1,13 +1,13 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
-import { useMount } from "react-use";
+import { useLatest, useMount } from "react-use";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { useSetEmbedFont } from "metabase/public/hooks/use-set-embed-font";
 import { setErrorPage } from "metabase/redux/app";
-import { addFields, addParamValues } from "metabase/redux/metadata";
+import { addFields } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import {
@@ -39,8 +39,9 @@ export const PublicOrEmbeddedQuestion = ({
   params: { uuid: string; token: string };
 }) => {
   const dispatch = useDispatch();
-
   const metadata = useSelector(getMetadata);
+  // we cannot use `metadata` directly otherwise hooks will re-run on every metadata change
+  const metadataRef = useLatest(metadata);
 
   const [initialized, setInitialized] = useState(false);
 
@@ -74,16 +75,13 @@ export const PublicOrEmbeddedQuestion = ({
         throw { status: 404 };
       }
 
-      if (card.param_values) {
-        await dispatch(addParamValues(card.param_values));
-      }
       if (card.param_fields) {
-        await dispatch(addFields(card.param_fields));
+        await dispatch(addFields(Object.values(card.param_fields).flat()));
       }
 
       const parameters = getCardUiParameters(
         card,
-        metadata,
+        metadataRef.current,
         {},
         card.parameters || undefined,
       );
@@ -132,6 +130,7 @@ export const PublicOrEmbeddedQuestion = ({
         newResult = await maybeUsePivotEndpoint(
           EmbedApi.cardQuery,
           card,
+          metadataRef.current,
         )({
           token,
           parameters: JSON.stringify(
@@ -140,10 +139,17 @@ export const PublicOrEmbeddedQuestion = ({
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
-        const datasetQuery = applyParameters(card, parameters, parameterValues);
+        const datasetQuery = applyParameters(
+          card,
+          parameters,
+          parameterValues,
+          [],
+          { sparse: true },
+        );
         newResult = await maybeUsePivotEndpoint(
           PublicApi.cardQuery,
           card,
+          metadataRef.current,
         )({
           uuid,
           parameters: JSON.stringify(datasetQuery.parameters),
@@ -157,7 +163,7 @@ export const PublicOrEmbeddedQuestion = ({
       console.error("error", error);
       dispatch(setErrorPage(error));
     }
-  }, [card, dispatch, parameterValues, token, uuid]);
+  }, [card, metadataRef, dispatch, parameterValues, token, uuid]);
 
   useEffect(() => {
     run();
@@ -170,7 +176,7 @@ export const PublicOrEmbeddedQuestion = ({
 
     return getCardUiParameters(
       card,
-      metadata,
+      metadataRef.current,
       {},
       card.parameters || undefined,
     );
@@ -197,7 +203,7 @@ export const PublicOrEmbeddedQuestion = ({
         theme={theme}
         titled={titled}
         setCard={setCard}
-        downloadsEnabled={downloadsEnabled.results}
+        downloadsEnabled={downloadsEnabled}
       />
     </LocaleProvider>
   );

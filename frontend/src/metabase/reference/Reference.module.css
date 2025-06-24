@@ -17,8 +17,8 @@
 }
 
 .schemaSeparator {
-  composes: textLight mt2 from "style";
-  margin-left: var(--icon-width);
+  composes: textLight my2 from "style";
+  margin-left: 0;
   font-size: 18px;
 }
 

@@ -8,12 +8,12 @@
 
   See documentation in [[metabase.permissions.models.permissions]] for more information about the Metabase permissions system."
   (:require
-   [metabase.db :as mdb]
+   [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.models.setting :as setting]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -36,32 +36,55 @@
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
-(defn- magic-group [group-name]
+(defn- magic-group [magic-group-type]
   (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name] :name group-name)
+     (u/prog1 (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
        (when-not <>
-         (throw (ex-info (format "Fatal error: magic Permissions Group %s has gone missing." (pr-str group-name))
-                         {:name group-name})))))))
+         (throw (ex-info (format "Fatal error: magic Permissions Group '%s' has gone missing." magic-group-type)
+                         {:magic-group-type magic-group-type})))))))
 
-(def all-users-group-name
-  "The name of the \"All Users\" magic group."
-  "All Users")
+(def all-users-magic-group-type
+  "The magic-group type of the \"All Users\" magic group."
+  "all-internal-users")
 
 (def ^{:arglists '([])} all-users
   "Fetch the `All Users` permissions group"
-  (magic-group all-users-group-name))
+  (magic-group all-users-magic-group-type))
 
-(def admin-group-name
-  "The name of the \"Administrators\" magic group."
-  "Administrators")
+(def all-external-users-magic-group-type
+  "The magic group type of the \"All External Users\" magic group."
+  "all-external-users")
+
+#_(def ^{:arglists '([])} all-external-users
+    "Fetch the `all-external-users` magic group"
+    (mdb/memoize-for-application-db
+     (fn []
+     ;; Don't use `magic-group` here, because this one might not exist and that's ok.
+       (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type all-external-users-magic-group-type))))
+
+(defn create-all-external-users!
+  "Creates the \"All External Users\" magic group."
+  []
+  (t2/insert! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type
+                                       :name "All External Users"
+                                       :is_tenant_group true}))
+
+(defn delete-all-external-users!
+  "Deletes the \"All External Users\" magic group."
+  []
+  (t2/delete! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type}))
+
+(def admin-magic-group-type
+  "The magic-group type of the \"Administrators\" magic group."
+  "admin")
 
 (def ^{:arglists '([])} admin
   "Fetch the `Administrators` permissions group"
-  (magic-group admin-group-name))
+  (magic-group admin-magic-group-type))
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
@@ -138,6 +161,7 @@
                                                             :u.first_name
                                                             :u.last_name
                                                             :u.email
+                                                            :u.is_superuser
                                                             :pgm.group_id
                                                             [:pgm.id :membership_id]
                                                             (when (premium-features/enable-advanced-permissions?)
@@ -155,10 +179,14 @@
 (defn non-admin-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
-  (t2/select :model/PermissionsGroup :name [:not= admin-group-name]))
+  (t2/select :model/PermissionsGroup :magic_group_type [:not= admin-magic-group-type]))
 
 (defn non-magic-groups
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
   []
-  (t2/select :model/PermissionsGroup {:where [:and [:not= :name admin-group-name]
-                                              [:not= :name all-users-group-name]]}))
+  (t2/select :model/PermissionsGroup {:where [:= :magic_group_type nil]}))
+
+(defn is-tenant-group?
+  "Returns a boolean representing whether this group is a tenant group."
+  [group-id]
+  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))

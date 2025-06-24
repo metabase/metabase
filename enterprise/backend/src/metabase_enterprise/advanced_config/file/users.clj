@@ -3,8 +3,8 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface
     :as advanced-config.file.i]
-   [metabase.models.user :as user]
    [metabase.setup.core :as setup]
+   [metabase.users.models.user :as user]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))

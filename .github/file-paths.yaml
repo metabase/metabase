@@ -33,13 +33,15 @@ frontend_sources: &frontend_sources
   - ".nvmrc"
 
 frontend_embedding_sdk_sources:
-  - "enterprise/frontend/src/embedding-sdk/**"
+  - *frontend_sources
 
 frontend_specs: &frontend_specs
   - *shared_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
+  - "enterprise/frontend/**/*.unit.*"
+  - ".github/**/*.unit.spec.*"
   - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
@@ -109,25 +111,33 @@ e2e_ci: &e2e_ci
 e2e_specs: &e2e_specs
   - "**/*.cy.*.js"
   - "**/*.cy.*.ts"
-  - "e2e/runner/**"
-  - "e2e/support/**"
-  - "e2e/snapshot*/**"
 
 e2e_cross_version: &e2e_cross_version
   - ".github/workflows/e2e-cross-version.yml"
   - "e2e/test/scenarios/cross-version/**"
+
+e2e_embedding_sdk_compatibility:
+  - *default
+  - *e2e_ci
+  - *frontend_sources
+  - "e2e/embedding-sdk-host-apps/**"
+  - "e2e/runner/embedding-sdk/**"
+  - "e2e/runner/test-host-app/**/*.cy.*.js"
+  - "e2e/runner/test-host-app/**/*.cy.*.ts"
 
 e2e_all:
   - *default
   - *e2e_ci
   - *sources
   - *e2e_specs
+  - "e2e/**"
 
 snowplow:
   - ".github/workflows/snowplow.yml"
   - "snowplow/**"
 
 documentation:
+  - ".typedoc/**"
   - "docs/**"
   - "**/*.md"
 

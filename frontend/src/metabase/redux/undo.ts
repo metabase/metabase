@@ -1,4 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
+import { createRef } from "react";
 import type { Action } from "redux-actions";
 import _ from "underscore";
 
@@ -15,7 +16,7 @@ let nextUndoId = 0;
 
 export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
   return (dispatch, getState) => {
-    const { icon = "check", timeout = 5000, canDismiss = true } = undo;
+    const { icon = "check_filled", timeout = 5000, canDismiss = true } = undo;
     const id = undo.id ?? nextUndoId++;
     // if we're overwriting an existing undo, clear its timeout
     const currentUndo = getUndo(getState(), id);
@@ -35,6 +36,7 @@ export const addUndo = createThunkAction(ADD_UNDO, (undo) => {
       ...undo,
       id,
       _domId: id,
+      ref: createRef(),
       icon,
       canDismiss,
       timeoutId,
@@ -57,6 +59,7 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, (undo) => {
   return (dispatch) => {
     return {
       ...undo,
+      pausedAt: null,
       timeoutId: setTimeout(
         () => dispatch(dismissUndo({ undoId: undo.id })),
         restTime,

@@ -4,7 +4,7 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
-   [metabase.plugins.classloader :as classloader]
+   [metabase.classloader.core :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.malli :as mu]))

@@ -12,7 +12,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -35,6 +35,7 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
       "premium-embedding-token": "super-secret",
       // @ts-expect-error - this isn't a valid setting
       "fake-setting": "fake-value",
+      "bcc-enabled?": true,
     }),
   );
 
@@ -120,29 +121,6 @@ describe("AdminSettingInput", () => {
     const input = await screen.findByRole("switch");
     expect(input).toHaveClass("mb-mantine-Switch-input");
     expect(input).toHaveAttribute("data-checked", "true");
-  });
-
-  it("should render a radio input", async () => {
-    setup({
-      title: "Humanization",
-      name: "humanization-strategy",
-      inputType: "radio",
-      options: [
-        { label: "None", value: "none" },
-        { label: "Simple", value: "simple" },
-      ],
-    });
-
-    const inputs = await screen.findAllByRole("radio");
-    expect(inputs).toHaveLength(2);
-
-    // eslint-disable-next-line jest-dom/prefer-to-have-value
-    expect(inputs[0]).toHaveAttribute("value", "none");
-    expect(inputs[0]).toBeChecked();
-
-    // eslint-disable-next-line jest-dom/prefer-to-have-value
-    expect(inputs[1]).toHaveAttribute("value", "simple");
-    expect(inputs[1]).not.toBeChecked();
   });
 
   it("should render a number input", async () => {
@@ -276,23 +254,80 @@ describe("AdminSettingInput", () => {
     expect(body).toStrictEqual({ value: "simple" });
   });
 
-  it("should save an updated radio setting", async () => {
-    setup({
-      title: "Humanization",
-      name: "humanization-strategy",
-      inputType: "radio",
-      options: [
-        { label: "None", value: "none" },
-        { label: "Simple", value: "simple" },
-      ],
+  describe("radio input", () => {
+    it("should render a radio input", async () => {
+      setup({
+        title: "Humanization",
+        name: "humanization-strategy",
+        inputType: "radio",
+        options: [
+          { label: "None", value: "none" },
+          { label: "Simple", value: "simple" },
+        ],
+      });
+
+      const inputs = await screen.findAllByRole("radio");
+      expect(inputs).toHaveLength(2);
+
+      // eslint-disable-next-line jest-dom/prefer-to-have-value
+      expect(inputs[0]).toHaveAttribute("value", "none");
+      expect(inputs[0]).toBeChecked();
+
+      // eslint-disable-next-line jest-dom/prefer-to-have-value
+      expect(inputs[1]).toHaveAttribute("value", "simple");
+      expect(inputs[1]).not.toBeChecked();
     });
 
-    const option = await screen.findByText("Simple");
-    await userEvent.click(option);
+    it("should save an updated radio setting", async () => {
+      setup({
+        title: "Humanization",
+        name: "humanization-strategy",
+        inputType: "radio",
+        options: [
+          { label: "None", value: "none" },
+          { label: "Simple", value: "simple" },
+        ],
+      });
 
-    const [putUrl, body] = await findPut();
-    expect(putUrl).toContain("/api/setting/humanization-strategy");
-    expect(body).toStrictEqual({ value: "simple" });
+      const option = await screen.findByText("Simple");
+      await userEvent.click(option);
+
+      const [putUrl, body] = await findPut();
+      expect(putUrl).toContain("/api/setting/humanization-strategy");
+      expect(body).toStrictEqual({ value: "simple" });
+    });
+
+    it("should convert string boolean radio values", async () => {
+      setup({
+        title: "Humanization",
+        name: "bcc-enabled?",
+        inputType: "radio",
+        options: [
+          { label: "True", value: "true" },
+          { label: "False", value: "false" },
+        ],
+      });
+
+      const inputs = await screen.findAllByRole("radio");
+      expect(inputs).toHaveLength(2);
+
+      // eslint-disable-next-line jest-dom/prefer-to-have-value
+      expect(inputs[0]).toHaveAttribute("value", "true");
+      expect(inputs[0]).toBeChecked();
+
+      // eslint-disable-next-line jest-dom/prefer-to-have-value
+      expect(inputs[1]).toHaveAttribute("value", "false");
+      expect(inputs[1]).not.toBeChecked();
+
+      const option = await screen.findByText("False");
+      await userEvent.click(option);
+
+      const [putUrl, body] = await findPut();
+      expect(putUrl).toContain(
+        `/api/setting/${encodeURIComponent("bcc-enabled?")}`,
+      );
+      expect(body).toStrictEqual({ value: false });
+    });
   });
 
   it("should save an updated textarea setting", async () => {

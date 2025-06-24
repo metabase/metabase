@@ -170,7 +170,6 @@ export const dashboardActionButtons: Record<
       !isAnalyticsDashboard &&
       !dashboard.archived,
   },
-
   // ACTIONS WHEN DASHBOARD IS ANALYTICS DASHBOARD
   [DASHBOARD_ACTION.COPY_ANALYTICS_DASHBOARD]: {
     component: () => <CopyAnalyticsDashboardButton />,

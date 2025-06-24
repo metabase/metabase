@@ -1,7 +1,7 @@
 (ns metabase.pulse.update-alerts
   ;; TODO this should be moved to notification
   (:require
-   [metabase.events :as events]
+   [metabase.events.core :as events]
    [metabase.notification.models :as models.notification]
    [toucan2.core :as t2]))
 
