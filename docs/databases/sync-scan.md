@@ -1,5 +1,6 @@
 ---
 title: Syncing and scanning databases
+summary: Learn how Metabase stays in sync with your database by running periodic queries to update metadata, sample field values, and compute stats.
 ---
 
 # Syncing and scanning databases
