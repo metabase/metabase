@@ -63,7 +63,7 @@ jobs:
           echo "Final skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !needs.determine-driver-skips.outputs.skip }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
