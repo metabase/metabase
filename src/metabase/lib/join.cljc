@@ -748,7 +748,7 @@
     join-or-joinable       :- [:maybe JoinOrJoinable]
     lhs-expression-or-nil  :- [:maybe :lib.schema.expression/expression]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _rhs-expression-or-nil :- [:maybe :lib.schema.expression/expression]]
+    _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
    ;; existing join and any subsequent joins. The reason for doing things this way rather than removing the joins
    ;; before calculating visible columns is that we don't want to either create possibly-invalid queries, or have to
@@ -795,8 +795,8 @@
     stage-number           :- :int
     join-or-joinable       :- JoinOrJoinable
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _lhs-expression-or-nil :- [:maybe :lib.schema.expression/expression]
-    rhs-expression-or-nil  :- [:maybe :lib.schema.expression/expression]]
+    _lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    rhs-expression-or-nil  :- [:maybe ::lib.schema.expression/expression]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (let [joinable          (if (join? join-or-joinable)

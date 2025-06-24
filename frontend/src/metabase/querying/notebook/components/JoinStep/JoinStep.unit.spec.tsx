@@ -18,7 +18,6 @@ import {
   within,
 } from "__support__/ui";
 import { METAKEY } from "metabase/lib/browser";
-import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { createQuery, getJoinQueryHelpers } from "metabase-lib/test-helpers";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
@@ -182,9 +181,8 @@ function setup({
     const fields = Lib.joinFields(join);
 
     const conditions = Lib.joinConditions(join).map((condition) => {
-      const { operator, lhsExpression, rhsExpression } = checkNotNull(
-        Lib.joinConditionParts(condition),
-      );
+      const { operator, lhsExpression, rhsExpression } =
+        Lib.joinConditionParts(condition);
       return {
         operator,
         lhsExpression: Lib.displayInfo(query, step.stageIndex, lhsExpression),

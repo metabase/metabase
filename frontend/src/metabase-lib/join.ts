@@ -53,8 +53,12 @@ export function joinConditionClause(
 
 export function joinConditionParts(
   condition: JoinCondition,
-): JoinConditionParts | null {
-  return ML.join_condition_parts(condition);
+): JoinConditionParts {
+  const parts = ML.join_condition_parts(condition);
+  if (parts == null) {
+    throw new TypeError("Unexpected join condition");
+  }
+  return parts;
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {

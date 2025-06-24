@@ -38,13 +38,10 @@ export function JoinCondition({
   const [isLhsOpened, setIsLhsOpened] = useState(false);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
-  const { operator, lhsExpression, rhsExpression } = useMemo(() => {
-    const parts = Lib.joinConditionParts(condition);
-    if (parts == null) {
-      throw new TypeError("Unexpected join condition");
-    }
-    return parts;
-  }, [condition]);
+  const { operator, lhsExpression, rhsExpression } = useMemo(
+    () => Lib.joinConditionParts(condition),
+    [condition],
+  );
 
   const createCondition = (
     operator: Lib.JoinConditionOperator,
