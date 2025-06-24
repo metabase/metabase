@@ -1,3 +1,11 @@
 {
-  "continuations": null
+  "continuations": [
+    {
+      "command": [
+        "branch",
+        "restack"
+      ],
+      "branch": "emb-508-select-dashboards-and-questions-for-new-iframe-embedding"
+    }
+  ]
 }
