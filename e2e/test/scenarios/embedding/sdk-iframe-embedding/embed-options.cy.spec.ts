@@ -8,8 +8,7 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest();
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ signOut: true });
   });
 
   it("shows a static question with isDrillThroughEnabled=false", () => {

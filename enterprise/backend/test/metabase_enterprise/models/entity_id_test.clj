@@ -41,6 +41,7 @@
     :model/CardBookmark
     :model/ChannelTemplate
     :model/CollectionBookmark
+    :model/ContentTranslation
     :model/DashboardBookmark
     :model/DataPermissions
     :model/DatabaseRouter
@@ -67,7 +68,6 @@
     :model/PulseChannel
     :model/PulseChannelRecipient
     :model/Query
-    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField

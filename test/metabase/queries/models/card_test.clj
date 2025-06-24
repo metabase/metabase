@@ -145,7 +145,8 @@
                 (is (= 0 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
                 (is (= 0 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]])))
                 ;; call it twice to make we don't get delete error if no actions are found
-                (is (= 1 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
+                ;; Returns zero because there are no actual changes happening here
+                (is (= 0 (t2/update! :model/Card :id model-id {:dataset_query (update query :query merge query-change)})))))))))))
 
 (deftest disable-implicit-actions-if-needed-test-2
   (mt/with-actions-enabled
@@ -1482,3 +1483,69 @@
             (is (=? {name1 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"} idents))
             (is (=? {name2 #"expression_[A-Za-z0-9_-]{21}@0__tax rate"}
                     (-> modified :query :expression-idents)))))))))
+
+(deftest before-update-card-schema-test
+  (testing "card_schema gets set to current-schema-version on update"
+    (mt/with-temp [:model/Card {card-id :id} {:card_schema 20}]
+      (t2/update! :model/Card card-id {:name "Updated Name"})
+      (is (= @#'card/current-schema-version
+             (t2/select-one-fn :card_schema :model/Card :id card-id))))))
+
+(deftest before-update-dashboard-question-updates-test
+  (testing "apply-dashboard-question-updates is called"
+    (mt/with-temp [:model/Collection {coll-id :id} {}
+                   :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                   :model/Card {card-id :id} {}]
+      (t2/update! :model/Card card-id {:dashboard_id dash-id})
+      (is (= coll-id
+             (t2/select-one-fn :collection_id :model/Card :id card-id))))))
+
+(deftest before-update-query-normalization-test
+  (testing "maybe-normalize-query is called"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      ;; Update with a query that needs normalization
+      (let [unnormalized-query {:database (mt/id)
+                                :type     :query
+                                :query    {:source-table (mt/id :venues)
+                                           :filter       [:= [:field-id (mt/id :venues :name)] "Test"]}}]
+        (t2/update! :model/Card card-id {:dataset_query unnormalized-query})
+        ;; Verify the query was normalized (field-id -> field)
+        (let [updated-query (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+          (is (= [:= [:field (mt/id :venues :name) nil] "Test"]
+                 (get-in updated-query [:query :filter]))))))))
+
+(deftest before-update-metadata-idents-normalization-test
+  (testing "normalize-result-metadata-idents is called when type changes"
+    (mt/with-temp [:model/Card {card-id :id} {:type :question
+                                              :dataset_query (mt/mbql-query venues)
+                                              :result_metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))}]
+      (t2/update! :model/Card card-id {:type :model})
+      (let [updated-card (t2/select-one :model/Card :id card-id)]
+        (is (= :model (:type updated-card)))
+        ;; Verify result_metadata was processed for model type
+        (is (some? (:result_metadata updated-card)))))))
+
+(deftest before-update-query-fields-population-test
+  (testing "populate-query-fields is called"
+    (mt/with-temp [:model/Card {card-id :id} {}]
+      (let [new-query (mt/mbql-query venues)]
+        (t2/update! :model/Card card-id {:dataset_query new-query})
+        (let [updated-card (t2/select-one :model/Card :id card-id)]
+          (is (= (mt/id) (:database_id updated-card)))
+          (is (= (mt/id :venues) (:table_id updated-card)))
+          (is (= :query (:query_type updated-card))))))))
+
+(deftest before-update-embedding-timestamp-test
+  (testing "maybe-populate-initially-published-at is called"
+    (mt/with-temp [:model/Card {card-id :id} {:enable_embedding false}]
+      (t2/update! :model/Card card-id {:enable_embedding true})
+      (let [updated-card (t2/select-one :model/Card :id card-id)]
+        (is (some? (:initially_published_at updated-card)))))))
+
+(deftest before-update-flag-removal-test
+  (testing "verified-result-metadata? flag is removed from final changes"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      ;; This should not cause an error even though verified-result-metadata? is not a valid column
+      (t2/update! :model/Card card-id {:name "Updated"
+                                       :verified-result-metadata? true})
+      (is (= "Updated" (t2/select-one-fn :name :model/Card :id card-id))))))

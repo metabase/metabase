@@ -6,7 +6,14 @@ import {
 } from "embedding/auth-common";
 import { INVALID_AUTH_METHOD, MetabaseError } from "embedding-sdk/errors";
 
+import {
+  ALLOWED_EMBED_SETTING_KEYS,
+  type AllowedEmbedSettingKey,
+  DISABLE_UPDATE_FOR_KEYS,
+} from "./constants";
 import type {
+  SdkIframeEmbedEvent,
+  SdkIframeEmbedEventHandler,
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
@@ -15,27 +22,17 @@ import type {
 
 const EMBEDDING_ROUTE = "embed/sdk/v1";
 
-type EmbedSettingKey = keyof SdkIframeEmbedSettings;
-
-const ALLOWED_EMBED_SETTING_KEYS = [
-  "apiKey",
-  "instanceUrl",
-  "dashboardId",
-  "questionId",
-  "template",
-  "theme",
-  "locale",
-  "preferredAuthMethod",
-] as const satisfies EmbedSettingKey[];
-
-type AllowedEmbedSettingKey = (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
-
 class MetabaseEmbed {
   static readonly VERSION = "1.1.0";
 
   private _settings: SdkIframeEmbedTagSettings;
   private _isEmbedReady: boolean = false;
   private iframe: HTMLIFrameElement | null = null;
+
+  private _eventHandlers: Map<
+    SdkIframeEmbedEvent["type"],
+    Set<SdkIframeEmbedEventHandler>
+  > = new Map();
 
   constructor(settings: SdkIframeEmbedTagSettings) {
     this._settings = settings;
@@ -48,13 +45,15 @@ class MetabaseEmbed {
    * Merge these settings with the current settings.
    */
   public updateSettings(settings: Partial<SdkIframeEmbedSettings>) {
-    // The value of instanceUrl must be the same as the initial value used to create an embed.
+    // The value of these fields must be the same as the initial value used to create an embed.
     // This allows users to pass a complete settings object that includes all their settings.
-    if (
-      settings.instanceUrl &&
-      settings.instanceUrl !== this._settings.instanceUrl
-    ) {
-      raiseError("instanceUrl cannot be updated after the embed is created");
+    for (const field of DISABLE_UPDATE_FOR_KEYS) {
+      if (
+        settings[field] !== undefined &&
+        settings[field] !== this._settings[field]
+      ) {
+        raiseError(`${field} cannot be updated after the embed is created`);
+      }
     }
 
     if (!this._isEmbedReady) {
@@ -66,11 +65,53 @@ class MetabaseEmbed {
   }
 
   public destroy() {
+    window.removeEventListener("message", this._handleMessage);
+    this._isEmbedReady = false;
+    this._eventHandlers.clear();
+
     if (this.iframe) {
-      window.removeEventListener("message", this._handleMessage);
       this.iframe.remove();
-      this._isEmbedReady = false;
       this.iframe = null;
+    }
+  }
+
+  public addEventListener(
+    eventType: SdkIframeEmbedEvent["type"],
+    handler: SdkIframeEmbedEventHandler,
+  ) {
+    if (!this._eventHandlers.has(eventType)) {
+      this._eventHandlers.set(eventType, new Set());
+    }
+
+    // For the ready event, invoke the handler immediately if the embed is already ready.
+    if (eventType === "ready" && this._isEmbedReady) {
+      handler();
+      return;
+    }
+
+    this._eventHandlers.get(eventType)!.add(handler);
+  }
+
+  public removeEventListener(
+    eventType: SdkIframeEmbedEvent["type"],
+    handler: SdkIframeEmbedEventHandler,
+  ) {
+    const handlers = this._eventHandlers.get(eventType);
+
+    if (handlers) {
+      handlers.delete(handler);
+
+      if (handlers.size === 0) {
+        this._eventHandlers.delete(eventType);
+      }
+    }
+  }
+
+  private _emitEvent(event: SdkIframeEmbedEvent) {
+    const handlers = this._eventHandlers.get(event.type);
+
+    if (handlers) {
+      handlers.forEach((handler) => handler());
     }
   }
 
@@ -162,6 +203,21 @@ class MetabaseEmbed {
       );
     }
 
+    // Ensure auth methods are mutually exclusive
+    const authMethods = [
+      settings.apiKey,
+      settings.useExistingUserSession,
+      settings.preferredAuthMethod,
+    ].filter(
+      (method) => method !== undefined && method !== null && method !== false,
+    );
+
+    if (authMethods.length > 1) {
+      raiseError(
+        "apiKey, useExistingUserSession, and preferredAuthMethod are mutually exclusive, only one can be specified.",
+      );
+    }
+
     if (!settings.target) {
       raiseError("target must be provided");
     }
@@ -181,6 +237,7 @@ class MetabaseEmbed {
 
       this._isEmbedReady = true;
       this._setEmbedSettings(this._settings);
+      this._emitEvent({ type: "ready" });
     }
 
     if (event.data.type === "metabase.embed.requestSessionToken") {

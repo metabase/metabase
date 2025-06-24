@@ -10,8 +10,7 @@ const { H } = cy;
 
 describe("scenarios > embedding > sdk iframe embedding", () => {
   beforeEach(() => {
-    H.prepareSdkIframeEmbedTest();
-    cy.signOut();
+    H.prepareSdkIframeEmbedTest({ signOut: true });
   });
 
   it("can find the embed.js file", () => {
@@ -183,4 +182,65 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
       cy.get("iframe").invoke("attr", "src").should("eq", originalSrc);
     });
   });
+
+  it("fires ready event after iframe is loaded", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      questionId: ORDERS_QUESTION_ID,
+      onVisitPage: () => {
+        cy.window().then((win) => {
+          // @ts-expect-error -- this is within the iframe
+          win.embed.addEventListener("ready", () => {
+            win.document.body.setAttribute("data-iframe-is-ready", "true");
+          });
+        });
+      },
+    });
+
+    cy.log("ready event should not be fired before the page loads");
+    cy.get("body").should("not.have.attr", "data-iframe-is-ready", "true");
+
+    cy.wait("@getCardQuery");
+
+    cy.log("ready event should be fired after the page loads");
+    cy.get("iframe").should("be.visible");
+    cy.get("body").should("have.attr", "data-iframe-is-ready", "true");
+
+    cy.log("iframe content should now be loaded");
+    frame.within(() => {
+      H.assertSdkInteractiveQuestionOrdersUsable();
+    });
+  });
+
+  it("shows dashboard title when updateSettings({ withTitle: true }) is called", () => {
+    const frame = H.loadSdkIframeEmbedTestPage({
+      dashboardId: ORDERS_DASHBOARD_ID,
+      withTitle: false,
+    });
+
+    cy.wait("@getDashCardQuery");
+
+    cy.log("1. dashboard title should initially be hidden");
+    frame.within(() => {
+      cy.findByText("Orders in a dashboard").should("not.exist");
+      cy.findByText("Orders").should("be.visible");
+    });
+
+    cy.log("2. call embed.updateSettings to show the title");
+    frame.window().then((win) => {
+      // @ts-expect-error -- this is within the iframe
+      win.embed.updateSettings({ withTitle: true });
+    });
+
+    cy.log("3. dashboard title should now be visible");
+    getIframeWindow().findByText("Orders in a dashboard").should("be.visible");
+  });
 });
+
+const getIframeWindow = () =>
+  cy
+    .get("iframe")
+    .should("be.visible")
+    .its("0.contentDocument")
+    .should("exist")
+    .its("body")
+    .should("not.be.empty");
