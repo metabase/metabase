@@ -14,13 +14,18 @@ import "sdk-specific-imports";
 export * from "./hooks/public";
 export * from "./components/public";
 
-export * from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+export type {
+  CustomDashboardCardMenuItem,
+  DashCardMenuItem,
+  DashboardCardCustomMenuItem,
+  DashboardCardMenuCustomElement,
+  DashboardCardMenu,
+} from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
 
 export type {
   ButtonProps,
   ChartColor,
   EntityTypeFilterKeys,
-  IconName,
   LoginStatus,
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
@@ -62,3 +67,4 @@ export type {
 export type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 export type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+export type { IconName } from "metabase/embedding-sdk/types/icon";
