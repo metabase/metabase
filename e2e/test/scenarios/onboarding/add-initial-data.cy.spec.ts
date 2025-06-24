@@ -105,7 +105,7 @@ H.describeWithSnowplow(
           cy.log("Track when CSV opens");
           cy.findAllByRole("tab").filter(":contains(CSV)").click();
           H.expectUnstructuredSnowplowEvent({
-            event: "csv_upload_clicked",
+            event: "csv_tab_clicked",
             triggered_from: "add-data-modal",
           });
 
@@ -113,7 +113,7 @@ H.describeWithSnowplow(
           cy.findAllByRole("tab").filter(":contains(CSV)").click();
           H.expectUnstructuredSnowplowEvent(
             {
-              event: "csv_upload_clicked",
+              event: "csv_tab_clicked",
               triggered_from: "add-data-modal",
             },
             1,
@@ -125,7 +125,7 @@ H.describeWithSnowplow(
           // If there were multiple events like this, the count would be higher
           H.expectUnstructuredSnowplowEvent(
             {
-              event: "database_setup_clicked",
+              event: "database_tab_clicked",
               triggered_from: "add-data-modal",
             },
             1,

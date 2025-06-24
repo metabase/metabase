@@ -159,17 +159,14 @@ export type EventsClickedEvent = ValidateEvent<{
   triggered_from: "chart" | "collection";
 }>;
 
-export type AddDataModalEvent = ValidateEvent<{
-  event:
-    | "csv_upload_clicked"
-    | "sheets_connection_clicked"
-    | "database_setup_clicked";
-  triggered_from: "add-data-modal";
-}>;
-
 export type AddDataModalOpenedEvent = ValidateEvent<{
   event: "data_add_modal_opened";
   triggered_from: "getting-started" | "left-nav";
+}>;
+
+export type AddDataModalTabEvent = ValidateEvent<{
+  event: "csv_tab_clicked" | "sheets_tab_clicked" | "database_tab_clicked";
+  triggered_from: "add-data-modal";
 }>;
 
 export type SimpleEvent =
@@ -193,5 +190,5 @@ export type SimpleEvent =
   | VisualizerModalEvent
   | EmbeddingSetupStepSeenEvent
   | EventsClickedEvent
-  | AddDataModalEvent
-  | AddDataModalOpenedEvent;
+  | AddDataModalOpenedEvent
+  | AddDataModalTabEvent;
