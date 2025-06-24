@@ -136,7 +136,21 @@
       (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
 
 (mu/defn streaming-request :- :any
-  "Make a V2 request to the AI Proxy."
+  "Make a streaming V2 request to the AI Service
+
+   This implements the streaming support for Metabot
+
+   Clojure backend makes the request to the AI Service which respond immediately with a response and starts
+   streaming the response chunks back. We want to ship these to the frontend as soon as possible to give
+   the user the ability to consume the response before it's done.
+
+   Since we want to send the chunks to the frontend as soon as possible, we manually write to the output stream
+   and flush after every chunk. If we've just returned the `response` object, ring would handle it correctly
+   but would also buffer the response.
+
+   Response chunks are encoded in the format understood by the frontend and AI Service, Clojure backend doesn't
+   know anything about it and just shuttles them over.
+   "
   [{:keys [context messages profile-id conversation-id session-id state]}
    :- [:map
        [:context :map]
