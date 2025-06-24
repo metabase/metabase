@@ -23,7 +23,7 @@ export const LegendItemDot = forwardRef<
       <RootButton
         aria-label={isVisible ? t`Hide series` : t`Show series`}
         onClick={onClick}
-        ref={ref as Ref<HTMLButtonElement>}
+        ref={ref as React.Ref<HTMLButtonElement>}
       >
         <OuterCircle />
         <InnerCircle color={color} isVisible={isVisible} />
@@ -32,7 +32,7 @@ export const LegendItemDot = forwardRef<
   }
 
   return (
-    <Root data-testid="legend-item-dot" ref={ref as Ref<HTMLDivElement>}>
+    <Root data-testid="legend-item-dot" ref={ref as React.Ref<HTMLDivElement>}>
       <OuterCircle />
       <InnerCircle color={color} isVisible={isVisible} />
     </Root>

@@ -17,7 +17,7 @@ const _NotebookCell = ({ className, color, ...props }: FlexProps) => {
       style={
         {
           "--notebook-cell-color": color,
-        } as CSSProperties
+        } as React.CSSProperties
       }
     />
   );

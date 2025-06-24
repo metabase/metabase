@@ -104,7 +104,7 @@ type StateProps = {
 };
 
 type ForwardedRefProps = {
-  forwardedref: React.Ref<HTMLDivElement>;
+  forwardedRef: React.Ref<HTMLDivElement>;
 };
 
 type OnChangeCardAndRunOpts = {

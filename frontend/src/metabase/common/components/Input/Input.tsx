@@ -24,7 +24,7 @@ export type InputAttributes = Omit<
 >;
 
 export interface InputProps extends InputAttributes {
-  inputRef?: Ref<HTMLInputElement>;
+  inputRef?: React.Ref<HTMLInputElement>;
   size?: InputSize;
   error?: boolean;
   fullWidth?: boolean;

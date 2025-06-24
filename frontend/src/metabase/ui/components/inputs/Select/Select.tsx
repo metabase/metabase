@@ -43,5 +43,5 @@ function _Select<Value extends string | null>(
 // forwardRef is hard to type with generics
 // see https://stackoverflow.com/questions/58469229/react-with-typescript-generics-while-using-react-forwardref
 export const Select = forwardRef(_Select) as <Value extends string | null>(
-  props: SelectProps<Value> & { ref?: Ref<HTMLElement> },
+  props: SelectProps<Value> & { ref?: React.Ref<HTMLElement> },
 ) => React.ReactNode;
