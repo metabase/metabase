@@ -102,7 +102,7 @@ function DataFieldPopover({
             style={
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as CSSProperties
+              } as React.CSSProperties
             }
             aria-label={t`Pick columns`}
             data-testid="fields-picker"

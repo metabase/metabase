@@ -22,7 +22,7 @@ const ViewButton = ({ className, active, color, ...props }: Props) => {
       style={
         {
           "--view-button-color": color ?? theme.fn.themeColor("brand"),
-        } as CSSProperties
+        } as React.CSSProperties
       }
       {...props}
     />

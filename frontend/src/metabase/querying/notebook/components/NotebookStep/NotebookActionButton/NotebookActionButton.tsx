@@ -46,7 +46,7 @@ export function NotebookActionButton({
       style={
         {
           "--notebook-action-button-color": color,
-        } as CSSProperties
+        } as React.CSSProperties
       }
       {...props}
     >

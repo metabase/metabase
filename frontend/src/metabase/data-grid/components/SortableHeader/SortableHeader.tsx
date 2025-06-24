@@ -42,7 +42,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const rootStyle = useMemo<CSSProperties>(() => {
+  const rootStyle = useMemo<React.CSSProperties>(() => {
     if (isPinned) {
       return styleProp ?? {};
     }

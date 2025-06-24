@@ -78,7 +78,7 @@ export const NotebookCellItem = forwardRef<
       style={
         {
           "--notebook-cell-item-container-color": color,
-        } as CSSProperties
+        } as React.CSSProperties
       }
       {...restProps}
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
@@ -99,7 +99,7 @@ export const NotebookCellItem = forwardRef<
             padding: CONTAINER_PADDING,
             ...containerStyle,
             "--notebook-cell-item-content-container-color": color,
-          } as CSSProperties
+          } as React.CSSProperties
         }
       >
         {children}
@@ -120,7 +120,7 @@ export const NotebookCellItem = forwardRef<
               padding: CONTAINER_PADDING,
               ...rightContainerStyle,
               "--notebook-cell-item-content-container-color": color,
-            } as CSSProperties
+            } as React.CSSProperties
           }
         >
           {right}

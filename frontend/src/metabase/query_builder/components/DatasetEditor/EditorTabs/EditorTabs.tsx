@@ -31,7 +31,7 @@ export function EditorTabs({
             darken(theme.fn.themeColor("brand")),
             0.3,
           ),
-        } as CSSProperties
+        } as React.CSSProperties
       }
     >
       <li>
