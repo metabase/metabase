@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import {
   AccordionList,
-  type Section,
+  type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
 import {
   HoverParent,
@@ -14,17 +14,32 @@ import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import {
+  type DefinedClauseName,
+  clausesForMode,
+} from "metabase-lib/v1/expressions";
 
 import { WIDTH } from "../constants";
 import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
+type ExpressionClauseItem = {
+  type: "expression-clause";
+  clause: DefinedClauseName;
+  displayName: string;
+};
+
 type Item =
   | ColumnListItem
   | (SegmentListItem & {
       combinedDisplayName?: string;
-    });
+    })
+  | ExpressionClauseItem;
+
+type Section = BaseSection<Item> & {
+  key?: string;
+};
 
 const SEARCH_PROP = ["name", "displayName", "combinedDisplayName"] as const;
 
@@ -42,18 +57,14 @@ export interface FilterColumnPickerProps {
   withColumnItemIcon?: boolean;
 }
 
-const CUSTOM_EXPRESSION_SECTION: Section<Item> = {
-  key: "custom-expression",
-  type: "action",
-  get name() {
-    return t`Custom Expression`;
-  },
-  items: [],
-  icon: "filter",
-};
-
 export const isSegmentListItem = (item: Item): item is SegmentListItem => {
   return (item as SegmentListItem).segment != null;
+};
+
+export const isExpressionClauseItem = (
+  item: Item,
+): item is ExpressionClauseItem => {
+  return "type" in item && item.type === "expression-clause";
 };
 
 /**
@@ -92,6 +103,9 @@ export function FilterColumnPicker({
   const handleSelect = (item: Item) => {
     if (isSegmentListItem(item)) {
       onSegmentSelect(item);
+    } else if (isExpressionClauseItem(item)) {
+      // TODO
+      return;
     } else {
       onColumnSelect(item);
     }
@@ -99,7 +113,7 @@ export function FilterColumnPicker({
 
   return (
     <DelayGroup>
-      <AccordionList<Item>
+      <AccordionList<Item, Section>
         className={cx(S.StyledAccordionList, className)}
         sections={sections}
         onChange={handleSelect}
@@ -134,7 +148,7 @@ function getSections(
   stageIndexes: number[],
   withColumnGroupIcon: boolean,
   withCustomExpression: boolean,
-): Section<Item>[] {
+): Section[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -177,10 +191,31 @@ function getSections(
     });
   });
 
-  return [
-    ...columnSections,
-    ...(withCustomExpression ? [CUSTOM_EXPRESSION_SECTION] : []),
-  ];
+  const expressionClausesSection = {
+    key: "expression-clauses",
+    name: t`Custom Expressions`,
+    icon: "function" as const,
+    items: clausesForMode("filter").map((clause) => ({
+      type: "expression-clause" as const,
+      clause: clause.name,
+      displayName: clause.displayName,
+    })),
+  };
+
+  const expressionSections = withCustomExpression
+    ? [
+        expressionClausesSection,
+        {
+          key: "custom-expression",
+          type: "action" as const,
+          name: t`Custom Expression`,
+          items: [],
+          icon: "filter" as const,
+        },
+      ]
+    : [];
+
+  return [...columnSections, ...expressionSections];
 }
 
 function renderItemName(item: Item) {
@@ -190,9 +225,9 @@ function renderItemName(item: Item) {
 function renderItemIcon(query: Lib.Query, item: Item) {
   if (isSegmentListItem(item)) {
     return <Icon name="star" size={18} />;
-  }
-
-  if (item.column) {
+  } else if (isExpressionClauseItem(item)) {
+    return <Icon name="function" size={18} />;
+  } else {
     const { column, stageIndex } = item;
     return (
       <QueryColumnInfoIcon
