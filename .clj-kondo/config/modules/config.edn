@@ -1665,6 +1665,7 @@
            query-processor
            request
            settings
+           server
            system
            users
            util
