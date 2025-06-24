@@ -6,6 +6,9 @@ import { List } from "metabase/ui";
 
 import { UpsellBanner } from "./components";
 
+/**
+ * @link https://linear.app/metabase/issue/CLO-4190/create-url-for-buy-storage-page-without-purchase-id
+ */
 export const BUY_STORAGE_URL = getStoreUrl("account/storage");
 
 export const UpsellStorage = ({ source }: { source: string }) => {
