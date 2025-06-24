@@ -159,7 +159,7 @@ const AutomaticDashboardAppInner = () => {
                 </div>
                 {dashboard && tabs.length > 1 && (
                   <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                    <DashboardTabs dashboardId={dashboard.id} />
+                    <DashboardTabs />
                   </div>
                 )}
               </FixedWidthContainer>
