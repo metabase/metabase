@@ -179,6 +179,7 @@ export const SelectEmbedEntityStep = () => {
                   : t`Browse questions`
               }
               onClick={openPicker}
+              data-testid="embed-browse-entity-button"
             >
               <Icon name="search" size={16} />
             </ActionIcon>
