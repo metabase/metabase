@@ -60,6 +60,7 @@ describe("Tenants - management", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.setTokenFeatures("all");
   });
 
   it("should disable the feature if the token feature is not enabled", () => {
@@ -358,6 +359,7 @@ describe("tenant users", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    H.setTokenFeatures("all");
 
     cy.request("PUT", "/api/setting", {
       "jwt-attribute-email": "email",

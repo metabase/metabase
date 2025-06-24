@@ -1,5 +1,7 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
+
 export const ENTERPRISE_TAG_TYPES = [
   "scim",
   "metabot",
