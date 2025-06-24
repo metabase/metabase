@@ -72,7 +72,7 @@ const TableSectionBase = ({ params, table }: Props) => {
 
       <Stack gap="lg">
         <Stack gap={12}>
-          <Group align="center" gap="md" justify="space-between" wrap="nowrap">
+          <Group align="center" gap="md" justify="space-between">
             <Group align="center" gap="md" h="100%" wrap="nowrap">
               {!isSorting && <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>}
 
@@ -94,7 +94,7 @@ const TableSectionBase = ({ params, table }: Props) => {
               )}
             </Group>
 
-            <Group gap="md" justify="flex-end">
+            <Group flex="1" gap="md" justify="flex-end" wrap="nowrap">
               {!isSorting && (
                 <Button
                   h={32}

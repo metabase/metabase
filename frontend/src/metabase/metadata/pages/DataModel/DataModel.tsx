@@ -1,7 +1,5 @@
-import { useElementSize, useWindowEvent } from "@mantine/hooks";
-import cx from "classnames";
-import { type ReactNode, useCallback, useLayoutEffect, useState } from "react";
-import { usePrevious, useWindowSize } from "react-use";
+import { useWindowEvent } from "@mantine/hooks";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg";
@@ -16,19 +14,13 @@ import {
   FieldSection,
   PreviewSection,
   type PreviewType,
-  ResizableColumn,
   RouterTablePicker,
   SegmentsLink,
   TableSection,
 } from "./components";
-import {
-  COLUMN_CONFIG,
-  EMPTY_STATE_MIN_WIDTH,
-  MIN_PREVIEW_CONTAINER_WIDTH,
-  RESIZE_HANDLE_WIDTH,
-} from "./constants";
+import { COLUMN_CONFIG, EMPTY_STATE_MIN_WIDTH } from "./constants";
 import type { RouteParams } from "./types";
-import { clamp, getTableMetadataQuery, parseRouteParams } from "./utils";
+import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
   children: ReactNode;
@@ -38,17 +30,8 @@ interface Props {
 
 export const DataModel = ({ children, location, params }: Props) => {
   const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
-  const previousTableId = usePrevious(tableId);
-  const previousFieldId = usePrevious(fieldId);
-  const isOpeningTableColumn = previousTableId == null && tableId != null;
-  const isOpeningFieldColumn = previousFieldId == null && fieldId != null;
   const isSegments = location.pathname.startsWith("/admin/datamodel/segment");
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [navWidth, setNavWidth] = useState(COLUMN_CONFIG.nav.initial);
-  const [tableWidth, setTableWidth] = useState(COLUMN_CONFIG.table.initial);
-  const [fieldWidth, setFieldWidth] = useState(COLUMN_CONFIG.field.initial);
-  const { width } = useWindowSize();
-  const { height, ref } = useElementSize();
   const isEmptyStateShown =
     databaseId == null || tableId == null || fieldId == null;
   const {
@@ -59,48 +42,7 @@ export const DataModel = ({ children, location, params }: Props) => {
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
-  const [isResizing, setIsResizing] = useState(false);
-  const handleResizeStart = useCallback(() => setIsResizing(true), []);
-  const handleResizeStop = useCallback(() => setIsResizing(false), []);
-
-  const adjustLayout = (remainingWidth: number, neededWidth: number) => {
-    const missingWidth = neededWidth - remainingWidth;
-
-    if (missingWidth <= 0) {
-      return;
-    }
-
-    const howMuchCanTableShrink = Math.max(
-      tableWidth - COLUMN_CONFIG.table.min,
-      0,
-    );
-    const howMuchCanFieldShrink = Math.max(
-      fieldWidth - COLUMN_CONFIG.field.min,
-      0,
-    );
-    const totalShrinkable = howMuchCanTableShrink + howMuchCanFieldShrink;
-
-    if (totalShrinkable >= missingWidth) {
-      // shrink columns proportionally
-      const tableShrink =
-        (howMuchCanTableShrink / totalShrinkable) * missingWidth;
-      const fieldShrink =
-        (howMuchCanFieldShrink / totalShrinkable) * missingWidth;
-
-      setTableWidth(tableWidth - tableShrink);
-      setFieldWidth(fieldWidth - fieldShrink);
-    } else {
-      setTableWidth(COLUMN_CONFIG.table.min);
-      setFieldWidth(COLUMN_CONFIG.field.min);
-    }
-  };
-
   const handlePreviewClick = () => {
-    const remainingWidth = Math.max(
-      width - navWidth - tableWidth - fieldWidth,
-      0,
-    );
-    adjustLayout(remainingWidth, MIN_PREVIEW_CONTAINER_WIDTH);
     setIsPreviewOpen(true);
   };
 
@@ -117,49 +59,26 @@ export const DataModel = ({ children, location, params }: Props) => {
     }
   });
 
-  useLayoutEffect(() => {
-    if (isOpeningTableColumn) {
-      const remainingWidth = Math.max(
-        width - navWidth - EMPTY_STATE_MIN_WIDTH,
-        0,
-      );
-
-      // take as much room as possible
-      setTableWidth(clamp(remainingWidth, COLUMN_CONFIG.table));
-    }
-  }, [isOpeningTableColumn]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useLayoutEffect(() => {
-    if (isOpeningFieldColumn) {
-      const resizeHandleSafety = RESIZE_HANDLE_WIDTH / 2 + 1;
-      const remainingWidth = Math.max(
-        width - navWidth - tableWidth - resizeHandleSafety,
-        0,
-      );
-
-      adjustLayout(
-        remainingWidth,
-        isPreviewOpen ? MIN_PREVIEW_CONTAINER_WIDTH : fieldWidth,
-      );
-    }
-  }, [isOpeningFieldColumn]); // eslint-disable-line react-hooks/exhaustive-deps
-
   return (
-    <Flex className={cx({ [S.resizing]: isResizing })} h="100%" ref={ref}>
-      <ResizableColumn
-        height={height}
-        constraints={COLUMN_CONFIG.nav}
-        width={navWidth}
-        onResize={(_event, data) => setNavWidth(data.size.width)}
-        onResizeStart={handleResizeStart}
-        onResizeStop={handleResizeStop}
+    <Flex h="100%">
+      <Stack
+        flex={COLUMN_CONFIG.nav.flex}
+        style={
+          {
+            /* overflow: "hidden", */
+            /* flexBasis: 'auto' */
+          }
+        }
+        h="100%"
+        miw={COLUMN_CONFIG.nav.min}
+        maw={COLUMN_CONFIG.nav.max}
       >
         <Stack
           bg="accent-gray-light"
           className={S.column}
           gap={0}
           h="100%"
-          w={navWidth}
+          w="100%"
         >
           <RouterTablePicker
             databaseId={databaseId}
@@ -171,22 +90,26 @@ export const DataModel = ({ children, location, params }: Props) => {
             <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
           </Box>
         </Stack>
-      </ResizableColumn>
+      </Stack>
 
       {isSegments && children}
 
       {!isSegments && (
         <>
           {tableId && (
-            <ResizableColumn
-              height={height}
-              constraints={COLUMN_CONFIG.table}
-              width={tableWidth}
-              onResize={(_event, data) => setTableWidth(data.size.width)}
-              onResizeStart={handleResizeStart}
-              onResizeStop={handleResizeStop}
+            <Stack
+              flex={COLUMN_CONFIG.table.flex}
+              style={
+                {
+                  /* overflow: "hidden", */
+                  /* flexBasis: 'auto' */
+                }
+              }
+              h="100%"
+              miw={COLUMN_CONFIG.table.min}
+              maw={COLUMN_CONFIG.table.max}
             >
-              <Box bg="bg-white" className={S.column} h="100%" w={tableWidth}>
+              <Box bg="bg-white" className={S.column} h="100%" w="100%">
                 <LoadingAndErrorWrapper error={error} loading={isLoading}>
                   {table && (
                     <TableSection
@@ -201,19 +124,23 @@ export const DataModel = ({ children, location, params }: Props) => {
                   )}
                 </LoadingAndErrorWrapper>
               </Box>
-            </ResizableColumn>
+            </Stack>
           )}
 
           {!isEmptyStateShown && (
-            <ResizableColumn
-              height={height}
-              constraints={COLUMN_CONFIG.field}
-              width={fieldWidth}
-              onResize={(_event, data) => setFieldWidth(data.size.width)}
-              onResizeStart={handleResizeStart}
-              onResizeStop={handleResizeStop}
+            <Stack
+              flex={COLUMN_CONFIG.field.flex}
+              style={
+                {
+                  /* overflow: "hidden", */
+                  /* flexBasis: 'auto' */
+                }
+              }
+              h="100%"
+              miw={COLUMN_CONFIG.field.min}
+              maw={COLUMN_CONFIG.field.max}
             >
-              <Box bg="bg-white" className={S.column} h="100%" w={fieldWidth}>
+              <Box bg="bg-white" className={S.column} h="100%" w="100%">
                 <LoadingAndErrorWrapper error={error} loading={isLoading}>
                   <Flex justify="space-between" w="100%">
                     {field && (
@@ -234,16 +161,24 @@ export const DataModel = ({ children, location, params }: Props) => {
                   </Flex>
                 </LoadingAndErrorWrapper>
               </Box>
-            </ResizableColumn>
+            </Stack>
           )}
 
           {!isEmptyStateShown && field && table && isPreviewOpen && (
-            <Box flex="1" h="100%" p="xl">
-              <Box
-                h="100%"
-                maw={COLUMN_CONFIG.preview.max}
-                miw={COLUMN_CONFIG.preview.min}
-              >
+            <Box
+              flex={COLUMN_CONFIG.preview.flex}
+              style={
+                {
+                  /* overflow: "hidden", */
+                  /* flexBasis: 'auto' */
+                }
+              }
+              h="100%"
+              miw={COLUMN_CONFIG.preview.min}
+              maw={COLUMN_CONFIG.preview.max}
+              p="xl"
+            >
+              <Box h="100%" w="100%">
                 <PreviewSection
                   className={S.preview}
                   databaseId={databaseId}
