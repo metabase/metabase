@@ -59,7 +59,8 @@ jobs:
         shell: bash
       - name: Check
         shell: bash
-        run: echo "Final skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
+        run: |
+          echo "Final skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
   be-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
