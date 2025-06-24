@@ -7,7 +7,7 @@ import { P, isMatching } from "ts-pattern";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { uuid } from "metabase/lib/uuid";
 import { mockStreamedEndpoint } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
@@ -83,10 +83,13 @@ function setup(
   });
 }
 
+const chatMessages = () => screen.findAllByTestId("metabot-chat-message");
+const lastChatMessage = async () => (await chatMessages()).at(-1);
 const input = () => screen.findByTestId("metabot-chat-input");
 const enterChatMessage = async (message: string, send = true) =>
   userEvent.type(await input(), `${message}${send ? "{Enter}" : ""}`);
 const responseLoader = () => screen.findByTestId("metabot-response-loader");
+const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
 
 const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
@@ -136,6 +139,68 @@ describe("metabot-streaming", () => {
       expect(heading).toBeInTheDocument();
       expect(heading).toHaveTextContent(`You, but don't tell anyone.`);
     });
+
+    it("should present the user an option to retry a response", async () => {
+      setup();
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+      await enterChatMessage("Who is your favorite?");
+      const lastMessage = await lastChatMessage();
+      expect(lastMessage).toHaveTextContent(/You, but don't tell anyone./);
+      expect(
+        await within(lastMessage!).findByTestId("metabot-chat-message-retry"),
+      ).toBeInTheDocument();
+    });
+
+    it("should successfully rewind a response", async () => {
+      setup();
+      mockAgentEndpoint({
+        // add two messages to ensure we rollback both
+        textChunks: [`0:"Let me think..."`, ...whoIsYourFavoriteResponse],
+      });
+      await enterChatMessage("Who is your favorite?");
+
+      const beforeMessages = await screen.findByTestId("metabot-chat-messages");
+      expect(beforeMessages).toHaveTextContent(/Let me think.../);
+      expect(beforeMessages).toHaveTextContent(/You, but don't tell anyone./);
+
+      mockAgentEndpoint({
+        textChunks: [
+          `0:"The answer is always you."`,
+          `2:{"type":"state","version":1,"value":{"queries":{}}}`,
+          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        ],
+      });
+      await userEvent.click(
+        await screen.findByTestId("metabot-chat-message-retry"),
+      );
+
+      const afterMessages = await screen.findByTestId("metabot-chat-messages");
+
+      // rolled back both messages
+      expect(afterMessages).not.toHaveTextContent(/Let me think.../);
+      expect(afterMessages).not.toHaveTextContent(
+        /You, but don't tell anyone./,
+      );
+
+      // shows the new one
+      expect(afterMessages).toHaveTextContent(/The answer is always you./);
+    });
+
+    it("should not show retry option for error messages", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+
+      await enterChatMessage("Who is your favorite?");
+
+      const lastMessage = await lastChatMessage();
+      expect(lastMessage).toHaveTextContent(
+        /I'm currently offline, try again later./,
+      );
+      expect(
+        within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("message", () => {
@@ -158,6 +223,62 @@ describe("metabot-streaming", () => {
       // should auto-clear input + refocus
       expect(await input()).toHaveValue("");
       expect(await input()).toHaveFocus();
+    });
+  });
+
+  describe("errors", () => {
+    it("should handle service error response", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(await lastChatMessage()).toHaveTextContent(
+        /I'm currently offline, try again later./,
+      );
+      expect(await input()).toHaveValue("Who is your favorite?");
+    });
+
+    it("should handle non-successful responses", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 400);
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(await lastChatMessage()).toHaveTextContent(
+        /Something went wrong, try again./,
+      );
+      expect(await input()).toHaveValue("Who is your favorite?");
+    });
+
+    it("should handle show error if data error part is in response", async () => {
+      setup();
+      mockAgentEndpoint({ textChunks: erroredResponse });
+
+      await enterChatMessage("Who is your favorite?");
+
+      expect(await lastChatMessage()).toHaveTextContent(
+        /Something went wrong, try again./,
+      );
+      expect(await input()).toHaveValue("Who is your favorite?");
+    });
+
+    it("should not show a user error when an AbortError is triggered", async () => {
+      setup();
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      await enterChatMessage("Who is your favorite?");
+      await waitFor(async () => {
+        expect(await chatMessages()).toHaveLength(2);
+      });
+
+      await userEvent.click(await resetChatButton());
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId("metabot-chat-message"),
+        ).not.toBeInTheDocument();
+      });
+      expect(await input()).toHaveValue("");
     });
   });
 
@@ -186,7 +307,7 @@ describe("metabot-streaming", () => {
       // create some chat history + wait for a response
       mockAgentEndpoint({
         textChunks: whoIsYourFavoriteResponse,
-        initialDelay: 500,
+        initialDelay: 50,
       });
       await enterChatMessage("Who is your favorite?");
       expect(
@@ -211,4 +332,9 @@ const whoIsYourFavoriteResponse = [
   `0:"You, but don't tell anyone."`,
   `2:{"type":"state","version":1,"value":{"queries":{}}}`,
   `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+];
+
+const erroredResponse = [
+  `3:{"type": "error", "value": "Couldn't do the thing"}`,
+  `d:{"finishReason":"error","usage":{"promptTokens":4916,"completionTokens":8}}`,
 ];
