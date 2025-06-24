@@ -147,22 +147,23 @@
    rff   :- ::qp.schema/rff]
   (mu/fn :- ::qp.schema/rf
     [initial-metadata :- ::metadata]
-    (let [f           (if (needs-type-inference? query initial-metadata)
-                        add-column-info-with-type-inference
-                        add-column-info-no-type-inference)
-          cols        (f query rff initial-metadata)
-          legacy-cols (qp.store/with-metadata-provider (lib.metadata/->metadata-provider query)
-                        (annotate.legacy/update-metadata
-                         (lib.convert/->legacy-MBQL query)
-                         initial-metadata))]
-      (if-not (= (count cols) (count legacy-cols))
-        cols
-        (mapv (fn [col legacy-col]
-                (merge
-                 col
-                 (u/select-non-nil-keys legacy-col [:display_name])))
-              cols
-              legacy-cols)))))
+    (let [f               (if (needs-type-inference? query initial-metadata)
+                            add-column-info-with-type-inference
+                            add-column-info-no-type-inference)
+          metadata        (f query rff initial-metadata)
+          legacy-metadata (qp.store/with-metadata-provider (lib.metadata/->metadata-provider query)
+                            (annotate.legacy/update-metadata
+                             (lib.convert/->legacy-MBQL query)
+                             initial-metadata))]
+      (if-not (= (count (:cols metadata)) (count (:cols legacy-metadata)))
+        metadata
+        (update metadata :cols (fn [cols]
+                                 (mapv (fn [col legacy-col]
+                                         (merge
+                                          col
+                                          (u/select-non-nil-keys legacy-col [:display_name])))
+                                       cols
+                                       (:cols legacy-metadata))))))))
 
 ;;;;
 ;;;; NONSENSE
