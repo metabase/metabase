@@ -3,12 +3,8 @@ import { msgid, ngettext, t } from "ttag";
 
 import ActionButton from "metabase/common/components/ActionButton";
 import ButtonsS from "metabase/css/components/buttons.module.css";
-import {
-  setEditingDashboard,
-  updateDashboardAndCards,
-} from "metabase/dashboard/actions";
-import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context/context";
+import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
@@ -16,8 +12,9 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
   const dispatch = useDispatch();
+  const { getMissingRequiredParameters, setEditingDashboard, updateDashboardAndCards } = useDashboardContext();
 
-  const missingRequiredParameters = useSelector(getMissingRequiredParameters);
+  const missingRequiredParameters = getMissingRequiredParameters();
 
   const disabledSaveTooltip = getDisabledSaveButtonTooltip(
     missingRequiredParameters,
@@ -26,14 +23,14 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
 
   const handleDoneEditing = () => {
     props.onDoneEditing();
-    dispatch(setEditingDashboard(null));
+    setEditingDashboard(null);
   };
 
   const onSave = async () => {
     // optimistically dismissing all the undos before the saving has finished
     // clicking on them wouldn't do anything at this moment anyway
     dispatch(dismissAllUndo());
-    await dispatch(updateDashboardAndCards());
+    await updateDashboardAndCards();
 
     handleDoneEditing();
   };
