@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import cx from "classnames";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -160,9 +159,8 @@ export const SelectEmbedEntityStep = () => {
                 p="md"
                 key={recentItem.id}
                 onClick={() => updateEmbedSettings(experience, recentItem.id)}
-                className={cx(S.EntityCard, {
-                  [S.EntityCardSelected]: selectedItemId === recentItem.id,
-                })}
+                className={S.EntityCard}
+                data-selected={selectedItemId === recentItem.id}
               >
                 <Group align="start" gap="sm">
                   <Icon name={embedIcon} size={20} c="brand" />
