@@ -243,6 +243,11 @@ describe("issue 39487", () => {
 });
 
 describe("issue 14124", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
   it("should not include date when metric is binned by hour of day (metabase#14124)", () => {
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
       semantic_type: null,
@@ -272,6 +277,11 @@ describe("issue 14124", () => {
 });
 
 describe("issue 15563", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
   it("should not display multiple 'Created At' fields when they are remapped to PK/FK (metabase#15563)", () => {
     // Remap fields
     cy.request("PUT", `/api/field/${ORDERS.CREATED_AT}`, {
@@ -298,6 +308,11 @@ describe("issue 15563", () => {
 });
 
 describe("issue 36122", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
   it("should display breakouts group for all FKs (metabase#36122)", () => {
     cy.request("PUT", `/api/field/${REVIEWS.RATING}`, {
       semantic_type: "type/FK",
