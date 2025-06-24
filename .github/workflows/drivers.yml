@@ -57,18 +57,9 @@ jobs:
             echo "User is not a required team member and not merging into master/release. Tier 3 driver tests will be skipped."
           fi
         shell: bash
-      - name: Check
-        shell: bash
-        run: |
-          echo "skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
-          echo "negated skip output: ${{ !steps.check_team_and_branch.outputs.skip }}"
-          echo "skip == 'true': ${{ steps.check_team_and_branch.outputs.skip == 'true' }}"
-          echo "negated skip == 'true': ${{ !(steps.check_team_and_branch.outputs.skip == 'true') }}"
-          echo "skip != 'false': ${{ steps.check_team_and_branch.outputs.skip != 'false' }}"
-          echo "negated skip != 'false': ${{ !(steps.check_team_and_branch.outputs.skip != 'false') }}"
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -185,7 +176,7 @@ jobs:
 
   be-tests-druid-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -221,7 +212,7 @@ jobs:
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -257,7 +248,7 @@ jobs:
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -292,7 +283,7 @@ jobs:
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -481,7 +472,7 @@ jobs:
 
   be-tests-mongo:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -531,7 +522,7 @@ jobs:
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -596,7 +587,7 @@ jobs:
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -630,7 +621,7 @@ jobs:
 
   be-tests-oracle:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -806,7 +797,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -963,7 +954,7 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -997,7 +988,7 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -1026,7 +1017,7 @@ jobs:
 
   be-tests-sqlserver:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
@@ -1077,7 +1068,7 @@ jobs:
 
   be-tests-starburst-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
@@ -1115,7 +1106,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !needs.determine-driver-skips.outputs.skip }}
+    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
