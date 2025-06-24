@@ -76,11 +76,7 @@ H.describeWithSnowplow(
 
       it("should track the button click from the 'Data' section", () => {
         cy.visit("/");
-        H.navigationSidebar()
-          .findByRole("tab", { name: /^Data/i })
-          .findByLabelText("Add data")
-          .should("be.visible")
-          .click();
+        openAddDataModalFromSidebar();
         addDataModal().should("be.visible");
         H.expectUnstructuredSnowplowEvent({
           event: "data_add_modal_opened",
@@ -90,11 +86,7 @@ H.describeWithSnowplow(
 
       it("should track tab clicks within the 'Add data' modal", () => {
         cy.visit("/");
-        H.navigationSidebar()
-          .findByRole("tab", { name: /^Data/i })
-          .findByLabelText("Add data")
-          .should("be.visible")
-          .click();
+        openAddDataModalFromSidebar();
 
         addDataModal().within(() => {
           cy.log("Tracking shouldn't happen on the default open tab");
@@ -132,6 +124,47 @@ H.describeWithSnowplow(
           );
         });
       });
+
+      it("should track database selection", () => {
+        cy.visit("/");
+        openAddDataModalFromSidebar();
+
+        addDataModal()
+          .findByRole("listbox")
+          .findByText("Snowflake")
+          .should("be.visible")
+          .click();
+        cy.location("pathname").should("eq", "/admin/databases/create");
+        H.expectUnstructuredSnowplowEvent({
+          event: "database_setup_selected",
+          event_detail: "snowflake",
+          triggered_from: "add-data-modal",
+        });
+      });
+
+      it("should track CSV file selection click", () => {
+        cy.log("Enable uploads");
+        cy.request("PUT", "/api/setting/uploads-settings", {
+          value: {
+            db_id: SAMPLE_DB_ID,
+            schema_name: "PUBLIC",
+            table_prefix: null,
+          },
+        });
+
+        cy.visit("/");
+        openAddDataModalFromSidebar();
+
+        addDataModal().within(() => {
+          cy.findAllByRole("tab").filter(":contains(CSV)").click();
+          cy.findByText("Select a file").click();
+        });
+
+        H.expectUnstructuredSnowplowEvent({
+          event: "csv_upload_clicked",
+          triggered_from: "add-data-modal",
+        });
+      });
     });
   },
 );
@@ -167,11 +200,7 @@ describe("Add data modal", () => {
     it("should work properly for admins", () => {
       cy.signInAsAdmin();
       cy.visit("/");
-      H.navigationSidebar()
-        .findByRole("tab", { name: /^Data/i })
-        .findByLabelText("Add data")
-        .should("be.visible")
-        .click();
+      openAddDataModalFromSidebar();
 
       addDataModal().within(() => {
         cy.log("Admin should be able to manage databases");
@@ -255,11 +284,7 @@ describe("Add data modal", () => {
     it("admins should be able to enable uploads initially", () => {
       cy.signInAsAdmin();
       cy.visit("/");
-      H.navigationSidebar()
-        .findByRole("tab", { name: /^Data/i })
-        .findByLabelText("Add data")
-        .should("be.visible")
-        .click();
+      openAddDataModalFromSidebar();
 
       addDataModal().within(() => {
         cy.findAllByRole("tab").filter(":contains(CSV)").click();
@@ -346,11 +371,7 @@ describe("Add data modal", () => {
 
       cy.signIn("nocollection");
       cy.visit("/");
-      H.navigationSidebar()
-        .findByRole("tab", { name: /^Data/i })
-        .findByLabelText("Add data")
-        .should("be.visible")
-        .click();
+      openAddDataModalFromSidebar();
 
       addDataModal().within(() => {
         cy.findAllByRole("tab").filter(":contains(CSV)").click();
@@ -415,3 +436,10 @@ describe("Add data modal", () => {
 });
 
 const addDataModal = () => cy.findByRole("dialog", { name: "Add data" });
+
+const openAddDataModalFromSidebar = () =>
+  H.navigationSidebar()
+    .findByRole("tab", { name: /^Data/i })
+    .findByLabelText("Add data")
+    .should("be.visible")
+    .click();
