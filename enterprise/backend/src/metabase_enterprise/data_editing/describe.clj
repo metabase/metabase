@@ -51,7 +51,7 @@
   (when-not table-id
     (throw (ex-info "Must provide table-id" {:status-code 400})))
   (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
-        fields                      (-> (t2/select :model/Field :table_id table-id {:order-by [[:position]]})
+        fields                      (-> (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]})
                                         (t2/hydrate :dimensions
                                                     :has_field_values
                                                     :values))
@@ -79,7 +79,8 @@
                                     ;; delete only requires pk cols
                                     (:table.row/delete :data-grid.row/delete) pk
                                     ;; update takes both the pk and field (if not a row action)
-                                    (:table.row/update :data-grid.row/update :table.row/create-or-update) true)
+                                    (:table.row/update :data-grid.row/update
+                                                       :table.row/create-or-update :data-grid.row/create-or-update) true)
                             ;; row-actions can explicitly hide parameters
                             :when (not= "hidden" (:visibility param-setting))
                             ;; dashcard column context can hide parameters (if defined)
