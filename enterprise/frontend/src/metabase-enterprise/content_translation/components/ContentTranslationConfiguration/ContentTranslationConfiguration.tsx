@@ -15,7 +15,7 @@ import { SettingHeader } from "metabase/admin/settings/components/SettingHeader"
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Markdown from "metabase/common/components/Markdown";
 import { UploadInput } from "metabase/common/components/upload";
-import { useDocsUrl } from "metabase/common/hooks";
+import { useConfirmation, useDocsUrl } from "metabase/common/hooks";
 import {
   Form,
   FormProvider,
@@ -226,6 +226,24 @@ const UploadForm = ({
     }
   };
 
+  const proceedWithUploadAfterConfirmation = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    askConfirmation({
+      title: t`Upload new dictionary?`,
+      message: t`This will replace the existing dictionary.`,
+      confirmButtonText: t`Replace existing dictionary`,
+      onConfirm: () => {
+        handleFileChange(event);
+      },
+      onCancel: () => {
+        // Reset the input so that choosing the same file again triggers the
+        // input's onChange handler
+        resetInput();
+      },
+    });
+  };
+
   const resetInput = () => {
     const input = inputRef.current;
     if (input) {
@@ -256,6 +274,9 @@ const UploadForm = ({
     [uploadContentTranslationDictionary, setErrorMessages, setStatus],
   );
 
+  const { show: askConfirmation, modalContent: confirmationModal } =
+    useConfirmation();
+
   const triggerUpload = () => {
     const input = inputRef.current;
     if (!input) {
@@ -275,6 +296,7 @@ const UploadForm = ({
       miw="calc(50% - 1rem)"
       display="flex"
     >
+      {confirmationModal}
       <FormSubmitButton
         flex="1 1 0"
         w="auto"
@@ -312,7 +334,7 @@ const UploadForm = ({
         id="content-translation-dictionary-upload-input"
         ref={inputRef}
         accept="text/csv"
-        onChange={handleFileChange}
+        onChange={proceedWithUploadAfterConfirmation}
       />
     </Form>
   );

@@ -1,8 +1,8 @@
 import type { MantineColor } from "@mantine/core/lib/core";
 import type { ReactNode } from "react";
 
+import type { IconName } from "metabase/embedding-sdk/types/icon";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
-import type { IconName } from "metabase/ui";
 import type { DashboardCard, Dataset } from "metabase-types/api";
 
 export type DashboardCardMenuCustomElement = ({
@@ -24,6 +24,7 @@ export type CustomDashboardCardMenuItem = ({
 export type DashboardCardCustomMenuItem = {
   withDownloads?: boolean;
   withEditLink?: boolean;
+  /** @expand */
   customItems?: (DashCardMenuItem | CustomDashboardCardMenuItem)[];
 };
 
