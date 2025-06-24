@@ -37,6 +37,7 @@
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses.api :as api.database]
    [ring.util.codec :as codec]
@@ -597,7 +598,7 @@
   (testing "Updating a database's `database-enable-actions` setting shouldn't close existing connections (metabase#27877)"
     (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))
       (let [;; 1. create a database and sync
-            database-name      (name (gensym))
+            database-name      (u.random/random-name)
             empty-dbdef        {:database-name database-name}
             _                  (tx/create-db! driver/*driver* empty-dbdef)
             connection-details (tx/dbdef->connection-details driver/*driver* :db empty-dbdef)

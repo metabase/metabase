@@ -1347,6 +1347,7 @@
            metabase.warehouse-schema.metadata-from-qp
            metabase.warehouse-schema.metadata-queries
            metabase.warehouse-schema.models.field
+           metabase.warehouse-schema.models.field-user-settings
            metabase.warehouse-schema.models.field-values
            metabase.warehouse-schema.models.table
            metabase.warehouse-schema.table}
@@ -1666,6 +1667,7 @@
            pulse
            query-processor
            request
+           server
            settings
            system
            users

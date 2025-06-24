@@ -6,6 +6,8 @@ title: Driver interface changelog
 
 ## Metabase 0.56.0
 
+- Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
+
 - Join alias escaping has been reworked; when compiling MBQL for a join please use
   `metabase.driver-api.core/qp.add.alias` instead of `:join-alias`. (This is mostly relevant if you have a custom
   `metabase.driver.sql.query-processor/join->honeysql` implementation.)
@@ -17,6 +19,8 @@ title: Driver interface changelog
   Also note that `driver-api/add-alias-info` only adds additional keys to field refs and join maps, and does not
   replace existing keys like `:alias`, `:join-alias`, or `:name`; make sure you use `driver-api/qp.add.alias`,
   `driver-api/qp.add.source-table`, and `driver-api/qp.add.source-alias` respectively.
+
+>>>>>>> origin/master
 
 ## Metabase 0.55.0
 

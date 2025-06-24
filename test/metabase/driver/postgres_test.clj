@@ -1298,27 +1298,43 @@
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
 (deftest json-operator-?-works
-  (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
-    (mt/test-driver :postgres
-      (tx/drop-if-exists-and-create-db! driver/*driver*  "json-test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
-            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
-                           "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
-                           "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
-          (jdbc/execute! spec [statement])))
-      (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
-            query           (str "SELECT json_val::jsonb ? 'a',"
-                                 "json_val::jsonb ?| array['c', 'd'],"
-                                 "json_val::jsonb ?& array['a', 'b']"
-                                 "FROM \"json_table\";")]
-        (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
-          (mt/with-db database (sync/sync-database! database)
+  (mt/test-driver :postgres
+    (tx/drop-if-exists-and-create-db! driver/*driver*  "json-test")
+    (let [details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+      (doseq [statement ["DROP TABLE IF EXISTS PUBLIC.json_table;"
+                         "CREATE TABLE PUBLIC.json_table (json_val JSON NOT NULL);"
+                         "INSERT INTO PUBLIC.json_table (json_val) VALUES ('{\"a\": 1, \"b\": 2}');"]]
+        (jdbc/execute! spec [statement])))
+    (let [json-db-details (mt/dbdef->connection-details :postgres :db {:database-name "json-test"})
+          query           (str "SELECT json_val::jsonb ? 'a',"
+                               "json_val::jsonb ?| array['c', 'd'],"
+                               "json_val::jsonb ?& array['a', 'b']"
+                               "FROM \"json_table\";")]
+      (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
+        (mt/with-db database (sync/sync-database! database)
+          (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
             (is (= [[true false true]]
                    (-> {:query query}
                        (mt/native-query)
                        (qp/process-query)
-                       (mt/rows))))))))))
+                       (mt/rows)))))
+          (testing "Make sure we get a good error message when using ? with other parameters"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                  #"It looks like you have a '\?' in your code which Postgres's JDBC driver interprets as a parameter\. You might need to escape it like '\?\?'\."
+                                  (-> {:query         (str "SELECT * FROM json_table "
+                                                           "WHERE json_val::jsonb ? 'a' "
+                                                           "AND json_val::jsonb ->> 'a' = {{val}}")
+                                       :template-tags {:val
+                                                       {:name         "val"
+                                                        :display_name "Val"
+                                                        :type         "text"}}}
+                                      mt/native-query
+                                      (assoc :parameters
+                                             [{:type   "number/="
+                                               :target ["variable" ["template-tag" "val"]]
+                                               :value  ["1"]}])
+                                      qp/process-query)))))))))
 
 (deftest sync-json-with-composite-pks-test
   (testing "Make sure sync a table with json columns that have composite pks works"
