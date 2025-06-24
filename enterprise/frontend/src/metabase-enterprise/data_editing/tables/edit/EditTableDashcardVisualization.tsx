@@ -54,6 +54,7 @@ import { useEditingTableRowSelection } from "./use-table-row-selection";
 import { useTableSorting } from "./use-table-sorting";
 import { useTableEditingStateDashcardUpdateStrategy } from "./use-table-state-dashcard-update-strategy";
 import { useTableEditingUndoRedo } from "./use-table-undo-redo";
+import { getRowPkValues } from "./utils";
 
 type EditTableDashcardVisualizationProps = {
   title: string;
@@ -200,6 +201,8 @@ export const EditTableDashcardVisualization = memo(
     } = useDataGridRowActions({
       actionSettings: visualizationSettings?.["editableTable.enabledActions"],
       datasetData: data,
+      // For editable table actions we need to use only primary key values as input
+      getActionInputFromRow: getRowPkValues,
     });
 
     const { rowSelection, selectedRowIndices, setRowSelection } =
