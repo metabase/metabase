@@ -13,7 +13,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u])
   (:import
-   (java.time OffsetDateTime)))
+   (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -510,9 +510,9 @@
 
 (defmethod yyyymmddhhmmss-dates-expected-rows :sparksql
   [_driver]
-  [[1 "foo" #t "2019-04-21T16:43Z[UTC]"]
-   [2 "bar" #t "2020-04-21T16:43Z[UTC]"]
-   [3 "baz" #t "2021-04-21T16:43Z[UTC]"]])
+  [[1 "foo" (ZonedDateTime/from #t "2019-04-21T16:43Z[UTC]")]
+   [2 "bar" (ZonedDateTime/from #t "2020-04-21T16:43Z[UTC]")]
+   [3 "baz" (ZonedDateTime/from #t "2021-04-21T16:43Z[UTC]")]])
 
 (doseq [driver [:redshift]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
