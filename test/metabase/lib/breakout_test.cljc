@@ -615,7 +615,7 @@
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
     (let [query (legacy-query-with-broken-breakout)]
       (is (=? [{:name              "CATEGORY"
-                :display-name      "Category"
+                :display-name      "Products → Category" #_"Category" ; display-name is always LONG when it comes from a previous stage.
                 :long-display-name "Products → Category"
                 :effective-type    :type/Text}]
               (map (partial lib/display-info query)

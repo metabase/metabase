@@ -26,7 +26,7 @@
                                         {:group-spec group-spec, :found (map #(lib/display-info query %) groups)})))]
     (or (m/find-first #(match-display-info query column-spec %) (lib/columns-group-columns group))
         (throw (ex-info "Failed to find column in group"
-                        {:group       group
+                        {:group       (lib/display-info query group)
                          :column-spec column-spec
                          :found       (map #(lib/display-info query %) (lib/columns-group-columns group))})))))
 

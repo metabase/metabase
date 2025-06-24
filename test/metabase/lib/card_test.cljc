@@ -239,9 +239,10 @@
                     (lib/aggregate (lib/distinct filter-col))
                     (as-> $q (lib/breakout $q (m/find-first (comp #{"SOURCE"} :name)
                                                             (lib/breakoutable-columns $q)))))]
-      (is (= ["Source" "Distinct values of ID"]
+      ;; we always use LONG display names when the column came from a previous stage.
+      (is (= ["Source" "Distinct values of Mock people card → ID"]
              (map #(lib/display-name query %) (lib/returned-columns query))))
-      (is (= ["ID is 1"]
+      (is (= ["Mock people card → ID is 1"]
              (map #(lib/display-name query %) (lib/filters query)))))))
 
 (deftest ^:parallel card-display-info-test

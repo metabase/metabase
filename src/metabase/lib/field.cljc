@@ -196,10 +196,18 @@
 ;;; and moving this there would cause circular references.
 (defmethod lib.metadata.calculation/display-name-method :metadata/column
   [query stage-number col style]
-  (->> (field-display-name-initial-display-name query stage-number col style)
-       (field-display-name-add-join-alias query stage-number col style)
-       (field-display-name-add-binning col)
-       (field-display-name-add-bucketing col)))
+  ;; ALWAYS generate long display names regardless of style when the column came from the previous stage.
+  ;;
+  ;; > "When we cross the stage, everything is “long”" -- Alex P
+  ;;
+  ;; See https://metaboat.slack.com/archives/C0645JP1W81/p1750805177651009
+  (let [style (if (lib.field.util/inherited-column? col)
+                :long
+                style)]
+    (->> (field-display-name-initial-display-name query stage-number col style)
+         (field-display-name-add-join-alias query stage-number col style)
+         (field-display-name-add-binning col)
+         (field-display-name-add-bucketing col))))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number field-ref style]

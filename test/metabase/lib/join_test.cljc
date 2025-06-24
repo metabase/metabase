@@ -1445,8 +1445,8 @@
                                 :conditions [[:=
                                               {}
                                               [:field {:base-type :type/Text} "Products__CATEGORY"]
-                                              [:field {:join-alias "Card 2 - Category"} (meta/id :products :category)]]]
-                                :alias      "Card 2 - Category"}]
+                                              [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]]
+                                :alias      "Card 2 - Products → Category"}]
                        :limit 2}]}
             (lib.tu.mocks-31769/query)))))
 
@@ -1608,10 +1608,12 @@
                              (lib/joins query))]
       (assert (some? join))
       ;; should contain IDs as well.
-      (is (= [{:id (meta/id :products :id),    :display-name "ID"}
+      ;;
+      ;; we always use LONG display names when the column comes from a previous stage.
+      (is (= [{:id (meta/id :products :id),    :display-name "Card → ID"}
               {:id (meta/id :orders :total),   :display-name "Total"}
               {:id (meta/id :orders :tax),     :display-name "Tax"}
-              {:id (meta/id :products :vendor) :display-name "Vendor"}]
+              {:id (meta/id :products :vendor) :display-name "Card → Vendor"}]
              (map #(select-keys % [:id :display-name])
                   (lib.join/join-fields-to-add-to-parent-stage query -1 join {:unique-name-fn (lib.util/unique-name-generator)})))))))
 

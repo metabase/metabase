@@ -493,10 +493,12 @@
                               [:field "VENDOR" {:join-alias "Card"
                                                 :base-type :type/Text}]]}]}))]
       ;; should include ID as well.
-      (is (=? [{:id (meta/id :products :id),    :display-name "ID"}
-               {:id (meta/id :orders :total),   :display-name "Total"}
-               {:id (meta/id :orders :tax),     :display-name "Tax"}
-               {:id (meta/id :products :vendor) :display-name "Vendor"}]
+      ;;
+      ;; we always use LONG display names when the column comes from a previous stage.
+      (is (=? [{:id (meta/id :products :id),    :display-name "Card → ID"}
+               {:id (meta/id :orders :total),   :display-name "Card → Total"}
+               {:id (meta/id :orders :tax),     :display-name "Card → Tax"}
+               {:id (meta/id :products :vendor) :display-name "Card → Vendor"}]
               (lib.metadata.calculation/returned-columns query))))))
 
 (deftest ^:parallel deduplicate-field-from-join-test

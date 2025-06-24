@@ -71,20 +71,20 @@
   (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing  "simple queries"
       (doseq [query [base (lib/append-stage base)]
-              :let [cols (lib/visible-columns query)]]
+              :let  [cols (lib/visible-columns query)]]
         (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
                (map #(lib/display-name query %) cols)))
         (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
                (map #(lib/display-name query -1 % :long) cols)))
-        (is (=? [{:display-name "Grandparent: Parent: Child"
+        (is (=? [{:display-name      "Grandparent: Parent: Child"
                   :long-display-name "Grandparent: Parent: Child"}
-                 {:display-name "Grandparent"
+                 {:display-name      "Grandparent"
                   :long-display-name "Grandparent"}
-                 {:display-name "Grandparent: Parent"
+                 {:display-name      "Grandparent: Parent"
                   :long-display-name "Grandparent: Parent"}]
                 (map #(lib/display-info query -1 %) cols)))))
     (testing "breakout"
-      (is (=? [{:display-name "Grandparent: Parent: Child"
+      (is (=? [{:display-name      "Grandparent: Parent: Child"
                 :long-display-name "Grandparent: Parent: Child"}]
               (->> base
                    lib/breakoutable-columns
@@ -95,25 +95,33 @@
                    (map #(lib/display-info base -1 %))))))
     (testing "join"
       (let [join-column (second (lib/visible-columns base))
-            base (-> base
-                     (lib/join
-                      (-> (lib/join-clause
-                           base [(lib/= join-column
-                                        (lib/with-join-alias join-column
-                                                             "alias"))])
-                          (lib/with-join-alias "alias"))))]
-        (doseq [query [base (lib/append-stage base)]]
-          (is (=? [{:display-name "Grandparent: Parent: Child"
+            base        (-> base
+                            (lib/join
+                             (-> (lib/join-clause
+                                  base [(lib/= join-column
+                                               (lib/with-join-alias join-column
+                                                                    "alias"))])
+                                 (lib/with-join-alias "alias"))))]
+        (doseq [[query multi-stage?] [[base false]
+                                      [(lib/append-stage base) true]]]
+          (is (=? [{:display-name      "Grandparent: Parent: Child"
                     :long-display-name "Grandparent: Parent: Child"}
-                   {:display-name "Grandparent"
+                   {:display-name      "Grandparent"
                     :long-display-name "Grandparent"}
-                   {:display-name "Grandparent: Parent"
+                   {:display-name      "Grandparent: Parent"
                     :long-display-name "Grandparent: Parent"}
-                   {:display-name "Grandparent: Parent: Child"
+                   ;; we always use LONG display names when the column comes from a previous stage.
+                   {:display-name      (if multi-stage?
+                                         "alias → Grandparent: Parent: Child"
+                                         "Grandparent: Parent: Child")
                     :long-display-name "alias → Grandparent: Parent: Child"}
-                   {:display-name "Grandparent"
+                   {:display-name      (if multi-stage?
+                                         "alias → Grandparent"
+                                         "Grandparent")
                     :long-display-name "alias → Grandparent"}
-                   {:display-name "Grandparent: Parent"
+                   {:display-name      (if multi-stage?
+                                         "alias → Grandparent: Parent"
+                                         "Grandparent: Parent")
                     :long-display-name "alias → Grandparent: Parent"}]
                   (->> query
                        lib/visible-columns
@@ -156,7 +164,8 @@
                                         "Products__CATEGORY"]]}]}
                       query'))
               (is (=? [{:name              "CATEGORY"
-                        :display-name      "Category"
+                        ;; we always use LONG display names when the column comes from a previous stage.
+                        :display-name      "Products → Category"
                         :long-display-name "Products → Category"
                         :effective-type    :type/Text}]
                       (map #(lib/display-info query' %)
@@ -1650,8 +1659,9 @@
           _                 (is (some? max-categories-id))]
       (is (= "Max of ID"
              (lib/display-name query -1 max-venues-id)))
-      (is (= "Max of ID"
-             (lib/display-name query -1 max-categories-id)))
+      (is (= "Max of Cat → ID"
+             (lib/display-name query -1 max-categories-id))
+          "We always use :long display names for columns that came from the previous stage.")
       (is (= "Max of ID"
              (lib/display-name query -1 max-venues-id :long)))
       (is (= "Max of Cat → ID"
@@ -1834,3 +1844,24 @@
             (lib/aggregate (lib/count))
             (lib.tu.notebook/add-breakout "Summaries" "Created At: Month" {}))
         "We should be able to build a query specifically using these display names")))
+
+(deftest ^:parallel short-display-names-include-joins-from-previous-stage
+  (testing "SHORT field display names ACTUALLY should include join alias if the join happened in a source saved question"
+    (let [card-query (lib.tu.macros/mbql-query orders
+                       {:joins  [{:source-table $$people
+                                  :alias        "People"
+                                  :fields       [[:field %people.longitude {:join-alias "People"}]
+                                                 [:field %people.birth-date {:temporal-unit :default, :join-alias "People"}]]
+                                  :condition    [:= $user-id &People.people.id]}
+                                 {:source-table $$products
+                                  :alias        "Products"
+                                  :fields       [&Products.products.price]
+                                  :condition    [:= $product-id &Products.products.id]}]
+                        :fields [$id]})
+          mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1, :name "QB Binning", :dataset-query card-query}]})]
+      ;; lib.tu.notebook-helpers/add-breakout will throw if it can't find a matching column name
+      (is (-> (lib/query mp (lib.metadata/card mp 1))
+              (lib/aggregate (lib/count))
+              (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
