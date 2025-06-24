@@ -8,6 +8,7 @@ import type {
   DatasetData,
   EditableTableActionsDisplaySettings,
   RowValues,
+  TableRowActionDisplaySettings,
 } from "metabase-types/api";
 
 import { isBuiltInEditableTableAction } from "../settings/AddOrEditActionSettingsContent/utils";
@@ -54,7 +55,8 @@ export function useDataGridRowActions({
 
   const rowActions = useMemo<DataGridRowAction[] | undefined>(() => {
     return actionSettings?.filter(
-      (actionSettings) => !isBuiltInEditableTableAction(actionSettings),
+      (actionSettings): actionSettings is TableRowActionDisplaySettings =>
+        !isBuiltInEditableTableAction(actionSettings),
     );
   }, [actionSettings]);
 
