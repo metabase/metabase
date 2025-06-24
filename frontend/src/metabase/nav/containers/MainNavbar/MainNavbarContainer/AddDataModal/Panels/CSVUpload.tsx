@@ -13,12 +13,12 @@ import { c, t } from "ttag";
 
 import { getComposedDragProps } from "metabase/collections/components/CollectionContent/utils";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import CollectionName from "metabase/common/components/CollectionName";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
 } from "metabase/common/components/CollectionPicker";
-import { UploadInput } from "metabase/components/upload";
-import CollectionName from "metabase/containers/CollectionName";
+import { UploadInput } from "metabase/common/components/upload";
 import { useDispatch } from "metabase/lib/redux";
 import {
   MAX_UPLOAD_SIZE,
@@ -29,6 +29,7 @@ import { Box, Button, Center, Group, Icon, Stack, Text } from "metabase/ui";
 import { UploadMode } from "metabase-types/store/upload";
 
 import S from "../AddDataModal.module.css";
+import { trackCSVFileInputSelect } from "../analytics";
 
 import IconCSV from "./illustrations/csv.svg?component";
 import IconCSVWarning from "./illustrations/csv_warning.svg?component";
@@ -143,6 +144,11 @@ export const CSVUpload = ({
 
   const dropzoneProps = getComposedDragProps(getRootProps());
 
+  const handleFileSelectClick = () => {
+    trackCSVFileInputSelect();
+    triggerUploadInput();
+  };
+
   const handleFileInput = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
@@ -241,7 +247,7 @@ export const CSVUpload = ({
                 variant="subtle"
                 p={0}
                 h="auto"
-                onClick={triggerUploadInput}
+                onClick={handleFileSelectClick}
               >
                 {t`Select a file`}
               </Button>
