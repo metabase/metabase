@@ -1169,7 +1169,7 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("35%").should("exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
+          previousValue.should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1184,7 +1184,7 @@ describe("issue 31628", () => {
           cy.contains("35%").should("exist");
           cy.contains("34.72%").should("not.exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
+          previousValue.should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1197,7 +1197,7 @@ describe("issue 31628", () => {
 
         previousValue
           .findByText("35%")
-          .then(($element) => H.assertIsEllipsified($element[0]));
+          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
