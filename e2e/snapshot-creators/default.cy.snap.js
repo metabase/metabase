@@ -12,6 +12,7 @@ import {
   createQuestion,
   createQuestionAndDashboard,
   restore,
+  setTokenFeatures,
   snapshot,
   updateSetting,
   withSampleDatabase,
@@ -366,6 +367,8 @@ describe("snapshots", () => {
 });
 
 function getDefaultInstanceData() {
+  setTokenFeatures("all");
+
   cy.request("PUT", "/api/setting", {
     "use-tenants": true,
   });
