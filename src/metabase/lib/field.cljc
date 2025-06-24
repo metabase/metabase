@@ -169,34 +169,24 @@
 
 (defn- field-display-name-add-binning
   [{binning          ::binning
-    hide-bin-bucket? :lib/hide-bin-bucket?
     semantic-type    :semantic-type
     :as              _col}
-   style
    display-name]
-  (let [bin-format      #(lib.binning/ensure-ends-with-binning % binning semantic-type)
-        add-bin-bucket? (or (= style :long)
-                            (not hide-bin-bucket?))
-        add-bin?        (and add-bin-bucket?
-                             binning
-                             (not= display-name (bin-format display-name)))]
+  (let [bin-format #(lib.binning/ensure-ends-with-binning % binning semantic-type)
+        add-bin?   (and binning
+                        (not= display-name (bin-format display-name)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (as-> display-name display-name
       (cond-> display-name add-bin? bin-format))))
 
 (defn- field-display-name-add-bucketing
-  [{hide-bin-bucket?        :lib/hide-bin-bucket?
-    inherited-temporal-unit :inherited-temporal-unit
+  [{inherited-temporal-unit :inherited-temporal-unit
     temporal-unit           ::temporal-unit
     :as                     _col}
-   style
    display-name]
   (let [temporal-unit   (or temporal-unit inherited-temporal-unit)
         temporal-format #(lib.temporal-bucket/ensure-ends-with-temporal-unit % temporal-unit)
-        add-bin-bucket? (or (= style :long)
-                            (not hide-bin-bucket?))
-        add-bucket?     (and add-bin-bucket?
-                             temporal-unit
+        add-bucket?     (and temporal-unit
                              (not= display-name (temporal-format display-name)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet
     (as-> display-name display-name
@@ -208,8 +198,8 @@
   [query stage-number col style]
   (->> (field-display-name-initial-display-name query stage-number col style)
        (field-display-name-add-join-alias query stage-number col style)
-       (field-display-name-add-binning col style)
-       (field-display-name-add-bucketing col style)))
+       (field-display-name-add-binning col)
+       (field-display-name-add-bucketing col)))
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number field-ref style]
