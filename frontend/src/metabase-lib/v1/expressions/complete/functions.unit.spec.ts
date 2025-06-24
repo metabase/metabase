@@ -41,7 +41,6 @@ describe("suggestFunctions", () => {
       {
         label: "concat",
         displayLabel: "concat",
-        detail: "Combine two or more strings of text together.",
         matches: [[0, 3]],
         type: "function",
         icon: "function",
@@ -50,8 +49,6 @@ describe("suggestFunctions", () => {
       {
         label: "contains",
         displayLabel: "contains",
-        detail:
-          "Returns `true` if `$string1` contains `$string2` within it (or `$string3`, etc. if specified).",
         matches: [
           [0, 2],
           [6, 6],
@@ -63,8 +60,6 @@ describe("suggestFunctions", () => {
       {
         label: "second",
         displayLabel: "second",
-        detail:
-          "Takes a datetime and returns an integer (`0`-`59`) with the number of the seconds in the minute.",
         matches: [[2, 4]],
         type: "function",
         icon: "function",
@@ -73,8 +68,6 @@ describe("suggestFunctions", () => {
       {
         label: "doesNotContain",
         displayLabel: "doesNotContain",
-        detail:
-          "Returns `true` if `$string1` does not contain `$string2` within it (and `$string3`, etc. if specified).",
         matches: [
           [1, 1],
           [4, 5],
@@ -87,8 +80,6 @@ describe("suggestFunctions", () => {
       },
       {
         apply: expect.any(Function),
-        detail:
-          "Looks at the values in each argument in order and returns the first non-null value for each row.",
         displayLabel: "coalesce",
         icon: "function",
         label: "coalesce",
@@ -100,8 +91,6 @@ describe("suggestFunctions", () => {
       },
       {
         apply: expect.any(Function),
-        detail:
-          "Takes a datetime and returns an integer (`1`-`12`) with the number of the month in the year.",
         displayLabel: "month",
         icon: "function",
         label: "month",
@@ -110,8 +99,6 @@ describe("suggestFunctions", () => {
       },
       {
         apply: expect.any(Function),
-        detail:
-          'Returns the localized short name (eg. `"Apr"`) for the given month number (eg. `4`)',
         displayLabel: "monthName",
         icon: "function",
         label: "monthName",
@@ -192,8 +179,6 @@ describe("suggestFunctions", () => {
         {
           label: "case",
           displayLabel: "case",
-          detail:
-            "Alias for `if()`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
           matches: [[0, 2]],
           type: "function",
           icon: "function",
@@ -224,8 +209,6 @@ describe("suggestFunctions", () => {
       ).toEqual({
         label: "regexExtract",
         displayLabel: "regexExtract",
-        detail:
-          "Extracts matching substrings according to a regular expression.",
         matches: [[0, 3]],
         icon: "function",
         type: "function",

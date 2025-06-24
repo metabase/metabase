@@ -1,9 +1,6 @@
 import { snippetCompletion } from "@codemirror/autocomplete";
 import Fuse from "fuse.js";
 
-import type Database from "metabase-lib/v1/metadata/Database";
-
-import { getHelpText } from "../help-text";
 import {
   CALL,
   END_OF_INPUT,
@@ -21,38 +18,18 @@ export function expressionClauseCompletion(
   clause: MBQLClauseFunctionConfig,
   {
     type,
-    database,
-    reportTimezone,
     matches,
   }: {
     type: string;
-    database: Database | null;
-    reportTimezone?: string;
     matches?: [number, number][];
   },
 ): Completion {
-  const helpText =
-    clause.name &&
-    database &&
-    getHelpText(clause.name, database, reportTimezone);
-
-  if (helpText) {
-    const completion = snippetCompletion(expressionClauseSnippet(clause), {
-      type,
-      label: clause.displayName,
-      displayLabel: clause.displayName,
-      detail: helpText.description,
-    });
-    return { ...completion, icon: "function", matches };
-  }
-
-  return {
+  const completion = snippetCompletion(expressionClauseSnippet(clause), {
     type,
     label: clause.displayName,
     displayLabel: clause.displayName,
-    icon: "function",
-    matches,
-  };
+  });
+  return { ...completion, icon: "function", matches };
 }
 
 export function expressionClauseSnippet(clause: MBQLClauseFunctionConfig) {

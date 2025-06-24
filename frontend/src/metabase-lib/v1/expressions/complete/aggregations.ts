@@ -27,7 +27,6 @@ export function suggestAggregations({
   expressionMode,
   query,
   metadata,
-  reportTimezone,
 }: Options) {
   if (expressionMode !== "aggregation") {
     return null;
@@ -36,13 +35,7 @@ export function suggestAggregations({
   const database = getDatabase(query, metadata);
   const aggregations = clausesForMode(expressionMode)
     .filter((clause) => database?.hasFeature(clause.requiresFeature))
-    .map((agg) =>
-      expressionClauseCompletion(agg, {
-        type: "aggregation",
-        database,
-        reportTimezone,
-      }),
-    );
+    .map((agg) => expressionClauseCompletion(agg, { type: "aggregation" }));
 
   const matcher = fuzzyMatcher(aggregations);
 

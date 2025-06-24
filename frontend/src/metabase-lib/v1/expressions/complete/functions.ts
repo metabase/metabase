@@ -29,12 +29,7 @@ export type Options = {
   reportTimezone?: string;
 };
 
-export function suggestFunctions({
-  expressionMode,
-  query,
-  metadata,
-  reportTimezone,
-}: Options) {
+export function suggestFunctions({ expressionMode, query, metadata }: Options) {
   if (expressionMode !== "expression" && expressionMode !== "filter") {
     return null;
   }
@@ -45,8 +40,6 @@ export function suggestFunctions({
     .map((func) =>
       expressionClauseCompletion(func, {
         type: "function",
-        database,
-        reportTimezone,
       }),
     );
 

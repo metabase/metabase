@@ -61,7 +61,6 @@ describe("suggestAggregations", () => {
       options: [
         {
           apply: expect.any(Function),
-          detail: "Returns the count of rows in the selected data.",
           displayLabel: "Count",
           icon: "function",
           label: "Count",
@@ -70,7 +69,6 @@ describe("suggestAggregations", () => {
         },
         {
           apply: expect.any(Function),
-          detail: "Only counts rows where the condition is `true`.",
           displayLabel: "CountIf",
           icon: "function",
           label: "CountIf",
@@ -79,7 +77,6 @@ describe("suggestAggregations", () => {
         },
         {
           apply: expect.any(Function),
-          detail: "The additive total of rows across a breakout.",
           displayLabel: "CumulativeCount",
           icon: "function",
           label: "CumulativeCount",
@@ -91,7 +88,6 @@ describe("suggestAggregations", () => {
           type: "aggregation",
         },
         {
-          detail: "The rolling sum of a column across a breakout.",
           displayLabel: "CumulativeSum",
           label: "CumulativeSum",
           matches: [
@@ -144,7 +140,6 @@ describe("suggestAggregations", () => {
           {
             label: "StandardDeviation",
             displayLabel: "StandardDeviation",
-            detail: "Calculates the standard deviation of the column.",
             matches: [[0, 10]],
             type: "aggregation",
             icon: "function",
