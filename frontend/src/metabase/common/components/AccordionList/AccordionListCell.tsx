@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ReactNode } from "react";
+import { type CSSProperties, type ReactNode, forwardRef } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
@@ -63,74 +63,77 @@ type AccordionListCellProps<
   toggleSection: (sectionIndex: number) => void;
 };
 
-export function AccordionListCell<
+export const AccordionListCell = forwardRef(function AccordionListCell<
   TItem extends Item,
   TSection extends Section<TItem>,
->({
-  alwaysExpanded,
-  canToggleSections,
-  color: colorProp = "brand",
-  getItemClassName = (item: TItem) => {
-    if (
-      typeof item === "object" &&
-      "className" in item &&
-      typeof item.className === "string"
-    ) {
-      return item.className;
-    }
-  },
-  getItemStyles = () => ({}),
-  hasCursor,
-  itemIsClickable = () => true,
-  itemIsSelected = () => false,
-  itemTestId,
-  onChange,
-  onChangeSearchText,
-  renderSectionIcon = (section: TSection) =>
-    section.icon && <Icon name={section.icon} />,
-  renderItemLabel,
-  renderItemName = (item: TItem) => {
-    if (
-      typeof item === "object" &&
-      "name" in item &&
-      typeof item.name === "string"
-    ) {
-      return item.name;
-    }
-  },
-  renderItemDescription = (item: TItem) => {
-    if (
-      typeof item === "object" &&
-      "description" in item &&
-      isReactNode(item.description)
-    ) {
-      return item.description;
-    }
-  },
-  renderItemExtra = () => null,
-  renderItemIcon = (item: TItem) => {
-    if (
-      typeof item === "object" &&
-      "icon" in item &&
-      isValidIconName(item.icon)
-    ) {
-      return <Icon name={item.icon} />;
-    }
-    return null;
-  },
-  renderItemWrapper = (content: ReactNode) => content,
-  row,
-  searchInputProps,
-  searchPlaceholder = t`Find...`,
-  searchText,
-  sectionIsExpanded,
-  sections,
-  showItemArrows,
-  showSpinner = () => false,
-  style,
-  toggleSection,
-  withBorders,
-}: AccordionListCellProps<TItem, TSection>) {
+>(
+  {
+    alwaysExpanded,
+    canToggleSections,
+    color: colorProp = "brand",
+    getItemClassName = (item: TItem) => {
+      if (
+        typeof item === "object" &&
+        "className" in item &&
+        typeof item.className === "string"
+      ) {
+        return item.className;
+      }
+    },
+    getItemStyles = () => ({}),
+    hasCursor,
+    itemIsClickable = () => true,
+    itemIsSelected = () => false,
+    itemTestId,
+    onChange,
+    onChangeSearchText,
+    renderSectionIcon = (section: TSection) =>
+      section.icon && <Icon name={section.icon} />,
+    renderItemLabel,
+    renderItemName = (item: TItem) => {
+      if (
+        typeof item === "object" &&
+        "name" in item &&
+        typeof item.name === "string"
+      ) {
+        return item.name;
+      }
+    },
+    renderItemDescription = (item: TItem) => {
+      if (
+        typeof item === "object" &&
+        "description" in item &&
+        isReactNode(item.description)
+      ) {
+        return item.description;
+      }
+    },
+    renderItemExtra = () => null,
+    renderItemIcon = (item: TItem) => {
+      if (
+        typeof item === "object" &&
+        "icon" in item &&
+        isValidIconName(item.icon)
+      ) {
+        return <Icon name={item.icon} />;
+      }
+      return null;
+    },
+    renderItemWrapper = (content: ReactNode) => content,
+    row,
+    searchInputProps,
+    searchPlaceholder = t`Find...`,
+    searchText,
+    sectionIsExpanded,
+    sections,
+    showItemArrows,
+    showSpinner = () => false,
+    style,
+    toggleSection,
+    withBorders,
+  }: AccordionListCellProps<TItem, TSection>,
+  ref,
+) {
   const { type, section, sectionIndex, isLastSection } = row;
   let content;
   let borderTop;
@@ -401,6 +404,7 @@ export function AccordionListCell<
 
   return (
     <div
+      ref={ref}
       style={style}
       data-element-id="list-section"
       className={cx(section.className, {
@@ -413,4 +417,4 @@ export function AccordionListCell<
       {content}
     </div>
   );
-}
+});
