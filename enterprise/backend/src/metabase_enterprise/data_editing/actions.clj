@@ -12,6 +12,7 @@
    (clojure.lang ExceptionInfo)))
 
 (derive :data-grid.row/create :data-grid.row/common)
+(derive :data-grid.row/create-or-update :data-grid.row/common)
 (derive :data-grid.row/update :data-grid.row/common)
 (derive :data-grid.row/delete :data-grid.row/common)
 

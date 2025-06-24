@@ -1365,6 +1365,60 @@
                                                    :table-id (:id table)}
                                            :action_id (:id action)})))))))))
 
+(deftest tmp-modal-built-in-table-action-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [table-id [{:id 'auto-inc-type
+                                                     :text      [:text]
+                                                     :int       [:int]
+                                                     :timestamp [:timestamp]
+                                                     :date [:date]
+                                                     :inactive [:text]}
+                                                    {:primary-key [:id]}]]
+        ;; This inactive field should not show up
+        (t2/update! :model/Field {:table_id table-id, :name "inactive"} {:active false})
+        (testing "table actions"
+          (let [create-id           "data-grid.row/create"
+                create-or-update-id "data-grid.row/create-or-update"
+                update-id           "data-grid.row/update"
+                delete-id           "data-grid.row/delete"
+                scope               {:table-id table-id}]
+
+            (testing "create"
+              (is (=? {:parameters [{:id "text"      :display_name "Text"      :input_type "text"}
+                                    {:id "int"       :display_name "Int"       :input_type "text"}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id create-id}))))
+
+            (testing "update"
+              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
+                                    {:id "text"      :display_name "Text"      :input_type "text"}
+                                    {:id "int"       :display_name "Int"       :input_type "text"}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id update-id}))))
+
+            (testing "create-or-update"
+              (is (=? {:parameters [{:id "id"        :display_name "ID"        :input_type "text"}
+                                    {:id "text"      :display_name "Text"      :input_type "text"}
+                                    {:id "int"       :display_name "Int"       :input_type "text"}
+                                    {:id "timestamp" :display_name "Timestamp" :input_type "datetime"}
+                                    {:id "date"      :display_name "Date"      :input_type "date"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id create-or-update-id}))))
+
+            (testing "delete"
+              (is (=? {:parameters [{:id "id" :display_name "ID" :input_type "text"}]}
+                      (mt/user-http-request :crowberto :post 200 "action/v2/tmp-modal"
+                                            {:scope     scope
+                                             :action_id delete-id}))))))))))
+
 ;; I don't think we'll end up using this - we'll configure these actions first, which will unpack them.
 (deftest tmp-modal-packed-table-action-test
   (mt/with-premium-features #{:table-data-editing}
