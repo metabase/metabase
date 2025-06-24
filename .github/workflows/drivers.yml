@@ -34,13 +34,13 @@ jobs:
             fi
           done
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
-          HAS_RUN_ALL_LABEL="${{ contains(github.event.pull_request.labels.*.name, 'run-all-driver-tests') }}"
+          HAS_RUN_TESTS_LABEL="${{ contains(github.event.pull_request.labels.*.name, 'run-tests') }}"
 
           echo "GitHub Actor: ${{ github.actor }}"
           echo "Team Members: ${REQUIRED_TEAM_MEMBERS}"
           echo "Is Required Team Member: ${IS_REQUIRED_MEMBER}"
           echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
-          echo "Has 'run-all-driver-tests' label: ${HAS_RUN_ALL_LABEL}"
+          echo "Has 'run-all-driver-tests' label: ${HAS_RUN_TESTS_LABEL}"
           # Logic to determine if tier 3 tests should skip
           # Skip if not a required team member AND not on master or release branches
           if [[ "${IS_REQUIRED_MEMBER}" == "true" ]]; then
@@ -49,9 +49,9 @@ jobs:
           elif [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
-          elif [[ "${HAS_RUN_ALL_LABEL}" == "true" ]]; then
+          elif [[ "${HAS_RUN_TESTS_LABEL}" == "true" ]]; then
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "The 'run-all-driver-tests' label is present. Tier 3 driver tests will run."
+            echo "The 'run-tests' label is present. Tier 3 driver tests will run."
           else
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "User is not a required team member and not merging into master/release. Tier 3 driver tests will be skipped."
