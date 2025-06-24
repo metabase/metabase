@@ -35,9 +35,7 @@ export const SdkIframeEmbedPreview = () => {
         instanceUrl,
         target: "#iframe-embed-container",
         iframeClassName: S.EmbedPreviewIframe,
-
-        // TODO: replace with `useExistingUserSession: true` once EMB-507 is merged.
-        apiKey: "will-be-replaced-with-user-session-flag",
+        useExistingUserSession: true,
       });
     };
 
