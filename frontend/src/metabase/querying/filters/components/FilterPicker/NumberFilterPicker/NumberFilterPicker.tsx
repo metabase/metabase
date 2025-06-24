@@ -45,23 +45,23 @@ export function NumberFilterPicker({
     filter,
   });
 
-  const [chevronState, setChevronState] = useState({
-    leftInclusive: true,
-    rightInclusive: true,
-  });
+  const [leftInclusive, setLeftInclusive] = useState(true);
+  const [rightInclusive, setRightInclusive] = useState(true);
 
-  const handleChevronChange = (side: "left" | "right", value: boolean) => {
-    setChevronState((prev) => ({
-      ...prev,
-      [side === "left" ? "leftInclusive" : "rightInclusive"]: value,
-    }));
+  const handleInclusiveChange = (side: "left" | "right", value: boolean) => {
+    if (side === "left") {
+      setLeftInclusive(value);
+    } else {
+      setRightInclusive(value);
+    }
   };
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
     if (newOperator === "between") {
-      setChevronState({ leftInclusive: true, rightInclusive: true });
+      setLeftInclusive(true);
+      setRightInclusive(true);
     }
   };
 
@@ -107,10 +107,9 @@ export function NumberFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
-          chevronState={operator === "between" ? chevronState : undefined}
-          onChevronChange={
-            operator === "between" ? handleChevronChange : undefined
-          }
+          leftInclusive={leftInclusive}
+          rightInclusive={rightInclusive}
+          onInclusiveChange={handleInclusiveChange}
         />
         <FilterPickerFooter
           isNew={isNew}

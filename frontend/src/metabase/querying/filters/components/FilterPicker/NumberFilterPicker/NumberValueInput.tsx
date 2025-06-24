@@ -19,8 +19,9 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   onChange: (values: NumberOrEmptyValue[]) => void;
-  chevronState?: { leftInclusive: boolean; rightInclusive: boolean };
-  onChevronChange?: (side: "left" | "right", value: boolean) => void;
+  leftInclusive?: boolean;
+  rightInclusive?: boolean;
+  onInclusiveChange?: (side: "left" | "right", value: boolean) => void;
 }
 
 const GREATER_THAN_OR_EQUAL_TO = "≥";
@@ -36,8 +37,9 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   onChange,
-  chevronState,
-  onChevronChange,
+  leftInclusive = true,
+  rightInclusive = true,
+  onInclusiveChange,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -71,8 +73,6 @@ function NumberValueInput({
   }
 
   if (valueCount === 2) {
-    const leftInclusive = chevronState?.leftInclusive ?? true;
-    const rightInclusive = chevronState?.rightInclusive ?? true;
     return (
       <Flex direction="column" p="md" gap="md">
         <NumberFilterInput
@@ -83,8 +83,8 @@ function NumberValueInput({
           onChange={(newValue) => onChange([newValue, values[1]])}
           leftSection={
             <ToggleButton
-              aria-label="toggle greater chevron inclusiveness"
-              onChange={() => onChevronChange?.("left", !leftInclusive)}
+              aria-label="toggle greater inclusiveness"
+              onChange={() => onInclusiveChange?.("left", !leftInclusive)}
             >
               {leftInclusive ? GREATER_THAN_OR_EQUAL_TO : GREATER_THAN}
             </ToggleButton>
@@ -100,8 +100,8 @@ function NumberValueInput({
           onChange={(newValue) => onChange([values[0], newValue])}
           leftSection={
             <ToggleButton
-              aria-label="toggle less chevron inclusiveness"
-              onChange={() => onChevronChange?.("right", !rightInclusive)}
+              aria-label="toggle less inclusiveness"
+              onChange={() => onInclusiveChange?.("right", !rightInclusive)}
             >
               {rightInclusive ? LESS_THAN_OR_EQUAL_TO : LESS_THAN}
             </ToggleButton>

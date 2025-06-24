@@ -1,7 +1,5 @@
 .FilterFooterRoot {
-  .separator {
-    &:not(:only-child) {
-      border-top: 1px solid var(--mb-color-border);
-    }
+  &.separator:not(:only-child) {
+    border-top: 1px solid var(--mb-color-border);
   }
 }

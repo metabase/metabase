@@ -570,10 +570,10 @@ describe("NumberFilterPicker", () => {
       setup(createQueryWithNumberFilter({ operator: "between" }));
 
       const greaterButton = screen.getByRole("button", {
-        name: /toggle greater chevron inclusiveness/,
+        name: /toggle greater inclusiveness/,
       });
       const lessButton = screen.getByRole("button", {
-        name: /toggle less chevron inclusiveness/,
+        name: /toggle less inclusiveness/,
       });
 
       expect(greaterButton).toBeInTheDocument();
