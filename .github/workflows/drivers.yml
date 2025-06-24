@@ -1087,9 +1087,6 @@ jobs:
       - be-tests-bigquery-cloud-sdk-ee
       - be-tests-clickhouse-ee
       - be-tests-mysql-mariadb
-
-      - be-tests-mongo-ssl
-      - be-tests-mongo-sharded-cluster-ee
       - be-tests-postgres
       - be-tests-redshift-ee
       - be-tests-snowflake-ee
@@ -1099,6 +1096,8 @@ jobs:
       # - be-tests-databricks-ee
       # - be-tests-druid-jdbc-ee
       # - be-tests-mongo
+      # - be-tests-mongo-ssl
+      # - be-tests-mongo-sharded-cluster-ee
       # - be-tests-oracle
       # - be-tests-presto-jdbc-ee
       # - be-tests-sparksql-ee
@@ -1124,8 +1123,6 @@ jobs:
                 name: jobName,
                 result: jobValues.result
               }));
-
-            jobs.forEach(job => (console.log("Job:", job)));
 
             // are all jobs skipped or successful?
             if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {

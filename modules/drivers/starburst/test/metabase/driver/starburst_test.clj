@@ -35,8 +35,7 @@
 
 (deftest describe-database-test
   (mt/test-driver :starburst
-    (Thread/sleep (* 1000 60 60 5)) ;; 5 hours
-    (is (= {:tables #{{:name "xcategories" :schema "default"}
+    (is (= {:tables #{{:name "categories" :schema "default"}
                       {:name "venues" :schema "default"}
                       {:name "checkins" :schema "default"}
                       {:name "users" :schema "default"}}}
