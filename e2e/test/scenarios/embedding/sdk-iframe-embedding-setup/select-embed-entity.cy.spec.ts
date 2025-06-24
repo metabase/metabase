@@ -5,7 +5,7 @@ import {
 
 const { H } = cy;
 
-describe("scenarios > embedding > sdk iframe embedding setup > select embed entity", () => {
+describe("scenarios > embedding > sdk iframe embed setup > select embed entity", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
