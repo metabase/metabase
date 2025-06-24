@@ -165,20 +165,20 @@
                             :throw-exceptions false
                             :as :stream}
                      *debug* (assoc :debug true))
-          response (post! url options)
-          response-lines ^java.io.BufferedReader (-> response :body io/reader)]
+          response (post! url options)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
       (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
-        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"
-                                :headers {"x-metabot-conversation-id" conversation-id}} [os canceled-chan]
-          (loop []
-            (when-let [line (.readLine response-lines)]
-              (.write os (.getBytes (str line "\n") "UTF-8"))
-              (.flush os)
-                                   ;; Give time for the line to flush before continuing
-              (Thread/sleep 10)
-              (recur))))
+        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+                               ;; Response from the AI Service will send response parts separated by newline
+          (with-open [response-lines (-> response :body io/reader)]
+            (loop []
+                                   ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
+                                   ;; Immediately flush so it get's sent to the frontend as soon as possible
+              (when-let [line (.readLine response-lines)]
+                (.write os (.getBytes (str line "\n") "UTF-8"))
+                (.flush os)
+                (recur)))))
         (throw (ex-info (format "Error: unexpected status code: %d %s" (:status response) (:reason-phrase response))
                         {:request (assoc options :body body)
                          :response response}))))
