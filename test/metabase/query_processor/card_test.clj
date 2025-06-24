@@ -29,7 +29,7 @@
                 (fn [query info]
                   (qp/process-query (assoc query :info info)))))))
 
-(defn- field-filter-query
+(defn field-filter-query
   "A query with a Field Filter parameter"
   []
   {:database (mt/id)
@@ -42,7 +42,7 @@
                                       :widget-type  :date/all-options}}
               :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
 
-(defn- non-field-filter-query
+(defn non-field-filter-query
   "A query with a parameter that is not a Field Filter"
   []
   {:database (mt/id)
@@ -56,7 +56,7 @@
                                :default      "1"}}
               :query         "SELECT *\nFROM ORDERS\nWHERE id = {{id}}"}})
 
-(defn- non-parameter-template-tag-query
+(defn non-parameter-template-tag-query
   "A query with template tags that aren't parameters"
   []
   (assoc (non-field-filter-query)
