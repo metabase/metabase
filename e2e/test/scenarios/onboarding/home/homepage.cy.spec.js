@@ -571,7 +571,7 @@ describe("scenarios > home > custom homepage", () => {
   });
 });
 
-H.describeWithSnowplow.only("scenarios > setup", () => {
+H.describeWithSnowplow("scenarios > setup", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
