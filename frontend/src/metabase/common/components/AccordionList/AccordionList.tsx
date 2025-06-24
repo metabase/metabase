@@ -253,10 +253,6 @@ export class AccordionList<
     this.setState({ searchText, cursor: null });
   };
 
-  checkSectionHasItemsMatchingSearch = (section: TSection) => {
-    return (section.items?.filter(this.searchFilter).length ?? 0) > 0;
-  };
-
   getFirstSelectedItemCursor = () => {
     const { sections, itemIsSelected = () => false } = this.props;
 
@@ -354,17 +350,6 @@ export class AccordionList<
     }
   };
 
-  searchFilter = (item: TItem) => {
-    return (
-      itemScore(item, {
-        searchText: this.state.searchText,
-        fuzzySearch: this.props.fuzzySearch,
-        sections: this.props.sections,
-        searchProp: this.props.searchProp,
-      }) < 0.6
-    );
-  };
-
   getRows = (): Row<TItem, TSection>[] => {
     const {
       alwaysTogglable = false,
@@ -397,6 +382,7 @@ export class AccordionList<
 
     const rows: Row<TItem, TSection>[] = [];
 
+    const searchThreshold = 0.6;
     const searchOptions = {
       searchText,
       sections,
@@ -405,14 +391,28 @@ export class AccordionList<
     };
 
     const sortedSections = isSearching
-      ? Array.from(sections).sort(
-          (a, b) =>
-            sectionScore(a, searchOptions) - sectionScore(b, searchOptions),
-        )
+      ? Array.from(sections)
+          .filter(
+            (section) => sectionScore(section, searchOptions) < searchThreshold,
+          )
+          .sort(
+            (a, b) =>
+              sectionScore(a, searchOptions) - sectionScore(b, searchOptions),
+          )
       : sections;
 
     for (const [sectionIndex, section] of sortedSections.entries()) {
       const isLastSection = sectionIndex === sections.length - 1;
+
+      const sortedItems = isSearching
+        ? Array.from(section.items ?? [])
+            .filter((item) => itemScore(item, searchOptions) < searchThreshold)
+            .sort(
+              (a, b) =>
+                itemScore(a, searchOptions) - itemScore(b, searchOptions),
+            )
+        : (section.items ?? []);
+
       if (
         section.name &&
         (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
@@ -420,7 +420,7 @@ export class AccordionList<
         if (
           !searchable ||
           !globalSearch ||
-          this.checkSectionHasItemsMatchingSearch(section) ||
+          sortedItems?.length > 0 ||
           section.type === "action"
         ) {
           if (section.type === "action") {
@@ -465,28 +465,20 @@ export class AccordionList<
         section.items.length > 0 &&
         !section.loading
       ) {
-        const sortedItems = isSearching
-          ? Array.from(section.items).sort(
-              (a, b) =>
-                itemScore(a, searchOptions) - itemScore(b, searchOptions),
-            )
-          : section.items;
         for (const [itemIndex, item] of sortedItems.entries()) {
-          if (this.searchFilter(item)) {
-            const isLastItem = itemIndex === section.items.length - 1;
-            if (itemIsSelected(item, itemIndex)) {
-              this._initialSelectedRowIndex = rows.length;
-            }
-            rows.push({
-              type: "item",
-              section,
-              sectionIndex,
-              isLastSection,
-              item,
-              itemIndex,
-              isLastItem,
-            });
+          const isLastItem = itemIndex === section.items.length - 1;
+          if (itemIsSelected(item, itemIndex)) {
+            this._initialSelectedRowIndex = rows.length;
           }
+          rows.push({
+            type: "item",
+            section,
+            sectionIndex,
+            isLastSection,
+            item,
+            itemIndex,
+            isLastItem,
+          });
         }
       }
       if (sectionIsExpanded(sectionIndex) && section.loading) {
