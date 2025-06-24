@@ -83,7 +83,7 @@ export const ConfigureDashcardCustomTableActions = ({
           {showMetabaseLinks && (
             <>
               {" "}
-              {jt`You can ${(<ExternalLink href={docsLink}>{t`learn more`}</ExternalLink>)}  about it here.`}
+              {jt`You can ${(<ExternalLink href={docsLink}>{t`learn more`}</ExternalLink>)} about it here.`}
             </>
           )}
         </Text>
