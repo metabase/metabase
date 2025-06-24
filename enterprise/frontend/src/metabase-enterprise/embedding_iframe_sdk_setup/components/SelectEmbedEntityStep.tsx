@@ -1,18 +1,10 @@
 import { useDisclosure } from "@mantine/hooks";
 import { match } from "ts-pattern";
-import { c, t } from "ttag";
+import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
-import {
-  ActionIcon,
-  Anchor,
-  Card,
-  Group,
-  Icon,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { ActionIcon, Card, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type {
@@ -20,6 +12,7 @@ import type {
   SdkIframeEmbedSetupRecentItem,
 } from "../types";
 
+import { SelectEmbedEntityEmptyState } from "./SelectEmbedEntityEmptyState";
 import S from "./SelectEmbedEntityStep.module.css";
 
 export const SelectEmbedEntityStep = () => {
@@ -109,42 +102,14 @@ export const SelectEmbedEntityStep = () => {
     </Card>
   );
 
-  const renderRecentsEmptyState = () => {
-    const emptyStateDescription = match(experience)
-      .with(
-        "dashboard",
-        () =>
-          c("{0} is a link button to search for dashboards")
-            .jt`You haven't visited any dashboards recently. You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for dashboards`}</Anchor>)} to embed.`,
-      )
-      .with(
-        "chart",
-        () =>
-          c("{0} is a link button to search for charts")
-            .jt`You haven't visited any charts recently. You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for charts`}</Anchor>)} to embed.`,
-      )
-      .otherwise(() => null);
-
-    return (
-      <Stack align="center" gap="md" py="xl" data-testid="embed-empty-state">
-        <Icon name={embedIcon} size={48} c="text-light" />
-
-        <Stack align="center" gap="xs">
-          <Text fw="bold" size="md">
-            {getEmptyStateTitle(experience)}
-          </Text>
-
-          <Text size="sm" c="text-medium" ta="center">
-            {emptyStateDescription}
-          </Text>
-        </Stack>
-      </Stack>
-    );
-  };
-
-  const renderEntitySelection = () => {
+  const renderSelectEntityList = () => {
     if (recentItems.length === 0) {
-      return renderRecentsEmptyState();
+      return (
+        <SelectEmbedEntityEmptyState
+          experience={experience}
+          openPicker={openPicker}
+        />
+      );
     }
 
     return (
@@ -230,7 +195,7 @@ export const SelectEmbedEntityStep = () => {
           )}
         </Group>
 
-        {renderEntitySelection()}
+        {renderSelectEntityList()}
       </Card>
 
       {renderPickerModal()}
@@ -251,9 +216,3 @@ const getEmbedDescription = (experience: string) =>
     .with("chart", () => t`Choose from your recently visited charts`)
     .with("exploration", () => null)
     .otherwise(() => t`Choose your content to embed`);
-
-const getEmptyStateTitle = (experience: string) =>
-  match(experience)
-    .with("dashboard", () => t`No recent dashboards`)
-    .with("chart", () => t`No recent charts`)
-    .otherwise(() => null);
