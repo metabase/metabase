@@ -34,7 +34,7 @@ export const SettingTitle = ({
     c="text-medium"
     fw="bold"
     tt="uppercase"
-    display="block"
+    display="inline-block"
   >
     {children}
   </Text>
