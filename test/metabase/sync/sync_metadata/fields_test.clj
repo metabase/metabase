@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
@@ -257,6 +258,10 @@
         (let [db (mt/db)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
               get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+          (testing "initially, country's continent_id is targeting nothing"
+            (is (=? {:fk_target_field_id nil
+                     :semantic_type      nil}
+                    (get-fk))))
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! db {:scan :schema})
@@ -267,11 +272,11 @@
           ;; 2. drop the FK relationship in the database with SQL
           (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
-          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
-          #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
-              (is (=? {:fk_target_field_id nil
-                       :semantic_type      :type/Category}
-                      (get-fk))))
+          (is (= [] (into [] (fetch-metadata/fk-metadata db))))
+          (testing "after dropping the FK relationship, country's continent_id is targeting nothing"
+            (is (=? {:fk_target_field_id nil
+                     :semantic_type      nil}
+                    (get-fk))))
           ;; 3. add back the FK relationship but targeting continent_2
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
@@ -293,15 +298,15 @@
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
         (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))))))
@@ -319,15 +324,15 @@
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
         (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :checkins :user_id)) {:semantic_type :type/Name})
         (testing "after"
-          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/Name
                   :fk-target-exists? false}
                  (state))))))))
