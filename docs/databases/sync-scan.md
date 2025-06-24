@@ -9,7 +9,7 @@ Metabase periodically runs different types of queries on your data warehouse to 
 
 - [Sync database schema](#how-database-syncs-work): grabs database schema, table structures, fields, constraints (primary and foreign keys), and deactivates deleted tables.
 - [Scan field values](#how-database-scans-work): takes samples of column values to populate filter dropdown menus and suggest helpful visualizations. Metabase doesn't store _complete_ tables from your database.
-- [Fingerprinting](#how-database-fingerprinting-works): samples the first 10k rows of the table to compute statistics for each field in the sample depending on their type, notably: distinct values count, % of null values (all field types), average, median, min, max, and quartiles (numeric types).
+- [Fingerprinting](#how-database-fingerprinting-works): samples the first 10,000 rows of the table to compute statistics for each field in the sample depending on their type, notably: distinct values count, % of null values (all field types), average, median, min, max, and quartiles (numeric types).
 
 ## Initial sync, scan, and fingerprinting
 
@@ -48,7 +48,7 @@ Options include:
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when someone adds a new filter widget to a dashboard or SQL question (i.e., they add a parameter to their SQL query).
 - **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never really have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
-Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#changing-the-filter-widget), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for 14 days) to populate that dropdown; otherwise it will re-scan that field for the most up-to-date values.
+Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#changing-the-filter-widget), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for 14 days) to populate that dropdown; otherwise, it will re-scan that field for the most up-to-date values.
 
 ## Manually syncing tables and columns
 
@@ -97,20 +97,23 @@ To prevent Metabase from running syncs and scans against a specific table, chang
 
 Metabase syncs and scans regularly, but if the database administrator has just changed the database schema, or if a lot of data is added automatically at specific times, you may want to write a script that uses the [Metabase API](../api.html) to force a sync or scan. The API provides two ways to initiate a sync or scan of a database:
 
-- **Sync database schema**: `/api/database/:id/sync_schema`
-- **Re-scan field values**: `/api/database/:id/rescan_values`
-
-### Using an API key
-
-You can use: `/api/notify/db/:id`.
-
-We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
-
-To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable. This API key is distinct from Metabase's [API keys](../people-and-groups/api-keys.md).
-
-### Using a session token
+### Sync or scan the database
 
 You can use these endpoints by authenticating with a user ID and passing a session token in the header of your request.
+
+- **Sync database schema**: `/api/database/{id}/sync_schema`
+- **Re-scan field values**: `/api/database/{id}/rescan_values`
+
+### Sync a single table
+
+- `/api/notify/db/{id}` to tell Metabase to sync a database, or optionally a specific table.
+- `/api/notify/db/{id}/new-table` to sync a new table, without syncing the whole database. Requires `schema_name` and `table_name`.
+
+To use this endpoint, you must pass a string via the `MB_API_KEY` environment variable. This string is distinct from Metabase's [API keys](../people-and-groups/api-keys.md).
+
+We created the `notify` endpoint so that people could tell their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
+
+See our [API docs](/docs/latest/api.html).
 
 ## How database syncs work
 
@@ -157,7 +160,7 @@ LIMIT 1000
 
 For each record, Metabase only stores the first 100 kilobytes of text, so if you have data with 1,000 characters each (like addresses) and your column has more than 100 unique addresses, Metabase will only cache the first 100 values from the scan query.
 
-Cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records or 100kB of text, Metabase will run a query against your database to look for those values on the fly.
+Cached column values are displayed in filter dropdown menus. If people type in the filter search box for values that aren't in the first 1,000 distinct records or 100 kB of text, Metabase will run a query against your database to look for those values on the fly.
 
 A scan is more intensive than a sync query, so it only runs once during setup and again once a day by default. If you [disable scans](#scanning-for-filter-values) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
@@ -197,6 +200,7 @@ LIMIT 10000
 ```
 
 Metabase uses the results of this query to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
+
 To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection. To change this default, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
 
 Here's the kind of data that fingerprinting gets and why:
