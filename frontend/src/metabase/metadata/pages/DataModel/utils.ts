@@ -1,6 +1,8 @@
 import { skipToken } from "metabase/api";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+// eslint-disable-next-line no-restricted-imports
+import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 import type { GetTableQueryMetadataRequest, TableId } from "metabase-types/api";
 
 import type { ParsedRouteParams, RouteParams } from "./types";
@@ -8,30 +10,33 @@ import type { ParsedRouteParams, RouteParams } from "./types";
 export function parseRouteParams(params: RouteParams): ParsedRouteParams {
   return {
     databaseId: Urls.extractEntityId(params.databaseId),
-    schemaId: params.schemaId?.replace(/^\d+:/, ""),
+    schemaName: params.schemaId
+      ? getSchemaName(params.schemaId)
+      : params.schemaId,
     tableId: Urls.extractEntityId(params.tableId),
     fieldId: Urls.extractEntityId(params.fieldId),
   };
 }
 
 export function getUrl(params: ParsedRouteParams): string {
-  const { databaseId, schemaId, tableId, fieldId } = params;
+  const { databaseId, schemaName, tableId, fieldId } = params;
+  const schemaId = `${databaseId}:${schemaName}`;
 
   if (
     databaseId != null &&
-    schemaId != null &&
+    schemaName != null &&
     tableId != null &&
     fieldId != null
   ) {
-    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${schemaId}/table/${tableId}/field/${fieldId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}/field/${fieldId}`;
   }
 
-  if (databaseId != null && schemaId != null && tableId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${schemaId}/table/${tableId}`;
+  if (databaseId != null && schemaName != null && tableId != null) {
+    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}/table/${tableId}`;
   }
 
-  if (databaseId != null && schemaId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${schemaId}`;
+  if (databaseId != null && schemaName != null) {
+    return `/admin/datamodel/database/${databaseId}/schema/${schemaId}`;
   }
 
   if (databaseId != null) {

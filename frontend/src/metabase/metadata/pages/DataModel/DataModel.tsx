@@ -37,7 +37,7 @@ interface Props {
 }
 
 export const DataModel = ({ children, location, params }: Props) => {
-  const { databaseId, fieldId, tableId, schemaId } = parseRouteParams(params);
+  const { databaseId, fieldId, schemaName, tableId } = parseRouteParams(params);
   const previousTableId = usePrevious(tableId);
   const previousFieldId = usePrevious(fieldId);
   const isOpeningTableColumn = previousTableId == null && tableId != null;
@@ -163,7 +163,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         >
           <RouterTablePicker
             databaseId={databaseId}
-            schemaId={schemaId}
+            schemaId={schemaName}
             tableId={tableId}
           />
 
