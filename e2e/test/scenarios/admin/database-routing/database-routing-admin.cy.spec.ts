@@ -248,10 +248,10 @@ describe("admin > database > database routing", () => {
 
       cy.log("should not see database in table metadata db list");
       H.DataModel.visit();
-      cy.findByTestId("selected-database").click();
-      H.popover()
-        .findByText(BASE_POSTGRES_DESTINATION_DB_INFO.name)
-        .should("not.exist");
+
+      H.DataModel.TablePicker.getDatabase(
+        BASE_POSTGRES_DESTINATION_DB_INFO.name,
+      ).should("not.exist");
 
       cy.log("should not see database in permissions pages");
       cy.visit("/admin/permissions/data/database");
