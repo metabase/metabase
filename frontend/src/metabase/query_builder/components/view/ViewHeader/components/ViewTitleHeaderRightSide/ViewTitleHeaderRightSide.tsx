@@ -228,7 +228,7 @@ export function ViewTitleHeaderRightSide({
           />
         </Box>
       )}
-      {!isShowingNotebook && hasSaveButton && (
+      {!isShowingNotebook && (hasSaveButton || isSaved) && (
         <QuestionSharingMenu question={question} />
       )}
       {!isShowingNotebook &&
