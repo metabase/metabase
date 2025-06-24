@@ -345,7 +345,7 @@ describe("Field", () => {
       expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
     });
 
-    it("should return the field's name_field", () => {
+    it("should return the name_field of a PK", () => {
       const field = setup({
         fields: [
           createMockField({
@@ -359,6 +359,29 @@ describe("Field", () => {
 
       expect(field.remappedExternalField()).toBeDefined();
       expect(field.remappedExternalField()).toBe(field.metadata?.field(2));
+    });
+
+    it("should return the name_field of the target PK for a FK", () => {
+      const field = setup({
+        fields: [
+          createMockField({
+            id: FIELD_ID,
+            semantic_type: "type/FK",
+            fk_target_field_id: 2,
+            target: createMockField({
+              id: 2,
+              semantic_type: "type/PK",
+              name_field: createMockField({
+                id: 3,
+                semantic_type: "type/Name",
+              }),
+            }),
+          }),
+        ],
+      });
+
+      expect(field.remappedExternalField()).toBeDefined();
+      expect(field.remappedExternalField()).toBe(field.metadata?.field(3));
     });
 
     it("should return null when the field has no name_field or no dimension with a 'human readable' field", () => {
