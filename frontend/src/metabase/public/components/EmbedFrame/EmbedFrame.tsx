@@ -177,6 +177,8 @@ export const EmbedFrame = ({
     }),
   });
 
+  const hasDashboardTabs = dashboard?.tabs && dashboard.tabs.length > 1;
+
   return (
     <Root
       hasScroll={hasFrameScroll}
@@ -223,9 +225,12 @@ export const EmbedFrame = ({
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
                     <ExportAsPdfButton
-                      dashboard={dashboard}
-                      hasTitle={titled}
-                      hasVisibleParameters={hasVisibleParameters}
+                      className={cx({
+                        [EmbedFrameS.CompactExportAsPdfButton]:
+                          !titled && (hasVisibleParameters || hasDashboardTabs),
+                        [EmbedFrameS.ParametersVisibleWithNoTabs]:
+                          hasVisibleParameters && !hasDashboardTabs,
+                      })}
                     />
                   )}
                   {headerButtons}
