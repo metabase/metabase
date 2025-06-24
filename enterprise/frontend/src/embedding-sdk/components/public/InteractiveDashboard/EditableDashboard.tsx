@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { type CSSProperties, type ReactNode, useEffect } from "react";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -21,6 +21,7 @@ import {
   DASHBOARD_EDITING_ACTIONS,
   SDK_DASHBOARD_VIEW_ACTIONS,
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import {
   DashboardContextProvider,
   useDashboardContext,
@@ -47,20 +48,28 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
  */
 export type EditableDashboardProps = {
   /**
-   * Height of a question component when drilled from the dashboard to a question level.
-   */
-  drillThroughQuestionHeight?: number;
-
-  /**
    * Additional mapper function to override or add drill-down menu. See the implementing custom actions section for more details.
    */
   plugins?: MetabasePluginsConfig;
 
+  // @todo pass the question context to the question view component,
+  //       once we have a public-facing question context.
   /**
-   * Props for the drill-through question
+   * A custom React component to render the question layout.
+   * Use namespaced InteractiveQuestion components to build the layout.
+   */
+  renderDrillThroughQuestion?: () => ReactNode;
+
+  /**
+   * Height of a question component when drilled from the dashboard to a question level.
+   */
+  drillThroughQuestionHeight?: CSSProperties["height"];
+
+  /**
+   * Props of a question component when drilled from the dashboard to a question level.
    */
   drillThroughQuestionProps?: DrillThroughQuestionProps;
-} & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
+} & SdkDashboardDisplayProps &
   DashboardEventHandlersProps;
 
 const EditableDashboardInner = ({
@@ -68,11 +77,13 @@ const EditableDashboardInner = ({
   onEditQuestion,
 }: Pick<InteractiveDashboardContextType, "onEditQuestion"> &
   Pick<EditableDashboardProps, "drillThroughQuestionProps">) => {
-  const { isEditing } = useDashboardContext();
+  const { downloadsEnabled, isEditing } = useDashboardContext();
 
   const dashboardActions = isEditing
     ? DASHBOARD_EDITING_ACTIONS
-    : SDK_DASHBOARD_VIEW_ACTIONS;
+    : downloadsEnabled.pdf
+      ? [...SDK_DASHBOARD_VIEW_ACTIONS, DASHBOARD_ACTION.DOWNLOAD_PDF]
+      : SDK_DASHBOARD_VIEW_ACTIONS;
 
   return (
     <InteractiveDashboardProvider
@@ -95,7 +106,10 @@ const EditableDashboardInner = ({
 export const EditableDashboard = ({
   dashboardId: dashboardIdProp,
   initialParameters = {},
+  withTitle = true,
+  withCardTitle = true,
   withDownloads = false,
+  hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
   onLoad,
@@ -103,10 +117,11 @@ export const EditableDashboard = ({
   className,
   style,
   drillThroughQuestionProps = {
-    title: true,
+    title: withTitle,
     height: drillThroughQuestionHeight,
     plugins: plugins,
   },
+  renderDrillThroughQuestion: AdHocQuestionView,
 }: EditableDashboardProps) => {
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -117,8 +132,9 @@ export const EditableDashboard = ({
   const { displayOptions, isLoading, dashboardId } = useSdkDashboardParams({
     dashboardId: dashboardIdProp,
     withDownloads,
-    withTitle: true,
-    hiddenParameters: undefined,
+    withTitle,
+    withCardTitle,
+    hiddenParameters,
     initialParameters,
   });
 
@@ -195,7 +211,9 @@ export const EditableDashboard = ({
             questionPath={adhocQuestionUrl}
             onNavigateBack={onNavigateBackToDashboard}
             {...drillThroughQuestionProps}
-          />
+          >
+            {AdHocQuestionView && <AdHocQuestionView />}
+          </InteractiveAdHocQuestion>
         ) : (
           <EditableDashboardInner
             drillThroughQuestionProps={drillThroughQuestionProps}

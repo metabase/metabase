@@ -390,7 +390,7 @@ export function DashCardVisualization({
     }
 
     // Only show the download button if the dashboard is public or embedded.
-    if (isPublicOrEmbedded && downloadsEnabled) {
+    if (isPublicOrEmbedded && downloadsEnabled.results) {
       return (
         <DashCardQuestionDownloadButton
           question={question}
