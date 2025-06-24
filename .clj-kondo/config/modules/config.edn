@@ -1664,8 +1664,8 @@
            pulse
            query-processor
            request
-           settings
            server
+           settings
            system
            users
            util
