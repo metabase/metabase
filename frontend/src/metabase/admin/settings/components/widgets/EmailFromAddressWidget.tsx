@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
@@ -7,66 +6,56 @@ import { Box, Icon, TextInput } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
 
+import { AdminSettingInput } from "./AdminSettingInput";
+
 export function EmailFromAddressWidget() {
-  const {
-    value: initialValue,
-    updateSetting,
-    isLoading,
-    description: settingDescription,
-    settingDetails,
-  } = useAdminSetting("email-from-address");
-  const isHosted = useSetting("is-hosted?") || true;
-  const isEnvSetting = settingDetails?.is_env_setting || true;
+  const { value: fromAddressValue, settingDetails } =
+    useAdminSetting("email-from-address");
+  const isHosted = useSetting("is-hosted?");
+  const isEnvSetting = settingDetails?.is_env_setting;
   const isCloudSMTPEnabled = useSetting("cloud-smtp-enabled");
-  const isFromAddressManagedByMetabase =
-    isHosted && isEnvSetting && !isCloudSMTPEnabled;
   const hasCloudCustomSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
 
-  const [localValue, setLocalValue] = useState(initialValue);
-
-  useEffect(() => {
-    setLocalValue(initialValue);
-  }, [initialValue]);
-
-  const handleChange = () => {
-    if (localValue === initialValue) {
-      return;
-    }
-
-    updateSetting({
-      key: "email-from-address",
-      value: localValue ? localValue : null,
-    });
-  };
-
-  if (isLoading) {
-    return null;
+  if (!isHosted) {
+    return (
+      <AdminSettingInput
+        title={t`From Address`}
+        inputType="text"
+        name="email-from-address"
+      />
+    );
   }
 
-  return (
-    <Box data-testid={`email-from-address-setting`}>
-      <SettingHeader
-        id={"email-from-address"}
+  if (isCloudSMTPEnabled) {
+    return (
+      <AdminSettingInput
         title={t`From Address`}
-        description={
-          isFromAddressManagedByMetabase
-            ? t`Please set up a custom SMTP server to change this${hasCloudCustomSMTPFeature ? "" : t` (Pro only)`}`
-            : settingDescription
-        }
+        inputType="text"
+        name="cloud-email-from-address"
       />
+    );
+  }
 
-      <TextInput
-        id={"email-from-address"}
-        value={localValue ? localValue : ""}
-        placeholder={"metabase@yourcompany.com"}
-        onChange={(e) => setLocalValue(e.target.value)}
-        onBlur={() => handleChange()}
-        type={"text"}
-        disabled={isFromAddressManagedByMetabase}
-        rightSection={
-          isFromAddressManagedByMetabase && <Icon name="lock" size={12} />
-        }
-      />
-    </Box>
-  );
+  if (isEnvSetting) {
+    return (
+      <Box data-testid={`email-from-address-setting`}>
+        <SettingHeader
+          id={"email-from-address"}
+          title={t`From Address`}
+          description={t`Please set up a custom SMTP server to change this${hasCloudCustomSMTPFeature ? "" : t` (Pro only)`}`}
+        />
+
+        <TextInput
+          id={"email-from-address"}
+          value={fromAddressValue ? fromAddressValue : ""}
+          placeholder={"metabase@yourcompany.com"}
+          type={"text"}
+          disabled
+          rightSection={<Icon name="lock" size={12} />}
+        />
+      </Box>
+    );
+  }
+
+  return null;
 }

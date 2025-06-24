@@ -313,6 +313,7 @@ export type CustomGeoJSONSetting = Record<string, CustomGeoJSONMap>;
 
 interface InstanceSettings {
   "admin-email": string;
+  "cloud-email-from-address": string | null;
   "cloud-email-smtp-host": string | null;
   "cloud-email-smtp-port": 465 | 587 | 2525 | null;
   "cloud-email-smtp-security": "ssl" | "tls" | "starttls";

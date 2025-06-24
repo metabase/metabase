@@ -7,7 +7,7 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { UndoListing } from "metabase/containers/UndoListing";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
   createMockSettings,
@@ -21,11 +21,13 @@ const setup = async (props: {
   cloudCustomSMTPFF?: boolean;
   cloudSMTPEnabled?: boolean;
   hosted?: boolean;
-  fromAddress?: string;
+  selfHostedFromAddress?: string;
+  cloudCustomFromAddress?: string;
   smtpHost?: string;
 }) => {
   const emailSettings = {
-    "email-from-address": props.fromAddress,
+    "email-from-address": props.selfHostedFromAddress || "env@metabase.com",
+    "cloud-email-from-address": props.cloudCustomFromAddress,
     "token-features": createMockTokenFeatures({
       hosting: !!props.hosted,
       "cloud-custom-smtp": props.cloudCustomSMTPFF,
@@ -41,9 +43,17 @@ const setup = async (props: {
   setupUpdateSettingEndpoint();
   setupSettingsEndpoints([
     createMockSettingDefinition({
+      // auto set the value to mimic a managed cloud instance
       key: "email-from-address",
-      value: props.fromAddress,
+      value: props.selfHostedFromAddress || "env@metabase.com",
       description: "Email from address description",
+      is_env_setting:
+        !props.cloudCustomFromAddress && !props.selfHostedFromAddress,
+    }),
+    createMockSettingDefinition({
+      key: "cloud-email-from-address",
+      value: props.cloudCustomFromAddress,
+      description: "Cloud email from address description",
     }),
     createMockSettingDefinition({ key: "is-hosted?", value: props.hosted }),
     createMockSettingDefinition({
@@ -76,9 +86,8 @@ describe("EmailFromAddressWidgets", () => {
     await setup({
       hosted: true,
       cloudCustomSMTPFF: false,
-      fromAddress: "noreply@metabase.com",
     });
-    const input = await screen.findByDisplayValue("noreply@metabase.com");
+    const input = await screen.findByDisplayValue("env@metabase.com");
     expect(input).toBeDisabled();
     expect(
       screen.getByText(
@@ -91,10 +100,9 @@ describe("EmailFromAddressWidgets", () => {
     await setup({
       hosted: true,
       cloudCustomSMTPFF: true,
-      fromAddress: "noreply@metabase.com",
       smtpHost: undefined,
     });
-    const input = await screen.findByDisplayValue("noreply@metabase.com");
+    const input = await screen.findByDisplayValue("env@metabase.com");
     expect(input).toBeDisabled();
     expect(
       screen.getByText("Please set up a custom SMTP server to change this"),
@@ -105,56 +113,79 @@ describe("EmailFromAddressWidgets", () => {
     await setup({
       hosted: true,
       cloudCustomSMTPFF: true,
-      fromAddress: "noreply@metabase.com",
       smtpHost: "smtp.grovyle.com",
       cloudSMTPEnabled: false,
     });
-    const input = await screen.findByDisplayValue("noreply@metabase.com");
+    const input = await screen.findByDisplayValue("env@metabase.com");
     expect(input).toBeDisabled();
     expect(
       screen.getByText("Please set up a custom SMTP server to change this"),
     ).toBeInTheDocument();
   });
 
-  it("should be enabled for cloud users with feature flag who have configured and enabled smtp", async () => {
+  it("should be editble for cloud users with feature flag who have configured and enabled smtp", async () => {
     await setup({
       hosted: true,
       cloudCustomSMTPFF: true,
-      fromAddress: "noreply@metabase.com",
+      cloudCustomFromAddress: "cloudcustom@test.com",
       smtpHost: "smtp.grovyle.com",
       cloudSMTPEnabled: true,
     });
-    const input = await screen.findByDisplayValue("noreply@metabase.com");
-    expect(input).toBeEnabled();
+
     expect(
-      screen.getByText("Email from address description"),
+      screen.getByText("Cloud email from address description"),
     ).toBeInTheDocument();
+
+    const blur = async () => {
+      const elementOutside = screen.getByText(
+        "Cloud email from address description",
+      );
+      await userEvent.click(elementOutside); // blur
+    };
+
+    const fromAddressInput = await screen.findByDisplayValue(
+      "cloudcustom@test.com",
+    );
+    await userEvent.clear(fromAddressInput);
+    await userEvent.type(fromAddressInput, "grovyle@brock.com");
+    await blur();
+    await screen.findByDisplayValue("grovyle@brock.com");
+
+    await waitFor(async () => {
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(1);
+    });
+
+    const puts = await findRequests("PUT");
+    const { url: putUrl, body: putBody } = puts[0];
+
+    expect(putUrl).toContain("/api/setting/cloud-email-from-address");
+    expect(putBody).toEqual({ value: "grovyle@brock.com" });
+
+    await waitFor(() => {
+      const toasts = screen.getAllByLabelText("check_filled icon");
+      expect(toasts).toHaveLength(1);
+    });
   });
 
   it("should be enabled for self-hosted users", async () => {
     await setup({
       hosted: false,
-      fromAddress: "custom@test.com",
+      selfHostedFromAddress: "selfhosted@test.com",
     });
-    const input = await screen.findByDisplayValue("custom@test.com");
-    expect(input).toBeDisabled();
-  });
 
-  it("should update multiple settings", async () => {
-    await setup({
-      hosted: true,
-      cloudCustomSMTPFF: true,
-      smtpHost: "smtp.grovyle.com",
-      cloudSMTPEnabled: true,
-      fromAddress: "treeko@ash.com",
-    });
+    expect(
+      screen.getByText("Email from address description"),
+    ).toBeInTheDocument();
 
     const blur = async () => {
       const elementOutside = screen.getByText("Email from address description");
       await userEvent.click(elementOutside); // blur
     };
 
-    const fromAddressInput = await screen.findByDisplayValue("treeko@ash.com");
+    const fromAddressInput = await screen.findByDisplayValue(
+      "selfhosted@test.com",
+    );
     await userEvent.clear(fromAddressInput);
     await userEvent.type(fromAddressInput, "grovyle@brock.com");
     await blur();
