@@ -383,19 +383,23 @@
         (run-query database (format "DESCRIBE `%s`.`%s`;" schema table-name))))
 
 (defn- describe-table-fields-without-nested-fields [driver schema table-name columns]
-  (set
-   (for [[idx {database-type :type_name
-               column-name   :column_name
-               remarks       :remarks}] (m/indexed columns)]
-     (merge
-      {:name              column-name
-       :database-type     database-type
-       :base-type         (sql-jdbc.sync/database-type->base-type-or-warn driver
-                                                                          [schema table-name column-name]
-                                                                          database-type)
-       :database-position idx}
-      (when (not (str/blank? remarks))
-        {:field-comment remarks})))))
+  (let [discovered-fields
+        (->> (for [[idx {database-type :type_name
+                         column-name   :column_name
+                         remarks       :remarks}] (m/indexed columns)]
+               (merge
+                {:name              column-name
+                 :database-type     database-type
+                 :base-type         (sql-jdbc.sync/database-type->base-type-or-warn driver
+                                                                                    [schema table-name column-name]
+                                                                                    database-type)
+                 :database-position idx}
+                (when (not (str/blank? remarks))
+                  {:field-comment remarks})))
+             (m/distinct-by :name)
+             set)]
+    (log/trace "Discovered fields for" (str schema "." table-name) ":" discovered-fields)
+    discovered-fields))
 
 ;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
