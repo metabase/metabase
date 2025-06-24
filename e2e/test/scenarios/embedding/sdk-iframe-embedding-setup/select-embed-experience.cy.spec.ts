@@ -117,12 +117,15 @@ const visitNewEmbedPage = () => {
   cy.wait("@dashboard");
 };
 
-const assertRecentItemName = (model: "dashboard" | "card", name: string) => {
+const assertRecentItemName = (
+  model: "dashboard" | "card",
+  resourceName: string,
+) => {
   cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
     const recentItem = intercept.response?.body.recents?.filter(
       (recent) => recent.model === model,
     )?.[0];
 
-    expect(recentItem.name).to.be.equal(name);
+    expect(recentItem.name).to.be.equal(resourceName);
   });
 };
