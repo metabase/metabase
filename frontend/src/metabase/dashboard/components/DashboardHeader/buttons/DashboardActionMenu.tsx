@@ -1,4 +1,4 @@
-import { type JSX, type MouseEvent, forwardRef, useState } from "react";
+import { type MouseEvent, forwardRef, useState } from "react";
 import { Link, type LinkProps, withRouter } from "react-router";
 import type { WithRouterProps } from "react-router/lib/withRouter";
 import { c, t } from "ttag";
@@ -33,25 +33,21 @@ const DashboardActionMenuInner = ({
   canEdit,
   location,
   openSettingsSidebar,
-}: DashboardActionMenuProps & WithRouterProps): JSX.Element => {
-  const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } = useDashboardContext();
+}: DashboardActionMenuProps & WithRouterProps) => {
+  const { dashboard, isFullscreen, onFullscreenChange, onChangeLocation } =
+    useDashboardContext();
   const [opened, setOpened] = useState(false);
 
   const { refreshDashboard } = useRefreshDashboard({
-    dashboardId: dashboard?.id,
+    dashboardId: dashboard?.id ?? null,
     parameterQueryParams: location.query,
     refetchData: false,
   });
 
   const moderationItems = PLUGIN_MODERATION.useDashboardMenuItems(
-    dashboard,
+    dashboard ?? undefined,
     refreshDashboard,
   );
-
-  if (!dashboard) {
-    return null;
-  }
-
   useRegisterShortcut(
     [
       {
@@ -61,6 +57,10 @@ const DashboardActionMenuInner = ({
     ],
     [location.pathname],
   );
+
+  if (!dashboard) {
+    return null;
+  }
 
   return (
     <Menu position="bottom-end" opened={opened} onChange={setOpened}>
