@@ -33,7 +33,7 @@ jobs:
               break
             fi
           done
-          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
+          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/dri-370-') }}"
           HAS_RUN_TESTS_LABEL="${{ contains(github.event.pull_request.labels.*.name, 'run-tests') }}"
 
           echo "GitHub Actor: ${{ github.actor }}"
