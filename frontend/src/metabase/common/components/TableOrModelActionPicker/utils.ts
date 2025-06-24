@@ -10,10 +10,10 @@ import type {
 import type {
   CardId,
   CollectionId,
-  DataGridWritebackAction,
   DataGridWritebackActionId,
   DatabaseId,
   DatabaseWithActionsItem,
+  ListActionItem,
   ModelWithActionsItem,
   TableId,
   TableWithActionsItem,
@@ -42,7 +42,7 @@ export const generateModelActionKey = (
 };
 
 export const getActionItem = (
-  actions: DataGridWritebackAction[] | undefined,
+  actions: ListActionItem[] | undefined,
   actionId: DataGridWritebackActionId | undefined,
 ): ActionItem | null => {
   if (typeof actionId === "undefined") {

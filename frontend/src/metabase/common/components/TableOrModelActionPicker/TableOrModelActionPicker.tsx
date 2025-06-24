@@ -149,8 +149,6 @@ export const TableOrModelActionPicker = ({
 
       // TODO: we can add tables and models to search results and react here on such item select,
       //  but, there is no way to switch to needed tab from here.
-
-      onChange(undefined);
     },
     [onChange],
   );

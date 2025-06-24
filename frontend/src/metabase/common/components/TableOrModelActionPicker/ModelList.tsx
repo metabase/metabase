@@ -32,7 +32,7 @@ export const ModelList = ({
   }, [models]);
 
   return (
-    <ListBox data-testid="item-picker-level-0">
+    <ListBox data-testid="item-picker-level-1">
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}
