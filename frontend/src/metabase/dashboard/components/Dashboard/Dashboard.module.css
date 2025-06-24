@@ -79,3 +79,12 @@
     max-width: var(--dashboard-fixed-width);
   }
 }
+
+/* Make selected text invisible only during drag operations to preserve auto-scroll */
+:global(body.react-grid-layout-dragging ::selection) {
+  background: transparent;
+}
+
+:global(body.react-grid-layout-dragging ::-moz-selection) {
+  background: transparent;
+}

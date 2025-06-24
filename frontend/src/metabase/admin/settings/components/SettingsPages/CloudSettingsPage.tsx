@@ -1,5 +1,9 @@
 import { t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getStoreUrl } from "metabase/selectors/settings";
@@ -7,7 +11,6 @@ import { Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
 import { SettingHeader } from "../SettingHeader";
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 
 export function CloudSettingsPage() {
   const isHosted = useHasTokenFeature("hosting");

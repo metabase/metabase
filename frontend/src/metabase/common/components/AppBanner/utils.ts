@@ -7,6 +7,7 @@ type Props = {
   daysRemaining: number;
   lastDismissed?: string | null;
   tokenExpiryTimestamp: string;
+  isWithinIframe: boolean;
 };
 
 /**
@@ -14,6 +15,7 @@ type Props = {
  * the number of days remaining in a trial period, and the last dismissal (ISO8601) timestamp.
  *
  * The banner will not be shown if:
+ * - Inside an iframe
  * - The token has expired.
  * - The banner was never dismissed (i.e., `lastDismissed` is null) or
  * - The banner dismissal information is not available (i.e., `lastDismissed` is undefined).
@@ -29,7 +31,13 @@ export function shouldShowTrialBanner({
   daysRemaining,
   lastDismissed,
   tokenExpiryTimestamp,
+  isWithinIframe,
 }: Props): boolean {
+  // No banner if inside an iframe
+  if (isWithinIframe) {
+    return false;
+  }
+
   // No banner if the trial already expired
   if (daysRemaining < 0) {
     return false;
