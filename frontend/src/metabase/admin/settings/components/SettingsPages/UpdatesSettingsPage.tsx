@@ -1,12 +1,15 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { UpsellHostingBanner } from "metabase/admin/upsells";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { useSetting } from "metabase/common/hooks";
-import { NotFound } from "metabase/components/ErrorPages";
 import CS from "metabase/css/core/index.css";
 
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { VersionUpdateNotice } from "../widgets/VersionUpdateNotice";
 

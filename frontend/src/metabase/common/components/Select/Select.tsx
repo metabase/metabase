@@ -10,9 +10,9 @@ import type {
 import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/common/components/SelectButton";
 import SelectButton from "metabase/common/components/SelectButton";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
 import { color } from "metabase/lib/colors";

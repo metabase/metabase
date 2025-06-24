@@ -15,9 +15,7 @@ describe("ContentTranslationConfiguration", () => {
         screen.getByTestId("content-translation-configuration"),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
-          "Upload a dictionary to translate user-generated content",
-        ),
+        screen.getByText("Localizing user-generated content"),
       ).toBeInTheDocument();
     });
 

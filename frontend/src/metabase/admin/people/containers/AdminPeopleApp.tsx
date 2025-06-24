@@ -1,6 +1,6 @@
 import type * as React from "react";
 
-import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 
 import { PeopleNav } from "../components/PeopleNav";
 

@@ -241,7 +241,8 @@
                               :metadata/key-constraints        false
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
-                              :window-functions/cumulative     false}]
+                              :window-functions/cumulative     false
+                              :database-routing                false}]
   (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 (defmethod sql.qp/quote-style :sparksql
