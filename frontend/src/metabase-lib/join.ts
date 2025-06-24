@@ -176,13 +176,13 @@ export function joinConditionOperators(
   query: Query,
   stageIndex: number,
   lhsExpression?: ExpressionClause,
-  lhsExpression?: ExpressionClause,
+  rhsExpression?: ExpressionClause,
 ): JoinConditionOperator[] {
   return ML.join_condition_operators(
     query,
     stageIndex,
     lhsExpression,
-    lhsExpression,
+    rhsExpression,
   );
 }
 
