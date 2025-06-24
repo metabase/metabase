@@ -233,7 +233,7 @@ function getFieldSemanticTypeCurrencyInput() {
 }
 
 function getFieldSemanticTypeFkTargetInput() {
-  return getFieldSection().findByPlaceholderText("Select a target");
+  return getFieldSection().findByLabelText("Foreign key target");
 }
 
 function getFieldVisibilityInput() {
