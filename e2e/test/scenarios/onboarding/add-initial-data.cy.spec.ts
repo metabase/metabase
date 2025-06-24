@@ -69,7 +69,7 @@ H.describeWithSnowplow(
           .click();
         addDataModal().should("be.visible");
         H.expectUnstructuredSnowplowEvent({
-          event: "data_add_clicked",
+          event: "data_add_modal_opened",
           triggered_from: "getting-started",
         });
       });
@@ -83,7 +83,7 @@ H.describeWithSnowplow(
           .click();
         addDataModal().should("be.visible");
         H.expectUnstructuredSnowplowEvent({
-          event: "data_add_clicked",
+          event: "data_add_modal_opened",
           triggered_from: "left-nav",
         });
       });

@@ -167,8 +167,8 @@ export type AddDataModalEvent = ValidateEvent<{
   triggered_from: "add-data-modal";
 }>;
 
-export type AddDataButtonClickedEvent = ValidateEvent<{
-  event: "data_add_clicked";
+export type AddDataModalOpenedEvent = ValidateEvent<{
+  event: "data_add_modal_opened";
   triggered_from: "getting-started" | "left-nav";
 }>;
 
@@ -194,4 +194,4 @@ export type SimpleEvent =
   | EmbeddingSetupStepSeenEvent
   | EventsClickedEvent
   | AddDataModalEvent
-  | AddDataButtonClickedEvent;
+  | AddDataModalOpenedEvent;
