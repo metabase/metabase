@@ -6,7 +6,7 @@ import { useDashboardContext } from "metabase/dashboard/context/context";
 
 export const FullscreenAnalyticsDashboard = () => {
   const { isFullscreen, onFullscreenChange } = useDashboardContext();
-  
+
   return (
     <ToolbarButton
       key="expand"

@@ -154,11 +154,7 @@ const setup = ({
     <Route
       path="*"
       component={() => (
-        <MockDashboardContext
-          dashboardId={MOCK_DASHBOARD.id}
-          dashboard={MOCK_DASHBOARD}
-          navigateToNewCardFromDashboard={null}
-        >
+        <MockDashboardContext>
           <DashboardHeaderButtonRow
             canResetFilters
             onResetFilters={jest.fn()}
