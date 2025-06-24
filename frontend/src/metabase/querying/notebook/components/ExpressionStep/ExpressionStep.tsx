@@ -49,6 +49,11 @@ export const ExpressionStep = ({
           query={query}
           stageIndex={stageIndex}
           expressionIndex={expressionIndex}
+          availableColumns={Lib.expressionableColumns(
+            query,
+            stageIndex,
+            expressionIndex,
+          )}
           name={
             item
               ? Lib.displayInfo(query, stageIndex, item).displayName

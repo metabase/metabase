@@ -248,6 +248,7 @@ export function AggregationPicker({
         stageIndex={stageIndex}
         name={displayInfo?.displayName}
         clause={clause}
+        availableColumns={Lib.expressionableColumns(query, stageIndex)}
         withName
         expressionMode="aggregation"
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}

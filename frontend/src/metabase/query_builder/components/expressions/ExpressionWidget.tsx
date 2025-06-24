@@ -32,6 +32,7 @@ export type ExpressionWidgetProps = {
   reportTimezone?: string;
   header?: ReactNode;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
 
   onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
@@ -48,6 +49,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
     reportTimezone,
     header,
     expressionIndex,
+    availableColumns,
     onChangeClause,
     onClose,
   } = props;
@@ -187,6 +189,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         query={query}
         stageIndex={stageIndex}
         expressionIndex={expressionIndex}
+        availableColumns={availableColumns}
         reportTimezone={reportTimezone}
         shortcuts={shortcuts}
         error={error}

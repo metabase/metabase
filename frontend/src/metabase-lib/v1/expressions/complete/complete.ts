@@ -11,6 +11,7 @@ export type SuggestOptions = {
   reportTimezone?: string;
   expressionMode: Lib.ExpressionMode;
   expressionIndex: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
 import { suggestAggregations } from "./aggregations";

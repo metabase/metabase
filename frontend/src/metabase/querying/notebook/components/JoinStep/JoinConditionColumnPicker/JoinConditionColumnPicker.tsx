@@ -170,6 +170,17 @@ function JoinColumnDropdown({
     { open: openExpressionEditor, close: closeExpressionEditor },
   ] = useDisclosure(Lib.isColumnMetadata(expression));
 
+  const getColumns = isLhsExpression
+    ? Lib.joinConditionLHSColumns
+    : Lib.joinConditionRHSColumns;
+  const columns = getColumns(
+    query,
+    stageIndex,
+    joinable,
+    Lib.isColumnMetadata(lhsExpression) ? lhsExpression : undefined,
+    Lib.isColumnMetadata(rhsExpression) ? rhsExpression : undefined,
+  );
+
   const handleX = (_name: string, newExpression: Lib.ExpressionClause) => {
     onChange(newExpression);
     onClose();
@@ -182,6 +193,7 @@ function JoinColumnDropdown({
         stageIndex={stageIndex}
         clause={expression}
         expressionMode="expression"
+        availableColumns={columns}
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleX}
         onClose={closeExpressionEditor}

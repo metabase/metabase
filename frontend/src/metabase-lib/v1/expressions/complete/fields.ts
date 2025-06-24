@@ -13,14 +13,15 @@ export type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
 };
 
-export function suggestFields({ query, stageIndex, expressionIndex }: Options) {
-  const columns = Lib.expressionableColumns(
-    query,
-    stageIndex,
-    expressionIndex,
-  )?.map((column) => {
+export function suggestFields({
+  query,
+  stageIndex,
+  availableColumns,
+}: Options) {
+  const columns = availableColumns.map((column) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, column);
     return {
       type: "field",

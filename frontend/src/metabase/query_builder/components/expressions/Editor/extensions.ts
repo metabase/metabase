@@ -15,6 +15,7 @@ type Options = {
   query: Lib.Query;
   stageIndex: number;
   expressionIndex: number | undefined;
+  availableColumns: Lib.ColumnMetadata[];
   metadata: Metadata;
   reportTimezone?: string;
   extensions?: Extension[];
@@ -39,6 +40,7 @@ export function useExtensions(options: Options): Extension[] {
     query,
     stageIndex,
     expressionIndex,
+    availableColumns,
     reportTimezone,
     metadata,
     extensions: extra = [],
@@ -60,6 +62,7 @@ export function useExtensions(options: Options): Extension[] {
         reportTimezone,
         expressionMode,
         expressionIndex,
+        availableColumns,
         metadata,
       }),
       tooltips({

@@ -45,6 +45,7 @@ type EditorProps = {
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
@@ -69,6 +70,7 @@ export function Editor(props: EditorProps) {
     stageIndex,
     query,
     expressionIndex,
+    availableColumns,
     readOnly,
     error,
     reportTimezone,
@@ -119,6 +121,7 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     expressionIndex,
+    availableColumns,
     reportTimezone,
     metadata,
     extensions: [customTooltip],

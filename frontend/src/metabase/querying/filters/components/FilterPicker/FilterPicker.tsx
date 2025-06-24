@@ -100,6 +100,7 @@ export function FilterPicker({
         stageIndex={stageIndex}
         clause={filter}
         expressionMode="filter"
+        availableColumns={Lib.expressionableColumns(query, stageIndex)}
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}

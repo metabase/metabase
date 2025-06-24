@@ -1648,7 +1648,7 @@
 
   > **Code health:** Healthy"
   [a-query stage-number lhs-column-or-nil rhs-column-or-nil]
-  (to-array (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil)))
+  (to-array (map name (lib.core/join-condition-operators a-query stage-number lhs-column-or-nil rhs-column-or-nil))))
 
 ;; TODO: Move the join and expressions functions to be contiguous instead of interleaved.
 

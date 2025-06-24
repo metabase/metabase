@@ -90,7 +90,7 @@
 
 (def ordered-condition-operators
   "Operators that should be listed as options in join conditions."
-  [:= :!= :> :< :>= :<=])
+  [:= :> :< :>= :<= :!=])
 
 (def condition-operators
   "Operators that should be listed as options in join conditions."
