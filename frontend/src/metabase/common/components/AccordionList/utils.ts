@@ -20,6 +20,15 @@ const areSameCursors = (left: Cursor, right: Cursor) => {
   );
 };
 
+function getCursorForRow<TItem extends Item, TSection extends Section<TItem>>(
+  row: Row<TItem, TSection>,
+) {
+  return {
+    sectionIndex: row.sectionIndex,
+    itemIndex: row.type === "item" ? row.itemIndex : null,
+  };
+}
+
 export function getNextCursor<
   TItem extends Item,
   TSection extends Section<TItem>,
@@ -29,10 +38,19 @@ export function getNextCursor<
   isSectionExpanded: SectionPredicate,
   canSelectSection: SectionPredicate,
   skipInitial: boolean = true,
-): Cursor {
+): Cursor | null {
   if (!cursor) {
+    const firstRow = rows.find(
+      (row) =>
+        row.type !== "search" &&
+        row.type !== "no-results" &&
+        (row.type === "item" || canSelectSection(row.sectionIndex)),
+    );
+    if (!firstRow) {
+      return null;
+    }
     return getNextCursor(
-      { sectionIndex: 0, itemIndex: null },
+      getCursorForRow(firstRow),
       rows,
       isSectionExpanded,
       canSelectSection,
@@ -40,53 +58,21 @@ export function getNextCursor<
     );
   }
 
-  const currentRowIndex = rows.findIndex(
-    (row) =>
-      row.sectionIndex === cursor.sectionIndex &&
-      ((row.type === "item" && row.itemIndex === cursor.itemIndex) ||
-        cursor.itemIndex == null),
+  const currentRowIndex = rows.findIndex((row) =>
+    areSameCursors(cursor, getCursorForRow(row)),
   );
 
   for (let rowIndex = currentRowIndex; rowIndex < rows.length; rowIndex++) {
     const row = rows[rowIndex];
-    const { section, sectionIndex } = row;
 
-    const sectionCursor = {
-      sectionIndex,
-      itemIndex: null,
-    };
+    const rowCursor = getCursorForRow(row);
 
-    const skipSectionItem =
-      cursor.sectionIndex === sectionIndex && cursor.itemIndex != null;
-
-    if (
-      !skipSectionItem &&
-      (!skipInitial || !areSameCursors(cursor, sectionCursor)) &&
-      canSelectSection(sectionIndex)
-    ) {
-      return sectionCursor;
-    }
-
-    if (!isSectionExpanded(sectionIndex)) {
+    if (!skipInitial || areSameCursors(cursor, rowCursor)) {
       continue;
     }
 
-    for (
-      let itemIndex =
-        sectionIndex === cursor.sectionIndex ? (cursor.itemIndex ?? 0) : 0;
-      itemIndex < (section.items?.length ?? 0);
-      itemIndex++
-    ) {
-      const itemCursor = {
-        sectionIndex,
-        itemIndex,
-      };
-
-      if (skipInitial && areSameCursors(cursor, itemCursor)) {
-        continue;
-      }
-
-      return itemCursor;
+    if (row.type === "item" || canSelectSection(rowCursor.sectionIndex)) {
+      return rowCursor;
     }
   }
 
@@ -101,68 +87,39 @@ export function getPrevCursor<
   rows: Row<TItem, TSection>[],
   isSectionExpanded: SectionPredicate,
   canSelectSection: SectionPredicate,
-): Cursor {
+): Cursor | null {
   if (!cursor) {
+    const firstRow = rows.find(
+      (row) =>
+        row.type !== "search" &&
+        row.type !== "no-results" &&
+        (row.type === "item" || canSelectSection(row.sectionIndex)),
+    );
+    if (!firstRow) {
+      return null;
+    }
     return getPrevCursor(
-      { sectionIndex: 0, itemIndex: null },
+      getCursorForRow(firstRow),
       rows,
       isSectionExpanded,
       canSelectSection,
     );
   }
 
-  const currentRowIndex = rows.findIndex(
-    (row) =>
-      row.sectionIndex === cursor.sectionIndex &&
-      ((row.type === "item" && row.itemIndex === cursor.itemIndex) ||
-        cursor.itemIndex == null),
+  const currentRowIndex = rows.findIndex((row) =>
+    areSameCursors(cursor, getCursorForRow(row)),
   );
 
   for (let rowIndex = currentRowIndex; rowIndex >= 0; rowIndex--) {
     const row = rows[rowIndex];
-    const { section, sectionIndex } = row;
+    const rowCursor = getCursorForRow(row);
 
-    const skipItems =
-      (cursor.sectionIndex === sectionIndex && cursor.itemIndex == null) ||
-      !isSectionExpanded(sectionIndex);
-
-    if (!skipItems) {
-      for (
-        let itemIndex =
-          sectionIndex === cursor.sectionIndex
-            ? (cursor.itemIndex ?? 0)
-            : (section.items?.length ?? 0) - 1;
-        itemIndex >= 0;
-        itemIndex--
-      ) {
-        const itemCursor = {
-          sectionIndex,
-          itemIndex,
-        };
-
-        if (areSameCursors(cursor, itemCursor)) {
-          continue;
-        }
-
-        return itemCursor;
-      }
-    }
-
-    const sectionCursor = {
-      sectionIndex,
-      itemIndex: null,
-    };
-
-    if (areSameCursors(cursor, sectionCursor)) {
+    if (areSameCursors(cursor, rowCursor)) {
       continue;
     }
 
-    if (canSelectSection(sectionIndex)) {
-      return sectionCursor;
-    }
-
-    if (!isSectionExpanded(sectionIndex)) {
-      continue;
+    if (row.type === "item" || canSelectSection(rowCursor.sectionIndex)) {
+      return rowCursor;
     }
   }
 
