@@ -72,12 +72,12 @@ describe("AdminPeopleApp", () => {
   });
 
   describe("nudge to pro", () => {
-    const nudgeText = /Get single-sign on/;
+    const nudgeText = /tired of manually managing people/i;
 
     it("should be visible when user is admin, has 50 active users, and SSO is not available", () => {
       setup();
       expect(screen.getByText(nudgeText)).toBeInTheDocument();
-      const link = screen.getByRole("link", { name: /Learn more/i });
+      const link = screen.getByRole("link", { name: /try metabase pro/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute(
         "href",

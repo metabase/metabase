@@ -154,7 +154,9 @@ describe("EditSandboxingModal", () => {
         await userEvent.click(await screen.findByText("Pick a column"));
         await userEvent.click(await screen.findByText("ID"));
 
-        await userEvent.click(screen.getByText("Pick a user attribute"));
+        await userEvent.click(
+          screen.getByPlaceholderText("Pick a user attribute"),
+        );
         await userEvent.click(await screen.findByText("foo"));
 
         await userEvent.click(screen.getByText("Save"));
@@ -197,7 +199,9 @@ describe("EditSandboxingModal", () => {
         await userEvent.click(await screen.findByText("Pick a column"));
         await userEvent.click(await screen.findByText("ID"));
 
-        await userEvent.click(screen.getByText("Pick a user attribute"));
+        await userEvent.click(
+          screen.getByPlaceholderText("Pick a user attribute"),
+        );
         await userEvent.click(await screen.findByText("foo"));
 
         await userEvent.click(screen.getByText("Save"));
