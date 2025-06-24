@@ -95,7 +95,12 @@ export const GdriveAddDataPanel = () => {
   if (!showGdrive) {
     return (
       <PanelWrapper>
-        <ErrorAlert error={getErrorMessage({})} />
+        <ErrorAlert
+          error={getErrorMessage(
+            // eslint-disable-next-line no-literal-metabase-strings -- admin only
+            t`Please check that the folder is shared with the Metabase Service Account.`,
+          )}
+        />
       </PanelWrapper>
     );
   }
