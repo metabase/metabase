@@ -89,7 +89,7 @@
                            :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-card (:products (lib.tu/mock-cards))
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
-          [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
+          [products-id] (lib/join-condition-rhs-columns query product-card (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
               (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
   (testing "source-table"
@@ -100,7 +100,7 @@
                            :source-card (:id (:orders (lib.tu/mock-cards)))}]}
           product-table (meta/table-metadata :products)
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
-          [products-id] (lib/join-condition-rhs-columns query product-table orders-product-id nil)]
+          [products-id] (lib/join-condition-rhs-columns query product-table (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-table (:id product-table)}]}]}]}
               (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
 
@@ -1320,15 +1320,13 @@
                        products-created-at)
                 :year)
                nil))))
-    (is (thrown-with-msg?
-         #?(:clj AssertionError :cljs :default)
-         #"Non-standard join condition."
-         (lib/join-condition-update-temporal-bucketing
-          query
-          -1
-          (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
-                 products-created-at)
-          :year)))))
+    (testing "ignores non-standard join conditions"
+      (let [join-condition (lib/= (lib/+ (meta/field-metadata :orders :id) 1) products-created-at)]
+        (is (= join-condition (lib/join-condition-update-temporal-bucketing
+                               query
+                               -1
+                               join-condition
+                               :year)))))))
 
 (deftest ^:parallel default-join-alias-test
   (testing "default join-alias set without overwriting other aliases (#32897)"
