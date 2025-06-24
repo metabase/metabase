@@ -4,6 +4,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as H from "e2e/support/helpers";
 import { openVizSettingsSidebar } from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
@@ -107,6 +108,36 @@ describe("scenarios > embedding-sdk > popovers", () => {
           cy.get('[data-element-id="mantine-popover"]').should("be.hidden");
         },
       );
+    });
+  });
+
+  it("should prevent closing the ChartSettingColorPicker when clicking it", () => {
+    mountSdkContent(
+      <InteractiveQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />,
+    );
+
+    openVizSettingsSidebar();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("color-selector-button").click();
+
+      // Clicking at the edge of the color picker popover to be sure that the click does not close it
+      cy.findByTestId("color-selector-popover").click(1, 1);
+      cy.findByTestId("color-selector-popover").should("be.visible");
+
+      // Clicking outside the color picker to be sure that the click closes it
+      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("color-selector-popover").should("not.exist");
+
+      cy.findByTestId("settings-count").click();
+
+      cy.findByTestId("series-settings").within(() => {
+        cy.findByTestId("color-selector-button").click();
+
+        // Clicking at the edge of the color picker popover to be sure that the click does not close it
+        cy.findByTestId("color-selector-popover").click(1, 1);
+        cy.findByTestId("color-selector-popover").should("be.visible");
+      });
     });
   });
 });
