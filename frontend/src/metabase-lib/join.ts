@@ -175,8 +175,15 @@ export function joinConditionRHSColumns(
 export function joinConditionOperators(
   query: Query,
   stageIndex: number,
+  lhsExpression?: ExpressionClause,
+  lhsExpression?: ExpressionClause,
 ): JoinConditionOperator[] {
-  return ML.join_condition_operators(query, stageIndex);
+  return ML.join_condition_operators(
+    query,
+    stageIndex,
+    lhsExpression,
+    lhsExpression,
+  );
 }
 
 export function suggestedJoinConditions(
