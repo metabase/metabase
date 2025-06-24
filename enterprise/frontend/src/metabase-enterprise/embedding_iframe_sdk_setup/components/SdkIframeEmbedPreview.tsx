@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
@@ -14,6 +14,8 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
+  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+
   const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
@@ -36,6 +38,10 @@ export const SdkIframeEmbedPreview = () => {
             iframeClassName: S.EmbedPreviewIframe,
             useExistingUserSession: true,
           });
+
+          embedJsRef.current.addEventListener("ready", () =>
+            setIsIframeLoaded(true),
+          );
         };
 
         scriptRef.current = script;
@@ -52,7 +58,7 @@ export const SdkIframeEmbedPreview = () => {
   );
 
   useEffect(() => {
-    if (embedJsRef.current) {
+    if (embedJsRef.current && isIframeLoaded) {
       embedJsRef.current.updateSettings({
         // Clear the existing experiences.
         // This is necessary as `updateSettings` merges new settings with existing ones.
@@ -63,7 +69,7 @@ export const SdkIframeEmbedPreview = () => {
         ...settings,
       });
     }
-  }, [settings]);
+  }, [settings, isIframeLoaded]);
 
   return (
     <div>
