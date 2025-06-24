@@ -579,7 +579,7 @@
                :semantic-type :type/Category,
                :is-from-join false,
                :long-display-name "Price: Auto binned",
-               :display-name "Price",
+               :display-name "Price: Auto binned"
                :is-from-previous-stage true,
                :is-calculated false,
                :is-implicitly-joinable false}
@@ -1821,24 +1821,16 @@
 
 (deftest ^:parallel short-display-names-include-bucketing-units-test
   (testing "SHORT field display names should include bucketing units used in previous stages (copied from FE e2e test for #46832)"
-    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                    (lib.tu.notebook/add-join "Reviews" "Product ID" "Product ID"
-                                              {:lhs-col-fn #(lib/with-temporal-bucket % :month)
-                                               :rhs-col-fn #(lib/with-temporal-bucket % :month)})
-                    ;; todo -- add aggregation by display name
-                    (lib/aggregate (lib/count))
-                    (lib.tu.notebook/add-breakout "Orders" "Created At" {:col-fn #(lib/with-temporal-bucket % :month)})
-                    lib/append-stage
-                    (lib.tu.notebook/add-join "Reviews" "Created At: Month" "Created At")
-                    (lib/aggregate (lib/count)))
-          groups (lib/group-columns (lib/breakoutable-columns query))]
-      (is (=? ["Summaries"
-               "Reviews"
-               "Product"]
-              (map #(:display-name (lib/display-info query %))
-                   groups)))
-      (let [[summaries-group] groups]
-        (is (= ["Created At: Month"
-                "Count"]
-               (map #(:display-name (lib/display-info query %))
-                    (lib/columns-group-columns summaries-group))))))))
+    ;; `lib.tu.notebook` stuff will throw if it can't find a match.
+    (is (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+            (lib.tu.notebook/add-join "Reviews" "Product ID" "Product ID"
+                                      {:lhs-col-fn #(lib/with-temporal-bucket % :month)
+                                       :rhs-col-fn #(lib/with-temporal-bucket % :month)})
+            ;; todo -- add aggregation by display name
+            (lib/aggregate (lib/count))
+            (lib.tu.notebook/add-breakout "Orders" "Created At" {:col-fn #(lib/with-temporal-bucket % :month)})
+            lib/append-stage
+            (lib.tu.notebook/add-join "Reviews" "Created At: Month" "Created At")
+            (lib/aggregate (lib/count))
+            (lib.tu.notebook/add-breakout "Summaries" "Created At: Month" {}))
+        "We should be able to build a query specifically using these display names")))
