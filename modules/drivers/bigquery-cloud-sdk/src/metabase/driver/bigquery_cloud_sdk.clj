@@ -373,7 +373,7 @@
 (def ^:private ^:const num-table-partitions
   "Number of tables to batch for describe-fields. Too low and we'll do too many queries, which is slow.
    Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
-  64)
+  1024)
 
 (defn- list-table-names [driver database project-id dataset-id]
   (try
