@@ -33,7 +33,7 @@ jobs:
               break
             fi
           done
-          IS_MASTER_OR_RELEASE="$(echo "${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}")"
+          IS_MASTER_OR_RELEASE=$(echo "${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}")
           echo "GitHub Actor: ${{ github.actor }}"
           echo "Team Members: ${REQUIRED_TEAM_MEMBERS}"
           echo "Is Required Team Member: ${IS_REQUIRED_MEMBER}"
