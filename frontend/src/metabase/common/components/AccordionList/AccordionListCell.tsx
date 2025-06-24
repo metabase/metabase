@@ -1,5 +1,13 @@
+import { useMergedRef } from "@mantine/hooks";
 import cx from "classnames";
-import { type CSSProperties, type ReactNode, forwardRef } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+  forwardRef,
+  useEffect,
+  useRef,
+} from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
@@ -132,12 +140,21 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
     toggleSection,
     withBorders,
   }: AccordionListCellProps<TItem, TSection>,
-  ref,
+  ref: Ref<HTMLDivElement>,
 ) {
   const { type, section, sectionIndex, isLastSection } = row;
   let content;
   let borderTop;
   let borderBottom;
+
+  const innerRef = useRef<HTMLDivElement>(null);
+  const mergedRef = useMergedRef(ref, innerRef);
+
+  useEffect(() => {
+    if (hasCursor) {
+      innerRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [hasCursor]);
 
   if (type === "header") {
     if (alwaysExpanded) {
@@ -245,7 +262,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
           CS.hoverParent,
           styles.action,
           {
-            "List-section-header--cursor": hasCursor,
+            [ListS.ListSectionHeaderCursor]: hasCursor,
             [CS.cursorPointer]: canToggleSections,
             [CS.textBrand]: sectionIsExpanded(sectionIndex),
           },
@@ -404,7 +421,7 @@ export const AccordionListCell = forwardRef(function AccordionListCell<
 
   return (
     <div
-      ref={ref}
+      ref={mergedRef}
       style={style}
       data-element-id="list-section"
       className={cx(section.className, {
