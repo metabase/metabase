@@ -30,13 +30,13 @@ describe("InteractiveEmbeddingSettings", () => {
     await setup({ enabled: true });
 
     expect(
-      await screen.findByText("Enable Interactive embedding"),
+      await screen.findByText("Enable interactive embedding"),
     ).toBeInTheDocument();
   });
 
   it("should toggle interactive embedding on", async () => {
     await setup({ enabled: false });
-    const toggle = await screen.findByText("Enable Interactive embedding");
+    const toggle = await screen.findByText("Enable interactive embedding");
 
     await userEvent.click(toggle);
     const puts = await findRequests("PUT");

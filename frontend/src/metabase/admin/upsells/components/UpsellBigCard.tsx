@@ -1,6 +1,6 @@
 import { useMount } from "react-use";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { Box, Flex, Image, Stack, Text, Title } from "metabase/ui";
 
 import { UPGRADE_URL } from "../constants";
@@ -58,6 +58,7 @@ export const _UpsellBigCard: React.FC<UpsellBigCardProps> = ({
     <Box
       data-testid="upsell-big-card"
       className={S.UpsellBigCardComponent}
+      bg="bg-white"
       {...props}
     >
       <Flex px="xl" py="md">

@@ -16,6 +16,7 @@ const SMALL_CONTAINER_PADDING_SIZE = "0.3rem";
 interface TextCardWrapperProps {
   isSingleRow: boolean;
   isMobile: boolean;
+  isFixedWidth: boolean;
 }
 const TextCardWrapper = styled.div<TextCardWrapperProps>`
   display: flex;
@@ -23,22 +24,25 @@ const TextCardWrapper = styled.div<TextCardWrapperProps>`
   height: 100%;
   justify-content: center;
   overflow: hidden;
-  padding: ${DEFAULT_CONTAINER_PADDING_SIZE} 0;
+  padding: ${DEFAULT_CONTAINER_PADDING_SIZE};
   width: 100%;
 
   /* adjust styles for single row text cards on desktop resolutions to prevent
   clipping of text cards (https://github.com/metabase/metabase/issues/31613) */
-  ${({ isSingleRow, isMobile }) =>
+  ${({ isSingleRow, isMobile, isFixedWidth }) =>
     isSingleRow &&
     !isMobile &&
     css`
-      padding: ${SMALL_CONTAINER_PADDING_SIZE} 0;
+      padding: ${SMALL_CONTAINER_PADDING_SIZE} ${DEFAULT_CONTAINER_PADDING_SIZE};
       font-size: 0.8em;
 
-      ${breakpointMinExtraLarge} {
-        padding: ${DEFAULT_CONTAINER_PADDING_SIZE} 0;
-        font-size: 1em;
-      }
+      ${!isFixedWidth &&
+      css`
+        ${breakpointMinExtraLarge} {
+          padding: ${DEFAULT_CONTAINER_PADDING_SIZE};
+          font-size: 1em;
+        }
+      `}
     `}
 `;
 
@@ -54,11 +58,11 @@ interface EditModeProps {
   isEmpty: boolean;
   isSingleRow: boolean;
   isMobile: boolean;
+  isFixedWidth: boolean;
 }
 export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
   border-radius: 8px;
   pointer-events: all;
-  padding-left: ${DEFAULT_CONTAINER_PADDING_SIZE};
 
   * {
     pointer-events: all;
@@ -80,7 +84,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
       color: var(--mb-color-text-light);
     `}
 
-  ${({ isSingleRow, isPreviewing, isEmpty, isMobile }) => {
+  ${({ isSingleRow, isPreviewing, isEmpty, isMobile, isFixedWidth }) => {
     const borderActive = !isPreviewing || isEmpty;
 
     // adjust styles for single row text cards on desktop resolutions
@@ -97,17 +101,22 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
           ${BORDER_ADJUSTED_SMALL_PADDING}
         `}
 
-        ${breakpointMinExtraLarge} {
-          .${DashboardS.DashCard}:hover &,
-          .${DashboardS.DashCard}:focus-within & {
-            ${BORDER_ADJUSTED_DEFAULT_PADDING}
-          }
+        ${!isFixedWidth &&
+        css`
+          ${breakpointMinExtraLarge} {
+            padding: ${DEFAULT_CONTAINER_PADDING_SIZE};
 
-          ${borderActive &&
-          css`
-            ${BORDER_ADJUSTED_DEFAULT_PADDING}
-          `}
-        }
+            .${DashboardS.DashCard}:hover &,
+            .${DashboardS.DashCard}:focus-within & {
+              ${BORDER_ADJUSTED_DEFAULT_PADDING}
+            }
+
+            ${borderActive &&
+            css`
+              ${BORDER_ADJUSTED_DEFAULT_PADDING}
+            `}
+          }
+        `}
       `;
     }
 
@@ -128,6 +137,7 @@ export const EditModeContainer = styled(TextCardWrapper)<EditModeProps>`
 interface DisplayContainerProps {
   isSingleRow: boolean;
   isMobile: boolean;
+  isFixedWidth: boolean;
 }
 export const DisplayContainer = styled(
   TextCardWrapper,

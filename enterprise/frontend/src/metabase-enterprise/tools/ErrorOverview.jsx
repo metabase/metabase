@@ -2,6 +2,10 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import CS from "metabase/css/core/index.css";
 import { CardApi } from "metabase/services";
 
@@ -70,51 +74,52 @@ export default function ErrorOverview(props) {
   };
 
   return (
-    <>
-      <h2>{t`Questions that errored when last run`}</h2>
-      <AuditParameters
-        parameters={[
-          { key: "errorFilter", placeholder: t`Error contents` },
-          { key: "dbFilter", placeholder: t`DB name` },
-          { key: "collectionFilter", placeholder: t`Collection name` },
-        ]}
-        buttons={[
-          {
-            key: "reloadSelected",
-            label: t`Rerun Selected`,
-            disabled: Object.values(rowChecked).every(
-              (isChecked) => !isChecked,
-            ),
-            onClick: handleReloadSelected,
-          },
-        ]}
-        hasResults={hasResults}
-      >
-        {({ errorFilter, dbFilter, collectionFilter }) => (
-          <AuditTable
-            {...props}
-            reloadRef={reloadRef}
-            pageSize={50}
-            isSortable
-            isSelectable
-            rowChecked={rowChecked}
-            sorting={sorting}
-            onSortingChange={handleSortingChange}
-            onAllSelectClick={handleAllSelectClick}
-            onRowSelectClick={handleRowSelectClick}
-            onLoad={handleLoad}
-            mode={ErrorMode}
-            table={Queries.bad_table(
-              errorFilter,
-              dbFilter,
-              collectionFilter,
-              sorting.column,
-              getSortOrder(sorting.isAscending),
-            )}
-            className={CS.mt2}
-          />
-        )}
-      </AuditParameters>
-    </>
+    <SettingsPageWrapper title={t`Questions that errored when last run`}>
+      <SettingsSection>
+        <AuditParameters
+          parameters={[
+            { key: "errorFilter", placeholder: t`Error contents` },
+            { key: "dbFilter", placeholder: t`DB name` },
+            { key: "collectionFilter", placeholder: t`Collection name` },
+          ]}
+          buttons={[
+            {
+              key: "reloadSelected",
+              label: t`Rerun Selected`,
+              disabled: Object.values(rowChecked).every(
+                (isChecked) => !isChecked,
+              ),
+              onClick: handleReloadSelected,
+            },
+          ]}
+          hasResults={hasResults}
+        >
+          {({ errorFilter, dbFilter, collectionFilter }) => (
+            <AuditTable
+              {...props}
+              reloadRef={reloadRef}
+              pageSize={50}
+              isSortable
+              isSelectable
+              rowChecked={rowChecked}
+              sorting={sorting}
+              onSortingChange={handleSortingChange}
+              onAllSelectClick={handleAllSelectClick}
+              onRowSelectClick={handleRowSelectClick}
+              onLoad={handleLoad}
+              mode={ErrorMode}
+              table={Queries.bad_table(
+                errorFilter,
+                dbFilter,
+                collectionFilter,
+                sorting.column,
+                getSortOrder(sorting.isAscending),
+              )}
+              className={CS.mt2}
+            />
+          )}
+        </AuditParameters>
+      </SettingsSection>
+    </SettingsPageWrapper>
   );
 }

@@ -2,10 +2,13 @@ import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { AdminLayout } from "metabase/components/AdminLayout";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { AdminLayout } from "metabase/common/components/AdminLayout";
+import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import {
+  LeftNavPane,
+  LeftNavPaneItem,
+} from "metabase/common/components/LeftNavPane";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";

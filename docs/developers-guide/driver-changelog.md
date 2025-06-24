@@ -4,6 +4,10 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.56.0
+
+- Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
+
 ## Metabase 0.55.0
 
 - Add the multi-method `->date` that allows the driver to control how to cast strings and temporal types to dates.
@@ -31,6 +35,7 @@ title: Driver interface changelog
   `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
   `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
 
+- Added the multi-method `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info`.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
 - The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
   update your usages.
 
