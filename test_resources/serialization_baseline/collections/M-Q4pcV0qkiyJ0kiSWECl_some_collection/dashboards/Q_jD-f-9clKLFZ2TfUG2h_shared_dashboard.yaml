@@ -31,7 +31,6 @@ dashcards:
   size_y: 4
   action_id: null
   dashboard_tab_id: null
-  inline_parameters: []
   parameter_mappings: []
   series:
   - card_id: OMuZ0wHe2O5Z_59-cLmn4
@@ -54,7 +53,6 @@ dashcards:
   size_y: 4
   action_id: null
   dashboard_tab_id: null
-  inline_parameters: []
   parameter_mappings: []
   series: []
   visualization_settings:

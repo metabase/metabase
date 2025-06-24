@@ -28,6 +28,6 @@ serdes/meta:
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v0.55.1-SNAPSHOT (dcb72f1)
+metabase_version: v1.52.2-SNAPSHOT (f309296)
 source_card_id: null
 type: model
