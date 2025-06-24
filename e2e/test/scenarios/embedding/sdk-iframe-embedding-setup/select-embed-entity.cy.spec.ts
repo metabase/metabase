@@ -11,6 +11,12 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     cy.signInAsAdmin();
     H.setTokenFeatures("all");
 
+    H.createDashboard({ name: "Acme Inc" }).then(
+      ({ body: { id: dashboardId } }) => {
+        cy.wrap(dashboardId).as("acmeDashboardId");
+      },
+    );
+
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
@@ -18,9 +24,9 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
   it("can select a dashboard from the recents list", () => {
     cy.log("add two dashboards to activity log");
-    cy.visit("/dashboard/1");
+    H.visitDashboard("@acmeDashboardId");
     cy.wait("@dashboard");
-    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
 
     visitNewEmbedPage();
@@ -28,22 +34,33 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
 
-      cy.log("two dashboards should be visible");
+      cy.log("two dashboards should be visible in the recents list");
       cy.findAllByTestId("embed-recent-item-card").should("have.length", 2);
-      cy.findByText("Person overview").should("be.visible");
+      cy.findByText("Acme Inc").should("be.visible");
       cy.findByText("Orders in a dashboard").should("be.visible");
+
+      cy.findAllByTestId("embed-recent-item-card")
+        .eq(0)
+        .should("have.attr", "data-selected", "true");
+
+      cy.log("select a different dashboard");
+      cy.findByText("Acme Inc").click();
+
+      cy.findAllByTestId("embed-recent-item-card")
+        .eq(1)
+        .should("have.attr", "data-selected", "true");
     });
 
     cy.log("dashboard should be displayed in the preview");
     cy.wait("@dashboard");
     getPreviewIframe().within(() => {
-      cy.findByText("Person overview").should("be.visible");
+      cy.findByText("Acme Inc").should("be.visible");
     });
   });
 
   it("selects the most recently visited question from the recents list", () => {
     cy.log("add question to activity log");
-    cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
+    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
     cy.wait("@cardQuery");
 
     visitNewEmbedPage();
@@ -111,9 +128,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
   describe("Entity selection integration", () => {
     it("selected entity persists when navigating between embed steps", () => {
-      // Visit a specific dashboard to add to recents
-      const dashboardId = 1;
-      cy.visit(`/dashboard/${dashboardId}`);
+      H.visitDashboard("@acmeDashboardId");
       cy.wait("@dashboard");
 
       cy.visit("/embed/new");
