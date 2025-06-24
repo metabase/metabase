@@ -26,8 +26,10 @@
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery
     BigQuery
+    BigQuery$DatasetOption
     BigQuery$DatasetListOption
     BigQuery$JobOption
+    BigQuery$TableListOption
     BigQuery$TableDataListOption
     BigQuery$TableOption
     BigQueryException
@@ -112,6 +114,14 @@
                                              exclusion-patterns
                                              dataset-id)]
       dataset-id)))
+
+(defn- list-tables
+  "Fetch all tables given database `details` and dataset-id"
+  [details dataset-id]
+  (let [client (database-details->client details)
+        ^Dataset dataset (.getDataset client ^String dataset-id (u/varargs BigQuery$DatasetOption))]
+    (for [^Table table (.. dataset (list (u/varargs BigQuery$TableListOption)) iterateAll)]
+      (.. table getTableId getTable))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details]
@@ -281,16 +291,16 @@
   See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
 
-(defn- get-nested-columns-for-table
-  "Returns nested columns for a specific table"
-  [driver database project-id dataset-id table-name]
+(defn- get-nested-columns-for-tables
+  "Returns nested columns for a specific set of table"
+  [driver database project-id dataset-id table-names]
   (let [results (query-honeysql
                  driver
                  database
-                 {:select [:column_name :data_type :field_path]
+                 {:select [:table_name :column_name :data_type :field_path]
                   :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
-                  :where [:= :table_name table-name]})
-        nested-column-info (fn [{data-type :data_type field-path-str :field_path}]
+                  :where [:in :table_name table-names]})
+        nested-column-info (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
                              (let [field-path (str/split field-path-str #"\.")
                                    nfc-path (not-empty (pop field-path))
                                    [database-type base-type] (raw-type->database+base-type data-type)]
@@ -320,9 +330,8 @@
                                   nested-fields)
              :visibility-type :details-only))))
 
-(defn- describe-dataset-rows [driver database project-id dataset-id [table-name table-rows]]
-  (let [nested-column-lookup (get-nested-columns-for-table driver database project-id dataset-id table-name)
-        max-position (transduce (keep :ordinal_position) max -1 table-rows)]
+(defn- describe-dataset-rows [nested-column-lookup dataset-id [table-name table-rows]]
+  (let [max-position (transduce (keep :ordinal_position) max -1 table-rows)]
     (mapcat
      (fn [{column-name :column_name
            data-type :data_type
@@ -354,27 +363,35 @@
 
 (defn- describe-dataset-fields-reducible
   [driver database project-id dataset-id table-names]
-  (let [named-rows-query (cond->
-                          {:select [:table_name :column_name :data_type :ordinal_position
-                                    [[:= :is_partitioning_column "YES"] :partitioned]]
-                           :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
-                           :order-by [:table_name :ordinal_position :column_name]}
-                           (not-empty table-names)
-                           (assoc :where [:in :table_name table-names]))
-        named-rows (query-honeysql driver database named-rows-query)]
+  (assert (seq table-names))
+  (let [named-rows-query {:select [:table_name :column_name :data_type :ordinal_position
+                                   [[:= :is_partitioning_column "YES"] :partitioned]]
+                          :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
+                          :where [:in :table_name table-names]
+                          :order-by [:table_name :ordinal_position :column_name]}
+        named-rows (query-honeysql driver database named-rows-query)
+        nested-column-lookup (get-nested-columns-for-tables driver database project-id dataset-id table-names)]
     (eduction
      (x/by-key :table_name (x/into []))
-     (mapcat #(describe-dataset-rows driver database project-id dataset-id %))
+     (mapcat #(describe-dataset-rows nested-column-lookup dataset-id %))
      named-rows)))
+
+(def ^:private ^:const num-table-partitions
+  "Number of tables to batch for describe-fields. Too low and we'll do too many queries, which is slow.
+   Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
+  128)
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
   (let [project-id (get-project-id (:details database))
-        dataset-ids (or schema-names
-                        (list-datasets (:details database)))]
+        dataset-ids (or schema-names (list-datasets (:details database)))]
     (eduction
      (mapcat (fn [dataset-id]
-               (describe-dataset-fields-reducible driver database project-id dataset-id table-names)))
+               (let [table-names (or table-names (list-tables (:details database) dataset-id))]
+                 (eduction
+                  (x/partition num-table-partitions num-table-partitions [])
+                  (mapcat #(describe-dataset-fields-reducible driver database project-id dataset-id %))
+                  table-names))))
      dataset-ids)))
 
 (defn- get-field-parsers [^Schema schema]
