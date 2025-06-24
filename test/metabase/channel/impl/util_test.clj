@@ -11,5 +11,5 @@
                       {:id "a2f983b" :name "Param2"}
                       {:id "b4c1a7e" :name "Param3"}
                       {:id "e7fa913" :name "Param4"}]
-          result (util/remove-inline-parameters dashboard-parts parameters)]
+          result (util/remove-inline-parameters parameters dashboard-parts)]
       (is (= [{:id "e7fa913" :name "Param4"}] result)))))
