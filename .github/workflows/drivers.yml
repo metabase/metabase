@@ -17,7 +17,7 @@ jobs:
   determine-driver-skips:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.check_team_and_branch.outputs.skip == 'true' }}
+      skip: ${{ steps.check_team_and_branch.outputs.skip }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -60,7 +60,8 @@ jobs:
       - name: Check
         shell: bash
         run: |
-          echo "Final skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
+          echo "skip output: ${{ steps.check_team_and_branch.outputs.skip }}"
+          echo "negated skip output: ${{ !steps.check_team_and_branch.outputs.skip }}"
   be-tests-athena-ee:
     needs: determine-driver-skips
     if: ${{ !needs.determine-driver-skips.outputs.skip }}
