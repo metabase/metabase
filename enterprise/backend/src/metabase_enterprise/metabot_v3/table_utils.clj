@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
+   [metabase.query-analysis.core :as query-analyzer]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize])
@@ -49,6 +50,7 @@
          fill-tables (remove #(or (priority-table-ids (:id %))
                                   (exclude-table-ids (:id %))) fill-tables)
          fill-tables (t2/hydrate fill-tables :fields)
+         priority-tables (t2/hydrate priority-tables :fields)
          all-tables (concat priority-tables fill-tables)
          all-tables (take all-tables-limit all-tables)]
      (mapv (fn [{:keys [fields] :as table}]
@@ -62,12 +64,28 @@
 (defn similar?
   "Check if two strings are similar using Levenshtein distance with a max distance of 4."
   [left right]
-  (let [max-distance 4
-        matcher (LevenshteinDistance. (int max-distance))]
-    (nat-int? (.apply matcher (u/lower-case-en left) (u/lower-case-en right)))))
+  (cond
+    ;; One empty, one non-empty are not similar
+    (not= (empty? left) (empty? right)) false
+    ;; Use Levenshtein distance for other cases
+    :else
+    (let [max-distance 4
+          matcher (LevenshteinDistance. (int max-distance))]
+      (nat-int? (.apply matcher (u/lower-case-en left) (u/lower-case-en right))))))
 
 (defn matching-tables?
-  "Check if two table maps match based on name similarity and optionally schema similarity."
+  "Check if two table maps match based on name similarity and optionally schema similarity.
+
+  Uses fuzzy string matching (Levenshtein distance) to determine if two table references
+  likely refer to the same table, even with typos or case differences.
+
+  Args:
+  - First table map with :name and :schema keys
+  - Second table map with :name and :schema keys
+  - Options map with :match-schema? boolean flag
+
+  Returns:
+  Boolean indicating whether the tables are considered a match."
   [{tschema :schema, tname :name} {uschema :schema, uname :name} {:keys [match-schema?]}]
   (and (similar? uname tname)
        (or (not match-schema?)
@@ -76,7 +94,19 @@
            (similar? uschema tschema))))
 
 (defn find-matching-tables
-  "Find tables in the DB that are similar to the unrecognized tables."
+  "Find tables in the database that are similar to the unrecognized tables using fuzzy matching.
+
+  This function performs fuzzy string matching using Levenshtein distance to find tables
+  that might be referenced with typos or slight variations in name. It respects user
+  permissions and only returns tables the current user can view.
+
+  Args:
+  - database-id: ID of the database to search in
+  - unrecognized-tables: Collection of table maps with :name and :schema keys that need matching
+  - used-ids: Collection of table IDs to exclude from results (already recognized tables)
+
+  Returns:
+  A vector of realized Table model instances that match the unrecognized tables."
   [database-id unrecognized-tables used-ids]
   (into []
         (keep (fn [table]
@@ -86,13 +116,38 @@
                              :db_id database-id
                              :active true
                              :visibility_type nil
-                             (cond-> {:limit 10000}
-                               (seq used-ids) (assoc :where [:not-in :id used-ids])))))
+                             (cond-> {:where (mi/visible-filter-clause :model/Table
+                                                                       :id
+                                                                       {:user-id       api/*current-user-id*
+                                                                        :is-superuser? api/*is-superuser?*}
+                                                                       {:perms/view-data      :unrestricted
+                                                                        :perms/create-queries :query-builder-and-native})
+                                      :limit 10000}
+                               (seq used-ids) (update :where #(if %
+                                                                [:and % [:not-in :id used-ids]]
+                                                                [:not-in :id used-ids]))))))
 
 (defn used-tables
-  "Return all tables used in the query, including fuzzy-matched ones. Requires a query-analyzer function."
-  [{:keys [database] :as query} tables-for-native-fn]
-  (let [queried-tables (->> (tables-for-native-fn query :all-drivers-trusted? true)
+  "Return all tables used in the query, including fuzzy-matched ones.
+
+  This function analyzes a native SQL query to identify all referenced tables.
+  It handles two types of table references:
+  1. Recognized tables - Tables that already exist as model instances in Metabase
+  2. Unrecognized tables - Table names from the query that need fuzzy matching
+
+  For unrecognized tables, it performs fuzzy string matching using Levenshtein distance
+  to find similar table names in the database (handling typos, case differences, etc.).
+  All results respect user permissions - only tables the current user can view are returned.
+
+  Args:
+  - query: A query map containing :database key and native SQL content
+
+  Returns:
+  A sequence of table model instances representing all tables used in the query,
+  both directly recognized and fuzzy-matched ones."
+  [{:keys [database] :as query}]
+  (let [analysis-result (query-analyzer/tables-for-native query :all-drivers-trusted? true)
+        queried-tables (->> analysis-result
                             :tables
                             (map #(set/rename-keys % {:table :name, :table-id :id})))
         {recognized-tables true, unrecognized-tables false} (group-by t2/instance? queried-tables)]

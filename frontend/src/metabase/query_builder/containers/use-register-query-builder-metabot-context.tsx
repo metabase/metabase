@@ -230,7 +230,6 @@ export const registerQueryBuilderMetabotContextFn = async ({
   const queryCtx = {
     query: question.datasetQuery(),
     sql_engine: isNative ? Lib.engine(query) : undefined,
-    is_native: isNative,
     error: queryResult?.error,
   };
 
