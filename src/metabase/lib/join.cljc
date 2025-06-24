@@ -746,7 +746,7 @@
   ([query                  :- ::lib.schema/query
     stage-number           :- :int
     join-or-joinable       :- [:maybe JoinOrJoinable]
-    lhs-expression-or-nil  :- [:maybe :lib.schema.expression/expression]
+    lhs-expression-or-nil  :- [:maybe ::lib.schema.expression/expression]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
     _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
