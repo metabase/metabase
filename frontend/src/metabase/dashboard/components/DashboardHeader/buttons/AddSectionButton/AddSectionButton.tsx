@@ -1,25 +1,29 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { addSectionToDashboard } from "metabase/dashboard/actions";
 import { SectionLayoutPreview } from "metabase/dashboard/components/DashboardHeader/SectionLayoutPreview";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { type SectionLayout, layoutOptions } from "metabase/dashboard/sections";
 import { darken } from "metabase/lib/colors";
+import { useDispatch } from "metabase/lib/redux";
 import { Flex, Menu } from "metabase/ui";
 
 import AddSectionButtonS from "./AddSectionButton.module.css";
 
 export const AddSectionButton = () => {
-  const { dashboard, selectedTabId, addSectionToDashboard } =
-    useDashboardContext();
+  const { dashboard, selectedTabId } = useDashboardContext();
+  const dispatch = useDispatch();
 
   const onAddSection = (sectionLayout: SectionLayout) => {
     if (dashboard) {
-      addSectionToDashboard({
-        dashId: dashboard.id,
-        tabId: selectedTabId,
-        sectionLayout,
-      });
+      dispatch(
+        addSectionToDashboard({
+          dashId: dashboard.id,
+          tabId: selectedTabId,
+          sectionLayout,
+        }),
+      );
     }
   };
   return (
