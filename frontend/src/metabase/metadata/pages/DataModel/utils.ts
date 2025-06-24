@@ -23,15 +23,15 @@ export function getUrl(params: ParsedRouteParams): string {
     tableId != null &&
     fieldId != null
   ) {
-    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaId)}/table/${tableId}/field/${fieldId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${schemaId}/table/${tableId}/field/${fieldId}`;
   }
 
   if (databaseId != null && schemaId != null && tableId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaId)}/table/${tableId}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${schemaId}/table/${tableId}`;
   }
 
   if (databaseId != null && schemaId != null) {
-    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${encodeURIComponent(schemaId)}`;
+    return `/admin/datamodel/database/${databaseId}/schema/${databaseId}:${schemaId}`;
   }
 
   if (databaseId != null) {
