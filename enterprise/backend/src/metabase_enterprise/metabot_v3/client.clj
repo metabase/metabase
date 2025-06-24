@@ -62,31 +62,31 @@
         (deliver response-status (some-> <> :status))))))
 
 (defn- agent-v2-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v2/agent"))
 
 (defn- metric-selection-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/select-metric"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
 
 (defn- find-outliers-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/find-outliers"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/find-outliers"))
 
 (defn- fix-sql-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/fix"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/fix"))
 
 (defn- generate-sql-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/sql/generate"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/sql/generate"))
 
 (defn- analyze-chart-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/chart"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/analyze/chart"))
 
 (defn- analyze-dashboard-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/analyze/dashboard"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/analyze/dashboard"))
 
 (defn- example-question-generation-endpoint []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v1/example-question-generation/batch"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v1/example-question-generation/batch"))
 
-(mu/defn request :- ::metabot-v3.client.schema/ai-proxy.response
-  "Make a V2 request to the AI Proxy."
+(mu/defn request :- ::metabot-v3.client.schema/ai-service.response
+  "Make a V2 request to the AI Service."
   [{:keys [context messages profile-id conversation-id session-id state]}
    :- [:map
        [:context :map]
@@ -106,7 +106,7 @@
                         :user_id         api/*current-user-id*}
                        (metabot-v3.u/recursive-update-keys metabot-v3.u/safe->snake_case_en))
           _        (metabot-v3.context/log body :llm.log/be->llm)
-          _        (log/debugf "V2 request to AI Proxy:\n%s" (u/pprint-to-str body))
+          _        (log/debugf "V2 request to AI Service:\n%s" (u/pprint-to-str body))
           options  (cond-> {:headers          {"Accept"                    "application/json"
                                                "Content-Type"              "application/json;charset=UTF-8"
                                                "x-metabase-instance-token" (premium-features/premium-embedding-token)
@@ -117,9 +117,9 @@
                      *debug* (assoc :debug true))
           response (post! url options)]
       (metabot-v3.context/log (:body response) :llm.log/llm->be)
-      (log/debugf "Response from AI Proxy:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
+      (log/debugf "Response from AI Service:\n%s" (u/pprint-to-str (select-keys response #{:body :status :headers})))
       (if (= (:status response) 200)
-        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-proxy.response
+        (u/prog1 (mc/decode ::metabot-v3.client.schema/ai-service.response
                             (:body response)
                             (mtx/transformer {:name :api-response}))
           (log/debugf "Response (decoded):\n%s" (u/pprint-to-str <>)))
@@ -127,7 +127,7 @@
                         {:request (assoc options :body body)
                          :response response}))))
     (catch Throwable e
-      (throw (ex-info (format "Error in request to AI Proxy: %s" (ex-message e)) {} e)))))
+      (throw (ex-info (format "Error in request to AI Service: %s" (ex-message e)) {} e)))))
 
 (mu/defn select-metric-request
   "Make a request to AI Service to select a metric."
