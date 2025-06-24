@@ -47,7 +47,7 @@ jobs:
             echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
           else
-            echo skip=true" >> $GITHUB_OUTPUT
+            echo "skip=true" >> $GITHUB_OUTPUT
             echo "User is not a required team member and not merging into master/release. Tier 3 driver tests will be skipped."
           fi
         shell: bash
