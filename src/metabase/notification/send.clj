@@ -147,6 +147,7 @@
         (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
       (try
         (log/info "Sending")
+        (Thread/sleep 5000)
         (prometheus/inc! :metabase-notification/concurrent-tasks)
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]
@@ -269,8 +270,8 @@
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
   (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
-  (take-notification! [this]              "Take the next notification from the queue, blocking if none available.")
-  (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached."))
+  (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached.")
+  (queue-size [this] "Get the current size of the queue."))
 
 ;; A priority queue that deduplicates notifications by id
 (deftype ^:private DedupPriorityQueue
@@ -292,18 +293,6 @@
         (finally
           (.unlock queue-lock)))))
 
-  (take-notification! [_]
-    (.lock queue-lock)
-    (try
-      ;; Wait until there's at least one notification
-      (while (.isEmpty items-list)
-        (.await not-empty-cond))
-      (let [^NotificationQueueEntry entry (.poll items-list)
-            id                            (.id entry)]
-        (.remove id->notification id))
-      (finally
-        (.unlock queue-lock))))
-
   (take-notification-with-timeout! [_ timeout-ms]
     (.lock queue-lock)
     (try
@@ -316,6 +305,13 @@
           (let [^NotificationQueueEntry entry (.poll items-list)
                 id                            (.id entry)]
             (.remove id->notification id))))
+      (finally
+        (.unlock queue-lock))))
+
+  (queue-size [_]
+    (.lock queue-lock)
+    (try
+      (.size items-list)
       (finally
         (.unlock queue-lock)))))
 
@@ -339,10 +335,10 @@
   NotificationQueueProtocol
   (put-notification! [_ notification]
     (.put items-list notification))
-  (take-notification! [_]
-    (.take items-list))
   (take-notification-with-timeout! [_ timeout-ms]
-    (.poll items-list timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)))
+    (.poll items-list timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS))
+  (queue-size [_]
+    (.size items-list)))
 
 (defn- create-blocking-queue
   "Create a blocking queue for notifications."
@@ -369,13 +365,15 @@
                         (.submit ^ThreadPoolExecutor executor
                                  ^Callable (fn []
                                              (while (and (not (Thread/interrupted))
-                                                         (not (.get shutdown-flag)))
+                                                         (or (not (.get shutdown-flag))
+                                                             ;; Continue processing if shutdown flag is set but queue is not empty
+                                                             (pos? #p (queue-size queue))))
                                                (try
                                                  (let [notification (take-notification-with-timeout! queue 1000)]
                                                    (when notification
                                                      (send-notification-sync! notification)))
                                                  (catch InterruptedException _
-                                                   (log/info "Notification worker interrupted, shutting down")
+                                                   (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
                                                  (catch Throwable e
                                                    (log/error e "Error in notification worker")))))))
@@ -389,15 +387,18 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue notification))
-                        (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))))
+                          (put-notification! queue notification)
+                          ::ok)
+                        (do
+                          (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
+                          ::shutdown)))
         shutdown-fn (fn [timeout-ms]
-                      (log/info "Shutting down notification dispatcher...")
+                      (log/infof "Gracefully shutting down notification dispatcher with %d pending notifications to process" (queue-size queue))
                       (.set shutdown-flag true)
                       (.shutdown ^ThreadPoolExecutor executor)
                       (try
-                        (.awaitTermination ^ThreadPoolExecutor executor timeout-ms java.util.concurrent.TimeUnit/MICROSECONDS)
-                        (log/info "Notification dispatcher shut down successfully")
+                        (.awaitTermination ^ThreadPoolExecutor executor timeout-ms java.util.concurrent.TimeUnit/MILLISECONDS)
+                        (log/info "Notification worker shut down successfully")
                         (catch InterruptedException _
                           (log/warn "Interrupted while waiting for notification executor to terminate")
                           (.shutdownNow ^ThreadPoolExecutor executor))))]
@@ -416,11 +417,12 @@
 
 (defn- dispatch!
   [notification]
-  (let [dispatch-fn (:dispatch-fn (case (:payload_type notification)
-                                    :notification/system-event
-                                    @simple-blocking-dispatcher
-                                    ;; notification/card, notification/dashboard
-                                    @dedup-priority-dispatcher))]
+  (let [dispatch-fn (:dispatch-fn @simple-blocking-dispatcher
+                                  #_(case (:payload_type notification)
+                                      :notification/system-event
+                                      @simple-blocking-dispatcher
+                                      ;; notification/card, notification/dashboard
+                                      @dedup-priority-dispatcher))]
     (dispatch-fn notification)))
 
 (mu/defn ^:private send-notification-async!
@@ -452,10 +454,11 @@
 (defn shutdown!
   "Shutdown all notification workers with wait up to [[timeout-ms]] milliseconds for each workers."
   []
-  (log/info "Shutting down notification dispatchers...")
-  (try
-    (doseq [worker [dedup-priority-dispatcher simple-blocking-dispatcher]]
-      ((:shutdown-fn @worker) default-shutdown-timeout-ms))
-    (log/info "All notification workers shut down successfully")
-    (catch Exception e
-      (log/error e "Error shutting down notification workers"))))
+  (let [workers [dedup-priority-dispatcher simple-blocking-dispatcher]]
+    (log/infof "Shutting down %d notification dispatchers..." (count workers))
+    (try
+      (doseq [worker workers]
+        ((:shutdown-fn @worker) default-shutdown-timeout-ms))
+      (log/info "All notification workers shut down successfully")
+      (catch Exception e
+        (log/error e "Error shutting down notification workers")))))
