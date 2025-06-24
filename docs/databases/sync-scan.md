@@ -111,17 +111,6 @@ You can use these endpoints by authenticating with a user ID and passing a sessi
 
 ## How database syncs work
 
-Here's the kind of data that syncs get and why:
-
-| What              | Why                                          |
-| ----------------- | -------------------------------------------- |
-| Table names       | Without tables, what are we even doing here? |
-| Field names       | Without fields, same deal                    |
-| Field data types  | Querying and type handling                   |
-| Primary keys      | Table display and detailed views             |
-| Foreign keys      | Auto-joins and relationship visualization    |
-| Index information | Query optimization recommendations           |
-
 A Metabase **sync** is a query that gets a list of updated table and view names, column names, and column data types from your database:
 
 ```sql
@@ -136,15 +125,18 @@ LIMIT 0
 
 By default, this query runs against your database during setup and again every hour. This scanning query is fast with most relational databases but can be slower with MongoDB and some [community-built database drivers](../developers-guide/community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
+Here's the kind of data that syncs get and why:
+
+| What              | Why                                          |
+| ----------------- | -------------------------------------------- |
+| Table names       | Without tables, what are we even doing here? |
+| Field names       | Without fields, same deal                    |
+| Field data types  | Querying and type handling                   |
+| Primary keys      | Table display and detailed views             |
+| Foreign keys      | Auto-joins and relationship visualization    |
+| Index information | Query optimization recommendations           |
+
 ## How database scans work
-
-Here's the kind of data that scans get and why:
-
-| What                                           | Why                                      |
-| ---------------------------------------------- | ---------------------------------------- |
-| Distinct values for category fields            | Dropdown filter UI instead of text entry |
-| Cached values for active fields                | Improves filter UI experience            |
-| Advanced field values (with filtering context) | Smarter contextual filtering             |
 
 A Metabase **scan** is a query that caches the column _values_ for filter dropdowns by looking at the first 1,000 distinct records from each table, in ascending order:
 
@@ -168,6 +160,14 @@ A scan is more intensive than a sync query, so it only runs once during setup an
 
 To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has queried in the last fourteen days.
 
+Here's the kind of data that scans get and why:
+
+| What                                           | Why                                      |
+| ---------------------------------------------- | ---------------------------------------- |
+| Distinct values for category fields            | Dropdown filter UI instead of text entry |
+| Cached values for active fields                | Improves filter UI experience            |
+| Advanced field values (with filtering context) | Smarter contextual filtering             |
+
 ## Periodically refingerprint tables
 
 > Periodic refingerprinting will increase the load on your database.
@@ -183,18 +183,6 @@ Turn this setting on if you want Metabase to use larger samples of column values
 
 ## How database fingerprinting works
 
-Here's the kind of data that fingerprinting gets and why:
-
-| What                                      | Why                                         |
-| ----------------------------------------- | ------------------------------------------- |
-| Distinct value count                      | Determines field value caching strategy     |
-| Min/max numeric values                    | Binning in visualizations and range filters |
-| Date range (min/max dates)                | Date filter defaults and timeline display   |
-| Special type detection (URL, email, JSON) | Field rendering and filtering               |
-| Null value ratio                          | Data quality assessment                     |
-| Average/median values                     | Visualization defaults                      |
-| Text length metrics                       | Hide long text fields from UI               |
-
 The fingerprinting query looks at the first 10,000 rows from a given table or view in your database:
 
 ```sql
@@ -207,6 +195,18 @@ LIMIT 10000
 
 Metabase uses the results of this query to provide better suggestions in the Metabase UI (such as filter dropdowns and auto-binning).
 To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection. To change this default, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
+
+Here's the kind of data that fingerprinting gets and why:
+
+| What                                      | Why                                         |
+| ----------------------------------------- | ------------------------------------------- |
+| Distinct value count                      | Determines field value caching strategy     |
+| Min/max numeric values                    | Binning in visualizations and range filters |
+| Date range (min/max dates)                | Date filter defaults and timeline display   |
+| Special type detection (URL, email, JSON) | Field rendering and filtering               |
+| Null value ratio                          | Data quality assessment                     |
+| Average/median values                     | Visualization defaults                      |
+| Text length metrics                       | Hide long text fields from UI               |
 
 ## Further reading
 
