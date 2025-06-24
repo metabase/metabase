@@ -19,7 +19,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.o11y :refer [with-span]]))
+   [metabase.util.o11y :refer [with-span]])
+  (:import (java.io BufferedReader)))
 
 (set! *warn-on-reflection* true)
 
@@ -171,7 +172,7 @@
       (if (= (:status response) 200)
         (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
                                ;; Response from the AI Service will send response parts separated by newline
-          (with-open [response-lines (-> response :body io/reader)]
+          (with-open [response-lines ^BufferedReader (io/reader (:body response))]
             (loop []
                                    ;; Grab the next line and write it to the output stream with appended newline (frontend depends on it)
                                    ;; Immediately flush so it get's sent to the frontend as soon as possible
