@@ -3,7 +3,7 @@
 
 import dynamic from "next/dynamic";
 
-
+import type React from "react";
 
 // Lazy load the EmbeddingSdkProvider so and let it render children while it's being loaded
 export const EmbeddingSdkProviderLazy = ({
