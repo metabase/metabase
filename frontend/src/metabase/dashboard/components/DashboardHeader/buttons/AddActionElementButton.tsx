@@ -1,25 +1,20 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { addActionToDashboard } from "metabase/dashboard/actions";
-import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 
 export const AddActionElementButton = () => {
-  const dispatch = useDispatch();
-  const dashboard = useSelector(getDashboard);
-  const selectedTabId = useSelector(getSelectedTabId);
+  const { dashboard, selectedTabId, addActionToDashboard } =
+    useDashboardContext();
 
   const onAddAction = () => {
     if (dashboard) {
-      dispatch(
-        addActionToDashboard({
-          dashId: dashboard.id,
-          tabId: selectedTabId,
-          displayType: "button",
-          action: {},
-        }),
-      );
+      addActionToDashboard({
+        dashId: dashboard.id,
+        tabId: selectedTabId,
+        displayType: "button",
+        action: {},
+      });
     }
   };
 
