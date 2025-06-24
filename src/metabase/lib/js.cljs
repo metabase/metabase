@@ -1234,12 +1234,12 @@
            :column   column})))
 
 (defn ^:export join-condition-clause
-  "TBD"
+  "Creates a join condition from the operator, LHS and RHS expressions. Expressions are opaque objects."
   [operator lhs-expression rhs-expression]
   (lib.fe-util/join-condition-clause (keyword operator) lhs-expression rhs-expression))
 
 (defn ^:export join-condition-parts
-  "TBD"
+  "Destructures a join condition created by [[join-condition-clause]]. Expressions are opaque objects."
   [condition]
   (when-let [parts (lib.fe-util/join-condition-parts condition)]
     (let [{:keys [operator lhs-expression rhs-expression]} parts]
