@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import { BUY_STORAGE_URL, UpsellStorage } from "metabase/admin/upsells";
 import { skipToken } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
@@ -26,11 +27,9 @@ import {
   DriveConnectionDisplay,
   GdriveConnectionModal,
 } from "metabase-enterprise/google_drive";
-import {
-  getErrorMessage,
-  getStatus,
-  useShowGdrive,
-} from "metabase-enterprise/google_drive/utils";
+
+import { trackSheetConnectionClick } from "./analytics";
+import { getStatus, useShowGdrive } from "./utils";
 
 const PanelWrapper = ({
   title = t`Connect Google Sheets`,
@@ -115,7 +114,13 @@ export const GdriveAddDataPanel = () => {
     return (
       <PanelWrapper title={t`Import Google Sheets`}>
         <DriveConnectionDisplay />
-        <Button variant="subtle" onClick={openConnectionModal}>
+        <Button
+          variant="subtle"
+          onClick={() => {
+            trackSheetConnectionClick({ from: "add-data-modal" });
+            openConnectionModal();
+          }}
+        >
           {t`Add new`}
         </Button>
       </PanelWrapper>
@@ -147,7 +152,10 @@ export const GdriveAddDataPanel = () => {
         variant="filled"
         w="12.5rem"
         disabled={status !== "not-connected"}
-        onClick={openConnectionModal}
+        onClick={() => {
+          trackSheetConnectionClick({ from: "add-data-modal" });
+          openConnectionModal();
+        }}
       >
         {buttonText}
       </Button>

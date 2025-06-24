@@ -91,7 +91,7 @@ export type ErrorDiagnosticModalSubmittedEvent = ValidateEvent<{
 
 export type GsheetsConnectionClickedEvent = ValidateEvent<{
   event: "sheets_connection_clicked";
-  triggered_from: "db-page";
+  triggered_from: "db-page" | "add-data-modal";
 }>;
 
 export type GsheetsImportClickedEvent = ValidateEvent<{
