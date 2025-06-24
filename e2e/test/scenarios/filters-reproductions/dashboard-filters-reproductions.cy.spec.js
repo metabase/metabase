@@ -4675,7 +4675,7 @@ describe("issue 44090", () => {
   });
 });
 
-describe.skip("issue 47951", () => {
+describe("issue 47951", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

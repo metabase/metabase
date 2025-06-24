@@ -144,6 +144,16 @@
       query
       (fn [] (chain-filter dashboard param-key constraint-param-key->value query))))))
 
+(defn- find-common-remapping-target
+  "Check if all FK field-ids have identical remappings to the same display field.
+   Returns the common target field-id if found, nil otherwise."
+  [field-ids]
+  (let [remappings (keep chain-filter/remapping field-ids)
+        target-field-ids (map :id remappings)]
+    (when (and (seq target-field-ids)
+               (= 1 (count (set target-field-ids))))
+      (first target-field-ids))))
+
 (defn dashboard-param-remapped-value
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of `dashboard`."
   ([dashboard param-key value]
@@ -166,7 +176,11 @@
                    (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
                                               :relax-fk-requirement? true :limit 1)
                    (when-let [pk-field-id (custom-values/pk-of-fk-pk-field-ids field-ids)]
-                     (chain-filter/chain-filter pk-field-id [{:field-id pk-field-id, :op :=, :value value}] :limit 1)))
+                     (let [common-display-field (find-common-remapping-target field-ids)]
+                       (chain-filter/chain-filter pk-field-id
+                                                  [{:field-id pk-field-id, :op :=, :value value}]
+                                                  :limit 1
+                                                  :remapping-field common-display-field))))
                  :values
                  first))))
        [value])))
