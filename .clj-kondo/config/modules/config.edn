@@ -1471,8 +1471,7 @@
            query-analysis
            query-processor
            util
-           enterprise/metabot-v3
-           }}
+           enterprise/metabot-v3}}
 
   enterprise/ai-sql-generation
   {:team  "Metabot"
@@ -1643,6 +1642,7 @@
            app-db
            collections
            config
+           driver
            legacy-mbql
            lib
            lib-be
@@ -1650,6 +1650,7 @@
            permissions
            premium-features
            pulse
+           query-analysis
            query-processor
            request
            settings
