@@ -1,11 +1,12 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
-import type { RecentItem } from "metabase-types/api";
+
+import {
+  assertRecentItemName,
+  getEmbedSidebar,
+  visitNewEmbedPage,
+} from "./helpers";
 
 const { H } = cy;
-
-type RecentActivityIntercept = {
-  response: { body: { recents: RecentItem[] } };
-};
 
 describe("scenarios > embedding > sdk iframe embed setup > select embed experience", () => {
   beforeEach(() => {
@@ -96,23 +97,3 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     });
   });
 });
-
-const getEmbedSidebar = () => cy.findByRole("complementary");
-
-const visitNewEmbedPage = () => {
-  cy.visit("/embed/new");
-  cy.wait("@dashboard");
-};
-
-const assertRecentItemName = (
-  model: "dashboard" | "card",
-  resourceName: string,
-) => {
-  cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-    const recentItem = intercept.response?.body.recents?.filter(
-      (recent) => recent.model === model,
-    )?.[0];
-
-    expect(recentItem.name).to.be.equal(resourceName);
-  });
-};

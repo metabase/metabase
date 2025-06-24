@@ -16,129 +16,49 @@ describe("scenarios > embedding > sdk iframe embedding setup > select embed enti
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  describe("Selecting entities to embed", () => {
-    it("shows most recently visited dashboard in the recents list", () => {
-      cy.log("add dashboard to activity log");
-      cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-      cy.wait("@dashboard");
+  it("selects the most recently visited dashboard from the recents list", () => {
+    cy.log("add dashboard to activity log");
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+    cy.wait("@dashboard");
 
-      visitNewEmbedPage();
+    visitNewEmbedPage();
 
-      getEmbedSidebar().within(() => {
-        cy.findByText("Next").click();
-        cy.findByText("Orders in a dashboard").should("be.visible");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Next").click();
+      cy.findByText("Orders in a dashboard").should("be.visible");
 
-        cy.log("only one recent item should be visible");
-        cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
-      });
-
-      cy.log("dashboard should be displayed in the preview");
-      cy.wait("@dashboard");
-      getPreviewIframe().within(() => {
-        cy.findByText("Orders in a dashboard").should("be.visible");
-      });
+      cy.log("only one recent item should be visible");
+      cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
     });
 
-    it("shows most recently visited question in the recents list", () => {
-      cy.log("add question to activity log");
-      cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
-      cy.wait("@cardQuery");
+    cy.log("dashboard should be displayed in the preview");
+    cy.wait("@dashboard");
+    getPreviewIframe().within(() => {
+      cy.findByText("Orders in a dashboard").should("be.visible");
+    });
+  });
 
-      visitNewEmbedPage();
+  it("selects the most recently visited question from the recents list", () => {
+    cy.log("add question to activity log");
+    cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
+    cy.wait("@cardQuery");
 
-      getEmbedSidebar().within(() => {
-        cy.findByText("Chart").click();
-        cy.findByText("Next").click();
-        cy.findByText("Orders, Count").should("be.visible");
+    visitNewEmbedPage();
 
-        cy.log("only one recent item should be visible");
-        cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
-      });
+    getEmbedSidebar().within(() => {
+      cy.findByText("Chart").click();
+      cy.findByText("Next").click();
+      cy.findByText("Orders, Count").should("be.visible");
 
-      cy.wait("@cardQuery");
-
-      cy.log("question should be displayed in the preview");
-      getPreviewIframe().within(() => {
-        cy.findByText("Orders, Count").should("be.visible");
-      });
+      cy.log("only one recent item should be visible");
+      cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
     });
 
-    it("selecting a dashboard from recents changes the preview to that dashboard", () => {
-      // Visit a specific dashboard to ensure it's in recents
-      const dashboardId = 1;
-      cy.visit(`/dashboard/${dashboardId}`);
-      cy.wait("@dashboard");
+    cy.wait("@cardQuery");
 
-      // Navigate to embed page
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // TODO: Once Step 3 UI is implemented, add test for:
-      // - Click on recent dashboard in the recents list
-      // - Verify preview updates to show the selected dashboard
-
-      // For now, verify the most recent dashboard is displayed
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Person overview").should("be.visible");
-      });
-    });
-
-    it("clicking on the search icon and selecting a dashboard changes the preview to that dashboard", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // TODO: Once Step 3 UI is implemented, add test for:
-      // - Click on search icon
-      // - Search modal opens
-      // - Search for a specific dashboard
-      // - Select dashboard from search results
-      // - Verify preview updates to show the selected dashboard
-
-      // For now, verify current dashboard preview functionality
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Person overview").should("be.visible");
-      });
-    });
-
-    it("clicking on the search icon and selecting a question changes the preview to that question", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // Switch to Chart template
-      getEmbedSidebar().findByText("Chart").click();
-
-      // TODO: Once Step 3 UI is implemented, add test for:
-      // - Click on search icon
-      // - Search modal opens
-      // - Search for a specific question
-      // - Select question from search results
-      // - Verify preview updates to show the selected question
-
-      // For now, verify current question preview functionality
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        // Default question when no recents available
-        cy.findByText("Query log").should("be.visible");
-      });
-    });
-
-    it("exploration template skips entity selection step", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
-      // Select exploration template
-      getEmbedSidebar().findByText("Exploration").click();
-
-      // Verify exploration content is shown directly (no entity selection step)
-      const iframe = getPreviewIframe();
-      iframe.within(() => {
-        cy.findByText("Pick your starting data").should("be.visible");
-      });
-
-      // TODO: Once step navigation is fully implemented, verify that
-      // Step 3 (entity selection) is skipped for exploration template
+    cy.log("question should be displayed in the preview");
+    getPreviewIframe().within(() => {
+      cy.findByText("Orders, Count").should("be.visible");
     });
   });
 
