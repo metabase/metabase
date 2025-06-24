@@ -661,7 +661,9 @@
 
 (deftest ^:parallel join-condition-lhs-columns-test
   (let [query (lib.tu/venues-query)]
-    (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :venues :category-id)) "Cat")]]
+    (doseq [rhs [nil (-> (lib.metadata/field query (meta/id :venues :category-id))
+                         (lib/with-join-alias "Cat")
+                         lib/ref)]]
       (testing (str "rhs = " (pr-str rhs))
         ;; sort PKs then FKs then everything else
         (is (=? [{:lib/desired-column-alias "ID"}
@@ -675,7 +677,9 @@
 (deftest ^:parallel join-condition-lhs-columns-with-previous-join-test
   (testing "Include columns from previous join(s)"
     (let [query (lib.tu/query-with-join-with-explicit-fields)]
-      (doseq [rhs [nil (lib/with-join-alias (lib.metadata/field query (meta/id :users :id)) "User")]]
+      (doseq [rhs [nil (-> (lib.metadata/field query (meta/id :users :id))
+                           (lib/with-join-alias "User")
+                           lib/ref)]]
         (testing (str "rhs = " (pr-str rhs))
           (is (=? [{:lib/desired-column-alias "ID"}
                    {:lib/desired-column-alias "Cat__ID"}
@@ -798,7 +802,7 @@
 
 (deftest ^:parallel join-condition-rhs-columns-test-2
   (let [query (lib.tu/venues-query)]
-    (doseq [lhs          [nil (lib.metadata/field query (meta/id :venues :id))]
+    (doseq [lhs          [nil (lib/ref (lib.metadata/field query (meta/id :venues :id)))]
             joined-thing [(meta/table-metadata :venues)
                           (:venues (lib.tu/mock-cards))]]
       (testing (str "lhs = " (pr-str lhs)
@@ -826,8 +830,8 @@
   ;; just make sure that this doesn't barf and returns the expected output given any combination of LHS or RHS fields
   ;; for now until we actually implement filtering there
   (let [query (lib.tu/venues-query)]
-    (doseq [lhs [nil (lib.metadata/field query (meta/id :categories :id))]
-            rhs [nil (lib.metadata/field query (meta/id :venues :category-id))]]
+    (doseq [lhs [nil (lib/ref (lib.metadata/field query (meta/id :categories :id)))]
+            rhs [nil (lib/ref (lib.metadata/field query (meta/id :venues :category-id)))]]
       (testing (pr-str (list `lib/join-condition-operators `(lib.tu/venues-query) lhs rhs))
         (is (=? [{:short :=, :default true}
                  {:short :>}
