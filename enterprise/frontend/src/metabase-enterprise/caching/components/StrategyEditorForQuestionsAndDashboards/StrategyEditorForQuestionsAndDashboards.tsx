@@ -4,16 +4,16 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { StrategyForm } from "metabase/admin/performance/components/StrategyForm";
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
-import { SettingsPageWrapper } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useSearchQuery } from "metabase/api";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
 import type { ColumnItem } from "metabase/common/components/Table/types";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Center, Flex, Skeleton, Stack } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type { CacheableModel } from "metabase-types/api";

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, waitFor } from "__support__/ui";
 import { FormProvider } from "metabase/forms";
 
-import GroupMappingsWidget from "./GroupMappingsWidget";
+import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
 const defaultGroups = [{ id: 1, name: "Administrators", member_count: 1 }];
 const defaultMappings = { "group=Administrators": [1] };
@@ -20,7 +20,7 @@ const setup = ({
 } = {}) => {
   render(
     <FormProvider initialValues={{}} onSubmit={() => {}}>
-      <GroupMappingsWidget
+      <GroupMappingsWidgetView
         allGroups={groups}
         mappings={mappings}
         mappingSetting={mappingSetting}
@@ -34,7 +34,7 @@ const setup = ({
   );
 };
 
-describe("GroupMappingsWidget", () => {
+describe("GroupMappingsWidgetView", () => {
   describe("when a mapping is set for admin group", () => {
     it("handles deleting mapping", async () => {
       const updateSettingSpy = jest.fn();

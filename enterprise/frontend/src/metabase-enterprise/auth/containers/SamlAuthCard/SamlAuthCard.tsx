@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import { AuthCard } from "metabase/admin/settings/auth/components/AuthCard";
 import { useAdminSetting } from "metabase/api/utils";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 import { SAML_SCHEMA } from "../../constants";

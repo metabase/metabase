@@ -2,11 +2,11 @@ import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import DateTime from "metabase/components/DateTime";
+import DateTime from "metabase/common/components/DateTime";
 import {
   Description,
   EmptyDescription,
-} from "metabase/components/MetadataInfo/MetadataInfo";
+} from "metabase/common/components/MetadataInfo/MetadataInfo";
 import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
