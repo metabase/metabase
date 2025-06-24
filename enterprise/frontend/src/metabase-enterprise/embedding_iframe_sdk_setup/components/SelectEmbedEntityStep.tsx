@@ -133,8 +133,8 @@ export const SelectEmbedEntityStep = () => {
         <DashboardPickerModal
           title={t`Select a dashboard`}
           value={
-            settings.dashboardId
-              ? { id: settings.dashboardId, model: "dashboard" }
+            selectedItemId
+              ? { id: selectedItemId, model: "dashboard" }
               : undefined
           }
           onChange={handlePickerModalEntitySelect}
@@ -149,9 +149,7 @@ export const SelectEmbedEntityStep = () => {
         <QuestionPickerModal
           title={t`Select a chart`}
           value={
-            settings.questionId
-              ? { id: settings.questionId, model: "card" }
-              : undefined
+            selectedItemId ? { id: selectedItemId, model: "card" } : undefined
           }
           onChange={handlePickerModalEntitySelect}
           onClose={closePicker}
