@@ -153,7 +153,10 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
 }
 
 const Template: StoryFn<MockDashboardContextProps> = (args) => (
-  <MockDashboardContext {...args}>
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+  >
     <PublicOrEmbeddedDashboardView />
   </MockDashboardContext>
 );
