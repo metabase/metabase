@@ -692,7 +692,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
