@@ -132,11 +132,11 @@
                 :long-display-name "Price"
                 :effective-type    :type/Integer
                 :semantic-type     :type/Category}
-               {:display-name      "c → ID"
+               {:display-name      "ID" #_"c → ID"
                 :long-display-name "c → ID"
                 :effective-type    :type/BigInteger
                 :semantic-type     :type/PK}
-               {:display-name      "c → Name"
+               {:display-name      "Name" #_"c → Name"
                 :long-display-name "c → Name"
                 :effective-type    :type/Text
                 :semantic-type     :type/Name}]
@@ -146,7 +146,7 @@
                 :long-display-name "Name"
                 :effective-type    :type/Text
                 :semantic-type     :type/Name}
-               {:display-name      "c → Name"
+               {:display-name      "Name" #_"c → Name"
                 :long-display-name "c → Name"
                 :effective-type    :type/Text
                 :semantic-type     :type/Name}]
