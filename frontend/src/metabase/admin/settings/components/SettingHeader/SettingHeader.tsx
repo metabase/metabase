@@ -30,7 +30,13 @@ export const SettingTitle = ({
   id?: string;
   children: React.ReactNode;
 }) => (
-  <Text htmlFor={id} component="label" c="text-dark" fw="bold" display="block">
+  <Text
+    htmlFor={id}
+    component="label"
+    c="text-dark"
+    fw="bold"
+    display="inline-block"
+  >
     {children}
   </Text>
 );

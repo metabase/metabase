@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Flex, Text, Title } from "metabase/ui";
-
-import { SettingsSection } from "../../SettingsSection";
 
 type EmbeddingOptionProps = {
   title: string;

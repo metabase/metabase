@@ -7,6 +7,7 @@ export type ConfirmationState = {
   title: string;
   message?: string;
   onConfirm: () => void;
+  onCancel?: () => void;
   confirmButtonText?: string;
   cancelButtonText?: string;
 };
@@ -26,7 +27,10 @@ export const useConfirmation = () => {
         confirmationState.onConfirm();
         handleClose();
       }}
-      onClose={handleClose}
+      onClose={() => {
+        confirmationState.onCancel?.();
+        handleClose();
+      }}
       data-testid="confirm-modal"
       title={confirmationState.title}
       message={confirmationState?.message}
@@ -38,6 +42,7 @@ export const useConfirmation = () => {
     title,
     message,
     onConfirm,
+    onCancel,
     confirmButtonText = t`Confirm`,
     cancelButtonText = t`Cancel`,
   }: ConfirmationState) =>
@@ -45,6 +50,7 @@ export const useConfirmation = () => {
       title,
       message,
       onConfirm,
+      onCancel,
       confirmButtonText,
       cancelButtonText,
     });
