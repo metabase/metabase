@@ -3,6 +3,7 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import { entityPickerModal } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
@@ -105,51 +106,112 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     });
   });
 
-  it.skip("shows an empty state on the sidebar when there is no recent activity", () => {
-    cy.intercept("GET", "/api/activity/recents?*", {
-      recents: [],
-    }).as("emptyRecentItems");
-
+  it("can search and select a dashboard", () => {
     visitNewEmbedPage();
-    cy.wait("@emptyRecentItems");
 
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
-
-      cy.log("should not show recent dashboards description when no recents");
-      cy.findByText("Choose from your recently visited dashboards").should(
-        "not.exist",
-      );
-
-      cy.log("should show empty state with title and description");
-      cy.findByTestId("embed-empty-state").should("be.visible");
-      cy.findByText("No recent dashboards").should("be.visible");
-      cy.findByText(/You haven't visited any dashboards recently/).should(
-        "be.visible",
-      );
-
-      cy.log("should show search link in empty state description");
-      cy.findByText("search for dashboards").should("be.visible");
-
-      cy.log("should not show any recent item cards");
-      cy.findByTestId("embed-recent-item-card").should("not.exist");
+      cy.findByTestId("embed-browse-entity-button").click();
     });
 
-    cy.log("test empty state for chart experience");
+    entityPickerModal().within(() => {
+      cy.findByText("Select a dashboard").should("be.visible");
+      cy.findByText("Dashboards").click();
+      cy.findByText(SECOND_DASHBOARD_NAME).click();
+    });
+
+    cy.log("dashboard is added to the top of recents list and selected");
     getEmbedSidebar().within(() => {
-      cy.findByText("Back").click();
+      getRecentItemCards()
+        .should("have.length", 2)
+        .first()
+        .should("contain", SECOND_DASHBOARD_NAME)
+        .should("have.attr", "data-selected", "true");
+    });
+
+    cy.wait("@dashboard");
+    getPreviewIframe().within(() => {
+      cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
+    });
+  });
+
+  it("can search and select a question", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
       cy.findByText("Chart").click();
+      cy.findByText("Next").click();
+      cy.findByTestId("embed-browse-entity-button").click();
+    });
 
-      cy.findByText("Choose from your recently visited charts").should(
-        "not.exist",
-      );
+    entityPickerModal().within(() => {
+      cy.findByText("Select a chart").should("be.visible");
+      cy.findByText("Questions").click();
+      cy.findByText(FIRST_QUESTION_NAME).click();
+    });
 
-      cy.findByTestId("embed-empty-state").should("be.visible");
-      cy.findByText("No recent charts").should("be.visible");
-      cy.findByText(/You haven't visited any charts recently/).should(
-        "be.visible",
-      );
-      cy.findByText("search for charts").should("be.visible");
+    cy.log("question is added to the top of recents list and selected");
+    getEmbedSidebar().within(() => {
+      getRecentItemCards()
+        .should("have.length", 1)
+        .first()
+        .should("contain", FIRST_QUESTION_NAME)
+        .should("have.attr", "data-selected", "true");
+    });
+
+    cy.wait("@cardQuery");
+    getPreviewIframe().within(() => {
+      cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
+    });
+  });
+
+  describe("when there is no recent activity", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/activity/recents?*", {
+        recents: [],
+      }).as("emptyRecentItems");
+
+      visitNewEmbedPage();
+      cy.wait("@emptyRecentItems");
+    });
+
+    it("can open a picker from the dashboard empty state", () => {
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
+
+        cy.log("shows the empty state for missing recent dashboards");
+        cy.findByTestId("embed-recent-item-card").should("not.exist");
+        cy.findByText("No recent dashboards").should("be.visible");
+        cy.findByText(/You haven't visited any dashboards recently/).should(
+          "be.visible",
+        );
+
+        cy.findByText(/search for dashboards/).click();
+      });
+
+      entityPickerModal().within(() => {
+        cy.findByText("Select a dashboard").should("be.visible");
+      });
+    });
+
+    it("can open a picker from the chart empty state", () => {
+      getEmbedSidebar().within(() => {
+        cy.findByText("Chart").click();
+        cy.findByText("Next").click();
+
+        cy.log("shows the empty state for missing recent questions");
+        cy.findByTestId("embed-recent-item-card").should("not.exist");
+        cy.findByText("No recent charts").should("be.visible");
+        cy.findByText(/You haven't visited any charts recently/).should(
+          "be.visible",
+        );
+
+        cy.findByText(/search for charts/).click();
+      });
+
+      entityPickerModal().within(() => {
+        cy.findByText("Select a chart").should("be.visible");
+      });
     });
   });
 });
