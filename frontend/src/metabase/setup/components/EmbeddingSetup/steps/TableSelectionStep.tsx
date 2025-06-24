@@ -117,7 +117,7 @@ export const TableSelectionStep = () => {
   const handleTableToggle = (table: Table) => {
     if (selectedTables.some((t) => t.id === table.id)) {
       setSelectedTables(selectedTables.filter((t) => t.id !== table.id));
-    } else if (selectedTables.length < 3) {
+    } else {
       setSelectedTables([...selectedTables, table]);
     }
   };
@@ -172,7 +172,7 @@ export const TableSelectionStep = () => {
     <FullHeightContainer>
       <Title order={2} mb="lg">{t`Select Tables to Embed`}</Title>
       <Text mb="xl">
-        {t`Choose up to 3 tables that you want to turn into models and dashboards. These will be used to create your initial embedded analytics.`}
+        {t`Choose the tables that you want to turn into models and dashboards. These will be used to create your initial embedded analytics.`}
       </Text>
 
       <TextInput
@@ -199,10 +199,6 @@ export const TableSelectionStep = () => {
                     label={table.name}
                     checked={selectedTables.some((t) => t.id === table.id)}
                     onChange={() => handleTableToggle(table)}
-                    disabled={
-                      selectedTables.length >= 3 &&
-                      !selectedTables.some((t) => t.id === table.id)
-                    }
                   />
                 ))}
               </Box>
