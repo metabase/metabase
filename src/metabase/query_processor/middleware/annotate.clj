@@ -7,13 +7,17 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
+   [metabase.lib.convert :as lib.convert]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.middleware.annotate.legacy-helper-fns]
+   [metabase.query-processor.middleware.annotate.legacy-impl :as annotate.legacy]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -143,10 +147,22 @@
    rff   :- ::qp.schema/rff]
   (mu/fn :- ::qp.schema/rf
     [initial-metadata :- ::metadata]
-    (let [f (if (needs-type-inference? query initial-metadata)
-              add-column-info-with-type-inference
-              add-column-info-no-type-inference)]
-      (f query rff initial-metadata))))
+    (let [f           (if (needs-type-inference? query initial-metadata)
+                        add-column-info-with-type-inference
+                        add-column-info-no-type-inference)
+          cols        (f query rff initial-metadata)
+          legacy-cols (qp.store/with-metadata-provider (lib.metadata/->metadata-provider query)
+                        (annotate.legacy/update-metadata
+                         (lib.convert/->legacy-MBQL query)
+                         initial-metadata))]
+      (if-not (= (count cols) (count legacy-cols))
+        cols
+        (mapv (fn [col legacy-col]
+                (merge
+                 col
+                 (u/select-non-nil-keys legacy-col [:display_name])))
+              cols
+              legacy-cols)))))
 
 ;;;;
 ;;;; NONSENSE
