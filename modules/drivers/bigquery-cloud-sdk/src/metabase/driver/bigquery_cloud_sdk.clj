@@ -120,7 +120,7 @@
   [details dataset-id]
   (let [client (database-details->client details)
         ^Dataset dataset (.getDataset client ^String dataset-id (u/varargs BigQuery$DatasetOption))]
-    (for [^Table table (.. dataset (list (u/varargs BigQuery$TableListOption)) iterateAll)]
+    (for [^Table table (some-> dataset (.list (u/varargs BigQuery$TableListOption)) .iterateAll)]
       (.. table getTableId getTable))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
@@ -294,12 +294,14 @@
 (defn- get-nested-columns-for-tables
   "Returns nested columns for a specific set of table"
   [driver database project-id dataset-id table-names]
-  (let [results (query-honeysql
-                 driver
-                 database
-                 {:select [:table_name :column_name :data_type :field_path]
-                  :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
-                  :where [:in :table_name table-names]})
+  (let [results (try (query-honeysql
+                      driver
+                      database
+                      {:select [:table_name :column_name :data_type :field_path]
+                       :from [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :c]]
+                       :where [:in :table_name table-names]})
+                     (catch Throwable e
+                       (log/warnf e "error in get-nested-columns-for-tables for dataset: %s" dataset-id)))
         nested-column-info (fn [{data-type :data_type field-path-str :field_path table-name :table_name}]
                              (let [field-path (str/split field-path-str #"\.")
                                    nfc-path (not-empty (pop field-path))
@@ -369,7 +371,9 @@
                           :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                           :where [:in :table_name table-names]
                           :order-by [:table_name :ordinal_position :column_name]}
-        named-rows (query-honeysql driver database named-rows-query)
+        named-rows (try (query-honeysql driver database named-rows-query)
+                        (catch Throwable e
+                          (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))
         nested-column-lookup (get-nested-columns-for-tables driver database project-id dataset-id table-names)]
     (eduction
      (x/by-key :table_name (x/into []))
@@ -379,7 +383,7 @@
 (def ^:private ^:const num-table-partitions
   "Number of tables to batch for describe-fields. Too low and we'll do too many queries, which is slow.
    Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
-  128)
+  64)
 
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
