@@ -1,12 +1,16 @@
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { getHtml2CanvasWrapper } from "metabase/visualizations/lib/html2canvas";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./image-exports";
 const PARAMETERS_MARGIN_BOTTOM = 12;
 
 export const getChartImage = async (
+  rootElement: HTMLElement,
   selector: string,
 ): Promise<File | undefined> => {
-  const chartRoot = document.querySelector(selector) as HTMLElement;
+  const { wrapper, cleanupWrapper } = getHtml2CanvasWrapper(rootElement);
+
+  const chartRoot = wrapper.querySelector(selector) as HTMLElement;
 
   const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(chartRoot, {
@@ -15,6 +19,8 @@ export const getChartImage = async (
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
     },
   });
+
+  cleanupWrapper();
 
   return new Promise<File | undefined>((resolve) => {
     canvas.toBlob((blob) => {
@@ -29,9 +35,12 @@ export const getChartImage = async (
 };
 
 export const getDashboardImage = async (
+  rootElement: HTMLElement,
   selector: string,
 ): Promise<File | undefined> => {
-  const dashboardRoot = document.querySelector(selector);
+  const { wrapper, cleanupWrapper } = getHtml2CanvasWrapper(rootElement);
+
+  const dashboardRoot = wrapper.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
@@ -56,7 +65,7 @@ export const getDashboardImage = async (
   const contentWidth = gridNode.offsetWidth;
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const backgroundColor = getComputedStyle(rootElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
 
@@ -74,6 +83,8 @@ export const getDashboardImage = async (
       }
     },
   });
+
+  cleanupWrapper();
 
   return new Promise<File | undefined>((resolve) => {
     canvas.toBlob((blob) => {

@@ -13,6 +13,7 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import { isEventOverElement } from "metabase/lib/dom";
 import * as Lib from "metabase-lib";
 import type { CardId } from "metabase-types/api";
@@ -61,6 +62,8 @@ export const CodeMirrorEditor = forwardRef<
   },
   ref,
 ) {
+  const rootElement = useRootElement();
+
   const editorRef = useRef<CodeMirrorRef>(null);
   const extensions = useExtensions({ query, onRunQuery });
 
@@ -73,10 +76,10 @@ export const CodeMirrorEditor = forwardRef<
         editorRef.current?.editor?.focus();
       },
       getSelectionTarget() {
-        return document.querySelector(".cm-selectionBackground");
+        return rootElement.querySelector(".cm-selectionBackground");
       },
     };
-  }, []);
+  }, [rootElement]);
 
   const handleUpdate = useCallback(
     (update: ViewUpdate) => {
@@ -112,7 +115,7 @@ export const CodeMirrorEditor = forwardRef<
       }
 
       const selections = Array.from(
-        document.querySelectorAll(".cm-selectionBackground"),
+        rootElement.querySelectorAll(".cm-selectionBackground"),
       );
 
       if (selections.some((selection) => isEventOverElement(evt, selection))) {
@@ -122,7 +125,7 @@ export const CodeMirrorEditor = forwardRef<
     }
     document.addEventListener("contextmenu", handler);
     return () => document.removeEventListener("contextmenu", handler);
-  }, [onRightClickSelection]);
+  }, [rootElement, onRightClickSelection]);
 
   const highlightedRanges = useMemo(
     () => highlightedLineNumbers?.map((lineNumber) => ({ line: lineNumber })),

@@ -7,6 +7,7 @@ import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboa
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getHtml2CanvasWrapper } from "metabase/visualizations/lib/html2canvas";
 
 import {
   createBrandingElement,
@@ -54,17 +55,21 @@ export const saveDomImageStyles = css`
 `;
 
 interface Opts {
+  rootElement: HTMLElement;
   selector: string;
   fileName: string;
   includeBranding: boolean;
 }
 
 export const saveChartImage = async ({
+  rootElement,
   selector,
   fileName,
   includeBranding,
 }: Opts) => {
-  const node = document.querySelector(selector);
+  const { wrapper, cleanupWrapper } = getHtml2CanvasWrapper(rootElement);
+
+  const node = wrapper.querySelector(selector);
 
   if (!node || !(node instanceof HTMLElement)) {
     console.warn("No node found for selector", selector);
@@ -110,6 +115,8 @@ export const saveChartImage = async ({
       }
     },
   });
+
+  cleanupWrapper();
 
   canvas.toBlob((blob) => {
     if (blob) {

@@ -3,6 +3,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks";
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import {
   type DashboardAccessedVia,
   trackExportDashboardToPDF,
@@ -24,6 +25,8 @@ export const ExportAsPdfButton = ({
   hasTitle?: boolean;
   hasVisibleParameters?: boolean;
 }) => {
+  const rootElement = useRootElement();
+
   const { dashboard } = useDashboardContext();
   const dispatch = useDispatch();
   const isWhitelabeled = useHasTokenFeature("whitelabel");
@@ -41,7 +44,9 @@ export const ExportAsPdfButton = ({
     });
 
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
+
     return saveDashboardPdf({
+      rootElement,
       selector: cardNodeSelector,
       dashboardName: dashboard?.name ?? t`Exported dashboard`,
       includeBranding,

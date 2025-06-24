@@ -19,6 +19,7 @@ jest.mock("metabase/lib/dom", () => ({
 const getDownloadDatasetAction = () =>
   downloadDataset({
     opts: {
+      rootElement: document.createElement("div"),
       type: "csv",
       question: new Question(createMockCard({ id: 1, name: "test card" })),
       result: createMockDataset(),
