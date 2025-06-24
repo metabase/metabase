@@ -14,6 +14,7 @@ import {
 } from "metabase/dashboard/actions";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { useDashboardContext } from "metabase/dashboard/context";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -27,7 +28,6 @@ import type {
   DashboardNightModeControls,
   DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
@@ -74,6 +74,8 @@ export function DashboardHeaderView({
   onNightModeChange,
   hasNightModeToggle,
 }: DashboardHeaderViewProps) {
+  const { titled } = useDashboardContext();
+
   const isNavBarOpen = useSelector(getIsNavbarOpen);
   const isEditing = useSelector(getIsEditing);
 
@@ -178,33 +180,35 @@ export function DashboardHeaderView({
               data-testid="fixed-width-dashboard-header"
               isFixedWidth={dashboard?.width === "fixed"}
             >
-              <Box
-                role="heading"
-                className={cx(S.HeaderContent, {
-                  [S.showSubHeader]: showSubHeader,
-                })}
-              >
-                <Flex className={S.HeaderCaptionContainer}>
-                  <DashboardTitle className={S.HeaderCaption} />
-                  <PLUGIN_MODERATION.EntityModerationIcon
-                    dashboard={dashboard}
-                  />
-                  <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                    color={color("brand")}
-                    collection={collection}
-                    entity="dashboard"
-                  />
-                </Flex>
-                <Flex className={S.HeaderBadges}>
-                  {isLastEditInfoVisible && (
-                    <LastEditInfoLabel
-                      className={S.HeaderLastEditInfoLabel}
-                      item={dashboard}
-                      onClick={onLastEditInfoClick}
+              {titled && (
+                <Box
+                  role="heading"
+                  className={cx(S.HeaderContent, {
+                    [S.showSubHeader]: showSubHeader,
+                  })}
+                >
+                  <Flex className={S.HeaderCaptionContainer}>
+                    <DashboardTitle className={S.HeaderCaption} />
+                    <PLUGIN_MODERATION.EntityModerationIcon
+                      dashboard={dashboard}
                     />
-                  )}
-                </Flex>
-              </Box>
+                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                      color="brand"
+                      collection={collection}
+                      entity="dashboard"
+                    />
+                  </Flex>
+                  <Flex className={S.HeaderBadges}>
+                    {isLastEditInfoVisible && (
+                      <LastEditInfoLabel
+                        className={S.HeaderLastEditInfoLabel}
+                        item={dashboard}
+                        onClick={onLastEditInfoClick}
+                      />
+                    )}
+                  </Flex>
+                </Box>
+              )}
 
               <Flex
                 className={cx(S.HeaderButtonsContainer, {

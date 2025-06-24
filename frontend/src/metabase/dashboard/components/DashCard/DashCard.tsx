@@ -74,7 +74,6 @@ export interface DashCardProps {
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isXray?: boolean;
-  withTitle?: boolean;
 
   /** Bool if removing the dashcard will queue the card to be trashed on dashboard save */
   isTrashedOnRemove: boolean;
@@ -125,7 +124,6 @@ function DashCardInner({
   isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
-  withTitle = true,
   isTrashedOnRemove,
   onRemove,
   onReplaceCard,
@@ -421,7 +419,6 @@ function DashCardInner({
           isNightMode={isNightMode}
           isMobile={isMobile}
           isPublicOrEmbedded={isPublicOrEmbedded}
-          withTitle={withTitle}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onChangeCardAndRun={
