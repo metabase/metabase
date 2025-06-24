@@ -25,7 +25,7 @@ export type MetabotChatMessage =
 export interface MetabotState {
   useStreaming: boolean;
   isProcessing: boolean;
-  conversationId: string | undefined;
+  conversationId: string;
   messages: MetabotChatMessage[];
   visible: boolean;
   history: MetabotHistory;
@@ -33,20 +33,20 @@ export interface MetabotState {
   activeToolCall: { id: string; name: string } | undefined;
 }
 
-export const metabotInitialState: MetabotState = {
+export const getMetabotInitialState = (): MetabotState => ({
   useStreaming: false,
   isProcessing: false,
-  conversationId: undefined,
+  conversationId: uuid(),
   messages: [],
   visible: false,
   history: [],
   state: {},
   activeToolCall: undefined,
-};
+});
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
-  initialState: metabotInitialState,
+  initialState: getMetabotInitialState(),
   reducers: {
     toggleStreaming: (state) => {
       state.useStreaming = !state.useStreaming;
@@ -127,7 +127,7 @@ export const metabot = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(logout.pending, () => metabotInitialState)
+      .addCase(logout.pending, getMetabotInitialState)
       // streamed response handlers
       .addCase(sendStreamedAgentRequest.pending, (state) => {
         state.isProcessing = true;

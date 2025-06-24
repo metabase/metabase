@@ -15,7 +15,6 @@ import {
 } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { uuid } from "metabase/lib/uuid";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import type { SuggestedMetabotPrompt, User } from "metabase-types/api";
 import {
@@ -34,7 +33,8 @@ import { useMetabotAgent } from "./hooks";
 import {
   type MetabotState,
   addUserMessage,
-  metabotInitialState,
+  getMetabotConversationId,
+  getMetabotInitialState,
   metabotReducer,
   setVisible,
 } from "./state";
@@ -59,8 +59,7 @@ function setup(
     ui = <Metabot />,
     currentUser = createMockUser(),
     metabotPluginInitialState = {
-      ...metabotInitialState,
-      conversationId: uuid(),
+      ...getMetabotInitialState(),
       visible: true,
     },
     promptSuggestions = [],
@@ -207,7 +206,7 @@ describe("metabot", () => {
 
       try {
         const { store } = setup({
-          metabotPluginInitialState: metabotInitialState,
+          metabotPluginInitialState: getMetabotInitialState(),
           currentUser: null,
         });
         await assertNotVisible();
@@ -378,6 +377,12 @@ describe("metabot", () => {
   });
 
   describe("message", () => {
+    it("should have a conversation id before sending any messages", async () => {
+      const { store } = setup();
+      const state = store.getState() as any;
+      expect(getMetabotConversationId(state)).not.toBeUndefined();
+    });
+
     it("should properly send chat messages", async () => {
       setup();
       fetchMock.post(
