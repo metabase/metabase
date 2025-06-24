@@ -128,12 +128,7 @@ export function PublicOrEmbeddedDashboardView() {
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
       actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
-      dashboardTabs={
-        dashboardId &&
-        dashboardHasTabs && (
-          <DashboardTabs dashboardId={dashboardId} isNightMode={isNightMode} />
-        )
-      }
+      dashboardTabs={dashboardId && dashboardHasTabs && <DashboardTabs />}
       background={background}
       bordered={bordered}
       titled={titled}
