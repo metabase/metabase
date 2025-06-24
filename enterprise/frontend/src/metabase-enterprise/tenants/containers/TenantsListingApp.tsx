@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { ACTIVE_STATUS } from "metabase/admin/people/constants";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
+import { ACTIVE_STATUS } from "metabase/admin/people/constants";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";

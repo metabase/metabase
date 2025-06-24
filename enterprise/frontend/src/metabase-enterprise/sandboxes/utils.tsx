@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import type { MappingEditorEntry } from "metabase/core/components/MappingEditor";
+import type { MappingEditorEntry } from "metabase/common/components/MappingEditor";
 import { Group, Icon, type SelectProps, Tooltip } from "metabase/ui";
 import type { GroupTableAccessPolicy, Table, Tenant } from "metabase-types/api";
 
