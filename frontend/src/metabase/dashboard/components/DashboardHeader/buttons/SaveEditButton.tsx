@@ -4,17 +4,22 @@ import { msgid, ngettext, t } from "ttag";
 import ActionButton from "metabase/common/components/ActionButton";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDashboardContext } from "metabase/dashboard/context/context";
-import { useDispatch } from "metabase/lib/redux";
+import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
-export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
+export const SaveEditButton = () => {
   const dispatch = useDispatch();
-  const { getMissingRequiredParameters, setEditingDashboard, updateDashboardAndCards } = useDashboardContext();
+  const {
+    setEditingDashboard,
+    updateDashboardAndCards,
+    onRefreshPeriodChange,
+  } = useDashboardContext();
 
-  const missingRequiredParameters = getMissingRequiredParameters();
+  const missingRequiredParameters = useSelector(getMissingRequiredParameters);
 
   const disabledSaveTooltip = getDisabledSaveButtonTooltip(
     missingRequiredParameters,
@@ -22,7 +27,7 @@ export const SaveEditButton = (props: { onDoneEditing: () => void }) => {
   const isSaveDisabled = missingRequiredParameters.length > 0;
 
   const handleDoneEditing = () => {
-    props.onDoneEditing();
+    onRefreshPeriodChange(null);
     setEditingDashboard(null);
   };
 
