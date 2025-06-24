@@ -1,7 +1,7 @@
 import { IndexRedirect, Route } from "react-router";
 
-import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
-import { NotFound } from "metabase/components/ErrorPages";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { PLUGIN_ADMIN_SETTINGS, PLUGIN_AUTH_PROVIDERS } from "metabase/plugins";
 
 import { GoogleAuthForm } from "./settings/auth/components/GoogleAuthForm";
