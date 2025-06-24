@@ -25,13 +25,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       visitNewEmbedPage();
 
       cy.log("assert that the most recent dashboard is the one we expect");
-      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-        const recentItem = intercept.response?.body.recents?.filter(
-          (recent) => recent.model === "dashboard",
-        )?.[0];
-
-        expect(recentItem.name).to.be.equal(dashboardName);
-      });
+      assertRecentItemName("dashboard", dashboardName);
 
       H.getIframeBody().within(() => {
         cy.log("dashboard title is visible");
@@ -46,19 +40,13 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
       const questionName = "Orders, Count";
 
       cy.log("go to a question to add to the activity log");
-      cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
       cy.wait("@cardQuery");
 
       visitNewEmbedPage();
 
       cy.log("assert that the most recent dashboard is the one we expect");
-      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
-        const recentItem = intercept.response?.body.recents?.filter(
-          (recent) => recent.model === "card",
-        )?.[0];
-
-        expect(recentItem.name).to.be.equal(questionName);
-      });
+      assertRecentItemName("card", questionName);
 
       getEmbedSidebar().findByText("Chart").click();
       cy.wait("@cardQuery");
@@ -82,10 +70,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
 
   describe("select embed experiences with an empty activity log", () => {
     beforeEach(() => {
-      // simulate a totally empty activity log
-      cy.intercept("GET", "/api/activity/recents?*", {
-        recents: [],
-      }).as("emptyRecentItems");
+      cy.log("simulate an empty activity log");
+      cy.intercept("GET", "/api/activity/recents?*", { recents: [] }).as(
+        "emptyRecentItems",
+      );
     });
 
     it("shows dashboard of id=1 when activity log is empty", () => {
@@ -131,4 +119,14 @@ const getEmbedSidebar = () => cy.findByRole("complementary");
 const visitNewEmbedPage = () => {
   cy.visit("/embed/new");
   cy.wait("@dashboard");
+};
+
+const assertRecentItemName = (model: "dashboard" | "card", name: string) => {
+  cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
+    const recentItem = intercept.response?.body.recents?.filter(
+      (recent) => recent.model === model,
+    )?.[0];
+
+    expect(recentItem.name).to.be.equal(name);
+  });
 };
