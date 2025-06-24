@@ -2,18 +2,15 @@ import cx from "classnames";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import { useDownloadData } from "metabase/query_builder/components/QuestionDownloadWidget/use-download-data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { ActionIcon, Icon, Popover, Tooltip } from "metabase/ui";
-import { canSavePng } from "metabase/visualizations";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import Question from "metabase-lib/v1/Question";
 import type { DashboardCard, Dataset } from "metabase-types/api";
@@ -40,21 +37,6 @@ export const DashCardQuestionDownloadButton = ({
     () => new Question(dashcard.card, metadata),
     [dashcard.card, metadata],
   );
-
-  const canDownloadPng = question && canSavePng(question.display());
-  const formats = canDownloadPng
-    ? [...exportFormats, exportFormatPng]
-    : exportFormats;
-
-  const { value: formatPreference, setValue: setFormatPreference } =
-    useUserKeyValue({
-      namespace: "last_download_format",
-      key: "download_format_preference",
-      defaultValue: {
-        last_download_format: formats[0],
-        last_table_download_format: exportFormats[0],
-      },
-    });
 
   // by the time we reach this code,  dashboardId really should not be null.
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
@@ -93,8 +75,6 @@ export const DashCardQuestionDownloadButton = ({
         <QuestionDownloadWidget
           question={question}
           result={result}
-          formatPreference={formatPreference}
-          setFormatPreference={setFormatPreference}
           onDownload={(opts) => {
             setIsPopoverOpen(false);
             handleDownload(opts);

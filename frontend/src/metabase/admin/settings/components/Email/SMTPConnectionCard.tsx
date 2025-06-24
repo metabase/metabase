@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useSetting } from "metabase/common/hooks";
 import { color } from "metabase/lib/colors";
 import { Button, Flex, Paper, Title } from "metabase/ui";
-
-import { SettingsSection } from "../SettingsSection";
 
 export const SMTPConnectionCard = ({
   onOpenSMTPModal,

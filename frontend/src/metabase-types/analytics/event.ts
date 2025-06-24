@@ -154,6 +154,11 @@ export type EmbeddingSetupStepSeenEvent = ValidateEvent<{
     | "done";
 }>;
 
+export type EventsClickedEvent = ValidateEvent<{
+  event: "events_clicked";
+  triggered_from: "chart" | "collection";
+}>;
+
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
@@ -173,4 +178,5 @@ export type SimpleEvent =
   | NewButtonItemClickedEvent
   | VisualizeAnotherWayClickedEvent
   | VisualizerModalEvent
-  | EmbeddingSetupStepSeenEvent;
+  | EmbeddingSetupStepSeenEvent
+  | EventsClickedEvent;
