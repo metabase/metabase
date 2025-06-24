@@ -16,8 +16,10 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("selects the most recently visited dashboard from the recents list", () => {
-    cy.log("add dashboard to activity log");
+  it("can select a dashboard from the recents list", () => {
+    cy.log("add two dashboards to activity log");
+    cy.visit("/dashboard/1");
+    cy.wait("@dashboard");
     cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
     cy.wait("@dashboard");
 
@@ -25,16 +27,17 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
-      cy.findByText("Orders in a dashboard").should("be.visible");
 
-      cy.log("only one recent item should be visible");
-      cy.findAllByTestId("embed-recent-item-card").should("have.length", 1);
+      cy.log("two dashboards should be visible");
+      cy.findAllByTestId("embed-recent-item-card").should("have.length", 2);
+      cy.findByText("Person overview").should("be.visible");
+      cy.findByText("Orders in a dashboard").should("be.visible");
     });
 
     cy.log("dashboard should be displayed in the preview");
     cy.wait("@dashboard");
     getPreviewIframe().within(() => {
-      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Person overview").should("be.visible");
     });
   });
 
