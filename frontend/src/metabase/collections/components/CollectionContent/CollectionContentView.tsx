@@ -24,9 +24,9 @@ import {
   isRootTrashCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
+import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { getVisibleColumnsMap } from "metabase/components/ItemsTable/utils";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
