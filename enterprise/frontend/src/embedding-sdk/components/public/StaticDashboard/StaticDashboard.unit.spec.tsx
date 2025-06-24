@@ -6,8 +6,6 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
@@ -25,7 +23,6 @@ import { Box } from "metabase/ui";
 import {
   createMockCard,
   createMockCardQueryMetadata,
-  createMockCollection,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
@@ -53,7 +50,6 @@ const useLocaleMock = useLocale as jest.Mock;
 
 const TEST_DASHBOARD_ID = 1;
 const TEST_DB = createMockDatabase({ id: 1 });
-const TEST_COLLECTION = createMockCollection();
 
 const dataset_query = createMockStructuredDatasetQuery({
   query: { "source-table": ORDERS_ID },
@@ -135,12 +131,6 @@ const setup = async (
   });
 
   setupDashboardEndpoints(dashboard);
-
-  setupCollectionsEndpoints({ collections: [] });
-  setupCollectionItemsEndpoint({
-    collection: TEST_COLLECTION,
-    collectionItems: [],
-  });
 
   setupDashboardQueryMetadataEndpoint(
     dashboard,

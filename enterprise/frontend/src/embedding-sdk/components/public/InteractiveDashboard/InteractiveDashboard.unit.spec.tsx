@@ -7,8 +7,6 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
-  setupCollectionItemsEndpoint,
-  setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
@@ -25,7 +23,6 @@ import { Box } from "metabase/ui";
 import {
   createMockCard,
   createMockCardQueryMetadata,
-  createMockCollection,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
@@ -122,12 +119,6 @@ const setup = async ({
   });
 
   setupDashboardEndpoints(dashboard);
-
-  setupCollectionsEndpoints({ collections: [] });
-  setupCollectionItemsEndpoint({
-    collection: createMockCollection(),
-    collectionItems: [],
-  });
 
   setupDashboardQueryMetadataEndpoint(
     dashboard,

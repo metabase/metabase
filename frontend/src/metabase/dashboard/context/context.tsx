@@ -291,7 +291,10 @@ const DashboardContextProviderInner = ({
     closeDashboard();
   });
 
-  const finalDashboard = useMemo(() => {
+  // For public/static dashboards, we want to make sure that we don't show action cards
+  // so we have a filter function here to remove those. We can/will also add this
+  // functionality in the SDK in the future, which is why it's a generic prop
+  const dashboardWithFilteredCards = useMemo(() => {
     if (dashboard && isDashcardVisible) {
       return assoc(
         dashboard,
@@ -307,7 +310,7 @@ const DashboardContextProviderInner = ({
       value={{
         dashboardIdProp,
         dashboardId,
-        dashboard: finalDashboard,
+        dashboard: dashboardWithFilteredCards,
         parameterQueryParams,
         onLoad,
         onError,
