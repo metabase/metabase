@@ -163,7 +163,7 @@ export const DataModel = ({ children, location, params }: Props) => {
         >
           <RouterTablePicker
             databaseId={databaseId}
-            schemaId={schemaName}
+            schemaName={schemaName}
             tableId={tableId}
           />
 
