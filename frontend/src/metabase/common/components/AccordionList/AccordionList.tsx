@@ -684,8 +684,9 @@ export class AccordionList<
             rowIndex={index}
             parent={parent}
           >
-            {() => (
+            {({ registerChild }) => (
               <AccordionListCell<TItem, TSection>
+                ref={registerChild}
                 hasCursor={this.isRowSelected(rows[index])}
                 {...this.props}
                 style={style}
