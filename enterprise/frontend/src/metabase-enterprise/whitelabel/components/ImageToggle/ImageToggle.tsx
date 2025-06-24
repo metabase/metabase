@@ -34,7 +34,7 @@ export const ImageToggle = ({
           id={toggleId}
           aria-checked={value}
           checked={value}
-          onChange={e => onChange(e.target.checked)}
+          onChange={(e) => onChange(e.target.checked)}
         />
       </ToggleContainer>
     </ToggleRoot>

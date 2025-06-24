@@ -56,7 +56,7 @@ export const Logs = ({
             width={400}
           >
             <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
-            {processUUIDs.map(uuid => (
+            {processUUIDs.map((uuid) => (
               <Option key={uuid} value={uuid}>
                 <code>{uuid}</code>
               </Option>

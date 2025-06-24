@@ -33,7 +33,6 @@ const getTruncatedColumnSizing = (
 
 export const useMeasureColumnWidths = <TData, TValue>(
   table: ReactTable<TData>,
-  data: TData[],
   columnsOptions: ColumnOptions<TData, TValue>[],
   truncateLongCellWidth: number,
   theme: DataGridTheme | undefined,
@@ -55,7 +54,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
         const elementsMeasures = Array.from(
           div.querySelectorAll("[data-measure-id]"),
         )
-          .map(element => {
+          .map((element) => {
             const columnId = element.getAttribute("data-measure-id");
             const type = element.getAttribute("data-measure-type");
 
@@ -106,12 +105,15 @@ export const useMeasureColumnWidths = <TData, TValue>(
         }, 0);
       };
 
+      const rows = table.getRowModel().rows;
+      const rowsData = rows.map((row) => row.original);
+
       const measureContent = (
         <div style={{ display: "flex" }} ref={onMeasureHeaderRender}>
           {table
             .getHeaderGroups()
-            .flatMap(headerGroup => headerGroup.headers)
-            .map(header => {
+            .flatMap((headerGroup) => headerGroup.headers)
+            .map((header) => {
               const headerCell = flexRender(
                 header.column.columnDef.header,
                 header.getContext(),
@@ -127,19 +129,18 @@ export const useMeasureColumnWidths = <TData, TValue>(
               );
             })}
 
-          {columnsOptions.map(columnOptions => {
+          {columnsOptions.map((columnOptions) => {
             return (
               <div
                 key={columnOptions.id}
                 data-measure-id={columnOptions.id}
                 data-measure-type="body"
               >
-                {pickRowsToMeasure(data, columnOptions.accessorFn).map(
-                  rowIndex => {
-                    const cell = table
-                      .getRowModel()
-                      .rows[rowIndex].getVisibleCells()
-                      .find(cell => cell.column.id === columnOptions.id);
+                {pickRowsToMeasure(rowsData, columnOptions.accessorFn).map(
+                  (rowIndex) => {
+                    const cell = rows[rowIndex]
+                      .getVisibleCells()
+                      .find((cell) => cell.column.id === columnOptions.id);
 
                     if (!cell) {
                       return null;
@@ -188,7 +189,6 @@ export const useMeasureColumnWidths = <TData, TValue>(
     },
     [
       columnsOptions,
-      data,
       setMeasuredColumnSizing,
       table,
       theme,

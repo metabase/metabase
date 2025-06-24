@@ -1,5 +1,4 @@
 import cx from "classnames";
-import _ from "underscore";
 
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
 
@@ -11,11 +10,7 @@ export interface RowIdHeaderCellProps {
 
 export const RowIdHeaderCell = ({ name = "" }: RowIdHeaderCellProps) => {
   return (
-    <BaseCell
-      className={cx(S.root, { [S.withName]: !_.isEmpty(name) })}
-      hasHover={false}
-      align="right"
-    >
+    <BaseCell className={cx(S.root)} hasHover={false} align="right">
       {name}
     </BaseCell>
   );

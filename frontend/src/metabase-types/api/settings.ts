@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import type { InputSettingType } from "./actions";
+import type { DashboardId } from "./dashboard";
+import type { UserId } from "./user";
 
 export interface FormattingSettings {
   "type/Temporal"?: DateFormattingSettings;
@@ -55,7 +57,8 @@ export type EngineFieldType =
   | "select"
   | "textFile"
   | "info"
-  | "section";
+  | "section"
+  | "hidden";
 
 export type EngineFieldTreatType = "base64";
 
@@ -82,7 +85,15 @@ export interface ScheduleSettings {
   schedule_minute?: number | null;
 }
 
-export type ScheduleType = "hourly" | "daily" | "weekly" | "monthly";
+export type ScheduleType =
+  | "every_n_minutes"
+  | "hourly"
+  | "daily"
+  | "weekly"
+  | "monthly"
+  // 'cron' type implies usage of more complex expressions represented
+  // by raw cron string.
+  | "cron";
 
 export type ScheduleDayType =
   | "sun"
@@ -217,6 +228,7 @@ export const tokenFeatures = [
   "collection_cleanup",
   "query_reference_validation",
   "cache_preemptive",
+  "database_routing",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -299,6 +311,7 @@ interface AdminSettings {
   "active-users-count"?: number;
   "deprecation-notice-version"?: string;
   "embedding-secret-key"?: string;
+  "redirect-all-requests-to-https": boolean;
   "query-caching-min-ttl": number;
   "query-caching-ttl-ratio": number;
   "google-auth-auto-create-accounts-domain": string | null;
@@ -350,7 +363,7 @@ interface PublicSettings {
   "cloud-gateway-ips": string[] | null;
   "custom-formatting": FormattingSettings;
   "custom-homepage": boolean;
-  "custom-homepage-dashboard": number | null;
+  "custom-homepage-dashboard": DashboardId | null;
   "ee-ai-features-enabled"?: boolean;
   "email-configured?": boolean;
   "embedding-app-origin": string | null;
@@ -362,9 +375,16 @@ interface PublicSettings {
   engines: Record<string, Engine>;
   "google-auth-client-id": string | null;
   "google-auth-enabled": boolean;
+  gsheets: {
+    status: "not-connected" | "loading" | "complete" | "error";
+    folder_url: string | null;
+    error?: string;
+    "created-by-id"?: UserId;
+  };
   "has-user-setup": boolean;
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
+  "humanization-strategy": "simple" | "none";
   "hide-embed-branding?": boolean;
   "is-hosted?": boolean;
   "ldap-configured?": boolean;
@@ -384,6 +404,7 @@ interface PublicSettings {
   "setup-token": string | null;
   "show-metabase-links": boolean;
   "show-metabot": boolean;
+  "show-google-sheets-integration": boolean;
   "site-locale": string;
   "site-url": string;
   "snowplow-enabled": boolean;
@@ -450,3 +471,34 @@ export type Settings = InstanceSettings &
 export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
+
+export type IllustrationSettingValue = "default" | "none" | "custom";
+export interface EnterpriseSettings extends Settings {
+  "application-colors"?: Record<string, string>;
+  "application-logo-url"?: string;
+  "login-page-illustration"?: IllustrationSettingValue;
+  "login-page-illustration-custom"?: string;
+  "landing-page-illustration"?: IllustrationSettingValue;
+  "landing-page-illustration-custom"?: string;
+  "no-data-illustration"?: IllustrationSettingValue;
+  "no-data-illustration-custom"?: string;
+  "no-object-illustration"?: IllustrationSettingValue;
+  "no-object-illustration-custom"?: string;
+  "landing-page"?: string;
+  "ee-ai-features-enabled"?: boolean;
+  "ee-openai-api-key"?: string;
+  "ee-openai-model"?: string;
+  "saml-user-provisioning-enabled?"?: boolean;
+  "scim-enabled"?: boolean | null;
+  "scim-base-url"?: string;
+  "send-new-sso-user-admin-email?"?: boolean;
+  /**
+   * @deprecated
+   */
+  application_logo_url?: string;
+}
+
+export type EnterpriseSettingKey = keyof EnterpriseSettings;
+export type EnterpriseSettingValue<
+  Key extends EnterpriseSettingKey = EnterpriseSettingKey,
+> = EnterpriseSettings[Key];

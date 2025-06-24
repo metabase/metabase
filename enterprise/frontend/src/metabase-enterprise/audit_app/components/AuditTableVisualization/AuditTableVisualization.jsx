@@ -60,7 +60,7 @@ export class AuditTableVisualization extends Component {
     super(props);
   }
 
-  handleColumnHeaderClick = column => {
+  handleColumnHeaderClick = (column) => {
     const { isSortable, onSortingChange, sorting } = this.props;
 
     if (!isSortable || !onSortingChange) {
@@ -112,7 +112,7 @@ export class AuditTableVisualization extends Component {
     const canRemoveRows = !!onRemoveRow;
     const columnIndexes = settings["table.columns"]
       .filter(({ enabled }) => enabled)
-      .map(({ name }) => _.findIndex(cols, col => col.name === name));
+      .map(({ name }) => _.findIndex(cols, (col) => col.name === name));
 
     if (rows.length === 0) {
       return (
@@ -129,12 +129,12 @@ export class AuditTableVisualization extends Component {
             {isSelectable && (
               <th>
                 <CheckBox
-                  checked={Object.values(rowChecked).some(elem => elem)}
-                  onChange={e => this.handleAllSelectClick(e, rows)}
+                  checked={Object.values(rowChecked).some((elem) => elem)}
+                  onChange={(e) => this.handleAllSelectClick(e, rows)}
                 />
               </th>
             )}
-            {columnIndexes.map(colIndex => {
+            {columnIndexes.map((colIndex) => {
               const column = cols[colIndex];
               const isSortedByColumn =
                 sorting && sorting.column === getColumnName(column);
@@ -167,7 +167,7 @@ export class AuditTableVisualization extends Component {
                 <td>
                   <CheckBox
                     checked={rowChecked[row[ROW_ID_IDX]] || false}
-                    onChange={e =>
+                    onChange={(e) =>
                       this.handleRowSelectClick(
                         { ...e, originRow: rowIndex },
                         row,
@@ -178,7 +178,7 @@ export class AuditTableVisualization extends Component {
                 </td>
               )}
 
-              {columnIndexes.map(colIndex => {
+              {columnIndexes.map((colIndex) => {
                 const value = row[colIndex];
                 const column = cols[colIndex];
                 const clicked = { column, value, origin: { row, cols } };

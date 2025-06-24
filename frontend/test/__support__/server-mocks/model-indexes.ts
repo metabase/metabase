@@ -17,7 +17,7 @@ export function setupModelIndexEndpoints(
     { name: `getModelIndexes-${modelId}` },
   );
 
-  indexes.forEach(index => {
+  indexes.forEach((index) => {
     fetchMock.delete(`path:/api/model-index/${index.id}`, 200, {
       name: `deleteModelIndex`,
     });
@@ -25,7 +25,7 @@ export function setupModelIndexEndpoints(
 
   fetchMock.post(
     `path:/api/model-index`,
-    async url => {
+    async (url) => {
       const lastCall = fetchMock.lastCall(url);
       return createMockModelIndex(await lastCall?.request?.json());
     },

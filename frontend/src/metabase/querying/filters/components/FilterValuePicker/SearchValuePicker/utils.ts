@@ -23,7 +23,7 @@ export function getFilteredOptions(
   selectedValues: string[],
 ) {
   return options.filter(
-    option =>
+    (option) =>
       option.value === searchValue || !selectedValues.includes(option.value),
   );
 }

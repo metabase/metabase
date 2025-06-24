@@ -8,6 +8,7 @@
    [hickory.select :as hik.s]
    [metabase.channel.render.body :as body]
    [metabase.channel.render.core :as channel.render]
+   [metabase.config :as config]
    [metabase.formatter :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.public-settings :as public-settings]
@@ -66,15 +67,16 @@
   (formatter/map->NumericWrapper {:num-str   (str num-str)
                                   :num-value num-value}))
 
+(defn- textwrap [text-str]
+  (formatter/->TextWrapper text-str text-str))
+
 (def ^:private default-header-result
-  [{:row       [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name" "Description Column"]
-    :bar-width nil}
+  [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Last Login" "Name" "Description Column"]}
    #{5}])
 
 (defn- prep-for-html-rendering'
-  [cols rows bar-column min-value max-value]
-  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows}
-                                                {:bar-column bar-column :min-value min-value :max-value max-value})]
+  [cols rows]
+  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows})]
     [(first results)
      (col-counts results)]))
 
@@ -99,25 +101,25 @@
 ;; Testing the format of headers
 (deftest header-result
   (is (= default-header-result
-         (prep-for-html-rendering' test-columns example-test-data nil nil nil))))
+         (prep-for-html-rendering' test-columns example-test-data))))
 
 (deftest header-result-2
   (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") example-test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-details data-with-details nil nil nil)))))
+           (prep-for-html-rendering' cols-with-details data-with-details)))))
 
 (deftest header-result-3
   (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") example-test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil nil)))))
+           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive)))))
 
 (deftest header-result-4
   (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") example-test-data)]
     (is (= default-header-result
-           (prep-for-html-rendering' columns-with-retired data-with-retired nil nil nil)))))
+           (prep-for-html-rendering' columns-with-retired data-with-retired)))))
 
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
@@ -137,49 +139,31 @@
                     :visibility_type :normal}]]
 
       (testing "card contains custom column names"
-        (is (= {:row       ["Custom Last Login" "Custom Name"]
-                :bar-width nil}
+        (is (= {:row       ["Custom Last Login" "Custom Name"]}
                (first (#'body/prep-for-html-rendering pacific-tz
                                                       card
                                                       {:cols cols :rows []})))))
 
       (testing "card does not contain custom column names"
-        (is (= {:row       ["Last Login" "Name"]
-                :bar-width nil}
+        (is (= {:row       ["Last Login" "Name"]}
                (first (#'body/prep-for-html-rendering pacific-tz
                                                       {}
                                                       {:cols cols :rows []}))))))))
 
-;; When including a bar column, bar-width is 99%
-(deftest bar-width
-  (is (= (assoc-in default-header-result [0 :bar-width] 99)
-         (prep-for-html-rendering' test-columns example-test-data second 0 40.0))))
-
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (deftest narrow-the-columns
-  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]
-           :bar-width 99}
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude")]}
           #{2}]
-         (prep-for-html-rendering' (subvec test-columns 0 2) example-test-data second 0 40.0))))
+         (prep-for-html-rendering' (subvec test-columns 0 2) example-test-data))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
 (deftest format-result-rows
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width nil, :row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:row [(number "4" 4)  "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data})))))
-
-;; Testing the bar-column, which is the % of this row relative to the max of that column
-(deftest bar-column
-  (is (= [{:bar-width (float 85.249), :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width (float 85.1015), :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width (float 85.1185), :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
-                                               {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -211,16 +195,15 @@
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
 (deftest remapped-col
-  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name" "Description Column"]
-           :bar-width nil}
+  (is (= [{:row [(number "ID" "ID") (number "Latitude" "Latitude") "Rating Desc" "Last Login" "Name" "Description Column"]}
           #{6}]
-         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil nil))))
+         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping))))
 
 ;; Result rows should include only the remapped column value, not the original
 (deftest include-only-remapped-column-name
-  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]
-          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]
-          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]]
+  (is (= [[(number "1" 1) "34.09960000° N" "Bad" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]
+          [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]
+          [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
                                                          {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
@@ -242,11 +225,11 @@
                                 :coercion_strategy :Coercion/ISO8601->DateTime}))
 
 (deftest cols-with-semantic-types
-  (is (= [{:bar-width nil, :row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" "Stout Burgers & Beers" "Desc 1"]}
-          {:bar-width nil, :row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" "The Apple Pan" "Desc 2"]}
-          {:bar-width nil, :row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" "The Gorbals" "Desc 3"]}
-          {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade" "Desc 4"]}
-          {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow" "Desc 5"]}]
+  (is (= [{:row [(number "1" 1) "34.09960000° N" "April 1, 2014, 8:30 AM" (textwrap "Stout Burgers & Beers") (textwrap "Desc 1")]}
+          {:row [(number "2" 2) "34.04060000° N" "December 5, 2014, 3:15 PM" (textwrap "The Apple Pan") (textwrap "Desc 2")]}
+          {:row [(number "3" 3) "34.04740000° N" "August 1, 2014, 12:45 PM" (textwrap "The Gorbals") (textwrap "Desc 3")]}
+          {:row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" (textwrap "The Tipsy Tardigrade") (textwrap "Desc 4")]}
+          {:row [(number "5" 5) "" "October 12, 2022, 5:55 AM" (textwrap "The Bungalow") (textwrap "Desc 5")]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
                                                {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
@@ -615,7 +598,7 @@
                                                                                          [:avg $subtotal]]})
                                                          :creator_id    (mt/user->id :crowberto)}]
           (let [data                   (qp/process-query dataset-query)
-                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card) nil)]
+                combined-cards-results [(notification.execute/execute-card (:creator_id card) (:id card))]
                 cards-with-data        (map
                                         (comp
                                          #'body/add-dashcard-timeline-events
@@ -1031,3 +1014,23 @@
                               first)]
               (testing "Renders with correct day of week first"
                 (is (= "2017/1" label))))))))))
+
+(deftest render-correct-whitelabel-colors
+  (when config/ee-available?
+    (testing "The static-viz respects custom whitelabel colors"
+      (mt/with-premium-features #{:whitelabel}
+        (mt/with-temporary-setting-values [public-settings/application-colors {:accent0 "#0005FF"}]
+          (mt/dataset test-data
+            (let [q    (mt/mbql-query products
+                         {:aggregation [[:count]]
+                          :breakout    [!month.created_at]})
+                  card {:name                   "bar-test"
+                        :display                :bar
+                        :dataset_query          q
+                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
+                                                 :graph.metrics ["count"]}}]
+              (mt/with-temp [:model/Card {card-id :id} card]
+                (let [doc    (render.tu/render-card-as-hickory! card-id)
+                      svg    (html doc)]
+                  (testing "Renders with custom whitelabel color"
+                    (is (str/includes? svg "#0005FF"))))))))))))

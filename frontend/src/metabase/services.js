@@ -107,7 +107,7 @@ export async function runQuestionQuery(
     ];
   }
 
-  const getDatasetQueryResult = datasetQuery => {
+  const getDatasetQueryResult = (datasetQuery) => {
     const datasetQueryWithParameters = { ...datasetQuery, parameters };
     return maybeUsePivotEndpoint(
       MetabaseApi.dataset,
@@ -132,7 +132,7 @@ export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
     cards.filter(
-      card =>
+      (card) =>
         !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
     ),
   ),
@@ -279,9 +279,6 @@ export const MetabaseApi = {
     "/api/database/:dbId/card_autocomplete_suggestions",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
-  db_dismiss_sync_spinner: POST("/api/database/:dbId/dismiss_spinner"),
-  db_persist: POST("/api/persist/database/:dbId/persist"),
-  db_unpersist: POST("/api/persist/database/:dbId/unpersist"),
   db_usage_info: GET("/api/database/:dbId/usage_info"),
   table_list: GET("/api/table"),
   table_get: GET("/api/table/:tableId"),
@@ -412,7 +409,6 @@ export const PersistedModelsApi = {
 
 export const SetupApi = {
   create: POST("/api/setup"),
-  admin_checklist: GET("/api/setup/admin_checklist"),
   user_defaults: GET("/api/setup/user_defaults"),
 };
 

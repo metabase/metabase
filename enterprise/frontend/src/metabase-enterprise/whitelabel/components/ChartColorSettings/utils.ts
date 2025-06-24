@@ -2,7 +2,11 @@ import Color from "color";
 import _ from "underscore";
 
 export const getChartColorGroups = (): string[][] => {
-  return _.times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
+  return _.times(8, (i) => [
+    `accent${i}`,
+    `accent${i}-light`,
+    `accent${i}-dark`,
+  ]);
 };
 
 export const getDefaultChartColors = (
@@ -16,7 +20,7 @@ export const hasCustomChartColors = (
   values: Record<string, string>,
   groups: string[][],
 ) => {
-  return _.flatten(groups).some(name => values[name] != null);
+  return _.flatten(groups).some((name) => values[name] != null);
 };
 
 export const getAutoChartColors = (
@@ -26,7 +30,7 @@ export const getAutoChartColors = (
 ) => {
   const oldColors = groups
     .map(([name]) => values[name])
-    .map(value => (value ? Color(value) : undefined));
+    .map((value) => (value ? Color(value) : undefined));
 
   const fallbackColor = Color(palette["brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
@@ -42,7 +46,7 @@ const getAutoColors = (
   oldColors: (Color | undefined)[],
   fallbackColor: Color,
 ) => {
-  const oldColor = oldColors.find(color => color != null);
+  const oldColor = oldColors.find((color) => color != null);
 
   const autoColors: Color[] = [];
   oldColors.forEach((_color, index) => {
@@ -56,10 +60,10 @@ const getAutoColors = (
   });
 
   const availableColors = autoColors.filter(
-    newColor => !isSimilarToColors(newColor, oldColors),
+    (newColor) => !isSimilarToColors(newColor, oldColors),
   );
 
-  return oldColors.map(color => (color ? color : availableColors.shift()));
+  return oldColors.map((color) => (color ? color : availableColors.shift()));
 };
 
 const getNextColor = (color: Color) => {
@@ -76,6 +80,6 @@ const isSimilarColor = (newColor: Color, oldColor: Color) => {
 
 const isSimilarToColors = (newColor: Color, colors: (Color | undefined)[]) => {
   return colors.some(
-    oldColor => oldColor && isSimilarColor(newColor, oldColor),
+    (oldColor) => oldColor && isSimilarColor(newColor, oldColor),
   );
 };

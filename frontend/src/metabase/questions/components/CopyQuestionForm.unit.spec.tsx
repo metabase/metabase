@@ -29,7 +29,7 @@ type SetupOpts = {
 };
 
 function setup({ initialValues = {}, model = "question" }: SetupOpts = {}) {
-  const onSubmit = jest.fn(question => Promise.resolve(question));
+  const onSubmit = jest.fn((question) => Promise.resolve(question));
   const onSaved = jest.fn();
   const onCancel = jest.fn();
 

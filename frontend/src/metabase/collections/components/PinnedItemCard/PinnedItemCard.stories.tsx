@@ -22,7 +22,7 @@ const collection = {
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 
-const Template: StoryFn<PinnedItemCardProps> = args => {
+const Template: StoryFn<PinnedItemCardProps> = (args) => {
   return <PinnedItemCard {...args} />;
 };
 

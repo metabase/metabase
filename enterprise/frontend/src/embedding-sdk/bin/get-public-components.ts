@@ -21,7 +21,7 @@ export function getPublicComponents() {
 
   const componentForNextJsCompatList: ComponentDefinition[] = [];
 
-  sdkPublicIndexSourceFile.forEachDescendant(node => {
+  sdkPublicIndexSourceFile.forEachDescendant((node) => {
     switch (node.getKind()) {
       case SyntaxKind.ExportSpecifier: {
         if (!isType(node as ExportSpecifier) && isReactComponent(node)) {
@@ -49,7 +49,7 @@ function findSubComponents(node: ExportSpecifier) {
   ).findReferencesAsNodes();
 
   return sdkComponentReferences
-    .map(reference => {
+    .map((reference) => {
       if (
         // Find all `InteractiveQuestion.Xxx` references.
         reference.getParent()?.getKind() ===

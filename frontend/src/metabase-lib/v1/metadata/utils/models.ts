@@ -95,7 +95,7 @@ export function checkCanBeModel(question: Question) {
     return true;
   }
 
-  return (question.legacyQuery() as NativeQuery)
+  return (question.legacyNativeQuery() as NativeQuery)
     .templateTags()
     .every(isSupportedTemplateTagForModel);
 }
@@ -135,7 +135,7 @@ export function checkCanRefreshModelCache(
 
 export function getModelCacheSchemaName(databaseId: number, siteUUID: string) {
   const uuidParts = siteUUID.split("-");
-  const firstLetters = uuidParts.map(part => part.charAt(0)).join("");
+  const firstLetters = uuidParts.map((part) => part.charAt(0)).join("");
   return `metabase_cache_${firstLetters}_${databaseId}`;
 }
 
@@ -154,6 +154,6 @@ export function getSortedModelFields(
   }
 
   return findColumnIndexesForColumnSettings(columns, columnSettings)
-    .filter(columnIndex => columnIndex >= 0)
-    .map(columnIndex => columns[columnIndex]);
+    .filter((columnIndex) => columnIndex >= 0)
+    .map((columnIndex) => columns[columnIndex]);
 }

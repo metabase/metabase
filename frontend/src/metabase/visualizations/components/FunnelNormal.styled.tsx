@@ -3,7 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { isDesktopSafari } from "metabase/lib/browser";
+import { isWebkit } from "metabase/lib/browser";
 
 interface SharedProps {
   isNarrow: boolean;
@@ -22,7 +22,7 @@ export const FunnelStep = styled.div<FunnelStepProps>`
   display: flex;
   flex-direction: column;
 
-  ${props =>
+  ${(props) =>
     props.isFirst
       ? css`
           min-width: unset;
@@ -36,7 +36,7 @@ export const Head = styled.div<SharedProps>`
   padding: 0.5em;
   min-width: 0;
 
-  ${props =>
+  ${(props) =>
     props.isNarrow
       ? css`
           font-size: 0.85em;
@@ -47,10 +47,10 @@ export const Head = styled.div<SharedProps>`
 export const Info = styled.div<SharedProps>`
   text-align: right;
   padding: 0.5em 0.5em 0 0.5em;
-  font-size: ${props => (props.isNarrow ? "0.85em" : "1.15em")};
+  font-size: ${(props) => (props.isNarrow ? "0.85em" : "1.15em")};
 
   ${Subtitle} {
-    font-size: ${props => (props.isNarrow ? "0.875em" : "0.6875em")};
+    font-size: ${(props) => (props.isNarrow ? "0.875em" : "0.6875em")};
     margin-top: 1em;
   }
 `;
@@ -67,7 +67,7 @@ export const FunnelStart = styled.div<SharedProps>`
   ${Title} {
     font-weight: bold;
     color: var(--mb-color-text-primary);
-    ${props =>
+    ${(props) =>
       props.isNarrow
         ? css`
             font-size: 0.75em;
@@ -78,7 +78,7 @@ export const FunnelStart = styled.div<SharedProps>`
   ${Subtitle} {
     font-size: 0.6875em;
 
-    ${props =>
+    ${(props) =>
       props.isNarrow
         ? css`
             font-size: 0.5em;
@@ -94,10 +94,10 @@ interface FunnelNormalRootProps {
 
 export const FunnelNormalRoot = styled.div<FunnelNormalRootProps>`
   display: flex;
-  padding: ${props => (props.isSmall ? "0.5rem" : "1rem")};
+  padding: ${(props) => (props.isSmall ? "0.5rem" : "1rem")};
   color: var(--mb-color-text-secondary);
 
-  ${isDesktopSafari()
+  ${isWebkit()
     ? css`
         will-change: transform;
       `

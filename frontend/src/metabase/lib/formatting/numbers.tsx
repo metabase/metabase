@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import Humanize from "humanize-plus";
 import type { ReactNode } from "react";
 
@@ -96,8 +95,6 @@ export function formatNumber(
     return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
-  } else if (options.number_style === "duration") {
-    return formatDuration(number, options);
   } else {
     try {
       let nf;
@@ -251,6 +248,14 @@ function _formatNumberCompact(
   if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     formatted = PRECISION_NUMBER_FORMATTER.format(value);
+
+    // round the number if decimals is set and the result is more compact
+    if (options.decimals != null && typeof value === "number") {
+      const rounded = String(roundFloat(value, +options.decimals));
+      if (String(rounded).length < String(formatted).length) {
+        formatted = String(rounded);
+      }
+    }
   } else if (typeof value === "number") {
     // 1 => 1
     // 1000 => 1K
@@ -291,9 +296,8 @@ function formatNumberScientific(
 ): string | ReactNode {
   if (typeof value === "bigint") {
     value = Number(value);
-  } else if (options.maximumFractionDigits) {
-    value = roundFloat(value, options.maximumFractionDigits);
   }
+
   const exp = replaceNumberSeparators(
     value.toExponential(options.minimumFractionDigits),
     options?.number_separators,
@@ -308,32 +312,6 @@ function formatNumberScientific(
   } else {
     return exp;
   }
-}
-
-function formatDuration(
-  value: number | bigint,
-  _options: FormatNumberOptions,
-): string {
-  const duration = dayjs.duration(Number(value));
-  let str = "";
-
-  if (duration.days() > 0) {
-    str += `${duration.days()}d `;
-  }
-
-  if (duration.hours() > 0) {
-    str += `${duration.hours()}h `;
-  }
-
-  if (duration.minutes() > 0) {
-    str += `${duration.minutes()}m `;
-  }
-
-  if (duration.seconds() > 0) {
-    str += `${duration.seconds()}s `;
-  }
-
-  return str.trim();
 }
 
 /**

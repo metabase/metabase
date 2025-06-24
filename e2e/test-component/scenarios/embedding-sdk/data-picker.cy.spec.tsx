@@ -48,9 +48,9 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
   describe("multi-stage picker", () => {
     beforeEach(() => {
-      cy.intercept("GET", "/api/search*", req => {
+      cy.intercept("GET", "/api/search*", (req) => {
         if (req.query.limit === "0") {
-          req.continue(res => {
+          req.continue((res) => {
             // The data picker will fall back to multi-stage picker if there are more than or equal 100 tables and models
             res.body.total = 100;
           });

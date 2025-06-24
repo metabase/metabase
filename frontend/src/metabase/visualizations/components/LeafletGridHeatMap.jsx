@@ -12,7 +12,7 @@ import { computeNumericDataInverval } from "../lib/numeric";
 
 import LeafletMap from "./LeafletMap";
 
-const isValidCoordinatesColumn = column =>
+const isValidCoordinatesColumn = (column) =>
   column.binning_info || (column.source === "native" && isNumeric(column));
 
 const computeValueRange = (value, values) => [
@@ -67,8 +67,8 @@ export default class LeafletGridHeatMap extends LeafletMap {
       const gridSquares = gridLayer.getLayers();
       const totalSquares = Math.max(points.length, gridSquares.length);
 
-      const latitudeValues = points.map(row => row[latitudeIndex]);
-      const longitureValues = points.map(row => row[longitudeIndex]);
+      const latitudeValues = points.map((row) => row[latitudeIndex]);
+      const longitureValues = points.map((row) => row[longitudeIndex]);
 
       for (let i = 0; i < totalSquares; i++) {
         if (i >= points.length) {
@@ -119,7 +119,7 @@ export default class LeafletGridHeatMap extends LeafletMap {
     return !isNative;
   }
 
-  _createGridSquare = index => {
+  _createGridSquare = (index) => {
     const bounds = [
       [54.559322, -5.767822],
       [56.1210604, -3.02124],

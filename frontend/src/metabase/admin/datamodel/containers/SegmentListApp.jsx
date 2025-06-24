@@ -4,7 +4,7 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
+import { SegmentItem } from "metabase/admin/datamodel/components/SegmentItem";
 import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
@@ -29,12 +29,13 @@ class SegmentListAppInner extends Component {
           <thead className={CS.textBold}>
             <tr>
               <th style={{ minWidth: "320px" }}>{t`Name`}</th>
+              <th>{t`Table`}</th>
               <th className={CS.full}>{t`Definition`}</th>
               <th>{t`Actions`}</th>
             </tr>
           </thead>
           <tbody>
-            {segments.map(segment => (
+            {segments.map((segment) => (
               <SegmentItem
                 key={segment.id}
                 onRetire={() => setArchived(segment, true)}

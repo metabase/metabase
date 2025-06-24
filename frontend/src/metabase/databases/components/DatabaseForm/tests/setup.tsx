@@ -6,7 +6,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseForm } from "../DatabaseForm";
 
-const TEST_ENGINES: Record<string, Engine> = {
+export const TEST_ENGINES: Record<string, Engine> = {
   h2: {
     source: {
       type: "official",
@@ -77,6 +77,11 @@ const TEST_ENGINES: Record<string, Engine> = {
           "advanced-options": true,
         },
       },
+      {
+        name: "is-destination-database",
+        type: "hidden",
+        default: false,
+      },
     ],
     "driver-name": "H2",
     "superseded-by": null,
@@ -86,14 +91,16 @@ const TEST_ENGINES: Record<string, Engine> = {
 export interface SetupOpts {
   settings?: Settings;
   hasEnterprisePlugins?: boolean;
+  engines?: Record<string, Engine>;
 }
 
-export const setup = ({ settings, hasEnterprisePlugins }: SetupOpts = {}) => {
+export const setup = ({
+  settings,
+  hasEnterprisePlugins,
+  engines = TEST_ENGINES,
+}: SetupOpts = {}) => {
   const state = createMockState({
-    settings: mockSettings({
-      ...settings,
-      engines: TEST_ENGINES,
-    }),
+    settings: mockSettings({ ...settings, engines }),
   });
 
   if (hasEnterprisePlugins) {
@@ -101,9 +108,12 @@ export const setup = ({ settings, hasEnterprisePlugins }: SetupOpts = {}) => {
   }
 
   const onSubmit = jest.fn();
-  renderWithProviders(<DatabaseForm isAdvanced onSubmit={onSubmit} />, {
-    storeInitialState: state,
-  });
+  renderWithProviders(
+    <DatabaseForm config={{ isAdvanced: true }} onSubmit={onSubmit} />,
+    {
+      storeInitialState: state,
+    },
+  );
 
   return { onSubmit };
 };

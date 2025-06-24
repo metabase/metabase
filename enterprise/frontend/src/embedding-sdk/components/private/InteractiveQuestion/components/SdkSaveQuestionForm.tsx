@@ -1,3 +1,4 @@
+import { useTranslatedCollectionId } from "embedding-sdk/hooks/private/use-translated-collection-id";
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
@@ -7,15 +8,39 @@ import { Stack, Title } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
-export type SdkSaveQuestionFormProps = {
+/**
+ * @interface
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionSaveQuestionFormProps = {
+  /**
+   * Callback function executed when save is cancelled
+   */
   onCancel?: () => void;
 };
 
-export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
-  const { question, originalQuestion, onSave, onCreate, saveToCollection } =
+/**
+ * Form for saving a question, including title and description. When saved:
+ *
+ * - For existing questions: Calls {@link InteractiveQuestionProps.onSave}
+ * - Both callbacks receive the updated question object
+ * - Form can be cancelled via the {@link InteractiveQuestionSaveQuestionFormProps.onCancel}
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
+export const SdkSaveQuestionForm = ({
+  onCancel,
+}: InteractiveQuestionSaveQuestionFormProps) => {
+  const { question, originalQuestion, onSave, onCreate, targetCollection } =
     useInteractiveQuestionContext();
 
-  if (!question) {
+  const { id, isLoading } = useTranslatedCollectionId({
+    id: targetCollection,
+  });
+
+  if (!question || isLoading) {
     return null;
   }
 
@@ -26,7 +51,7 @@ export const SdkSaveQuestionForm = ({ onCancel }: SdkSaveQuestionFormProps) => {
       onCreate={onCreate}
       onSave={onSave}
       multiStep={false}
-      saveToCollection={saveToCollection}
+      targetCollection={id}
     >
       <Stack p="md">
         <Title>

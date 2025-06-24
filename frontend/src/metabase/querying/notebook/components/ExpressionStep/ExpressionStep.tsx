@@ -108,7 +108,7 @@ const getUniqueClauseName = (
     : query;
   const expressions = Lib.expressions(queryWithoutCurrentClause, stageIndex);
   const expressionsObject = Object.fromEntries(
-    expressions.map(expression => [
+    expressions.map((expression) => [
       Lib.displayInfo(query, stageIndex, expression).displayName,
     ]),
   );

@@ -9,7 +9,7 @@ export default {
   component: ButtonGroup,
 };
 
-const Template: StoryFn<typeof ButtonGroup> = args => {
+const Template: StoryFn<typeof ButtonGroup> = (args) => {
   return (
     <ButtonGroup {...args}>
       <Button>One</Button>

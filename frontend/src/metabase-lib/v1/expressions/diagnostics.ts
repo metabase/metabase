@@ -1,273 +1,435 @@
-import { c, t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import * as Lib from "metabase-lib";
-import type { Node } from "metabase-lib/v1/expressions/pratt";
-import {
-  ResolverError,
-  compile,
-  lexify,
-  parse,
-} from "metabase-lib/v1/expressions/pratt";
-import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Expression } from "metabase-types/api";
 
-import { MBQL_CLAUSES, getMBQLName } from "./config";
-import { parseDimension, parseMetric, parseSegment } from "./identifier";
+import { type CompileResult, compileExpression } from "./compiler";
 import {
-  adjustCaseOrIf,
-  adjustMultiArgOptions,
-  adjustOffset,
-  adjustOptions,
-  useShorthands,
-} from "./recursive-parser";
-import { resolve } from "./resolver";
-import { OPERATOR, TOKEN, tokenize } from "./tokenizer";
-import type { ErrorWithMessage, Token } from "./types";
+  COMPARISON_OPERATORS,
+  FIELD_MARKERS,
+  MBQL_CLAUSES,
+  getMBQLName,
+} from "./config";
+import { DiagnosticError, type ExpressionError, renderError } from "./errors";
+import {
+  isCallExpression,
+  isCaseOrIfOperator,
+  isExpression,
+  isFunction,
+  isOperator,
+  isOptionsObject,
+} from "./matchers";
+import {
+  CALL,
+  FIELD,
+  GROUP,
+  GROUP_CLOSE,
+  IDENTIFIER,
+  OPERATORS,
+  type Token,
+  lexify,
+} from "./pratt";
+import type { OPERATOR } from "./tokenizer";
+import type { StartRule } from "./types";
+import { getDatabase, getExpressionMode, getToken } from "./utils";
+import { visit } from "./visitor";
 
-// e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
-export function countMatchingParentheses(tokens: Token[]) {
-  const isOpen = (t: Token) =>
-    t.type === TOKEN.Operator && t.op === OPERATOR.OpenParenthesis;
-  const isClose = (t: Token) =>
-    t.type === TOKEN.Operator && t.op === OPERATOR.CloseParenthesis;
-  const count = (c: number, token: Token) =>
-    isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
-  return tokens.reduce(count, 0);
+export function diagnose(options: {
+  source: string;
+  startRule: StartRule;
+  query: Lib.Query;
+  stageIndex: number;
+  expressionIndex?: number;
+  metadata?: Metadata;
+}): ExpressionError | null {
+  const result = diagnoseAndCompile(options);
+  if (result.error) {
+    return result.error;
+  }
+  return null;
 }
 
-export function diagnose({
+export function diagnoseAndCompile({
   source,
   startRule,
   query,
   stageIndex,
   metadata,
-  name = null,
   expressionIndex,
 }: {
   source: string;
-  startRule: "expression" | "aggregation" | "boolean";
+  startRule: StartRule;
   query: Lib.Query;
   stageIndex: number;
-  name?: string | null;
   metadata?: Metadata;
-  expressionIndex?: number | undefined;
-}): ErrorWithMessage | null {
-  if (!source || source.length === 0) {
-    return null;
-  }
+  expressionIndex?: number;
+}): CompileResult {
+  try {
+    if (!source || source.length === 0) {
+      throw new DiagnosticError(t`Expression is empty`);
+    }
 
-  const { tokens, errors } = tokenize(source);
-  if (errors && errors.length > 0) {
-    return errors[0];
-  }
+    const { tokens, errors } = lexify(source);
+    if (errors && errors.length > 0) {
+      throw errors[0];
+    }
 
+    const checks = [
+      checkOpenParenthesisAfterFunction,
+      checkMatchingParentheses,
+      checkMissingCommasInArgumentList,
+    ];
+
+    for (const check of checks) {
+      const error = check(tokens, source);
+      if (error) {
+        throw error;
+      }
+    }
+
+    // make a simple check on expression syntax correctness
+    const result = compileExpression({
+      source,
+      startRule,
+      query,
+      stageIndex,
+    });
+
+    if (!isExpression(result.expression) || result.expressionClause === null) {
+      const error = result.error ?? new DiagnosticError(t`Invalid expression`);
+      throw error;
+    }
+
+    diagnoseExpression({
+      query,
+      stageIndex,
+      startRule,
+      expression: result.expression,
+      expressionIndex,
+      metadata,
+    });
+
+    return result;
+  } catch (error) {
+    return {
+      expression: null,
+      expressionClause: null,
+      error: renderError(error),
+    };
+  }
+}
+
+function checkOpenParenthesisAfterFunction(
+  tokens: Token[],
+  source: string,
+): ExpressionError | null {
   for (let i = 0; i < tokens.length - 1; ++i) {
     const token = tokens[i];
-    if (token.type === TOKEN.Identifier && source[token.start] !== "[") {
+    if (token.type === IDENTIFIER && source[token.start] !== "[") {
       const functionName = source.slice(token.start, token.end);
       const fn = getMBQLName(functionName);
       const clause = fn ? MBQL_CLAUSES[fn] : null;
       if (clause && clause.args.length > 0) {
         const next = tokens[i + 1];
-        if (
-          next.type !== TOKEN.Operator ||
-          next.op !== OPERATOR.OpenParenthesis
-        ) {
-          return {
-            message: t`Expecting an opening parenthesis after function ${functionName}`,
-          };
+        if (next.type !== GROUP) {
+          return new DiagnosticError(
+            t`Expecting an opening parenthesis after function ${functionName}`,
+            {
+              pos: token.start,
+              len: token.end - token.start,
+            },
+          );
         }
       }
     }
-  }
-
-  const mismatchedParentheses = countMatchingParentheses(tokens);
-  const message =
-    mismatchedParentheses === 1
-      ? t`Expecting a closing parenthesis`
-      : mismatchedParentheses > 1
-        ? t`Expecting ${mismatchedParentheses} closing parentheses`
-        : mismatchedParentheses === -1
-          ? t`Expecting an opening parenthesis`
-          : mismatchedParentheses < -1
-            ? t`Expecting ${-mismatchedParentheses} opening parentheses`
-            : null;
-
-  if (message) {
-    return { message };
-  }
-
-  const database = getDatabase(query, metadata);
-
-  // make a simple check on expression syntax correctness
-  let mbqlOrError: Expression | ErrorWithMessage;
-  try {
-    mbqlOrError = prattCompiler({
-      source,
-      startRule,
-      name,
-      query,
-      stageIndex,
-      expressionIndex,
-      database,
-    });
-
-    if (isErrorWithMessage(mbqlOrError)) {
-      return mbqlOrError;
-    }
-  } catch (err) {
-    if (isErrorWithMessage(err)) {
-      return err;
-    }
-
-    return { message: t`Invalid expression` };
-  }
-
-  // now make a proper check
-  const startRuleToExpressionModeMapping: Record<string, Lib.ExpressionMode> = {
-    boolean: "filter",
-  };
-
-  const expressionMode: Lib.ExpressionMode =
-    startRuleToExpressionModeMapping[startRule] ?? startRule;
-
-  try {
-    const possibleError = Lib.diagnoseExpression(
-      query,
-      stageIndex,
-      expressionMode,
-      mbqlOrError,
-      expressionIndex,
-    );
-
-    if (possibleError) {
-      console.warn("diagnostic error", possibleError.message);
-
-      // diagnoseExpression returns some messages which are user-friendly and some which are not.
-      // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
-      return possibleError.friendly
-        ? possibleError
-        : { message: t`Invalid expression` };
-    }
-  } catch (error) {
-    console.warn("diagnostic error", error);
-    return { message: t`Invalid expression` };
   }
 
   return null;
 }
 
-function prattCompiler({
-  source,
-  startRule,
-  name,
+function checkMatchingParentheses(tokens: Token[]): ExpressionError | null {
+  const mismatchedParentheses = countMatchingParentheses(tokens);
+  if (mismatchedParentheses === 1) {
+    return new DiagnosticError(t`Expecting a closing parenthesis`);
+  } else if (mismatchedParentheses > 1) {
+    return new DiagnosticError(
+      t`Expecting ${mismatchedParentheses} closing parentheses`,
+    );
+  } else if (mismatchedParentheses === -1) {
+    return new DiagnosticError(t`Expecting an opening parenthesis`);
+  } else if (mismatchedParentheses < -1) {
+    return new DiagnosticError(
+      t`Expecting ${-mismatchedParentheses} opening parentheses`,
+    );
+  }
+  return null;
+}
+
+// e.g. "COUNTIF(([Total]-[Tax] <5" returns 2 (missing parentheses)
+export function countMatchingParentheses(tokens: Token[]) {
+  const isOpen = (t: Token) => t.type === GROUP;
+  const isClose = (t: Token) => t.type === GROUP_CLOSE;
+  const count = (c: number, token: Token) =>
+    isOpen(token) ? c + 1 : isClose(token) ? c - 1 : c;
+  return tokens.reduce(count, 0);
+}
+
+export function diagnoseExpression({
   query,
   stageIndex,
+  startRule,
+  expression,
   expressionIndex,
-  database,
+  metadata,
 }: {
-  source: string;
-  startRule: string;
-  name: string | null;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number | undefined;
-  database?: Database | null;
-}): ErrorWithMessage | Expression {
-  const tokens = lexify(source);
-  const options = {
-    source,
-    startRule,
-    name,
+  startRule: string;
+  expression: Expression;
+  expressionIndex?: number;
+  metadata?: Metadata;
+}) {
+  const checkers = [
+    checkKnownFunctions,
+    checkFunctionSupport,
+    checkArgValidator,
+    checkArgCount,
+    checkComparisonOperatorArgs,
+    checkCaseOrIfArgCount,
+  ];
+  for (const checker of checkers) {
+    checker({ expression, query, metadata });
+  }
+
+  const error = Lib.diagnoseExpression(
     query,
     stageIndex,
+    getExpressionMode(startRule),
+    expression,
     expressionIndex,
-  };
-
-  // PARSE
-  const { root, errors } = parse(tokens, {
-    throwOnError: false,
-    ...options,
-  });
-
-  if (errors.length > 0) {
-    return errors[0];
-  }
-
-  function resolveMBQLField(kind: string, name: string, node: Node) {
-    // @uladzimirdev double check why is this needed
-    if (!query) {
-      return [kind, name];
-    }
-    if (kind === "metric") {
-      const metric = parseMetric(name, options);
-      if (!metric) {
-        const dimension = parseDimension(name, options);
-        const isNameKnown = Boolean(dimension);
-
-        if (isNameKnown) {
-          const error = c(
-            "{0} is an identifier of the field provided by user in a custom expression",
-          )
-            .t`No aggregation found in: ${name}. Use functions like Sum() or custom Metrics`;
-
-          throw new ResolverError(error, node);
-        }
-
-        throw new ResolverError(t`Unknown Metric: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, metric);
-    } else if (kind === "segment") {
-      const segment = parseSegment(name, options);
-      if (!segment) {
-        throw new ResolverError(t`Unknown Segment: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, segment);
-    } else {
-      // fallback
-      const dimension = parseDimension(name, options);
-      if (!dimension) {
-        throw new ResolverError(t`Unknown Field: ${name}`, node);
-      }
-
-      return Lib.legacyRef(query, stageIndex, dimension);
-    }
-  }
-
-  // COMPILE
-  const mbql = compile(root, {
-    passes: [
-      adjustOptions,
-      useShorthands,
-      adjustOffset,
-      adjustCaseOrIf,
-      adjustMultiArgOptions,
-      expression =>
-        resolve({
-          expression,
-          type: startRule,
-          fn: resolveMBQLField,
-          database,
-        }),
-    ],
-    getMBQLName,
-  });
-
-  return mbql;
-}
-
-export function isErrorWithMessage(err: unknown): err is ErrorWithMessage {
-  return (
-    typeof err === "object" &&
-    err != null &&
-    typeof (err as any).message === "string"
   );
+
+  if (error) {
+    throw new DiagnosticError(error.message, {
+      friendly: Boolean(error.friendly),
+    });
+  }
 }
 
-function getDatabase(query: Lib.Query, metadata?: Metadata) {
-  const databaseId = Lib.databaseID(query);
-  return metadata?.database(databaseId);
+function checkMissingCommasInArgumentList(
+  tokens: Token[],
+  source: string,
+): ExpressionError | null {
+  const call = 1;
+  const group = 2;
+  const stack = [];
+
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
+    const prevToken = tokens[index - 1];
+    if (token?.type === GROUP) {
+      if (!prevToken) {
+        continue;
+      }
+      if (prevToken.type === CALL) {
+        stack.push(call);
+        continue;
+      } else {
+        stack.push(group);
+        continue;
+      }
+    }
+    if (token.type === GROUP_CLOSE) {
+      stack.pop();
+      continue;
+    }
+
+    const isCall = stack.at(-1) === call;
+    if (!isCall) {
+      continue;
+    }
+
+    const nextToken = tokens[index + 1];
+    if (token.type === IDENTIFIER || token.type === FIELD) {
+      if (nextToken && !OPERATORS.has(nextToken.type)) {
+        const text = source.slice(nextToken.start, nextToken.end);
+        return new DiagnosticError(
+          `Expecting operator but got ${text} instead`,
+          nextToken,
+        );
+      }
+    }
+  }
+
+  return null;
+}
+
+function checkKnownFunctions({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+
+    const name = node[0];
+    if (FIELD_MARKERS.has(name) || name === "value" || name === "expression") {
+      return;
+    }
+
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      throw new DiagnosticError(t`Unknown function ${name}`, getToken(node));
+    }
+  });
+}
+
+function checkFunctionSupport({
+  query,
+  expression,
+  metadata,
+}: {
+  expression: Expression;
+  query: Lib.Query;
+  metadata?: Metadata;
+}) {
+  if (!metadata) {
+    return;
+  }
+
+  const database = getDatabase(query, metadata);
+  if (!database) {
+    return;
+  }
+
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [name] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+    if (!database?.hasFeature(clause.requiresFeature)) {
+      throw new DiagnosticError(
+        t`Unsupported function ${name}`,
+        getToken(node),
+      );
+    }
+  });
+}
+
+function checkArgValidator({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [name, ...operands] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    if (clause.validator) {
+      const args = operands.filter((arg) => !isOptionsObject(arg));
+      const validationError = clause.validator(...args);
+      if (validationError) {
+        throw new DiagnosticError(validationError, getToken(node));
+      }
+    }
+  });
+}
+
+function checkArgCount({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isFunction(node)) {
+      return;
+    }
+
+    const [name, ...operands] = node;
+    const clause = MBQL_CLAUSES[name];
+    if (!clause) {
+      return;
+    }
+
+    const { displayName, args, multiple, hasOptions } = clause;
+
+    if (multiple) {
+      const argCount = operands.filter((arg) => !isOptionsObject(arg)).length;
+      const minArgCount = args.length;
+
+      if (argCount < minArgCount) {
+        throw new DiagnosticError(
+          ngettext(
+            msgid`Function ${displayName} expects at least ${minArgCount} argument`,
+            `Function ${displayName} expects at least ${minArgCount} arguments`,
+            minArgCount,
+          ),
+          getToken(node),
+        );
+      }
+    } else {
+      const expectedArgsLength = args.length;
+      const maxArgCount = hasOptions
+        ? expectedArgsLength + 1
+        : expectedArgsLength;
+      if (
+        operands.length < expectedArgsLength ||
+        operands.length > maxArgCount
+      ) {
+        throw new DiagnosticError(
+          ngettext(
+            msgid`Function ${displayName} expects ${expectedArgsLength} argument`,
+            `Function ${displayName} expects ${expectedArgsLength} arguments`,
+            expectedArgsLength,
+          ),
+          getToken(node),
+        );
+      }
+    }
+  });
+}
+
+function checkComparisonOperatorArgs({
+  expression,
+}: {
+  expression: Expression;
+}) {
+  visit(expression, (node) => {
+    if (!isOperator(node)) {
+      return;
+    }
+    const [name, ...operands] = node;
+    if (!COMPARISON_OPERATORS.has(name as OPERATOR)) {
+      return;
+    }
+    const [firstOperand] = operands;
+    if (typeof firstOperand === "number") {
+      throw new DiagnosticError(
+        t`Expecting field but found ${firstOperand}`,
+        getToken(node),
+      );
+    }
+  });
+}
+
+function checkCaseOrIfArgCount({ expression }: { expression: Expression }) {
+  visit(expression, (node) => {
+    if (!isCallExpression(node)) {
+      return;
+    }
+    const [op] = node;
+    if (!isCaseOrIfOperator(op)) {
+      return;
+    }
+
+    const pairs = node[1] as [Expression, Expression][];
+
+    if (pairs.length < 1) {
+      throw new DiagnosticError(
+        t`${op.toUpperCase()} expects 2 arguments or more`,
+        getToken(node),
+      );
+    }
+  });
 }

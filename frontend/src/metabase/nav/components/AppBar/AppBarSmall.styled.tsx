@@ -16,7 +16,7 @@ export const AppBarHeader = styled.div<AppBarHeaderProps>`
   height: ${APP_BAR_HEIGHT};
   padding: 0 1rem;
   border-bottom: 1px solid transparent;
-  border-color: ${props =>
+  border-color: ${(props) =>
     !props.isSubheaderVisible && "var(--mb-color-border)"};
 `;
 
@@ -29,7 +29,8 @@ export const AppBarSubheader = styled.div<AppBarSubheaderProps>`
   padding: 1rem 1rem 1rem 1.25rem;
   transition: border-bottom-color 200ms ease;
   border-bottom: 1px solid
-    ${props => (props.isNavBarOpen ? "var(--mb-color-border)" : "transparent")};
+    ${(props) =>
+      props.isNavBarOpen ? "var(--mb-color-border)" : "transparent"};
 `;
 
 export const AppBarMainContainer = styled.div`
@@ -57,9 +58,9 @@ export const AppBarLogoContainer = styled.div<AppBarLogoContainerProps>`
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: ${props => (props.isVisible ? 1 : 0)};
-  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
-  transition: ${props =>
+  opacity: ${(props) => (props.isVisible ? 1 : 0)};
+  visibility: ${(props) => (props.isVisible ? "visible" : "hidden")};
+  transition: ${(props) =>
     props.isVisible ? "opacity 0.3s linear 0.2s" : "none"};
 `;
 

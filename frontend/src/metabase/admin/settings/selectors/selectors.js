@@ -1,11 +1,9 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import { UpsellWhitelabel } from "metabase/admin/upsells";
-import { DashboardSelector } from "metabase/components/DashboardSelector";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import { newVersionAvailable } from "metabase/lib/utils";
 import {
@@ -14,14 +12,9 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
-import { refreshCurrentUser } from "metabase/redux/user";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
-import {
-  trackCustomHomepageDashboardEnabled,
-  trackTrackingPermissionChanged,
-} from "../analytics";
 import { CloudPanel } from "../components/CloudPanel";
 import { BccToggleWidget } from "../components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "../components/Email/SettingsEmailForm";
@@ -31,21 +24,18 @@ import {
   StaticEmbeddingSettings,
 } from "../components/EmbeddingSettings";
 import SettingsLicense from "../components/SettingsLicense";
+import { GeneralSettingsPage } from "../components/SettingsPages/GeneralSettingsPage";
 import { SettingsUpdatesForm } from "../components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "../components/UploadSettings";
 import CustomGeoJSONWidget from "../components/widgets/CustomGeoJSONWidget";
 import FormattingWidget from "../components/widgets/FormattingWidget";
-import HttpsOnlyWidget from "../components/widgets/HttpsOnlyWidget";
 import {
   PublicLinksActionListing,
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
 } from "../components/widgets/PublicLinksListing";
 import SettingCommaDelimitedInput from "../components/widgets/SettingCommaDelimitedInput";
-import SiteUrlWidget from "../components/widgets/SiteUrlWidget";
 import { NotificationSettings } from "../notifications/NotificationSettings";
-import { updateSetting } from "../settings";
-import SetupCheckList from "../setup/components/SetupCheckList";
 import SlackSettings from "../slack/containers/SlackSettings";
 
 import {
@@ -76,116 +66,11 @@ function updateSectionsWithPlugins(sections) {
 }
 
 export const ADMIN_SETTINGS_SECTIONS = {
-  setup: {
-    name: t`Setup`,
-    order: 10,
-    settings: [],
-    component: SetupCheckList,
-    adminOnly: true,
-  },
   general: {
-    name: t`General`,
     order: 20,
-    settings: [
-      {
-        key: "site-name",
-        display_name: t`Site Name`,
-        type: "string",
-      },
-      {
-        key: "site-url",
-        display_name: t`Site URL`,
-        type: "string",
-        widget: SiteUrlWidget,
-        description: (
-          <>
-            <strong>{t`Only change this if you know what you're doing!`}</strong>{" "}
-            {t`This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance.`}
-          </>
-        ),
-      },
-      {
-        key: "custom-homepage",
-        display_name: t`Custom Homepage`,
-        type: "boolean",
-        postUpdateActions: [refreshCurrentUser],
-        onChanged: (oldVal, newVal, _settings, handleChangeSetting) => {
-          if (!newVal && oldVal) {
-            handleChangeSetting("custom-homepage-dashboard", null);
-          }
-        },
-      },
-      {
-        key: "custom-homepage-dashboard",
-        description: null,
-        getHidden: ({ "custom-homepage": customHomepage }) => !customHomepage,
-        widget: DashboardSelector,
-        postUpdateActions: [
-          () =>
-            updateSetting({
-              key: "dismissed-custom-dashboard-toast",
-              value: true,
-            }),
-          refreshCurrentUser,
-        ],
-        getProps: setting => ({
-          value: setting.value,
-        }),
-        onChanged: (oldVal, newVal) => {
-          if (newVal && !oldVal) {
-            trackCustomHomepageDashboardEnabled("admin");
-          }
-        },
-      },
-      {
-        key: "redirect-all-requests-to-https",
-        display_name: t`Redirect to HTTPS`,
-        type: "boolean",
-        getHidden: ({ "site-url": url }) => !/^https:\/\//.test(url),
-        widget: HttpsOnlyWidget,
-      },
-      {
-        key: "admin-email",
-        display_name: t`Email Address for Help Requests`,
-        type: "string",
-      },
-
-      {
-        key: "anon-tracking-enabled",
-        display_name: t`Anonymous Tracking`,
-        type: "boolean",
-        onChanged: (_oldValue, newValue) => {
-          trackTrackingPermissionChanged(newValue);
-        },
-        onBeforeChanged: (_oldValue, newValue) => {
-          trackTrackingPermissionChanged(newValue);
-        },
-      },
-      {
-        key: "humanization-strategy",
-        display_name: t`Friendly Table and Field Names`,
-        type: "select",
-        options: [
-          {
-            value: "simple",
-            name: t`Replace underscores and dashes with spaces`,
-          },
-          { value: "none", name: t`Disabled` },
-        ],
-        defaultValue: "simple",
-      },
-      {
-        key: "enable-xrays",
-        display_name: t`Enable X-ray features`,
-        type: "boolean",
-      },
-      {
-        key: "allowed-iframe-hosts",
-        display_name: t`Allowed domains for iframes in dashboards`,
-        description: jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${(<ExternalLink key="docs" href={getDocsUrl("configuring-metabase/settings", "allowed-domains-for-iframes-in-dashboards")}>{t`Learn more`}</ExternalLink>)}`,
-        type: "text",
-      },
-    ],
+    name: t`General`,
+    component: GeneralSettingsPage,
+    settings: [],
   },
   updates: {
     name: t`Updates`,
@@ -313,7 +198,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     tabs:
       PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
         ? undefined
-        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
+        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map((tab) => ({
             ...tab,
             isActive: tab.key === "authentication",
           })),
@@ -483,7 +368,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   llm: {
     name: t`AI Features`,
-    getHidden: settings =>
+    getHidden: (settings) =>
       !PLUGIN_LLM_AUTODESCRIPTION.isEnabled() || settings["airgap-enabled"],
     order: 131,
     settings: [
@@ -508,7 +393,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   cloud: {
     name: t`Cloud`,
-    getHidden: settings =>
+    getHidden: (settings) =>
       settings["token-features"]?.hosting === true ||
       settings["airgap-enabled"],
     order: 132,
@@ -518,9 +403,9 @@ export const ADMIN_SETTINGS_SECTIONS = {
   },
   whitelabel: {
     name: t`Appearance`,
-    getHidden: settings => settings["token-features"]?.whitelabel === true,
+    getHidden: (settings) => settings["token-features"]?.whitelabel === true,
     order: 133,
-    component: props => (
+    component: (props) => (
       <UpsellWhitelabel {...props} source="settings-appearance" />
     ),
     settings: [],
@@ -536,7 +421,7 @@ export const getSettings = createSelector(
   getAdminSettingDefinitions,
   getAdminSettingWarnings,
   (settings, warnings) =>
-    settings.map(setting =>
+    settings.map((setting) =>
       warnings[setting.key]
         ? { ...setting, warning: warnings[setting.key] }
         : setting,
@@ -546,9 +431,9 @@ export const getSettings = createSelector(
 // getSettings selector returns settings for admin setting page and values specified by
 // environment variables set to "null". Actual applied setting values are coming from
 // /api/session/properties API handler and getDerivedSettingValues returns them.
-export const getDerivedSettingValues = state => state.settings?.values ?? {};
+export const getDerivedSettingValues = (state) => state.settings?.values ?? {};
 
-export const getSettingValues = createSelector(getSettings, settings => {
+export const getSettingValues = createSelector(getSettings, (settings) => {
   const settingValues = {};
   for (const setting of settings) {
     settingValues[setting.key] = setting.value;
@@ -558,14 +443,14 @@ export const getSettingValues = createSelector(getSettings, settings => {
 
 export const getCurrentVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
+  (settings) => {
     return settings.version?.tag;
   },
 );
 
 export const getLatestVersion = createSelector(
   getDerivedSettingValues,
-  settings => {
+  (settings) => {
     const updateChannel = settings["update-channel"] ?? "latest";
     return settings["version-info"]?.[updateChannel]?.version;
   },
@@ -603,10 +488,10 @@ export const getSections = createSelector(
 
       const settings = section.settings.map(function (setting) {
         const apiSetting =
-          settingsByKey[setting.key] && settingsByKey[setting.key][0];
+          settingsByKey[setting.key] && settingsByKey[setting.key][0]; // unnecessary array, these all have 1 element
 
         if (apiSetting) {
-          const value = setting.showActualValue
+          const value = setting.showActualValue // showActualValue is never used
             ? derivedSettingValues[setting.key]
             : apiSetting.value;
           return {

@@ -40,7 +40,7 @@ const setup = ({
     dashboards: {
       [TEST_DASHBOARD.id]: {
         ...TEST_DASHBOARD,
-        dashcards: TEST_DASHBOARD.dashcards.map(c => c.id),
+        dashcards: TEST_DASHBOARD.dashcards.map((c) => c.id),
         tabs,
       },
     },

@@ -35,7 +35,7 @@ export const createQuestionAndAddToDashboard = (
                 },
               ],
             })
-            .then(response => ({
+            .then((response) => ({
               ...response,
               body: response.body.dashcards.at(-1),
             })),

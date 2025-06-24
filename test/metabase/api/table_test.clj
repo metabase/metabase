@@ -1,12 +1,14 @@
 (ns ^:mb/driver-tests metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.table :as api.table]
    [metabase.api.test-util :as api.test-util]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.events :as events]
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -196,6 +198,41 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "table/" table-id)))))))))
 
+(deftest api-database-table-endpoint-test
+  (testing "GET /api/table/:table-id/data"
+    (mt/dataset test-data
+      (let [table-id (mt/id :orders)
+            published-events (atom [])]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [& args] (swap! published-events conj args))]
+          (testing "returns dataset in same format as POST /api/dataset"
+            (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
+              (is (contains? response :data))
+              (is (contains? response :row_count))
+              (is (contains? response :status))
+              (is (= #{"Created At"
+                       "Discount"
+                       "ID"
+                       "Product ID"
+                       "Quantity"
+                       "Subtotal"
+                       "Tax"
+                       "Total"
+                       "User ID"}
+                     (into #{} (map :display_name) (:cols (:data response)))))
+              (is (seq (:rows (:data response))))
+              (is (empty? (set/intersection #{:json_query :context :cached :average_execution_time} (set (keys response)))))))
+          (testing "we track a table-read event"
+            (is (= [["public" "orders"]]
+                   (->> @published-events
+                        (filter (comp #{:event/table-read} first))
+                        (map (comp #(mapv u/lower-case-en %)
+                                   (juxt :schema :name)
+                                   :object
+                                   second)))))))
+
+        (testing "returns 404 for tables that don't exist"
+          (mt/user-http-request :rasta :get 404 (format "table/%d/data" 133713371337)))))))
+
 (defn- default-dimension-options []
   (as-> @#'api.table/dimension-options-for-response options
     (m/map-vals #(-> %
@@ -218,7 +255,7 @@
     (testing "Sensitive fields are included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -302,7 +339,7 @@
     (testing "Sensitive fields should not be included"
       (is (= (merge
               (query-metadata-defaults)
-              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count]
+              (t2/select-one [:model/Table :created_at :updated_at :entity_id :initial_sync_status :view_count :id]
                              :id (mt/id :users))
               {:schema       "PUBLIC"
                :name         "USERS"
@@ -559,7 +596,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (is (= (merge
             (query-metadata-defaults)
-            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id] :id (mt/id :categories))
+            (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :entity_id :id] :id (mt/id :categories))
             {:schema       "PUBLIC"
              :name         "CATEGORIES"
              :display_name "Categories"
@@ -625,6 +662,14 @@
                                        :table_id (mt/id :categories)}]
       (is (=? {:metrics [(assoc metric :type "metric" :display "table")]}
               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
+
+(deftest ^:parallel table-metadata-has-entity-ids-test
+  (testing "GET /api/table/:id/query_metadata returns an entity id"
+    (is (=? {:entity_id some?
+             :db {:entity_id some?}
+             ;:fields api.test-util/all-have-entity-ids?
+             }
+            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field" field-name {:base-type base-type}]))

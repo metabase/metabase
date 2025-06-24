@@ -132,7 +132,7 @@ If set to 0, Metabase will keep all rows.")
        (truncate-table! model timestamp-col)))
    (audit-models-to-truncate)))
 
-(jobs/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
+(task/defjob ^{:doc "Triggers the removal of `query_execution` rows older than the configured threshold."} TruncateAuditTables [_]
   (truncate-audit-tables!))
 
 (def ^:private truncate-audit-tables-job-key "metabase.task.truncate-audit-tables.job")

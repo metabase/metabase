@@ -1,3 +1,4 @@
+const { H } = cy;
 import { StaticDashboard } from "@metabase/embedding-sdk-react";
 
 import {
@@ -48,7 +49,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   });
 
   it("should render dashboard content", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
@@ -67,7 +68,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   });
 
   it("should show fullscreen mode control by default", () => {
-    cy.get<string>("@dashboardId").then(dashboardId => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
       mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
     });
 
@@ -107,19 +108,16 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
       },
     ];
 
-    // Those tests are sometimes rendering 6 rows, sometimes 7 rows, we don't want this to be flaky
-    const rowsTextRegex = /Rows 1-[6,7] of first 2000/;
-
     successTestCases.forEach(({ name, dashboardIdAlias }) => {
       it(`should load dashboard content for ${name}`, () => {
-        cy.get(dashboardIdAlias).then(dashboardId => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
           mountSdkContent(<StaticDashboard dashboardId={dashboardId} />);
         });
 
         getSdkRoot().within(() => {
           cy.findByText("Embedding SDK Test Dashboard").should("be.visible");
           cy.findByText("Test question card").should("be.visible");
-          cy.findByText(rowsTextRegex).should("be.visible");
+          H.assertTableRowsCount(2000);
           cy.findByText("Test text card").should("be.visible");
         });
       });
@@ -135,7 +133,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
 
           cy.findByText("Orders in a dashboard").should("not.exist");
           cy.findByText("Orders").should("not.exist");
-          cy.findByText(rowsTextRegex).should("not.exist");
+          H.tableInteractiveBody().should("not.exist");
           cy.findByText("Test text card").should("not.exist");
         });
       });

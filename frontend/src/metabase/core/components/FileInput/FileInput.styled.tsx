@@ -13,7 +13,7 @@ export const InputField = styled.input<InputFieldProps>`
   color: var(--mb-color-text-dark);
   flex: 1 1 auto;
   font-family: inherit;
-  font-weight: ${props => (props.hasValue ? "bold" : "")};
+  font-weight: ${(props) => (props.hasValue ? "bold" : "")};
   order: 1;
 
   &:active,
@@ -21,7 +21,7 @@ export const InputField = styled.input<InputFieldProps>`
     outline: none;
   }
 
-  &::-webkit-file-upload-button {
+  &::file-selector-button {
     padding-top: 0.5rem;
     padding-right: 2rem;
     visibility: hidden;

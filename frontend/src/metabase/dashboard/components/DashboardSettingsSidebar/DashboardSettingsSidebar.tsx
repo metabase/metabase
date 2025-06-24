@@ -107,7 +107,7 @@ const DashboardSidesheetBody = ({
           size="sm"
           id={autoApplyFilterToggleId}
           checked={dashboard.auto_apply_filters}
-          onChange={e => handleToggleAutoApplyFilters(e.target.checked)}
+          onChange={(e) => handleToggleAutoApplyFilters(e.target.checked)}
         />
       </SidesheetCard>
       {showCaching && isCacheable && (

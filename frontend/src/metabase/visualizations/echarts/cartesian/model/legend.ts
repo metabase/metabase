@@ -13,7 +13,7 @@ export const getLegendItems = (
     return [];
   }
 
-  return seriesModels.map(seriesModel => ({
+  return seriesModels.map((seriesModel) => ({
     key: seriesModel.dataKey,
     name: seriesModel.name,
     color: seriesModel.color,

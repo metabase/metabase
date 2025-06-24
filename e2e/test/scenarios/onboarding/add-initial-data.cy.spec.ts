@@ -19,12 +19,15 @@ H.describeWithSnowplow(
         H.mockSessionPropertiesTokenFeatures({ attached_dwh: true });
       });
 
-      H.CSV_FILES.forEach(testFile => {
+      H.CSV_FILES.forEach((testFile) => {
         it(`${testFile.valid ? "Can" : "Cannot"} upload ${
           testFile.fileName
         } to "Our analytics" using DWH`, () => {
           cy.visit("/");
-          cy.findByTestId("main-navbar-root").findByText("Upload CSV").click();
+          cy.findByTestId("main-navbar-root")
+            .findByText(/Add Data/)
+            .click();
+          H.popover().findByText("Upload CSV").click();
 
           H.uploadFile("#dwh-upload-csv-input", "Our analytics", testFile);
 

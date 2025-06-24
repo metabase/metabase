@@ -47,7 +47,7 @@ const RemappedValueContent = ({
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
-export const FieldRemappedValue = props => (
+export const FieldRemappedValue = (props) => (
   <RemappedValueContent
     {...props}
     displayValue={props.displayValue ?? props.column.remappedValue(props.value)}

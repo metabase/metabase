@@ -84,6 +84,16 @@
              mbql->native
              sql.qp-test-util/sql->sql-map))))
 
+(deftest ^:parallel false-equals-false-test
+  (is (= '{:select [COUNT (*) AS count]
+           :from   [CHECKINS]
+           :where  [FALSE = FALSE]}
+         (-> (lib.tu.macros/mbql-query checkins
+               {:aggregation [[:count]]
+                :filter      [:= false false]})
+             mbql->native
+             sql.qp-test-util/sql->sql-map))))
+
 (deftest ^:parallel case-test
   (testing "Test that boolean case defaults are kept (#24100)"
     (is (= [[1 1 true]

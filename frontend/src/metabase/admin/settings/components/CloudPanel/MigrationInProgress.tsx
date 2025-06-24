@@ -110,30 +110,23 @@ export const MigrationInProgress = ({
         </Flex>
       </MigrationCard>
 
-      <Modal.Root
+      <Modal
         opened={isModalOpen}
         onClose={closeModal}
         size="lg"
         data-testid="cancel-cloud-migration-confirmation"
+        title={t`Cancel migration?`}
+        padding="2rem"
       >
-        <Modal.Overlay />
-        <Modal.Content p="1rem">
-          <Modal.Header pt="1rem" px="1rem">
-            <Modal.Title>{t`Cancel migration?`}</Modal.Title>
-            <Modal.CloseButton />
-          </Modal.Header>
-          <Modal.Body mt="md" px="1rem">
-            <Text>{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
-            <Flex justify="end" mt="3.5rem">
-              <Button
-                variant="filled"
-                color="error"
-                onClick={handleCancelMigration}
-              >{t`Cancel migration`}</Button>
-            </Flex>
-          </Modal.Body>
-        </Modal.Content>
-      </Modal.Root>
+        <Text mt="md">{t`We will cancel the migration process. After that, this instance will no longer be read-only.`}</Text>
+        <Flex justify="end" mt="3.5rem">
+          <Button
+            variant="filled"
+            color="error"
+            onClick={handleCancelMigration}
+          >{t`Cancel migration`}</Button>
+        </Flex>
+      </Modal>
     </>
   );
 };

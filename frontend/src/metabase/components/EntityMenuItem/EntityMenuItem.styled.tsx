@@ -18,28 +18,30 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   display: flex;
   align-items: center;
   border-radius: 0.5em;
-  cursor: ${props => (props.disabled ? "not-allowed" : "pointer")};
-  color: ${props =>
+  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+  color: ${(props) =>
     color(props.disabled ? "text-light" : props.color || "text-dark")};
   padding: 0.85em 1.45em;
   text-decoration: none;
 
   :hover {
-    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
-    background-color: ${props =>
+    color: ${(props) =>
+      color((!props.disabled && props.hoverColor) || "brand")};
+    background-color: ${(props) =>
       !props.disabled && props.hoverBgColor
         ? color(props.hoverBgColor)
         : "var(--mb-color-bg-light)"};
   }
 
   > .Icon {
-    color: ${props =>
+    color: ${(props) =>
       color(props.disabled ? "text-light" : props.color || "text-dark")};
     margin-right: 0.65em;
   }
 
   :hover > .Icon {
-    color: ${props => color((!props.disabled && props.hoverColor) || "brand")};
+    color: ${(props) =>
+      color((!props.disabled && props.hoverColor) || "brand")};
   }
 `;
 

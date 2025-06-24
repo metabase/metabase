@@ -27,6 +27,10 @@ To create an API key:
 9. Click **Create**.
 10. Copy the generated API key and save it somewhere safe. Metabase won't be able to show you the key again. If you lose the key, you'll need to regenerate a new key.
 
+### Creating API keys from the config file
+
+If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing/), you can [create API keys via the configuration file](../configuring-metabase/config-file.md#api-keys).
+
 ## Managing API Keys
 
 To view and manage existing API keys:

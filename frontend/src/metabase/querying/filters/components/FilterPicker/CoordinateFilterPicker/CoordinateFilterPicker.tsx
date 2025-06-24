@@ -15,7 +15,7 @@ import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
@@ -141,6 +141,7 @@ function CoordinateValueInput({
           column={column}
           values={values.filter(isNotNull)}
           autoFocus
+          comboboxProps={COMBOBOX_PROPS}
           onChange={onChange}
         />
       </Box>
@@ -156,7 +157,7 @@ function CoordinateValueInput({
           autoFocus
           w="100%"
           aria-label={t`Filter value`}
-          onChange={newValue => onChange([newValue])}
+          onChange={(newValue) => onChange([newValue])}
         />
       </Flex>
     );
@@ -169,13 +170,13 @@ function CoordinateValueInput({
           value={values[0]}
           placeholder={t`Min`}
           autoFocus
-          onChange={newValue => onChange([newValue, values[1]])}
+          onChange={(newValue) => onChange([newValue, values[1]])}
         />
         <Text mx="sm">{t`and`}</Text>
         <NumberFilterInput
           value={values[1]}
           placeholder={t`Max`}
-          onChange={newValue => onChange([values[0], newValue])}
+          onChange={(newValue) => onChange([values[0], newValue])}
         />
       </Flex>
     );
@@ -189,7 +190,7 @@ function CoordinateValueInput({
           value={values[0]}
           placeholder="90"
           autoFocus
-          onChange={newValue =>
+          onChange={(newValue) =>
             onChange([newValue, values[1], values[2], values[3]])
           }
         />
@@ -198,7 +199,7 @@ function CoordinateValueInput({
             label={t`Left longitude`}
             value={values[1]}
             placeholder="-180"
-            onChange={newValue =>
+            onChange={(newValue) =>
               onChange([values[0], newValue, values[2], values[3]])
             }
           />
@@ -206,7 +207,7 @@ function CoordinateValueInput({
             label={t`Right longitude`}
             value={values[3]}
             placeholder="180"
-            onChange={newValue =>
+            onChange={(newValue) =>
               onChange([values[0], values[1], values[2], newValue])
             }
           />
@@ -215,7 +216,7 @@ function CoordinateValueInput({
           label={t`Lower latitude`}
           value={values[2]}
           placeholder="-90"
-          onChange={newValue =>
+          onChange={(newValue) =>
             onChange([values[0], values[1], newValue, values[3]])
           }
         />

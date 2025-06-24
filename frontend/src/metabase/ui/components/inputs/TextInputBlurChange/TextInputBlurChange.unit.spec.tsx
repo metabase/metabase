@@ -46,7 +46,7 @@ describe("InputBlurChange", () => {
 
   it("should set `internalValue` to the normalized value even if the normalized value is the same as the previous one", async () => {
     const value = "/";
-    setup({ value, normalize: value => (value as string).trim() });
+    setup({ value, normalize: (value) => (value as string).trim() });
     const input = screen.getByDisplayValue(value) as HTMLInputElement;
     await userEvent.clear(input);
     await userEvent.type(input, "           /         ");
@@ -62,7 +62,7 @@ function setup({
   normalize,
 }: Partial<TextInputBlurChangeProps> = {}) {
   const onChange = jest.fn();
-  const onBlurChange = jest.fn(e => e.target.value);
+  const onBlurChange = jest.fn((e) => e.target.value);
 
   render(
     <TextInputBlurChange

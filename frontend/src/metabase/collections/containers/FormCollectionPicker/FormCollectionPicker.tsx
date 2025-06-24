@@ -68,13 +68,13 @@ function FormCollectionPicker({
 
   const [openCollectionId] = useState<CollectionId>("root");
 
-  const openCollection = useSelector(state =>
+  const openCollection = useSelector((state) =>
     Collections.selectors.getObject(state, {
       entityId: openCollectionId,
     }),
   );
 
-  const selectedCollection = useSelector(state =>
+  const selectedCollection = useSelector((state) =>
     Collections.selectors.getObject(state, {
       entityId: value,
     }),

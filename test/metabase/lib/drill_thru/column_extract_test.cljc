@@ -270,7 +270,8 @@
                    :display-name "Extract domain, subdomain…"
                    :extractions  [{:tag :domain,    :display-name "Domain"}
                                   {:tag :subdomain, :display-name "Subdomain"}
-                                  {:tag :host,      :display-name "Host"}]}]
+                                  {:tag :host,      :display-name "Host"}
+                                  {:tag :path,      :display-name "Path"}]}]
     (testing "Extracting Domain"
       (lib.drill-thru.tu/test-drill-application
        {:drill-type     :drill-thru/column-extract
@@ -303,6 +304,17 @@
         :expected       expected
         :drill-args     ["host"]
         :expected-query {:stages [{:expressions [[:host {:lib/expression-name "Host"}
+                                                  exp-homepage]]}]}}))
+    (testing "Extracting Path"
+      (lib.drill-thru.tu/test-drill-application
+       {:drill-type     :drill-thru/column-extract
+        :click-type     :header
+        :query-type     :unaggregated
+        :column-name    "HOMEPAGE"
+        :custom-query   query
+        :expected       expected
+        :drill-args     ["path"]
+        :expected-query {:stages [{:expressions [[:path {:lib/expression-name "Path"}
                                                   exp-homepage]]}]}}))))
 
 (deftest ^:parallel column-extract-url-requires-regex-test
@@ -320,7 +332,8 @@
                          :display-name "Extract domain, subdomain…"
                          :extractions  [{:tag :domain,    :display-name "Domain"}
                                         {:tag :subdomain, :display-name "Subdomain"}
-                                        {:tag :host,      :display-name "Host"}]}
+                                        {:tag :host,      :display-name "Host"}
+                                        {:tag :path,      :display-name "Path"}]}
         :drill-args     ["subdomain"]
         :expected-query {:stages [{:expressions [[:subdomain {:lib/expression-name "Subdomain"}
                                                   exp-homepage]]}]}}))

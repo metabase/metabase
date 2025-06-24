@@ -62,7 +62,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
           filter={Filter}
           value={filterValue}
           data-testid={`${key}-search-filter`}
-          onChange={value => onOutputChange(key, Filter.toUrl(value))}
+          onChange={(value) => onOutputChange(key, Filter.toUrl(value))}
         />
       );
     } else if (Filter.type === "dropdown") {
@@ -71,7 +71,7 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
           filter={Filter}
           data-testid={`${key}-search-filter`}
           value={filterValue}
-          onChange={value => onOutputChange(key, Filter.toUrl(value))}
+          onChange={(value) => onOutputChange(key, Filter.toUrl(value))}
         />
       );
     }

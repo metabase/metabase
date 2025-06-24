@@ -8,7 +8,7 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -114,21 +114,17 @@
 
 (deftest ^:parallel automatic-insights-apply-test-3
   (testing "metric over time"
-    (let [metric-id 101
-          metric-card {:description "Orders with a subtotal of $100 or more."
-                       :lib/type :metadata/card
-                       :type :metric
-                       :dataset-query {:type     :query
-                                       :database (meta/id)
-                                       :query    {:source-table (meta/id :orders)
-                                                  :aggregation  [[:count]]
-                                                  :filter       [:>= [:field (meta/id :orders :subtotal) nil] 100]}}
-                       :database-id (meta/id)
-                       :name "Large orders"
-                       :id metric-id}
-          provider (lib/composed-metadata-provider
-                    meta/metadata-provider
-                    (providers.mock/mock-metadata-provider {:cards [metric-card]}))]
+    (let [metric-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/filter (lib/>= (meta/field-metadata :orders :subtotal) 100))
+                           (lib/aggregate (lib/count)))
+          metric-id    101
+          metric-card  {:description "Orders with a subtotal of $100 or more."
+                        :lib/type :metadata/card
+                        :type :metric
+                        :name "Large orders"
+                        :id metric-id}
+          provider     (lib.tu/metadata-provider-with-card-from-query
+                        meta/metadata-provider metric-id metric-query metric-card)]
       (auto-insights (-> (lib/query provider (lib.metadata/card provider metric-id))
                          (lib/breakout (lib/with-temporal-bucket
                                          (meta/field-metadata :orders :created-at)

@@ -52,7 +52,7 @@ export const openAddQuestionSidebar = () => (dispatch: Dispatch) => {
 export const CLOSE_DASHBOARD = "metabase/dashboard/CLOSE_DASHBOARD";
 export const closeDashboard = createThunkAction(
   CLOSE_DASHBOARD,
-  () => dispatch => {
+  () => (dispatch) => {
     dispatch(closeAutoApplyFiltersToast());
   },
 );

@@ -54,7 +54,7 @@ export const createMockSearchResults = ({
   items?: SearchResult[];
   options?: Partial<SearchResponse>;
 } = {}): SearchResponse => {
-  const uniqueModels = _.uniq(items.map(item => item.model));
+  const uniqueModels = _.uniq(items.map((item) => item.model));
 
   return {
     available_models: uniqueModels,

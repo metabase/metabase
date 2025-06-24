@@ -75,7 +75,7 @@ export function ClickBehaviorSidebarMainView({
     dashcard,
   );
   const currentOption = clickBehaviorOptions.find(
-    o => o.value === clickBehavior.type,
+    (o) => o.value === clickBehavior.type,
   );
 
   return (

@@ -102,7 +102,7 @@ export const PublicOrEmbeddedQuestion = ({
   });
 
   const setParameterValue = async (parameterId: ParameterId, value: any) => {
-    setParameterValues(prevParameterValues => ({
+    setParameterValues((prevParameterValues) => ({
       ...prevParameterValues,
       [parameterId]: value,
     }));
@@ -197,7 +197,7 @@ export const PublicOrEmbeddedQuestion = ({
         theme={theme}
         titled={titled}
         setCard={setCard}
-        downloadsEnabled={downloadsEnabled}
+        downloadsEnabled={downloadsEnabled.results}
       />
     </LocaleProvider>
   );

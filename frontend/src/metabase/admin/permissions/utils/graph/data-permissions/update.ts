@@ -235,7 +235,7 @@ export function restrictCreateQueriesPermissionsIfNeeded(
   if (shouldRestrictNative) {
     const schemaNames = (database && database.schemaNames()) ?? [null];
 
-    schemaNames.forEach(schemaName => {
+    schemaNames.forEach((schemaName) => {
       permissions = updateTablesPermission(
         permissions,
         groupId,
@@ -275,12 +275,12 @@ function inferEntityPermissionValueFromChildTables(
   permission: DataPermission,
 ): DataPermissionValue {
   const entityIdsForDescendantTables = _.chain(database.tables)
-    .filter(t => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
+    .filter((t) => _.isMatch(t, entityIdToMetadataTableFields(entityId)))
     .map(metadataTableToTableEntityId)
     .value();
 
   const entityIdsByPermValue = _.chain(entityIdsForDescendantTables)
-    .map(id => getFieldsPermission(permissions, groupId, id, permission))
+    .map((id) => getFieldsPermission(permissions, groupId, id, permission))
     .groupBy(_.identity)
     .value();
 

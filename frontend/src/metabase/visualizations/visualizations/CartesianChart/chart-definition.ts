@@ -23,7 +23,7 @@ import type {
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { RawSeries, SeriesSettings } from "metabase-types/api";
+import type { SeriesSettings } from "metabase-types/api";
 
 import { transformSeries } from "./chart-definition-legacy";
 
@@ -43,7 +43,7 @@ export const getCartesianChartDefinition = (
       );
     },
 
-    isLiveResizable: series => {
+    isLiveResizable: (series) => {
       const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
       return totalRows < 10;
     },
@@ -54,30 +54,11 @@ export const getCartesianChartDefinition = (
       validateStacking(settings);
     },
 
-    placeholderSeries: [
-      {
-        card: {
-          display: props.identifier,
-          visualization_settings: {
-            "graph.metrics": ["x"],
-            "graph.dimensions": ["y"],
-          },
-          dataset_query: { type: "query" },
-          name: "x",
-        },
-        data: {
-          rows: _.range(0, 11).map(i => [i, i]),
-          cols: [
-            { name: "x", base_type: "type/Integer" },
-            { name: "y", base_type: "type/Integer" },
-          ],
-        },
-      },
-    ] as RawSeries,
+    hasEmptyState: true,
 
     transformSeries,
 
-    onDisplayUpdate: settings => {
+    onDisplayUpdate: (settings) => {
       if (settings[SERIES_SETTING_KEY] == null) {
         return settings;
       }

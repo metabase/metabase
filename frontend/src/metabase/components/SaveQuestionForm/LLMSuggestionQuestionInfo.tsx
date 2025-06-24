@@ -10,7 +10,7 @@ export const LLMSuggestionQuestionInfo = () => {
     <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
       question={question}
       initialCollectionId={initialValues.collection_id}
-      onAccept={nextValues => setValues({ ...values, ...nextValues })}
+      onAccept={(nextValues) => setValues({ ...values, ...nextValues })}
     />
   );
 };

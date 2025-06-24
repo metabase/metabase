@@ -12,7 +12,7 @@ import {
 } from "./tags";
 
 export const automagicDashboardsApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getXrayDashboardQueryMetadata: builder.query<
       DashboardQueryMetadata,
       GetXrayDashboardQueryMetadataRequest
@@ -22,11 +22,11 @@ export const automagicDashboardsApi = Api.injectEndpoints({
         url: `/api/automagic-dashboards/${entity}/${entityId}/query_metadata`,
         params,
       }),
-      providesTags: metadata =>
+      providesTags: (metadata) =>
         metadata ? provideDashboardQueryMetadataTags(metadata) : [],
     }),
     listDatabaseXrays: builder.query<DatabaseXray[], DatabaseId>({
-      query: id => `/api/automagic-dashboards/database/${id}/candidates`,
+      query: (id) => `/api/automagic-dashboards/database/${id}/candidates`,
       providesTags: (candidates = []) =>
         provideDatabaseCandidateListTags(candidates),
     }),

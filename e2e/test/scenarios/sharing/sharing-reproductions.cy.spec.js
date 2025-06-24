@@ -46,7 +46,7 @@ describe("issue 18009", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
-    H.sendEmailAndAssert(email => {
+    H.sendEmailAndAssert((email) => {
       expect(email.html).not.to.include(
         "An error occurred while displaying this card.",
       );
@@ -100,7 +100,7 @@ describe("issue 18344", { tags: "@external" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("To:").click();
 
-    H.sendEmailAndAssert(email => {
+    H.sendEmailAndAssert((email) => {
       expect(email.html).to.include("OrdersFoo");
     });
   });
@@ -180,7 +180,7 @@ describe("issue 18669", { tags: "@external" }, () => {
     parameters: [filterDetails],
   };
 
-  const getFilterMapping = card => ({
+  const getFilterMapping = (card) => ({
     parameter_mappings: [
       {
         parameter_id: filterDetails.id,
@@ -350,7 +350,7 @@ describe("issue 21559", { tags: "@external" }, () => {
       `${admin.first_name} ${admin.last_name}`,
     ]);
 
-    H.sendEmailAndAssert(email => {
+    H.sendEmailAndAssert((email) => {
       expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
       expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
     });
@@ -447,7 +447,7 @@ describe("issue 24223", () => {
 
   const dashboardDetails = { parameters };
 
-  const mapFiltersToCard = card_id => ({
+  const mapFiltersToCard = (card_id) => ({
     parameter_mappings: [
       {
         parameter_id: dropdownFilter.id,
@@ -562,7 +562,7 @@ describe("issue 25473", () => {
 
   function assertOnResults() {
     // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("column-header").last().should("have.text", ccName);
+    cy.findAllByRole("columnheader").last().should("have.text", ccName);
     cy.findAllByText("xavier").should("have.length", 2);
 
     H.filterWidget().click();
@@ -608,7 +608,7 @@ describe("issue 25473", () => {
   });
 
   it("public sharing: dashboard text filter on a custom column should accept text input (metabase#25473-1)", () => {
-    cy.get("@dashboardId").then(id => {
+    cy.get("@dashboardId").then((id) => {
       H.visitPublicDashboard(id);
     });
 
@@ -616,7 +616,7 @@ describe("issue 25473", () => {
   });
 
   it("signed embedding: dashboard text filter on a custom column should accept text input (metabase#25473-2)", () => {
-    cy.get("@dashboardId").then(id => {
+    cy.get("@dashboardId").then((id) => {
       cy.request("PUT", `/api/dashboard/${id}`, {
         embedding_params: {
           [dashboardFilter.slug]: "enabled",
@@ -800,7 +800,7 @@ describe("issue 17658", { tags: "@external" }, () => {
     cy.request("GET", "/api/collection/tree?tree=true").then(
       ({ body: collections }) => {
         const { id } = collections.find(
-          collection => collection.name === collectionName,
+          (collection) => collection.name === collectionName,
         );
 
         // Move dashboard
@@ -1021,10 +1021,10 @@ describe("issue 49525", { tags: "@external" }, () => {
       cy.findByText("Questions to attach").click();
     });
 
-    H.sendEmailAndAssert(email => {
+    H.sendEmailAndAssert((email) => {
       // Get the CSV attachment data
       const csvAttachment = email.attachments.find(
-        attachment => attachment.contentType === "text/csv",
+        (attachment) => attachment.contentType === "text/csv",
       );
 
       expect(csvAttachment).to.exist;
@@ -1034,7 +1034,7 @@ describe("issue 49525", { tags: "@external" }, () => {
         method: "GET",
         url: `http://localhost:${WEB_PORT}/email/${email.id}/attachment/${csvAttachment.fileName}`,
         encoding: "utf8",
-      }).then(response => {
+      }).then((response) => {
         const csvContent = response.body;
         const rows = csvContent.split("\n");
         const headers = rows[0];

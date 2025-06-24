@@ -25,7 +25,7 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 const createQueryWithFields = (columnNames: string[]) => {
   const query = createQuery();
   const findColumn = columnFinder(query, Lib.fieldableColumns(query, 0));
-  const columns = columnNames.map(name => findColumn("ORDERS", name));
+  const columns = columnNames.map((name) => findColumn("ORDERS", name));
   return Lib.withFields(query, 0, columns);
 };
 
@@ -142,7 +142,7 @@ describe("DataStep", () => {
       setup();
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
-      expect(screen.getByLabelText("Select none")).toBeChecked();
+      expect(screen.getByLabelText("Select all")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeChecked();
       expect(screen.getByLabelText("ID")).toBeEnabled();
       expect(screen.getByLabelText("Tax")).toBeChecked();
@@ -216,7 +216,7 @@ describe("DataStep", () => {
       const { getNextQuery } = setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
-      await userEvent.click(screen.getByLabelText("Select none"));
+      await userEvent.click(screen.getByLabelText("Select all"));
 
       const nextQuery = getNextQuery();
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);

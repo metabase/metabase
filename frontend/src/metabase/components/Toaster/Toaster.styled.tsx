@@ -16,14 +16,14 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   background-color: var(--mb-color-text-dark);
   padding: 16px;
   border-radius: 6px;
-  ${props =>
+  ${(props) =>
     props.fixed
       ? `position: fixed;
        bottom: ${props.show ? "20px" : "10px"};
        left: 20px;`
       : `position: relative;
        bottom: ${props.show ? "0px" : "-10px"};`}
-  opacity: ${props => (props.show ? 1 : 0)};
+  opacity: ${(props) => (props.show ? 1 : 0)};
   transition: all 200ms ease-out;
   column-gap: 16px;
   align-items: center;

@@ -9,7 +9,7 @@ export default {
   component: DateSelector,
 };
 
-const Template: StoryFn<DateSelectorProps> = args => {
+const Template: StoryFn<DateSelectorProps> = (args) => {
   const [value, setValue] = useState(args.value);
   return <DateSelector {...args} value={value} onChange={setValue} />;
 };

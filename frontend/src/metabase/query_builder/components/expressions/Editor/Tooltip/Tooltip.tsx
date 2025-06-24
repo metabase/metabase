@@ -1,27 +1,22 @@
-import { currentCompletions } from "@codemirror/autocomplete";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
-import cx from "classnames";
 import {
   type RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
 
 import { Popover } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import { enclosingFunction } from "metabase-lib/v1/expressions";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { HelpText } from "../HelpText";
-import { Listbox } from "../Listbox";
-import { enclosingFunction } from "../utils";
+import { Listbox, useCompletions } from "../Listbox";
 
 import S from "./Tooltip.module.css";
-
-const HEIGHT_THRESHOLD = 320;
 
 export function Tooltip({
   query,
@@ -50,31 +45,42 @@ export function Tooltip({
     [doc, state.selection.main.head],
   );
 
-  const completions = useMemo(() => currentCompletions(state), [state]);
-
-  const maxHeight = usePopoverHeight(tooltipRef);
-  const canShowBoth = maxHeight > HEIGHT_THRESHOLD;
-
-  const [isHelpTextOpen, setIsHelpTextOpen] = useState(false);
-  const handleToggleHelpText = useCallback(
-    () => setIsHelpTextOpen(open => !open),
-    [],
-  );
+  const [hasMovedCursor, setHasMovedCursor] = useState(false);
 
   useEffect(() => {
-    if (!canShowBoth && enclosingFn && completions.length > 0) {
-      setIsHelpTextOpen(false);
+    setHasMovedCursor(
+      (hasMovedCursor) => hasMovedCursor || state.selection.main.head !== 0,
+    );
+  }, [state.selection.main.head]);
+
+  const { options: completions } = useCompletions(state);
+
+  const [isHelpTextOpen, setIsHelpTextOpen] = useState(true);
+  const [preferHelpText, setPreferHelpText] = useState(false);
+
+  const handleToggleHelpText = useCallback(() => {
+    if (completions.length > 0) {
+      setIsHelpTextOpen(!preferHelpText);
+      setPreferHelpText(!preferHelpText);
       return;
     }
-  }, [canShowBoth, enclosingFn, completions.length]);
+    setIsHelpTextOpen((open) => !open);
+  }, [completions, preferHelpText]);
 
   useEffect(() => {
-    setIsHelpTextOpen(completions.length === 0);
-  }, [completions.length]);
+    if (completions.length > 0) {
+      setPreferHelpText(false);
+    }
+  }, [completions.length, enclosingFn]);
+
+  const shouldShowHelpText =
+    completions.length === 0 ? isHelpTextOpen : preferHelpText;
+  const shouldShowCompletions =
+    completions.length === 0 ? false : !preferHelpText;
 
   return (
     <Popover
-      opened
+      opened={hasMovedCursor}
       position="bottom-start"
       returnFocus
       closeOnEscape
@@ -88,6 +94,7 @@ export function Tooltip({
       <Popover.Dropdown
         data-testid="custom-expression-editor-suggestions"
         className={S.dropdown}
+        data-ignore-editor-clicks="true"
       >
         <div className={S.tooltip} ref={tooltipRef}>
           <HelpText
@@ -95,37 +102,19 @@ export function Tooltip({
             query={query}
             metadata={metadata}
             reportTimezone={reportTimezone}
-            open={isHelpTextOpen}
+            open={shouldShowHelpText}
             onToggle={handleToggleHelpText}
           />
-          {(canShowBoth || !isHelpTextOpen || !enclosingFn) && (
+          {shouldShowCompletions && (
             <Listbox
               state={state}
               view={view}
               query={query}
               stageIndex={stageIndex}
-              className={cx(
-                enclosingFn && S.hasHelpText,
-                enclosingFn && isHelpTextOpen && S.isHelpTextOpen,
-              )}
             />
           )}
         </div>
       </Popover.Dropdown>
     </Popover>
   );
-}
-
-function usePopoverHeight(ref: RefObject<HTMLDivElement>) {
-  const [maxHeight, setMaxHeight] = useState(0);
-  // We want to explicitly read the max height everytime we render
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    const px = ref.current?.parentElement?.style.maxHeight ?? "0";
-    const parsed = parseInt(px, 10);
-    if (!Number.isNaN(parsed)) {
-      setMaxHeight(parsed);
-    }
-  });
-  return maxHeight;
 }

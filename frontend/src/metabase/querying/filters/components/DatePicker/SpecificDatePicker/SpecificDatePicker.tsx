@@ -47,7 +47,7 @@ export function SpecificDatePicker({
   const hasTimeToggle = canSetTime(value, availableUnits);
 
   const handleTabChange = (tabValue: string | null) => {
-    const tab = tabs.find(tab => tab.operator === tabValue);
+    const tab = tabs.find((tab) => tab.operator === tabValue);
     if (tab) {
       setValue(setOperator(value, tab.operator));
     }
@@ -73,7 +73,7 @@ export function SpecificDatePicker({
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
         <Tabs.List className={S.TabList}>
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <Tabs.Tab key={tab.operator} value={tab.operator}>
               {tab.label}
             </Tabs.Tab>
@@ -81,7 +81,7 @@ export function SpecificDatePicker({
         </Tabs.List>
       </Flex>
       <Divider />
-      {tabs.map(tab => (
+      {tabs.map((tab) => (
         <Tabs.Panel key={tab.operator} value={tab.operator}>
           {isDateRange(value.values) ? (
             <DateRangePicker

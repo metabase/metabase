@@ -18,14 +18,14 @@ import {
 } from "./tags";
 
 export const userApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listUsers: builder.query<ListUsersResponse, ListUsersRequest>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/user",
         params,
       }),
-      providesTags: response =>
+      providesTags: (response) =>
         response ? provideUserListTags(response.data) : [],
     }),
     listUserRecipients: builder.query<ListUsersResponse, void>({
@@ -33,23 +33,31 @@ export const userApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/user/recipients",
       }),
-      providesTags: response =>
+      providesTags: (response) =>
         response ? provideUserListTags(response.data) : [],
     }),
     getUser: builder.query<User, UserId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/user/${id}`,
       }),
-      providesTags: user => (user ? provideUserTags(user) : []),
+      providesTags: (user) => (user ? provideUserTags(user) : []),
     }),
     createUser: builder.mutation<User, CreateUserRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/user",
         body,
       }),
       invalidatesTags: (_, error) => invalidateTags(error, [listTag("user")]),
+      onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
+        const { data: user } = await queryFulfilled;
+        // entity framework compatibility
+        dispatch({
+          type: "metabase/entities/users/CREATE",
+          payload: { user },
+        });
+      },
     }),
     updatePassword: builder.mutation<void, UpdatePasswordRequest>({
       query: ({ id, old_password, password }) => ({
@@ -61,7 +69,7 @@ export const userApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
     deactivateUser: builder.mutation<void, UserId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/user/${id}`,
       }),
@@ -69,7 +77,7 @@ export const userApi = Api.injectEndpoints({
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
     }),
     reactivateUser: builder.mutation<User, UserId>({
-      query: id => ({
+      query: (id) => ({
         method: "PUT",
         url: `/api/user/${id}/reactivate`,
       }),
@@ -84,6 +92,18 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
+      onQueryStarted: async (_request, { dispatch, queryFulfilled }) => {
+        const { data: user } = await queryFulfilled;
+        // entity framework compatibility
+        dispatch({
+          type: "metabase/entities/users/UPDATE",
+          payload: { user },
+        });
+      },
+    }),
+    listUserAttributes: builder.query<string[], void>({
+      query: () => "/api/mt/user/attributes",
+      providesTags: (response) => (response ? [listTag("user")] : []),
     }),
   }),
 });
@@ -97,4 +117,5 @@ export const {
   useDeactivateUserMutation,
   useReactivateUserMutation,
   useUpdateUserMutation,
+  useListUserAttributesQuery,
 } = userApi;

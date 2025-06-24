@@ -13,7 +13,7 @@ import Question from "metabase-lib/v1/Question";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
-const getPreviewQuestion = step => {
+const getPreviewQuestion = (step) => {
   const { previewQuery, stageIndex } = step;
   const limit = Lib.currentLimit(previewQuery, stageIndex);
   const hasSuitableLimit = limit !== null && limit <= PREVIEW_ROWS_LIMIT;

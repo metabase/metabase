@@ -7,7 +7,7 @@ export default {
   component: ExternalLink,
 };
 
-const Template: StoryFn<typeof ExternalLink> = args => {
+const Template: StoryFn<typeof ExternalLink> = (args) => {
   return <ExternalLink {...args} />;
 };
 

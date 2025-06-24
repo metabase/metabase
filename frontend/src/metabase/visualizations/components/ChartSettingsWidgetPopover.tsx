@@ -64,10 +64,10 @@ export const ChartSettingsWidgetPopover = ({
                 px="md"
                 pt="xs"
                 value={currentSection}
-                onChange={section => setCurrentSection(String(section))}
+                onChange={(section) => setCurrentSection(String(section))}
               >
                 <Tabs.List grow>
-                  {sections.current.map(sectionName => (
+                  {sections.current.map((sectionName) => (
                     <Tabs.Tab key={sectionName} value={sectionName} p="md">
                       {sectionName}
                     </Tabs.Tab>
@@ -77,8 +77,8 @@ export const ChartSettingsWidgetPopover = ({
             )}
             <Space py="sm"></Space>
             {widgets
-              .filter(widget => widget.section === currentSection)
-              ?.map(widget => (
+              .filter((widget) => widget.section === currentSection)
+              ?.map((widget) => (
                 <ChartSettingsWidget
                   key={widget.id}
                   {...widget}

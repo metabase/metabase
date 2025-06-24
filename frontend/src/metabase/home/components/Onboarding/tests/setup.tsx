@@ -40,9 +40,6 @@ export const setup = ({
   showMetabaseLinks = true,
   tokenFeatures = {},
 }: SetupProps = {}) => {
-  const scrollIntoViewMock = jest.fn();
-  window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
-
   const hasTokenFeatures = Object.entries(tokenFeatures).length > 0;
 
   const state = createMockState({
@@ -77,6 +74,4 @@ export const setup = ({
       withRouter: true,
     },
   );
-
-  return { scrollIntoViewMock };
 };

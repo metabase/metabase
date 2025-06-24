@@ -51,7 +51,7 @@ export function EmbeddingSdkOptionCard({
         </LinkButton>
         <SwitchWithSetByEnvVar
           settingKey="enable-embedding-sdk"
-          onChange={value =>
+          onChange={(value) =>
             showSdkEmbedTerms && !isEmbeddingSdkEnabled
               ? openLegaleseModal()
               : onToggle(value)

@@ -69,7 +69,7 @@ const highlightTextField = StateField.define({
           .update({ filter: () => false })
           // add new values
           .update({
-            add: effect.value.map(range =>
+            add: effect.value.map((range) =>
               highlightTextMark.range(range.start, range.end),
             ),
           });
@@ -78,7 +78,7 @@ const highlightTextField = StateField.define({
 
     return value;
   },
-  provide: field => EditorView.decorations.from(field),
+  provide: (field) => EditorView.decorations.from(field),
 });
 
 export function highlightText(ranges: { start: number; end: number }[] = []) {
@@ -86,10 +86,10 @@ export function highlightText(ranges: { start: number; end: number }[] = []) {
     RangeSet.of(
       ranges
         .filter(
-          range =>
+          (range) =>
             range.start < state.doc.length && range.end < state.doc.length,
         )
-        .map(range => highlightTextMark.range(range.start, range.end)),
+        .map((range) => highlightTextMark.range(range.start, range.end)),
     ),
   );
 }

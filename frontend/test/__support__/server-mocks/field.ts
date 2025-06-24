@@ -38,7 +38,7 @@ export function setupUnauthorizedFieldValuesEndpoints(
 export function setupFieldsValuesEndpoints(
   fieldsValues: GetFieldValuesResponse[],
 ) {
-  fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
+  fieldsValues.forEach((fieldValues) => setupFieldValuesEndpoints(fieldValues));
 }
 
 export function setupFieldSearchValuesEndpoint(

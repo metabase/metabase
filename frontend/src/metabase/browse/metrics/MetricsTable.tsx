@@ -412,7 +412,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
           </Button>
         </Menu.Target>
         <Menu.Dropdown>
-          {actions.map(action => (
+          {actions.map((action) => (
             <Menu.Item
               key={action.key}
               leftSection={<Icon name={action.icon} />}

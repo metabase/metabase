@@ -63,7 +63,7 @@ const STEP_TYPES: NotebookStepType[] = [
 ];
 
 describe("NotebookStep", () => {
-  test.each(STEP_TYPES)(`renders a %s step correctly`, type => {
+  test.each(STEP_TYPES)(`renders a %s step correctly`, (type) => {
     const step = createMockNotebookStep({ type });
     const testId = `step-${type}-${step.stageIndex}-${step.itemIndex}`;
     setup({ step });

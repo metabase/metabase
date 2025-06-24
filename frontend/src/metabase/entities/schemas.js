@@ -57,7 +57,7 @@ export default createEntity({
             databaseApi.endpoints.listDatabaseSchemas,
           );
 
-      return schemaNames.map(schemaName => ({
+      return schemaNames.map((schemaName) => ({
         // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
@@ -112,7 +112,7 @@ export default createEntity({
           return state;
         }
         const virtualQuestionId = getQuestionVirtualTableId(question.id);
-        return updateIn(state, [schema, "tables"], tables =>
+        return updateIn(state, [schema, "tables"], (tables) =>
           addTableAvoidingDuplicates(tables, virtualQuestionId),
         );
       }
@@ -154,13 +154,13 @@ export default createEntity({
         });
       }
 
-      return updateIn(state, [virtualSchemaId, "tables"], tables => {
+      return updateIn(state, [virtualSchemaId, "tables"], (tables) => {
         if (!tables) {
           return tables;
         }
 
         if (card.archived) {
-          return tables.filter(id => id !== virtualQuestionId);
+          return tables.filter((id) => id !== virtualQuestionId);
         }
         return addTableAvoidingDuplicates(tables, virtualQuestionId);
       });
@@ -175,7 +175,7 @@ function getPreviousSchemaContainingTheQuestion(
   schemaId,
   virtualQuestionId,
 ) {
-  return Object.values(state).find(schema => {
+  return Object.values(state).find((schema) => {
     if (schema.id === schemaId) {
       return false;
     }
@@ -185,8 +185,8 @@ function getPreviousSchemaContainingTheQuestion(
 }
 
 function removeVirtualQuestionFromSchema(state, schemaId, virtualQuestionId) {
-  return updateIn(state, [schemaId, "tables"], tables =>
-    tables.filter(tableId => tableId !== virtualQuestionId),
+  return updateIn(state, [schemaId, "tables"], (tables) =>
+    tables.filter((tableId) => tableId !== virtualQuestionId),
   );
 }
 
@@ -254,7 +254,7 @@ function useListQuery({ dbId, getAll = false, ...args }, options) {
   const schemas = getAll ? syncableDatabaseSchemas : databaseSchemas;
 
   const data = useMemo(() => {
-    return schemas.data?.map(schemaName => ({
+    return schemas.data?.map((schemaName) => ({
       // NOTE: needs unique IDs for entities to work correctly
       id: generateSchemaId(dbId, schemaName),
       name: schemaName,

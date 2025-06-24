@@ -86,6 +86,13 @@
         "camsaul",
         "escherize"
       ]
+    },
+     {
+      "name": "Metabot",
+      "label": ".Team/Metabot",
+      "members": [
+        "somtom"
+      ]
     }
   ]
 }

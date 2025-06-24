@@ -71,6 +71,7 @@ describe("scenarios > custom column > boolean functions", () => {
         formula: newExpression,
         name: expressionName,
         allowFastSet: true,
+        format: true,
       });
       H.popover().button("Done").click();
       H.visualize();
@@ -608,7 +609,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     it("should be able setup an 'open question' click behavior", () => {
-      createDashboardWithQuestion().then(dashboard =>
+      createDashboardWithQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -641,7 +642,7 @@ describe("scenarios > custom column > boolean functions", () => {
     });
 
     it("should be able setup an 'open dashboard' click behavior for the same dashboard", () => {
-      createDashboardWithQuestion().then(dashboard =>
+      createDashboardWithQuestion().then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 
@@ -679,7 +680,7 @@ describe("scenarios > custom column > boolean functions", () => {
 
     it("should be able setup an 'open dashboard' click behavior for another dashboard", () => {
       createDashboardWithQuestion({ name: "D2" });
-      createDashboardWithQuestion({ name: "D1" }).then(dashboard =>
+      createDashboardWithQuestion({ name: "D1" }).then((dashboard) =>
         H.visitDashboard(dashboard.id),
       );
 

@@ -1,3 +1,4 @@
+import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
 import type {
   EmbedState,
   InteractiveEmbeddingOptions,
@@ -6,6 +7,7 @@ import type {
 export const createMockEmbedOptions = (
   opts?: Partial<InteractiveEmbeddingOptions>,
 ) => ({
+  ...DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS,
   ...opts,
 });
 

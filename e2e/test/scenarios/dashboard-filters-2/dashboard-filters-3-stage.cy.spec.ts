@@ -3,12 +3,6 @@ const { H } = cy;
 import * as QSHelpers from "./shared/dashboard-filters-query-stages";
 
 /**
- * Empty section title element is rendered.
- * TODO: https://github.com/metabase/metabase/issues/47218
- */
-const NAMELESS_SECTION = "";
-
-/**
  * Abbreviations used for card aliases in this test suite:
  *  qbq = question-based question
  *  qbm = question-based model
@@ -219,11 +213,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.QUESTION_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count"]]],
+            [[null, ["Count"]]],
           );
           QSHelpers.verifyDashcardMappingOptions(
             QSHelpers.MODEL_BASED_MODEL_INDEX,
-            [[NAMELESS_SECTION, ["Count"]]],
+            [[null, ["Count"]]],
           );
         }
       });
@@ -398,8 +392,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             QSHelpers.getPopoverItem("Category", 2).click();
           });
 
-          cy.button("Save").click();
-          cy.wait("@updateDashboard");
+          H.saveDashboard({ waitMs: 250 });
 
           H.filterWidget().eq(0).click();
           H.popover().within(() => {

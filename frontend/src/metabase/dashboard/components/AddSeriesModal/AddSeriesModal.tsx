@@ -66,7 +66,7 @@ export class AddSeriesModal extends Component<Props, State> {
 
     if (!selected) {
       this.setState({
-        series: this.state.series.filter(c => c.id !== card.id),
+        series: this.state.series.filter((c) => c.id !== card.id),
       });
 
       return;
@@ -116,11 +116,11 @@ export class AddSeriesModal extends Component<Props, State> {
 
     const series = [dashcard.card]
       .concat(this.state.series)
-      .map(card => ({
+      .map((card) => ({
         card: card,
         data: getIn(dashcardData, [dashcard.id, card.id, "data"]),
       }))
-      .filter(s => !!s.data);
+      .filter((s) => !!s.data);
 
     return (
       <div className={cx(CS.spread, CS.flex)}>

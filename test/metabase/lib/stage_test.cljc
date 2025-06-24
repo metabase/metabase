@@ -24,7 +24,7 @@
                       {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
                                                     {:name "NAME", :lib/source :source/previous-stage}]}
                       {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1)))))
+            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
@@ -43,19 +43,9 @@
 (deftest ^:parallel deduplicate-expression-names-in-aggregations-test
   (testing "make sure multiple expressions come back with deduplicated names"
     (testing "expressions in aggregations"
-      (let [query (lib.tu/venues-query-with-last-stage
-                   {:aggregation [[:*
-                                   {:lib/uuid (str (random-uuid))}
-                                   0.8
-                                   [:avg
-                                    {:lib/uuid (str (random-uuid))}
-                                    (lib.tu/field-clause :venues :price)]]
-                                  [:*
-                                   {:lib/uuid (str (random-uuid))}
-                                   0.8
-                                   [:avg
-                                    {:lib/uuid (str (random-uuid))}
-                                    (lib.tu/field-clause :venues :price)]]]})]
+      (let [query (-> (lib.tu/venues-query)
+                      (lib/aggregate (lib/* 0.8 (lib/avg (meta/field-metadata :venues :price))))
+                      (lib/aggregate (lib/* 0.8 (lib/avg (meta/field-metadata :venues :price)))))]
         (is (=? [{:base-type                :type/Float
                   :name                     "expression"
                   :display-name             "0.8 × Average of Price"

@@ -57,8 +57,10 @@ const MetadataSchemaList = ({
     const searchValue = searchText.toLowerCase();
 
     return _.chain(allSchemas)
-      .filter(schema => (schema.name ?? "").toLowerCase().includes(searchValue))
-      .sortBy(schema => schema.name ?? "")
+      .filter((schema) =>
+        (schema.name ?? "").toLowerCase().includes(searchValue),
+      )
+      .sortBy((schema) => schema.name ?? "")
       .value();
   }, [allSchemas, searchText]);
 
@@ -86,7 +88,7 @@ const MetadataSchemaList = ({
           type="text"
           placeholder={t`Find a schema`}
           value={searchText}
-          onChange={e => setSearchText(e.target.value)}
+          onChange={(e) => setSearchText(e.target.value)}
         />
       </div>
       <ul>
@@ -97,7 +99,7 @@ const MetadataSchemaList = ({
             schemas.length,
           )}
         </div>
-        {schemas.map(schema => (
+        {schemas.map((schema) => (
           <SchemaRow
             key={schema.id}
             schema={schema}

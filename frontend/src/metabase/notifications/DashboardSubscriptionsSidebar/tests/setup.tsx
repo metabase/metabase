@@ -7,7 +7,12 @@ import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pul
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
-import type { TokenFeatures } from "metabase-types/api";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type {
+  Dashboard,
+  DashboardCard,
+  TokenFeatures,
+} from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockCard,
@@ -16,8 +21,10 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { DashboardState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import DashboardSubscriptionsSidebar from "../DashboardSubscriptionsSidebar";
 
@@ -33,18 +40,38 @@ const linkDashcard = createMockActionDashboardCard({
 
 export const user = createMockUser();
 
-const dashboard = createMockDashboard({
-  dashcards: [dashcard, actionDashcard, linkDashcard],
-  parameters: [
-    {
-      name: "ID",
-      slug: "id",
-      id: "abcd1234",
-      type: "id",
-      sectionId: "id",
+const defaultDashcards = [dashcard, actionDashcard, linkDashcard];
+const defaultParameters = [
+  {
+    name: "ID",
+    slug: "id",
+    id: "abcd1234",
+    type: "id",
+    sectionId: "id",
+  },
+];
+
+function createDashboardState(
+  dashboard: Dashboard,
+  dashcards: DashboardCard[],
+) {
+  return createMockDashboardState({
+    dashboardId: dashboard.id,
+    dashcards: dashcards.reduce(
+      (acc, card) => {
+        acc[card.id] = card;
+        return acc;
+      },
+      {} as Record<number, DashboardCard>,
+    ),
+    dashboards: {
+      [dashboard.id]: {
+        ...dashboard,
+        dashcards: dashcards.map((d) => d.id),
+      },
     },
-  ],
-});
+  });
+}
 
 export function setup(
   {
@@ -53,12 +80,16 @@ export function setup(
     tokenFeatures = {},
     hasEnterprisePlugins = false,
     isAdmin = false,
+    dashcards = defaultDashcards,
+    parameters = defaultParameters,
   }: {
     email?: boolean;
     slack?: boolean;
     tokenFeatures?: Partial<TokenFeatures>;
     hasEnterprisePlugins?: boolean;
     isAdmin?: boolean;
+    dashcards?: DashboardCard[];
+    parameters?: UiParameter[];
   } = {
     email: true,
     slack: true,
@@ -67,6 +98,11 @@ export function setup(
     isAdmin: false,
   },
 ) {
+  const dashboard = createMockDashboard({
+    dashcards,
+    parameters,
+  });
+
   const channelData: {
     channels: {
       email?: any;
@@ -135,20 +171,7 @@ export function setup(
         currentUser: createMockUser({
           is_superuser: isAdmin,
         }),
-        dashboard: {
-          dashboardId: dashboard.id,
-          dashcards: {
-            [dashcard.id]: dashcard,
-            [actionDashcard.id]: actionDashcard,
-            [linkDashcard.id]: linkDashcard,
-          },
-          dashboards: {
-            [dashboard.id]: {
-              ...dashboard,
-              dashcards: [dashcard.id, actionDashcard.id, linkDashcard.id],
-            },
-          },
-        } as DashboardState,
+        dashboard: createDashboardState(dashboard, dashcards),
       }),
     },
   );

@@ -73,7 +73,7 @@ export function showAutoWireToast(
       return;
     }
 
-    const originalDashcardAttributes = dashcardsToAutoApply.map(dashcard => ({
+    const originalDashcardAttributes = dashcardsToAutoApply.map((dashcard) => ({
       id: dashcard.id,
       attributes: {
         parameter_mappings: dashcard.parameter_mappings,
@@ -160,7 +160,7 @@ export function showAutoWireToastNewCard({
 
       for (const dashcard of dashcards) {
         const mappings = (dashcard.parameter_mappings ?? []).filter(
-          mapping => mapping.parameter_id === parameter.id,
+          (mapping) => mapping.parameter_id === parameter.id,
         );
 
         for (const mapping of mappings) {
@@ -194,7 +194,7 @@ export function showAutoWireToastNewCard({
       return;
     }
 
-    const parametersToMap = dashboard.parameters.filter(p =>
+    const parametersToMap = dashboard.parameters.filter((p) =>
       processedParameterIds.has(p.id),
     );
 

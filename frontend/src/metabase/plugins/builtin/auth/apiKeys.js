@@ -5,8 +5,8 @@ import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/Manage
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(
-  sections =>
-    updateIn(sections, ["authentication", "settings"], settings => [
+  (sections) =>
+    updateIn(sections, ["authentication", "settings"], (settings) => [
       ...settings,
       {
         key: "api-keys",
@@ -15,7 +15,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(
         widget: ApiKeysAuthCard,
       },
     ]),
-  sections => ({
+  (sections) => ({
     ...sections,
     "authentication/api-keys": {
       component: ManageApiKeys,

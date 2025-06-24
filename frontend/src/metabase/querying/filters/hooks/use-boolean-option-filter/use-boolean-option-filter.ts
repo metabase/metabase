@@ -38,7 +38,7 @@ export function useBooleanOptionFilter({
     () =>
       isExpanded
         ? availableOptions
-        : availableOptions.filter(option => !option.isAdvanced),
+        : availableOptions.filter((option) => !option.isAdvanced),
     [availableOptions, isExpanded],
   );
 

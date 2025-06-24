@@ -37,7 +37,7 @@ const setup = (opts: SetupOpts) => {
 describe("DataSelectorTablePicker", () => {
   it.each(NOT_SYNCED_DB_STATUSES)(
     "render a loading spinner when a table has initial_sync_status='%s'",
-    initial_sync_status => {
+    (initial_sync_status) => {
       const database = createMockDatabase({
         tables: [createMockTable({ initial_sync_status })],
       });

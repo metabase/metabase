@@ -64,7 +64,7 @@ So if a person is in two groups with different permissions for the same database
 - Red group with impersonated access that limits what they can see.
 - Blue group with View data set to "Can view" and Create queries set to "Query builder and native".
 
-Red group's more permissive access would override the impersonated access.
+Blue group's more permissive access would override the impersonated access.
 
 ## Further reading
 

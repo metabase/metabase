@@ -14,55 +14,33 @@ describe("scenarios > admin > datamodel > field > field type", () => {
   const ordersColumns = ["PRODUCT_ID", "QUANTITY"];
 
   function waitAndAssertOnResponse(alias) {
-    cy.wait("@" + alias).then(xhr => {
+    cy.wait("@" + alias).then((xhr) => {
       expect(xhr.response.body.errors).to.not.exist;
     });
   }
 
-  function getFieldType(type) {
-    return cy
-      .findByText("Field Type")
-      .closest("section")
-      .find("[data-testid='select-button-content']")
-      .contains(type);
+  function getFieldType() {
+    return cy.findByPlaceholderText("Select a semantic type");
   }
 
   function setFieldType({ oldValue, newValue } = {}) {
-    getFieldType(oldValue).click();
+    getFieldType().should("have.value", oldValue).click();
 
     H.popover().within(() => {
-      cy.findByText(oldValue).closest(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordionList virtualization
-      searchFieldType(newValue);
       cy.findByText(newValue).click();
     });
   }
 
   function checkNoFieldType({ oldValue, newValue } = {}) {
-    getFieldType(oldValue).click();
+    getFieldType().should("have.value", oldValue).click();
 
     H.popover().within(() => {
-      searchFieldType(newValue);
       cy.findByText(newValue).should("not.exist");
     });
   }
 
-  function searchFieldType(value) {
-    // .type() is flaky when used for ListSearchField - typed characters can
-    // sometimes get rearranged while typing.
-    // Unclear why. Possibly because it's rendered as a virtualized list item.
-    cy.findByPlaceholderText("Find...").invoke("val", value).trigger("blur");
-  }
-
-  function getFKTargetField(targetField) {
-    return cy
-      .findByTestId("fk-target-select")
-      .as("targetField")
-      .invoke("text")
-      .should("eq", targetField);
-  }
-
   function setFKTargetField(field) {
-    cy.findByText("Select a target").click();
+    cy.findByPlaceholderText("Select a target").click();
 
     H.popover().contains(field).click();
   }
@@ -73,7 +51,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    ordersColumns.forEach(column => {
+    ordersColumns.forEach((column) => {
       cy.wrap(
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[column]}/general`,
       ).as(`ORDERS_${column}_URL`);
@@ -93,7 +71,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.reload();
     cy.wait("@metadata");
 
-    getFieldType("No semantic type");
+    getFieldType().should("have.value", "No semantic type");
   });
 
   it("should let you change the type to 'Foreign Key' and choose the target field", () => {
@@ -112,7 +90,7 @@ describe("scenarios > admin > datamodel > field > field type", () => {
     cy.wait(["@metadata", "@metadata"]);
 
     getFieldType("Foreign Key");
-    getFKTargetField("Products → ID");
+    cy.findByTestId("fk-target-select").should("have.value", "Products → ID");
   });
 
   it("should not let you change the type to 'Number' (metabase#16781)", () => {
@@ -128,7 +106,7 @@ describe("scenarios > admin > datamodel > field", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach(name => {
+    ["CREATED_AT", "PRODUCT_ID", "QUANTITY"].forEach((name) => {
       cy.wrap(
         `/admin/datamodel/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/${ORDERS[name]}/general`,
       ).as(`ORDERS_${name}_URL`);
@@ -189,8 +167,7 @@ describe("scenarios > admin > datamodel > field", () => {
     it("lets you change field visibility", () => {
       H.visitAlias("@ORDERS_CREATED_AT_URL");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Everywhere").click();
+      cy.findByDisplayValue("Everywhere").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Do not include").click({ force: true });
       cy.wait("@fieldUpdate");
@@ -229,8 +206,7 @@ describe("scenarios > admin > datamodel > field", () => {
       cy.contains("Use original value").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Use foreign key").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Title").click();
+      H.popover().findByText("Title").click();
       cy.wait("@fieldDimensionUpdate");
 
       cy.reload();
@@ -273,10 +249,7 @@ describe("scenarios > admin > datamodel > field", () => {
 
           cy.log("Make sure custom mapping appears in QB");
           H.openTable({ database: dbId, table: NUMBER_WITH_NULLS_ID });
-          cy.get("[data-testid=cell-data]").should(
-            "contain",
-            remappedNullValue,
-          );
+          cy.findAllByRole("gridcell").should("contain", remappedNullValue);
         },
       );
     });
@@ -326,7 +299,7 @@ describe("Unfold JSON", { tags: "@external" }, () => {
     // Sync database
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(/Sync database schema now/i).click();
+    cy.findByText(/Sync database schema/i).click();
     cy.wait("@sync_schema");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sync triggered!");
@@ -500,7 +473,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     cy.log("Numeric ratings should be remapped to custom strings");
     H.openReviewsTable();
-    Object.values(customMap).forEach(rating => {
+    Object.values(customMap).forEach((rating) => {
       cy.findAllByText(rating);
     });
   });
@@ -583,6 +556,37 @@ describe("scenarios > admin > datamodel > metadata", () => {
         .eq(2)
         .should("have.text", "Rating");
     });
+  });
+
+  it("semantic picker should not overflow the screen on smaller viewports (metabase#56442)", () => {
+    const viewportHeight = 400;
+
+    cy.viewport(1280, viewportHeight);
+    cy.visit(`/admin/datamodel/database/${SAMPLE_DB_ID}`);
+    cy.findAllByTestId("admin-metadata-table-list-item")
+      .contains("Reviews")
+      .scrollIntoView()
+      .click();
+    cy.findByTestId("column-ID")
+      .scrollIntoView()
+      .findByPlaceholderText("Select a semantic type")
+      .click();
+
+    H.popover().scrollTo("top");
+    H.popover()
+      .findByText("Entity Key")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.top).greaterThan(0);
+      });
+
+    H.popover().scrollTo("bottom");
+    H.popover()
+      .findByText("No semantic type")
+      .should(($element) => {
+        const rect = $element[0].getBoundingClientRect();
+        expect(rect.bottom).lessThan(viewportHeight);
+      });
   });
 
   it("display value 'custom mapping' should be available regardless of the chosen filtering type (metabase#16322)", () => {
@@ -753,6 +757,8 @@ describe("scenarios > admin > datamodel > segments", () => {
           aggregation: [["count"]],
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
+      }).then(({ body }) => {
+        cy.wrap(body.id).as("segmentId");
       });
     });
 
@@ -779,20 +785,41 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.findAllByText("Discount");
     });
 
-    it("should show up in UI list", () => {
-      cy.visit("/admin/datamodel/segments");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(SEGMENT_NAME);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Filtered by Total");
+    it("should not crash when editing field in segment field detail page (metabase#55322)", () => {
+      cy.get("@segmentId").then((segmentId) => {
+        cy.visit(`/reference/segments/${segmentId}/fields/${ORDERS.TAX}`);
+      });
+
+      cy.button(/Edit/).should("be.visible").realClick();
+
+      cy.findByPlaceholderText("No description yet").should("be.visible");
+      cy.get("main").findByText("Something’s gone wrong").should("not.exist");
     });
 
-    it("should show the segment details of a specific id", () => {
-      cy.visit("/admin/datamodel/segment/1");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Edit Your Segment");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Preview");
+    it("should show up in UI list and should show the segment details of a specific id", () => {
+      cy.visit("/admin/datamodel/segments");
+
+      cy.findByRole("table").within(() => {
+        cy.findByText("Filtered by Total is less than 100").should(
+          "be.visible",
+        );
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+      cy.findByRole("link", { name: /Orders < 100/ })
+        .should("be.visible")
+        .click();
+
+      cy.get("form").within(() => {
+        cy.findByText("Edit Your Segment").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+        cy.findByText("Orders").should("be.visible");
+      });
+      cy.findByPlaceholderText("Something descriptive but not too long").should(
+        "have.value",
+        SEGMENT_NAME,
+      );
+      cy.findByRole("link", { name: "Preview" }).should("be.visible");
     });
 
     it("should see a newly asked question in its questions list", () => {
@@ -1006,26 +1033,59 @@ describe("scenarios > admin > databases > table", () => {
     });
 
     it("should see multiple fields", () => {
-      cy.get("input[value='User ID']");
-      cy.findAllByText("Foreign Key");
+      cy.findByTestId("column-ID")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("BIGINT").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Entity Key",
+          );
+        });
 
-      cy.get("input[value='Tax']");
-      cy.findAllByText("No semantic type");
+      cy.findByTestId("column-USER_ID")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("INTEGER").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Foreign Key",
+          );
+          cy.findByPlaceholderText("Select a target").should(
+            "have.value",
+            "People → ID",
+          );
+        });
 
-      cy.get("input[value='Discount']");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Discount");
-    });
+      cy.findByTestId("column-TAX")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "No semantic type",
+          );
+        });
 
-    it("should see the id field", () => {
-      cy.get("input[value='ID']");
-      cy.findAllByText("Entity Key");
-    });
+      cy.findByTestId("column-DISCOUNT")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("DOUBLE PRECISION").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Discount",
+          );
+        });
 
-    it("should see the created_at timestamp field", () => {
-      cy.get("input[value='Created At']");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Creation timestamp");
+      cy.findByTestId("column-CREATED_AT")
+        .scrollIntoView()
+        .within(() => {
+          cy.findByText("TIMESTAMP").should("be.visible");
+          cy.findByPlaceholderText("Select a semantic type").should(
+            "have.value",
+            "Creation timestamp",
+          );
+        });
     });
   });
 

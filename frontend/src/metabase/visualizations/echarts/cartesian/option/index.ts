@@ -80,7 +80,7 @@ export const getCartesianChartOption = (
     goalSeriesOption,
     trendSeriesOption,
     timelineEventsSeries,
-  ].flatMap(option => option ?? []);
+  ].flatMap((option) => option ?? []);
 
   // dataset option
   const dimensions = [
@@ -88,12 +88,12 @@ export const getCartesianChartOption = (
     OTHER_DATA_KEY,
     POSITIVE_STACK_TOTAL_DATA_KEY,
     NEGATIVE_STACK_TOTAL_DATA_KEY,
-    ...chartModel.seriesModels.map(seriesModel => [
+    ...chartModel.seriesModels.map((seriesModel) => [
       seriesModel.dataKey,
       getBarSeriesDataLabelKey(seriesModel.dataKey, "+"),
       getBarSeriesDataLabelKey(seriesModel.dataKey, "-"),
     ]),
-  ].flatMap(dimension => dimension);
+  ].flatMap((dimension) => dimension);
 
   const echartsDataset = [
     {
@@ -111,7 +111,7 @@ export const getCartesianChartOption = (
       source: chartModel.trendLinesModel?.dataset as OptionSourceData,
       dimensions: [
         X_AXIS_DATA_KEY,
-        ...chartModel.trendLinesModel?.seriesModels.map(s => s.dataKey),
+        ...chartModel.trendLinesModel?.seriesModels.map((s) => s.dataKey),
       ],
     });
   }

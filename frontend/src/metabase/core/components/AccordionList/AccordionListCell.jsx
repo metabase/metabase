@@ -211,8 +211,6 @@ export const AccordionListCell = ({
         </IconWrapper>
       </div>
     );
-  } else if (type === "header-hidden") {
-    content = <div className={cx({ [CS.my1]: itemIndex > 0 })} />;
   } else if (type === "no-results") {
     content = (
       <EmptyStateContainer>
@@ -230,7 +228,7 @@ export const AccordionListCell = ({
     content = (
       <ListSearchField
         autoFocus
-        onChange={e => onChangeSearchText(e.target.value)}
+        onChange={(e) => onChangeSearchText(e.target.value)}
         onResetClick={() => onChangeSearchText("")}
         value={searchText}
         placeholder={searchPlaceholder}

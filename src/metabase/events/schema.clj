@@ -157,6 +157,7 @@
   [:map {:closed true}
    [:object [:fn #(t2/instance-of? :model/Database %)]]
    [:previous-object {:optional true} [:fn #(t2/instance-of? :model/Database %)]]
+   [:details {:optional true} :map]
    [:user-id pos-int?]])
 
 (mr/def :event/database-create ::database)

@@ -26,7 +26,7 @@ export const loadMemberships = createAction(LOAD_MEMBERSHIPS, async () =>
   _.chain(await PermissionsApi.memberships())
     .values()
     .flatten()
-    .map(m => [m.membership_id, m])
+    .map((m) => [m.membership_id, m])
     .object()
     .value(),
 );
@@ -48,7 +48,7 @@ export const createMembership = createAction(
 );
 export const deleteMembership = createThunkAction(
   DELETE_MEMBERSHIP,
-  membershipId => async (_dispatch, getState) => {
+  (membershipId) => async (_dispatch, getState) => {
     const memberships = getMemberships(getState());
     const membership = memberships[membershipId];
     await PermissionsApi.deleteMembership({ id: membershipId });
@@ -59,7 +59,7 @@ export const deleteMembership = createThunkAction(
 
 export const updateMembership = createAction(
   UPDATE_MEMBERSHIP,
-  async membership => {
+  async (membership) => {
     await PermissionsApi.updateMembership({
       ...membership,
       id: membership.membership_id,

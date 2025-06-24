@@ -8,11 +8,17 @@
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
   task to the scheduler as usual via `schedule-task!`.
 
+  ## Documentation
+
+  For more detailed information about using Quartz in Metabase, including examples and best practices,
+  see the [QUARTZ.md](src/metabase/task/QUARTZ.md) documentation.
+
   ## Quartz JavaDoc
 
   Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require
    [clojure.string :as str]
+   [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
@@ -92,7 +98,20 @@
                        (ex-message (.getCause e)))
             (qs/delete-job scheduler job-key)))))))
 
-(defn- init-scheduler!
+(defn- reset-errored-triggers!
+  "Quartz does not play well with rolling updates. For example, if a new instance adds and schedules a new job, an older
+  instance may pick this up, but be unable to construct the job. It will then put the trigger into the `ERROR` state,
+  from which it will never recover.
+
+  Actually fixing this odd and undesirable behavior would be the ideal solution, but as a stopgap, let's just
+  automatically reset all `ERROR`ed triggers to `WAITING` on startup."
+  [^Scheduler scheduler]
+  (doseq [^TriggerKey tk (.getTriggerKeys scheduler nil)]
+    ;; From dox: "Only affects triggers that are in ERROR state - if identified trigger is not
+    ;; in that state then the result is a no-op."
+    (.resetTriggerFromErrorState scheduler tk)))
+
+(defn init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
   standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
@@ -104,6 +123,7 @@
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
         (delete-jobs-with-no-class!)
+        (reset-errored-triggers! new-scheduler)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
@@ -284,6 +304,7 @@
     (task/job-info \"metabase.task.sync-and-analyze.job\")"
   [job-key]
   (when-let [scheduler (scheduler)]
+    (qs/shutdown? scheduler)
     (let [job-key (->job-key job-key)]
       (try
         (assoc (job-detail->info (qs/get-job scheduler job-key))
@@ -323,3 +344,11 @@
        (catch Exception e#
          (log/error e# msg#)
          (throw (JobExecutionException. msg# e# true))))))
+
+#_{:clj-kondo/ignore [:discouraged-var]}
+(defmacro defjob
+  "Like `clojurewerkz.quartzite.task/defjob` but with a log context."
+  [jtype args & body]
+  `(jobs/defjob ~jtype ~args
+     (log/with-context {:quartz-job-type (quote ~jtype)}
+       ~@body)))

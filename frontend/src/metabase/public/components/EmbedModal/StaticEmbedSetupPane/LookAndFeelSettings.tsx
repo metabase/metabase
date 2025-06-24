@@ -22,6 +22,10 @@ import {
   Text,
 } from "metabase/ui";
 
+import {
+  DashboardDownloadSettings,
+  QuestionDownloadSettings,
+} from "./DownloadSettings";
 import { DisplayOptionSection } from "./StaticEmbedSetupPane.styled";
 import { StaticEmbedSetupPaneSettingsContentSection } from "./StaticEmbedSetupPaneSettingsContentSection";
 
@@ -52,16 +56,17 @@ export const LookAndFeelSettings = ({
       utm_content: "static-embed-settings-look-and-feel",
     },
   });
-  const upgradePageUrl = useSelector(state =>
+  const upgradePageUrl = useSelector((state) =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-static-font",
       utm_content: "static-embed-settings-look-and-feel",
     }),
   );
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const availableFonts = useSelector(state =>
+  const availableFonts = useSelector((state) =>
     getSetting(state, "available-fonts"),
   );
+  const isDashboard = resourceType === "dashboard";
 
   return (
     <>
@@ -89,12 +94,12 @@ export const LookAndFeelSettings = ({
                   label: t`Use instance font`,
                   value: "",
                 },
-                ...availableFonts?.map(font => ({
+                ...availableFonts?.map((font) => ({
                   label: font,
                   value: font,
                 })),
               ]}
-              onChange={value => {
+              onChange={(value) => {
                 onChangeDisplayOptions({
                   ...displayOptions,
                   font: value,
@@ -113,7 +118,6 @@ export const LookAndFeelSettings = ({
           <DisplayOptionSection title={t`Theme`}>
             <SegmentedControl
               value={displayOptions.theme ?? undefined}
-              // `data` type is required to be mutable, but THEME_OPTIONS is const.
               data={[...THEME_OPTIONS]}
               fullWidth
               bg={color("bg-light")}
@@ -138,7 +142,7 @@ export const LookAndFeelSettings = ({
               size="sm"
               variant="stretch"
               checked={displayOptions.background}
-              onChange={e =>
+              onChange={(e) =>
                 onChangeDisplayOptions({
                   ...displayOptions,
                   background: e.target.checked,
@@ -153,7 +157,7 @@ export const LookAndFeelSettings = ({
             size="sm"
             variant="stretch"
             checked={displayOptions.bordered}
-            onChange={e =>
+            onChange={(e) =>
               onChangeDisplayOptions({
                 ...displayOptions,
                 bordered: e.target.checked,
@@ -167,7 +171,7 @@ export const LookAndFeelSettings = ({
             size="sm"
             variant="stretch"
             checked={displayOptions.titled}
-            onChange={e =>
+            onChange={(e) =>
               onChangeDisplayOptions({
                 ...displayOptions,
                 titled: e.target.checked,
@@ -175,21 +179,18 @@ export const LookAndFeelSettings = ({
             }
           />
 
-          {canWhitelabel && (
-            <Switch
-              label={t`Download buttons`}
-              labelPosition="left"
-              size="sm"
-              variant="stretch"
-              checked={displayOptions.downloads ?? true}
-              onChange={e =>
-                onChangeDisplayOptions({
-                  ...displayOptions,
-                  downloads: e.target.checked,
-                })
-              }
-            />
-          )}
+          {canWhitelabel &&
+            (isDashboard ? (
+              <DashboardDownloadSettings
+                displayOptions={displayOptions}
+                onChangeDisplayOptions={onChangeDisplayOptions}
+              />
+            ) : (
+              <QuestionDownloadSettings
+                displayOptions={displayOptions}
+                onChangeDisplayOptions={onChangeDisplayOptions}
+              />
+            ))}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
 

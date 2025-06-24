@@ -192,11 +192,13 @@
 (deftest logout-test
   (reset-throttlers!)
   (testing "DELETE /api/session"
+    (testing "Test that logout 404s if there is no session key supplied"
+      (client/client :delete 404 "session"))
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
       (test.users/clear-cached-session-tokens!)
-      (let [session-key       (client/authenticate (test.users/user->credentials :rasta))
+      (let [session-key        (client/authenticate (test.users/user->credentials :rasta))
             session-key-hashed (session/hash-session-key session-key)
             login-history-id (t2/select-one-pk :model/LoginHistory :session_id (t2/select-one-pk :model/Session :key_hashed session-key-hashed))]
         (testing "LoginHistory should have been recorded"

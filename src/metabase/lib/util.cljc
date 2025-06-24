@@ -196,19 +196,6 @@
                                                    [%]))
     (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
 
-(defn- join->pipeline [join]
-  (let [source (select-keys join [:source-table :source-query])
-        stages (inner-query->stages source)]
-    (-> join
-        (dissoc :source-table :source-query)
-        (update-legacy-boolean-expression->list :condition :conditions)
-        (assoc :lib/type :mbql/join
-               :stages stages)
-        lib.options/ensure-uuid)))
-
-(defn- joins->pipeline [joins]
-  (mapv join->pipeline joins))
-
 (defn ->stage-metadata
   "Convert legacy `:source-metadata` to [[metabase.lib.metadata/StageMetadata]]."
   [source-metadata]
@@ -223,6 +210,23 @@
                                        (assoc :lib/type :metadata/column)))
                                  columns)))
         (assoc :lib/type :metadata/results))))
+
+(defn- join->pipeline [join]
+  (let [source (select-keys join [:source-table :source-query])
+        stages (inner-query->stages source)
+        stages (if-let [source-metadata (and (>= (count stages) 2)
+                                             (:source-metadata join))]
+                 (assoc-in stages [(- (count stages) 2) :lib/stage-metadata] (->stage-metadata source-metadata))
+                 stages)]
+    (-> join
+        (dissoc :source-table :source-query)
+        (update-legacy-boolean-expression->list :condition :conditions)
+        (assoc :lib/type :mbql/join
+               :stages stages)
+        lib.options/ensure-uuid)))
+
+(defn- joins->pipeline [joins]
+  (mapv join->pipeline joins))
 
 (defn- inner-query->stages [{:keys [source-query source-metadata], :as inner-query}]
   (let [previous-stages (if source-query

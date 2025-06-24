@@ -1,22 +1,16 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useSearchQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import type { EmbeddingEntityType } from "metabase/embedding-sdk/store";
+import type { SimpleDataPickerProps } from "metabase/plugins";
 import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import type { SearchResult, TableId } from "metabase-types/api";
+import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
-
-interface SimpleDataPickerProps {
-  filterByDatabaseId: number | null;
-  selectedEntity?: TableId;
-  isInitiallyOpen: boolean;
-  triggerElement: ReactNode;
-  setSourceTableFn: (tableId: TableId) => void;
-}
 
 export function SimpleDataPicker({
   filterByDatabaseId,
@@ -24,12 +18,13 @@ export function SimpleDataPicker({
   isInitiallyOpen,
   setSourceTableFn,
   triggerElement,
+  entityTypes,
 }: SimpleDataPickerProps) {
   const [isDataPickerOpened, { toggle, close }] =
     useDisclosure(isInitiallyOpen);
   const { data, isLoading, error } = useSearchQuery({
     table_db_id: filterByDatabaseId ? filterByDatabaseId : undefined,
-    models: ["dataset", "table"],
+    models: translateEntityTypesToSearchModels(entityTypes),
   });
 
   const options = useMemo(() => {
@@ -38,7 +33,7 @@ export function SimpleDataPicker({
     }
 
     return sortEntities(
-      data.data.map(entity => {
+      data.data.map((entity) => {
         return {
           ...entity,
           id:
@@ -55,7 +50,7 @@ export function SimpleDataPicker({
     <Popover
       opened={isDataPickerOpened}
       position="bottom-start"
-      onChange={isOpen => {
+      onChange={(isOpen) => {
         if (!isOpen) {
           close();
         }
@@ -69,7 +64,7 @@ export function SimpleDataPicker({
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
           <SimpleDataPickerView
             selectedEntity={selectedEntity}
-            onClick={tableId => {
+            onClick={(tableId) => {
               close();
               setSourceTableFn(tableId);
             }}
@@ -99,3 +94,19 @@ function sortEntities(
 }
 
 const compareString = (a: string, b: string) => a.localeCompare(b);
+
+function translateEntityTypesToSearchModels(
+  entityTypes: EmbeddingEntityType[],
+): SearchModel[] {
+  const searchModels: SearchModel[] = [];
+
+  if (entityTypes.includes("model")) {
+    searchModels.push("dataset");
+  }
+
+  if (entityTypes.includes("table")) {
+    searchModels.push("table");
+  }
+
+  return searchModels;
+}

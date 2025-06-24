@@ -32,7 +32,7 @@ describe("scenarios > collection defaults", () => {
   describe("new collection modal", () => {
     it("should be usable on small screens", () => {
       const COLLECTIONS_COUNT = 5;
-      _.times(COLLECTIONS_COUNT, index => {
+      _.times(COLLECTIONS_COUNT, (index) => {
         cy.request("POST", "/api/collection", {
           name: `Collection ${index + 1}`,
           parent_id: null,
@@ -48,9 +48,10 @@ describe("scenarios > collection defaults", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Collection").click();
 
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByPlaceholderText("My new fantastic collection").type(
           "Test collection",
+          { force: true },
         );
         cy.findByLabelText("Description").type("Test collection description");
         cy.findByTestId("collection-picker-button")
@@ -254,8 +255,8 @@ describe("scenarios > collection defaults", () => {
       cy.intercept(
         "GET",
         "/api/collection/root/items?models=dashboard**",
-        req => {
-          req.on("response", res => {
+        (req) => {
+          req.on("response", (res) => {
             res.send(
               assocIn(res.body, ["data", 0, "last-edit-info"], {
                 id: 1,
@@ -278,8 +279,8 @@ describe("scenarios > collection defaults", () => {
       cy.intercept(
         "GET",
         "/api/collection/root/items?models=dashboard**",
-        req => {
-          req.on("response", res => {
+        (req) => {
+          req.on("response", (res) => {
             res.send(
               assocIn(res.body, ["data", 0, "last-edit-info"], {
                 id: 1,
@@ -790,7 +791,7 @@ describe("scenarios > collection defaults", () => {
           H.createCollection({ name: "Outer collection 2" });
 
           // modify the inner collection so that it shows up in recents
-          cy.get("@innerCollectionId").then(innerCollectionId => {
+          cy.get("@innerCollectionId").then((innerCollectionId) => {
             cy.request("PUT", `/api/collection/${innerCollectionId}`, {
               name: "Inner collection 1 - modified",
             });
@@ -842,7 +843,7 @@ describe("scenarios > collection defaults", () => {
     it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      Cypress._.times(50, i => H.createDashboard({ name: `Dashboard ${i}` }));
+      Cypress._.times(50, (i) => H.createDashboard({ name: `Dashboard ${i}` }));
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot
@@ -859,7 +860,7 @@ describe("scenarios > collection defaults", () => {
         cy.findByText("Collection").click();
       });
 
-      cy.findByTestId("new-collection-modal").then(modal => {
+      cy.findByTestId("new-collection-modal").then((modal) => {
         cy.findByText("Collection it's saved in").should("be.visible");
         cy.findByTestId("collection-picker-button")
           .findByText("Third collection")
@@ -905,7 +906,7 @@ describe("scenarios > collection items listing", () => {
   }
 
   function archiveAll() {
-    cy.request("GET", "/api/collection/root/items").then(response => {
+    cy.request("GET", "/api/collection/root/items").then((response) => {
       response.body.data.forEach(({ model, id }) => {
         if (model !== "collection") {
           cy.request(
@@ -951,10 +952,10 @@ describe("scenarios > collection items listing", () => {
       // so the test won't fail if we change the default database
       archiveAll();
 
-      _.times(ADDED_DASHBOARDS, i =>
+      _.times(ADDED_DASHBOARDS, (i) =>
         H.createDashboard({ name: `dashboard ${i}` }),
       );
-      _.times(ADDED_QUESTIONS, i =>
+      _.times(ADDED_QUESTIONS, (i) =>
         H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
@@ -1148,8 +1149,8 @@ describe("scenarios > collection items listing", () => {
     });
 
     it("should reset pagination if sorting applied on not first page", () => {
-      _.times(15, i => H.createDashboard(`dashboard ${i}`));
-      _.times(15, i =>
+      _.times(15, (i) => H.createDashboard(`dashboard ${i}`));
+      _.times(15, (i) =>
         H.createQuestion({
           name: `generated question ${i}`,
           query: TEST_QUESTION_QUERY,
@@ -1238,7 +1239,7 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
     cy.get("@root")
       .next("ul")
       .within(() => {
-        children.forEach(child => {
+        children.forEach((child) => {
           cy.findByText(child);
         });
       });
@@ -1246,7 +1247,7 @@ function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
 }
 
 function moveItemToCollection(itemName, collectionName) {
-  cy.request("GET", "/api/collection/root/items").then(resp => {
+  cy.request("GET", "/api/collection/root/items").then((resp) => {
     const ALL_ITEMS = resp.body.data;
 
     const { id, model } = getCollectionItem(ALL_ITEMS, itemName);
@@ -1258,7 +1259,7 @@ function moveItemToCollection(itemName, collectionName) {
   });
 
   function getCollectionItem(collection, itemName) {
-    return collection.find(item => item.name === itemName);
+    return collection.find((item) => item.name === itemName);
   }
 }
 

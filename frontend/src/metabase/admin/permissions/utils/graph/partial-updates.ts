@@ -16,7 +16,7 @@ export function getModifiedGroupsPermissionsGraphParts(
   allGroupIds: string[],
   externallyModifiedGroupIds: string[],
 ) {
-  const dataPermissionsModifiedGroupIds = allGroupIds.filter(groupId => {
+  const dataPermissionsModifiedGroupIds = allGroupIds.filter((groupId) => {
     return !_.isEqual(
       dataPermissions[groupId],
       originalDataPermissions[groupId],
@@ -47,7 +47,7 @@ export function mergeGroupsPermissionsUpdates(
     ...Object.keys(newDataPermissions),
   ]);
 
-  const latestPermissionsEntries = allGroupIds.map(groupId => {
+  const latestPermissionsEntries = allGroupIds.map((groupId) => {
     // values can be omitted from the graph to save space or to indicate that the group has default permissions for all entities
     // this means we need to determine the value if we need to use the value currently in memory or default to an empty object
     // which is the FE definition of completely default permissions for all entities
@@ -66,7 +66,7 @@ export function getModifiedCollectionPermissionsGraphParts(
   collectionPermissions: CollectionPermissions,
 ) {
   const groupIds = Object.keys(collectionPermissions);
-  const modifiedGroupIds = groupIds.filter(groupId => {
+  const modifiedGroupIds = groupIds.filter((groupId) => {
     const originalPerms = originalCollectionPermissions[groupId];
     const currPerms = collectionPermissions[groupId];
     return !_.isEqual(currPerms, originalPerms);

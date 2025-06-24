@@ -77,7 +77,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections");
-    cy.get("tbody > tr").should("have.length", 2);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 2);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").should("not.exist");

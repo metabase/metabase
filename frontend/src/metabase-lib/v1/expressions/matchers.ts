@@ -11,6 +11,7 @@ import type {
   OffsetExpression,
   SegmentFilter,
   StringLiteral,
+  ValueExpression,
 } from "metabase-types/api";
 
 import { FUNCTIONS, OPERATORS } from "./config";
@@ -18,12 +19,14 @@ import { FUNCTIONS, OPERATORS } from "./config";
 export function isExpression(expr: unknown): expr is Expression {
   return (
     isLiteral(expr) ||
+    isValue(expr) ||
     isOperator(expr) ||
     isFunction(expr) ||
     isDimension(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
-    isCaseOrIf(expr)
+    isCaseOrIf(expr) ||
+    isRawDimension(expr)
   );
 }
 
@@ -48,14 +51,26 @@ export function isBooleanLiteral(expr: unknown): expr is BooleanLiteral {
 }
 
 export function isNumberLiteral(expr: unknown): expr is NumericLiteral {
-  return typeof expr === "number";
+  return typeof expr === "number" || typeof expr === "bigint";
+}
+
+export function isIntegerLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "number" && Number.isInteger(expr);
+}
+
+export function isFloatLiteral(expr: unknown): expr is NumericLiteral {
+  return typeof expr === "number" && !Number.isInteger(expr);
+}
+
+export function isValue(expr: unknown): expr is ValueExpression {
+  return Array.isArray(expr) && expr[0] === "value";
 }
 
 export function isOperator(expr: unknown): expr is CallExpression {
   return (
     Array.isArray(expr) &&
     OPERATORS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
 }
 
@@ -65,10 +80,14 @@ export function isOptionsObject(obj: unknown): obj is CallOptions {
 
 export function isFunction(expr: unknown): expr is CallExpression {
   return (
-    Array.isArray(expr) &&
+    isCallExpression(expr) &&
     FUNCTIONS.has(expr[0]) &&
-    expr.slice(1).every(arg => isExpression(arg) || isOptionsObject(arg))
+    expr.slice(1).every((arg) => isExpression(arg) || isOptionsObject(arg))
   );
+}
+
+export function isCallExpression(expr: unknown): expr is CallExpression {
+  return Array.isArray(expr) && typeof expr[0] === "string";
 }
 
 export function isDimension(expr: unknown): expr is FieldReference {
@@ -101,4 +120,17 @@ export function isCaseOrIf(expr: unknown): expr is CaseOrIfExpression {
 
 export function isOffset(expr: unknown): expr is OffsetExpression {
   return Array.isArray(expr) && expr[0] === "offset";
+}
+
+// RawDimension is only used internally while parsing an expression.
+// It can also be used in examples when there is no query to reference.
+export type RawDimension = ["dimension", string];
+
+// Matches internal dimension reference clause, for use in ie. examples.
+export function isRawDimension(expr: unknown): expr is RawDimension {
+  return (
+    Array.isArray(expr) &&
+    expr[0] === "dimension" &&
+    typeof expr[1] === "string"
+  );
 }

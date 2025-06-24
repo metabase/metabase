@@ -70,7 +70,7 @@ describe("patchDominantBaseline", () => {
         nodes[node.properties.id] = node;
       }
 
-      node.children.forEach(child => recordNode(child));
+      node.children.forEach((child) => recordNode(child));
     }
     recordNode(patchedSvgElem);
 

@@ -9,7 +9,7 @@ export default {
   component: FormCheckBox,
 };
 
-const Template: StoryFn<typeof FormCheckBox> = args => {
+const Template: StoryFn<typeof FormCheckBox> = (args) => {
   const initialValues = { value: false };
   const handleSubmit = () => undefined;
 

@@ -3,7 +3,7 @@ import type { UserLoginHistory } from "metabase-types/api";
 import { Api } from "./api";
 
 export const loginHistoryApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getLoginHistory: builder.query<UserLoginHistory, void>({
       query: () => ({
         method: "GET",

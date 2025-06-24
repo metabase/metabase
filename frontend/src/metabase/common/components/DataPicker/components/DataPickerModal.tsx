@@ -123,7 +123,7 @@ export const DataPickerModal = ({
     (recentItems: RecentItem[]) => {
       if (databaseId) {
         return recentItems.filter(
-          item => getRecentItemDatabaseId(item) === databaseId,
+          (item) => getRecentItemDatabaseId(item) === databaseId,
         );
       }
 
@@ -270,7 +270,7 @@ const FilterButton = ({
           px="1rem"
           py="0.5rem"
         >
-          {options.map(option => (
+          {options.map((option) => (
             <Checkbox
               key={`filter-${option.value}`}
               label={option.label}

@@ -22,7 +22,7 @@ export const groupManagerAllowedPathGetter = (
 };
 
 export const getRevokedAllGroupManagersPath = (adminPaths: AdminPath[]) => {
-  const allowedItems = adminPaths.filter(item => item.key !== "people");
+  const allowedItems = adminPaths.filter((item) => item.key !== "people");
 
   return allowedItems.length > 0 ? allowedItems[0].path : "/";
 };
@@ -32,7 +32,7 @@ export const getRevokeManagerPeopleRedirect = (
   adminPaths: AdminPath[],
 ) => {
   const isRemovingLastManagerMembership =
-    currentUserMemberships.filter(m => m.is_group_manager).length === 1;
+    currentUserMemberships.filter((m) => m.is_group_manager).length === 1;
 
   if (isRemovingLastManagerMembership) {
     return getRevokedAllGroupManagersPath(adminPaths);
@@ -46,7 +46,7 @@ export const getRevokeManagerGroupsRedirect = (
   adminPaths: AdminPath[],
 ) => {
   const isRemovingLastManagerMembership =
-    currentUserMemberships.filter(m => m.is_group_manager).length === 1;
+    currentUserMemberships.filter((m) => m.is_group_manager).length === 1;
 
   if (!isRemovingLastManagerMembership) {
     return "/admin/people/groups";
@@ -62,7 +62,7 @@ export const getRemoveMembershipConfirmation = (
 ): Partial<ConfirmationState> | null => {
   const isRemovingSelf =
     currentUserMemberships.find(
-      membership => membership.membership_id === deletedMembershipId,
+      (membership) => membership.membership_id === deletedMembershipId,
     ) != null;
 
   return isRemovingSelf && !currentUser.is_superuser

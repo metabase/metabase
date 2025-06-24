@@ -55,7 +55,7 @@ export function SimpleDataPickerView({
           leftSection={<Icon name="search" size={16} aria-hidden />}
           mb="sm"
           placeholder={t`Search…`}
-          onChange={e => setSearchText(e.target.value ?? "")}
+          onChange={(e) => setSearchText(e.target.value ?? "")}
         />
       ) : (
         /**
@@ -69,7 +69,7 @@ export function SimpleDataPickerView({
       <Flex direction="column" justify="center" style={{ flex: 1 }}>
         {displayOptions.length >= 1 ? (
           <ScrollArea.Autosize mah={TEN_OPTIONS_HEIGHT} type="auto" mb="auto">
-            {displayOptions.map(option => {
+            {displayOptions.map((option) => {
               const isSelected = selectedEntity === option.id;
               const iconColor = isSelected
                 ? "--mb-color-text-white"

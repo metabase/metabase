@@ -28,7 +28,6 @@
    [metabase.db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.db.custom-migrations.pulse-to-notification :as pulse-to-notification]
    [metabase.db.custom-migrations.util :as custom-migrations.util]
-   [metabase.plugins.classloader :as classloader]
    [metabase.task.bootstrap]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
@@ -194,17 +193,10 @@
 ;;; |                                           Quartz Scheduler Helpers                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- set-jdbc-backend-properties! []
-  (metabase.task.bootstrap/set-jdbc-backend-properties! (mdb.connection/db-type)))
-
 (define-migration DeleteAbandonmentEmailTask
-  (classloader/the-classloader)
-  (set-jdbc-backend-properties!)
-  (let [scheduler (qs/initialize)]
-    (qs/start scheduler)
+  (custom-migrations.util/with-temp-schedule! [scheduler]
     (qs/delete-trigger scheduler (triggers/key "metabase.task.abandonment-emails.trigger"))
-    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))
-    (qs/shutdown scheduler)))
+    (qs/delete-job scheduler (jobs/key "metabase.task.abandonment-emails.job"))))
 
 (define-migration FillJSONUnfoldingDefault
   (let [db-ids-to-not-update (->> (t2/query {:select [:id :details]
@@ -1114,19 +1106,15 @@
   ;; then we shouldn't schedule a trigger for scan field values. Turns out it wasn't like that since forever, so we need
   ;; this migraiton to remove triggers for any existing DB that have this option on.
   ;; See #40715
-  (when-let [;; find all dbs which are configured not to scan field values
-             dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
-                                    (false? (:is_full_sync %)))
-                              (t2/select :metabase_database)))]
-    (classloader/the-classloader)
-    (set-jdbc-backend-properties!)
-    (let [scheduler (qs/initialize)]
-      (qs/start scheduler)
+  (custom-migrations.util/with-temp-schedule! [scheduler]
+    (when-let [;; find all dbs which are configured not to scan field values
+               dbs (seq (filter #(and (-> % :details encrypted-json-out :let-user-control-scheduling)
+                                      (false? (:is_full_sync %)))
+                                (t2/select :metabase_database)))]
       (doseq [db dbs]
         (qs/delete-trigger scheduler (triggers/key (format "metabase.task.update-field-values.trigger.%d" (:id db)))))
       ;; use the table, not model/Database because we don't want to trigger the hooks
-      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil})
-      (qs/shutdown scheduler))))
+      (t2/update! :metabase_database :id [:in (map :id dbs)] {:cache_field_values_schedule nil}))))
 
 (defn- hash-bcrypt
   "Hashes a given plaintext password using bcrypt.  Should be used to hash
@@ -1242,7 +1230,8 @@
                                   :report_dashboardcard
                                   :dashboardcard_series
                                   :permissions_group
-                                  :data_permissions]]
+                                  :data_permissions
+                                  :dimension]]
                 (when-let [values (seq (table-name->rows table-name->raw-rows table-name))]
                   (t2/query {:insert-into table-name :values values})))
               (let [group-id (:id (t2/query-one {:select :id :from :permissions_group :where [:= :name "All Users"]}))]
@@ -1284,7 +1273,8 @@
                               :parameter_card
                               :dashboard_tab
                               :dashboardcard_series
-                              :data_permissions]
+                              :data_permissions
+                              :dimension]
                   :let [query (cond-> {:select [:*] :from table-name}
                                 (= table-name :collection) (assoc :where [:and
                                                                           ;; exclude the analytics namespace

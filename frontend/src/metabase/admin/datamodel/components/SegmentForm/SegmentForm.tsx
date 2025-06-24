@@ -51,7 +51,7 @@ const SegmentForm = ({
     useFormik({
       initialValues: segment ?? {},
       isInitialValid: false,
-      validate: values => getFormErrors(values, metadata),
+      validate: (values) => getFormErrors(values, metadata),
       onSubmit,
     });
 

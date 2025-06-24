@@ -72,10 +72,12 @@
   (log-if-error "fields-metadata"
     (let [driver             (driver.u/database->driver database)
           describe-fields-fn (if (driver.u/supports? driver :describe-fields database)
-                               driver/describe-fields
+                               (do (log/debug "Using `describe-fields` (fast sync) to fetch fields metadata.")
+                                   driver/describe-fields)
                                ;; In a future version we may remove [[driver/describe-table]]
                                ;; and we'll just use [[driver/describe-fields]] here
-                               describe-fields-using-describe-table)]
+                               (do (log/debug "Using `describe-table` (legacy sync) to fetch fields metadata.")
+                                   describe-fields-using-describe-table))]
       (cond->> (describe-fields-fn driver database args)
         ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
         (mu.fn/instrument-ns? *ns*)

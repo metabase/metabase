@@ -116,7 +116,7 @@ const getStepTitle = (
 };
 
 const getSubmitError = (error: unknown): unknown => {
-  return updateIn(error, ["data", "errors"], errors => ({
+  return updateIn(error, ["data", "errors"], (errors) => ({
     details: errors,
   }));
 };

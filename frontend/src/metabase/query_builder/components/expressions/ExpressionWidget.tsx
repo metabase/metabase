@@ -1,17 +1,11 @@
-import type {
-  ChangeEvent,
-  KeyboardEvent as ReactKeyboardEvent,
-  ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { isNotNull } from "metabase/lib/types";
-import { Box, Button, Flex, TextInput } from "metabase/ui";
+import { Box, Button, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type { Shortcut } from "metabase-lib/v1/expressions/complete";
-import type { ErrorWithMessage } from "metabase-lib/v1/expressions/types";
+import type { ExpressionError, StartRule } from "metabase-lib/v1/expressions";
 
 import {
   trackColumnCombineViaShortcut,
@@ -20,35 +14,30 @@ import {
 
 import { CombineColumns, hasCombinations } from "./CombineColumns";
 import { Editor } from "./Editor";
-import ExpressionWidgetS from "./ExpressionWidget.module.css";
-import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
-import { ExpressionWidgetInfo } from "./ExpressionWidgetInfo";
+import type { Shortcut } from "./Editor/Shortcuts";
 import { ExtractColumn, hasExtractions } from "./ExtractColumn";
-import type { ClauseType, StartRule } from "./types";
+import { Layout, LayoutFooter, LayoutHeader } from "./Layout";
+import { NameInput } from "./NameInput";
 
 const WIDGET_WIDTH = 472;
 
-export type ExpressionWidgetProps<S extends StartRule = "expression"> = {
-  startRule?: S;
+export type ExpressionWidgetProps = {
+  startRule?: StartRule;
 
   query: Lib.Query;
   stageIndex: number;
-  clause?: ClauseType<S> | undefined;
+  clause?: Lib.Expressionable | undefined;
   name?: string;
   withName?: boolean;
   reportTimezone?: string;
   header?: ReactNode;
   expressionIndex?: number;
 
-  onChangeClause?: (name: string, clause: ClauseType<S>) => void;
+  onChangeClause?: (name: string, clause: Lib.ExpressionClause) => void;
   onClose?: () => void;
 };
 
-export const ExpressionWidget = <S extends StartRule = "expression">(
-  props: ExpressionWidgetProps<S>,
-) => {
-  type Clause = ClauseType<S>;
-
+export const ExpressionWidget = (props: ExpressionWidgetProps) => {
   const {
     query,
     stageIndex,
@@ -64,8 +53,10 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   } = props;
 
   const [name, setName] = useState(initialName || "");
-  const [clause, setClause] = useState<Clause | null>(initialClause ?? null);
-  const [error, setError] = useState<ErrorWithMessage | null>(null);
+  const [clause, setClause] = useState<Lib.ExpressionClause | null>(
+    (initialClause ?? null) as Lib.ExpressionClause | null,
+  );
+  const [error, setError] = useState<ExpressionError | null>(null);
 
   const [isCombiningColumns, setIsCombiningColumns] = useState(false);
   const [isExtractingColumn, setIsExtractingColumn] = useState(false);
@@ -75,7 +66,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const isValid = !error && isValidName && isValidExpressionClause;
 
   const handleCommit = useCallback(
-    (clause: Clause | null) => {
+    (clause: Lib.ExpressionClause | null) => {
       const isValidExpressionClause = isNotNull(clause);
       const isValid = !error && isValidName && isValidExpressionClause;
 
@@ -93,18 +84,21 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     handleCommit(clause);
   }, [clause, handleCommit]);
 
-  const handleError = useCallback((error: ErrorWithMessage | null) => {
-    setError(error);
-  }, []);
-
-  const handleExpressionChange = useCallback((clause: Clause | null) => {
-    setClause(clause);
-    setError(null);
-  }, []);
-
-  const handleNameChange = useCallback((evt: ChangeEvent<HTMLInputElement>) => {
-    setName(evt.target.value);
-  }, []);
+  const handleExpressionChange = useCallback(
+    (
+      clause: Lib.ExpressionClause | null,
+      error: ExpressionError | null = null,
+    ) => {
+      if (error) {
+        setError(error);
+        return;
+      } else {
+        setClause(clause);
+        setError(null);
+      }
+    },
+    [],
+  );
 
   const shortcuts = useMemo(
     () =>
@@ -128,7 +122,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   const handleCombineColumnsSubmit = useCallback(
     (name: string, clause: Lib.ExpressionClause) => {
       trackColumnCombineViaShortcut(query);
-      handleExpressionChange(clause as Clause);
+      handleExpressionChange(clause);
       setName(name);
       setIsCombiningColumns(false);
     },
@@ -142,7 +136,7 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
       extraction: Lib.ColumnExtraction,
     ) => {
       trackColumnExtractViaShortcut(query, stageIndex, extraction);
-      handleExpressionChange(clause as Clause);
+      handleExpressionChange(clause);
       setName(name);
       setIsExtractingColumn(false);
     },
@@ -154,26 +148,15 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
     setIsExtractingColumn(false);
   }, []);
 
-  const handleKeyDown = useCallback(
-    (evt: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (evt.key === "Enter") {
-        handleCommit(clause);
-      }
-    },
-    [handleCommit, clause],
-  );
-
   if (startRule === "expression" && isCombiningColumns) {
     return (
       <Box w={WIDGET_WIDTH} data-testid="expression-editor">
-        <ExpressionWidgetHeader
-          title={t`Select columns to combine`}
-          onBack={handleCancel}
-        />
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          onCancel={handleCancel}
           onSubmit={handleCombineColumnsSubmit}
+          withTitle
         />
       </Box>
     );
@@ -193,68 +176,53 @@ export const ExpressionWidget = <S extends StartRule = "expression">(
   }
 
   return (
-    <Box w={WIDGET_WIDTH} data-testid="expression-editor">
-      {header}
-      <Box p="1.5rem 1.5rem 1rem">
-        <Box
-          component="label"
-          className={ExpressionWidgetS.FieldLabel}
-          htmlFor="expression-content"
-        >
-          {t`Expression`}
-          <ExpressionWidgetInfo />
-        </Box>
-        <Editor
-          id="expression-content"
-          expressionIndex={expressionIndex}
-          startRule={startRule as S}
-          clause={clause}
-          name={name}
-          query={query}
-          stageIndex={stageIndex}
-          reportTimezone={reportTimezone}
-          onChange={handleExpressionChange}
-          onCommit={handleCommit}
-          error={error}
-          onError={handleError}
-          shortcuts={shortcuts}
-        />
-      </Box>
+    <Layout data-testid="expression-editor" data-ignore-editor-clicks="true">
+      {header && <LayoutHeader>{header}</LayoutHeader>}
 
-      {withName && (
-        <Box p="0 1.5rem 1.5rem">
-          <Box
-            component="label"
-            className={ExpressionWidgetS.FieldLabel}
-            htmlFor="expression-name"
-          >
-            {t`Name`}
-          </Box>
-          <TextInput
-            classNames={{
-              input: CS.textBold,
-            }}
-            id="expression-name"
-            data-testid="expression-name"
-            type="text"
-            value={name}
-            placeholder={t`Something nice and descriptive`}
-            w="100%"
-            radius="md"
-            onChange={handleNameChange}
-            onKeyDown={handleKeyDown}
-          />
-        </Box>
-      )}
+      <Editor
+        id="expression-content"
+        startRule={startRule}
+        clause={clause}
+        onChange={handleExpressionChange}
+        query={query}
+        stageIndex={stageIndex}
+        expressionIndex={expressionIndex}
+        reportTimezone={reportTimezone}
+        shortcuts={shortcuts}
+        error={error}
+        hasHeader={Boolean(header)}
+        onCloseEditor={onClose}
+      />
 
-      <Flex className={ExpressionWidgetS.Footer}>
-        <Flex ml="auto" gap="md">
-          {onClose && <Button onClick={onClose}>{t`Cancel`}</Button>}
-          <Button variant="filled" disabled={!isValid} onClick={handleSubmit}>
-            {initialName ? t`Update` : t`Done`}
-          </Button>
+      <LayoutFooter>
+        <Flex gap="xs" align="center" justify="end" p="0" pr="sm">
+          {withName && (
+            <NameInput
+              value={name}
+              onChange={setName}
+              onSubmit={handleSubmit}
+              startRule={startRule}
+            />
+          )}
+          <Flex py="sm" pr="sm" gap="sm">
+            {onClose && (
+              <Button
+                onClick={onClose}
+                variant="subtle"
+                size="xs"
+              >{t`Cancel`}</Button>
+            )}
+            <Button
+              variant="filled"
+              disabled={!isValid}
+              onClick={handleSubmit}
+              size="xs"
+            >
+              {initialName || initialClause ? t`Update` : t`Done`}
+            </Button>
+          </Flex>
         </Flex>
-      </Flex>
-    </Box>
+      </LayoutFooter>
+    </Layout>
   );
 };

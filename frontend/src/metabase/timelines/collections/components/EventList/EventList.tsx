@@ -30,7 +30,7 @@ const EventList = ({
 }: EventListProps): JSX.Element => {
   return (
     <ListRoot>
-      {events.map(event => (
+      {events.map((event) => (
         <EventCard
           key={event.id}
           event={event}

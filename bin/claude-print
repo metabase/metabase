@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "Usage: claude-print <prompt>"
+    echo "  Launches Claude in non-interactive mode with Metabase-specific tools and the given prompt."
+    exit 1
+fi
+
+set -o xtrace
+
+claude --print "$(printf "%q " "$@")" --allowedTools "Bash(./bin/mage:*)" "Bash(clj-kondo:*)" "Bash(clojure:*)", "Bash(grep:*)" "Bash(ls:*)" "Bash(yarn lint:*)" "Bash(yarn test-unit:*)" "WebFetchTool(domain:github.com)" Edit

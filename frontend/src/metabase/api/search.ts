@@ -5,9 +5,9 @@ import { Api } from "./api";
 import { provideSearchItemListTags } from "./tags";
 
 export const searchApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     search: builder.query<SearchResponse, SearchRequest>({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/search",
         params,

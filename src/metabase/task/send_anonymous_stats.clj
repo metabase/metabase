@@ -11,7 +11,7 @@
 
 (set! *warn-on-reflection* true)
 
-(jobs/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
+(task/defjob ^{:doc "If we can collect usage data, do so and send it home"} SendAnonymousUsageStats [_]
   (when (public-settings/anon-tracking-enabled)
     (log/debug "Sending anonymous usage stats.")
     (try

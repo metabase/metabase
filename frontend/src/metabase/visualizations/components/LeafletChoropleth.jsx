@@ -45,7 +45,7 @@ const LeafletChoropleth = ({
         keyboard: false,
       });
 
-      const style = feature => ({
+      const style = (feature) => ({
         fillColor: getColor(feature),
         weight: 1,
         opacity: 1,
@@ -55,16 +55,16 @@ const LeafletChoropleth = ({
 
       const onEachFeature = (feature, layer) => {
         layer.on({
-          mousemove: e => {
+          mousemove: (e) => {
             onHoverFeature({
               feature,
               event: e.originalEvent,
             });
           },
-          mouseout: e => {
+          mouseout: (e) => {
             onHoverFeature(null);
           },
-          click: e => {
+          click: (e) => {
             onClickFeature({
               feature,
               event: e.originalEvent,

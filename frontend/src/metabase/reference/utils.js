@@ -10,7 +10,7 @@ import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
 export const idsToObjectMap = (ids, objects) =>
   ids
-    .map(id => objects[id])
+    .map((id) => objects[id])
     .reduce((map, object) => ({ ...map, [object.id]: object }), {});
 // recursive freezing done by assoc here is too expensive
 // hangs browser for large databases
@@ -18,23 +18,25 @@ export const idsToObjectMap = (ids, objects) =>
 
 export const filterUntouchedFields = (fields, entity = {}) =>
   Object.keys(fields)
-    .filter(key => fields[key] !== undefined && entity[key] !== fields[key])
+    .filter((key) => fields[key] !== undefined && entity[key] !== fields[key])
     .reduce((map, key) => ({ ...map, [key]: fields[key] }), {});
 
-export const isEmptyObject = object => Object.keys(object).length === 0;
+export const isEmptyObject = (object) => Object.keys(object).length === 0;
 
-export const databaseToForeignKeys = database =>
+export const databaseToForeignKeys = (database) =>
   database && database.tables_lookup
     ? Object.values(database.tables_lookup)
         // ignore tables without primary key
         .filter(
-          table =>
-            table && table.fields.find(field => isTypePK(field.semantic_type)),
+          (table) =>
+            table &&
+            table.fields.find((field) => isTypePK(field.semantic_type)),
         )
-        .map(table => ({
+        .map((table) => ({
           table: table,
           field:
-            table && table.fields.find(field => isTypePK(field.semantic_type)),
+            table &&
+            table.fields.find((field) => isTypePK(field.semantic_type)),
         }))
         .map(({ table, field }) => ({
           id: field.id,
@@ -116,14 +118,14 @@ function filterBySegmentId(query, segmentId) {
   return Lib.filter(query, stageIndex, segmentMetadata);
 }
 
-export const getQuestionUrl = getQuestionArgs =>
+export const getQuestionUrl = (getQuestionArgs) =>
   Urls.question(null, { hash: getQuestion(getQuestionArgs) });
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states
-export const has = entity => entity && entity.length > 0;
+export const has = (entity) => entity && entity.length > 0;
 
-export const getDescription = question => {
+export const getDescription = (question) => {
   const timestamp = moment(question.getCreatedAt()).fromNow();
   const author = question.getCreator().common_name;
   return t`Created ${timestamp} by ${author}`;

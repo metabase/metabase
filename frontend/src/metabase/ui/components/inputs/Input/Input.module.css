@@ -18,6 +18,7 @@
 
   &:disabled {
     background-color: var(--mb-color-background-disabled);
+    color: var(--mb-color-text-disabled);
   }
 
   &[data-size="xs"] {

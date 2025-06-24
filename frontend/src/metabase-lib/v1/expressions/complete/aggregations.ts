@@ -4,13 +4,13 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { AGGREGATION_FUNCTIONS, MBQL_CLAUSES } from "../config";
-import { TOKEN } from "../tokenizer";
+import { GROUP } from "../pratt";
+import { getDatabase } from "../utils";
 
 import {
   content,
   expressionClauseCompletion,
   fuzzyMatcher,
-  getDatabase,
   isFieldReference,
   isIdentifier,
   tokenAtPos,
@@ -35,9 +35,9 @@ export function suggestAggregations({
 
   const database = getDatabase(query, metadata);
   const aggregations = Array.from(AGGREGATION_FUNCTIONS)
-    .map(name => MBQL_CLAUSES[name])
-    .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
-    .map(agg =>
+    .map((name) => MBQL_CLAUSES[name])
+    .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
+    .map((agg) =>
       expressionClauseCompletion(agg, {
         type: "aggregation",
         database,
@@ -57,12 +57,9 @@ export function suggestAggregations({
 
     // do not expand template if the next token is a (
     const next = tokenAtPos(source, token.end + 1);
-    const options = matcher(content(source, token)).map(option => ({
+    const options = matcher(content(source, token)).map((option) => ({
       ...option,
-      apply:
-        next?.type === TOKEN.Operator && next.op === "("
-          ? undefined
-          : option.apply,
+      apply: next?.type === GROUP ? undefined : option.apply,
     }));
 
     return {

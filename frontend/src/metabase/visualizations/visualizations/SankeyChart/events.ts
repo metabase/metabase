@@ -32,7 +32,7 @@ const getSankeyClickData = (
   columnValues: Record<ColumnKey, RowValue>,
   predicate: (col: DatasetColumn, index: number) => boolean = () => true,
 ) => {
-  return cols.filter(predicate).map(col => {
+  return cols.filter(predicate).map((col) => {
     return {
       col,
       value: columnValues[getColumnKey(col)],
@@ -56,7 +56,7 @@ export const createSankeyClickData = (
   sankeyColumns: SankeyChartColumns,
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
-): ClickObject | undefined => {
+): ClickObject | null => {
   const clickData: ClickObject = {
     event: event.event.event,
     settings,
@@ -76,7 +76,7 @@ export const createSankeyClickData = (
     );
   } else if (isSankeyEdgeEvent(event)) {
     if (isNativeQuery(rawSeries[0].card)) {
-      return;
+      return null;
     }
 
     clickData.data = getSankeyClickData(rawSeries, event.data.columnValues);

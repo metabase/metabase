@@ -81,11 +81,6 @@ const setup = async (options: {
 };
 
 describe("FormDashboardTabSelect", () => {
-  beforeAll(() => {
-    // Mock scrollIntoView since it's not implemented in JSDOM
-    Element.prototype.scrollIntoView = jest.fn();
-  });
-
   it("should show the initial value", async () => {
     const { onSubmit } = await setup({
       dashboardId: FOO_DASH.id,

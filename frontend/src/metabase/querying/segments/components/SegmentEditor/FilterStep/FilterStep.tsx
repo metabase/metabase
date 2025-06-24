@@ -28,6 +28,7 @@ export function FilterStep({ query, stageIndex, onChange }: FilterStepProps) {
               query={query}
               stageIndex={stageIndex}
               filter={filter}
+              filterIndex={filterIndex}
               hasFilters={hasFilters}
               onChange={onChange}
             />
@@ -50,6 +51,7 @@ type FilterPopoverProps = {
   query: Lib.Query;
   stageIndex: number;
   filter?: Lib.FilterClause;
+  filterIndex?: number;
   hasFilters: boolean;
   onChange: (query: Lib.Query) => void;
 };
@@ -58,6 +60,7 @@ function FilterPopover({
   query,
   stageIndex,
   filter,
+  filterIndex,
   hasFilters,
   onChange,
 }: FilterPopoverProps) {
@@ -103,6 +106,7 @@ function FilterPopover({
           query={query}
           stageIndex={stageIndex}
           filter={filter}
+          filterIndex={filterIndex}
           onSelect={handleSelect}
         />
       </Popover.Dropdown>

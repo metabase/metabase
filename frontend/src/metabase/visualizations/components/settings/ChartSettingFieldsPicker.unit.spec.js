@@ -14,7 +14,7 @@ const DEFAULT_PROPS = {
   addAnother: "Add another series",
 };
 
-const setup = props => {
+const setup = (props) => {
   renderWithProviders(
     <ChartSettingFieldsPicker {...DEFAULT_PROPS} {...props} />,
   );

@@ -70,13 +70,14 @@ module.exports = {
         const variables = context.getDeclaredVariables(node);
         if (isDefault) {
           return variables.find(
-            variable => variable.defs[0].node.type === "ImportDefaultSpecifier",
+            (variable) =>
+              variable.defs[0].node.type === "ImportDefaultSpecifier",
           );
         }
 
         // Named import
         return variables.find(
-          variable =>
+          (variable) =>
             variable.defs[0].node.type === "ImportSpecifier" &&
             variable.name === named,
         );
@@ -135,7 +136,7 @@ module.exports = {
 
           const hasShowMetabaseLinksDestructured =
             parentDeclarationNode?.id?.properties?.some(
-              prop => prop.key.name === "showMetabaseLinks",
+              (prop) => prop.key.name === "showMetabaseLinks",
             );
 
           if (!hasShowMetabaseLinksDestructured) {
@@ -176,7 +177,7 @@ module.exports = {
       },
       TemplateLiteral(node) {
         const quasis = node.quasis;
-        quasis.forEach(quasi => {
+        quasis.forEach((quasi) => {
           if (
             LITERAL_METABASE_URL_REGEX.exec(quasi.value.raw) &&
             !isGetShowMetabaseLinksSelectorImported
@@ -197,7 +198,7 @@ module.exports = {
           /eslint-disable-next-line\s+no-unconditional-metabase-links-render/;
         const ALLOWED_ESLINT_DISABLE_LINE_REGEX =
           /eslint-disable-next-line\s+no-unconditional-metabase-links-render -- \w+/;
-        comments.forEach(comment => {
+        comments.forEach((comment) => {
           if (ESLINT_DISABLE_BLOCK_REGEX.exec(comment.value)) {
             const { start, end } = comment.loc;
             context.report({

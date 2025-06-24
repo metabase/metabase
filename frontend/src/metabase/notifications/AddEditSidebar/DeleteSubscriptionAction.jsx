@@ -13,7 +13,7 @@ function getConfirmItems(pulse) {
       <span key={index}>
         {jt`This dashboard will no longer be emailed to ${(
           <strong key="msg">
-            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+            {((n) => ngettext(msgid`${n} address`, `${n} addresses`, n))(
               c.recipients.length,
             )}
           </strong>

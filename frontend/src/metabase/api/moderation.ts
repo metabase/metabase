@@ -4,9 +4,9 @@ import { Api } from "./api";
 import { invalidateTags, provideModeratedItemTags } from "./tags";
 
 export const contentVerificationApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     editItemVerification: builder.mutation<void, VerifyItemRequest>({
-      query: req => ({
+      query: (req) => ({
         method: "POST",
         url: "/api/moderation-review",
         body: req,

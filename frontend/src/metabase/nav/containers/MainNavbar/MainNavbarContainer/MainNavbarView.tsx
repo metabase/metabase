@@ -43,7 +43,7 @@ import {
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import { AddDatabase } from "../SidebarItems/AddDatabase";
-import { DwhUploadCSV } from "../SidebarItems/DwhUploadCSV/DwhUploadCSV";
+import { DwhUploadMenu } from "../SidebarItems/DwhUpload";
 import { trackOnboardingChecklistOpened } from "../analytics";
 import type { SelectedItem } from "../types";
 
@@ -101,7 +101,7 @@ export function MainNavbarView({
     collection: collectionItem,
     dashboard: dashboardItem,
     "non-entity": nonEntityItem,
-  } = _.indexBy(selectedItems, item => item.type);
+  } = _.indexBy(selectedItems, (item) => item.type);
 
   const onItemSelect = useCallback(() => {
     if (isSmallScreen()) {
@@ -122,7 +122,7 @@ export function MainNavbarView({
   );
 
   const [[trashCollection], collectionsWithoutTrash] = useMemo(
-    () => _.partition(collections, c => c.type === "trash"),
+    () => _.partition(collections, (c) => c.type === "trash"),
     [collections],
   );
 
@@ -155,15 +155,15 @@ export function MainNavbarView({
   const hasAttachedDWHFeature = useHasTokenFeature("attached_dwh");
 
   const uploadDbId = useSelector(
-    state => getSetting(state, "uploads-settings")?.db_id,
+    (state) => getSetting(state, "uploads-settings")?.db_id,
   );
 
   const rootCollection = collections.find(
-    c => c.id === "root" || c.id === null,
+    (c) => c.id === "root" || c.id === null,
   );
   const canCurateRootCollection = rootCollection?.can_write;
   const canUploadToDatabase = databases
-    ?.find(db => db.id === uploadDbId)
+    ?.find((db) => db.id === uploadDbId)
     ?.canUpload();
 
   /**
@@ -172,7 +172,7 @@ export function MainNavbarView({
    *   - "upload" permissions for the attached DWH
    */
   const canUpload = canCurateRootCollection && canUploadToDatabase;
-  const showUploadCSVButton = hasAttachedDWHFeature && canUpload;
+  const showUploadMenu = hasAttachedDWHFeature && canUpload;
 
   const isAdditionalDatabaseAdded = getHasOwnDatabase(databases);
   const showAddDatabaseButton = isAdmin && !isAdditionalDatabaseAdded;
@@ -210,7 +210,7 @@ export function MainNavbarView({
                 {t`How to use Metabase`}
               </PaddedSidebarLinkDismissible>
             )}
-            {showUploadCSVButton && <DwhUploadCSV />}
+            {showUploadMenu && <DwhUploadMenu />}
           </SidebarSection>
 
           {bookmarks.length > 0 && (

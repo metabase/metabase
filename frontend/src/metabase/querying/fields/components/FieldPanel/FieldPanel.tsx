@@ -47,7 +47,7 @@ export const FieldPanel = ({
     <div>
       <TextInput
         value={searchValue}
-        onChange={e => setSearchValue(e.target.value)}
+        onChange={(e) => setSearchValue(e.target.value)}
         rightSection={<Icon name="search" />}
         placeholder={t`Search for a column…`}
         mb="1rem"

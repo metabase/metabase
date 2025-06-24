@@ -77,11 +77,11 @@ export function Popover({
         onClick={stopPropagation}
         onMouseDown={stopPropagation}
         onMouseUp={stopPropagation}
-        className={group.shouldDelay ? Animation.fadeIn : null}
+        className={group.shouldDelay ? Animation.fadeIn : undefined}
       >
         <WidthBound
           width={width}
-          ref={node => {
+          ref={(node) => {
             setupCloseHandler(node, () => setIsOpen(false));
           }}
         >

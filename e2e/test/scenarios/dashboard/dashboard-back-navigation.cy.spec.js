@@ -254,7 +254,7 @@ describe(
       // could be a regular dashboard with card and filters
       createDashboardWithSlowCard();
 
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         cy.visit(`/dashboard/${dashboardId}`);
         cy.wait("@dashboard");
         cy.wait("@dashcardQuery");
@@ -297,7 +297,7 @@ describe(
     // so it will affect interception of @dashcardQuery and mess up the number of requests
     it("should restore a dashboard with loading cards and re-fetch query data", () => {
       createDashboardWithSlowCard();
-      cy.get("@dashboardId").then(dashboardId => {
+      cy.get("@dashboardId").then((dashboardId) => {
         cy.visit({
           url: `/dashboard/${dashboardId}`,
           qs: { sleep: 60 },

@@ -15,7 +15,7 @@ describe("parameters/utils/dashboard-options", () => {
         id: "location",
       });
       expect(
-        locationSection.options.every(option =>
+        locationSection.options.every((option) =>
           option.type.startsWith("string"),
         ),
       ).toBe(true);

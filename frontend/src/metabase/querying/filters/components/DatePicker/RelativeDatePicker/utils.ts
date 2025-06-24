@@ -101,7 +101,7 @@ export function setInterval(
 }
 
 export function getAvailableTruncationUnits(availableUnits: DatePickerUnit[]) {
-  return DATE_PICKER_TRUNCATION_UNITS.filter(unit =>
+  return DATE_PICKER_TRUNCATION_UNITS.filter((unit) =>
     availableUnits.includes(unit),
   );
 }
@@ -113,7 +113,7 @@ export function getUnitOptions(
   const truncationUnits = getAvailableTruncationUnits(availableUnits);
   const interval = getInterval(value);
 
-  return truncationUnits.map(unit => ({
+  return truncationUnits.map((unit) => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit, interval).toLowerCase(),
   }));

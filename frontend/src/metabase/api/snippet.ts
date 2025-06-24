@@ -16,12 +16,12 @@ import {
 } from "./tags";
 
 export const snippetApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listSnippets: builder.query<
       NativeQuerySnippet[],
       ListSnippetsParams | void
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/native-query-snippet",
         params,
@@ -29,14 +29,14 @@ export const snippetApi = Api.injectEndpoints({
       providesTags: (snippets = []) => provideSnippetListTags(snippets),
     }),
     getSnippet: builder.query<NativeQuerySnippet, NativeQuerySnippetId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/native-query-snippet/${id}`,
       }),
-      providesTags: snippet => (snippet ? provideSnippetTags(snippet) : []),
+      providesTags: (snippet) => (snippet ? provideSnippetTags(snippet) : []),
     }),
     createSnippet: builder.mutation<NativeQuerySnippet, CreateSnippetRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/native-query-snippet",
         body,

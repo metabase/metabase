@@ -67,7 +67,7 @@ describe(
           cy.button("Add filter").click();
           cy.wait("@cardQuery");
         });
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.assertTableRowsCount(53);
 
         cy.log(
           "parameter values should be preserved when disabling auto applying filters",
@@ -80,7 +80,7 @@ describe(
         });
         H.closeDashboardSettingsSidebar();
         H.filterWidget().findByText("Gadget").should("be.visible");
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.assertTableRowsCount(53);
 
         cy.log("draft parameter values should be applied manually");
         H.filterWidget().findByText("Gadget").click();
@@ -88,12 +88,12 @@ describe(
           cy.findByText("Widget").click();
           cy.button("Update filter").click();
         });
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.assertTableRowsCount(53);
         H.dashboardParametersContainer().within(() => {
           cy.button("Apply").click();
           cy.wait("@cardQuery");
         });
-        H.getDashboardCard().findByText("Rows 1-4 of 107").should("be.visible");
+        H.assertTableRowsCount(107);
         cy.get("@cardQuery.all").should("have.length", 3);
 
         cy.log(
@@ -116,7 +116,7 @@ describe(
         H.closeDashboardSettingsSidebar();
 
         H.filterWidget().findByText("Widget").should("be.visible");
-        H.getDashboardCard().findByText("Rows 1-4 of 54").should("be.visible");
+        H.assertTableRowsCount(54);
         cy.get("@cardQuery.all").should("have.length", 4);
 
         cy.log(
@@ -219,7 +219,9 @@ describe(
       it("should handle toggling auto applying filters on and off", () => {
         openDashboard();
 
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(53);
+        });
 
         cy.log(
           "parameter with default value should still be applied after turning auto-apply filter off",
@@ -233,7 +235,9 @@ describe(
         });
         H.closeDashboardSettingsSidebar();
 
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(53);
+        });
 
         cy.log(
           "card result should be updated after manually updating the filter",
@@ -244,7 +248,9 @@ describe(
           .should("be.visible")
           .click();
 
-        H.getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(200);
+        });
 
         cy.log(
           "should not use the default parameter after turning auto-apply filter on again since the parameter was manually updated",
@@ -257,7 +263,9 @@ describe(
           cy.findByLabelText(filterToggleLabel).should("be.checked");
         });
 
-        H.getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(200);
+        });
       });
 
       it.skip("should display a toast when a dashboard takes longer than 15s to load even without parameter values (but has parameters with default values)", () => {
@@ -279,7 +287,9 @@ describe(
         // Gadget
         const filterDefaultValue = FILTER_WITH_DEFAULT_VALUE.default[0];
         H.filterWidget().findByText(filterDefaultValue).should("be.visible");
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(53);
+        });
       });
 
       it.skip("should not display the toast when we clear out parameter default value", () => {
@@ -289,7 +299,9 @@ describe(
         cy.tick(TOAST_TIMEOUT);
         cy.wait("@cardQuery");
         H.undoToast().should("not.exist");
-        H.getDashboardCard().findByText("Rows 1-4 of 200").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(200);
+        });
       });
     });
 
@@ -313,7 +325,9 @@ describe(
           .should("not.be.checked");
         H.closeDashboardSettingsSidebar();
         H.filterWidget().findByText("Gadget").should("be.visible");
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(53);
+        });
       });
 
       it.skip("should display the toast indefinitely unless dismissing manually", () => {
@@ -341,7 +355,9 @@ describe(
         cy.wait("@cardQuery");
         H.undoToast().should("not.exist");
         H.filterWidget().findByText("Gadget").should("be.visible");
-        H.getDashboardCard().findByText("Rows 1-4 of 53").should("be.visible");
+        H.getDashboardCard().within(() => {
+          H.assertTableRowsCount(53);
+        });
       });
 
       it.skip("should not display the toast if there are no parameter values", () => {
@@ -410,7 +426,7 @@ describe(
       describe("public embeds", () => {
         it("should apply filters after clicking the apply button when auto-apply filters is turned off", () => {
           createDashboard({ dashboardDetails: { auto_apply_filters: false } });
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             H.visitPublicDashboard(dashboardId);
           });
 
@@ -420,16 +436,16 @@ describe(
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 200")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(200);
+          });
           H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 54")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(54);
+          });
         });
 
         it("should not show toast", () => {
@@ -455,7 +471,7 @@ describe(
               },
             },
           });
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             const embeddingPayload = {
               resource: { dashboard: dashboardId },
               params: {},
@@ -469,16 +485,16 @@ describe(
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 200")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(200);
+          });
           H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 54")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(54);
+          });
         });
 
         it("should not show toast", () => {
@@ -513,7 +529,7 @@ describe(
               auto_apply_filters: false,
             },
           });
-          cy.get("@dashboardId").then(dashboardId => {
+          cy.get("@dashboardId").then((dashboardId) => {
             visitFullAppEmbeddingUrl({
               url: `/dashboard/${dashboardId}`,
               qs: { side_nav: false, logo: false },
@@ -531,16 +547,16 @@ describe(
             cy.findByText("Widget").click();
             cy.button("Add filter").click();
           });
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 200")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(200);
+          });
           H.dashboardParametersContainer()
             .button("Apply")
             .should("be.visible")
             .click();
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 54")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(54);
+          });
         });
 
         it.skip("should display a toast when a dashboard takes longer than 15s to load", () => {
@@ -567,9 +583,9 @@ describe(
             .should("not.be.checked");
           H.filterWidget().findByText("Gadget").should("be.visible");
 
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 53")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(53);
+          });
 
           // Card result should be updated after manually updating the filter
           H.filterWidget().icon("close").click();
@@ -578,9 +594,9 @@ describe(
             .should("be.visible")
             .click();
 
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 200")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(200);
+          });
         });
 
         it.skip("should not display a toast when a dashboard takes longer than 15s to load if users have no write access to a dashboard", () => {
@@ -598,9 +614,9 @@ describe(
           // so to make sure callback in `setTimeout` is called, we need to advance the clock using cy.tick().
           cy.tick();
 
-          H.getDashboardCard()
-            .findByText("Rows 1-4 of 53")
-            .should("be.visible");
+          H.getDashboardCard().within(() => {
+            H.assertTableRowsCount(53);
+          });
         });
       });
     });
@@ -679,7 +695,7 @@ const createDashboard = ({
 };
 
 const getParameterMapping = ({ card_id }, parameters) => ({
-  parameter_mappings: parameters.map(parameter => {
+  parameter_mappings: parameters.map((parameter) => {
     return {
       card_id,
       parameter_id: parameter.id,
@@ -701,7 +717,7 @@ const openSlowDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     return cy.visit({
       url: `/dashboard/${dashboardId}`,
       qs: params,
@@ -716,7 +732,7 @@ const openSlowPublicDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     H.visitPublicDashboard(dashboardId, { params });
   });
 
@@ -728,7 +744,7 @@ const openSlowEmbeddingDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     const embeddingPayload = {
       resource: { dashboard: dashboardId },
       params: {},
@@ -746,7 +762,7 @@ const openSlowFullAppEmbeddingDashboard = (params = {}) => {
     "cardQuery",
   );
 
-  cy.get("@dashboardId").then(dashboardId => {
+  cy.get("@dashboardId").then((dashboardId) => {
     visitFullAppEmbeddingUrl({
       url: `/dashboard/${dashboardId}`,
       qs: params,

@@ -1,11 +1,7 @@
 import _ from "underscore";
 
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type {
-  NativeQuery,
-  NormalizedDatabase,
-  StructuredQuery,
-} from "metabase-types/api";
+import type { NativeQuery, NormalizedDatabase } from "metabase-types/api";
 
 import Question from "../Question";
 
@@ -45,7 +41,7 @@ class Database {
 
   schemaNames() {
     return this.getSchemas()
-      .map(s => s.name)
+      .map((s) => s.name)
       .sort((a, b) => a.localeCompare(b));
   }
 
@@ -62,7 +58,9 @@ class Database {
   }
 
   tablesLookup() {
-    return Object.fromEntries(this.getTables().map(table => [table.id, table]));
+    return Object.fromEntries(
+      this.getTables().map((table) => [table.id, table]),
+    );
   }
 
   // @deprecated: use tablesLookup
@@ -121,23 +119,8 @@ class Database {
     return Boolean(this.settings?.["database-enable-actions"]);
   }
 
-  newQuestion() {
-    return this.question().setDefaultDisplay();
-  }
-
-  question(
-    query: StructuredQuery = {
-      "source-table": undefined,
-    },
-  ) {
-    return Question.create({
-      metadata: this.metadata,
-      dataset_query: {
-        database: this.id,
-        type: "query",
-        query: query,
-      },
-    });
+  hasDatabaseRoutingEnabled() {
+    return !!this.router_user_attribute;
   }
 
   nativeQuestion(native: Partial<NativeQuery> = {}) {
@@ -156,11 +139,11 @@ class Database {
   }
 
   nativeQuery(native: Partial<NativeQuery>) {
-    return this.nativeQuestion(native).legacyQuery();
+    return this.nativeQuestion(native).legacyNativeQuery();
   }
 
   savedQuestionsDatabase() {
-    return this.metadata?.databasesList().find(db => db.is_saved_questions);
+    return this.metadata?.databasesList().find((db) => db.is_saved_questions);
   }
 }
 

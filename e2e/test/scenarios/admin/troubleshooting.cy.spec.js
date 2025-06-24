@@ -1,3 +1,5 @@
+import { createMockTask } from "metabase-types/api/mocks";
+
 const { H } = cy;
 
 describe("scenarios > admin > troubleshooting > help", () => {
@@ -63,7 +65,7 @@ describe("scenarios > admin > troubleshooting > help (EE)", () => {
   });
 });
 
-describe("scenarios > admin > troubleshooting > tasks", () => {
+describe("issue 14636", () => {
   const total = 57;
   const limit = 50;
 
@@ -83,8 +85,8 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
   function stubPageResponses({ page, alias }) {
     const offset = page * limit;
 
-    cy.intercept("GET", `/api/task?limit=${limit}&offset=${offset}`, req => {
-      req.reply(res => {
+    cy.intercept("GET", `/api/task?limit=${limit}&offset=${offset}`, (req) => {
+      req.reply((res) => {
         res.body = {
           data: stubPageRows(page),
           limit,
@@ -171,6 +173,80 @@ describe("scenarios > admin > troubleshooting > tasks", () => {
 
     shouldNotBeDisabled("@previous");
     shouldBeDisabled("@next");
+  });
+});
+
+describe("scenarios > admin > troubleshooting > tasks", () => {
+  const task = createMockTask({
+    task_details: {
+      useful: {
+        information: true,
+      },
+    },
+  });
+
+  const formattedTaskJson = JSON.stringify(task.task_details, null, 2);
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    // The only reliable way of having a consistent list of tasks is mocking them
+    cy.intercept("GET", "/api/task?limit=50&offset=0", (request) => {
+      request.reply((response) => {
+        response.body.data = [task];
+      });
+    }).as("getTasks");
+
+    cy.intercept("GET", `/api/task/${task.id}`, (request) => {
+      request.reply((response) => {
+        response.body = task;
+      });
+    }).as("getTask");
+  });
+
+  it("shows task modal", () => {
+    cy.visit("/admin/troubleshooting/tasks");
+    cy.wait("@getTasks");
+
+    cy.findByRole("link", { name: "View" }).click();
+    cy.wait("@getTask");
+    cy.location("pathname").should(
+      "eq",
+      `/admin/troubleshooting/tasks/${task.id}`,
+    );
+
+    cy.log("task details");
+    H.modal()
+      .get(".cm-content")
+      .should("be.visible")
+      .get(".cm-line")
+      .as("lines");
+    cy.get("@lines").eq(0).should("have.text", "{");
+    cy.get("@lines").eq(1).should("have.text", '  "useful": {');
+    cy.get("@lines").eq(2).should("have.text", '    "information": true');
+    cy.get("@lines").eq(3).should("have.text", "  }");
+    cy.get("@lines").eq(4).should("have.text", "}");
+
+    cy.log("copy button");
+    cy.window().then((window) => {
+      window.clipboardData = {
+        setData: cy.stub(),
+      };
+    });
+    cy.icon("copy").click();
+    cy.window()
+      .its("clipboardData.setData")
+      .should("be.calledWith", "text", formattedTaskJson);
+    cy.findByRole("tooltip").should("have.text", "Copied!");
+
+    cy.log("download button");
+    cy.button(/Download/).click();
+    cy.readFile(`cypress/downloads/task-${task.id}.json`).should(
+      "deep.equal",
+      // Ideally, we would compare raw strings here, but Cypress automatically parses JSON files
+      task.task_details,
+    );
   });
 });
 

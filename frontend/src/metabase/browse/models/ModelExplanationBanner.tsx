@@ -44,7 +44,9 @@ export const ModelExplanationBanner = () => {
       mb="xl"
     >
       <Flex>
-        <ModelsVideoThumbnail onClick={() => setOpened(true)} />
+        {showMetabaseLinks && (
+          <ModelsVideoThumbnail onClick={() => setOpened(true)} />
+        )}
         <Stack gap="md">
           <Title
             order={2}

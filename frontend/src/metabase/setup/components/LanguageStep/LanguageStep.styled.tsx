@@ -35,9 +35,9 @@ interface LocaleContainerProps {
 export const LocaleButton = styled.span<LocaleContainerProps>`
   display: block;
   padding: 0.5rem;
-  color: ${props => color(props.checked ? "text-white" : "text-dark")};
+  color: ${(props) => color(props.checked ? "text-white" : "text-dark")};
   border-radius: 0.25rem;
-  background-color: ${props =>
+  background-color: ${(props) =>
     props.checked ? color("brand") : color("bg-white")};
   font-weight: 700;
 

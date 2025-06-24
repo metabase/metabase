@@ -10,7 +10,7 @@ export default {
   component: ColorSelector,
 };
 
-const Template: StoryFn<ColorSelectorProps> = args => {
+const Template: StoryFn<ColorSelectorProps> = (args) => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleChange = (value: string) => {

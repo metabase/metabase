@@ -64,7 +64,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
     }, [width, height]);
 
     useEffect(() => {
-      eventHandlers?.forEach(h => {
+      eventHandlers?.forEach((h) => {
         if (h.query) {
           chartRef.current?.on(h.eventName, h.query, h.handler);
           return;
@@ -77,14 +77,14 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
           return;
         }
 
-        eventHandlers?.forEach(h =>
+        eventHandlers?.forEach((h) =>
           chartRef.current?.off(h.eventName, h.handler),
         );
       };
     }, [eventHandlers]);
 
     useEffect(() => {
-      zrEventHandlers?.forEach(h => {
+      zrEventHandlers?.forEach((h) => {
         chartRef.current?.getZr().on(h.eventName, h.handler);
       });
 
@@ -93,7 +93,7 @@ export const EChartsRenderer = forwardRef<HTMLDivElement, EChartsRendererProps>(
           return;
         }
 
-        zrEventHandlers?.forEach(h =>
+        zrEventHandlers?.forEach((h) =>
           chartRef.current?.getZr().off(h.eventName, h.handler),
         );
       };

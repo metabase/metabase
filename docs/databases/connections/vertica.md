@@ -40,3 +40,11 @@ For example, if you're running Metabase from a directory called `/app/`, you sho
 ### When running from Docker
 
 The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../installation-and-operation/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
+
+## Model features
+
+There aren't (yet) any model features for Vertica.
+
+## Danger zone
+
+See [Danger zone](../danger-zone.md).

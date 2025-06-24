@@ -48,7 +48,7 @@ export default class LegendHorizontal extends Component {
               {...(hovered && { "aria-current": !isMuted })}
             >
               <LegendItem
-                ref={legendItem => {
+                ref={(legendItem) => {
                   this.legendItemRefs[index] = legendItem;
                 }}
                 title={title}
@@ -62,7 +62,7 @@ export default class LegendHorizontal extends Component {
                   }
                 }}
                 onMouseLeave={handleMouseLeave}
-                onToggleSeriesVisibility={event => {
+                onToggleSeriesVisibility={(event) => {
                   if (isVisible) {
                     handleMouseLeave();
                   } else {

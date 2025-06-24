@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.database-routing.core :as database-routing]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -131,8 +132,10 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
    "acquireRetryAttempts"         (if config/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
-   "minPoolSize"                  1
-   "initialPoolSize"              1
+   "minPoolSize"                  (if (:router-database-id database)
+                                    0 1)
+   "initialPoolSize"              (if (:router-database-id database)
+                                    0 1)
    "maxPoolSize"                  (jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
@@ -289,6 +292,8 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
   [db-or-id-or-spec]
+  (when-let [db-id (u/id db-or-id-or-spec)]
+    (database-routing/check-allowed-access! db-id))
   (cond
     ;; db-or-id-or-spec is a Database instance or an integer ID
     (u/id db-or-id-or-spec)

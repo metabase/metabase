@@ -54,7 +54,7 @@ const Slider = ({
   // calculate min and max separately from current values to display the correct tooltips
   const [minValue, maxValue] = useMemo(
     () =>
-      value.every(n => !isNaN(n))
+      value.every((n) => !isNaN(n))
         ? [Math.min(...value), Math.max(...value)]
         : value,
     [value],
@@ -120,7 +120,7 @@ const Slider = ({
         type="range"
         aria-label="min"
         value={value[0]}
-        onChange={e => handleInput(e, 0)}
+        onChange={(e) => handleInput(e, 0)}
         onMouseUp={handleChange}
         onTouchEnd={handleChange}
         onKeyUp={handleChange}
@@ -132,7 +132,7 @@ const Slider = ({
         type="range"
         aria-label="max"
         value={value[1]}
-        onChange={e => handleInput(e, 1)}
+        onChange={(e) => handleInput(e, 1)}
         onMouseUp={handleChange}
         onTouchEnd={handleChange}
         onKeyUp={handleChange}

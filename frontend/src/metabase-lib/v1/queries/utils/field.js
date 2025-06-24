@@ -9,7 +9,7 @@ export function getFieldValues(field) {
       return values;
     } else {
       // console.warn("deprecated field values array!", values);
-      return values.map(value => [value]);
+      return values.map((value) => [value]);
     }
   } else if (values && Array.isArray(values.values)) {
     // console.warn("deprecated field values object!", values);

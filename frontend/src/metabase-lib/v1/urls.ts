@@ -85,7 +85,7 @@ export function getUrlWithParameters(
     });
   }
 
-  const query = question.legacyQuery() as NativeQuery;
+  const query = question.legacyNativeQuery() as NativeQuery;
   return getUrl(question, {
     query: remapParameterValuesToTemplateTags(
       query.templateTags(),

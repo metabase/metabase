@@ -12,7 +12,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.public-settings :as public-settings]
    [metabase.query-processor.streaming :as qp.streaming]
-   [metabase.query-processor.streaming.common :as common]
+   [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.timeline.core :as timeline]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -108,45 +108,27 @@
 
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup card cols include-bar?]
-  {:row       (for [maybe-remapped-col cols
-                    :when              (show-in-table? maybe-remapped-col)
-                    :let               [col (if (:remapped_to maybe-remapped-col)
-                                              (nth cols (get remapping-lookup (:name maybe-remapped-col)))
-                                              maybe-remapped-col)
-                                        col-name (column-name card col)]
-                    ;; If this column is remapped from another, it's already
-                    ;; in the output and should be skipped
-                    :when              (not (:remapped_from maybe-remapped-col))]
-                (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
-                  (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
-                  col-name))
-   :bar-width (when include-bar? 99)})
-
-(defn- normalize-bar-value
-  "Normalizes bar-value into a value between 0 and 100, where 0 corresponds to `min-value` and 100 to `max-value`"
-  [bar-value min-value max-value]
-  (float
-   (/
-    (* (- (double bar-value) min-value)
-       100)
-    (- max-value min-value))))
+  [remapping-lookup card cols]
+  {:row
+   (for [maybe-remapped-col cols
+         :when              (show-in-table? maybe-remapped-col)
+         :let               [col (if (:remapped_to maybe-remapped-col)
+                                   (nth cols (get remapping-lookup (:name maybe-remapped-col)))
+                                   maybe-remapped-col)
+                             col-name (column-name card col)]
+         ;; If this column is remapped from another, it's already
+         ;; in the output and should be skipped
+         :when              (not (:remapped_from maybe-remapped-col))]
+     (if (isa? ((some-fn :effective_type :base_type) col) :type/Number)
+       (formatter/map->NumericWrapper {:num-str col-name :num-value col-name})
+       col-name))})
 
 (mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id :- [:maybe :string]
-   remapping-lookup
-   cols
-   rows
-   viz-settings
-   {:keys [bar-column min-value max-value]}]
-  (let [formatters (into []
-                         (map #(formatter/create-formatter timezone-id % viz-settings))
-                         cols)]
+  [timezone-id :- [:maybe :string] remapping-lookup cols rows viz-settings]
+  (let [formatters (into [] (map #(formatter/create-formatter timezone-id % viz-settings)) cols)]
     (for [row rows]
-      {:bar-width (some-> (and bar-column (bar-column row))
-                          (normalize-bar-value min-value max-value))
-       :row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
+      {:row (for [[maybe-remapped-col maybe-remapped-row-cell fmt-fn] (map vector cols row formatters)
                   :when (and (not (:remapped_from maybe-remapped-col))
                              (show-in-table? maybe-remapped-col))
                   :let [[_formatter row-cell] (if (:remapped_to maybe-remapped-col)
@@ -161,24 +143,12 @@
   HTML"
   ([timezone-id :- [:maybe :string]
     card
-    data]
-   (prep-for-html-rendering timezone-id card data {}))
-
-  ([timezone-id :- [:maybe :string]
-    card
-    {:keys [cols rows viz-settings], :as _data}
-    {:keys [bar-column] :as data-attributes}]
-
-   (let [remapping-lookup (create-remapping-lookup cols)]
+    {:keys [cols rows viz-settings], :as _data}]
+   (let [remapping-lookup (create-remapping-lookup cols)
+         row-limit        (min (public-settings/attachment-table-row-limit) 100)]
      (cons
-      (query-results->header-row remapping-lookup card cols bar-column)
-      (query-results->row-seq
-       timezone-id
-       remapping-lookup
-       cols
-       (take (min (public-settings/attachment-table-row-limit) 100) rows)
-       viz-settings
-       data-attributes)))))
+      (query-results->header-row remapping-lookup card cols)
+      (query-results->row-seq timezone-id remapping-lookup cols (take row-limit rows) viz-settings)))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (formatter/format-number number))])
@@ -231,6 +201,15 @@
       [ordered-cols ordered-rows])
     [(:cols data) (:rows data)]))
 
+(defn- minibar-columns
+  "Return a list of column definitions for which minibar charts are enabled"
+  [cols viz-settings]
+  (filter
+   (fn [col] (get-in viz-settings [::mb.viz/column-settings
+                                   {::mb.viz/column-name (:name col)}
+                                   ::mb.viz/show-mini-bar]))
+   cols))
+
 (mu/defmethod render :table :- ::RenderedPartCard
   [_chart-type
    _render-type
@@ -243,18 +222,19 @@
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         filtered-cols               (filter show-in-table? ordered-cols)
+        minibar-cols                (minibar-columns (get-in unordered-data [:results_metadata :columns] []) viz-settings)
         table-body                  [:div
                                      (table/render-table
                                       (js.color/make-color-selector unordered-data viz-settings)
                                       {:cols-for-color-lookup (mapv :name filtered-cols)
-                                       :col-names             (common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
-                                      (prep-for-html-rendering timezone-id card data))
+                                       :col-names             (streaming.common/column-titles filtered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
+                                      (prep-for-html-rendering timezone-id card data)
+                                      filtered-cols
+                                      viz-settings
+                                      minibar-cols)
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
-    {:attachments
-     nil
-
-     :content
-     table-body}))
+    {:content     table-body
+     :attachments nil}))
 
 (def ^:private default-date-styles
   {:year "YYYY"
@@ -469,6 +449,18 @@
       :html
       {:content [:div content] :attachments nil})))
 
+(defn- smart-scalar-comparison-statement
+  [unit value]
+  (case unit
+    :minute  (tru "vs. previous minute: {0}" value)
+    :hour    (tru "vs. previous hour: {0}" value)
+    :day     (tru "vs. previous day: {0}" value)
+    :week    (tru "vs. previous week: {0}" value)
+    :month   (tru "vs. previous month: {0}" value)
+    :quarter (tru "vs. previous quarter: {0}" value)
+    :year    (tru "vs. previous year: {0}" value)
+    (tru "vs. previous {0}: {1}" (str/replace (name unit) "-" " ") value)))
+
 (mu/defmethod render :smartscalar :- ::RenderedPartCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols insights viz-settings]}]
   (letfn [(col-of-type [t c] (or (isa? (:effective_type c) t)
@@ -477,20 +469,25 @@
           (where [f coll] (some #(when (f %) %) coll))
           (percentage [arg] (if (number? arg)
                               (format-percentage arg)
-                              " - "))
-          (format-unit [unit] (str/replace (name unit) "-" " "))]
+                              " - "))]
     (let [[_time-col metric-col] (if (col-of-type :type/Temporal (first cols)) cols (reverse cols))
 
           {:keys [last-value previous-value unit last-change] :as _insight}
           (where (comp #{(:name metric-col)} :col) insights)]
       (if (and last-value previous-value unit last-change)
-        (let [value           (format-cell timezone-id last-value metric-col viz-settings)
-              previous        (format-cell timezone-id previous-value metric-col viz-settings)
-              adj             (if (pos? last-change) (tru "Up") (tru "Down"))
-              delta-statement (if (= last-value previous-value)
-                                "No change"
-                                (str adj " " (percentage last-change)))
-              comparison-statement (str " vs. previous " (format-unit unit) ": " previous)]
+        (let [value                (format-cell timezone-id last-value metric-col viz-settings)
+              previous             (format-cell timezone-id previous-value metric-col viz-settings)
+              delta-statement      (cond
+                                     (= last-value previous-value)
+                                     (tru "No change")
+
+                                     (pos? last-change)
+                                     (tru "Up {0}" (percentage last-change))
+
+                                     (neg? last-change)
+                                     (tru "Down {0}" (percentage last-change)))
+              comparison-statement (smart-scalar-comparison-statement unit previous)
+              statement            (str delta-statement " " comparison-statement)]
           {:attachments nil
            :content     [:div
                          [:div {:style (style/style (style/scalar-style))}
@@ -499,11 +496,9 @@
                                                    :font-size     :16px
                                                    :font-weight   700
                                                    :padding-right :16px})}
-                          delta-statement
-                          comparison-statement]]
-           :render/text (str value "\n"
-                             delta-statement
-                             comparison-statement)})
+                          statement]]
+
+           :render/text (str value "\n" statement)})
         ;; In other words, defaults to plain scalar if we don't have actual changes
         {:attachments nil
          :content     [:div

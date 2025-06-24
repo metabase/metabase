@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, queryIcon, screen } from "__support__/ui";
 import type { CollectionType } from "metabase-types/api";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { setup } from "./setup";
 
@@ -65,7 +66,7 @@ describe("instance analytics custom reports collection", () => {
     collection: {
       name: "Custom Reports",
       can_write: true,
-      entity_id: "okNLSZKdSxaoG58JSQY54",
+      entity_id: createMockEntityId("okNLSZKdSxaoG58JSQY54"),
     },
     hasEnterprisePlugins: true,
     // 😬 this test needs the official_collections feature flag so that it

@@ -17,7 +17,7 @@ export const useCallbackEffect = (): [IsScheduled, ScheduleCallback] => {
    * Schedule callback to run once after a re-render.
    */
   const scheduleCallback = useCallback((callback: Callback) => {
-    setCallback(state => {
+    setCallback((state) => {
       if (state !== null) {
         throw new Error("A callback is already scheduled");
       }

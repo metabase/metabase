@@ -1,5 +1,4 @@
-import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
-import type { Settings } from "metabase-types/api";
+import type { EnterpriseSettings, Settings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 import type { SettingsState } from "metabase-types/store";
 

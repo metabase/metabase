@@ -4,7 +4,7 @@ describe("PinMap", () => {
   it("should filter out rows with null values in either the lat, long, or metric column", () => {
     const onUpdateWarnings = jest.fn();
     const data = {
-      cols: ["lat", "lng", "metric"].map(name => ({ name })),
+      cols: ["lat", "lng", "metric"].map((name) => ({ name })),
       rows: [
         [null, 0, 0],
         [0, null, 0],
@@ -32,7 +32,7 @@ describe("PinMap", () => {
   it("should filter out rows only if the lat or long values are null for pin maps", () => {
     const onUpdateWarnings = jest.fn();
     const data = {
-      cols: ["lat", "lng", "metric"].map(name => ({ name })),
+      cols: ["lat", "lng", "metric"].map((name) => ({ name })),
       rows: [
         [null, 0, 0],
         [0, null, 0],

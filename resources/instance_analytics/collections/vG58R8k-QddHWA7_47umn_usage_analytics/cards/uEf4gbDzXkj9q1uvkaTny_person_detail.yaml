@@ -88,6 +88,7 @@ serdes/meta:
   label: person_detail
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: 0wVIfjBJWclD0lKeABYYl

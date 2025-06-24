@@ -42,7 +42,7 @@ describe("Logs", () => {
     it("should skip calls to UtilsApi.logs if last request is still in-flight", async () => {
       fetchMock.get("path:/api/util/logs", []);
       let resolve: any;
-      utilSpy.mockReturnValueOnce(new Promise(res => (resolve = res)));
+      utilSpy.mockReturnValueOnce(new Promise((res) => (resolve = res)));
       render(<Logs />);
       await waitFor(() => [
         expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),

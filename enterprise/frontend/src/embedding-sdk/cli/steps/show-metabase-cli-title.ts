@@ -4,7 +4,7 @@ import { SHOW_ON_STARTUP_MESSAGE } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { printEmptyLines, printTitle, printWithPadding } from "../utils/print";
 
-export const showMetabaseCliTitle: CliStepMethod = state => {
+export const showMetabaseCliTitle: CliStepMethod = (state) => {
   printTitle(`Welcome to the Metabase Embedding SDK CLI`);
   printTitle(`View docs at ${SDK_DOCS_LINK}`);
   printEmptyLines();

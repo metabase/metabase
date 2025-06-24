@@ -23,10 +23,10 @@ export const createTimelineWithEvents = ({
   // @ts-expect-error - Cypress typings don't account for what happens in then() here
   return createTimeline(timeline).then(({ body: timeline }) => {
     return cypressWaitAll(
-      events.map(query =>
+      events.map((query) =>
         createTimelineEvent({ ...query, timeline_id: timeline.id }),
       ),
-    ).then(events => {
+    ).then((events) => {
       return {
         timeline,
         events,

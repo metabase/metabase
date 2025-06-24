@@ -4,11 +4,11 @@ import type { StoryFn } from "@storybook/react";
 import SchedulePicker from "./SchedulePicker";
 
 export default {
-  title: "Components/SchedulePicker",
+  title: "Deprecated/Components/SchedulePicker",
   component: SchedulePicker,
 };
 
-const Template: StoryFn<typeof SchedulePicker> = args => {
+const Template: StoryFn<typeof SchedulePicker> = (args) => {
   const [
     {
       schedule,

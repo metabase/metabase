@@ -19,7 +19,7 @@ export function MetabaseLinksToggleWidget({
   return (
     <Switch
       checked={setting.value ?? setting.default}
-      onChange={e => onChange(e.target.checked)}
+      onChange={(e) => onChange(e.target.checked)}
       labelPosition="left"
       label={t`Show links and references`}
       size="sm"

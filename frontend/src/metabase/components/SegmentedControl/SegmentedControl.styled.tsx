@@ -102,11 +102,11 @@ type SegmentedItemProps = BorderStyleProps &
 
 export const SegmentedItem = styled.li<SegmentedItemProps>`
   display: flex;
-  flex-grow: ${props => (props.fullWidth ? 1 : 0)};
-  background-color: ${props => COLORS[props.variant].background(props)};
-  border: 1px solid ${props => COLORS[props.variant].border(props)};
+  flex-grow: ${(props) => (props.fullWidth ? 1 : 0)};
+  background-color: ${(props) => COLORS[props.variant].background(props)};
+  border: 1px solid ${(props) => COLORS[props.variant].border(props)};
 
-  ${props => getSpecialBorderStyles(props)};
+  ${(props) => getSpecialBorderStyles(props)};
 `;
 
 type SegmentedItemLabelProps = ColorProps & {
@@ -121,12 +121,13 @@ export const SegmentedItemLabel = styled.label<SegmentedItemLabelProps>`
   justify-content: center;
   position: relative;
   font-weight: bold;
-  color: ${props => COLORS[props.variant].text(props)};
-  padding: ${props => (props.compact ? "8px" : "8px 12px")};
+  color: ${(props) => COLORS[props.variant].text(props)};
+  padding: ${(props) => (props.compact ? "8px" : "8px 12px")};
   cursor: pointer;
 
   :hover {
-    color: ${props => (!props.isSelected ? color(props.selectedColor) : null)};
+    color: ${(props) =>
+      !props.isSelected ? color(props.selectedColor) : null};
   }
 `;
 
@@ -152,7 +153,7 @@ function IconWrapper(props: IconProps & { iconOnly?: boolean }) {
 }
 
 export const ItemIcon = styled(IconWrapper)`
-  margin-right: ${props => (props.iconOnly ? 0 : "4px")};
+  margin-right: ${(props) => (props.iconOnly ? 0 : "4px")};
 `;
 
 const BORDER_RADIUS = "8px";

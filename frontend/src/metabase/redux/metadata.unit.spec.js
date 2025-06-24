@@ -8,7 +8,7 @@ describe("deprecated metadata actions", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    dispatch = jest.fn(a => a);
+    dispatch = jest.fn((a) => a);
   });
 
   describe("fetchField", () => {

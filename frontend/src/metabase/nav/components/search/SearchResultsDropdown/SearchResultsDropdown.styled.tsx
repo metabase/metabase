@@ -32,7 +32,7 @@ const selectedStyles = css`
 `;
 
 export const SearchDropdownFooter = styled(Group, {
-  shouldForwardProp: propName => propName !== "isSelected",
+  shouldForwardProp: (propName) => propName !== "isSelected",
 })<{ isSelected?: boolean } & GroupProps>`
   border-top: 1px solid var(--mb-color-border);
 

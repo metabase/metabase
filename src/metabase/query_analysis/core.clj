@@ -231,7 +231,7 @@
   (if (every? #(some? (% card-or-id)) [:id :dataset_query])
     card-or-id
     ;; If we need to query the database though, find out for sure.
-    (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
+    (t2/select-one [:model/Card :id :archived :dataset_query :card_schema] (u/the-id card-or-id))))
 
 (defn analyze!*
   "Update the analysis for a given card if it is active. Should only be called

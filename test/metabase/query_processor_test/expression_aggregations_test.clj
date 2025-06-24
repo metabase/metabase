@@ -377,3 +377,68 @@
                     mt/rows
                     (map second)
                     (map sort))))))))
+
+(deftest ^:parallel literal-expressions-inside-nested-and-filtered-aggregations-test
+  (testing "nested aggregated and filtered literal expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations :expression-literals :nested-queries)
+      (is (= [[2 true "Red Medicine" 1 8 16]
+              [3 true "Red Medicine" 1 2 4]
+              [4 true "Red Medicine" 1 2 4]]
+             (mt/formatted-rows
+              [int mt/boolish->bool str int int int]
+              (mt/run-mbql-query venues
+                {:fields       [$category_id
+                                [:expression "True"]
+                                [:expression "Name"]
+                                *AvgOne/Integer
+                                *SumOne/Integer
+                                *SumTwo/Integer]
+                 :expressions  {"True"  [:value true {:base_type :type/Boolean}]
+                                "Name"  [:value "Red Medicine" {:base_type :type/Text}]}
+                 :source-query {:source-table $$venues
+                                :expressions  {"One" [:value 1.0 {:base_type :type/Float}]
+                                               "Two" [:value 2 {:base_type :type/Integer}]
+                                               "Bob" [:value "Bob's Burgers" {:base_type :type/Text}]}
+                                :aggregation  [[:aggregation-options [:avg [:expression "One"]] {:name "AvgOne"}]
+                                               [:aggregation-options [:sum [:expression "One"]] {:name "SumOne"}]
+                                               [:aggregation-options [:sum [:expression "Two"]] {:name "SumTwo"}]
+                                               [:aggregation-options [:min [:expression "Bob"]] {:name "MinBob"}]]
+                                :breakout     [$category_id]
+                                :filters      [[:= 2.0 [:* [:expression "Two"] [:expression "AvgOne"]]]]}
+                 :filters      [[:!= *MinBob/Text [:expression "Name"]]
+                                [:= true [:expression "True"]]
+                                [:= [:expression "True"] true]
+                                [:=
+                                 [:expression "Name"]
+                                 [:concat [:expression "Name"] ""]]]
+                 :order-by     [[:asc $category_id]]
+                 :limit        3})))))))
+
+(deftest ^:parallel literal-expressions-inside-joined-aggregations-test
+  (testing "joined and aggregated literal expression"
+    (mt/test-drivers (mt/normal-drivers-with-feature
+                      :expression-aggregations
+                      :expression-literals
+                      :left-join
+                      :nested-queries)
+      (is (= [[1 "Red Medicine" 3 0.33 1]
+              [2 "Stout Burgers & Beers" 2 0.50 1]
+              [3 "The Apple Pan" 2 0.5 1]]
+             (mt/formatted-rows
+              [int str int 2.0 int]
+              (mt/run-mbql-query venues
+                {:fields      [$id
+                               $name
+                               $price
+                               [:expression "InversePrice"]
+                               &JoinedCategories.*MaxOne/Integer]
+                 :expressions {"InversePrice"  [:/ &JoinedCategories.*MaxOne/Integer $price]}
+                 :joins       [{:strategy     :left-join
+                                :condition    [:= $category_id &JoinedCategories.venues.category_id]
+                                :source-query {:source-table $$venues
+                                               :expressions  {"One" [:value 1 {:base_type :type/Integer}]}
+                                               :aggregation  [[:aggregation-options [:max [:expression "One"]] {:name "MaxOne"}]]
+                                               :breakout     [$category_id]}
+                                :alias        "JoinedCategories"}]
+                 :order-by    [[:asc $id]]
+                 :limit       3})))))))

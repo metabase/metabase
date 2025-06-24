@@ -1,29 +1,32 @@
 import MetabaseSettings from "metabase/lib/settings";
 import { loadSettings } from "metabase/redux/settings";
-import type { PasswordResetTokenStatus, Settings } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  PasswordResetTokenStatus,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 
 export const sessionApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     getPasswordResetTokenStatus: builder.query<
       PasswordResetTokenStatus,
       string
     >({
-      query: token => ({
+      query: (token) => ({
         method: "GET",
         url: "/api/session/password_reset_token_valid",
         body: { token },
       }),
     }),
     forgotPassword: builder.query<void, string>({
-      query: email => ({
+      query: (email) => ({
         method: "POST",
         url: "/api/session/forgot_password",
         body: { email },
       }),
     }),
-    getSessionProperties: builder.query<Settings, void>({
+    getSessionProperties: builder.query<EnterpriseSettings, void>({
       query: () => ({
         method: "GET",
         url: "/api/session/properties",

@@ -63,10 +63,15 @@
     [:field 2 {"binning" {"strategy" "default"}}]
     [:field 2 {:binning {:strategy :default}}]}
 
-   ":value clauses should keep snake_case keys in the type info arg"
+   ":value clauses should keep snake_case keys in the options"
     ;; See https://github.com/metabase/metabase/issues/23354 for details
    {[:value "some value" {:some_key "some key value"}]
     [:value "some value" {:some_key "some key value"}]}
+
+   ":value clauses should keep snake_case keys in the type info args"
+    ;; See https://github.com/metabase/metabase/issues/23354 for details
+   {[:value "some value" {"base_type" "type/Text"}]
+    [:value "some value" {:base_type :type/Text}]}
 
    "nil options in aggregation and expression references should be removed"
    {[:aggregation 0 nil]   [:aggregation 0]
@@ -605,7 +610,13 @@
    {{:query {:expressions {"abc" [+ 1 2]}
              :fields      [[:expression "abc" {"base-type" "type/Number"}]]}}
     {:query {:expressions {"abc" [+ 1 2]}
-             :fields      [[:expression "abc" {:base-type :type/Number}]]}}}))
+             :fields      [[:expression "abc" {:base-type :type/Number}]]}}}
+
+   "expressions can be a literal :value"
+   {{:query {:expressions {"abc" [:value 123 {"base_type" "type/Integer"}]}
+             :fields      [[:expression "abc" {"base-type" "type/Integer"}]]}}
+    {:query {:expressions {"abc" [:value 123 {:base_type :type/Integer}]}
+             :fields      [[:expression "abc" {:base-type :type/Integer}]]}}}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |
@@ -774,6 +785,16 @@
 
     {:query {:breakout [[:field 1000 nil]]}}
     {:query {:breakout [[:field 1000 nil]]}}}))
+
+;;; ----------------------------------------------------- expressions ------------------------------------------------
+
+(t/deftest ^:parallel canonicalize-expressions-test
+  (canonicalize-tests
+   "expressions can be a literal :value"
+   {{:query {:expressions {"abc" [:value false {:base_type :type/Boolean}]}
+             :fields      [[:expression "abc" {:base-type :type/Boolean}]]}}
+    {:query {:expressions {"abc" [:value false {:base_type :type/Boolean}]}
+             :fields      [[:expression "abc" {:base-type :type/Boolean}]]}}}))
 
 ;;; ----------------------------------------------------- fields -----------------------------------------------------
 

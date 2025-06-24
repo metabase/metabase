@@ -42,7 +42,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (reset! (var-get #'setting.cache/last-update-check) 0))
+  (.set ^java.util.concurrent.atomic.AtomicLong (var-get #'setting.cache/last-update-check) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"

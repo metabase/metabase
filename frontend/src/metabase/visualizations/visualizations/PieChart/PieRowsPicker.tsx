@@ -50,7 +50,7 @@ export function PieRowsPicker({
 
   const onChangeSeriesColor = (sliceKey: string, color: string) =>
     onChangeSettings({
-      "pie.rows": pieRows.map(row => {
+      "pie.rows": pieRows.map((row) => {
         if (row.key !== sliceKey) {
           return row;
         }
@@ -70,7 +70,7 @@ export function PieRowsPicker({
       series={rawSeries}
       onChangeSeriesColor={onChangeSeriesColor}
       onSortEnd={onSortEnd}
-      onChange={rows => onChangeSettings({ "pie.rows": rows as PieRow[] })}
+      onChange={(rows) => onChangeSettings({ "pie.rows": rows as PieRow[] })}
       onShowWidget={onShowWidget}
       hasEditSettings
       accentColorOptions={

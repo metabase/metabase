@@ -27,7 +27,7 @@ export function modifyPermission(
       if (shouldPropagate !== null) {
         cy.findByRole("switch")
           .as("toggle")
-          .then($el => {
+          .then(($el) => {
             if ($el.attr("aria-checked") !== shouldPropagate.toString()) {
               cy.get("@toggle").click();
             }
@@ -56,7 +56,7 @@ export function assertPermissionTable(rows) {
     .find("tbody > tr")
     .should("have.length", rows.length);
 
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const [item, ...permissions] = row;
 
     getPermissionRowPermissions(item).each(($permissionEl, index) => {
@@ -141,14 +141,14 @@ export function assertDatasetReqIsSandboxed(options = {}) {
 
     // if options to make assertions on a column's data
     if (columnId && columnAssertion) {
-      const colIndex = data.cols.findIndex(c => c.id === columnId);
+      const colIndex = data.cols.findIndex((c) => c.id === columnId);
       expect(colIndex).to.be.gte(0);
 
-      const values = data.rows.map(row => row[colIndex]);
+      const values = data.rows.map((row) => row[colIndex]);
 
       const assertionFn = _.isFunction(columnAssertion)
         ? columnAssertion
-        : val => val === columnAssertion;
+        : (val) => val === columnAssertion;
       const errMsg = `Expected every result in column to be equal to: ${columnAssertion}`;
       expect(values.every(assertionFn)).to.equal(true, errMsg);
     }
@@ -156,7 +156,7 @@ export function assertDatasetReqIsSandboxed(options = {}) {
 }
 
 export function blockUserGroupPermissions(groupId, databaseId = SAMPLE_DB_ID) {
-  cy.updatePermissionsGraph({
+  return cy.updatePermissionsGraph({
     [groupId]: {
       [databaseId]: {
         "view-data": "blocked",

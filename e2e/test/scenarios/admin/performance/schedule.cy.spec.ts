@@ -1,7 +1,5 @@
-import _ from "underscore";
-
-const { H } = cy;
-import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
+import type { ScheduleComponentType } from "metabase/components/Schedule/strings";
+import { checkNotNull } from "metabase/lib/types";
 import type { CacheableModel } from "metabase-types/api";
 
 import { interceptPerformanceRoutes } from "./helpers/e2e-performance-helpers";
@@ -12,6 +10,8 @@ import {
   saveCacheStrategyForm,
   scheduleRadioButton,
 } from "./helpers/e2e-strategy-form-helpers";
+
+const { H } = cy;
 
 /** These tests check that the schedule strategy form fields (in Admin /
  * Performance) send the correct cron expressions to the API. They do not check
@@ -37,49 +37,50 @@ describe("scenarios > admin > performance > schedule strategy", () => {
 
   // prettier-ignore
   const schedules: ScheduleTestOptions[] = [
-    [{}, "0 0 * * * ?"], // The default schedule is 'every hour, on the hour'
+    [ {}, "0 0 * * * ? *" ], // The default schedule is 'every hour, on the hour'
 
-    [{ frequency: "daily" }, "0 0 8 * * ?"], // 8 am is the default time for a daily schedule
+    [ { frequency: "daily" }, "0 0 8 * * ? *" ], // 8 am is the default time for a daily schedule
 
-    [{ frequency: "hourly" }, "0 0 * * * ?"], // Check that switching back to hourly works
+    [ { frequency: "hourly" }, "0 0 * * * ? *" ], // Check that switching back to hourly works
 
-    [{ frequency: "daily", time: "9:00" }, "0 0 9 * * ?"], // AM is the default choice between AM and PM
-    [{ frequency: "daily", time: "9:00", amPm: "PM" }, "0 0 21 * * ?"],
-    [{ frequency: "daily", time: "12:00", amPm: "AM" }, "0 0 0 * * ?"],
+    [ { frequency: "daily", time: "9:00" }, "0 0 9 * * ? *" ], // AM is the default choice between AM and PM
+    [ { frequency: "daily", time: "9:00", amPm: "PM" }, "0 0 21 * * ? *" ],
+    [ { frequency: "daily", time: "12:00", amPm: "AM" }, "0 0 0 * * ? *" ],
 
-    [ { frequency: "weekly", weekday: "Monday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 2" ],
-    [ { frequency: "weekly", weekday: "Monday", time: "1:00", amPm: "AM" }, "0 0 1 ? * 2" ],
+    [ { frequency: "weekly", weekday: "Monday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 2 *" ],
+    [ { frequency: "weekly", weekday: "Monday", time: "1:00", amPm: "AM" }, "0 0 1 ? * 2 *" ],
 
-    [ { frequency: "weekly", weekday: "Tuesday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 3" ],
-    [ { frequency: "weekly", weekday: "Tuesday", time: "3:00", amPm: "AM" }, "0 0 3 ? * 3" ],
+    [ { frequency: "weekly", weekday: "Tuesday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 3 *" ],
+    [ { frequency: "weekly", weekday: "Tuesday", time: "3:00", amPm: "AM" }, "0 0 3 ? * 3 *" ],
 
-    [ { frequency: "weekly", weekday: "Wednesday", time: "4:00", amPm: "AM" }, "0 0 4 ? * 4" ],
-    [ { frequency: "weekly", weekday: "Wednesday", time: "5:00", amPm: "AM" }, "0 0 5 ? * 4" ],
+    [ { frequency: "weekly", weekday: "Wednesday", time: "4:00", amPm: "AM" }, "0 0 4 ? * 4 *" ],
+    [ { frequency: "weekly", weekday: "Wednesday", time: "5:00", amPm: "AM" }, "0 0 5 ? * 4 *" ],
 
-    [ { frequency: "weekly", weekday: "Thursday", time: "6:00", amPm: "AM" }, "0 0 6 ? * 5" ],
-    [ { frequency: "weekly", weekday: "Thursday", time: "7:00", amPm: "AM" }, "0 0 7 ? * 5" ],
+    [ { frequency: "weekly", weekday: "Thursday", time: "6:00", amPm: "AM" }, "0 0 6 ? * 5 *" ],
+    [ { frequency: "weekly", weekday: "Thursday", time: "7:00", amPm: "AM" }, "0 0 7 ? * 5 *" ],
 
-    [ { frequency: "weekly", weekday: "Friday", time: "8:00", amPm: "AM" }, "0 0 8 ? * 6" ],
-    [ { frequency: "weekly", weekday: "Friday", time: "9:00", amPm: "AM" }, "0 0 9 ? * 6" ],
+    [ { frequency: "weekly", weekday: "Friday", time: "8:00", amPm: "AM" }, "0 0 8 ? * 6 *" ],
+    [ { frequency: "weekly", weekday: "Friday", time: "9:00", amPm: "AM" }, "0 0 9 ? * 6 *" ],
 
-    [ { frequency: "weekly", weekday: "Saturday", time: "10:00", amPm: "AM" }, "0 0 10 ? * 7" ],
-    [ { frequency: "weekly", weekday: "Saturday", time: "11:00", amPm: "AM" }, "0 0 11 ? * 7" ],
+    [ { frequency: "weekly", weekday: "Saturday", time: "10:00", amPm: "AM" }, "0 0 10 ? * 7 *" ],
+    [ { frequency: "weekly", weekday: "Saturday", time: "11:00", amPm: "AM" }, "0 0 11 ? * 7 *" ],
 
-    [ { frequency: "weekly", weekday: "Sunday", time: "12:00", amPm: "PM" }, "0 0 12 ? * 1" ],
-    [ { frequency: "weekly", weekday: "Sunday", time: "1:00", amPm: "PM" }, "0 0 13 ? * 1" ],
+    [ { frequency: "weekly", weekday: "Sunday", time: "12:00", amPm: "PM" }, "0 0 12 ? * 1 *" ],
+    [ { frequency: "weekly", weekday: "Sunday", time: "1:00", amPm: "PM" }, "0 0 13 ? * 1 *" ],
 
-    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Sunday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 1#1" ],
-    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Monday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 2#1" ],
+    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Sunday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 1#1 *" ],
+    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "Monday", time: "2:00", amPm: "AM" }, "0 0 2 ? * 2#1 *" ],
 
-    [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Tuesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 3L" ],
-    [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Wednesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 4L" ],
+    [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Tuesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 3L *" ],
+    [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Wednesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 4L *" ],
 
-    [ { frequency: "monthly", frame: "15th", time: "12:00", amPm: "AM" }, "0 0 0 15 * ?" ],
-    [ { frequency: "monthly", frame: "15th", time: "11:00", amPm: "PM" }, "0 0 23 15 * ?" ],
+    [ { frequency: "monthly", frame: "15th", time: "12:00", amPm: "AM" }, "0 0 0 15 * ? *" ],
+    [ { frequency: "monthly", frame: "15th", time: "11:00", amPm: "PM" }, "0 0 23 15 * ? *" ],
+    [ { frequency: "monthly", frame: "first", weekdayOfMonth: "calendar day", time: "3:00", amPm: "PM" }, "0 0 15 1 * ? *" ],
 
   ];
 
-  (["root", "database"] as CacheableModel[]).forEach(model => {
+  (["root", "database"] as CacheableModel[]).forEach((model) => {
     schedules.forEach(([schedule, cronExpression]) => {
       it(`can set on ${model}: ${
         Object.values(schedule).join(" ") || "default values"
@@ -89,22 +90,22 @@ describe("scenarios > admin > performance > schedule strategy", () => {
           "No caching",
         );
         scheduleRadioButton().click();
-        _.pairs(schedule).forEach(([componentType, optionToClick]) => {
+        Object.entries(schedule).forEach(([componentType, optionToClick]) => {
           if (componentType === "amPm") {
             // AM/PM is a segmented control, not a select
             cacheStrategyForm()
               .findByLabelText("AM/PM")
-              .findByText(optionToClick)
+              .findByText(checkNotNull(optionToClick))
               .click();
           } else {
             getScheduleComponent(componentType).click();
 
             H.popover().within(() => {
-              cy.findByText(optionToClick).click();
+              cy.findByText(checkNotNull(optionToClick)).click();
             });
           }
         });
-        saveCacheStrategyForm().then(xhr => {
+        saveCacheStrategyForm().then((xhr) => {
           const { body } = xhr.request;
           expect(body.model).to.eq(model);
           expect(body.strategy.schedule).to.eq(cronExpression);
@@ -146,10 +147,10 @@ describe("scenarios > admin > performance > schedule strategy", () => {
         cacheStrategyForm()
           .findByLabelText("Describe how often the cache should be invalidated")
           .find("[aria-label]")
-          .then($labels => {
+          .then(($labels) => {
             const labels = $labels
               .get()
-              .map($el => $el.getAttribute("aria-label"));
+              .map(($el) => $el.getAttribute("aria-label"));
             expect(labels).to.deep.equal(expectedFieldLabels);
           });
       });

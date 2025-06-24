@@ -1,6 +1,8 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { IconName } from "metabase/ui";
+import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
@@ -32,9 +34,7 @@ describe("issue 11727", { tags: "@external" }, () => {
       H.runNativeQuery({ wait: false });
       cy.findByText("Doing science...").should("be.visible");
       cy.get("body").type("{cmd}{enter}");
-      cy.findByText("Here's where your results will appear").should(
-        "be.visible",
-      );
+      cy.findByText("Query results will appear here.").should("be.visible");
     });
   });
 });
@@ -218,7 +218,7 @@ describe("issue 53194", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    Object.values(REVIEWS).forEach(fieldId => {
+    Object.values(REVIEWS).forEach((fieldId) => {
       cy.request("PUT", `/api/field/${fieldId}`, {
         visibility_type: "sensitive",
       });
@@ -227,7 +227,6 @@ describe("issue 53194", () => {
 
   it("should not enter an infinite loop when browsing table fields (metabase#53194)", () => {
     H.startNewNativeQuestion();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("REVIEWS").click(); // the infinite loop used to start with this action
@@ -277,18 +276,18 @@ describe("issue 53171", () => {
   it("title and icons in data reference sidebar should not overflow (metabase#53171)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@longNameQuestionId").then(longNameQuestion => {
+    cy.get("@longNameQuestionId").then((longNameQuestion) => {
       H.NativeEditor.type(`{{#${longNameQuestion}`);
     });
 
-    cy.findByTestId("sidebar-content").within($container => {
+    cy.findByTestId("sidebar-content").within(($container) => {
       const [container] = $container;
 
-      cy.findByTestId("sidebar-header").should($header => {
+      cy.findByTestId("sidebar-header").should(($header) => {
         const [header] = $header;
         const headerDescendants = header.querySelectorAll("*");
 
-        headerDescendants.forEach(descendant => {
+        headerDescendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(descendant, container);
         });
       });
@@ -302,7 +301,7 @@ describe("issue 53171", () => {
   function verifyIconVisibleAndSized(iconName: IconName, size: number) {
     cy.icon(iconName)
       .should("be.visible")
-      .and(icon => {
+      .and((icon) => {
         expect(icon.outerWidth()).to.equal(size);
         expect(icon.outerHeight()).to.equal(size);
       });
@@ -328,7 +327,7 @@ describe("issue 54124", () => {
   it("should be possible to close the data reference sidebar (metabase#54124)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       H.NativeEditor.type(
         `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
       );
@@ -381,4 +380,150 @@ describe("issues 52811, 52812", () => {
   function clickAway() {
     cy.get("body").click(0, 0);
   }
+});
+
+describe("issue 52806", () => {
+  const questionDetails = {
+    name: "SQL",
+    dataset_query: {
+      database: SAMPLE_DB_ID,
+      type: "native",
+      native: {
+        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
+        "template-tags": {
+          id: {
+            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
+            name: "id",
+            "display-name": "ID",
+            type: "number",
+            default: "1",
+          },
+        },
+      },
+    },
+    visualization_settings: {},
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it(
+    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
+    { tags: "@flaky" },
+    () => {
+      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
+        "candidates",
+      );
+      H.visitQuestionAdhoc(questionDetails);
+      cy.findByTestId("main-logo-link").click();
+      H.modal().button("Discard changes").click();
+      cy.wait("@candidates");
+      cy.location().should((location) => expect(location.search).to.eq(""));
+    },
+  );
+});
+
+describe("issue 55951", () => {
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+
+    cy.intercept<unknown, ListDatabasesResponse>(
+      "GET",
+      "/api/database",
+      (request) => {
+        request.continue((response) => {
+          response.body.data = mockResponseData(response.body.data);
+        });
+      },
+    ).as("getDatabases");
+  });
+
+  it("should not show loading state in database picker when databases are being reloaded (metabase#55951)", () => {
+    cy.visit("/");
+    cy.wait("@getDatabases");
+
+    cy.intercept<unknown, ListDatabasesResponse>(
+      "GET",
+      "/api/database*",
+      (request) => {
+        request.continue((response) => {
+          response.body.data = mockResponseData(response.body.data);
+
+          // Setting this to be arbitrarly long so that H.repeatAssertion is guaranteed to detect the issue
+          return new Promise((resolve) => setTimeout(resolve, 2000));
+        });
+      },
+    );
+
+    H.newButton("SQL query").click();
+    H.popover()
+      .should("be.visible")
+      .within(() => {
+        cy.findByText("QA Postgres12").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+
+        H.repeatAssertion(() => {
+          cy.findByTestId("loading-indicator", { timeout: 250 }).should(
+            "not.exist",
+          );
+        });
+      });
+  });
+
+  function mockResponseData(databases: Database[]) {
+    return databases.map((database) => ({
+      ...database,
+      initial_sync_status: "incomplete" as const,
+    }));
+  }
+});
+
+describe("issue 54799", () => {
+  const questionDetails = {
+    native: {
+      query: "select 'foo', 'bar'",
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
+    const macOSX = Cypress.platform === "darwin";
+    el.dblclick(pos, {
+      metaKey: macOSX,
+      ctrlKey: !macOSX,
+    });
+  }
+
+  it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
+    cy.findByTestId("visibility-toggler").click();
+
+    cy.get("[data-testid=cell-data]").contains("foo").should("be.visible");
+    cy.get("[data-testid=cell-data]").contains("bar").should("be.visible");
+
+    select(H.NativeEditor.get().findByText("select"));
+    select(H.NativeEditor.get().findByText("'foo'"));
+    select(H.NativeEditor.get().findByText("'foo'"), "left");
+    select(H.NativeEditor.get().findByText("'bar'"));
+    select(H.NativeEditor.get().findByText("'bar'"), "right");
+
+    getRunQueryButton().click();
+
+    cy.get("[data-testid=cell-data]").contains(/^foo$/).should("not.exist");
+    cy.get("[data-testid=cell-data]").contains(/^bar$/).should("not.exist");
+
+    cy.get("[data-testid=cell-data]")
+      .contains(/^'foobar'$/)
+      .should("be.visible");
+    cy.get("[data-testid=cell-data]")
+      .contains(/foobar/)
+      .should("be.visible");
+  });
 });

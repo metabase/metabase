@@ -7,12 +7,10 @@ import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
-import { color } from "metabase/lib/colors";
 import { connect } from "metabase/lib/redux";
 import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -27,6 +25,7 @@ import { Flex, Icon } from "metabase/ui";
 import { SnippetRow } from "../SnippetRow";
 
 import S from "./SnippetSidebar.module.css";
+import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 16;
@@ -71,6 +70,7 @@ class SnippetSidebarInner extends React.Component {
       snippetCollection,
       search,
     } = this.props;
+
     const { showSearch, searchString, showArchived } = this.state;
 
     if (showArchived) {
@@ -82,7 +82,7 @@ class SnippetSidebarInner extends React.Component {
     }
 
     const displayedItems = showSearch
-      ? snippets.filter(snippet =>
+      ? snippets.filter((snippet) =>
           snippet.name.toLowerCase().includes(searchString.toLowerCase()),
         )
       : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
@@ -92,26 +92,9 @@ class SnippetSidebarInner extends React.Component {
         {!showSearch &&
         displayedItems.length === 0 &&
         snippetCollection.id === "root" ? (
-          <div className={cx(CS.px3, CS.flex, CS.flexColumn, CS.alignCenter)}>
-            <svg
-              viewBox="0 0 10 10"
-              className={CS.mb2}
-              style={{ width: "25%", marginTop: 120 }}
-            >
-              <path
-                style={{ stroke: color("bg-medium"), strokeWidth: 1 }}
-                d="M0,1H8M0,3H10M0,5H7M0,7H10M0,9H3"
-              />
-            </svg>
-            <h4
-              className={CS.textMedium}
-            >{t`Snippets are reusable bits of SQL`}</h4>
-            <button
-              onClick={openSnippetModalWithSelectedText}
-              className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
-              style={{ marginTop: 80 }}
-            >{t`Create a snippet`}</button>
-          </div>
+          <SnippetSidebarEmptyState
+            onClick={openSnippetModalWithSelectedText}
+          />
         ) : (
           <div>
             <div
@@ -127,12 +110,12 @@ class SnippetSidebarInner extends React.Component {
                 >
                   <input
                     className={cx(CS.input, CS.inputBorderless, CS.p0)}
-                    ref={e => (this.searchBox = e)}
-                    onChange={e =>
+                    ref={(e) => (this.searchBox = e)}
+                    onChange={(e) =>
                       this.setState({ searchString: e.target.value })
                     }
                     value={searchString}
-                    onKeyDown={e => {
+                    onKeyDown={(e) => {
                       if (e.key === "Escape") {
                         this.hideSearch();
                       }
@@ -152,7 +135,7 @@ class SnippetSidebarInner extends React.Component {
                         this.props.setSnippetCollectionId(
                           // if this collection's parent isn't in the list, we don't have perms to see it, return to the root instead
                           this.props.snippetCollections.some(
-                            sc =>
+                            (sc) =>
                               canonicalCollectionId(sc.id) ===
                               canonicalCollectionId(parentId),
                           )
@@ -177,7 +160,7 @@ class SnippetSidebarInner extends React.Component {
                 )}
               >
                 {[
-                  ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map(f =>
+                  ...PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS.map((f) =>
                     f(this, { className: CS.mr2 }),
                   ),
                 ]}
@@ -213,7 +196,7 @@ class SnippetSidebarInner extends React.Component {
                             name: t`New snippet`,
                             onClick: openSnippetModalWithSelectedText,
                           },
-                          ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map(f =>
+                          ...PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS.map((f) =>
                             f(this),
                           ),
                         ].map(({ icon, name, onClick }) => (
@@ -249,7 +232,7 @@ class SnippetSidebarInner extends React.Component {
             </div>
             <div className={CS.flexFull}>
               {displayedItems.length > 0
-                ? displayedItems.map(item => (
+                ? displayedItems.map((item) => (
                     <Row
                       key={`${item.model || "snippet"}-${item.id}`}
                       item={item}
@@ -263,7 +246,7 @@ class SnippetSidebarInner extends React.Component {
             </div>
           </div>
         )}
-        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map(f => f(this))}
+        {PLUGIN_SNIPPET_SIDEBAR_MODALS.map((f) => f(this))}
       </SidebarContent>
     );
   }
@@ -292,7 +275,7 @@ class ArchivedSnippetsInner extends React.Component {
       this.props;
     const collectionsById = _.indexBy(
       snippetCollections.concat(archivedSnippetCollections),
-      c => canonicalCollectionId(c.id),
+      (c) => canonicalCollectionId(c.id),
     );
 
     return (
@@ -303,14 +286,14 @@ class ArchivedSnippetsInner extends React.Component {
           onBack={onBack}
         />
 
-        {archivedSnippetCollections.map(collection => (
+        {archivedSnippetCollections.map((collection) => (
           <Row
             key={`collection-${collection.id}`}
             item={collection}
             type="collection"
           />
         ))}
-        {snippets.map(snippet => (
+        {snippets.map((snippet) => (
           <Row
             key={`snippet-${snippet.id}`}
             item={snippet}

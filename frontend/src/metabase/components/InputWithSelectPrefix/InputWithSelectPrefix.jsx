@@ -19,8 +19,8 @@ function splitValue({
 
   const prefix = prefixes.find(
     caseInsensitivePrefix
-      ? p => value.toLowerCase().startsWith(p.toLowerCase())
-      : p => value.startsWith(p),
+      ? (p) => value.toLowerCase().startsWith(p.toLowerCase())
+      : (p) => value.startsWith(p),
   );
 
   return prefix ? [prefix, value.slice(prefix.length)] : [defaultPrefix, value];
@@ -75,7 +75,7 @@ export default class InputWithSelectPrefix extends Component {
             input: CS.borderless,
           }}
           value={prefix || defaultPrefix}
-          onChange={val => this.setState({ prefix: val })}
+          onChange={(val) => this.setState({ prefix: val })}
           w="6.5rem"
           styles={{
             root: {
@@ -96,7 +96,7 @@ export default class InputWithSelectPrefix extends Component {
           className={CS.flexFull}
           value={rest}
           placeholder={this.props.placeholder}
-          onBlurChange={e => this.setState({ rest: e.target.value })}
+          onBlurChange={(e) => this.setState({ rest: e.target.value })}
           size="large"
         />
       </Flex>

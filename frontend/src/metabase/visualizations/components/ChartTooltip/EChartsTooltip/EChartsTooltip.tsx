@@ -37,12 +37,12 @@ export const EChartsTooltip = ({
   rows,
   footer,
 }: EChartsTooltipProps) => {
-  const hasMarkers = rows.some(row => row.markerColorClass != null);
+  const hasMarkers = rows.some((row) => row.markerColorClass != null);
   const maxValuesColumns = rows.reduce((currentMax, row) => {
     return Math.max(currentMax, row.values.filter(isNotNull).length);
   }, 0);
 
-  const paddedRows = rows.map(row => {
+  const paddedRows = rows.map((row) => {
     return {
       ...row,
       values: getPaddedValuesArray(row.values, maxValuesColumns),
@@ -59,31 +59,33 @@ export const EChartsTooltip = ({
           {header}
         </div>
       )}
-      <table
-        className={cx(TooltipStyles.Table, {
-          [TooltipStyles.TableNoHeader]: header == null,
-        })}
-      >
-        <tbody>
-          {paddedRows.map((row, i) => {
-            const key = row.key ?? String(i);
-            return !row.isSecondary ? (
-              <TooltipRow {...row} key={key} />
-            ) : (
-              <SecondaryRow {...row} key={key} />
-            );
+      <div className={TooltipStyles.TableWrapper}>
+        <table
+          className={cx(TooltipStyles.Table, {
+            [TooltipStyles.TableNoHeader]: header == null,
           })}
-        </tbody>
-        {footer != null && (
-          <tfoot data-testid="echarts-tooltip-footer">
-            <FooterRow
-              {...footer}
-              values={getPaddedValuesArray(footer.values, maxValuesColumns)}
-              markerContent={hasMarkers ? <span /> : null}
-            />
-          </tfoot>
-        )}
-      </table>
+        >
+          <tbody className={TooltipStyles.TableBody}>
+            {paddedRows.map((row, i) => {
+              const key = row.key ?? String(i);
+              return !row.isSecondary ? (
+                <TooltipRow {...row} key={key} />
+              ) : (
+                <SecondaryRow {...row} key={key} />
+              );
+            })}
+          </tbody>
+          {footer != null && (
+            <tfoot data-testid="echarts-tooltip-footer">
+              <FooterRow
+                {...footer}
+                values={getPaddedValuesArray(footer.values, maxValuesColumns)}
+                markerContent={hasMarkers ? <span /> : null}
+              />
+            </tfoot>
+          )}
+        </table>
+      </div>
     </div>
   );
 };

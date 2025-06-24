@@ -67,6 +67,7 @@
                                :database_id
                                [nil :location]
                                :dataset_query
+                               :card_schema
                                :last_used_at
                                [{:select   [:status]
                                  :from     [:moderation_review]

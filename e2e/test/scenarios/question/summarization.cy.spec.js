@@ -1,4 +1,6 @@
 const { H } = cy;
+import { dedent } from "ts-dedent";
+
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
@@ -144,13 +146,13 @@ describe("scenarios > question > summarize sidebar", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula: "2 * Max([Total])",
-        name: "twice max total",
-      });
-      cy.findByText("Done").click();
+
+    H.enterCustomColumnDetails({
+      formula: "2 * Max([Total])",
+      name: "twice max total",
     });
+
+    H.expressionEditorWidget().button("Done").click();
     cy.findByTestId("aggregate-step")
       .contains("twice max total")
       .should("exist");
@@ -166,16 +168,17 @@ describe("scenarios > question > summarize sidebar", () => {
     H.summarize({ mode: "notebook" });
 
     H.popover().contains("Custom Expression").click();
-    H.expressionEditorWidget().within(() => {
-      H.enterCustomColumnDetails({
-        formula:
-          "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
-      });
+    H.enterCustomColumnDetails({
+      formula: "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
+      format: true,
     });
 
     H.CustomExpressionEditor.value().should(
       "equal",
-      "Sum([Total]) / (Sum([Product → Price]) * Average([Quantity]))",
+      dedent`
+        Sum([Total]) /
+          (Sum([Product → Price]) * Average([Quantity]))
+      `.trim(),
     );
   });
 

@@ -18,10 +18,10 @@ export const ActionTitle = styled(Link)`
   font-size: 1rem;
   font-weight: 700;
   color: var(--mb-color-text-dark);
-  cursor: ${props => (props.to ? "pointer" : "unset")};
+  cursor: ${(props) => (props.to ? "pointer" : "unset")};
 
   &:hover {
-    color: ${props => props.to && color("brand")};
+    color: ${(props) => props.to && color("brand")};
   }
 `;
 

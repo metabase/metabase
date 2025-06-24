@@ -11,7 +11,7 @@ import { Box, Center, Stack, Text } from "metabase/ui";
 import { SameSiteAlert } from "./EmbeddingAppSameSiteCookieDescription.styled";
 
 export const EmbeddingAppSameSiteCookieDescription = () => {
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
     getDocsUrl(state, {
       page: "embedding/interactive-embedding",
@@ -70,5 +70,5 @@ function authorizedOriginsContainsNonInstanceDomain(
   }
 
   const origins = authorizedOriginsString.split(" ");
-  return origins.some(origin => !isSameOrigin(origin));
+  return origins.some((origin) => !isSameOrigin(origin));
 }

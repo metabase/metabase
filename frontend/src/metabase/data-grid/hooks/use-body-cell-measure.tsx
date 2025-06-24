@@ -1,4 +1,6 @@
+import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { renderToString } from "react-dom/server";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -7,7 +9,10 @@ import { ThemeProvider } from "metabase/ui";
 import { DEFAULT_FONT_SIZE } from "../constants";
 import type { DataGridTheme } from "../types";
 
-export type CellMeasurer = (content: string, width?: number) => CellSize;
+export type CellMeasurer = (
+  content: React.ReactNode,
+  width?: number,
+) => CellSize;
 
 export interface CellSize {
   width: number;
@@ -32,6 +37,7 @@ export const useCellMeasure = (
           pointerEvents: "none",
           zIndex: -999,
           fontSize: DEFAULT_FONT_SIZE,
+          overflow: "visible",
         }}
       >
         {cell}
@@ -40,7 +46,7 @@ export const useCellMeasure = (
   }, [cell]);
 
   const measureDimensions: CellMeasurer = useCallback(
-    (content: string, containerWidth?: number) => {
+    (content: React.ReactNode, containerWidth?: number) => {
       const rootEl = rootRef.current;
       const contentCell = rootEl?.querySelector(contentNodeSelector);
       if (!rootEl || !contentCell) {
@@ -51,7 +57,12 @@ export const useCellMeasure = (
 
       rootEl.style.width =
         containerWidth != null ? `${containerWidth}px` : "auto";
-      contentCell.textContent = content;
+
+      if (typeof content === "string") {
+        contentCell.textContent = content;
+      } else {
+        contentCell.innerHTML = renderToString(content);
+      }
       const boundingRect = rootEl.getBoundingClientRect();
       return {
         width: boundingRect.width,
@@ -76,7 +87,7 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
         wrap={true}
         value=""
         contentTestId=""
-        style={{ fontSize: theme?.fontSize }}
+        style={{ fontSize: theme?.fontSize, overflow: "visible" }}
       />
     ),
     [theme?.fontSize],

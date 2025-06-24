@@ -57,7 +57,8 @@ export const getIsStepActive = (state: State, step: SetupStep): boolean => {
 export const getIsStepCompleted = (state: State, step: SetupStep): boolean => {
   const steps = getSteps(state);
   return (
-    steps.findIndex(s => s.key === step) < steps.findIndex(s => s.isActiveStep)
+    steps.findIndex((s) => s.key === step) <
+    steps.findIndex((s) => s.isActiveStep)
   );
 };
 
@@ -100,7 +101,7 @@ export const getSteps = createSelector(
   (usageReason, activeStep, tokenFeatures, licenseToken) => {
     const isPaidPlan =
       tokenFeatures &&
-      Object.values(tokenFeatures).some(value => value === true);
+      Object.values(tokenFeatures).some((value) => value === true);
     const hasAddedPaidPlanInPreviousStep = Boolean(licenseToken);
 
     const shouldShowDBConnectionStep = usageReason !== "embedding";
@@ -143,6 +144,6 @@ export const getSteps = createSelector(
 
 export const getNextStep = (state: State) => {
   const steps = getSteps(state);
-  const activeStepIndex = steps.findIndex(step => step.isActiveStep);
+  const activeStepIndex = steps.findIndex((step) => step.isActiveStep);
   return steps[activeStepIndex + 1].key;
 };

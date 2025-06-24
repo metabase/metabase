@@ -215,5 +215,5 @@ describe("AddSeriesModal", () => {
 function getLegendLabels() {
   return screen
     .getAllByTestId("legend-item")
-    .map(element => element.textContent);
+    .map((element) => element.textContent);
 }

@@ -32,7 +32,9 @@ export const fetchParameterValues =
   (dispatch: Dispatch, getState: GetState) => {
     const request = {
       parameter: normalizeParameter(parameter),
-      field_ids: getNonVirtualFields(parameter).map(field => Number(field.id)),
+      field_ids: getNonVirtualFields(parameter).map((field) =>
+        Number(field.id),
+      ),
       query,
     };
 

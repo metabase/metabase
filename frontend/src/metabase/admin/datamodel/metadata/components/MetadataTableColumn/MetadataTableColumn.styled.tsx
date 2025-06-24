@@ -1,6 +1,5 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-import { Link } from "react-router";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 
@@ -21,12 +20,4 @@ export const ColumnContainer = styled.section`
 
 export const ColumnInput = styled(InputBlurChange)`
   width: auto;
-`;
-
-export const FieldSettingsLink = styled(Link)`
-  margin-right: 0.5rem;
-
-  &:hover {
-    color: var(--mb-color-brand);
-  }
 `;

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Modal, type ModalProps } from "metabase/ui";
@@ -10,9 +11,9 @@ import type { Dashboard } from "metabase-types/api";
 import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
 import { CreateDashboardForm } from "./CreateDashboardForm";
 
-interface CreateDashboardModalProps
+export interface CreateDashboardModalProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
-  onClose?: () => void;
+  onClose: () => void;
 }
 
 export const CreateDashboardModal = ({
@@ -36,12 +37,15 @@ export const CreateDashboardModal = ({
     [onCreate, onClose, dispatch],
   );
 
+  useEscapeToCloseModal(onClose);
+
   return (
     <Modal
       title={t`New dashboard`}
       onClose={() => onClose?.()}
       data-testid="new-dashboard-modal"
       size="lg"
+      closeOnEscape={false}
       {...modalProps}
     >
       <CreateDashboardForm

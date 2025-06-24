@@ -291,7 +291,7 @@ export const StaticEmbedSetupPane = ({
               serverEmbedCodeSlot={getServerEmbedCodePane(
                 EMBED_MODAL_TABS.Overview,
               )}
-              onClientCodeCopy={language =>
+              onClientCodeCopy={(language) =>
                 handleCodeCopy({ code: "view", variant: "overview", language })
               }
             />
@@ -306,7 +306,7 @@ export const StaticEmbedSetupPane = ({
                   parameterValues={parameterValues}
                   onChangeEmbeddingParameters={setEmbeddingParams}
                   onChangeParameterValue={(id: string, value: string) =>
-                    setParameterValues(state => ({
+                    setParameterValues((state) => ({
                       ...state,
                       [id]: value,
                     }))
@@ -373,12 +373,12 @@ function getDefaultEmbeddingParams(
   resource: EmbedResource,
   resourceParameters: EmbedResourceParameter[],
 ): EmbeddingParameters {
-  const validSlugs = resourceParameters.map(param => param.slug);
+  const validSlugs = resourceParameters.map((param) => param.slug);
   // We first pick only dashboard parameters with valid slugs
   const defaultParams = _.pick(resource.embedding_params || {}, validSlugs);
   // Then pick valid required dashboard parameters
   const validRequiredParams = resourceParameters.filter(
-    param => param.slug && param.required,
+    (param) => param.slug && param.required,
   );
 
   // And for each required parameter set its value to "enabled"
@@ -408,7 +408,7 @@ function getPreviewParamsBySlug({
   );
 
   return Object.fromEntries(
-    lockedParameters.map(parameter => {
+    lockedParameters.map((parameter) => {
       const value = getParameterValue({
         parameter,
         values: parameterValues,
@@ -426,7 +426,7 @@ function getLockedPreviewParameters(
   embeddingParams: EmbeddingParameters,
 ) {
   return resourceParameters.filter(
-    parameter => embeddingParams[parameter.slug] === "locked",
+    (parameter) => embeddingParams[parameter.slug] === "locked",
   );
 }
 

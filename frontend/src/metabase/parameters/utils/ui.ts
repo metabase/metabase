@@ -44,7 +44,7 @@ export function getVisibleParameters(
     buildHiddenParametersSlugSet(hiddenParameterSlugs);
 
   return parameters.filter(
-    p => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
+    (p) => !hiddenParametersSlugSet.has(p.slug) && !p.hidden,
   );
 }
 

@@ -5,6 +5,7 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { flexRender } from "@tanstack/react-table";
+import cx from "classnames";
 import type React from "react";
 import { useCallback, useEffect, useMemo } from "react";
 import _ from "underscore";
@@ -17,17 +18,42 @@ import {
   HEADER_HEIGHT,
   PINNED_COLUMN_Z_INDEX,
 } from "metabase/data-grid/constants";
+import { isVirtualRow } from "metabase/data-grid/guards";
 import { DataGridThemeProvider } from "metabase/data-grid/hooks/use-table-theme";
 import type { DataGridInstance, DataGridTheme } from "metabase/data-grid/types";
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { getScrollBarSize } from "metabase/lib/dom";
 
+import { Footer } from "../Footer/Footer";
+
 import S from "./DataGrid.module.css";
 
-export type DataGridProps<TData> = DataGridInstance<TData> & {
-  emptyState?: React.ReactNode;
-  theme?: DataGridTheme;
+// Component supports Mantine-like Styles API
+// Technically this is not the 1:1 mapping of the Mantine API, but it's close enough
+// https://mantine.dev/styles/styles-api/
+export type DataGridStylesNames =
+  | "root"
+  | "tableGrid"
+  | "row"
+  | "headerContainer"
+  | "headerCell"
+  | "bodyContainer"
+  | "bodyCell"
+  | "footer";
+
+export type DataGridStylesProps = {
+  classNames?: { [key in DataGridStylesNames]?: string };
+  styles?: { [key in DataGridStylesNames]?: React.CSSProperties };
 };
+
+export interface DataGridProps<TData>
+  extends DataGridInstance<TData>,
+    DataGridStylesProps {
+  emptyState?: React.ReactNode;
+  showRowsCount?: boolean;
+  isColumnReorderingDisabled?: boolean;
+  theme?: DataGridTheme;
+}
 
 export const DataGrid = function DataGrid<TData>({
   table,
@@ -35,16 +61,23 @@ export const DataGrid = function DataGrid<TData>({
   virtualGrid,
   measureRoot,
   columnsReordering,
+  selection,
   emptyState,
   theme,
+  classNames,
+  styles,
+  enablePagination,
+  showRowsCount,
+  getTotalHeight,
+  getVisibleRows,
+  isColumnReorderingDisabled,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
-  onScroll,
+  onWheel,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
-    virtualRows,
     virtualPaddingLeft,
     virtualPaddingRight,
     rowVirtualizer,
@@ -78,8 +111,7 @@ export const DataGrid = function DataGrid<TData>({
     (gridRef.current?.offsetWidth ?? Infinity) - ADD_COLUMN_BUTTON_WIDTH;
 
   const addColumnMarginRight =
-    virtualGrid.rowVirtualizer.getTotalSize() >=
-    (gridRef.current?.offsetHeight ?? Infinity)
+    getTotalHeight() >= (gridRef.current?.offsetHeight ?? Infinity)
       ? getScrollBarSize()
       : 0;
 
@@ -101,40 +133,59 @@ export const DataGrid = function DataGrid<TData>({
     ],
   );
 
-  const isEmpty = table.getRowModel().rows.length === 0;
-
+  const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
-    theme?.cell?.backgroundColor ?? "var(--mb-color-bg-white)";
+    theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
+  const stickyElementsBackgroundColor =
+    theme?.stickyBackgroundColor ??
+    (backgroundColor == null || backgroundColor === "transparent"
+      ? "var(--mb-color-background)"
+      : backgroundColor);
 
   return (
     <DataGridThemeProvider theme={theme}>
       <DndContext {...dndContextProps}>
         <div
-          className={S.table}
+          className={cx(S.table, classNames?.root)}
           data-testid="table-root"
+          data-rows-count={rowsCount}
           style={{
             fontSize: theme?.fontSize ?? DEFAULT_FONT_SIZE,
             backgroundColor,
+            ...styles?.root,
           }}
         >
           <div
             data-testid="table-scroll-container"
-            className={S.tableGrid}
+            className={cx(S.tableGrid, classNames?.tableGrid)}
             role="grid"
             ref={gridRef}
             style={{
-              paddingRight: isAddColumnButtonSticky
-                ? `${ADD_COLUMN_BUTTON_WIDTH}px`
-                : 0,
+              paddingRight:
+                hasAddColumnButton && isAddColumnButtonSticky
+                  ? `${ADD_COLUMN_BUTTON_WIDTH}px`
+                  : 0,
+              ...styles?.tableGrid,
             }}
-            onScroll={onScroll}
+            onWheel={onWheel}
           >
-            <div data-testid="table-header" className={S.headerContainer}>
-              {table.getHeaderGroups().map(headerGroup => (
+            <div
+              data-testid="table-header"
+              className={cx(S.headerContainer, classNames?.headerContainer)}
+              style={{
+                backgroundColor: stickyElementsBackgroundColor,
+                ...styles?.headerContainer,
+              }}
+            >
+              {table.getHeaderGroups().map((headerGroup) => (
                 <div
                   key={headerGroup.id}
-                  className={S.row}
-                  style={{ height: `${HEADER_HEIGHT}px` }}
+                  className={cx(S.row, classNames?.row)}
+                  style={{
+                    height: `${HEADER_HEIGHT}px`,
+                    backgroundColor,
+                    ...styles?.row,
+                  }}
                 >
                   {virtualPaddingLeft ? (
                     <div style={{ width: virtualPaddingLeft }} />
@@ -143,24 +194,21 @@ export const DataGrid = function DataGrid<TData>({
                     items={table.getState().columnOrder}
                     strategy={horizontalListSortingStrategy}
                   >
-                    {virtualColumns.map(virtualColumn => {
+                    {virtualColumns.map((virtualColumn) => {
                       const header = headerGroup.headers[virtualColumn.index];
-
                       const headerCell = flexRender(
                         header.column.columnDef.header,
                         header.getContext(),
                       );
                       const width = header.column.getSize();
-
                       const isPinned = header.column.getIsPinned();
-
                       const style: React.CSSProperties = isPinned
                         ? {
                             width,
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor,
+                            backgroundColor: stickyElementsBackgroundColor,
                           }
                         : {
                             width,
@@ -170,7 +218,14 @@ export const DataGrid = function DataGrid<TData>({
                         headerCell
                       ) : (
                         <SortableHeader
-                          className={S.headerCell}
+                          className={cx(S.headerCell, classNames?.headerCell)}
+                          style={{
+                            backgroundColor: stickyElementsBackgroundColor,
+                            ...styles?.headerCell,
+                          }}
+                          isColumnReorderingDisabled={
+                            isColumnReorderingDisabled
+                          }
                           header={header}
                           onClick={onHeaderCellClick}
                         >
@@ -192,42 +247,67 @@ export const DataGrid = function DataGrid<TData>({
                 </div>
               ))}
             </div>
-            {isEmpty && emptyState}
+
+            {rowsCount === 0 && emptyState}
+
             <div
               data-testid="table-body"
-              className={S.bodyContainer}
+              className={cx(S.bodyContainer, classNames?.bodyContainer, {
+                [S.selectableBody]: selection.isEnabled,
+              })}
+              tabIndex={0}
+              onKeyDown={selection.handlers.handleCellsKeyDown}
               style={{
                 display: "grid",
                 position: "relative",
-                height: `${rowVirtualizer.getTotalSize()}px`,
+                height: `${getTotalHeight()}px`,
                 backgroundColor: theme?.cell?.backgroundColor,
                 color: theme?.cell?.textColor,
+                ...styles?.bodyContainer,
               }}
             >
-              {virtualRows.map(virtualRow => {
-                const row = table.getRowModel().rows[virtualRow.index];
+              {getVisibleRows().map((maybeVirtualRow) => {
+                const { row, virtualRow } = isVirtualRow(maybeVirtualRow)
+                  ? maybeVirtualRow
+                  : { row: maybeVirtualRow, virtualRow: undefined };
+
+                const virtualRowStyles: React.CSSProperties =
+                  virtualRow != null
+                    ? {
+                        position: "absolute",
+                        minHeight: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }
+                    : {};
+
+                const dataIndex =
+                  virtualRow != null ? virtualRow.index : row.index;
+
                 return (
                   <div
                     role="row"
                     key={row.id}
                     ref={rowMeasureRef}
-                    data-index={virtualRow.index}
-                    className={S.row}
+                    data-dataset-index={row.index}
+                    data-index={dataIndex}
+                    data-allow-page-break-after="true"
+                    className={cx(S.row, classNames?.row)}
                     style={{
-                      position: "absolute",
-                      width: "100%",
-                      minHeight: `${virtualRow.size}px`,
-                      transform: `translateY(${virtualRow.start}px)`,
+                      ...virtualRowStyles,
+                      ...styles?.row,
                     }}
                   >
                     {virtualPaddingLeft ? (
                       <div
-                        className={S.bodyCell}
-                        style={{ width: virtualPaddingLeft }}
+                        className={cx(S.bodyCell, classNames?.bodyCell)}
+                        style={{
+                          width: virtualPaddingLeft,
+                          ...styles?.bodyCell,
+                        }}
                       />
                     ) : null}
 
-                    {virtualColumns.map(virtualColumn => {
+                    {virtualColumns.map((virtualColumn) => {
                       const cell = row.getVisibleCells()[virtualColumn.index];
                       const isPinned = cell.column.getIsPinned();
                       const width = cell.column.getSize();
@@ -238,31 +318,46 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor,
+                            backgroundColor: stickyElementsBackgroundColor,
+                            ...styles?.bodyCell,
                           }
                         : {
                             width,
+                            ...styles?.bodyCell,
                           };
                       return (
                         <div
                           key={cell.id}
-                          className={S.bodyCell}
-                          onClick={e =>
+                          data-column-id={cell.column.id}
+                          className={cx(S.bodyCell, classNames?.bodyCell)}
+                          onClick={(e) =>
                             onBodyCellClick?.(e, cell.row.index, cell.column.id)
+                          }
+                          onMouseDown={(e) =>
+                            selection.handlers.handleCellMouseDown(e, cell)
+                          }
+                          onMouseUp={(e) =>
+                            selection.handlers.handleCellMouseUp(e, cell)
+                          }
+                          onMouseOver={(e) =>
+                            selection.handlers.handleCellMouseOver(e, cell)
                           }
                           style={style}
                         >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                          {flexRender(cell.column.columnDef.cell, {
+                            ...cell.getContext(),
+                            isSelected: selection.isCellSelected(cell),
+                          })}
                         </div>
                       );
                     })}
                     {virtualPaddingRight ? (
                       <div
-                        className={S.bodyCell}
-                        style={{ width: virtualPaddingRight }}
+                        className={cx(S.bodyCell, classNames?.bodyCell)}
+                        style={{
+                          width: virtualPaddingRight,
+                          ...styles?.bodyCell,
+                        }}
                       />
                     ) : null}
                   </div>
@@ -271,6 +366,13 @@ export const DataGrid = function DataGrid<TData>({
             </div>
           </div>
           {isAddColumnButtonSticky ? addColumnButton : null}
+          <Footer
+            table={table}
+            enablePagination={enablePagination}
+            showRowsCount={showRowsCount}
+            style={styles?.footer}
+            className={classNames?.footer}
+          />
         </div>
         {measureRoot}
       </DndContext>

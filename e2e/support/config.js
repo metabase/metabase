@@ -4,6 +4,7 @@ import path from "node:path";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import * as ciTasks from "./ci_tasks";
+import { collectFailingTests } from "./collectFailedTests";
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -36,7 +37,7 @@ const assetsResolverPlugin = {
   name: "assetsResolver",
   setup(build) {
     // Redirect all paths starting with "assets/" to "resources/"
-    build.onResolve({ filter: /^assets\// }, args => {
+    build.onResolve({ filter: /^assets\// }, (args) => {
       return {
         path: path.join(
           __dirname,
@@ -52,8 +53,8 @@ const assetsResolverPlugin = {
 const specBlacklist = ["/embedding-sdk/", "/cross-version/"];
 
 function getSplittableSpecs(specs) {
-  return specs.filter(spec => {
-    return !specBlacklist.some(blacklistedPath =>
+  return specs.filter((spec) => {
+    return !specBlacklist.some((blacklistedPath) =>
       spec.includes(blacklistedPath),
     );
   });
@@ -64,6 +65,10 @@ const defaultConfig = {
   setupNodeEvents(on, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // CLI grep can't handle commas in the name
+    // needed when we want to run only specific tests
+    config.env.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -146,6 +151,7 @@ const defaultConfig = {
 
     if (isCI) {
       cypressSplit(on, config, getSplittableSpecs);
+      collectFailingTests(on, config);
     }
 
     // this is an official workaround to keep recordings of the failed specs only

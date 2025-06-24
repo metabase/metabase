@@ -26,12 +26,12 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
       seriesCardNames,
     } = this.props;
     const objectKey = object && getObjectKey(object);
-    const isSelected = single => objectKey === getObjectKey(single);
+    const isSelected = (single) => objectKey === getObjectKey(single);
 
     return (
       <div data-testid="series-settings">
         {objects.length < 100 &&
-          objects.map(single => {
+          objects.map((single) => {
             const key = getObjectKey(single);
             const settings = allComputedSettings[key] || {};
             const seriesCardName = seriesCardNames?.[key];
@@ -50,7 +50,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                   <ColorSelector
                     value={settings.color}
                     colors={getAccentColors()}
-                    onChange={value =>
+                    onChange={(value) =>
                       onChangeObjectSettings(single, { color: value })
                     }
                   />
@@ -63,7 +63,7 @@ export default class ChartNestedSettingSeriesMultiple extends Component {
                     subtitle={
                       seriesCardName === settings.title ? "" : seriesCardName
                     }
-                    onBlurChange={e =>
+                    onBlurChange={(e) =>
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
                   />

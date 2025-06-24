@@ -11,7 +11,6 @@ import {
 import {
   act,
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -35,7 +34,6 @@ interface SetupOpts {
 
 const setup = ({ initialRoute = FORM_URL }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
-  mockScrollBy();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupCardDataset({

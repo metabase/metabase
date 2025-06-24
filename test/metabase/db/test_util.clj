@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.db :as mdb]
+   [metabase.driver.test-util :as driver.tu]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util.random :as u.random]
    [potemkin :as p]
@@ -46,20 +47,21 @@
 (defn do-with-app-db-timezone-id!
   "Sets the app DB time zone to `tz` and runs `thunk`."
   [tz thunk]
-  (if (= (mdb/db-type) :h2)
-    (test.tz/do-with-system-timezone-id! tz thunk)
-    ;; otherwise if db-type is postgres or mysql
-    (let [initial-tz (val (first (t2/query-one (case (mdb/db-type)
-                                                 :postgres "SELECT current_setting('TIMEZONE')"
-                                                 :mysql    "SELECT @@global.time_zone"))))
-          set-tz! (fn [x]
-                    (t2/query (case (mdb/db-type)
-                                :postgres (format "SET TIME ZONE '%s';" x)
-                                :mysql    (format "SET @@global.time_zone = '%s';" x))))]
-      (set-tz! tz)
-      (try (thunk)
-           (finally
-             (set-tz! initial-tz))))))
+  (driver.tu/wrap-notify-all-databases-updated!
+   (if (= (mdb/db-type) :h2)
+     (test.tz/do-with-system-timezone-id! tz thunk)
+     ;; otherwise if db-type is postgres or mysql
+     (let [initial-tz (val (first (t2/query-one (case (mdb/db-type)
+                                                  :postgres "SELECT current_setting('TIMEZONE')"
+                                                  :mysql    "SELECT @@global.time_zone"))))
+           set-tz! (fn [x]
+                     (t2/query (case (mdb/db-type)
+                                 :postgres (format "SET TIME ZONE '%s';" x)
+                                 :mysql    (format "SET @@global.time_zone = '%s';" x))))]
+       (set-tz! tz)
+       (try (thunk)
+            (finally
+              (set-tz! initial-tz)))))))
 
 (defmacro with-app-db-timezone-id!
   "Execute `body` with the system time zone of the app db temporarily changed to the time zone named by `timezone-id`."

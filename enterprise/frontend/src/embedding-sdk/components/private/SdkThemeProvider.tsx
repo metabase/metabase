@@ -19,7 +19,7 @@ interface Props {
 
 export const SdkThemeProvider = ({ theme, children }: Props) => {
   const font = useSelector(getFont);
-  const appColors = useSelector(state =>
+  const appColors = useSelector((state) =>
     getApplicationColors(getSettings(state)),
   );
 

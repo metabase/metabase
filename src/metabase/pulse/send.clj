@@ -94,9 +94,9 @@
 (defn- send-pulse!*
   [{:keys [channels channel-ids] :as pulse} dashboard async?]
   (let [;; `channel-ids` is the set of channels to send to now, so only send to those. Note the whole set of channels
-        channels   (if (seq channel-ids)
-                     (filter #((set channel-ids) (:id %)) channels)
-                     channels)]
+        channels (if (seq channel-ids)
+                   (filter #((set channel-ids) (:id %)) channels)
+                   channels)]
     (doseq [pulse-channel channels]
       (try
         (send-notification! (notification-info pulse dashboard pulse-channel) :notification/sync? (not async?))

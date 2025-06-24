@@ -19,7 +19,6 @@ const ViewButton = ({ className, active, color, ...props }: Props) => {
     <Button
       classNames={{
         root: cx(S.ViewButton, { [S.active]: active }, className),
-        icon: S.ViewButtonIcon,
       }}
       style={
         {

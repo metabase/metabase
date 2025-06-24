@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { MIN_WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function DefaultFilterPicker({
@@ -35,7 +35,7 @@ export function DefaultFilterPicker({
 
   const handleOperatorChange = (operator: string) => {
     const option = availableOptions.find(
-      option => option.operator === operator,
+      (option) => option.operator === operator,
     );
     if (option) {
       setOperator(option.operator);
@@ -54,7 +54,7 @@ export function DefaultFilterPicker({
   return (
     <Box
       component="form"
-      miw={MIN_WIDTH}
+      miw={WIDTH}
       data-testid="default-filter-picker"
       onSubmit={handleSubmit}
     >
@@ -65,7 +65,7 @@ export function DefaultFilterPicker({
       <div>
         <Radio.Group value={operator} onChange={handleOperatorChange}>
           <Stack p="md" gap="sm">
-            {availableOptions.map(option => (
+            {availableOptions.map((option) => (
               <Radio
                 key={option.operator}
                 value={option.operator}

@@ -34,13 +34,14 @@ import {
   getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   dispatch,
   ...bindActionCreators(
     {
       updateDataPermission,
-      switchView: entityType => push(`/admin/permissions/data/${entityType}/`),
-      navigateToItem: item => push(`${GROUPS_BASE_PATH}/${item.id}`),
+      switchView: (entityType) =>
+        push(`/admin/permissions/data/${entityType}/`),
+      navigateToItem: (item) => push(`${GROUPS_BASE_PATH}/${item.id}`),
       navigateToTableItem: (item, { groupId }) => {
         return push(getGroupFocusPermissionsUrl(groupId, item.entityId));
       },
@@ -99,29 +100,29 @@ function GroupsPermissionsPage({
     }
   }, [params.groupId]);
 
-  const permissionEditor = useSelector(state =>
+  const permissionEditor = useSelector((state) =>
     getDatabasesPermissionEditor(state, { params }),
   );
-  const showSplitPermsMessage = useSelector(state =>
+  const showSplitPermsMessage = useSelector((state) =>
     getSetting(state, "show-updated-permission-banner"),
   );
 
   const handleEntityChange = useCallback(
-    entityType => {
+    (entityType) => {
       switchView(entityType);
     },
     [switchView],
   );
 
   const handleSidebarItemSelect = useCallback(
-    item => {
+    (item) => {
       navigateToItem(item, params);
     },
     [navigateToItem, params],
   );
 
   const handleTableItemSelect = useCallback(
-    item => {
+    (item) => {
       navigateToTableItem(item, params);
     },
     [navigateToTableItem, params],
@@ -144,7 +145,7 @@ function GroupsPermissionsPage({
     dispatch(action.actionCreator(item.entityId, params.groupId, "group"));
   };
 
-  const handleBreadcrumbsItemSelect = item => dispatch(push(item.url));
+  const handleBreadcrumbsItemSelect = (item) => dispatch(push(item.url));
 
   const showEmptyState = !permissionEditor && !isEditorLoading && !editorError;
   const showLegacyNoSelfServiceWarning =

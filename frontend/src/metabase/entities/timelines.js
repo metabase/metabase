@@ -73,7 +73,7 @@ const Timelines = createEntity({
   },
 
   actions: {
-    createWithEvent: (event, collection) => async dispatch => {
+    createWithEvent: (event, collection) => async (dispatch) => {
       const timeline = await entityCompatibleQuery(
         getDefaultTimeline(collection),
         dispatch,
@@ -124,7 +124,7 @@ const Timelines = createEntity({
     if (action.type === TimelineEvents.actionTypes.UPDATE && !action.error) {
       const event = TimelineEvents.HACK_getObjectFromAction(action);
 
-      return _.mapObject(state, timeline => {
+      return _.mapObject(state, (timeline) => {
         const hasEvent = timeline.events?.includes(event.id);
         const hasTimeline = event.timeline_id === timeline.id;
 
@@ -143,7 +143,7 @@ const Timelines = createEntity({
     if (action.type === TimelineEvents.actionTypes.DELETE && !action.error) {
       const eventId = action.payload.result;
 
-      return _.mapObject(state, timeline => {
+      return _.mapObject(state, (timeline) => {
         return updateIn(timeline, ["events"], (eventIds = []) => {
           return _.without(eventIds, eventId);
         });

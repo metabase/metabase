@@ -15,7 +15,7 @@ import {
 } from "./tags";
 
 export const permissionApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listPermissionsGroups: builder.query<GroupListQuery[], void>({
       query: () => ({
         method: "GET",
@@ -24,14 +24,15 @@ export const permissionApi = Api.injectEndpoints({
       providesTags: (groups = []) => providePermissionsGroupListTags(groups),
     }),
     getPermissionsGroup: builder.query<Group, GroupId>({
-      query: id => ({
+      query: (id) => ({
         method: "GET",
         url: `/api/permissions/group/${id}`,
       }),
-      providesTags: group => (group ? providePermissionsGroupTags(group) : []),
+      providesTags: (group) =>
+        group ? providePermissionsGroupTags(group) : [],
     }),
     createPermissionsGroup: builder.mutation<BaseGroupInfo, { name: string }>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/permissions/group",
         body,
@@ -52,7 +53,7 @@ export const permissionApi = Api.injectEndpoints({
         ]),
     }),
     deletePermissionsGroup: builder.mutation<void, GroupId>({
-      query: id => ({
+      query: (id) => ({
         method: "DELETE",
         url: `/api/permissions/group/${id}`,
       }),
@@ -63,7 +64,7 @@ export const permissionApi = Api.injectEndpoints({
         ]),
     }),
     clearGroupMembership: builder.mutation<void, GroupId>({
-      query: id => ({
+      query: (id) => ({
         method: "PUT",
         url: `/api/permissions/membership/${id}/clear`,
       }),

@@ -1,21 +1,22 @@
-import cx from "classnames";
+import { useDisclosure } from "@mantine/hooks";
 import { useLayoutEffect } from "react";
+import { Link } from "react-router";
 import { push, replace } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { FieldOrderSidesheet } from "metabase/metadata/components/FieldOrderSidesheet";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Icon } from "metabase/ui";
+import { Button, Flex, Icon, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, SchemaId, TableId } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
-import { TableSettingsLink } from "./MetadataHeader.styled";
+import S from "./MetadataHeader.module.css";
 
 interface OwnProps {
   selectedDatabaseId?: DatabaseId;
@@ -53,6 +54,9 @@ const MetadataHeader = ({
   selectedTableId,
   onSelectDatabase,
 }: MetadataHeaderProps) => {
+  const [isSidesheetOpen, { close: closeSidesheet, toggle: toggleSidesheet }] =
+    useDisclosure();
+
   useLayoutEffect(() => {
     if (databases.length > 0 && selectedDatabaseId == null) {
       onSelectDatabase(databases[0].id, { useReplace: true });
@@ -60,53 +64,58 @@ const MetadataHeader = ({
   }, [databases, selectedDatabaseId, onSelectDatabase]);
 
   return (
-    <div
-      data-testid="admin-metadata-header"
-      className={cx(
-        "MetadataEditor-header",
-        CS.flex,
-        CS.alignCenter,
-        CS.flexNoShrink,
-        CS.py4,
-      )}
-    >
-      <Icon
-        className={cx(CS.flex, CS.alignCenter, CS.flexNoShrink, CS.textMedium)}
-        name="database"
-      />
-      <div className={cx("MetadataEditor-headerSection", CS.h2)}>
-        <DatabaseDataSelector
-          databases={databases}
-          selectedDatabaseId={selectedDatabaseId}
-          setDatabaseFn={onSelectDatabase}
-          style={{ padding: 0, paddingLeft: 8 }}
-        />
-      </div>
+    <Flex align="center" data-testid="admin-metadata-header" flex="1" py="xl">
+      <Flex align="center" gap="sm">
+        <Text c="text-medium" display="flex" flex="0 0 auto">
+          <Icon name="database" />
+        </Text>
+
+        <Text fw="bold" size="xl">
+          <DatabaseDataSelector
+            className={S.databaseDataSelectors}
+            databases={databases}
+            selectedDatabaseId={selectedDatabaseId}
+            setDatabaseFn={onSelectDatabase}
+            data-testid="metdata-editor-database-select"
+          />
+        </Text>
+      </Flex>
+
       {selectedDatabaseId && selectedSchemaId && selectedTableId && (
-        <div
-          className={cx(
-            "MetadataEditor-headerSection",
-            CS.flex,
-            CS.flexAlignRight,
-            CS.alignCenter,
-            CS.flexNoShrink,
-          )}
+        <Flex
+          align="center"
+          flex="1 0 auto"
+          gap="md"
+          justify="flex-end"
+          mx="xl"
         >
-          <span className={cx(CS.ml4, CS.mr3)}>
-            <TableSettingsLink
-              aria-label={t`Settings`}
-              to={Urls.dataModelTableSettings(
-                selectedDatabaseId,
-                selectedSchemaId,
-                selectedTableId,
-              )}
-            >
-              <Icon name="gear" />
-            </TableSettingsLink>
-          </span>
-        </div>
+          <Button
+            aria-label={t`Edit column order`}
+            leftSection={<Icon name="sort_arrows" />}
+            onClick={toggleSidesheet}
+          >{t`Edit column order`}</Button>
+
+          <Button
+            aria-label={t`Table settings`}
+            component={Link}
+            leftSection={<Icon name="gear" />}
+            to={Urls.dataModelTableSettings(
+              selectedDatabaseId,
+              selectedSchemaId,
+              selectedTableId,
+            )}
+          >{t`Table settings`}</Button>
+        </Flex>
       )}
-    </div>
+
+      {selectedTableId && (
+        <FieldOrderSidesheet
+          isOpen={isSidesheetOpen}
+          tableId={selectedTableId}
+          onClose={closeSidesheet}
+        />
+      )}
+    </Flex>
   );
 };
 

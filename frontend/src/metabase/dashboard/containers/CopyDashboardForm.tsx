@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
@@ -47,7 +46,7 @@ export interface CopyDashboardFormProperties {
 }
 
 export interface CopyDashboardFormProps {
-  onSubmit?: (values: CopyDashboardFormProperties) => Dashboard;
+  onSubmit: (values: CopyDashboardFormProperties) => Promise<Dashboard>;
   onSaved?: (dashboard?: Dashboard) => void;
   onClose?: () => void;
   initialValues?: CopyDashboardFormProperties | null;
@@ -97,7 +96,7 @@ function CopyDashboardForm({
 
   const hasDashboardQuestions = useMemo(() => {
     return !!originalDashboard?.dashcards.some(
-      dc => !isVirtualDashCard(dc) && dc.card.dashboard_id !== null,
+      (dc) => !isVirtualDashCard(dc) && dc.card.dashboard_id !== null,
     );
   }, [originalDashboard]);
 
@@ -155,5 +154,4 @@ function CopyDashboardForm({
   );
 }
 
-export const CopyDashboardFormConnected =
-  _.compose(withRouter)(CopyDashboardForm);
+export const CopyDashboardFormConnected = withRouter(CopyDashboardForm);

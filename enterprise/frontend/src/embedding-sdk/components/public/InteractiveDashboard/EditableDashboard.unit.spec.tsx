@@ -11,6 +11,7 @@ import {
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -114,6 +115,8 @@ const setup = async ({
 
   setupNotificationChannelsEndpoints({});
 
+  setupDatabasesEndpoints([createMockDatabase()]);
+
   const user = createMockUser();
 
   const state = setupSdkState({
@@ -123,7 +126,7 @@ const setup = async ({
       dashboards: {
         [dashboard.id]: {
           ...dashboard,
-          dashcards: dashcards.map(dc => dc.id),
+          dashcards: dashcards.map((dc) => dc.id),
         },
       },
       dashcards: indexBy(dashcards, "id"),

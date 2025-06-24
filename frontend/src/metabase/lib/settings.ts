@@ -97,7 +97,7 @@ class MetabaseSettings {
   setAll(settings: Settings) {
     const keys = Object.keys(settings) as SettingKey[];
 
-    keys.forEach(key => {
+    keys.forEach((key) => {
       this.set(key, settings[key]);
     });
   }

@@ -17,7 +17,7 @@ export const CollectionInfoSidebarToggle = ({
   const [showSidesheet, setShowSidesheet] = useState(false);
   return (
     <>
-      <CollectionHeaderButton onClick={() => setShowSidesheet(open => !open)}>
+      <CollectionHeaderButton onClick={() => setShowSidesheet((open) => !open)}>
         <Icon name="info" />
       </CollectionHeaderButton>
       {showSidesheet && (

@@ -71,7 +71,7 @@ export async function sampleTenantIds(
 ): Promise<TenantId[] | null> {
   const { limit, table, columnName, databaseId, instanceUrl, cookie } = options;
 
-  const field = table.fields?.find(f => f.name === columnName);
+  const field = table.fields?.find((f) => f.name === columnName);
 
   if (!table || !field) {
     return null;
@@ -105,5 +105,7 @@ export async function sampleTenantIds(
 
   const dataset = (await res.json()) as Dataset;
 
-  return dataset.data.rows.flat().filter(value => value !== null) as TenantId[];
+  return dataset.data.rows
+    .flat()
+    .filter((value) => value !== null) as TenantId[];
 }

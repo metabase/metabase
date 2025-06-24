@@ -44,7 +44,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(await screen.findAllByText("View")).toHaveLength(3);
 
       await userEvent.click(
-        await screen.findAllByText("View").then(dropdowns => dropdowns[2]),
+        await screen.findAllByText("View").then((dropdowns) => dropdowns[2]),
       );
 
       expect(await screen.findByText("No access")).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(await screen.findAllByText("View")).toHaveLength(3);
 
       await userEvent.hover(
-        await screen.findAllByText("View").then(dropdowns => dropdowns[1]),
+        await screen.findAllByText("View").then((dropdowns) => dropdowns[1]),
       );
 
       expect(
@@ -81,7 +81,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
 
       // change all users users view to no access
       await userEvent.click(
-        await screen.findAllByText("View").then(dropdowns => dropdowns[0]),
+        await screen.findAllByText("View").then((dropdowns) => dropdowns[0]),
       );
       await userEvent.click(await screen.findByText("No access"));
 

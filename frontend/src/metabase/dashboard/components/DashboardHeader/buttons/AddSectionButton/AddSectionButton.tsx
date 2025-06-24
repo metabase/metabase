@@ -43,7 +43,7 @@ export const AddSectionButton = () => {
           p="12px"
           className={AddSectionButtonS.AddSectionButton}
         >
-          {layoutOptions.map(layout => (
+          {layoutOptions.map((layout) => (
             <Menu.Item
               key={layout.id}
               bg={darken("bg-medium", 0.1)}

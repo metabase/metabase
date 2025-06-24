@@ -47,6 +47,9 @@ function getPickerValue(
 ): DatePickerValue | undefined {
   return match(deserializeDateParameterValue(value))
     .returnType<DatePickerValue | undefined>()
-    .with({ type: P.union("specific", "relative", "exclude") }, value => value)
+    .with(
+      { type: P.union("specific", "relative", "exclude") },
+      (value) => value,
+    )
     .otherwise(() => undefined);
 }

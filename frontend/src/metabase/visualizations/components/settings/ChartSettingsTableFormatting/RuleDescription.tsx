@@ -26,7 +26,7 @@ export const RuleDescription = ({
         )
         .with(
           { type: "single" },
-          singleRule =>
+          (singleRule) =>
             jt`When a cell in these columns ${(
               <Text component="span" key="bold" fw="bold" lh="normal">
                 {ALL_OPERATOR_NAMES[singleRule.operator]}

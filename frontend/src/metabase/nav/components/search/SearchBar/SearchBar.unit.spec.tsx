@@ -145,7 +145,7 @@ describe("SearchBar", () => {
       for (const cardName of ["Card ABC", "Card BCD"]) {
         await userEvent.tab();
 
-        const filteredElement = resultItems.find(element =>
+        const filteredElement = resultItems.find((element) =>
           element.textContent?.includes(cardName),
         );
 

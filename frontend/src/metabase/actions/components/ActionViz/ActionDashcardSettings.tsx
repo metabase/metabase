@@ -62,7 +62,7 @@ export function ActionDashcardSettings({
   const currentMappings = useMemo(
     () =>
       Object.fromEntries(
-        dashcard.parameter_mappings?.map(mapping => [
+        dashcard.parameter_mappings?.map((mapping) => [
           getTargetKey(mapping),
           mapping.parameter_id,
         ]) ?? [],
@@ -72,7 +72,7 @@ export function ActionDashcardSettings({
 
   const isFormInvalid =
     action != null &&
-    action.parameters?.some(actionParameter => {
+    action.parameters?.some((actionParameter) => {
       const isHidden = isParameterHidden(action, actionParameter);
       const isRequired = isParameterRequired(action, actionParameter);
       const isParameterMapped =

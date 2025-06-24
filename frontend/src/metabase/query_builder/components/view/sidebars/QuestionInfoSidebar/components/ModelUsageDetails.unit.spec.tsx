@@ -147,7 +147,7 @@ async function setup({
   });
 
   const model = checkNotNull(metadata.question(card.id));
-  const usedByQuestions = usedBy.map(q =>
+  const usedByQuestions = usedBy.map((q) =>
     checkNotNull(metadata.question(q.id)),
   );
 

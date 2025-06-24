@@ -1,5 +1,5 @@
 // backend returns model = "card" instead of "question"
-export const entityTypeForModel = model => {
+export const entityTypeForModel = (model) => {
   if (model === "card" || model === "dataset" || model === "metric") {
     return "questions";
   }
@@ -10,10 +10,10 @@ export const entityTypeForModel = model => {
   return `${model}s`;
 };
 
-export const entityTypeForObject = object =>
+export const entityTypeForObject = (object) =>
   object && entityTypeForModel(object.model);
 
-export const entityForObject = object => {
+export const entityForObject = (object) => {
   const entities = require("metabase/entities");
   return entities[entityTypeForObject(object)];
 };

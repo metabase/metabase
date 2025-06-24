@@ -1,3 +1,4 @@
+import type { CommonStylingProps } from "embedding-sdk/types/props";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import {
   FilterPicker as InnerFilterPicker,
@@ -10,14 +11,18 @@ import { useInteractiveQuestionContext } from "../../../context";
 import type { SDKFilterItem } from "../hooks/use-filter-data";
 import { useFilterHandlers } from "../hooks/use-filter-handlers";
 
+/**
+ * @interface
+ */
 type Props = {
-  className?: string;
   filterItem?: SDKFilterItem;
   withIcon?: boolean;
-} & Pick<InnerFilterPickerProps, "onClose" | "onBack">;
+} & CommonStylingProps &
+  Pick<InnerFilterPickerProps, "onClose" | "onBack">;
 
 const FilterPickerInner = ({
   className,
+  style,
   filterItem,
   withIcon = false,
   onClose,
@@ -32,13 +37,13 @@ const FilterPickerInner = ({
     onQueryChange,
   });
   return (
-    <Box className={className}>
+    <Box className={className} style={style}>
       <InnerFilterPicker
         query={query}
         stageIndex={stageIndex}
         onClose={onClose}
         onBack={onBack}
-        onSelect={filter =>
+        onSelect={(filter) =>
           filterItem ? filterItem?.onUpdateFilter(filter) : onAddFilter(filter)
         }
         filter={filterItem?.filter}

@@ -24,7 +24,7 @@ interface EmbedModalProps {
 }
 
 export const EmbedModal = ({ children, isOpen, onClose }: EmbedModalProps) => {
-  const shouldShowEmbedTerms = useSelector(state =>
+  const shouldShowEmbedTerms = useSelector((state) =>
     getSetting(state, "show-static-embed-terms"),
   );
   const [embedType, setEmbedType] = useState<EmbedModalStep>(null);

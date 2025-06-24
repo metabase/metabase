@@ -65,7 +65,7 @@ function AddMappingRow({
             value={value}
             placeholder={placeholder}
             autoFocus
-            onChange={e => setValue(e.target.value)}
+            onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
           />
           <div>

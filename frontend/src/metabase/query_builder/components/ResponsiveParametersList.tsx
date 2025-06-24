@@ -32,11 +32,11 @@ export const ResponsiveParametersList = ({
   const isSmallScreen = useIsSmallScreen();
 
   const handleFilterButtonClick = useCallback(() => {
-    setShowMobileParameterList(mobileShow => !mobileShow);
+    setShowMobileParameterList((mobileShow) => !mobileShow);
   }, []);
 
   const activeFilters = useMemo(() => {
-    return parameters.filter(p => !!p.value).length;
+    return parameters.filter((p) => !!p.value).length;
   }, [parameters]);
 
   return (

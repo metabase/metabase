@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const AdminWrapper = styled.div<{ headerHeight?: number }>`
-  height: ${props =>
+  height: ${(props) =>
     props.headerHeight ? `calc(100% - ${props.headerHeight}px)` : "100%"};
   display: flex;
   flex-direction: column;

@@ -58,12 +58,12 @@ function SearchApp({ location }) {
   };
 
   const onChangeLocation = useCallback(
-    nextLocation => dispatch(push(nextLocation)),
+    (nextLocation) => dispatch(push(nextLocation)),
     [dispatch],
   );
 
   const onFilterChange = useCallback(
-    newFilters => {
+    (newFilters) => {
       onChangeLocation({
         pathname: "search",
         query: { q: searchText.trim(), ...newFilters },
@@ -74,7 +74,7 @@ function SearchApp({ location }) {
 
   const { data, error, isFetching } = useSearchQuery(query);
   const list = useMemo(() => {
-    return data?.data?.map(item => Search.wrapEntity(item, dispatch)) ?? [];
+    return data?.data?.map((item) => Search.wrapEntity(item, dispatch)) ?? [];
   }, [data, dispatch]);
 
   return (

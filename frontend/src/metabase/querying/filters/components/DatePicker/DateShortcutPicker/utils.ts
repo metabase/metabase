@@ -16,17 +16,19 @@ export function getShortcutOptions(
 export function getShortcutOptionGroups(
   availableShortcuts: DatePickerShortcut[],
 ): ShortcutOption[][] {
-  return SHORTCUT_OPTION_GROUPS.map(options =>
-    options.filter(option => availableShortcuts.includes(option.shortcut)),
-  ).filter(options => options.length > 0);
+  return SHORTCUT_OPTION_GROUPS.map((options) =>
+    options.filter((option) => availableShortcuts.includes(option.shortcut)),
+  ).filter((options) => options.length > 0);
 }
 
 export function getTypeOptions(
   availableOperators: DatePickerOperator[],
 ): TypeOption[] {
   return TYPE_OPTIONS.filter(
-    option =>
+    (option) =>
       option.operators.length === 0 ||
-      option.operators.some(operator => availableOperators.includes(operator)),
+      option.operators.some((operator) =>
+        availableOperators.includes(operator),
+      ),
   );
 }

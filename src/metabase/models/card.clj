@@ -21,6 +21,7 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.cache-config :as cache-config]
    [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
@@ -59,6 +60,38 @@
 (methodical/defmethod t2.hydrate/model-for-automagic-hydration [#_model :default #_k :card]
   [_original-model _k]
   :model/Card)
+
+(def ^:private current-schema-version
+  "Latest schema version number. This is an increasing integer stored in each card's `:card_schema` column.
+  It is used to guide `after-select` logic in how to modernize a card correctly.
+
+  `20` is the \"legacy\" version - that was the default value given to all cards that existed when the `card_schema`
+  column was added.
+
+  Update process:
+  - Increment this number.
+  - Update `before-insert` and `before-update` if necessary, so they are storing upgraded cards.
+  - Add a new [[upgrade-card-schema-to]] implementation, that upgrades the immediately previous version to your new
+    version.
+
+  The core `after-select` logic compares each row's `card_schema` and runs the upgrade functions for all versions up to
+  and including [[current-schema-version]]."
+  20)
+
+(defmulti ^:private upgrade-card-schema-to
+  "Upgrades a card on read, so that it fits the given schema version number.
+
+  The number is the **target** revision - if we read a row with `:card_schema` 22 and the [[current-schema-version]]
+  is 25, then the `after-select` logic will effectively call
+
+      (-> card
+          (upgrade-card-schema-to 23)
+          (upgrade-card-schema-to 24)
+          (upgrade-card-schema-to 25))
+  "
+  {:arglists '([card target-schema-version])}
+  (fn [_card target-schema-version]
+    target-schema-version))
 
 (t2/deftransforms :model/Card
   {:dataset_query          mi/transform-metabase-query
@@ -249,7 +282,7 @@
           (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
-                (t2/select-fn->fn :id identity [:model/Card :id :collection_id] :id [:in source-card-ids]))]
+                (t2/select-fn->fn :id identity [:model/Card :id :collection_id :card_schema] :id [:in source-card-ids]))]
       (mi/instances-with-hydrated-data
        cards :can_run_adhoc_query
        (fn []
@@ -624,7 +657,7 @@
           old-card-info (when (or (contains? changes :type)
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
-                          (t2/select-one [:model/Card :dataset_query :type] :id (u/the-id id)))]
+                          (t2/select-one [:model/Card :dataset_query :type :card_schema] :id (u/the-id id)))]
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -763,14 +796,44 @@
        ;; If we did have to generate the hashed entity_id, include it on the returned card as well.
        @hashed-eid (assoc :entity_id @entity-id)))))
 
+(defn- upgrade-card-schema-to-latest [card]
+  (if (and (:id card)
+           (or (:dataset_query card)
+               (:result_metadata card)
+               (:database_id card)
+               (:type card)))
+    ;; A plausible select to run the after-select logic on.
+    (if-not (:card_schema card)
+      ;; Plausible but no :card_schema - error.
+      (throw (ex-info "Cannot SELECT a Card without including :card_schema"
+                      {:card-id (:id card)}))
+      ;; Plausible and has the schema, so run the upgrades over it.
+      (loop [card card]
+        (if (= (:card_schema card) current-schema-version)
+          card
+          (let [new-version (inc (:card_schema card))]
+            (recur (assoc (upgrade-card-schema-to card new-version)
+                          :card_schema new-version))))))
+
+    ;; Some sort of odd query like an aggregation over cards. Just return it as-is.
+    card))
+
 (t2/define-after-select :model/Card
   [card]
+  ;; +===============================================================================================+
+  ;; |   DO NOT EDIT THIS FUNCTION DIRECTLY!                                                         |
+  ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
+  ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
+  ;; +===============================================================================================+
   (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
-      ensure-clause-idents))
+      serdes/add-entity-id
+      ensure-clause-idents
+      ;; At this point, the card should be at schema version 20.
+      upgrade-card-schema-to-latest))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -832,7 +895,12 @@
 ;; NOTE: The columns required for this hashing must be kept in sync with [[ensure-clause-idents]].
 (defmethod serdes/hash-fields :model/Card
   [_card]
-  [:name (serdes/hydrated-hash :collection) :created_at])
+  [:name (serdes/hydrated-hash :collection :collection_id) :created_at])
+
+(defmethod serdes/hash-required-fields :model/Card
+  [_card]
+  {:model :model/Card
+   :required-fields [:name :collection_id :created_at]})
 
 (defmethod mi/exclude-internal-content-hsql :model/Card
   [_model & {:keys [table-alias]}]
@@ -1140,6 +1208,9 @@
                                          :moderator_id        (:id actor)
                                          :status              nil
                                          :text                (tru "Unverified due to edit")}))
+    ;; Invalidate the cache for card
+    (cache-config/invalidate! {:questions [(:id card-before-update)]
+                               :with-overrides? true})
     ;; ok, now save the Card
     (t2/update! :model/Card (:id card-before-update)
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
@@ -1225,7 +1296,8 @@
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
-          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
+          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name
+          :card_schema]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns

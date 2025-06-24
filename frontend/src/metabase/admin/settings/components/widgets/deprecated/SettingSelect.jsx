@@ -21,12 +21,12 @@ const SettingSelect = ({
     defaultValue={defaultValue}
     disabled={disabled}
     searchProp={searchProp}
-    onChange={e => onChange(e.target.value)}
+    onChange={(e) => onChange(e.target.value)}
     buttonProps={{
       dataTestId: key,
     }}
   >
-    {customOptions.map(option => {
+    {customOptions.map((option) => {
       const name = typeof option === "object" ? option.name : option;
       const value = typeof option === "object" ? option.value : option;
       return (

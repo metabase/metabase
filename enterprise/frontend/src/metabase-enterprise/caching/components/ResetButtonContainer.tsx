@@ -42,7 +42,7 @@ const ResetAllToDefaultButtonFormBody = () => {
             px="1rem"
             py=".75rem"
             lh="1"
-            onClick={e => {
+            onClick={(e) => {
               confirmResetAllToDefault();
               e.preventDefault();
               return false;

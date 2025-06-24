@@ -20,7 +20,7 @@ describe("issue 6010", () => {
     });
   };
 
-  const createQuestion = metric_id => {
+  const createQuestion = (metric_id) => {
     return H.createQuestion({
       name: "Question",
       display: "line",
@@ -248,55 +248,6 @@ describe("issue 18976, 18817", () => {
   });
 });
 
-describe("issue 18996", () => {
-  const questionDetails = {
-    name: "18996",
-    native: {
-      query: `
-  select 1 "ID", 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg' "IMAGE", 123 "PRICE"
-  union all select 2, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 3, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 4, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 5, null, 123
-  union all select 6, '', 123
-  union all select 7, 'non-exisiting', 123
-  union all select 8, null, 123
-  union all select 9, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  union all select 10, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
-  `,
-    },
-    display: "table",
-    visualization_settings: {
-      "table.cell_column": "ID",
-      "table.pivot_column": "PRICE",
-      column_settings: {
-        '["name","IMAGE"]': {
-          view_as: "image",
-        },
-      },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should navigate between pages in a table with images in a dashboard (metabase#18996)", () => {
-    H.createNativeQuestionAndDashboard({
-      questionDetails,
-    }).then(({ body: { dashboard_id } }) => {
-      H.visitDashboard(dashboard_id);
-    });
-
-    H.getDashboardCard().within(() => {
-      cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
-      cy.icon("chevronright").click();
-      cy.findByText(/Rows \d+-\d+ of 10/).should("be.visible");
-    });
-  });
-});
-
 describe.skip("issue 19373", () => {
   const questiondDetails = {
     name: "Products, Distinct values of Rating, Grouped by Category and Created At (year)",
@@ -458,7 +409,7 @@ describe("issue 23076", () => {
   });
 
   it("should correctly translate dates (metabase#23076)", () => {
-    cy.findAllByText(/^Summen für/)
+    cy.findAllByText(/^Summen für/, { timeout: 10000 })
       .should("be.visible")
       .eq(1)
       .invoke("text")
@@ -605,7 +556,7 @@ describe("issue 30039", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from ORDERS LIMIT 2");
     H.runNativeQuery();
-    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.findAllByTestId("detail-shortcut").first().click({ force: true });
     cy.findByTestId("object-detail").should("be.visible");
 
     cy.realPress("{esc}");
@@ -692,8 +643,8 @@ describe.skip("issue 42049", () => {
   });
 
   it("should not mess up columns order (metabase#42049)", () => {
-    cy.intercept("POST", "/api/card/*/query", req => {
-      req.on("response", res => {
+    cy.intercept("POST", "/api/card/*/query", (req) => {
+      req.on("response", (res) => {
         const createdAt = res.body.data.cols[1];
 
         createdAt.field_ref[1] = "created_at"; // simulate named field ref
@@ -857,7 +808,7 @@ describe("issue 14148", { tags: "@external" }, () => {
           },
         },
         {
-          callback: xhr =>
+          callback: (xhr) =>
             expect(xhr.response.body.cause || "").not.to.contain("ERROR"),
         },
       ),
@@ -935,7 +886,7 @@ describe("issue 7884", () => {
     },
   };
 
-  const getNestedQuestionDetails = sourceQuestionId => ({
+  const getNestedQuestionDetails = (sourceQuestionId) => ({
     query: {
       "source-table": `card__${sourceQuestionId}`,
     },

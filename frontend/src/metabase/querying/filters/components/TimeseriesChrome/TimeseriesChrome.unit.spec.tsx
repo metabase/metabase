@@ -26,7 +26,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
   const getNextBreakouts = () => {
     const nextQuestion = updateQuestion.mock.calls[0][0];
     const nextQuery = nextQuestion.query();
-    return Lib.breakouts(nextQuery, stageIndex).map(breakout =>
+    return Lib.breakouts(nextQuery, stageIndex).map((breakout) =>
       Lib.displayInfo(nextQuery, stageIndex, breakout),
     );
   };

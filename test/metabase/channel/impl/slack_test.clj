@@ -82,28 +82,85 @@
   (let [mock-upload-file!
         (fn [_bytes attachment-name]
           {:url (str "http://uploaded/" attachment-name)
-           :id (str "ID_" attachment-name)})]
-    (testing "Uploads files"
-      (let [attachments [{:title           "&amp;a"
-                          :title_link      "a.com"
-                          :attachment-name "a.png"
-                          :rendered-info   {:attachments nil
-                                            :content     [:div "hi"]}}
-                         {:title           "> click <https://c.com|here>"
-                          :title_link      "b.com"
-                          :attachment-name "b.png"
-                          :rendered-info   {:attachments nil
-                                            :content     [:div "hi again"]
-                                            :render/text "hi again"}}]
-            processed   (with-redefs [slack/upload-file! mock-upload-file!]
-                          (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
-        (is (= [{:blocks [{:type "section"
-                           :text {:type "mrkdwn", :text "<a.com|&amp;amp;a>", :verbatim true}}
-                          {:type "image"
-                           :alt_text "&amp;a",
-                           :slack_file {:id "ID_a.png"}}]}
-                {:blocks [{:type "section"
-                           :text {:text "<b.com|&gt; click &lt;https://c.com|here&gt;>", :type "mrkdwn", :verbatim true}}
-                          {:type "section"
-                           :text {:type "plain_text", :text "hi again"}}]}]
-               processed))))))
+           :id (str "ID_" attachment-name)})
+        attachments [{:title           "&amp;a"
+                      :title_link      "a.com"
+                      :attachment-name "a.png"
+                      :rendered-info   {:attachments nil
+                                        :content     [:div "hi"]}}
+                     {:title           "> click <https://c.com|here>"
+                      :title_link      "b.com"
+                      :attachment-name "b.png"
+                      :rendered-info   {:attachments nil
+                                        :content     [:div "hi again"]
+                                        :render/text "hi again"}}]
+        processed   (with-redefs [slack/upload-file! mock-upload-file!]
+                      (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
+    (is (= [{:blocks [{:type "section"
+                       :text {:type "mrkdwn", :text "<a.com|&amp;amp;a>", :verbatim true}}
+                      {:type "image"
+                       :alt_text "&amp;a",
+                       :slack_file {:id "ID_a.png"}}]}
+            {:blocks [{:type "section"
+                       :text {:text "<b.com|&gt; click &lt;https://c.com|here&gt;>", :type "mrkdwn", :verbatim true}}
+                      {:type "section"
+                       :text {:type "plain_text", :text "hi again"}}]}]
+           processed))))
+
+(deftest link-truncation-test
+  (let [render-image-link
+        (fn [url label char-limit]
+          (let [attachments [{:title           label
+                              :title_link      url
+                              :attachment-name "a.png"
+                              :rendered-info   {:attachments nil
+                                                :content     [:div "hi"]}}]
+                processed   (with-redefs [channel.slack/block-text-length-limit char-limit
+                                          slack/upload-file!                    (constantly {:url "a.com", :id "id"})]
+                              (mapv #'channel.slack/create-and-upload-slack-attachment! attachments))]
+            (-> processed first :blocks first :text :text)))]
+    (are [url label mkdwn]
+         (= mkdwn (render-image-link url label 32))
+      "a.com"                "a"                "<a.com|a>"
+      "a.com"                "abcdefghij"       "<a.com|abcdefghij>"
+      "abcdefghijk.com"      "abcdefghijklmnop" "<abcdefghijk.com|abcdefghijklm…>"
+      "abcdefghijklmnop.com" "abcdefghij"       "(URL exceeds slack limits) abcd…")))
+
+(deftest dashboard-header-truncation-test
+  (let [render-dashboard-header
+        (fn [dashboard-name char-limit]
+          (let [notification {:payload_type :notification/dashboard
+                              :payload      {:dashboard       {:id 42, :name dashboard-name}
+                                             :parameters      {}
+                                             :dashboard_parts []}
+                              :creator      {:common_name "a"}}
+                recipient    {:type    :notification-recipient/raw-value
+                              :details {:value "#foo"}}
+                processed    (with-redefs [channel.slack/header-text-limit char-limit
+                                           slack/upload-file!              (constantly {:url "a.com", :id "id"})]
+                               (channel/render-notification :channel/slack notification nil [recipient]))]
+            (-> processed first :attachments first :blocks first :text :text)))]
+    (are [dashboard-name rendered-text]
+         (= rendered-text (render-dashboard-header dashboard-name 5))
+      "abc"    "abc"
+      "abcde"  "abcde"
+      "abcdef" "abcd…")))
+
+(deftest card-header-truncation-test
+  (let [render-card-header
+        (fn [card-name char-limit]
+          (let [notification {:payload_type :notification/card
+                              :payload      {:card {:name card-name}
+                                             :card_part {:type :text, :text "foo"}}}
+                recipient    {:type    :notification-recipient/raw-value
+                              :details {:value "#foo"}}
+                processed    (with-redefs [channel.slack/header-text-limit char-limit
+                                           slack/upload-file!              (constantly {:url "a.com", :id "id"})]
+                               (channel/render-notification :channel/slack notification nil [recipient]))]
+            (-> processed first :attachments first :blocks first :text :text)))]
+    (are [card-name rendered-text]
+         (= rendered-text (render-card-header card-name 8))
+      ;; note java String .length counts UTF-16 characters, so (count "🔔") == 2. This may lead to overestimation of lengths (depending on how slack measures 'characters')
+      "abc"    "🔔 abc"
+      "abcde"  "🔔 abcde"
+      "abcdef" "🔔 abcd…")))

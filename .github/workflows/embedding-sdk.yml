@@ -13,10 +13,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  sdk-build:
-    if: contains(github.event.pull_request.labels.*.name, 'embedding-sdk-build')
+  files-changed:
+    name: Check which files changed
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 3
+    outputs:
+      documentation: ${{ steps.changes.outputs.documentation }}
+      frontend_embedding_sdk_sources: ${{ steps.changes.outputs.frontend_embedding_sdk_sources }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  build:
+    needs: [files-changed]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' ||
+      needs.files-changed.outputs.documentation == 'true')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -25,15 +45,144 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: "cljs"
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
-      - name: Generate SDK package.json
-        run: yarn run embedding-sdk:generate-package "$GITHUB_SHA"
-      - name: Generate .npmrc for Github npm registry
-        uses: actions/setup-node@v4
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Prepare Embedding SDK artifact
+        uses: actions/upload-artifact@v4
         with:
-          registry-url: "https://npm.pkg.github.com"
-      - name: Publish package
-        run: yarn run embedding-sdk:publish
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: resources/embedding-sdk
+
+  embedding-sdk-cli-snippets-type-check:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run embedding-sdk:cli-snippets:type-check
+
+  embedding-sdk-docs-snippets-type-check:
+    needs: [files-changed, build]
+    if: |
+      needs.files-changed.outputs.documentation == 'true' &&
+      needs.build.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Retrieve Embedding SDK dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ github.workspace }}/resources/embedding-sdk
+      - name: Run frontend embedding SDK snippets type check
+        run: yarn run embedding-sdk:docs-snippets:type-check
+
+  # We want to compare if there are any changes to the generated docs compared to the HEAD commit of a PR.
+  # To checkout the HEAD commit we must set `ref: ${{ github.event.pull_request.head.sha }}` for actions/checkout/
+  embedding-sdk-docs-update-check:
+    needs: [files-changed]
+    if: |
+      github.event_name == 'pull_request' &&
+      needs.files-changed.outputs.frontend_embedding_sdk_sources == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      # we should build Embedding SDK dist based on ${{ github.event.pull_request.head.sha }}
+      - name: Build Embedding SDK package
+        run: yarn build-embedding-sdk
+      - name: Generate embedding SDK docs
+        run: yarn run embedding-sdk:docs:generate:pure
+      - name: Check for uncommitted documentation changes
+        id: check-docs-changes
+        run: |
+          if [[ -n "$(git status --porcelain | grep 'embedding/sdk/api/')" ]]; then
+            echo "docs_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Comment on PR if docs need update
+        if: steps.check-docs-changes.outputs.docs_changed == 'true'
+        uses: ./.github/actions/notify-pull-request
+        with:
+          include-log: false
+          message: "📝 Changes to Embedding SDK files affecting the API documentation have been detected. Please regenerate, review, and commit the updated documentation manually by running `yarn embedding-sdk:docs:generate` locally."
+          remove-previous-comment: true
+      - name: Fail if docs need update
+        if: steps.check-docs-changes.outputs.docs_changed == 'true'
+        run: exit 1
+
+  sdk-e2e-tests:
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk.yml
+    needs: [build]
+    secrets: inherit
+    with:
+      cached-embedding-sdk-dist-artifact-name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
+
+  e2e-component-tests-embedding-sdk-cross-version:
+    if: ${{ startsWith(inputs.branch, 'release-x.') }}
+    uses: ./.github/workflows/e2e-component-tests-embedding-sdk-cross-version.yml
+    secrets: inherit
+
+  embedding-sdk-tests-result:
+    needs:
+      - embedding-sdk-cli-snippets-type-check
+      - embedding-sdk-docs-snippets-type-check
+      - embedding-sdk-docs-update-check
+      - sdk-e2e-tests
+      - e2e-component-tests-embedding-sdk-cross-version
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      needs: ${{ toJson(needs) }}
+    steps:
+      - name: Check embedding SDK job status
+        uses: actions/github-script@v7
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+              console.log('All jobs are skipped or successful');
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log('Some embedding SDK jobs failed');
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+            process.exit(1);

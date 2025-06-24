@@ -4,7 +4,7 @@ import toggle from "inquirer-toggle";
 import type { CliStepMethod } from "../types/cli";
 import { printHelperText } from "../utils/print";
 
-export const askForTenancyColumns: CliStepMethod = async state => {
+export const askForTenancyColumns: CliStepMethod = async (state) => {
   // The sample database does not have tenancy columns.
   if (state.useSampleDatabase) {
     return [{ type: "success" }, state];
@@ -50,12 +50,12 @@ export const askForTenancyColumns: CliStepMethod = async state => {
       // We only select the fields that have a foreign key.
       // We exclude the last tenant id field.
       ...(table.fields
-        ?.filter(field => field.name !== lastTenancyColumnName)
-        ?.map(f => ({ name: f.name, value: f.name })) ?? []),
+        ?.filter((field) => field.name !== lastTenancyColumnName)
+        ?.map((f) => ({ name: f.name, value: f.name })) ?? []),
     ];
 
     const lastTenantField = table.fields?.find(
-      field => field.name === lastTenancyColumnName,
+      (field) => field.name === lastTenancyColumnName,
     );
 
     // if we found the same column name in the previous table,
@@ -72,7 +72,7 @@ export const askForTenancyColumns: CliStepMethod = async state => {
       message: `What is the multi-tenancy column for ${table.name}?`,
       source(term) {
         return term
-          ? fieldChoices.filter(choice => choice.name.includes(term))
+          ? fieldChoices.filter((choice) => choice.name.includes(term))
           : fieldChoices;
       },
     });

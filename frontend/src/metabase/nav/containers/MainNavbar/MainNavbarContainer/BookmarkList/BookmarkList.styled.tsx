@@ -24,7 +24,7 @@ export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
 
   button {
     opacity: 0;
-    color: ${props =>
+    color: ${(props) =>
       props.isSelected ? color("text-white") : color("brand")};
     cursor: pointer;
     margin-top: 3px;

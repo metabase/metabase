@@ -1,4 +1,3 @@
-/* eslint-disable jest/expect-expect */
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import type { ValueAndColumnForColumnNameDate } from "./link";
@@ -19,7 +18,7 @@ const createMockLinkData = (
 
 describe("formatting/link", () => {
   describe("renderLinkURLForClick", () => {
-    const testLinkTemplate = (
+    const assertLinkTemplate = (
       template: string,
       data: Partial<ValueAndColumnForColumnNameDate>,
       expectedUrl: string,
@@ -38,8 +37,8 @@ describe("formatting/link", () => {
       "mailto:example@example.com",
     ])(
       "should not encode safe urls from dataset columns when a link template starts with it",
-      url => {
-        testLinkTemplate(
+      (url) => {
+        assertLinkTemplate(
           "{{col}}",
           {
             column: {
@@ -58,7 +57,7 @@ describe("formatting/link", () => {
     ])(
       "should encode safe urls from dataset columns when a link template does not start with it",
       (url, expectedUrl) => {
-        testLinkTemplate(
+        assertLinkTemplate(
           "_{{col}}",
           {
             column: {
@@ -82,7 +81,7 @@ describe("formatting/link", () => {
     ])(
       "should encode unsafe urls from dataset columns when a link template starts with it",
       (url, expectedUrl) => {
-        testLinkTemplate(
+        assertLinkTemplate(
           "{{col}}",
           {
             column: {
@@ -101,7 +100,7 @@ describe("formatting/link", () => {
     ])(
       "should encode safe urls not from url parameters when a link template starts with it",
       (url, expectedUrl) => {
-        testLinkTemplate(
+        assertLinkTemplate(
           "{{param}}",
           {
             parameterBySlug: {
@@ -120,7 +119,7 @@ describe("formatting/link", () => {
     ])(
       "should encode safe urls not from parameters when a link template starts with it",
       (url, expectedUrl) => {
-        testLinkTemplate(
+        assertLinkTemplate(
           "{{param}}",
           {
             parameterByName: {
@@ -139,7 +138,7 @@ describe("formatting/link", () => {
     ])(
       "should encode safe urls not from user attributes when a link template starts with it",
       (url, expectedUrl) => {
-        testLinkTemplate(
+        assertLinkTemplate(
           "{{param}}",
           {
             userAttribute: {

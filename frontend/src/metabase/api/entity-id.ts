@@ -47,7 +47,7 @@ export type TranslateEntityIdResponse = Record<
 >;
 
 const entityIdApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     translateEntityId: builder.query<
       TranslateEntityIdResponse,
       TranslateEntityIdRequest

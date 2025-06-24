@@ -86,11 +86,11 @@ export const getExpressionName = (
     .filter(isNotNull);
 
   const allColumnNames = Lib.returnedColumns(query, stageIndex).map(
-    column => Lib.displayInfo(query, stageIndex, column).displayName,
+    (column) => Lib.displayInfo(query, stageIndex, column).displayName,
   );
 
   const names = columns.map(
-    column => Lib.displayInfo(query, stageIndex, column).displayName,
+    (column) => Lib.displayInfo(query, stageIndex, column).displayName,
   );
 
   return getNextName(allColumnNames, t`Combined ${names.join(", ")}`, 1);
@@ -187,7 +187,7 @@ export const getNextColumnAndSeparator = (
   const lastSeparator = columnsAndSeparators.at(-1)?.separator;
   const separator = lastSeparator ?? defaultSeparator;
 
-  const nextUnusedColumn = expressionableColumns.find(candidate =>
+  const nextUnusedColumn = expressionableColumns.find((candidate) =>
     columnsAndSeparators.every(({ column }) => candidate !== column),
   );
 

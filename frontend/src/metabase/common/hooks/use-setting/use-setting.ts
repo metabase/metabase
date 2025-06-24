@@ -16,7 +16,7 @@ import type {
 export const useSetting = <SettingName extends SettingKey>(
   settingName: SettingName,
 ) => {
-  return useSelector(state => getSetting(state, settingName));
+  return useSelector((state) => getSetting(state, settingName));
 };
 
 export const useUserSetting = <T extends keyof UserSettings>(

@@ -293,7 +293,7 @@ describe(
           "People",
           "Products",
           "Reviews",
-        ].map(tableName => [
+        ].map((tableName) => [
           tableName,
           "Impersonated",
           "No",
@@ -374,7 +374,7 @@ describe(
           "People",
           "Products",
           "Reviews",
-        ].map(tableName => [
+        ].map((tableName) => [
           tableName,
           "Can view",
           "No",

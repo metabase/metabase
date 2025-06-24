@@ -47,7 +47,7 @@ export const createNativeQuestionAndDashboard = ({
                 ...cardDetails,
               },
             ],
-          }).then(response => ({
+          }).then((response) => ({
             ...response,
             dashboardId,
             dashboardTabs: response.body.tabs,

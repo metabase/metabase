@@ -21,7 +21,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
 
   return (
     <TimelineEventList>
-      {timelineEvents.map(event => (
+      {timelineEvents.map((event) => (
         <li key={event.id}>
           <TimelineEventRow>
             <TimelineEventIconContainer>

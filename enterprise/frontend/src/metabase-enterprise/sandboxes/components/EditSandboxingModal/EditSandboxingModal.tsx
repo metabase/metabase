@@ -112,7 +112,7 @@ const EditSandboxingModal = ({
   }, [normalizedPolicy]);
 
   const remainingAttributesOptions = attributes.filter(
-    attribute => !(attribute in policy.attribute_remappings),
+    (attribute) => !(attribute in policy.attribute_remappings),
   );
 
   const hasAttributesOptions = attributes.length > 0;
@@ -153,7 +153,7 @@ const EditSandboxingModal = ({
                 value: false,
               },
             ]}
-            onChange={shouldUseSavedQuestion =>
+            onChange={(shouldUseSavedQuestion) =>
               setShouldUseSavedQuestion(!shouldUseSavedQuestion)
             }
             vertical
@@ -185,7 +185,7 @@ const EditSandboxingModal = ({
                     ? getQuestionPickerValue(policyCard)
                     : undefined
                 }
-                onChange={newCard => {
+                onChange={(newCard) => {
                   setPolicy({ ...policy, card_id: newCard.id });
                   hideModal();
                 }}
@@ -205,7 +205,7 @@ const EditSandboxingModal = ({
               <AttributeMappingEditor
                 value={policy.attribute_remappings}
                 policyTable={policyTable}
-                onChange={attribute_remappings =>
+                onChange={(attribute_remappings) =>
                   setPolicy({ ...policy, attribute_remappings })
                 }
                 shouldUseSavedQuestion={shouldUseSavedQuestion}

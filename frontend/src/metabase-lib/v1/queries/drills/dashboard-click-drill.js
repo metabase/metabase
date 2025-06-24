@@ -84,7 +84,7 @@ export function getDashboardDrillUrl(clicked) {
 
   const targetDashboard = extraData.dashboards[targetId];
   const targetDefaultParameters = Object.fromEntries(
-    targetDashboard.parameters.map(parameter => [
+    targetDashboard.parameters.map((parameter) => [
       parameter.slug,
       parameter.default ?? "",
     ]),
@@ -216,7 +216,7 @@ function getParameterValuesBySlug(
 function getTypeForSource(source, data, extraData) {
   if (source.type === "parameter") {
     const parameters = getIn(extraData, ["dashboard", "parameters"]) || [];
-    const { type = "text" } = parameters.find(p => p.id === source.id) || {};
+    const { type = "text" } = parameters.find((p) => p.id === source.id) || {};
     return type;
   }
 

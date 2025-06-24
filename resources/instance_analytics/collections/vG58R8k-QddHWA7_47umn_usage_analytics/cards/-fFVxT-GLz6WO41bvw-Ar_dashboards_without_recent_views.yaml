@@ -231,6 +231,7 @@ serdes/meta:
   label: dashboards_without_recent_views
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: BHyad8ZHCbeiBZpQxDwsP
 metabase_version: vUNKNOWN (901f705)
 source_card_id: AxSackBiyXVRUzM_TyyQY

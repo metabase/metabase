@@ -23,8 +23,8 @@ export function getExistingDashCards(
   const dashboard = dashboards[dashId];
 
   return dashboard.dashcards
-    .map(id => dashcards[id])
-    .filter(dc => {
+    .map((id) => dashcards[id])
+    .filter((dc) => {
       if (dc.isRemoved) {
         return false;
       }
@@ -56,8 +56,8 @@ export function haveDashboardCardsChanged(
 ) {
   return (
     newCards.length !== oldCards.length ||
-    !newCards.every(newCard =>
-      oldCards.some(oldCard => _.isEqual(oldCard, newCard)),
+    !newCards.every((newCard) =>
+      oldCards.some((oldCard) => _.isEqual(oldCard, newCard)),
     )
   );
 }
@@ -89,11 +89,11 @@ export const getDashCardMoveToTabUndoMessage = (dashCard: StoreDashcard) => {
 export const trackAddedIFrameDashcards = (dashboard: Dashboard) => {
   try {
     const newIFrameDashcards = dashboard.dashcards.filter(
-      dashcard =>
+      (dashcard) =>
         "isAdded" in dashcard && dashcard.isAdded && isIFrameDashCard(dashcard),
     );
 
-    newIFrameDashcards.forEach(dashcard => {
+    newIFrameDashcards.forEach((dashcard) => {
       const domainName = getIframeDomainName(
         dashcard.visualization_settings?.iframe,
       );

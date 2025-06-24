@@ -28,7 +28,7 @@ export const refreshSettingsList = createAction(
   REFRESH_SETTINGS_LIST,
   async () => {
     const settingsList = await SettingsApi.list();
-    return settingsList.map(setting => ({
+    return settingsList.map((setting) => ({
       ...setting,
       originalValue: setting.value,
     }));
@@ -118,7 +118,7 @@ export const CLEAR_EMAIL_SETTINGS =
 
 export const clearEmailSettings = createThunkAction(
   CLEAR_EMAIL_SETTINGS,
-  () => async dispatch => {
+  () => async (dispatch) => {
     await EmailApi.clear(), await dispatch(reloadSettings());
   },
 );

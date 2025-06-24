@@ -98,7 +98,7 @@ export function joinConditionParts(
     stageIndex,
     lhsColumn,
     rhsColumn,
-  ).find(op => displayInfo(query, stageIndex, op).shortName === operatorName);
+  ).find((op) => displayInfo(query, stageIndex, op).shortName === operatorName);
 
   if (!operator) {
     throw new TypeError("Unexpected join condition");

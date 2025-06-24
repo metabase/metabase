@@ -44,11 +44,11 @@ const NotificationsAppInner = ({
 
   const items = useMemo(() => {
     const combinedItems: NotificationListItem[] = [
-      ...questionNotifications.map(alert => ({
+      ...questionNotifications.map((alert) => ({
         item: alert,
         type: "question-notification" as const,
       })),
-      ...pulses.map(pulse => ({
+      ...pulses.map((pulse) => ({
         item: pulse,
         type: "pulse" as const,
       })),

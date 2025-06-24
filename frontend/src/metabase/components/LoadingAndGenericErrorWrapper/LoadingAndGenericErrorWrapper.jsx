@@ -5,7 +5,7 @@ export default function LoadingAndGenericErrorWrapper(props) {
   return (
     <LoadingAndErrorWrapper
       {...props}
-      renderError={details => <GenericError details={details} />}
+      renderError={(details) => <GenericError details={details} />}
     />
   );
 }

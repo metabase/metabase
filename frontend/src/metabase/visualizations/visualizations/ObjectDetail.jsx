@@ -25,14 +25,20 @@ const ObjectDetailProperties = {
     ...columnSettings({ hidden: true }),
     ...tableColumnSettings,
   },
-  columnSettings: column => {
+  columnSettings: (column) => {
     const settings = {
       column_title: {
         title: t`Column title`,
         widget: "input",
-        getDefault: column => displayNameForColumn(column),
+        getDefault: (column) => displayNameForColumn(column),
       },
       click_behavior: {},
+
+      // Makes sure `column_settings` doesn't omit these settings,
+      // so they can be used for formatting
+      view_as: { hidden: true },
+      link_text: { hidden: true },
+      link_url: { hidden: true },
     };
 
     return settings;

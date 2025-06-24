@@ -64,14 +64,14 @@ export function getTemplateTagParameters(
 
   return tags
     .filter(
-      tag =>
+      (tag) =>
         tag.type != null &&
         tag.type !== "card" &&
         tag.type !== "snippet" &&
         ((tag["widget-type"] && tag["widget-type"] !== "none") ||
           tag.type !== "dimension"),
     )
-    .map(tag => getTemplateTagParameter(tag, parametersById[tag.id]));
+    .map((tag) => getTemplateTagParameter(tag, parametersById[tag.id]));
 }
 
 export function getTemplateTags(card: Card): TemplateTag[] {
@@ -116,7 +116,7 @@ export function remapParameterValuesToTemplateTags(
   } = {};
   const templateTagParametersByName = _.indexBy(templateTags, "name");
 
-  dashboardParameters.forEach(dashboardParameter => {
+  dashboardParameters.forEach((dashboardParameter) => {
     const { target } = dashboardParameter;
     const tag = getTemplateTagFromTarget(target);
 

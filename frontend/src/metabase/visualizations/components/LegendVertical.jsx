@@ -102,11 +102,11 @@ export default class LegendVertical extends Component {
           return (
             <li
               key={index}
-              ref={element => {
+              ref={(element) => {
                 this.itemRefs[index] = element;
               }}
               className={cx(CS.flex, CS.flexNoShrink)}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 if (isVisible) {
                   handleMouseEnter();
                 }
@@ -116,7 +116,7 @@ export default class LegendVertical extends Component {
               {...(hovered && { "aria-current": !isMuted })}
             >
               <LegendItem
-                ref={legendItem => {
+                ref={(legendItem) => {
                   this.legendItemRefs[index] = legendItem;
                 }}
                 title={legendItemTitle}
@@ -124,7 +124,7 @@ export default class LegendVertical extends Component {
                 isMuted={isMuted}
                 isVisible={isVisible}
                 showTooltip={false}
-                onToggleSeriesVisibility={event => {
+                onToggleSeriesVisibility={(event) => {
                   if (isVisible) {
                     handleMouseLeave();
                   } else {
@@ -167,8 +167,8 @@ export default class LegendVertical extends Component {
                 titles={extraItems}
                 colors={extraColors}
                 hiddenIndices={hiddenIndices
-                  .filter(i => i >= items.length - 1)
-                  .map(i => i - items.length)}
+                  .filter((i) => i >= items.length - 1)
+                  .map((i) => i - items.length)}
                 onToggleSeriesVisibility={(event, sliceIndex) =>
                   onToggleSeriesVisibility(event, sliceIndex + items.length)
                 }

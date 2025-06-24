@@ -45,13 +45,13 @@ export const getSortedTimelines = (
   collection?: Collection,
 ) => {
   return _.chain(timelines)
-    .sortBy(timeline => getTimelineName(timeline).toLowerCase())
-    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
-    .sortBy(timeline => !timeline.default) // default timelines first
-    .sortBy(timeline => timeline.collection?.id !== collection?.id) // timelines within the collection first
+    .sortBy((timeline) => getTimelineName(timeline).toLowerCase())
+    .sortBy((timeline) => timeline.collection?.personal_owner_id != null) // personal collections last
+    .sortBy((timeline) => !timeline.default) // default timelines first
+    .sortBy((timeline) => timeline.collection?.id !== collection?.id) // timelines within the collection first
     .value();
 };
 
 export const getEventCount = ({ events = [], archived }: Timeline) => {
-  return events.filter(e => e.archived === archived).length;
+  return events.filter((e) => e.archived === archived).length;
 };

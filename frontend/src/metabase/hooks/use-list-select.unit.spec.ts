@@ -72,7 +72,7 @@ describe("useListSelect", () => {
     act(() => result.current.selectOnlyTheseItems(itemsToSelect));
 
     expect(result.current.getIsSelected(firstSelection)).toBeFalsy();
-    itemsToSelect.forEach(item => {
+    itemsToSelect.forEach((item) => {
       expect(result.current.getIsSelected(item)).toBeTruthy();
     });
   });

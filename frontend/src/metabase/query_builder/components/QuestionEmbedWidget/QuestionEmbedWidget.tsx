@@ -47,10 +47,10 @@ export const QuestionEmbedWidget = (props: QuestionEmbedWidgetProps) => {
           resourceParameters={getCardUiParameters(card, metadata)}
           onCreatePublicLink={() => createPublicQuestionLink({ id: card.id })}
           onDeletePublicLink={() => deletePublicQuestionLink({ id: card.id })}
-          onUpdateEnableEmbedding={enable_embedding =>
+          onUpdateEnableEmbedding={(enable_embedding) =>
             updateEnableEmbedding({ id: card.id, enable_embedding })
           }
-          onUpdateEmbeddingParams={embedding_params =>
+          onUpdateEmbeddingParams={(embedding_params) =>
             updateEmbeddingParams({ id: card.id, embedding_params })
           }
           getPublicUrl={getPublicQuestionUrl}

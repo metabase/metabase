@@ -74,7 +74,7 @@ export function buildTypedOperatorOptions(
   sectionId: ParameterSectionId,
   sectionName: string,
 ): ParameterMappingOptions[] {
-  return PARAMETER_OPERATOR_TYPES[operatorType].map(operatorOption => {
+  return PARAMETER_OPERATOR_TYPES[operatorType].map((operatorOption) => {
     return {
       ...operatorOption,
       sectionId,
@@ -98,16 +98,6 @@ export function getNumberParameterArity(parameter: Parameter) {
       return "n";
     case "number/between":
       return 2;
-    default:
-      return 1;
-  }
-}
-
-export function getStringParameterArity(parameter: Parameter) {
-  switch (parameter.type) {
-    case "string/=":
-    case "string/!=":
-      return "n";
     default:
       return 1;
   }

@@ -10,6 +10,7 @@ export type ExtraButtonProps = {
   highlightOnHover?: boolean;
   type?: "button" | "submit";
 };
+
 export type ButtonProps = MantineButtonProps &
   ExtraButtonProps &
   HTMLAttributes<HTMLButtonElement>;

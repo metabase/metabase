@@ -48,7 +48,7 @@ describe("upgradeViewPermissionsIfNeeded", () => {
     createGraph({ [schema]: { [tableId]: DataPermissionValue.SANDBOXED } }),
   ])(
     "should upgrade data access permission if it is not fully granted except impersonated",
-    graph => {
+    (graph) => {
       const updatedGraph = upgradeViewPermissionsIfNeeded(
         graph,
         groupId,

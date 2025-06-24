@@ -20,6 +20,9 @@ export type MetabaseAuthConfigWithApiKey = BaseMetabaseAuthConfig & {
   authProviderUri?: never;
 };
 
+/**
+ * @category MetabaseProvider
+ */
 export type MetabaseAuthConfig =
   | MetabaseAuthConfigWithProvider
   | MetabaseAuthConfigWithApiKey;

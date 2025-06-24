@@ -32,11 +32,11 @@ function ActionParametersInputForm({
     const hiddenFieldIds = Object.values(
       action.visualization_settings?.fields ?? {},
     )
-      .filter(field => field.hidden)
-      .map(field => field.id);
+      .filter((field) => field.hidden)
+      .map((field) => field.id);
 
     return mappedParameters
-      .map(parameter => parameter.id)
+      .map((parameter) => parameter.id)
       .concat(hiddenFieldIds);
   }, [mappedParameters, action.visualization_settings?.fields]);
 

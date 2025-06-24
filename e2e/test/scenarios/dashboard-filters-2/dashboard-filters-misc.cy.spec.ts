@@ -151,7 +151,7 @@ describe("pivot tables", () => {
         query: createPivotableQuery(this.baseQuestion),
         name: "Question - pivot viz",
         display: "pivot",
-      }).then(response => {
+      }).then((response) => {
         const card = response.body;
         QSHelpers.createAndVisitDashboard([card]);
       });
@@ -202,7 +202,7 @@ describe("pivot tables", () => {
 
     cy.button("Save").click();
 
-    cy.log("filter modal");
+    cy.log("filter picker");
 
     H.getDashboardCard(QUESTION_PIVOT_INDEX)
       .findByTestId("legend-caption-title")
@@ -211,7 +211,7 @@ describe("pivot tables", () => {
     cy.findByTestId("qb-header")
       .button(/Filter/)
       .click();
-    H.modal().findByText("Summaries").should("not.exist");
+    H.popover().findByText("Summaries").should("not.exist");
 
     function verifyDateMappingOptions() {
       QSHelpers.verifyDashcardMappingOptions(QUESTION_PIVOT_INDEX, [

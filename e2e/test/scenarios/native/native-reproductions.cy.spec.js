@@ -457,7 +457,7 @@ describe("issue 21550", () => {
 
     cy.icon("snippet").click();
     cy.wait("@rootCollection");
-    cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
+    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
 
     H.modal().within(() => {
       cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
@@ -473,7 +473,7 @@ describe("issue 21550", () => {
       cy.icon("chevrondown").click({ force: true });
     });
 
-    cy.get("pre").then($pre => {
+    cy.get("pre").then(($pre) => {
       const preWidth = $pre[0].getBoundingClientRect().width;
       const clientWidth = $pre[0].clientWidth;
       const BORDERS = 2; // 1px left and right
@@ -562,7 +562,7 @@ describe("issue 21597", { tags: "@external" }, () => {
   it("display the relevant error message in save question modal (metabase#21597)", () => {
     const message =
       'Invalid Field Filter: Field 164574 "PRODUCTS"."CATEGORY" belongs to Database 2276 "sample-dataset", but the query is against Database 2275 "test-data"';
-    cy.intercept({ method: "POST", url: "/api/card" }, request => {
+    cy.intercept({ method: "POST", url: "/api/card" }, (request) => {
       request.reply({
         body: {
           message: message,
@@ -622,7 +622,6 @@ describe("issue 23510", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
-    cy.icon("reference").click();
 
     cy.findByTestId("sidebar-content").within(() => {
       cy.findByText("ORDERS");
@@ -669,7 +668,7 @@ describe("issue 34330", () => {
 
   it("should only call the autocompleter with all text typed (metabase#34330)", () => {
     cy.findByTestId("query-visualization-root")
-      .findByText("Here's where your results will appear")
+      .findByText("Query results will appear here.")
       .should("be.visible");
 
     H.NativeEditor.type("SEAT", { delay: 10 });
@@ -787,7 +786,7 @@ describe("issue 35785", () => {
 
     cy.findByTestId("qb-header").findByRole("button", { name: "Save" }).click();
 
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
 
@@ -834,7 +833,7 @@ describe("issue 22991", () => {
     cy.signInAsNormalUser();
 
     H.startNewNativeQuestion();
-    cy.get("@questionId").then(questionId => {
+    cy.get("@questionId").then((questionId) => {
       // can't use cy.type because it does not simulate the bug
       H.NativeEditor.type(`select * from {{${questionId}}}`);
     });

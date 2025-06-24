@@ -16,7 +16,7 @@ export const getAuthProviders = createSelector([getSettings], () =>
 
 export const getExternalAuthProviders = createSelector(
   [getAuthProviders],
-  providers => providers.filter(provider => provider.name !== "password"),
+  (providers) => providers.filter((provider) => provider.name !== "password"),
 );
 
 export const getIsEmailConfigured = (state: State) => {

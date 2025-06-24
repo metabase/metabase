@@ -53,16 +53,16 @@ export function NotebookStepList({
   }, [metadata, question, openSteps]);
 
   const handleStepOpen = useCallback((id: INotebookStep["id"]) => {
-    setOpenSteps(openSteps => ({ ...openSteps, [id]: true }));
+    setOpenSteps((openSteps) => ({ ...openSteps, [id]: true }));
     setLastOpenedStep(id);
   }, []);
 
   const handleStepClose = useCallback(
     (id: INotebookStep["id"]) => {
       if (openSteps[id]) {
-        setOpenSteps(openSteps => ({ ...openSteps, [id]: false }));
+        setOpenSteps((openSteps) => ({ ...openSteps, [id]: false }));
       }
-      setLastOpenedStep(lastOpenedStep =>
+      setLastOpenedStep((lastOpenedStep) =>
         lastOpenedStep === id ? null : lastOpenedStep,
       );
     },

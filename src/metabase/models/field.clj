@@ -124,7 +124,9 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (-> field
+      (dissoc :is_defective_duplicate :unique_field_helper)
+      serdes/add-field-entity-id))
 
 (t2/define-before-insert :model/Field
   [field]
@@ -181,6 +183,11 @@
 (defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table :table_id) (serdes/hydrated-hash :parent :parent_id)])
+
+(defmethod serdes/hash-required-fields :model/Field
+  [_field]
+  {:model :model/Field
+   :required-fields [:name :table_id :parent_id]})
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -394,11 +401,12 @@
 (defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
                :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
-               :description :display_name :effective_type :entity_id :has_field_values :is_defective_duplicate
+               :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:fingerprint :fingerprint_version :last_analyzed]
    :transform {:created_at         (serdes/date)
+               :entity_id          (serdes/backfill-entity-id-transformer)
                :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)

@@ -156,10 +156,10 @@ dashcards:
 - entity_id: ZW-Zh5fCsudRWuc_5-ebV
   card_id: vrez-ciNppijhELOxLJOY
   created_at: '2023-11-01T02:41:00.615638Z'
-  row: 13
+  row: 7
   col: 0
   size_x: 12
-  size_y: 8
+  size_y: 6
   action_id: null
   dashboard_tab_id: null
   parameter_mappings:
@@ -317,7 +317,7 @@ dashcards:
   row: 13
   col: 12
   size_x: 12
-  size_y: 8
+  size_y: 7
   action_id: null
   dashboard_tab_id: null
   parameter_mappings:
@@ -385,10 +385,10 @@ dashcards:
 - entity_id: PljXyyyfScG10byiLANCg
   card_id: YiHMsA2dv3iQob11DLTIz
   created_at: '2023-11-01T02:51:46.409464Z'
-  row: 21
+  row: 13
   col: 0
-  size_x: 24
-  size_y: 6
+  size_x: 12
+  size_y: 7
   action_id: null
   dashboard_tab_id: null
   parameter_mappings:
@@ -427,7 +427,7 @@ dashcards:
 - entity_id: e_bl-8XvvXVu7iAA79eCb
   card_id: 7FLoE9kUELG4Ess6DsSEY
   created_at: '2023-11-13T21:40:46.417186Z'
-  row: 27
+  row: 20
   col: 0
   size_x: 24
   size_y: 8

@@ -87,9 +87,9 @@ if (hasPremiumFeature("sandboxes")) {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
     getEditSegmentedAccessPostAction;
 
-  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
+  PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
     const sandboxes = getDraftPolicies(state);
-    const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
+    const modifiedGroupIds = _.uniq(sandboxes.map((sb) => sb.group_id));
     return [{ sandboxes }, modifiedGroupIds];
   });
 

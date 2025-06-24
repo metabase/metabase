@@ -29,7 +29,7 @@ export function DashCardTabMenu({
   const showMenu = tabs.length > 1;
 
   const tabsToShow = useMemo(() => {
-    return tabs.filter(t => t.id !== selectedTabId);
+    return tabs.filter((t) => t.id !== selectedTabId);
   }, [selectedTabId, tabs]);
 
   const moveDashcard = useCallback(
@@ -53,7 +53,7 @@ export function DashCardTabMenu({
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Label>{t`Move to tab`}</Menu.Label>
-          {tabsToShow.map(tab => {
+          {tabsToShow.map((tab) => {
             return (
               <Menu.Item
                 maw={300}

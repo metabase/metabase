@@ -11,7 +11,7 @@ export function getClickBehaviorDescription(dashcard) {
   if (isTableDisplay(dashcard)) {
     const count = Object.values(
       getIn(dashcard, ["visualization_settings", "column_settings"]) || {},
-    ).filter(settings => settings.click_behavior != null).length;
+    ).filter((settings) => settings.click_behavior != null).length;
     if (count === 0) {
       return noBehaviorMessage;
     }
@@ -53,7 +53,9 @@ export function getLinkTargets(settings) {
   const { click_behavior, column_settings = {} } = settings || {};
   return [
     click_behavior,
-    ...Object.values(column_settings).map(settings => settings.click_behavior),
+    ...Object.values(column_settings).map(
+      (settings) => settings.click_behavior,
+    ),
   ]
     .filter(hasLinkedQuestionOrDashboard)
     .map(mapLinkedEntityToEntityQuery);

@@ -55,7 +55,7 @@ export const getSankeyData = (
   ] = rawSeries;
 
   // getColumnKey and isMetric are slow so we compute needed metadata here instead of when iterating through rows
-  const columnInfos = cols.map(column => ({
+  const columnInfos = cols.map((column) => ({
     key: getColumnKey(column),
     isMetric: isMetric(column),
   }));
@@ -114,7 +114,7 @@ export const getSankeyData = (
 
   const linkMap = new Map<string, SankeyLink>();
 
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const source = row[sankeyColumns.source.index];
     const target = row[sankeyColumns.target.index];
     const value = row[sankeyColumns.value.index];

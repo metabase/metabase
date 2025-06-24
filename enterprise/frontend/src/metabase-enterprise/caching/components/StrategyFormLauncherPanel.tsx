@@ -35,7 +35,7 @@ export const StrategyFormLauncherPanel = ({
   isStrategyFormDirty: boolean;
   shouldShowResetButton: boolean;
 }) => {
-  const databaseIds = useMemo(() => databases.map(db => db.id), [databases]);
+  const databaseIds = useMemo(() => databases.map((db) => db.id), [databases]);
 
   const {
     handleSubmit: resetAllToDefault,
@@ -60,7 +60,7 @@ export const StrategyFormLauncherPanel = ({
         />
       </StrategyFormLauncherPanelBox>
       <StrategyFormLauncherPanelStack>
-        {databases?.map(db => (
+        {databases?.map((db) => (
           <StrategyFormLauncher
             forId={db.id}
             title={db.name}

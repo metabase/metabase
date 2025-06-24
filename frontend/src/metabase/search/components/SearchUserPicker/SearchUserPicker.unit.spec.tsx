@@ -67,9 +67,9 @@ describe("SearchUserPicker", () => {
   });
 
   it("should show selected users in the select box on initial load", async () => {
-    await setup({ initialSelectedUsers: TEST_USERS.map(user => user.id) });
+    await setup({ initialSelectedUsers: TEST_USERS.map((user) => user.id) });
     expect(
-      screen.getAllByTestId("selected-user-button").map(el => el.textContent),
+      screen.getAllByTestId("selected-user-button").map((el) => el.textContent),
     ).toEqual(["Alice", "Bob"]);
 
     // all users are in the select box, so the search list should be empty
@@ -96,7 +96,7 @@ describe("SearchUserPicker", () => {
 
     await userEvent.click(searchUserList.getByText("Bob"));
     expect(
-      screen.getAllByTestId("selected-user-button").map(el => el.textContent),
+      screen.getAllByTestId("selected-user-button").map((el) => el.textContent),
     ).toEqual(["Alice", "Bob"]);
 
     expect(searchUserList.getByText("No results")).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe("SearchUserPicker", () => {
 
   it("should remove user from select box and add them to search list when user is remove from select box", async () => {
     await setup({
-      initialSelectedUsers: TEST_USERS.map(user => user.id),
+      initialSelectedUsers: TEST_USERS.map((user) => user.id),
     });
 
     const searchUserList = within(screen.getByTestId("search-user-list"));
@@ -155,7 +155,7 @@ describe("SearchUserPicker", () => {
 
   it("should call onChange with an empty list when the user clicks Apply with no selection", async () => {
     const { mockOnChange } = await setup({
-      initialSelectedUsers: TEST_USERS.map(user => user.id),
+      initialSelectedUsers: TEST_USERS.map((user) => user.id),
     });
     const searchUserList = within(screen.getByTestId("search-user-select-box"));
     await userEvent.click(searchUserList.getByText("Alice"));

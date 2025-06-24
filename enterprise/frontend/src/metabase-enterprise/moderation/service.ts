@@ -160,7 +160,7 @@ export function getModerationTimelineEvents(
   reviews: ModerationReview[],
   currentUser?: User,
 ) {
-  return reviews.map(review => {
+  return reviews.map((review) => {
     const moderator = review.user;
     const moderatorDisplayName = getModeratorDisplayName(
       moderator,

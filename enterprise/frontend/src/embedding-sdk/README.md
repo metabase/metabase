@@ -18,7 +18,7 @@ Just some commands to get you started. For more on how to set up the SDK with yo
 
 ### Installing Metabase
 
-Start a free trial of [Metabase Pro](https://www.metabase.com/pricing).
+Start a free trial of [Metabase Pro](https://www.metabase.com/pricing/).
 
 Or run it locally. Here's a docker one-liner:
 

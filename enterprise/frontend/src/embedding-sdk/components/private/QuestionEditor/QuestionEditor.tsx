@@ -2,11 +2,13 @@ import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
+import {
+  type BaseInteractiveQuestionProps,
+  InteractiveQuestion,
+} from "embedding-sdk/components/public/InteractiveQuestion";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { Box, Button, Group, Icon, Stack, Tabs } from "metabase/ui";
 
-import type { InteractiveQuestionProps } from "../../public/InteractiveQuestion";
 import { FlexibleSizeComponent } from "../FlexibleSizeComponent";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
@@ -143,8 +145,8 @@ export const QuestionEditor = ({
   onSave,
   plugins,
   entityTypeFilter,
-  saveToCollection,
-}: InteractiveQuestionProps) => (
+  targetCollection,
+}: BaseInteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
     plugins={plugins}
@@ -152,7 +154,7 @@ export const QuestionEditor = ({
     onBeforeSave={onBeforeSave}
     isSaveEnabled={isSaveEnabled}
     entityTypeFilter={entityTypeFilter}
-    saveToCollection={saveToCollection}
+    targetCollection={targetCollection}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>

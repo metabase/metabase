@@ -16,7 +16,7 @@
   Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
   (t2/select-one :model/Card
-                 {:select [:c.id :c.dataset_query :c.result_metadata]
+                 {:select [:c.id :c.dataset_query :c.result_metadata :c.card_schema]
                   :from   [[:sandboxes]]
                   :join   [[:permissions_group_membership :pgm] [:= :sandboxes.group_id :pgm.group_id]
                            [:report_card :c] [:= :c.id :sandboxes.card_id]]

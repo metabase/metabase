@@ -24,7 +24,7 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-            ? ["root", ...c.location.split("/").filter(l => l)]
+            ? ["root", ...c.location.split("/").filter((l) => l)]
             : null,
       parent: null,
       children: [],
@@ -78,7 +78,10 @@ function getExpandedCollectionsById(
         parentId = PERSONAL_COLLECTIONS.id;
       } else {
         // Find the closest parent that the user has permissions for
-        const parentIdIndex = _.findLastIndex(c.path, p => collectionsById[p]);
+        const parentIdIndex = _.findLastIndex(
+          c.path,
+          (p) => collectionsById[p],
+        );
         parentId = parentIdIndex >= 0 ? c.path[parentIdIndex] : undefined;
       }
       if (!parentId) {
@@ -101,7 +104,7 @@ function getExpandedCollectionsById(
     delete collectionsById[PERSONAL_COLLECTIONS.id];
     collectionsById[ROOT_COLLECTION.id].children = collectionsById[
       ROOT_COLLECTION.id
-    ].children.filter(c => c.id !== PERSONAL_COLLECTIONS.id);
+    ].children.filter((c) => c.id !== PERSONAL_COLLECTIONS.id);
   }
 
   return collectionsById;

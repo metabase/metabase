@@ -14,7 +14,7 @@ export default class ChartSettingColorsPicker extends Component {
           <ChartSettingColorPicker
             className={CS.mb1}
             key={index}
-            onChange={color =>
+            onChange={(color) =>
               onChange({
                 ...value,
                 [key]: color,

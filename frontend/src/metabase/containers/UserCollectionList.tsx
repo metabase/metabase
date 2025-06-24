@@ -1,4 +1,4 @@
-import { useUserListQuery } from "metabase/common/hooks";
+import { useListUsersQuery } from "metabase/api";
 import { BrowserCrumbs } from "metabase/components/BrowserCrumbs";
 import Card from "metabase/components/Card";
 import { Grid } from "metabase/components/Grid";
@@ -25,16 +25,13 @@ const PAGE_SIZE = 27;
 export const UserCollectionList = () => {
   const { page, handleNextPage, handlePreviousPage } = usePagination();
 
-  const {
-    data: users = [],
-    isLoading,
-    metadata,
-  } = useUserListQuery({
-    query: {
-      limit: PAGE_SIZE,
-      offset: PAGE_SIZE * page,
-    },
+  const { data, isLoading } = useListUsersQuery({
+    limit: PAGE_SIZE,
+    offset: PAGE_SIZE * page,
   });
+
+  const users = data?.data ?? [];
+  const total = data?.total;
 
   return (
     <Flex direction="column" p="1.5rem" h="100%">
@@ -57,7 +54,7 @@ export const UserCollectionList = () => {
         ) : (
           <Grid>
             {users.map(
-              user =>
+              (user) =>
                 user.personal_collection_id && (
                   <ListGridItem
                     key={user.personal_collection_id}
@@ -86,7 +83,7 @@ export const UserCollectionList = () => {
         <PaginationControls
           page={page}
           pageSize={PAGE_SIZE}
-          total={metadata?.total}
+          total={total}
           itemsLength={PAGE_SIZE}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}

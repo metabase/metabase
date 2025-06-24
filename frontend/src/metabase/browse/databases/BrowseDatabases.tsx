@@ -69,7 +69,7 @@ export const BrowseDatabases = () => {
           <SimpleGrid data-testid="database-browser" cols={3}>
             {databases &&
               databases.length > 0 &&
-              databases.map(database => (
+              databases.map((database) => (
                 <Link to={Urls.browseDatabase(database)} key={database.id}>
                   <DatabaseCard
                     bg="bg-white"

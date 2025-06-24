@@ -4,6 +4,7 @@
   Currently used to store card's rows data when sending notification since it can be large and we don't want to keep it in memory."
   (:require
    [clojure.java.io :as io]
+   [metabase.util.log :as log]
    [metabase.util.random :as random]
    [taoensso.nippy :as nippy])
   (:import
@@ -47,6 +48,11 @@
 (defprotocol Cleanable
   (cleanup! [this] "Cleanup any resources associated with this object"))
 
+;; Add a default implementation that does nothing
+(extend-protocol Cleanable
+  Object
+  (cleanup! [_] nil))
+
 (deftype TempFileStorage [^File file]
   Cleanable
   (cleanup! [_]
@@ -75,6 +81,11 @@
 ;;                                           Public APIs                                           ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
+(defn is-cleanable?
+  "Returns true if x implements the Cleanable protocol"
+  [x]
+  (satisfies? Cleanable x))
+
 (defn to-temp-file!
   "Write data to a temporary file. Returns a TempFileStorage type that:
    - Implements IDeref - use @ to read the data from the file
@@ -82,4 +93,5 @@
   [data]
   (let [f (temp-file)]
     (write-to-file f data)
+    (log/debug "stored data in temp file" {:length (.length ^File f)})
     (TempFileStorage. f)))

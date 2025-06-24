@@ -90,7 +90,7 @@ function _init(reducers, getRoutes, callback) {
 
   store.dispatch(refreshSiteSettings());
 
-  PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
+  PLUGIN_APP_INIT_FUNCTIONS.forEach((init) => init());
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;

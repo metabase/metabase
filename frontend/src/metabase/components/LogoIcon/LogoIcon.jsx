@@ -5,7 +5,7 @@ import { Component } from "react";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
 
-class DefaultLogoIcon extends Component {
+export class DefaultLogoIcon extends Component {
   static defaultProps = {
     height: 32,
   };

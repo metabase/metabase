@@ -41,7 +41,7 @@ export const useFilterData = (): SDKFilterItem[] => {
   const filters = useMemo(
     () =>
       query
-        ? getFilterItems(query).map(filterItem => ({
+        ? getFilterItems(query).map((filterItem) => ({
             ...filterItem,
             ...Lib.displayInfo(query, filterItem.stageIndex, filterItem.filter),
           }))

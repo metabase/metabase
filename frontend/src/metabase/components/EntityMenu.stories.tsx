@@ -7,7 +7,7 @@ export default {
   component: EntityMenu,
 };
 
-const Template: StoryFn<typeof EntityMenu> = args => {
+const Template: StoryFn<typeof EntityMenu> = (args) => {
   return <EntityMenu {...args} />;
 };
 

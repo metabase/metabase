@@ -3,8 +3,11 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
@@ -273,6 +276,19 @@
                     (mt/run-mbql-query places
                       {:breakout     [[:field %liked {:base-type :type/Boolean}]]
                        :aggregation  [["count"]]}))))))))
+
+(deftest ^:parallel aggregation-with-between-is-consistent-test
+  (testing "an aggregation with a between clause should return consistent results #55302"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset daily-bird-counts
+        (let [mp          (mt/metadata-provider)
+              bird-count  (lib.metadata/table mp (mt/id :bird-count))
+              date-field  (lib.metadata/field mp (mt/id :bird-count :date))
+              count-field (lib.metadata/field mp (mt/id :bird-count :count))
+              query       (-> (lib/query mp bird-count)
+                              (lib/aggregate (lib/sum (lib/case [[(lib/between date-field "2018-09-01" "2018-09-30") count-field]] 0))))]
+          (is (= [[39]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !                                                                                                                   !

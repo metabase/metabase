@@ -1,5 +1,7 @@
-(ns mage.start-db-test)
+(ns mage.start-db-test
+  (:require
+   [clojure.test :refer [deftest testing is]]))
 
-(defn run-tests []
-  ;; TODO add tests here
-  )
+(deftest start-db-tests
+  (testing "DB starts"
+    (is "TODO add tests here")))

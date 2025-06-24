@@ -43,7 +43,7 @@ const getLabelLayoutFn = (
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
 ): LabelLayoutOptionCallback => {
-  return params => {
+  return (params) => {
     const { dataIndex, rect } = params;
     if (dataIndex == null) {
       return {};
@@ -238,7 +238,7 @@ export const getWaterfallChartOption = (
   const seriesOption: WaterfallSeriesOption[] = [
     dataSeriesOptions,
     timelineEventsSeries,
-  ].flatMap(option => option ?? []);
+  ].flatMap((option) => option ?? []);
 
   const echartsDataset = [{ source: chartModel.transformedDataset }];
 

@@ -37,7 +37,7 @@ export function classNameForTag(tag: Tag | Tag[]): string {
     return tag.map(classNameForTag).join(" ");
   }
 
-  const styledTag = styledTags.find(item => tagId(item.tag) === tagId(tag));
+  const styledTag = styledTags.find((item) => tagId(item.tag) === tagId(tag));
   return styledTag?.class ?? "";
 }
 

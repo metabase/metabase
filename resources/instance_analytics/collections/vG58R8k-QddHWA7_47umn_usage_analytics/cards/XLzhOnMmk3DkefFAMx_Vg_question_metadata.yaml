@@ -84,6 +84,9 @@ dataset_query:
         - v_content
         - archived
       - base-type: type/Boolean
+    - - field
+      - is_verified
+      - base-type: type/Boolean
     filter:
     - =
     - - field
@@ -95,7 +98,369 @@ dataset_query:
     - question
     source-table: AxSackBiyXVRUzM_TyyQY
   type: query
-result_metadata: null
+result_metadata:
+- active: true
+  base_type: type/Integer
+  coercion_strategy: null
+  database_type: int4
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_id
+  ident: zGxQI3k8rDbAWi4SoRBGu
+  name: entity_id
+  nfc_path: null
+  parent_id: null
+  position: 0
+  semantic_type: type/PK
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Text
+  coercion_strategy: null
+  database_type: text
+  description: null
+  display_name: Entity Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - entity_type
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - entity_type
+  ident: o9TWAM8W0uC0FHnU3AcLo
+  name: entity_type
+  nfc_path: null
+  parent_id: null
+  position: 2
+  semantic_type: type/Category
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  database_type: timestamptz
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - created_at
+  - base-type: type/DateTimeWithLocalTZ
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - created_at
+  ident: --a2aeEMqkwMXZ49EKy4q
+  name: created_at
+  nfc_path: null
+  parent_id: null
+  position: 3
+  semantic_type: type/CreationTimestamp
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  database_type: timestamptz
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - updated_at
+  - base-type: type/DateTimeWithLocalTZ
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - updated_at
+  ident: k438QMrN8DFML_jR7KnLv
+  name: updated_at
+  nfc_path: null
+  parent_id: null
+  position: 4
+  semantic_type: type/UpdatedTimestamp
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Integer
+  coercion_strategy: null
+  database_type: int4
+  description: null
+  display_name: Creator ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - creator_id
+  - base-type: type/Integer
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - creator_id
+  ident: f5H6w2a4ITi_hlKmuP3FP
+  name: creator_id
+  nfc_path: null
+  parent_id: null
+  position: 5
+  semantic_type: type/FK
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Text
+  coercion_strategy: null
+  database_type: varchar
+  description: null
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - name
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - name
+  ident: AnRJOSa547uepcAA8CXo7
+  name: name
+  nfc_path: null
+  parent_id: null
+  position: 6
+  semantic_type: type/Name
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Text
+  coercion_strategy: null
+  database_type: text
+  description: null
+  display_name: Description
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - description
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - description
+  ident: fObSJJXa6tpZixX7suslC
+  name: description
+  nfc_path: null
+  parent_id: null
+  position: 7
+  semantic_type: type/Description
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Integer
+  coercion_strategy: null
+  database_type: int4
+  description: null
+  display_name: Made Public By User
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - made_public_by_user
+  - base-type: type/Integer
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - made_public_by_user
+  ident: tKeCGsaHNfsvhR7TgJaTS
+  name: made_public_by_user
+  nfc_path: null
+  parent_id: null
+  position: 9
+  semantic_type: type/FK
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Boolean
+  coercion_strategy: null
+  database_type: bool
+  description: null
+  display_name: Is Embedding Enabled
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - is_embedding_enabled
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - is_embedding_enabled
+  ident: JxSFL9umxv4k15F_lXujQ
+  name: is_embedding_enabled
+  nfc_path: null
+  parent_id: null
+  position: 10
+  semantic_type: type/Category
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Boolean
+  coercion_strategy: null
+  database_type: bool
+  description: null
+  display_name: Archived
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_content
+    - archived
+  - base-type: type/Boolean
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - archived
+  ident: hWP3d0NYZMx8Pl1f4MNrT
+  name: archived
+  nfc_path: null
+  parent_id: null
+  position: 12
+  semantic_type: type/Enum
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
+- active: true
+  base_type: type/Boolean
+  database_type: bool
+  display_name: Is Verified
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - is_verified
+  - base-type: type/Boolean
+  id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - is_verified
+  ident: nMn0fuAsRSV4lDuA2NwDv
+  name: is_verified
+  position: 11
+  semantic_type: type/Category
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  visibility_type: normal
 visualization_settings:
   column_settings:
     '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
@@ -202,12 +567,15 @@ visualization_settings:
       - archived
     - base-type: type/Boolean
     name: archived
+  - enabled: true
+    name: is_verified
   table.pivot_column: full_name
 serdes/meta:
 - id: XLzhOnMmk3DkefFAMx_Vg
   label: question_metadata
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: AxSackBiyXVRUzM_TyyQY

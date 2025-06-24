@@ -24,7 +24,7 @@ function files() {
 }
 
 function dependencies() {
-  const deps = files().map(filename => {
+  const deps = files().map((filename) => {
     const contents = fs.readFileSync(filename, "utf-8");
 
     const importList = [];
@@ -58,7 +58,7 @@ function dependencies() {
     }
     const base = path.dirname(filename) + path.sep;
     const absoluteImportList = importList
-      .map(name => {
+      .map((name) => {
         const absName = name[0] === "." ? path.normalize(base + name) : name;
         const parts = absName.split(path.sep);
         const realPath = ALIAS[parts[0]];
@@ -67,7 +67,7 @@ function dependencies() {
         return realName;
       })
       .map(getFilePathFromImportPath)
-      .filter(name => minimatch(name, PATTERN));
+      .filter((name) => minimatch(name, PATTERN));
 
     return { source: filename, dependencies: absoluteImportList.sort() };
   });
@@ -101,9 +101,9 @@ function getFilePathFromImportPath(name) {
 
 function dependents() {
   const dependents = {};
-  dependencies().forEach(dep => {
+  dependencies().forEach((dep) => {
     const { source, dependencies } = dep;
-    dependencies.forEach(d => {
+    dependencies.forEach((d) => {
       if (!dependents[d]) {
         dependents[d] = [];
       }
@@ -117,7 +117,7 @@ function getDependents(sources) {
   const allDependents = dependents();
   const filteredDependents = [];
 
-  sources.forEach(name => {
+  sources.forEach((name) => {
     const list = allDependents[name];
     if (list && Array.isArray(list) && list.length > 0) {
       filteredDependents.push(...list);
@@ -162,7 +162,9 @@ function filterAllDependents() {
       const name = filteredDependents[i];
       const list = allDependents[name];
       if (list && Array.isArray(list) && list.length > 0) {
-        const newAddition = list.filter(e => filteredDependents.indexOf(e) < 0);
+        const newAddition = list.filter(
+          (e) => filteredDependents.indexOf(e) < 0,
+        );
         filteredDependents.push(...newAddition);
       }
     }
@@ -174,7 +176,7 @@ function filterAllDependents() {
 function countDependents() {
   const allDependents = dependents();
   const sources = Object.keys(allDependents).sort();
-  const tally = sources.map(name => {
+  const tally = sources.map((name) => {
     return { name, count: allDependents[name].length };
   });
   console.log(tally.map(({ name, count }) => `${count} ${name}`).join("\n"));
@@ -183,12 +185,12 @@ function countDependents() {
 function countAllDependents() {
   const allDependents = dependents();
   const sources = Object.keys(allDependents).sort();
-  const tally = sources.map(name => {
+  const tally = sources.map((name) => {
     const list = allDependents[name];
     for (let i = 0; i < list.length; ++i) {
       const deps = allDependents[list[i]];
       if (deps && Array.isArray(deps) && deps.length > 1) {
-        const newAddition = deps.filter(e => list.indexOf(e) < 0);
+        const newAddition = deps.filter((e) => list.indexOf(e) < 0);
         list.push(...newAddition);
       }
     }
@@ -200,10 +202,10 @@ function countAllDependents() {
 function matrix() {
   const allDependents = dependents();
   const sources = Object.keys(allDependents).sort();
-  const width = Math.max(...sources.map(s => s.length));
-  const rows = sources.map(name => {
+  const width = Math.max(...sources.map((s) => s.length));
+  const rows = sources.map((name) => {
     const list = allDependents[name];
-    const checks = sources.map(dep => (list.indexOf(dep) < 0 ? " " : "x"));
+    const checks = sources.map((dep) => (list.indexOf(dep) < 0 ? " " : "x"));
     return name.padEnd(width) + " | " + checks.join("");
   });
   console.log(rows.join("\n"));

@@ -62,7 +62,7 @@ export const getCardsColumns = (
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) => {
-  return rawSeries.map(series => {
+  return rawSeries.map((series) => {
     const { data } = series;
     // When multiple cards are combined on a dashboard card, computed visualization settings contain
     // dimensions and metrics settings of the first card only which is not correct.

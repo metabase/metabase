@@ -50,9 +50,7 @@ describe("scenarios > dashboard", () => {
       );
       H.modal().findByTestId("collection-picker-button").click();
       H.entityPickerModal().findByText("Select a collection");
-      // cy.realPress("Escape");
-      // TODO: Fix this:
-      H.entityPickerModal().button("Cancel").click();
+      cy.realPress("Escape");
       H.modal().findByText("New dashboard").should("be.visible");
 
       cy.log("Create a new dashboard");
@@ -95,7 +93,7 @@ describe("scenarios > dashboard", () => {
       });
 
       H.queryBuilderHeader().findByText("Save").click();
-      cy.findByTestId("save-question-modal").within(modal => {
+      cy.findByTestId("save-question-modal").within((modal) => {
         cy.findByLabelText("Name").clear().type(newQuestionName);
         cy.findByLabelText("Where do you want to save this?").should(
           "not.exist",
@@ -127,11 +125,15 @@ describe("scenarios > dashboard", () => {
       () => {
         cy.intercept("POST", "api/collection").as("createCollection");
         cy.visit("/");
+        cy.findByTestId("home-page").should(
+          "contain",
+          "Try out these sample x-rays to see what Metabase can do.",
+        );
         H.closeNavigationSidebar();
         H.appBar().findByText("New").click();
         H.popover().findByText("Dashboard").should("be.visible").click();
         const NEW_DASHBOARD = "Foo";
-        cy.findByTestId("new-dashboard-modal").then(modal => {
+        cy.findByTestId("new-dashboard-modal").then((modal) => {
           cy.findByRole("heading", { name: "New dashboard" });
           cy.findByLabelText("Name").type(NEW_DASHBOARD).blur();
           cy.findByTestId("collection-picker-button")
@@ -411,7 +413,7 @@ describe("scenarios > dashboard", () => {
         H.showDashboardCardActions();
         H.getDashboardCardMenu().click();
         H.popover().findByText("Edit model").should("be.visible").click();
-        cy.get("@slug").then(slug => {
+        cy.get("@slug").then((slug) => {
           cy.location("pathname").should("eq", `/model/${slug}/query`);
         });
       });
@@ -437,7 +439,7 @@ describe("scenarios > dashboard", () => {
         H.showDashboardCardActions();
         H.getDashboardCardMenu().click();
         H.popover().findByText("Edit metric").should("be.visible").click();
-        cy.get("@slug").then(slug => {
+        cy.get("@slug").then((slug) => {
           cy.location("pathname").should("eq", `/metric/${slug}/query`);
         });
       });
@@ -553,7 +555,7 @@ describe("scenarios > dashboard", () => {
 
         H.sidesheet().within(() => {
           cy.log("Markdown content should not be bigger than its container");
-          cy.findByTestId("editable-text").then($markdown => {
+          cy.findByTestId("editable-text").then(($markdown) => {
             const el = $markdown[0];
 
             // vertical
@@ -576,7 +578,7 @@ describe("scenarios > dashboard", () => {
           );
           cy.findByTestId("editable-text")
             .click()
-            .then($el => {
+            .then(($el) => {
               const lineHeight = parseFloat(
                 window.getComputedStyle($el[0]).lineHeight,
               );
@@ -1000,7 +1002,7 @@ describe("scenarios > dashboard", () => {
 
     H.filterWidget().as("filterWidget").click();
 
-    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach(category => {
+    ["Doohickey", "Gadget", "Gizmo", "Widget"].forEach((category) => {
       cy.findByText(category);
     });
 
@@ -1115,7 +1117,7 @@ describe("scenarios > dashboard", () => {
     H.createDashboard({ name: "Auto-scroll test", dashcards }).then(
       ({ body: dashboard }) => {
         const targetCard = dashboard.dashcards.find(
-          dc => dc.visualization_settings?.text === TARGET_TEXT,
+          (dc) => dc.visualization_settings?.text === TARGET_TEXT,
         );
 
         cy.log("should not be visible (below the fold)");
@@ -1213,13 +1215,23 @@ describe("scenarios > dashboard", () => {
   });
 
   describe("warn before leave", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
+    });
+
     it("should warn a user before leaving after adding, editing, or removing a card on a dashboard", () => {
       cy.visit("/");
+
+      cy.findByTestId("home-page").should(
+        "contain",
+        "Try out these sample x-rays to see what Metabase can do.",
+      );
 
       // add
       createNewDashboard();
       cy.findByTestId("dashboard-header").icon("add").click();
       cy.findByTestId("add-card-sidebar").findByText("Orders").click();
+      cy.wait("@queryMetadata");
       assertPreventLeave({ openSidebar: false });
       H.saveDashboard();
 
@@ -1256,6 +1268,7 @@ describe("scenarios > dashboard", () => {
         // assert tab order is now correct and ui has caught up to result of dragging the tab
         cy.findAllByRole("tab").eq(0).should("have.text", "Tab 2");
         cy.findAllByRole("tab").eq(1).should("have.text", "Tab 1");
+
         assertPreventLeave();
         H.saveDashboard();
 
@@ -1265,11 +1278,20 @@ describe("scenarios > dashboard", () => {
         assertPreventLeave();
         H.saveDashboard();
 
+        cy.findByRole("tab", { name: "Copy of Tab 1" }).should(
+          "have.attr",
+          "aria-selected",
+          "true",
+        );
+
         // remove tab
         H.editDashboard();
         H.deleteTab("Copy of Tab 1");
+        // url is changed after removing the tab
+        // can be a side effect
+        cy.url().should("include", "tab-1");
         assertPreventLeave();
-        H.saveDashboard();
+        H.saveDashboard({ waitMs: 100 });
 
         // rename tab
         H.editDashboard();
@@ -1289,6 +1311,8 @@ describe("scenarios > dashboard", () => {
     function dragOnXAxis(el, distance) {
       el.trigger("mousedown", { clientX: 0 })
         .trigger("mousemove", { clientX: distance })
+        // to avoid flakiness
+        .wait(100)
         .trigger("mouseup");
     }
 
@@ -1454,7 +1478,7 @@ H.describeWithSnowplow("scenarios > dashboard", () => {
           },
         }),
       ],
-    }).then(dashboard => H.visitDashboard(dashboard.id));
+    }).then((dashboard) => H.visitDashboard(dashboard.id));
 
     // new dashboards should default to 'fixed' width
     H.assertDashboardFixedWidth();
@@ -1499,7 +1523,7 @@ function checkOptionsForFilter(filter) {
 }
 
 function assertScrollBarExists() {
-  cy.get("body").then($body => {
+  cy.get("body").then(($body) => {
     const bodyWidth = $body[0].getBoundingClientRect().width;
     cy.window().its("innerWidth").should("be.gte", bodyWidth);
   });
@@ -1753,7 +1777,7 @@ describe("scenarios > dashboard > entity id support", () => {
         { name: "Tab 2", id: -2 },
       ],
       dashcards: [],
-    }).then(dashboard => {
+    }).then((dashboard) => {
       cy.visit(
         `/dashboard/entity/${dashboard.entity_id}?tab=${dashboard.tabs[1].entity_id}`,
       );

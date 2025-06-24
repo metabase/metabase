@@ -159,7 +159,7 @@ H.describeWithSnowplow(
 );
 
 function selectCombineColumns() {
-  H.CustomExpressionEditor.selectCompletion("Combine columns");
+  H.popover().findByText("Combine columns").click();
 }
 
 function selectColumn(index: number, table: string, name?: string) {

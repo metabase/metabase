@@ -43,10 +43,12 @@ export default class LeafletTilePinMap extends LeafletMap {
       return;
     }
 
-    const latFieldParam =
-      latitudeField.id || encodeURIComponent(latitudeField.name);
-    const lonFieldParam =
-      longitudeField.id || encodeURIComponent(longitudeField.name);
+    const latFieldParam = encodeURIComponent(
+      JSON.stringify(latitudeField.field_ref),
+    );
+    const lonFieldParam = encodeURIComponent(
+      JSON.stringify(longitudeField.field_ref),
+    );
 
     const { dashboard, dashcard, uuid, token } = this.props;
 

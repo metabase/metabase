@@ -25,7 +25,7 @@ describe("EntityListLoader", () => {
         />,
       );
       expect(
-        Api.prototype._makeRequest.mock.calls.map(c => c.slice(0, 2)),
+        Api.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
       ).toEqual([["GET", "/api/collection/foo/items"]]);
     });
 
@@ -38,7 +38,7 @@ describe("EntityListLoader", () => {
         />,
       );
       expect(
-        Api.prototype._makeRequest.mock.calls.map(c => c.slice(0, 2)),
+        Api.prototype._makeRequest.mock.calls.map((c) => c.slice(0, 2)),
       ).toEqual([["GET", "/api/collection/foo/items"]]);
     });
   });

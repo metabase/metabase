@@ -84,7 +84,7 @@ export const getAggregatedOtherSeriesValue = (
   datum: Datum,
 ): number => {
   const aggregation = AGGREGATION_FN_MAP[aggregationType];
-  const values = seriesModels.map(model =>
+  const values = seriesModels.map((model) =>
     checkNumber(datum[model.dataKey] ?? 0),
   );
   return aggregation.fn(values);
@@ -165,7 +165,7 @@ const AGGREGATION_FN_MAP: Record<
       label: t`Standard deviation`,
       fn: (values: number[]) => {
         const mean = sum(values) / values.length;
-        const squaredDifferences = values.map(v => (v - mean) ** 2);
+        const squaredDifferences = values.map((v) => (v - mean) ** 2);
         const variance = sum(squaredDifferences) / values.length;
         return Math.sqrt(variance);
       },

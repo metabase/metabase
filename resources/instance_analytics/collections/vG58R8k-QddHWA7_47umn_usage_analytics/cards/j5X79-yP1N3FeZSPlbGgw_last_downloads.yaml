@@ -704,6 +704,7 @@ serdes/meta:
   label: last_downloads
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 metabase_version: vUNKNOWN (1a4aa1a)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb

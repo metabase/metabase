@@ -51,7 +51,7 @@ describe("suggestFunctions", () => {
         label: "contains",
         displayLabel: "contains",
         detail:
-          "Returns true if string1 contains string2 within it (or string3, etc. if specified).",
+          "Returns `true` if `$string1` contains `$string2` within it (or `$string3`, etc. if specified).",
         matches: [
           [0, 2],
           [6, 6],
@@ -64,7 +64,7 @@ describe("suggestFunctions", () => {
         label: "second",
         displayLabel: "second",
         detail:
-          "Takes a datetime and returns an integer (0-59) with the number of the seconds in the minute.",
+          "Takes a datetime and returns an integer (`0`-`59`) with the number of the seconds in the minute.",
         matches: [[2, 4]],
         type: "function",
         icon: "function",
@@ -74,7 +74,7 @@ describe("suggestFunctions", () => {
         label: "doesNotContain",
         displayLabel: "doesNotContain",
         detail:
-          "Returns true if string1 does not contain string2 within it (and string3, etc. if specified).",
+          "Returns `true` if `$string1` does not contain `$string2` within it (and `$string3`, etc. if specified).",
         matches: [
           [1, 1],
           [4, 5],
@@ -88,7 +88,7 @@ describe("suggestFunctions", () => {
       {
         apply: expect.any(Function),
         detail:
-          'Returns the localized short name ("Apr") for the given month number (4)',
+          'Returns the localized short name (eg. `"Apr"`) for the given month number (eg. `4`)',
         displayLabel: "monthName",
         icon: "function",
         label: "monthName",
@@ -101,7 +101,7 @@ describe("suggestFunctions", () => {
       {
         apply: expect.any(Function),
         detail:
-          "Takes a datetime and returns an integer (1-12) with the number of the month in the year.",
+          "Takes a datetime and returns an integer (`1`-`12`) with the number of the month in the year.",
         displayLabel: "month",
         icon: "function",
         label: "month",
@@ -126,7 +126,7 @@ describe("suggestFunctions", () => {
 
   const RESULTS_NO_TEMPLATE = {
     ...RESULTS,
-    options: RESULTS.options.map(option => ({
+    options: RESULTS.options.map((option) => ({
       ...option,
       apply: undefined,
     })),
@@ -177,7 +177,7 @@ describe("suggestFunctions", () => {
       const completer = setup({ startRule });
       const results = await completer("offse|");
       const options = results?.options.filter(
-        option => option.label === "offset",
+        (option) => option.label === "offset",
       );
       expect(options).toEqual([]);
     });
@@ -186,14 +186,14 @@ describe("suggestFunctions", () => {
       const completer = setup({ startRule });
       const results = await completer("cas|");
       const options = results?.options.filter(
-        option => option.label === "case",
+        (option) => option.label === "case",
       );
       expect(options).toEqual([
         {
           label: "case",
           displayLabel: "case",
           detail:
-            "Alias for if(). Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
+            "Alias for `if()`. Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met.",
           matches: [[0, 2]],
           type: "function",
           icon: "function",
@@ -209,7 +209,7 @@ describe("suggestFunctions", () => {
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find(option => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexextract"),
       ).toBe(undefined);
     });
 
@@ -220,7 +220,7 @@ describe("suggestFunctions", () => {
       });
       const results = await completer("rege|");
       expect(
-        results?.options.find(option => option.label === "regexextract"),
+        results?.options.find((option) => option.label === "regexextract"),
       ).toEqual({
         label: "regexextract",
         displayLabel: "regexextract",
@@ -264,5 +264,24 @@ describe("suggestFunctions", () => {
       const results = completer("con|c()");
       expect(results).toEqual(RESULTS_NO_TEMPLATE);
     });
+  });
+
+  it("should complete functions whose name starts with the an operator name as a prefix (metabase#55686)", async () => {
+    const completer = setup({ startRule: "expression" });
+    const results = await completer("not|");
+    expect(results?.options.map((result) => result.displayLabel)).toEqual([
+      "notIn",
+      "notNull",
+      "notEmpty",
+      "doesNotContain",
+      "now",
+      "interval",
+      "intervalStartingFrom",
+      "length",
+      "monthName",
+      "month",
+      "minute",
+      "contains",
+    ]);
   });
 });

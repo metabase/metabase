@@ -36,6 +36,9 @@
 /crate-*
 /cypress
 /deploy/artifacts/*
+/docs/**/node_modules
+/docs/**/package.json
+/docs/**/yarn.lock
 /frontend/test/snapshots/*
 /e2e/snapshots/*
 /e2e/tmp/*
@@ -67,6 +70,8 @@
 /storybook-static
 /target
 /test-report-*
+/temp
+**/cli-snippets-tmp/**
 \#*\#
 bin/node_modules/
 bin/release/aws-eb/metabase-aws-eb.zip
@@ -124,3 +129,8 @@ modules/drivers/*/.lsp/*
 
 # jar downloader
 /jars/
+/bin/bb
+
+.aider*
+/config.yml
+CLAUDE.local.md

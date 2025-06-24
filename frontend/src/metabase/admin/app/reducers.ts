@@ -61,13 +61,13 @@ export const getAdminPaths: () => AdminPath[] = () => {
   return items;
 };
 
-const paths = createReducer(getAdminPaths(), builder => {
+const paths = createReducer(getAdminPaths(), (builder) => {
   builder.addCase(refreshCurrentUser.fulfilled, (state, { payload: user }) => {
     if (user?.is_superuser) {
       return state;
     }
 
-    const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map(getter => {
+    const allowedPaths = PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.map((getter) => {
       return getter(user);
     })
       .flat()
@@ -77,14 +77,14 @@ const paths = createReducer(getAdminPaths(), builder => {
       }, new Set<AdminPathKey>());
 
     return state
-      .filter(path => (allowedPaths.has(path.key) ? path : null))
+      .filter((path) => (allowedPaths.has(path.key) ? path : null))
       .filter(isNotNull);
   });
 });
 
 const isNoticeEnabled = createReducer(
   Settings.deprecationNoticeEnabled(),
-  builder => {
+  (builder) => {
     builder.addCase(disableNotice.fulfilled, () => false);
   },
 );

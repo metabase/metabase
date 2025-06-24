@@ -22,7 +22,7 @@
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 
-(jobs/defjob TestJob [_])
+(task/defjob TestJob [_])
 
 (defn- job ^JobDetail []
   (jobs/build

@@ -105,7 +105,7 @@ function isNewAdditionalSeriesCard(
 ) {
   return (
     card.id !== dashcard.card_id &&
-    !dashcard.series?.some(s => s.id === card.id)
+    !dashcard.series?.some((s) => s.id === card.id)
   );
 }
 
@@ -114,7 +114,7 @@ export const setDocumentTitle = createAction<string>(SET_DOCUMENT_TITLE);
 
 const updateLoadingTitle = createThunkAction(
   SET_DOCUMENT_TITLE,
-  totalCards => (_dispatch, getState) => {
+  (totalCards) => (_dispatch, getState) => {
     const loadingDashCards = getLoadingDashCards(getState());
     const loadingComplete = totalCards - loadingDashCards.loadingIds.length;
     return `${loadingComplete}/${totalCards} loaded`;
@@ -555,7 +555,7 @@ export const clearCardData = createAction(
 function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
   const parameters =
     datasetQuery?.parameters
-      ?.map(parameter => ({
+      ?.map((parameter) => ({
         ...parameter,
         value: parameter.value ?? null,
       }))
@@ -625,7 +625,7 @@ export const fetchDashboard = createAsyncThunk(
         entities = {
           dashboard: { [dashId]: loadedDashboard },
           dashcard: Object.fromEntries(
-            loadedDashboard.dashcards.map(id => [
+            loadedDashboard.dashcards.map((id) => [
               id,
               getDashCardById(getState(), id),
             ]),

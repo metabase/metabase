@@ -19,13 +19,13 @@ const getSortedDashCardBounds = (node: HTMLElement): DashCardBounds[] => {
   const parentOffset = node.getBoundingClientRect().top;
 
   return dashCards
-    .map(card => {
+    .map((card) => {
       const rect = card.getBoundingClientRect();
 
       // Table cards allow having page breaks
       const allowedBreaks = new Set(
         Array.from(card.querySelectorAll("[data-allow-page-break-after]"))
-          .map(el => el.getBoundingClientRect().bottom - parentOffset)
+          .map((el) => el.getBoundingClientRect().bottom - parentOffset)
           .filter(isFinite),
       );
 
@@ -47,12 +47,12 @@ export const findPageBreakCandidates = (
     return [];
   }
 
-  const maxBottom = Math.max(...cards.map(card => card.bottom));
+  const maxBottom = Math.max(...cards.map((card) => card.bottom));
 
   const possibleBreaks = new Set(
     cards
-      .filter(card => card.bottom < maxBottom)
-      .flatMap(card => [card.bottom, ...card.allowedBreaks]),
+      .filter((card) => card.bottom < maxBottom)
+      .flatMap((card) => [card.bottom, ...card.allowedBreaks]),
   );
 
   for (const card of cards) {
@@ -68,7 +68,7 @@ export const findPageBreakCandidates = (
   }
 
   const sortedBreaks = Array.from(possibleBreaks).sort((a, b) => a - b);
-  return sortedBreaks.map(pageBreak => pageBreak + offset);
+  return sortedBreaks.map((pageBreak) => pageBreak + offset);
 };
 
 export const getPageBreaks = (

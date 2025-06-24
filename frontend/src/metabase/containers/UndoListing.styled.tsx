@@ -32,9 +32,9 @@ export const ToastCard = styled(Card)<{
   min-width: 310px;
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
   position: relative;
-  ${props =>
+  ${(props) =>
     props.translateY ? `transform: translateY(${props.translateY}px)` : ""}
-  ${props => (props.color ? `background-color: ${color(props.color)}` : "")};
+  ${(props) => (props.color ? `background-color: ${color(props.color)}` : "")};
   ${({ noBorder }) =>
     noBorder &&
     css`

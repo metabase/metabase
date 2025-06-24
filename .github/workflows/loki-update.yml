@@ -45,17 +45,35 @@ jobs:
           echo "Storybook is being served!"
 
       - name: Update Loki Snapshots
-        run: yarn test-visual:loki-update
+        run: yarn test-visual:loki || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
+
+      - name: Check for changes
+        id: check-changes
+        run: |
+          if [[ -n "$(git status --porcelain .loki/reference/)" ]]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Commit and Push Changes
+        if: steps.check-changes.outputs.has_changes == 'true'
         run: |
           git config --global user.name "Metabase Automation"
           git config --global user.email "github-automation@metabase.com"
-          git add .loki/**
+          git add .loki/reference/
           git commit -m "Update Loki Snapshots"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Notify No Changes
+        if: steps.check-changes.outputs.has_changes == 'false'
+        uses: ./.github/actions/notify-pull-request
+        with:
+          include-log: false
+          message: No visual differences were found. All Loki snapshots are up to date.
+
       - name: Remove 'loki-update' label
         uses: actions/github-script@v7
         with:

@@ -143,38 +143,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("EXPR (2)");
   });
 
-  it("should process the updated expression when pressing Enter", () => {
-    H.openProductsTable({ mode: "notebook" });
-    H.filter({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
-    H.enterCustomColumnDetails({ formula: "[Price] > 1" });
-
-    cy.button("Done").click();
-
-    H.getNotebookStep("filter").contains("Price is greater than 1").click();
-
-    // change the corresponding custom expression
-    cy.get(".Icon-chevronleft").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom Expression").click();
-
-    H.CustomExpressionEditor.clear().type("[Price] > 1 AND [Price] < 5");
-    cy.realPress("Enter");
-
-    // In case it does exist, it usually is an error in expression (caused by not clearing
-    // the input properly before typing), and this check helps to highlight that.
-    H.CustomExpressionEditor.get().should("not.exist");
-
-    H.getNotebookStep("filter")
-      .contains("Price is greater than 1")
-      .should("exist");
-    H.getNotebookStep("filter")
-      .contains("Price is less than 5")
-      .should("exist");
-  });
-
   it("should show the real number of rows instead of HARD_ROW_LIMIT when loading (metabase#17397)", () => {
     cy.intercept(
       {
@@ -182,8 +150,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         url: "/api/dataset",
         middleware: true,
       },
-      req => {
-        req.on("response", res => {
+      (req) => {
+        req.on("response", (res) => {
           // Throttle the response to 500 Kbps to simulate a mobile 3G connection
           res.setThrottle(500);
         });
@@ -308,8 +276,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         formula: "case([Subtotal] + Tax > 100, 'Big', 'Small')",
       });
 
-      cy.findByPlaceholderText("Something nice and descriptive")
-        .click()
+      H.CustomExpressionEditor.nameInput()
+        .focus()
         .type("Example", { delay: 100 });
 
       cy.button("Done").should("not.be.disabled").click();
@@ -366,9 +334,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
         H.enterCustomColumnDetails({ formula: expression });
 
-        cy.findByPlaceholderText("Something nice and descriptive")
-          .click()
-          .type(filter);
+        H.CustomExpressionEditor.nameInput().click().type(filter);
 
         H.popover().within(() => {
           cy.contains(/^expected closing parenthesis/i).should("not.exist");
@@ -397,7 +363,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByTestId("fields-picker").click();
 
     H.popover().within(() => {
-      cy.findByText("Select none").click();
+      cy.findByText("Select all").click();
       cy.findByLabelText("ID").should("be.disabled");
       cy.findByText("Tax").click();
       cy.findByLabelText("ID").should("be.enabled").click();
@@ -439,12 +405,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-
-    H.filterField("Max of Name", {
-      operator: "Starts with",
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Max of Name").click();
     });
+    H.selectFilterOperator("Starts with");
+    H.popover().findByPlaceholderText("Enter some text").should("be.visible");
   });
 
   it("should treat max/min on a category as a string filter (metabase#22154)", () => {
@@ -461,11 +427,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.filter();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Summaries").click();
-    H.filterField("Min of Vendor", {
-      operator: "ends with",
+    H.popover().within(() => {
+      cy.findByText("Summaries").click();
+      cy.findByText("Min of Vendor").click();
     });
+    H.selectFilterOperator("Ends with");
+    H.popover().findByPlaceholderText("Enter some text").should("be.visible");
   });
 
   it("should prompt to join with a model if the question is based on a model", () => {
@@ -579,7 +546,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
         ({ body }) => {
-          const tableId = body.find(table => table.name === "products").id;
+          const tableId = body.find((table) => table.name === "products").id;
           H.openTable({
             database: WRITABLE_DB_ID,
             table: tableId,
@@ -829,7 +796,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     );
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       const questionDetails = {
         query: {
           "source-table": ORDERS_ID,
@@ -867,7 +834,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       },
     );
 
-    cy.get("@metricId").then(metricId => {
+    cy.get("@metricId").then((metricId) => {
       const questionDetails = {
         query: {
           "source-table": `card__${metricId}`,
@@ -920,7 +887,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     });
   });
 
-  it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
+  it("should open only one bucketing popover at a time (metabase#45036)", () => {
     H.visitQuestionAdhoc(
       {
         dataset_query: {
@@ -940,11 +907,11 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     H.popover()
       .findByRole("option", { name: "Created At" })
       .findByText("by month")
+      .realHover()
       .click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
-      .last()
+      .eq(1)
       .within(() => {
         cy.findByText("Year").should("be.visible");
         cy.findByText("Hour of day").should("not.exist");
@@ -953,14 +920,14 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       });
 
     H.popover()
-      .first()
+      .eq(0)
       .findByRole("option", { name: "Price" })
       .findByText("Auto bin")
+      .realHover()
       .click();
 
-    // eslint-disable-next-line no-unsafe-element-filtering
     H.popover()
-      .last()
+      .eq(1)
       .within(() => {
         cy.findByText("Auto bin").should("be.visible");
         cy.findByText("50 bins").should("be.visible");
@@ -970,6 +937,8 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.findByText("Hour of day").should("not.exist");
         cy.findByText("More…").should("not.exist");
       });
+
+    H.popover().should("have.length", 2);
   });
 
   it("should not leave the UI in broken state after adding an aggregation (metabase#48358)", () => {
@@ -1031,7 +1000,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
     cy.findAllByTestId("notebook-cell-item")
       .filter(`:contains(${CUSTOM_COLUMN_LONG_NAME})`)
-      .then(items => {
+      .then((items) => {
         for (let index = 0; index < items.length; ++index) {
           cy.wrap(items[index]).within(() => {
             assertRemoveClauseIconSize();
@@ -1158,6 +1127,157 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       locale: "en",
     });
   });
+
+  it("should support browser based navigation (metabase#55162)", () => {
+    cy.intercept(`/api/table/${PRODUCTS_ID}/fks`).as("tableFK");
+    H.createQuestion(
+      { query: { "source-table": PRODUCTS_ID }, name: "products" },
+      { visitQuestion: true, wrapId: true },
+    );
+
+    cy.get("@questionId").then((PRODUCT_QUESTION_ID) => {
+      cy.findByRole("button", { name: /Editor/ }).click();
+      cy.findByRole("button", { name: /Visualization/ }).click();
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      cy.go("forward");
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      H.openQuestionActions("Turn into a model");
+
+      H.modal()
+        .findByRole("button", { name: "Turn this into a model" })
+        .click();
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/notebook`,
+      );
+
+      H.openQuestionActions("Edit metadata");
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      H.openQuestionActions("Edit metadata");
+
+      cy.go("back");
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      );
+
+      H.datasetEditBar().findByText("Query").click();
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      );
+
+      cy.go("forward");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
+
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products/query`,
+      );
+
+      cy.go("back");
+
+      // This should work, but doesn't (metabase#55486)
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products/metadata`,
+      // );
+
+      H.datasetEditBar().findByRole("button", { name: "Cancel" }).click();
+
+      cy.findAllByTestId("row-id-cell")
+        .first()
+        .findByRole("button", { hidden: true })
+        .click({ force: true });
+
+      // Cannot navigate back and forth to details modal (metabase#55487)
+      // cy.go("back");
+
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products`,
+      // );
+
+      // cy.go("forward");
+
+      // cy.location("pathname").should(
+      //   "equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products/1`,
+      // );
+
+      /**
+       * foreign key relation orders should work, but it consistently fails in CI
+       */
+      // cy.wait("@tableFK");
+
+      // H.modal().findByTestId("fk-relation-orders").click();
+
+      // cy.location("pathname").should("contain", "/question");
+      // cy.findByTestId("filter-pill").should("contain.text", "Product ID is 1");
+
+      cy.go("back");
+
+      cy.location("pathname").should(
+        "equal",
+        `/model/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      H.openQuestionActions("Turn back to saved question");
+
+      cy.location("pathname").should(
+        "equal",
+        `/question/${PRODUCT_QUESTION_ID}-products`,
+      );
+
+      // Going back returns us to a model URL, which it should not (metabase#55488)
+      // cy.go("back");
+      // cy.location("pathname").should(
+      //   "not.equal",
+      //   `/model/${PRODUCT_QUESTION_ID}-products`,
+      // );
+    });
+  });
 });
 
 function assertTableRowCount(expectedCount) {
@@ -1169,6 +1289,6 @@ function assertTableRowCount(expectedCount) {
 
 function addSimpleCustomColumn(name) {
   H.enterCustomColumnDetails({ formula: "[Category]", blur: true });
-  cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
+  H.CustomExpressionEditor.nameInput().click().type(name);
   cy.button("Done").click();
 }

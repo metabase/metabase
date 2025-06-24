@@ -38,12 +38,17 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
+  getTimeSeriesIntervalDuration,
   getTimezoneOrOffset,
   minTimeseriesUnit,
+  normalizeDate,
   tryGetDate,
 } from "metabase/visualizations/echarts/cartesian/utils/timeseries";
 import { computeNumericDataInverval } from "metabase/visualizations/lib/numeric";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ColumnSettings,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
@@ -90,7 +95,7 @@ const uniqueCards = (seriesModels: SeriesModel[]) =>
   _.uniq(seriesModels.map(({ cardId }) => cardId)).length;
 
 const getMetricColumnsCount = (seriesModels: SeriesModel[]) => {
-  return _.uniq(seriesModels.map(seriesModel => seriesModel.column.name))
+  return _.uniq(seriesModels.map((seriesModel) => seriesModel.column.name))
     .length;
 };
 
@@ -113,25 +118,27 @@ function shouldAutoSplitYAxis(
     return false;
   }
 
-  const allMetricsColumns = seriesModels.map(seriesModel => seriesModel.column);
+  const allMetricsColumns = seriesModels.map(
+    (seriesModel) => seriesModel.column,
+  );
 
   const hasDifferentYAxisColTypes =
-    _.uniq(allMetricsColumns.map(column => column.semantic_type)).length > 1;
+    _.uniq(allMetricsColumns.map((column) => column.semantic_type)).length > 1;
 
   if (hasDifferentYAxisColTypes) {
     return true;
   }
 
   const allMetricsColumnSettings = allMetricsColumns
-    .map(column => settings.column?.(column))
+    .map((column) => settings.column?.(column))
     .filter(isNotNull);
 
-  const columnSettings = allMetricsColumnSettings.map(columnSettings =>
+  const columnSettings = allMetricsColumnSettings.map((columnSettings) =>
     getLineAreaBarComparisonSettings(columnSettings),
   );
 
-  const hasDifferentColumnSettings = columnSettings.some(s1 =>
-    columnSettings.some(s2 => !_.isEqual(s1, s2)),
+  const hasDifferentColumnSettings = columnSettings.some((s1) =>
+    columnSettings.some((s2) => !_.isEqual(s1, s2)),
   );
 
   if (hasDifferentColumnSettings) {
@@ -140,9 +147,9 @@ function shouldAutoSplitYAxis(
 
   const yExtents = Object.values(seriesExtents);
 
-  const minRange = Math.min(...yExtents.map(extent => extent[1] - extent[0]));
-  const maxExtent = Math.max(...yExtents.map(extent => extent[1]));
-  const minExtent = Math.min(...yExtents.map(extent => extent[0]));
+  const minRange = Math.min(...yExtents.map((extent) => extent[1] - extent[0]));
+  const maxExtent = Math.max(...yExtents.map((extent) => extent[1]));
+  const minExtent = Math.min(...yExtents.map((extent) => extent[0]));
   const chartRange = maxExtent - minExtent;
 
   // Note (EmmadUsmani): When the series with the smallest range is less than 5%
@@ -189,7 +196,7 @@ function generateSplits(
 }
 
 function axisCost(extents: Extent[], favorUnsplit = true) {
-  const axisExtent = d3.extent(extents.flatMap(e => e));
+  const axisExtent = d3.extent(extents.flatMap((e) => e));
 
   // TODO: handle cases where members of axisExtent is undefined
   const axisRange = axisExtent[1]! - axisExtent[0]!;
@@ -217,7 +224,7 @@ export function computeSplit(
   right: DataKey[] = [],
 ): AxisSplit {
   const unassigned: DataKey[] = getObjectKeys(extents).filter(
-    key => left.indexOf(key) < 0 && right.indexOf(key) < 0,
+    (key) => left.indexOf(key) < 0 && right.indexOf(key) < 0,
   );
 
   // if any are assigned to right we have decided to split so don't favor unsplit
@@ -225,11 +232,11 @@ export function computeSplit(
 
   const cost = (split: [DataKey[], DataKey[]]) =>
     axisCost(
-      split[0].map(dataKey => extents[dataKey]),
+      split[0].map((dataKey) => extents[dataKey]),
       favorUnsplit,
     ) +
     axisCost(
-      split[1].map(dataKey => extents[dataKey]),
+      split[1].map((dataKey) => extents[dataKey]),
       favorUnsplit,
     );
 
@@ -262,16 +269,16 @@ const getYAxisSplit = (
   isAutoSplitSupported: boolean,
 ) => {
   const stackedKeys = new Set(
-    stackModels.flatMap(stackModel => stackModel.seriesKeys),
+    stackModels.flatMap((stackModel) => stackModel.seriesKeys),
   );
   const nonStackedKeys = new Set(
     seriesModels
-      .map(seriesModel => seriesModel.dataKey)
-      .filter(seriesKey => !stackedKeys.has(seriesKey)),
+      .map((seriesModel) => seriesModel.dataKey)
+      .filter((seriesKey) => !stackedKeys.has(seriesKey)),
   );
 
   const stackedSeriesAxis = stackModels.every(
-    stackModel => stackModel.axis === "right",
+    (stackModel) => stackModel.axis === "right",
   )
     ? "right"
     : "left";
@@ -288,7 +295,7 @@ const getYAxisSplit = (
         seriesModel.legacySeriesSettingsObjectKey,
       );
 
-      const seriesStack = stackModels.find(stackModel =>
+      const seriesStack = stackModels.find((stackModel) =>
         stackModel.seriesKeys.includes(seriesModel.dataKey),
       );
 
@@ -327,13 +334,13 @@ const getYAxisSplit = (
     new Set(
       _.uniq([
         ...left,
-        ...autoLeft.filter(dataKey => !axisBySeriesKey[dataKey]),
+        ...autoLeft.filter((dataKey) => !axisBySeriesKey[dataKey]),
       ]),
     ),
     new Set(
       _.uniq([
         ...right,
-        ...autoRight.filter(dataKey => !axisBySeriesKey[dataKey]),
+        ...autoRight.filter((dataKey) => !axisBySeriesKey[dataKey]),
       ]),
     ),
   ];
@@ -346,11 +353,11 @@ const calculateStackedExtent = (
   let min: number | null = null;
   let max: number | null = null;
 
-  dataset.forEach(entry => {
+  dataset.forEach((entry) => {
     let positiveStack: number | null = null;
     let negativeStack: number | null = null;
 
-    seriesKeys.forEach(key => {
+    seriesKeys.forEach((key) => {
       const value = entry[key];
       if (typeof value === "number") {
         if (value >= 0) {
@@ -382,8 +389,8 @@ function calculateNonStackedExtent(
   let min = Infinity;
   let max = -Infinity;
 
-  dataset.forEach(entry => {
-    seriesKeys.forEach(key => {
+  dataset.forEach((entry) => {
+    seriesKeys.forEach((key) => {
       const value = entry[key];
       if (typeof value === "number") {
         min = Math.min(min, value);
@@ -494,12 +501,14 @@ function getYAxisExtent(
     return NORMALIZED_RANGE;
   }
 
-  const stacksExtents = stackModels.map(stackModel =>
+  const stacksExtents = stackModels.map((stackModel) =>
     calculateStackedExtent(stackModel.seriesKeys, dataset),
   );
 
-  const nonStackedKeys = seriesKeys.filter(seriesKey =>
-    stackModels.every(stackModel => !stackModel.seriesKeys.includes(seriesKey)),
+  const nonStackedKeys = seriesKeys.filter((seriesKey) =>
+    stackModels.every(
+      (stackModel) => !stackModel.seriesKeys.includes(seriesKey),
+    ),
   );
   const nonStackedExtent = calculateNonStackedExtent(nonStackedKeys, dataset);
 
@@ -559,7 +568,7 @@ export function getYAxesModels(
   stackModels: StackModel[],
   isCompactFormatting: boolean,
 ) {
-  const seriesDataKeys = seriesModels.map(seriesModel => seriesModel.dataKey);
+  const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
   const extents = getDatasetExtents(seriesDataKeys, dataset);
 
   const [leftAxisSeriesKeysSet, rightAxisSeriesKeysSet] = getYAxisSplit(
@@ -590,7 +599,7 @@ export function getYAxesModels(
 
   const [leftStackModels, rightStackModels] = _.partition(
     stackModels,
-    stackModel => stackModel.axis === "left",
+    (stackModel) => stackModel.axis === "left",
   );
 
   return {
@@ -632,7 +641,7 @@ export function getYAxisFormattingOptions({
 }: GetYAxisFormattingOptions): OptionsType {
   const isCompact =
     settings["graph.label_value_formatting"] === "compact" ||
-    compactSeriesDataKeys.some(dataKey => axisSeriesKeysSet.has(dataKey));
+    compactSeriesDataKeys.some((dataKey) => axisSeriesKeysSet.has(dataKey));
 
   if (isCompact) {
     return { compact: isCompact };
@@ -649,7 +658,7 @@ export function getTimeSeriesXAxisModel(
   label: string | undefined,
   showWarning?: ShowWarning,
 ): TimeSeriesXAxisModel {
-  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
+  const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
   const dimensionColumn = dimensionModel.column;
 
   // Based on the actual data compute interval, range, etc.
@@ -716,7 +725,8 @@ export function getTimeSeriesXAxisModel(
 }
 
 function getNumericXAxisModel(
-  dimensionModel: DimensionModel,
+  column: DatasetColumn,
+  columnSettings: ColumnSettings,
   dataset: ChartDataset,
   scale: NumericScale,
   settings: ComputedVisualizationSettings,
@@ -724,29 +734,27 @@ function getNumericXAxisModel(
   isPadded: boolean,
 ): NumericXAxisModel {
   const axisTransforms = getAxisTransforms(scale);
-  const dimensionColumn = dimensionModel.column;
   const rawExtent = getSeriesExtent(dataset, X_AXIS_DATA_KEY) ?? [0, 0];
   const extent: Extent = [
     axisTransforms.toEChartsAxisValue(rawExtent[0]) ?? 0,
     axisTransforms.toEChartsAxisValue(rawExtent[1]) ?? 0,
   ];
 
-  const xValues = dataset.map(datum => datum[X_AXIS_DATA_KEY]);
+  const xValues = dataset.map((datum) => datum[X_AXIS_DATA_KEY]);
   const interval =
-    dimensionColumn.binning_info?.bin_width ??
-    computeNumericDataInverval(xValues);
+    column.binning_info?.bin_width ?? computeNumericDataInverval(xValues);
 
   const formatter = (value: RowValue) =>
     String(
       formatValue(value, {
-        column: dimensionColumn,
-        ...(settings.column?.(dimensionColumn) ?? {}),
+        column,
+        ...columnSettings,
         compact: settings["graph.x_axis.axis_enabled"] === "compact",
       }),
     );
 
   const intervalsCount = (extent[1] - extent[0]) / interval;
-  const ticksMaxInterval = dimensionColumn.binning_info?.bin_width;
+  const ticksMaxInterval = column.binning_info?.bin_width;
 
   return {
     label,
@@ -792,9 +800,14 @@ export function getXAxisModel(
     );
   }
 
+  const column = dimensionModel.column;
+  const columnSettings =
+    column != null ? (settings.column?.(column) ?? {}) : {};
+
   if (isNumeric(xAxisScale)) {
     return getNumericXAxisModel(
-      dimensionModel,
+      column,
+      columnSettings,
       dataset,
       xAxisScale,
       settings,
@@ -804,7 +817,6 @@ export function getXAxisModel(
   }
 
   const isHistogram = settings["graph.x_axis.scale"] === "histogram";
-  const dimensionColumn = dimensionModel.column;
 
   const formatter = (value: RowValue) => {
     if (value === ECHARTS_CATEGORY_AXIS_NULL_VALUE) {
@@ -813,8 +825,8 @@ export function getXAxisModel(
 
     return String(
       formatValue(value, {
-        column: dimensionColumn,
-        ...(settings.column?.(dimensionColumn) ?? {}),
+        column,
+        ...columnSettings,
         compact: settings["graph.x_axis.axis_enabled"] === "compact",
         noRange: isHistogram,
       }),
@@ -822,12 +834,14 @@ export function getXAxisModel(
   };
 
   const histogramInterval = isHistogram
-    ? (dimensionColumn.binning_info?.bin_width ??
-      computeNumericDataInverval(dataset.map(datum => datum[X_AXIS_DATA_KEY])))
+    ? (column.binning_info?.bin_width ??
+      computeNumericDataInverval(
+        dataset.map((datum) => datum[X_AXIS_DATA_KEY]),
+      ))
     : undefined;
 
   const valuesCount = isScatter
-    ? new Set(dataset.map(datum => datum[X_AXIS_DATA_KEY])).size
+    ? new Set(dataset.map((datum) => datum[X_AXIS_DATA_KEY])).size
     : dataset.length;
 
   return {
@@ -873,6 +887,11 @@ const getXAxisDateRangeFromSortedXAxisValues = (
   return [minDate, maxDate];
 };
 
+const DAY_INTERVAL: TimeSeriesInterval = {
+  count: 1,
+  unit: "day",
+};
+
 function getTimeSeriesXAxisInfo(
   xValues: RowValue[],
   rawSeries: RawSeries,
@@ -885,17 +904,16 @@ function getTimeSeriesXAxisInfo(
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
     getObjectValues(dimensionModel.columnByCardId)
-      .map(column => (isAbsoluteDateTimeUnit(column.unit) ? column.unit : null))
+      .map((column) =>
+        isAbsoluteDateTimeUnit(column.unit) ? column.unit : null,
+      )
       .filter(isNotNull),
   );
   const { timezone, offsetMinutes } = getTimezoneOrOffset(
     rawSeries,
     showWarning,
   );
-  const interval = (computeTimeseriesDataInverval(xValues, unit) ?? {
-    count: 1,
-    unit: "day",
-  }) as TimeSeriesInterval;
+  const interval = computeTimeseriesDataInverval(xValues, unit) ?? DAY_INTERVAL;
 
   const range = getXAxisDateRangeFromSortedXAxisValues(xValues);
 
@@ -906,9 +924,23 @@ function getTimeSeriesXAxisInfo(
   let intervalsCount = 0;
 
   if (range) {
-    const [min, max] = range;
+    let [min, max] = range;
+
+    const intervalDurationMs = getTimeSeriesIntervalDuration(interval);
+    const isDayOrMore =
+      intervalDurationMs >= getTimeSeriesIntervalDuration(DAY_INTERVAL);
+
+    // If the interval is a day or more, normalize the dates to UTC to avoid
+    // the interference of timezone differences.
+    if (isDayOrMore) {
+      min = normalizeDate(min);
+      max = normalizeDate(max);
+    }
+
     // A single date counts as one interval
-    intervalsCount = Math.ceil(max.diff(min, interval.unit) / interval.count);
+    intervalsCount = Math.abs(
+      Math.ceil(max.diff(min, interval.unit) / interval.count),
+    );
   }
 
   return { interval, timezone, offsetMinutes, intervalsCount, range, unit };

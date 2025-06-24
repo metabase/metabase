@@ -72,7 +72,7 @@ function nativeEditorType(
 
   // HACK: realType does not accept a lot of common escape sequences,
   // so we implement them manually here for the native editor.
-  parts.forEach(part => {
+  parts.forEach((part) => {
     switch (part.toLowerCase()) {
       case "":
         return;

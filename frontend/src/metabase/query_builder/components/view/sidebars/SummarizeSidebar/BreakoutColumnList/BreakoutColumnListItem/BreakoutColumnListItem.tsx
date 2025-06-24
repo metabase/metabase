@@ -127,7 +127,7 @@ export function BreakoutColumnListItem({
           hasChevronDown
           hasBinning
           hasTemporalBucketing
-          onSelect={column =>
+          onSelect={(column) =>
             breakout
               ? onUpdateBreakout(breakout, column)
               : onAddBreakout(column)

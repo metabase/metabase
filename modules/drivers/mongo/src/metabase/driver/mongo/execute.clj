@@ -109,13 +109,14 @@
 (defn- row->vec [row-col-names]
   (fn [^org.bson.Document row]
     (mapv (fn [col-name]
-            (let [col-parts (str/split col-name #"\.")
-                  val       (reduce
-                             (fn [^org.bson.Document object ^String part-name]
-                               (when object
-                                 (.get object part-name)))
-                             row
-                             col-parts)]
+            (let [val (if (str/includes? col-name ".")
+                        (reduce
+                         (fn [^org.bson.Document object ^String part-name]
+                           (when object
+                             (.get object part-name)))
+                         row
+                         (str/split col-name #"\."))
+                        (.get row col-name))]
               (mongo.conversion/from-document val {:keywordize true})))
           row-col-names)))
 

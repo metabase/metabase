@@ -19,6 +19,7 @@ import type {
 } from "metabase-types/api";
 
 import { Footer, TokenFieldWrapper, WidgetLabel, WidgetRoot } from "../Widget";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 
 export type NumberInputWidgetProps = {
   value: ParameterValueOrArray | undefined;
@@ -73,71 +74,34 @@ export function NumberInputWidget({
     values.map(getOption).filter((item): item is SelectItem => item !== null) ??
     [];
 
-  const valueOptions = unsavedArrayValue
-    .map((item): SelectItem | null => {
-      const option = parameter?.values_source_config?.values?.find(
-        option => getValue(option)?.toString() === item?.toString(),
-      );
+  const handleCreate = (rawValue: string) => {
+    const number = parseNumber(rawValue);
+    return number !== null ? String(number) : null;
+  };
 
-      if (!option) {
-        return null;
-      }
-
-      const value = getValue(option)?.toString();
-      if (typeof value !== "string") {
-        return null;
-      }
-
-      return {
-        label: getLabel(option),
-        value,
-      };
-    })
-    .filter(isNotNull);
-
-  const customLabelOptions = options.filter(
-    option => option.label !== option.value,
-  );
-
-  function shouldCreate(value: string) {
-    const res = parseNumber(value);
-    return res !== null;
-  }
+  const handleChange = (newValues: string[]) => {
+    setUnsavedArrayValue(
+      newValues.map((value) => parseNumber(value)).filter(isNotNull),
+    );
+  };
 
   return (
-    <WidgetRoot className={className}>
+    <WidgetRoot className={className} w={WIDTH}>
       {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
           <MultiAutocomplete
-            onChange={(values: string[]) =>
-              setUnsavedArrayValue(
-                values.map(value => parseNumber(value)).filter(isNotNull),
-              )
-            }
-            value={filteredUnsavedArrayValue.map(value => value?.toString())}
+            value={filteredUnsavedArrayValue.map((value) => value?.toString())}
+            data={options}
             placeholder={placeholder}
-            shouldCreate={shouldCreate}
             autoFocus={autoFocus}
-            data={customLabelOptions.concat(valueOptions)}
-            filter={({
-              options,
-              search,
-            }: {
-              options: any[];
-              search: string;
-            }) => {
-              return options.filter(item =>
-                Boolean(
-                  search !== "" &&
-                    item.label?.toLowerCase().startsWith(search.toLowerCase()),
-                ),
-              );
-            }}
+            comboboxProps={COMBOBOX_PROPS}
+            onCreate={handleCreate}
+            onChange={handleChange}
           />
         </TokenFieldWrapper>
       ) : (
-        _.times(arity, i => (
+        _.times(arity, (i) => (
           <div key={i}>
             <NumericInput
               fullWidth
@@ -145,7 +109,7 @@ export function NumberInputWidget({
               autoFocus={autoFocus && i === 0}
               value={unsavedArrayValue[i]?.toString()}
               onChange={(_newValue, newValueText) => {
-                setUnsavedArrayValue(unsavedArrayValue => {
+                setUnsavedArrayValue((unsavedArrayValue) => {
                   const newUnsavedValue = [...unsavedArrayValue];
                   newUnsavedValue[i] = parseNumber(newValueText) ?? undefined;
                   return newUnsavedValue;
@@ -178,24 +142,26 @@ type SelectItem = {
   label: string;
 };
 
-function getOption(entry: string | ParameterValue): SelectItem | null {
-  const value = getValue(entry)?.toString();
+function getOption(entry: string | number | ParameterValue): SelectItem | null {
+  const value = getValue(entry);
   const label = getLabel(entry);
 
   if (!value) {
     return null;
   }
 
-  return { value, label };
+  return { value: String(value), label: String(label ?? value) };
 }
 
-function getLabel(option: string | ParameterValue): string {
-  return option[1] ?? option[0]?.toString() ?? "";
-}
-
-function getValue(option: string | ParameterValue) {
-  if (typeof option === "string") {
-    return option;
+function getLabel(option: string | number | ParameterValue) {
+  if (Array.isArray(option)) {
+    return option[1];
   }
-  return option[0];
+}
+
+function getValue(option: string | number | ParameterValue) {
+  if (Array.isArray(option)) {
+    return option[0];
+  }
+  return String(option);
 }

@@ -30,7 +30,7 @@ export const sortDrill: Drill<Lib.SortDrillThruInfo> = ({
 }) => {
   const { directions } = drillInfo;
 
-  return directions.map(direction => ({
+  return directions.map((direction) => ({
     ...ACTIONS[direction],
     question: () => applyDrill(drill, direction),
   }));

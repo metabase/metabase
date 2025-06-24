@@ -144,7 +144,7 @@ function UsableParameters({
       const newParameters = isFiltered
         ? (parameter.filteringParameters ?? []).concat(otherParameter.id)
         : (parameter.filteringParameters ?? []).filter(
-            id => id !== otherParameter.id,
+            (id) => id !== otherParameter.id,
           );
 
       onChangeFilteringParameters(newParameters);
@@ -166,7 +166,7 @@ function UsableParameters({
           <em key="text">{t`this`}</em>
         )} filter.`}
       </SectionMessage>
-      {usableParameters.map(otherParameter => (
+      {usableParameters.map((otherParameter) => (
         <LinkedParameter
           key={otherParameter.id}
           parameter={parameter}

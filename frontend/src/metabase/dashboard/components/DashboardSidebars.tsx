@@ -185,7 +185,7 @@ export function DashboardSidebars({
       const { id: editingParameterId } = editingParameter || {};
       const [[parameter], otherParameters] = _.partition(
         parameters,
-        p => p.id === editingParameterId,
+        (p) => p.id === editingParameterId,
       );
       return (
         <ParameterSidebar

@@ -303,7 +303,7 @@ export default class Popover extends Component {
       attachments = this.props.verticalAttachments;
     }
 
-    const availableHeights = attachments.map(attachmentY =>
+    const availableHeights = attachments.map((attachmentY) =>
       attachmentY === "top"
         ? window.innerHeight - bottom - this.props.targetOffsetY - PAGE_PADDING
         : attachmentY === "bottom"
@@ -345,7 +345,7 @@ export default class Popover extends Component {
 
       // test to see how much of the popover is off-screen
       const offScreen = offscreenProps
-        .map(prop => Math.min(elementRect[prop], 0))
+        .map((prop) => Math.min(elementRect[prop], 0))
         .reduce((a, b) => a + b);
       // if none then we're done, otherwise check to see if it's the best option so far
       if (offScreen === 0) {

@@ -10530,6 +10530,27 @@ databaseChangeLog:
             );
       rollback: # not needed, these are created on startup using deserialization
 
+  - changeSet:
+      id: v53.2025-04-02T15:25:04
+      author: edpaget
+      comment: create new cluster lock table for instance coordination
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: metabase_cluster_lock
+      changes:
+        - createTable:
+            tableName: metabase_cluster_lock
+            remarks: A table to allow metabase instances to take locks across a cluster
+            columns:
+              - column:
+                  name: lock_name
+                  type: varchar(254)
+                  remarks: a single column that can be used to a lock across a cluster
+                  constraints:
+                    primaryKey: true
+                    nullable: false
 
   - changeSet:
       id: v54.2025-01-30T16:10:55
@@ -10833,6 +10854,269 @@ databaseChangeLog:
               - column:
                   name: key_hashed
             indexName: idx_core_session_key_hashed
+
+  - changeSet:
+      id: v54.2025-03-11T16:00:00
+      author: qnkhuat
+      comment: add notification_subscription.ui_display_type
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: notification_subscription
+              columnName: ui_display_type
+      changes:
+        - addColumn:
+            tableName: notification_subscription
+            columns:
+              - column:
+                  name: ui_display_type
+                  type: varchar(32)
+                  remarks: the display of the subscription, used for the UI only
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v54.2025-03-17T18:52:44
+      author: noahmoss
+      comment: Migrating zh site locales to zh_CN
+      preConditions:
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE setting SET value = 'zh_CN' where key = 'site-locale' AND value = 'zh';
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE setting SET `value` = 'zh_CN' where `key` = 'site-locale' AND `value` = 'zh';
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE setting SET "VALUE" = 'zh_CN' where "KEY" = 'site-locale' AND "VALUE" = 'zh';
+      rollback: # nothing to do; zh_CN is backwards compatible
+
+  - changeSet:
+      id: v54.2025-03-17T18:52:59
+      author: noahmoss
+      comment: Migrating zh user locales to zh_CN
+      preConditions:
+      changes:
+        - sql:
+            sql: >-
+              UPDATE core_user SET locale = 'zh_CN' WHERE locale = 'zh';
+      rollback: # nothing to do; zh_CN is backwards compatible
+
+  - changeSet:
+      id: v54.2025-03-25T16:34:12
+      author: edpaget
+      comment: Add index to field_usage query_execution_id column to support faster deletes
+      rollback: # cannot rollback an index on a fk in mysql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: field_usage
+                indexName: idx_field_usage_query_execution_id
+      changes:
+        - createIndex:
+            tableName: field_usage
+            columns:
+              - column:
+                  name: query_execution_id
+            indexName: idx_field_usage_query_execution_id
+
+  - changeSet:
+      id: v54.2025-03-27T17:52:01
+      author: luizarakaki
+      comment: updating v_tasks to add new `status` field
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v2/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v2/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v2/h2-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/tasks/v1/postgres-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/tasks/v1/mysql-tasks.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/tasks/v1/h2-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v54.2025-03-28T11:22:01
+      author: luizarakaki
+      comment: updating v_content to add new `is_verified` field
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v3/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v2/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v2/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v2/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v55.2025-03-24T16:28:41
+      author: bshepherdson
+      comment: Add report_card.card_schema
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: card_schema
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: card_schema
+                  type: int
+                  remarks: Arbitrary revision number for how we store queries in report_card
+                  defaultValue: 20
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v55.2025-03-24T16:36:19
+      author: bshepherdson
+      comment: Creating index on the card_schema
+      preConditions:
+      changes:
+        - createIndex:
+            tableName: report_card
+            columns:
+              - column:
+                  name: card_schema
+            indexName: idx_report_card_card_schema
+
+  - changeSet:
+      id: v55.2025-04-01T07:17:52
+      author: johnswanson
+      comment: Add `db_router` table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: db_router
+      changes:
+        - createTable:
+            tableName: db_router
+            remarks: |
+              Configuration for Database Routers. Currently just holds which user attribute each
+              configured router database should use to choose a mirror database to route to.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'The ID of the database this is for.'
+                  constraints:
+                    unique: true
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_db_router_database_id
+              - column:
+                  name: user_attribute
+                  type: varchar(254)
+                  remarks: 'The user attribute used to redirect users to a different database.'
+                  constraints:
+                    nullable: false
+
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:02
+      author: johnswanson
+      comment: Add self-referential foreign key `router_database_id` to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: router_database_id
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: router_database_id
+                  type: int
+                  remarks: The ID of the primary database for this mirror database.
+                  constraints:
+                    unique: false
+                    nullable: true
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:47
+      author: johnswanson
+      comment: add an index for `metabase_database.router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: metabase_database
+                indexName: idx_unique_metabase_database_router_database_id_name
+      changes:
+        - addUniqueConstraint:
+            tableName: metabase_database
+            constraintName: idx_unique_metabase_database_router_database_id_name
+            columnNames: router_database_id, name
+
+  - changeSet:
+      id: v55.2025-04-01T07:18:52
+      author: johnswanson
+      comment: Add foreign key for `router_database_id`
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - foreignKeyConstraintExists:
+            - foreignKeyName: fk_metabase_database_metabase_database_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabase_database
+            baseColumnNames: router_database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_metabase_database_metabase_database_id
+            onDelete: RESTRICT
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

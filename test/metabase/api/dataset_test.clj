@@ -476,6 +476,18 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
+(deftest databricks-stack-trace-test
+  (testing "exceptions with stacktraces should have the stacktrace removed"
+    (mt/test-driver :databricks
+      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+                                      (lib/native-query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                                        "asdf;"))]
+        (is (= {:error_type "invalid-query"
+                :status "failed"
+                :class "class com.databricks.client.support.exceptions.ErrorException"}
+               (select-keys res [:error_type :status :class])))
+        (is (not (str/includes? (:error res) "\n\tat ")))))))
+
 (deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset test-data
@@ -746,6 +758,29 @@
     (is (=? {:databases [{:id (mt/id)}]
              :tables    empty?
              :fields    [{:id (mt/id :people :id)}]}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                              :template-tags
+                                              {"id" {:name         "id"
+                                                     :display-name "Id"
+                                                     :type         :dimension
+                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                     :widget-type  :id
+                                                     :default      nil}}}})))))
+
+(deftest ^:parallel dataset-metadata-has-entity-ids-test
+  (testing "MBQL query"
+    (is (=? {:databases api.test-util/all-have-entity-ids?
+             :tables    api.test-util/all-have-entity-ids?
+             :fields    api.test-util/all-have-entity-ids?}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                  (mt/mbql-query products)))))
+  (testing "Parameterized native query"
+    (is (=? {:databases api.test-util/all-have-entity-ids?
+             :tables    api.test-util/all-have-entity-ids?
+             :fields    api.test-util/all-have-entity-ids?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
                                   {:database (mt/id)
                                    :type     :native

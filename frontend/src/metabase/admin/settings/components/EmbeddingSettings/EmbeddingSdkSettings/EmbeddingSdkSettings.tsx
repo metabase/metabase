@@ -44,7 +44,7 @@ export function EmbeddingSdkSettings({
 
   const isHosted = useSetting("is-hosted?");
 
-  const upgradeUrl = useSelector(state =>
+  const upgradeUrl = useSelector((state) =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-sdk",
       utm_content: "embedding-sdk-admin",

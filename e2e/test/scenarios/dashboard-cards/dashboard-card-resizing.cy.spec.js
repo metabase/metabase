@@ -96,16 +96,16 @@ const VISUALIZATION_SIZES = {
   },
 };
 
-const getMinSize = visualizationType =>
+const getMinSize = (visualizationType) =>
   _.get(VISUALIZATION_SIZES, [visualizationType, "min"], undefined);
-const getDefaultSize = visualizationType =>
+const getDefaultSize = (visualizationType) =>
   _.get(VISUALIZATION_SIZES, [visualizationType, "default"], undefined);
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
-const getMockQuestionName = vizType => `MOCK_${vizType}_QUESTION`;
+const getMockQuestionName = (vizType) => `MOCK_${vizType}_QUESTION`;
 
-const getCommonQuestionFields = vizType => ({
+const getCommonQuestionFields = (vizType) => ({
   name: getMockQuestionName(vizType),
   query: {
     "source-table": ORDERS_ID,
@@ -116,7 +116,7 @@ const getCommonQuestionFields = vizType => ({
 });
 
 // covers table, bar, line, pie, row, area, combo, pivot, funnel, detail, and waterfall questions
-const createMockChartQuestion = vizType => {
+const createMockChartQuestion = (vizType) => {
   const question = getCommonQuestionFields(vizType);
   return {
     ...question,
@@ -127,7 +127,7 @@ const createMockChartQuestion = vizType => {
     display: vizType,
     visualization_settings: {
       "graph.dimensions": [
-        Object.keys(ORDERS).find(key => ORDERS[key] === ORDERS.CREATED_AT),
+        Object.keys(ORDERS).find((key) => ORDERS[key] === ORDERS.CREATED_AT),
       ],
       "graph.series_order_dimension": null,
       "graph.series_order": null,
@@ -137,7 +137,7 @@ const createMockChartQuestion = vizType => {
 };
 
 // covers scalar, gauge, and progress questions
-const createMockScalarQuestion = vizType => {
+const createMockScalarQuestion = (vizType) => {
   const question = getCommonQuestionFields(vizType);
   return {
     ...question,
@@ -172,8 +172,8 @@ const TEST_QUESTIONS = [
     "object",
     "smartscalar",
     "waterfall",
-  ].map(vizType => createMockChartQuestion(vizType)),
-  ...["scalar", "gauge", "progress"].map(vizType =>
+  ].map((vizType) => createMockChartQuestion(vizType)),
+  ...["scalar", "gauge", "progress"].map((vizType) =>
     createMockScalarQuestion(vizType),
   ),
   createMockMapQuestion(),
@@ -198,7 +198,7 @@ describe(
     });
 
     it("should display all visualization cards with their default sizes", () => {
-      TEST_QUESTIONS.forEach(question => {
+      TEST_QUESTIONS.forEach((question) => {
         H.createQuestion(question);
       });
       H.createDashboard().then(({ body: { id: dashId } }) => {
@@ -225,7 +225,7 @@ describe(
          * because Cypress is too fast.
          */
         cy.intercept("POST", "/api/card/**/query").as("cardQuery");
-        sortedCards.forEach(question => {
+        sortedCards.forEach((question) => {
           cy.findByLabelText(question.name).should("be.visible").click();
           cy.wait("@cardQuery");
         });
@@ -244,7 +244,7 @@ describe(
 
     it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
-      TEST_QUESTIONS.forEach(question => {
+      TEST_QUESTIONS.forEach((question) => {
         H.createQuestion(question).then(({ body: { id } }) => {
           cardIds.push(id);
         });
@@ -363,8 +363,8 @@ describe("issue 31701", () => {
 });
 
 const assertLinkCardOverflow = (link, card) => {
-  link.then(linkElem => {
-    card.then(dashCardElem => {
+  link.then((linkElem) => {
+    card.then((dashCardElem) => {
       expect(linkElem[0].scrollHeight).to.eq(dashCardElem[0].scrollHeight);
     });
   });

@@ -28,7 +28,10 @@ import type {
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import type { DisplayTheme } from "metabase/public/lib/types";
+import type {
+  DisplayTheme,
+  EmbedResourceDownloadOptions,
+} from "metabase/public/lib/types";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
@@ -70,7 +73,7 @@ interface InnerPublicOrEmbeddedDashboardViewProps {
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
-  downloadsEnabled: boolean;
+  downloadsEnabled: EmbedResourceDownloadOptions;
 }
 
 export type PublicOrEmbeddedDashboardViewProps =
@@ -127,7 +130,7 @@ export function PublicOrEmbeddedDashboardView({
   ) : null;
 
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
-    dashcard => !isActionDashCard(dashcard),
+    (dashcard) => !isActionDashCard(dashcard),
   );
 
   const dashboardHasCards = dashboard && visibleDashcards.length > 0;
@@ -182,7 +185,7 @@ export function PublicOrEmbeddedDashboardView({
       titled={titled}
       theme={normalizedTheme}
       hide_parameters={hideParameters}
-      downloadsEnabled={downloadsEnabled}
+      pdfDownloadsEnabled={downloadsEnabled.pdf}
       withFooter={withFooter}
     >
       <LoadingAndErrorWrapper
@@ -233,7 +236,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-                downloadsEnabled={downloadsEnabled}
+                downloadsEnabled={downloadsEnabled.results}
                 autoScrollToDashcardId={undefined}
                 reportAutoScrolledToDashcard={_.noop}
               />
@@ -256,13 +259,14 @@ function getTabHiddenParameterSlugs({
 }) {
   const currentTabParameterIds =
     getCurrentTabDashcards({ dashboard, selectedTabId })?.flatMap(
-      dashcard =>
-        dashcard.parameter_mappings?.map(mapping => mapping.parameter_id) ?? [],
+      (dashcard) =>
+        dashcard.parameter_mappings?.map((mapping) => mapping.parameter_id) ??
+        [],
     ) ?? [];
   const hiddenParameters = parameters.filter(
-    parameter => !currentTabParameterIds.includes(parameter.id),
+    (parameter) => !currentTabParameterIds.includes(parameter.id),
   );
-  return hiddenParameters.map(parameter => parameter.slug).join(",");
+  return hiddenParameters.map((parameter) => parameter.slug).join(",");
 }
 
 function getCurrentTabDashcards({
@@ -279,7 +283,7 @@ function getCurrentTabDashcards({
     return dashboard?.dashcards;
   }
   return dashboard?.dashcards.filter(
-    dashcard => dashcard.dashboard_tab_id === selectedTabId,
+    (dashcard) => dashcard.dashboard_tab_id === selectedTabId,
   );
 }
 

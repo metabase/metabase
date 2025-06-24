@@ -12,6 +12,11 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+    cy.intercept(
+      "PUT",
+      "/api/setting/notebook-native-preview-shown",
+      cy.spy().as("updatePreviewStateSpy"),
+    );
   });
 
   it("should show empty sidebar when no data source is selected", () => {
@@ -101,6 +106,10 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       cy.log("Opening a preview sidebar should completely cover the notebook");
       cy.findByLabelText("View SQL").click();
       cy.location("pathname").should("eq", "/question/notebook");
+
+      cy.log("user setting should not be updated on small screens");
+      cy.get("@updatePreviewStateSpy").should("not.have.been.called");
+
       cy.log(
         "It shouldn't be possible to click on any of the notebook elements",
       );
@@ -112,7 +121,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
        *  - https://stackoverflow.com/a/52142935/8815185
        *  - https://github.com/cypress-io/cypress/discussions/21150#discussioncomment-2620947
        */
-      cy.once("fail", err => {
+      cy.once("fail", (err) => {
         expect(err.message).to.include(
           "`cy.click()` failed because this element",
         );
@@ -122,6 +131,63 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
       });
     },
   );
+
+  it("should disregard user setting on small screens when navigating (metabase#48170)", () => {
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 0);
+    cy.findByLabelText("View SQL").click(); // set setting to true
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    H.newButton("Model").click();
+    cy.findByTestId("new-model-options").should("be.visible");
+
+    resizeScreen("small");
+
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+  });
+
+  it("should disregard user setting on small screens when resizing (metabase#48170)", () => {
+    H.openReviewsTable({ mode: "notebook", limit: 1 });
+
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 0);
+    cy.findByLabelText("View SQL").click(); // set setting to true
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log(
+      "resizing from large to small screen, setting: open, ui state: open",
+    );
+    resizeScreen("small");
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+
+    cy.findByLabelText("View SQL").click();
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log(
+      "resizing from small to large screen, setting: open, ui state: closed",
+    );
+    cy.findByLabelText("Hide SQL").click();
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+    resizeScreen("large");
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+
+    cy.log(
+      "resizing from small to large screen, setting: closed, ui state: open",
+    );
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 1);
+    cy.findByLabelText("Hide SQL").click(); // set setting to false
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+    resizeScreen("small");
+    cy.findByLabelText("View SQL").click();
+    cy.get("@updatePreviewStateSpy").should("have.callCount", 2);
+    cy.findByTestId("native-query-preview-sidebar").should("be.visible");
+    resizeScreen("large");
+    cy.findByTestId("native-query-preview-sidebar").should("not.exist");
+  });
 
   it("sidebar should be resizable", () => {
     const toleranceDelta = 0.5;
@@ -173,7 +239,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     H.openNotebook();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
-      .then($sidebar => {
+      .then(($sidebar) => {
         const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
         expect(sidebarWidth).to.be.closeTo(maxSidebarWidth, toleranceDelta);
       });
@@ -188,7 +254,7 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.findByLabelText("View SQL").click();
     cy.findByTestId("native-query-preview-sidebar")
       .should("be.visible")
-      .then($sidebar => {
+      .then(($sidebar) => {
         const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
         expect(sidebarWidth).to.be.closeTo(minSidebarWidth, toleranceDelta);
       });
@@ -430,7 +496,7 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
     "updateSidebarWidth",
   );
 
-  cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
+  cy.findByTestId("native-query-preview-sidebar").then(($sidebar) => {
     const initialSidebarWidth = $sidebar[0].getBoundingClientRect().width;
 
     const options = {
@@ -453,9 +519,20 @@ function resizeSidebar(amountX: number, cb: ResizeSidebarCallback) {
 
     cy.wait(["@updateSidebarWidth", "@sessionProperties"]);
 
-    cy.findByTestId("native-query-preview-sidebar").then($sidebar => {
+    cy.findByTestId("native-query-preview-sidebar").then(($sidebar) => {
       const sidebarWidth = $sidebar[0].getBoundingClientRect().width;
       cb(initialSidebarWidth, sidebarWidth);
     });
   });
+}
+
+function resizeScreen(size: "small" | "large") {
+  const width = size === "small" ? 800 : 1280;
+  cy.viewport(width, 800);
+
+  // We need to wait for react to re-render but nothing really changes on the screen
+  // when changing viewport size, so it's hard to detect when it happens.
+  // Let's dummy-interact with the app to make sure it re-rendered.
+  cy.findByLabelText("Settings menu").click(); // open menu
+  cy.findByLabelText("Settings menu").click(); // close menu
 }

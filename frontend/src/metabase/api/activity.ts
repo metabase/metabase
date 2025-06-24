@@ -16,12 +16,12 @@ import {
 } from "./tags";
 
 export const activityApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     listRecents: builder.query<RecentItem[], RecentsRequest | void>({
       query: ({ context } = { context: ["views"] }) => {
         const contextParam = [...context]
           .sort()
-          .map(ctx => `context=${ctx}`)
+          .map((ctx) => `context=${ctx}`)
           .join("&");
 
         return {
@@ -30,7 +30,7 @@ export const activityApi = Api.injectEndpoints({
         };
       },
       transformResponse: (response: RecentsResponse) => response?.recents,
-      providesTags: items => provideActivityItemListTags(items ?? []),
+      providesTags: (items) => provideActivityItemListTags(items ?? []),
     }),
     listPopularItems: builder.query<PopularItem[], void>({
       query: () => ({
@@ -39,7 +39,7 @@ export const activityApi = Api.injectEndpoints({
       }),
       transformResponse: (response: PopularItemsResponse) =>
         response?.popular_items,
-      providesTags: items => provideActivityItemListTags(items ?? []),
+      providesTags: (items) => provideActivityItemListTags(items ?? []),
     }),
     logRecentItem: builder.mutation<void, Omit<CreateRecentRequest, "context">>(
       {

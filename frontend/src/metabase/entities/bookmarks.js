@@ -50,7 +50,7 @@ const Bookmarks = createEntity({
     REORDER: REORDER_ACTION,
   },
   actions: {
-    reorder: bookmarks => async (dispatch, getState) => {
+    reorder: (bookmarks) => async (dispatch, getState) => {
       const bookmarksBeforeReordering = getOrderedBookmarks(getState());
       const orderings = bookmarks.map(({ type, item_id }) => ({
         type,
@@ -89,7 +89,7 @@ const Bookmarks = createEntity({
       if (archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({
+        return updateIn(state, [key], (item) => ({
           ...item,
           card_type: type,
           name,
@@ -106,7 +106,7 @@ const Bookmarks = createEntity({
       if (archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({ ...item, name }));
+        return updateIn(state, [key], (item) => ({ ...item, name }));
       }
     }
 
@@ -120,7 +120,7 @@ const Bookmarks = createEntity({
       if (payload.object.archived) {
         return dissoc(state, key);
       } else {
-        return updateIn(state, [key], item => ({
+        return updateIn(state, [key], (item) => ({
           ...item,
           authority_level,
           name,
@@ -134,7 +134,7 @@ const Bookmarks = createEntity({
         return indexes;
       }, {});
 
-      return _.mapObject(state, bookmark =>
+      return _.mapObject(state, (bookmark) =>
         assoc(bookmark, "index", indexes[bookmark.id]),
       );
     }
@@ -177,7 +177,7 @@ export function isModelBookmark(bookmark) {
 
 export const getOrderedBookmarks = createSelector(
   [Bookmarks.selectors.getList],
-  bookmarks => _.sortBy(bookmarks, bookmark => bookmark.index),
+  (bookmarks) => _.sortBy(bookmarks, (bookmark) => bookmark.index),
 );
 
 export default Bookmarks;

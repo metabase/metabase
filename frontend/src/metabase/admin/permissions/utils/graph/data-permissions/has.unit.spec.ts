@@ -15,7 +15,8 @@ describe("data permissions", () => {
       const schemas = [{ name: "", getTables: () => [{ id: 1 }, { id: 2 }] }];
       const database = {
         schemas,
-        schema: (name: string) => schemas.find(schema => schema.name === name),
+        schema: (name: string) =>
+          schemas.find((schema) => schema.name === name),
       };
 
       const testPermissions: GroupsPermissions = {
@@ -77,7 +78,8 @@ describe("data permissions", () => {
       ];
       const database = {
         schemas,
-        schema: (name: string) => schemas.find(schema => schema.name === name),
+        schema: (name: string) =>
+          schemas.find((schema) => schema.name === name),
       };
 
       const testPermissions: GroupsPermissions = {
@@ -112,7 +114,8 @@ describe("data permissions", () => {
       ];
       const database = {
         schemas,
-        schema: (name: string) => schemas.find(schema => schema.name === name),
+        schema: (name: string) =>
+          schemas.find((schema) => schema.name === name),
       };
 
       const testPermissions: GroupsPermissions = {
@@ -178,7 +181,8 @@ describe("data permissions", () => {
       ];
       const database = {
         schemas,
-        schema: (name: string) => schemas.find(schema => schema.name === name),
+        schema: (name: string) =>
+          schemas.find((schema) => schema.name === name),
       };
 
       const testPermissions: GroupsPermissions = {

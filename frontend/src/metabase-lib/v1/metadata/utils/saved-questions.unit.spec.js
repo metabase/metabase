@@ -110,7 +110,7 @@ describe("saved question helpers", () => {
     [
       { tableId: "card__1", cardId: 1 },
       { tableId: "card__234", cardId: 234 },
-    ].forEach(testCase => {
+    ].forEach((testCase) => {
       const { tableId, cardId } = testCase;
 
       it(`should extract ID from virtual ID (${tableId})`, () => {
@@ -124,7 +124,7 @@ describe("saved question helpers", () => {
       { id: 123 },
       { id: true },
       { id: { foo: "bar" } },
-    ].forEach(testCase => {
+    ].forEach((testCase) => {
       const { id } = testCase;
 
       it(`should handle non string input (${id})`, () => {
@@ -132,7 +132,7 @@ describe("saved question helpers", () => {
       });
     });
 
-    ["card__", "card__test"].forEach(id => {
+    ["card__", "card__test"].forEach((id) => {
       it(`should handle invalid ID ${id}`, () => {
         expect(getQuestionIdFromVirtualTableId(id)).toBe(null);
       });

@@ -43,12 +43,12 @@ const BOOLEAN_OPERATOR_NAMES = {
 const not =
   (...fns: ((field: DatasetColumn) => boolean)[]) =>
   (field: DatasetColumn) =>
-    !fns.some(fn => fn(field));
+    !fns.some((fn) => fn(field));
 
 const or =
   (...fns: ((field: DatasetColumn) => boolean)[]) =>
   (field: DatasetColumn) =>
-    fns.some(fn => fn(field));
+    fns.some((fn) => fn(field));
 
 export const ALL_OPERATOR_NAMES: Record<ColumnFormattingOperator, string> = {
   ...NUMBER_OPERATOR_NAMES,

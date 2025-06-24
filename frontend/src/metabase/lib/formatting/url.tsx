@@ -34,7 +34,7 @@ export function getUrlProtocol(url: string) {
 }
 
 export function formatUrl(value: string, options: OptionsType = {}) {
-  const { jsx, rich } = options;
+  const { jsx, rich, column } = options;
 
   const url = getLinkUrl(value, options);
 
@@ -59,6 +59,9 @@ export function formatUrl(value: string, options: OptionsType = {}) {
         {text}
       </ExternalLink>
     );
+  } else if (!url && !isURL(column)) {
+    // Even when no URL is found, return a formatted value
+    return formatValue(value, { ...options, view_as: null });
   } else {
     return value;
   }

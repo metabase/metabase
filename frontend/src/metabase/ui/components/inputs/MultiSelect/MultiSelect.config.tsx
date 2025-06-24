@@ -1,6 +1,6 @@
-import { MultiSelect, Pill } from "@mantine/core";
+import { MultiSelect } from "@mantine/core";
 
-import { SelectItem, selectOverrides } from "../Select";
+import { DefaultSelectItem, selectOverrides } from "../Select";
 
 import S from "./MultiSelect.module.css";
 
@@ -12,8 +12,8 @@ export const multiSelectOverrides = {
       variant: "default",
       maxDropdownHeight: 512,
       hidePickedOptions: true,
-      renderOption: props => (
-        <SelectItem {...props.option} selected={props.checked} />
+      renderOption: (props) => (
+        <DefaultSelectItem {...props.option} selected={props.checked} />
       ),
       withScrollArea: false,
       comboboxProps: {
@@ -28,17 +28,7 @@ export const multiSelectOverrides = {
     },
     classNames: {
       ...(selectOverrides?.Select?.classNames ?? {}),
-      wrapper: S.MultiSelectWrapper,
       input: S.MultiSelectInput,
-      inputField: S.MultiSelectInputField,
-      pillsList: S.MultiSelectPillsList,
-      pill: S.MultiSelectPill,
-    },
-  }),
-  Pill: Pill.extend({
-    classNames: {
-      root: S.MultiSelectPill,
-      remove: S.MultiSelectPillRemove,
     },
   }),
 };

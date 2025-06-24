@@ -70,12 +70,12 @@ export const useEntityListQuery = <TItem, TQuery = never, TMetadata = never>(
   }: UseEntityListOwnProps<TItem, TQuery, TMetadata>,
 ): UseEntityListQueryResult<TItem, TMetadata> => {
   const options = { entityQuery };
-  const data = useSelector(state => getList(state, options));
-  const metadata = useSelector(state => getListMetadata(state, options));
-  const error = useSelector(state => getError(state, options));
-  const isLoading = useSelector(state => getLoading(state, options));
+  const data = useSelector((state) => getList(state, options));
+  const metadata = useSelector((state) => getListMetadata(state, options));
+  const error = useSelector((state) => getError(state, options));
+  const isLoading = useSelector((state) => getLoading(state, options));
   const isLoadingOrDefault = isLoading ?? enabled;
-  const isLoaded = useSelector(state => getLoaded(state, options)) ?? false;
+  const isLoaded = useSelector((state) => getLoaded(state, options)) ?? false;
   const isLoadedPreviously = usePrevious(isLoaded);
   const isInvalidated = !isLoaded && isLoadedPreviously;
   const dispatch = useDispatch();

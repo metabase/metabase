@@ -249,6 +249,7 @@
                          :card.id
                          :card.database_id
                          :card.display
+                         :card.card_schema
                          [:dashboard.id :dashboard_id]
                          [:dashboard.name :dashboard_name]
                          [:card.collection_id :entity-coll-id]

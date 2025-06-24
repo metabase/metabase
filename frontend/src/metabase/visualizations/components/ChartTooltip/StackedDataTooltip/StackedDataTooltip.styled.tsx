@@ -30,7 +30,7 @@ interface DataPointTableHeaderProps {
 
 export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
   &:after {
-    ${props => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
+    ${(props) => (props.hasBottomSpacing ? tableRowSpacingStyle : null)}
   }
 `;
 

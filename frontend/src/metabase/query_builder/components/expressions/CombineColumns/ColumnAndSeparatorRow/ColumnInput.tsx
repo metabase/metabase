@@ -56,7 +56,7 @@ export function ColumnInput({
   function handleButtonClick(event: MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     event.stopPropagation();
-    setOpen(open => !open);
+    setOpen((open) => !open);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -74,7 +74,7 @@ export function ColumnInput({
           columnGroups={columnGroups}
           onSelect={onChange}
           onClose={handleClose}
-          checkIsColumnSelected={item => item.column === value}
+          checkIsColumnSelected={(item) => item.column === value}
           width="100%"
         />
       </div>

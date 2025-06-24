@@ -8,9 +8,9 @@ function getElementIndex(e: HTMLElement | null) {
   return (
     e &&
     [...e.classList]
-      .map(c => c.match(/^_(\d+)$/))
-      .filter(c => c)
-      .map(c => (c != null ? parseInt(c[1], 10) : null))[0]
+      .map((c) => c.match(/^_(\d+)$/))
+      .filter((c) => c)
+      .map((c) => (c != null ? parseInt(c[1], 10) : null))[0]
   );
 }
 

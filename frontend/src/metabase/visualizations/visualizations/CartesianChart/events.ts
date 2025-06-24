@@ -98,7 +98,7 @@ const findSeriesModelIndexById = (
     return -1;
   }
 
-  return chartModel.seriesModels.findIndex(seriesModel =>
+  return chartModel.seriesModels.findIndex((seriesModel) =>
     [seriesId, chartModel.seriesIdToDataKey?.[seriesId]].includes(
       seriesModel.dataKey,
     ),
@@ -109,7 +109,7 @@ const getSameCardDataKeys = (
   datum: Datum,
   seriesModel: SeriesModel,
 ): DataKey[] => {
-  return getObjectKeys(datum).filter(dataKey => {
+  return getObjectKeys(datum).filter((dataKey) => {
     if (dataKey === X_AXIS_DATA_KEY) {
       return false;
     }
@@ -127,7 +127,7 @@ export const getEventDimensions = (
 ) => {
   const sameCardDataKeys = getSameCardDataKeys(datum, seriesModel);
   const sameCardDatumColumns = sameCardDataKeys
-    .map(dataKey => chartModel.columnByDataKey[dataKey])
+    .map((dataKey) => chartModel.columnByDataKey[dataKey])
     .filter(isNotNull);
   const dimensionColumn =
     seriesModel.cardId != null
@@ -153,7 +153,7 @@ export const getEventDimensions = (
   }
 
   return dimensions.filter(
-    dimension => dimension.column.source !== "query-transform",
+    (dimension) => dimension.column.source !== "query-transform",
   );
 };
 
@@ -167,7 +167,7 @@ const getEventColumnsData = (
   const seriesModelsByDataKey = _.indexBy(chartModel.seriesModels, "dataKey");
 
   const dataPoints: DataPoint[] = getSameCardDataKeys(datum, seriesModel)
-    .map(dataKey => {
+    .map((dataKey) => {
       const value = datum[dataKey];
       const col = chartModel.columnByDataKey[dataKey];
       if (!col) {
@@ -327,10 +327,10 @@ const getAdditionalTooltipRowsData = (
 
   return data
     .filter(
-      entry =>
+      (entry) =>
         entry.col != null && additionalColumns.has(getColumnKey(entry.col)),
     )
-    .map(data => {
+    .map((data) => {
       return {
         isSecondary: true,
         name: data.key,
@@ -375,7 +375,7 @@ export const getTooltipModel = (
     return null;
   }
 
-  const seriesStack = chartModel.stackModels.find(stackModel =>
+  const seriesStack = chartModel.stackModels.find((stackModel) =>
     stackModel.seriesKeys.includes(hoveredSeries.dataKey),
   );
 
@@ -435,9 +435,9 @@ const getSingleSeriesTooltipModel = (
   );
 
   const seriesToShow = chartModel.seriesModels.filter(
-    series => series === hoveredSeries || !isBreakoutSeries(series),
+    (series) => series === hoveredSeries || !isBreakoutSeries(series),
   );
-  const seriesTooltipRows = seriesToShow.map(series => {
+  const seriesTooltipRows = seriesToShow.map((series) => {
     const isFocused =
       hoveredSeries.dataKey === series.dataKey && seriesToShow.length > 1;
 
@@ -478,7 +478,7 @@ export const mergeSeriesRowsAndAdditionalColumnsRows = (
   if (isBreakoutSeries(hoveredSeries)) {
     // For breakout series we show additional columns right below the series values
     const additionalColumnsIndex =
-      seriesRows.findIndex(row => row.isFocused) + 1;
+      seriesRows.findIndex((row) => row.isFocused) + 1;
     rows.splice(additionalColumnsIndex, 0, ...additionalColumnsRows);
   } else {
     rows.push(...additionalColumnsRows);
@@ -503,8 +503,8 @@ const getSeriesComparisonTooltipModel = (
   );
 
   const seriesRows: EChartsTooltipRow[] = chartModel.seriesModels
-    .filter(seriesModel => seriesModel.visible)
-    .map(seriesModel => {
+    .filter((seriesModel) => seriesModel.visible)
+    .map((seriesModel) => {
       const isHoveredSeries = seriesModel.dataKey === hoveredSeries.dataKey;
       const isFocused = isHoveredSeries && chartModel.seriesModels.length > 1;
 
@@ -585,11 +585,11 @@ export const getStackedTooltipModel = (
 ): EChartsTooltipModel | null => {
   const stackSeriesRows = chartModel.seriesModels
     .filter(
-      seriesModel =>
+      (seriesModel) =>
         seriesModel.visible &&
         seriesStack?.seriesKeys.includes(seriesModel.dataKey),
     )
-    .map(seriesModel => {
+    .map((seriesModel) => {
       const datum = chartModel.dataset[dataIndex];
       const value =
         seriesModel.dataKey === OTHER_DATA_KEY
@@ -630,8 +630,8 @@ export const getStackedTooltipModel = (
   );
 
   const formattedSeriesRows: EChartsTooltipRow[] = stackSeriesRows
-    .filter(row => row.value != null)
-    .map(tooltipRow => {
+    .filter((row) => row.value != null)
+    .map((tooltipRow) => {
       return {
         isFocused: tooltipRow.isFocused,
         name: tooltipRow.name,
@@ -682,7 +682,7 @@ export const getOtherSeriesTooltipModel = (
   const { groupedSeriesModels = [] } = chartModel;
 
   const rows = groupedSeriesModels
-    .map(seriesModel => ({
+    .map((seriesModel) => ({
       name: seriesModel.name,
       column: seriesModel.column,
       value: datum[seriesModel.dataKey],
@@ -698,7 +698,7 @@ export const getOtherSeriesTooltipModel = (
       }
       return a.value === undefined ? 1 : -1;
     })
-    .map(row => ({
+    .map((row) => ({
       name: row.name,
       values: [
         formatValueForTooltip({
@@ -746,7 +746,7 @@ export const getTimelineEventsForEvent = (
   event: EChartsSeriesMouseEvent,
 ) => {
   return timelineEventsModel.find(
-    timelineEvents => timelineEvents.date === event.value,
+    (timelineEvents) => timelineEvents.date === event.value,
   )?.events;
 };
 
@@ -757,7 +757,7 @@ export const hasSelectedTimelineEvents = (
   return (
     selectedTimelineEventIds != null &&
     selectedTimelineEventIds.length > 0 &&
-    timelineEvents.some(timelineEvent =>
+    timelineEvents.some((timelineEvent) =>
       selectedTimelineEventIds.includes(timelineEvent.id),
     )
   );
@@ -805,7 +805,7 @@ export const getSeriesClickData = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   event: EChartsSeriesMouseEvent,
-): ClickObject | undefined => {
+): ClickObject | null => {
   const { seriesId, dataIndex: echartsDataIndex } = event;
   const dataIndex = getDataIndex(
     chartModel.transformedDataset,
@@ -819,7 +819,7 @@ export const getSeriesClickData = (
     dataIndex == null ||
     seriesModel?.dataKey === OTHER_DATA_KEY
   ) {
-    return;
+    return null;
   }
 
   const datum = chartModel.dataset[dataIndex];

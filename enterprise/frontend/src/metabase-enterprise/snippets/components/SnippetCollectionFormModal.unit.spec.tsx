@@ -32,7 +32,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
       folder,
     );
 
-    fetchMock.put(`path:/api/collection/${folder.id}`, async url => {
+    fetchMock.put(`path:/api/collection/${folder.id}`, async (url) => {
       return createMockCollection(
         await fetchMock.lastCall(url)?.request?.json(),
       );
@@ -52,7 +52,7 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
     [TOP_SNIPPETS_FOLDER],
   );
 
-  fetchMock.post("path:/api/collection", async url => {
+  fetchMock.post("path:/api/collection", async (url) => {
     return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
   });
 

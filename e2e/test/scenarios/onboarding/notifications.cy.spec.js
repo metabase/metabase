@@ -162,8 +162,8 @@ describe("scenarios > account > notifications", () => {
     });
 
     it("should be able to see created notifications that a user is not subscribed to", () => {
-      cy.get("@admin_id").then(admin_id =>
-        cy.get("@card_id").then(card_id => {
+      cy.get("@admin_id").then((admin_id) =>
+        cy.get("@card_id").then((card_id) => {
           H.createQuestionAlert({
             admin_id,
             card_id,

@@ -1,7 +1,8 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import type { InjectedRouter, Route } from "react-router";
-import { push } from "react-router-redux";
+import { goBack, push, replace } from "react-router-redux";
+import { match } from "ts-pattern";
 
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useDispatch } from "metabase/lib/redux";
@@ -46,14 +47,12 @@ export const useConfirmRouteLeaveModal = ({
   const close = useCallback(() => setOpened(false), []);
 
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const confirm = useCallback(() => {
-    setIsConfirmed(true);
-  }, []);
+  const confirm = useCallback(() => setIsConfirmed(true), []);
 
   useBeforeUnload(isEnabled);
 
   useEffect(() => {
-    const removeLeaveHook = router.setRouteLeaveHook(route, location => {
+    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
       if (isEnabled && !isConfirmed && !isLocationAllowed?.(location)) {
         setOpened(true);
         setNextLocation(location);
@@ -64,11 +63,41 @@ export const useConfirmRouteLeaveModal = ({
     return removeLeaveHook;
   }, [isLocationAllowed, router, route, isEnabled, isConfirmed]);
 
-  useEffect(() => {
-    if (isConfirmed && nextLocation) {
-      dispatch(push(nextLocation));
-    }
-  }, [dispatch, isConfirmed, nextLocation]);
+  useEffect(
+    function confirmNavigation() {
+      if (isConfirmed && nextLocation) {
+        match(nextLocation.action)
+          .with("POP", () => {
+            /**
+             * Ideally we should be using dispatch(go(numberOfPages)), but there is no simple
+             * or reliable way to detect how many pages is user going back, so we use goBack()
+             * to go back just one page.
+             */
+            dispatch(goBack());
+          })
+          .with("PUSH", () => {
+            dispatch(push(nextLocation));
+          })
+          .with("REPLACE", () => {
+            dispatch(replace(nextLocation));
+          })
+          .exhaustive();
+      }
+    },
+    [dispatch, isConfirmed, nextLocation],
+  );
+
+  useEffect(
+    /**
+     * We need to reset the state in case programmatic navigation from confirmNavigation effect
+     * does not cause useConfirmRouteLeaveModal hook to unmount.
+     */
+    function resetState() {
+      setIsConfirmed(false);
+      setOpened(false);
+    },
+    [route],
+  );
 
   return {
     opened,

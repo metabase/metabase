@@ -228,7 +228,7 @@
 (defn execute-dashboard
   [& args]
   (let [dashboard-result (apply notification.payload.execute/execute-dashboard args)]
-    (map channel.shared/realize-data-rows dashboard-result)))
+    (map channel.shared/maybe-realize-data-rows dashboard-result)))
 
 (deftest ^:parallel execute-dashboard-test
   (testing "it runs for each non-virtual card"
@@ -343,7 +343,7 @@
                    [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                               {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
                                                                                      dashboard-id
-                                                                                     " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                                                     "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false
                                        :content     true}
@@ -392,7 +392,7 @@
                  [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
                             {:type "section", :fields [{:type "mrkdwn", :text (str "<https://testmb.com/dashboard/"
                                                                                    dashboard-id
-                                                                                   " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                                                   "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
@@ -437,7 +437,7 @@
                                                         :text
                                                         (str "<https://testmb.com/dashboard/"
                                                              dashboard-id
-                                                             " | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                             "|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
@@ -483,7 +483,7 @@
                               {:type "section", :fields [{:type "mrkdwn", :text
                                                           (str "<https://testmb.com/dashboard/"
                                                                dashboard-id
-                                                               "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 | *Sent from Metabase Test by Rasta Toucan*>")}]}]}
+                                                               "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}]}]}
 
                     {:title           pulse.test-util/card-name
                      :rendered-info   {:attachments false, :content true, :render/text true},
@@ -549,9 +549,8 @@
                     :fields
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
-                   {:type "section", :fields [{:type "mrkdwn",
-                                               :text
-                                               #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\ \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                   {:type "section", :fields [{:type "mrkdwn"
+                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:title "Test card",
                   :rendered-info {:attachments false, :content true, :render/text true},
@@ -960,7 +959,7 @@
                     [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}
                      {:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
                    {:type "section", :fields [{:type "mrkdwn"
-                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021 \| \*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
+                                               :text #"<https://testmb\.com/dashboard/\d+\?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021\|\*Sent from Metabase Test by Rasta Toucan\*>"}]}]}
 
                  {:blocks [{:type "section", :text {:type "mrkdwn", :text "*The first tab*"}}]}
                  {:title "Test card",
@@ -977,7 +976,7 @@
 
 (defn- result-attachment
   [part]
-  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/realize-data-rows part)]
+  (let [{{{:keys [rows]} :data, :as result} :result} (channel.shared/maybe-realize-data-rows part)]
     (when (seq rows)
       [(let [^java.io.ByteArrayOutputStream baos (java.io.ByteArrayOutputStream.)]
          (with-open [os baos]
@@ -1171,11 +1170,12 @@
   (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"
                                                           :description "How are the birds doing today?"}
                  :model/Card          {card-id :id} {:name pulse.test-util/card-name
-                                                     :dataset_query (mt/mbql-query orders {:limit 1})}]
+                                                     :dataset_query (mt/mbql-query orders {:limit 2})}]
     (with-redefs [notification.temp-storage/temp-dir (delay (let [dir (io/file (System/getProperty "java.io.tmpdir")
                                                                                (str "metabase-test" (random/random-name)))]
                                                               (.mkdirs dir)
                                                               dir))
+                  notification.payload.execute/rows-to-disk-threadhold 1
                   channel/send!                      (fn [& _args]
                                                        (testing "sanity check that there are files there to cleanup"
                                                          (is (not-empty (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))]
@@ -1183,6 +1183,54 @@
                                     {:card         card-id
                                      :creator_id   (mt/user->id :rasta)
                                      :dashboard    dashboard-id
-                                     :cahnnel-type :email}]
+                                     :channel-type :email}]
         (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))
         (is (empty? (.listFiles ^java.io.File @@#'notification.temp-storage/temp-dir)))))))
+
+(deftest dashboard-with-rows-saved-to-disk-test
+  (testing "whether the rows of a dashboard saved to disk or in memory, all channels should work"
+    (doseq [limit [1 #_10]]
+      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
+        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+                   "dashboard has rows saved to disk"
+                   "dashboard has rows saved in memory")
+          (mt/with-temp [:model/Card          {card-id :id} {:name          pulse.test-util/card-name
+                                                             :dataset_query (mt/mbql-query orders {:limit limit})}
+                         :model/Dashboard     {dashboard-id :id} {:name "Aviary KPIs"}
+                         :model/DashboardCard _ {:dashboard_id dashboard-id
+                                                 :card_id      card-id}
+                         :model/Pulse         {pulse-id :id} {:name         "Pulse Name"
+                                                              :dashboard_id dashboard-id}
+                         :model/PulseCard     _ {:pulse_id          pulse-id
+                                                 :card_id           card-id
+                                                 :position          0}
+                         :model/PulseChannel  {pc-id :id} {:pulse_id     pulse-id
+                                                           :channel_type "email"}
+                         :model/PulseChannel  _           {:pulse_id     pulse-id
+                                                           :channel_type "slack"
+                                                           :details      {:channel "#general"}}
+                         :model/PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
+                                                         :pulse_channel_id pc-id}]
+            (let [pulse-results (pulse.test-util/with-captured-channel-send-messages!
+                                  (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id)))]
+              ;; Test email channel
+              (is (= (rasta-dashsub-message
+                      {:message [{pulse.test-util/card-name true}
+                                 pulse.test-util/png-attachment]})
+                     (mt/summarize-multipart-single-email
+                      (first (:channel/email pulse-results))
+                      #"Test card")))
+
+              ;; Test slack channel
+              (is (=? {:channel-id "#general",
+                       :attachments
+                       [{:blocks
+                         [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                          {:type "section",
+                           :fields
+                           [{:type "mrkdwn"}]}]}
+                        {:title "Test card",
+                         :rendered-info {:attachments false, :content true},
+                         :attachment-name "image.png",
+                         :fallback "Test card"}]}
+                      (pulse.test-util/thunk->boolean (first (:channel/slack pulse-results))))))))))))

@@ -153,8 +153,7 @@ export function ViewTitleHeaderRightSide({
       }) && (
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
-          onOpenModal={onOpenModal}
-          query={question.query()}
+          question={question}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
           onCollapse={onCollapseFilters}
@@ -201,8 +200,6 @@ export function ViewTitleHeaderRightSide({
             iconSize={16}
             onlyIcon
             medium
-            compact
-            result={result}
             isRunning={isRunning}
             isDirty={isResultDirty}
             onRun={() => runQuestionQuery({ ignoreCache: true })}
@@ -237,7 +234,7 @@ export function ViewTitleHeaderRightSide({
             variant="subtle"
             aria-disabled={isSaveDisabled || undefined}
             data-disabled={isSaveDisabled || undefined}
-            onClick={event => {
+            onClick={(event) => {
               event.preventDefault();
               if (!isSaveDisabled) {
                 onOpenModal(MODAL_TYPES.SAVE);

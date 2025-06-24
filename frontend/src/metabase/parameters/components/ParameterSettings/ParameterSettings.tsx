@@ -64,7 +64,7 @@ export interface ParameterSettingsProps {
 }
 
 const parameterSections = getDashboardParameterSections();
-const dataTypeSectionsData = parameterSections.map(section => ({
+const dataTypeSectionsData = parameterSections.map((section) => ({
   label: section.name,
   value: section.id,
 }));
@@ -144,7 +144,7 @@ export const ParameterSettings = ({
     }
 
     const currentSection = parameterSections.find(
-      section => section.id === sectionId,
+      (section) => section.id === sectionId,
     );
 
     if (!currentSection) {
@@ -153,7 +153,7 @@ export const ParameterSettings = ({
 
     const options = currentSection.options;
 
-    return options.map(option => ({
+    return options.map((option) => ({
       label: option.menuName ?? option.name,
       value: option.type,
     }));
@@ -218,7 +218,7 @@ export const ParameterSettings = ({
           <SettingLabel>{t`People can pick`}</SettingLabel>
           <Radio.Group
             value={isMultiValue}
-            onChange={val => onChangeIsMultiSelect(val === "multi")}
+            onChange={(val) => onChangeIsMultiSelect(val === "multi")}
           >
             <Stack gap="xs">
               <Radio

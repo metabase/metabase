@@ -105,7 +105,7 @@ export async function createTestRoles({
   }
 
   return await Promise.all(
-    Object.values(dbRoles).map(async sql => {
+    Object.values(dbRoles).map(async (sql) => {
       await dbClient.raw(sql);
     }),
   );

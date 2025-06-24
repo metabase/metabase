@@ -7,7 +7,7 @@ export default {
   component: ChartSkeleton,
 };
 
-const Template: StoryFn<ChartSkeletonProps> = args => {
+const Template: StoryFn<ChartSkeletonProps> = (args) => {
   return (
     <div style={{ padding: 8, height: 250, backgroundColor: "white" }}>
       <ChartSkeleton {...args} />

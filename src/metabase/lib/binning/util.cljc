@@ -13,8 +13,11 @@
   [min-value :- number?
    max-value :- number?
    num-bins  :- ::lib.schema.binning/num-bins]
-  (u/round-to-decimals 5 (/ (- max-value min-value)
-                            num-bins)))
+  (let [width (u/round-to-decimals 5 (/ (- max-value min-value)
+                                        num-bins))]
+    (if (zero? width)
+      1                         ; a nice (in the sense of [[nicer-bin-width]]), positive but otherwise arbitrary width
+      width)))
 
 (mu/defn- calculate-num-bins :- ::lib.schema.binning/num-bins
   "Calculate number of bins of width `bin-width` required to cover interval [`min-value`, `max-value`]."

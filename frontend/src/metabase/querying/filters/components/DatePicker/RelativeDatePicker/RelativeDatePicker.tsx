@@ -39,7 +39,7 @@ export function RelativeDatePicker({
   const direction = getDirection(value);
 
   const handleTabChange = (tabValue: string | null) => {
-    const tab = TABS.find(tab => tab.direction === tabValue);
+    const tab = TABS.find((tab) => tab.direction === tabValue);
     if (tab) {
       setValue(setDirection(value, tab.direction));
     }
@@ -56,7 +56,7 @@ export function RelativeDatePicker({
       <Flex>
         <PopoverBackButton p="sm" onClick={onBack} />
         <Tabs.List className={S.TabList}>
-          {TABS.map(tab => (
+          {TABS.map((tab) => (
             <Tabs.Tab key={tab.direction} value={tab.direction}>
               {tab.label}
             </Tabs.Tab>
@@ -64,7 +64,7 @@ export function RelativeDatePicker({
         </Tabs.List>
       </Flex>
       <Divider />
-      {TABS.map(tab => (
+      {TABS.map((tab) => (
         <Tabs.Panel key={tab.direction} value={tab.direction}>
           {value != null && isOffsetIntervalValue(value) ? (
             <DateOffsetIntervalPicker

@@ -6,12 +6,12 @@ interface SAMLFormSectionProps {
 }
 
 export const SAMLFormSection = styled.div<SAMLFormSectionProps>`
-  padding: 1rem 2rem ${props => (props.isSSLSection ? "0.5rem" : "1rem")};
+  padding: 1rem 2rem ${(props) => (props.isSSLSection ? "0.5rem" : "1rem")};
   margin-bottom: 1rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   /* The section containing the GroupMappingsWidget needs to be wider */
-  width: ${props => (props.wide ? "780px" : "520px")};
+  width: ${(props) => (props.wide ? "780px" : "520px")};
 
   /* Even in a wide section, the input is better if same width as elsewhere */
   input {

@@ -18,6 +18,7 @@ import {
 export type CodeBlockProps = {
   code: string;
   language: CodeLanguage;
+  lineNumbers?: boolean;
   className?: string;
   highlightRanges?: { start: number; end: number }[];
 };
@@ -25,6 +26,7 @@ export type CodeBlockProps = {
 export function CodeBlock({
   code,
   language,
+  lineNumbers = true,
   className,
   highlightRanges,
 }: CodeBlockProps) {
@@ -46,7 +48,7 @@ export function CodeBlock({
     <CodeMirror
       ref={ref}
       basicSetup={{
-        lineNumbers: true,
+        lineNumbers,
         foldGutter: false,
         highlightActiveLine: false,
         highlightActiveLineGutter: false,

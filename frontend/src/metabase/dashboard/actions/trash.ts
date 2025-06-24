@@ -48,14 +48,14 @@ export const setArchivedDashboard = createThunkAction(
       );
 
       const dashboardQuestionIds = Object.values(dashcards)
-        .filter(dc => _.isNumber(dc.card.dashboard_id))
-        .map(dc => dc.card_id);
+        .filter((dc) => _.isNumber(dc.card.dashboard_id))
+        .map((dc) => dc.card_id);
 
       // HACK: workaround for entity system as it has stale values for dashboard questions
       // that are now archived due to the dashboard itself being archived
       try {
         await Promise.all(
-          _.uniq(dashboardQuestionIds).map(id =>
+          _.uniq(dashboardQuestionIds).map((id) =>
             dispatch(Questions.actions.fetch({ id }, { reload: true })),
           ),
         );

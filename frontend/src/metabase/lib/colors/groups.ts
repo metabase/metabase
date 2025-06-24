@@ -22,7 +22,7 @@ export const getAccentColors = (
 };
 
 const getBaseAccentsNames = (withGray = false) => {
-  const accents = _.times(ACCENT_COUNT, i => `accent${i}`);
+  const accents = _.times(ACCENT_COUNT, (i) => `accent${i}`);
   if (withGray) {
     accents.push("accent-gray");
   }
@@ -34,14 +34,14 @@ export const getMainAccentColors = (
   palette?: ColorPalette,
   withGray = false,
 ) => {
-  return getBaseAccentsNames(withGray).map(accent => color(accent, palette));
+  return getBaseAccentsNames(withGray).map((accent) => color(accent, palette));
 };
 
 export const getLightAccentColors = (
   palette?: ColorPalette,
   withGray = false,
 ) => {
-  return getBaseAccentsNames(withGray).map(accent =>
+  return getBaseAccentsNames(withGray).map((accent) =>
     color(`${accent}-light`, palette),
   );
 };
@@ -50,7 +50,7 @@ export const getDarkAccentColors = (
   palette?: ColorPalette,
   withGray = false,
 ) => {
-  return getBaseAccentsNames(withGray).map(accent =>
+  return getBaseAccentsNames(withGray).map((accent) =>
     color(`${accent}-dark`, palette),
   );
 };

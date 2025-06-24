@@ -8,11 +8,13 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
+   [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
    [toucan2.connection :as t2.connection]
    [toucan2.core :as t2]))
@@ -338,3 +340,36 @@
                                          :table_id [:in (map :id tables)])
                               distinct
                               (sort-by :name)))))))))))))
+
+(defn db->fields [db]
+  (let [tables (t2/select :model/Table :db_id (u/the-id db))]
+    (mapcat (fn [table]
+              (t2/select :model/Field :table_id (u/the-id table)))
+            tables)))
+
+(deftest auto-cruft-fields-with-an-l-test
+  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
+                                       :settings {:auto-cruft-columns ["l"]}}]
+      (sync-metadata/sync-db-metadata! db)
+      (is (= [["details" :details-only]]
+             (->> (db->fields db)
+                  (filter #(= :details-only (:visibility_type %)))
+                  (mapv (juxt :name :visibility_type))))))))
+
+(deftest auto-cruft-all-fields-and-they-stay-crufted-test
+  (testing "Make sure a db's settings.auto-cruft-tables actually mark tables as crufty"
+    (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery
+                                       :settings {:auto-cruft-columns [".*"]}}]
+      (sync-metadata/sync-db-metadata! db)
+      (is (= {:details-only 12}
+             (->> (db->fields db)
+                  (mapv :visibility_type)
+                  frequencies)))
+      ;; remove cruft column directive:
+      (t2/update! :model/Database (u/the-id db) {:settings {:auto-cruft-columns []}})
+      (sync-metadata/sync-db-metadata! db)
+      (is (= {:details-only 12}
+             (->> (db->fields db)
+                  (mapv :visibility_type)
+                  frequencies))))))

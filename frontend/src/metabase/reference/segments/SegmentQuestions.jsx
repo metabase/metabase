@@ -65,7 +65,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
               <List>
                 {data.map(
-                  question =>
+                  (question) =>
                     question.id() &&
                     question.displayName() && (
                       <ListItem

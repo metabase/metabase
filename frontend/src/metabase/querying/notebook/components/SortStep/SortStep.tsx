@@ -67,7 +67,7 @@ export function SortStep({
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
-      renderName={clause => (
+      renderName={(clause) => (
         <SortDisplayName
           displayInfo={Lib.displayInfo(query, stageIndex, clause)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
@@ -115,7 +115,7 @@ const SortPopover = ({
   const columnGroups = useMemo(() => {
     const columns = Lib.orderableColumns(query, stageIndex);
 
-    const filteredColumns = columns.filter(column => {
+    const filteredColumns = columns.filter((column) => {
       const columnInfo = Lib.displayInfo(query, stageIndex, column);
       const isAlreadyUsed = columnInfo.orderByPosition != null;
       const isSelected = checkColumnSelected(columnInfo, orderByIndex);
@@ -131,7 +131,7 @@ const SortPopover = ({
       stageIndex={stageIndex}
       columnGroups={columnGroups}
       color="text-dark"
-      checkIsColumnSelected={item => checkColumnSelected(item, orderByIndex)}
+      checkIsColumnSelected={(item) => checkColumnSelected(item, orderByIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = orderBy != null;
         if (isUpdate) {
@@ -169,7 +169,7 @@ function SortDisplayName({
     <button
       className={S.SortDirectionButton}
       aria-label={t`Change direction`}
-      onClick={event => {
+      onClick={(event) => {
         event.stopPropagation();
         onToggleSortDirection();
       }}

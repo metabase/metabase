@@ -13,7 +13,7 @@ export function getCurrentValue(
 }
 
 export function getUnitGroups(availableUnits: DatePickerUnit[]) {
-  return UNIT_GROUPS.map(group =>
-    group.filter(unit => availableUnits.includes(unit)),
-  ).filter(group => group.length > 0);
+  return UNIT_GROUPS.map((group) =>
+    group.filter((unit) => availableUnits.includes(unit)),
+  ).filter((group) => group.length > 0);
 }

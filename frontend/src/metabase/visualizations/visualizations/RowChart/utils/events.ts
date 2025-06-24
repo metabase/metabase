@@ -38,7 +38,7 @@ const getMetricColumnData = (
   visualizationSettings: VisualizationSettings,
 ) => {
   return Object.entries(metricDatum).map(([columnName, value]) => {
-    const col = columns.find(column => column.name === columnName)!;
+    const col = columns.find((column) => column.name === columnName)!;
     const key =
       getIn(visualizationSettings, ["series_settings", col.name, "title"]) ??
       col.display_name;
@@ -57,7 +57,7 @@ const getColumnData = (
   seriesIndex: number,
 ) => {
   return columns
-    .map(columnDescriptor => {
+    .map((columnDescriptor) => {
       const { column, index } = columnDescriptor;
 
       let value;
@@ -120,8 +120,8 @@ const getColumnsData = (
 
   const otherColumnsDescriptiors = getColumnDescriptors(
     datasetColumns
-      .filter(column => !data.some(item => item.col === column))
-      .map(column => column.name),
+      .filter((column) => !data.some((item) => item.col === column))
+      .map((column) => column.name),
     datasetColumns,
   );
 
@@ -203,7 +203,7 @@ export const getStackedTooltipRows = <TDatum>(
   seriesColors: Record<string, string>,
 ): TooltipRowModel[] =>
   multipleSeries
-    .map(series => {
+    .map((series) => {
       const value = series.xAccessor(bar.datum);
       if (value == null) {
         return null;
@@ -253,7 +253,7 @@ export const getTooltipModel = <TDatum>(
 
   const [headerRows, bodyRows] = _.partition(
     rows,
-    row => row.name === series.seriesName,
+    (row) => row.name === series.seriesName,
   );
 
   const totalFormatter = (value: unknown) =>

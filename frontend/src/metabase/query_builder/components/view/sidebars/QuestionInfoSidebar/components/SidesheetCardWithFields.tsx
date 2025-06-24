@@ -24,7 +24,7 @@ export const SidesheetCardWithFields = ({
   return (
     <SidesheetCard title={<Box pb="sm">{title}</Box>}>
       <Stack gap="md">
-        {columns.map(columnMetadata => {
+        {columns.map((columnMetadata) => {
           const columnDisplayInfo = Lib.displayInfo(query, -1, columnMetadata);
 
           return (

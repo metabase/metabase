@@ -12,10 +12,12 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as add]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -68,6 +70,7 @@
 (doseq [[feature supported?] {:actions                   true
                               :actions/custom            true
                               :datetime-diff             true
+                              :expression-literals       true
                               :full-join                 false
                               :index-info                true
                               :now                       true
@@ -95,8 +98,7 @@
     driver.common/cloud-ip-address-info
     driver.common/advanced-options-start
     driver.common/default-advanced-options]
-   (map u/one-or-many)
-   (apply concat)))
+   (into [] (mapcat u/one-or-many))))
 
 (defn- malicious-property-value
   "Checks an h2 connection string for connection properties that could be malicious. Markers of this include semi-colons
@@ -257,9 +259,10 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(defn- check-read-only-statements [{:keys [database] {:keys [query]} :native}]
+(defn- check-read-only-statements [{{:keys [query]} :native}]
   (when query
-    (let [query-classification (classify-query database query)]
+    (let [query-classification (classify-query (lib.metadata/database (qp.store/metadata-provider))
+                                               query)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
                         {:classification query-classification}))))))
@@ -396,6 +399,30 @@
 (defmethod sql.qp/->honeysql [:h2 :log]
   [driver [_ field]]
   [:log10 (sql.qp/->honeysql driver field)])
+
+(defn- literal-text-value?
+  [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
+  (and (mbql.u/is-clause? :value clause)
+       (string? value)
+       (isa? (or effective-type base-type)
+             :type/Text)))
+
+(defmethod sql.qp/->honeysql [:h2 :expression]
+  [driver [_ expression-name {::add/keys [source-table]} :as clause]]
+  (let [expression-definition (mbql.u/expression-with-name sql.qp/*inner-query* expression-name)]
+    (if (and (not= source-table ::add/source)
+             (literal-text-value? expression-definition))
+      ;; A literal text value gets compiled to a parameter placeholder like "?". H2 attempts to compile the prepared
+      ;; statement immediately, presumably before the types of the params are known, and sometimes raises an "Unknown
+      ;; data type" error if it can't deduce the type. The recommended workaround is to insert an explicit CAST. We
+      ;; only need to do this for string literals, since numbers and booleans get inlined directly.
+      ;;
+      ;; https://linear.app/metabase/issue/QUE-726/
+      ;; https://github.com/h2database/h2database/issues/1383
+      (->> (sql.qp/->honeysql driver expression-definition)
+           (h2x/cast :text))
+      ((get-method sql.qp/->honeysql [:sql-jdbc :expression])
+       driver clause))))
 
 (defn- datediff
   "Like H2's `datediff` function but accounts for timestamps with time zones."

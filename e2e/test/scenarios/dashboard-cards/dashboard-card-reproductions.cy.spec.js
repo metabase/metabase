@@ -28,7 +28,7 @@ describe("issue 18067", () => {
         tableAlias: "testTable",
       });
 
-      cy.get("@testTable").then(testTable => {
+      cy.get("@testTable").then((testTable) => {
         const dashboardDetails = {
           name: "18067 dashboard",
         };
@@ -91,14 +91,14 @@ describe("issue 15993", () => {
     });
 
     // Drill-through
-    cy.findAllByTestId("cell-data").contains("0").realClick();
+    cy.findAllByRole("gridcell").contains("0").realClick();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 0");
 
-    const getVisualizationSettings = targetId => ({
+    const getVisualizationSettings = (targetId) => ({
       column_settings: {
         '["name","0"]': {
           click_behavior: {
@@ -186,7 +186,7 @@ describe("issue 16334", () => {
     // Make sure the original visualization didn't change
     H.pieSlices().should("have.length", 2);
 
-    const getVisualizationSettings = targetId => ({
+    const getVisualizationSettings = (targetId) => ({
       column_settings: {
         [`["ref",["field",${REVIEWS.RATING},null]]`]: {
           click_behavior: {
@@ -285,7 +285,7 @@ describe("issue 17160", () => {
               ],
             });
 
-            createTargetDashboard().then(targetDashboardId => {
+            createTargetDashboard().then((targetDashboardId) => {
               cy.wrap(targetDashboardId).as("targetDashboardId");
 
               // Create a click behaviour for the question card
@@ -426,13 +426,13 @@ describe("issue 17160", () => {
   }
 
   function visitSourceDashboard() {
-    cy.get("@sourceDashboardId").then(id => {
+    cy.get("@sourceDashboardId").then((id) => {
       H.visitDashboard(id);
     });
   }
 
   function visitPublicSourceDashboard() {
-    cy.get("@sourceDashboardUUID").then(uuid => {
+    cy.get("@sourceDashboardUUID").then((uuid) => {
       cy.visit(`/public/dashboard/${uuid}`);
 
       cy.findByTextEnsureVisible("Enormous Wool Car");
@@ -462,7 +462,7 @@ describe("issue 17160", () => {
     // 2. Check click behavior connected to a dashboard
     visitSourceDashboard();
 
-    cy.get("@targetDashboardId").then(id => {
+    cy.get("@targetDashboardId").then((id) => {
       cy.intercept("POST", `/api/dashboard/${id}/dashcard/*/card/*/query`).as(
         "targetDashcardQuery",
       );
@@ -711,7 +711,7 @@ describe("issue 22265", () => {
         database: 1,
       },
     };
-    cy.get("@invalidQuestionId").then(invalidQuestionId => {
+    cy.get("@invalidQuestionId").then((invalidQuestionId) => {
       cy.request("PUT", `/api/card/${invalidQuestionId}`, questionDetailUpdate);
     });
 
@@ -1073,7 +1073,7 @@ describe("issue 31628", () => {
   const setupDashboardWithQuestionInCards = (question, cards) => {
     H.createDashboard().then(({ body: dashboard }) => {
       H.cypressWaitAll(
-        cards.map(card => {
+        cards.map((card) => {
           return H.createQuestionAndAddToDashboard(
             question,
             dashboard.id,
@@ -1086,12 +1086,12 @@ describe("issue 31628", () => {
     });
   };
 
-  const assertDescendantsNotOverflowDashcards = descendantsSelector => {
-    cy.findAllByTestId("dashcard").should(dashcards => {
+  const assertDescendantsNotOverflowDashcards = (descendantsSelector) => {
+    cy.findAllByTestId("dashcard").should((dashcards) => {
       dashcards.each((dashcardIndex, dashcard) => {
         const descendants = dashcard.querySelectorAll(descendantsSelector);
 
-        descendants.forEach(descendant => {
+        descendants.forEach((descendant) => {
           H.assertDescendantNotOverflowsContainer(
             descendant,
             dashcard,
@@ -1148,7 +1148,7 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then($element => H.assertIsEllipsified($element[0]));
+        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
         //TODO: Need to hover on the actual text, not just the container. This is a weird one
         scalarContainer.realHover({ position: "bottom" });
 
@@ -1185,7 +1185,9 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then($element => H.assertIsNotEllipsified($element[0]));
+        scalarContainer.then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1200,7 +1202,7 @@ describe("issue 31628", () => {
          */
         const scalarTitle = cy.findByTestId("scalar-title");
 
-        scalarTitle.then($element => H.assertIsEllipsified($element[0]));
+        scalarTitle.then(($element) => H.assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip")
@@ -1233,7 +1235,9 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then($element => H.assertIsNotEllipsified($element[0]));
+        scalarContainer.then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1248,7 +1252,7 @@ describe("issue 31628", () => {
          */
         const scalarTitle = cy.findByTestId("scalar-title");
 
-        scalarTitle.then($element => H.assertIsNotEllipsified($element[0]));
+        scalarTitle.then(($element) => H.assertIsNotEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1308,7 +1312,9 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then($element => H.assertIsNotEllipsified($element[0]));
+        scalarContainer.then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1323,7 +1329,7 @@ describe("issue 31628", () => {
          */
         const scalarTitle = cy.findByTestId("legend-caption-title");
 
-        scalarTitle.then($element => H.assertIsEllipsified($element[0]));
+        scalarTitle.then(($element) => H.assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip")
@@ -1348,7 +1354,9 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("34.7%").should("exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then($element => H.assertIsNotEllipsified($element[0]));
+          previousValue.then(($element) =>
+            H.assertIsNotEllipsified($element[0]),
+          );
         });
       });
 
@@ -1361,7 +1369,9 @@ describe("issue 31628", () => {
           cy.contains("34.7%").should("exist");
           cy.contains("34.72%").should("not.exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then($element => H.assertIsNotEllipsified($element[0]));
+          previousValue.then(($element) =>
+            H.assertIsNotEllipsified($element[0]),
+          );
         });
       });
 
@@ -1374,7 +1384,9 @@ describe("issue 31628", () => {
           cy.contains("35%").should("exist");
           cy.contains("34.72%").should("not.exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then($element => H.assertIsNotEllipsified($element[0]));
+          previousValue.then(($element) =>
+            H.assertIsNotEllipsified($element[0]),
+          );
         });
       });
 
@@ -1385,7 +1397,7 @@ describe("issue 31628", () => {
 
         previousValue
           .findByText("35%")
-          .then($element => H.assertIsEllipsified($element[0]));
+          .then(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
@@ -1404,7 +1416,9 @@ describe("issue 31628", () => {
          */
         let scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then($element => H.assertIsNotEllipsified($element[0]));
+        scalarContainer.then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1419,7 +1433,7 @@ describe("issue 31628", () => {
          */
         scalarContainer = cy.findByTestId("legend-caption-title");
 
-        scalarContainer.then($element => H.assertIsEllipsified($element[0]));
+        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip")
@@ -1443,7 +1457,9 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.then($element => H.assertIsNotEllipsified($element[0]));
+          previousValue.then(($element) =>
+            H.assertIsNotEllipsified($element[0]),
+          );
         });
 
         /**
@@ -1470,7 +1486,9 @@ describe("issue 31628", () => {
          */
         let scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then($element => H.assertIsNotEllipsified($element[0]));
+        scalarContainer.then(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1485,7 +1503,7 @@ describe("issue 31628", () => {
          */
         scalarContainer = cy.findByTestId("legend-caption-title");
 
-        scalarContainer.then($element => H.assertIsEllipsified($element[0]));
+        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
         scalarContainer.realHover();
 
         cy.findByRole("tooltip")
@@ -1509,7 +1527,9 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.then($element => H.assertIsNotEllipsified($element[0]));
+          previousValue.then(($element) =>
+            H.assertIsNotEllipsified($element[0]),
+          );
         });
 
         /**
@@ -1673,7 +1693,7 @@ describe("issue 43219", () => {
 
   const cardsCount = 10;
 
-  const getQuestionAlias = index => `question-${index}`;
+  const getQuestionAlias = (index) => `question-${index}`;
 
   beforeEach(() => {
     H.restore();
@@ -1749,11 +1769,11 @@ describe("issue 48878", () => {
 
     let fetchCardRequestsCount = 0;
 
-    cy.intercept("GET", "/api/card/*", request => {
+    cy.intercept("GET", "/api/card/*", (request) => {
       // we only want to simulate the race condition 4th time this request is triggered
       if (fetchCardRequestsCount === 2) {
         request.continue(
-          () => new Promise(resolve => setTimeout(resolve, 2000)),
+          () => new Promise((resolve) => setTimeout(resolve, 2000)),
         );
       } else {
         request.continue();
@@ -1889,7 +1909,7 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
           "graph.metrics": ["VALUE_SUM"],
         },
       },
-    }).then(response => {
+    }).then((response) => {
       H.visitDashboard(response.body.dashboard_id);
     });
 

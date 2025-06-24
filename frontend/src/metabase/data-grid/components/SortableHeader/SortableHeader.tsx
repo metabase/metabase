@@ -15,6 +15,8 @@ type DragPosition = { x: number; y: number };
 export interface SortableHeaderProps<TData, TValue> {
   children: React.ReactNode;
   className?: string;
+  isColumnReorderingDisabled?: boolean;
+  style?: React.CSSProperties;
   header: Header<TData, TValue>;
   onClick?: (e: React.MouseEvent<HTMLDivElement>, columnId: string) => void;
 }
@@ -23,6 +25,8 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   header,
   className,
   children,
+  isColumnReorderingDisabled,
+  style: styleProp,
   onClick,
 }: SortableHeaderProps<TData, TValue>) {
   const isPinned = header.column.getIsPinned();
@@ -34,14 +38,14 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
   const { attributes, isDragging, listeners, setNodeRef, transform } =
     useSortable({
       id,
-      disabled: !!isPinned,
+      disabled: isColumnReorderingDisabled || !!isPinned,
     });
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const style = useMemo<CSSProperties>(() => {
+  const rootStyle = useMemo<CSSProperties>(() => {
     if (isPinned) {
-      return {};
+      return styleProp ?? {};
     }
     return {
       position: "relative",
@@ -51,8 +55,9 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
       zIndex: isDragging ? 2 : 0,
       cursor: isDragging ? "grabbing" : "pointer",
       outline: "none",
+      ...styleProp,
     };
-  }, [isDragging, transform, isPinned]);
+  }, [isDragging, transform, isPinned, styleProp]);
 
   const nodeAttributes = useMemo(() => {
     if (isPinned) {
@@ -101,7 +106,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
     <div
       ref={setNodeRef}
       className={cx(S.root, className)}
-      style={style}
+      style={rootStyle}
       onMouseDown={handleDragStart}
       onMouseUp={handleDragEnd}
     >
@@ -114,7 +119,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
           className={S.resizeHandle}
           onMouseDown={resizeHandler}
           onTouchStart={resizeHandler}
-          onMouseOver={e => e.stopPropagation()}
+          onMouseOver={(e) => e.stopPropagation()}
         />
       ) : null}
     </div>

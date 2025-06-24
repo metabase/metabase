@@ -200,8 +200,8 @@
 (deftest ^:parallel number-filter-parts-test
   (let [query         (lib.tu/venues-query)
         column        (meta/field-metadata :venues :price)
-        bigint-string "9007199254740993"
-        bigint-value  (u.number/parse-bigint bigint-string)]
+        bigint-value  (u.number/bigint "9007199254740993")
+        bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/is-null column)       {:operator :is-null, :column column}
                               (lib.filter/not-null column)      {:operator :not-null, :column column}
@@ -218,9 +218,9 @@
                               (lib.filter/between column 10 20) {:operator :between, :column column, :values [10 20]}
 
                               ;; bigint
-                              (lib.filter/= column bigint-string) {:operator :=, :column column, :values [bigint-value]}
-                              (lib.filter/!= column bigint-string) {:operator :!=, :column column, :values [bigint-value]}
-                              (lib.filter/> column bigint-string) {:operator :>, :column column, :values [bigint-value]}}]
+                              (lib.filter/= column bigint-clause) {:operator :=, :column column, :values [bigint-value]}
+                              (lib.filter/!= column bigint-clause) {:operator :!=, :column column, :values [bigint-value]}
+                              (lib.filter/> column bigint-clause) {:operator :>, :column column, :values [bigint-value]}}]
         (let [{:keys [operator column values]} parts]
           (is (=? parts (lib.fe-util/number-filter-parts query -1 clause)))
           (is (=? parts (lib.fe-util/number-filter-parts query -1 (lib.fe-util/number-filter-clause operator
@@ -237,8 +237,8 @@
   (let [query         (lib.query/query meta/metadata-provider (meta/table-metadata :orders))
         lat-column    (meta/field-metadata :people :latitude)
         lon-column    (meta/field-metadata :people :longitude)
-        bigint-string "9007199254740993"
-        bigint-value  (u.number/parse-bigint bigint-string)]
+        bigint-value  (u.number/bigint "9007199254740993")
+        bigint-clause (lib.expression/value bigint-value)]
     (testing "clause to parts roundtrip"
       (doseq [[clause parts] {(lib.filter/= lat-column 10)
                               {:operator :=, :column lat-column, :values [10]}
@@ -281,16 +281,16 @@
 
                               ;; bigint
 
-                              (lib.filter/= lat-column bigint-string)
+                              (lib.filter/= lat-column bigint-clause)
                               {:operator :=, :column lat-column, :values [bigint-value]}
 
-                              (lib.filter/!= lat-column bigint-string)
+                              (lib.filter/!= lat-column bigint-clause)
                               {:operator :!=, :column lat-column, :values [bigint-value]}
 
-                              (lib.filter/> lat-column bigint-string)
+                              (lib.filter/> lat-column bigint-clause)
                               {:operator :>, :column lat-column, :values [bigint-value]}
 
-                              (lib.filter/between lat-column bigint-string bigint-string)
+                              (lib.filter/between lat-column bigint-clause bigint-clause)
                               {:operator :between, :column lat-column, :values [bigint-value bigint-value]}}]
         (let [{:keys [operator column longitude-column values]} parts]
           (is (=? parts (lib.fe-util/coordinate-filter-parts query -1 clause)))
@@ -632,6 +632,7 @@
       "Next 10 days" (lib/time-interval created-at 10 :day)
       "Today" (lib/time-interval created-at :current :day)
       "This month" (lib/time-interval created-at :current :month)
+      "Previous 64 months, starting 7 months ago" (lib/relative-time-interval created-at -64 :month -7 :month)
       "Dec 5, 2024, 10:50 PM" (lib.filter/during created-at datetime-arg :minute)
       "Dec 5, 2024, 10:00 PM – 10:59 PM" (lib.filter/during created-at datetime-arg :hour)
       "Dec 5, 2024" (lib.filter/during created-at datetime-arg :day)

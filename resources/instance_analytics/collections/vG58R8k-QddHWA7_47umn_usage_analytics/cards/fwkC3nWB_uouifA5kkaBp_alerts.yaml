@@ -171,11 +171,6 @@ result_metadata:
     - v_alerts
     - creator_id
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_fields
-  - active
   id:
   - Internal Metabase Database
   - public
@@ -543,6 +538,7 @@ serdes/meta:
   label: alerts
   model: Card
 archived_directly: false
+card_schema: 20
 dashboard_id: Zf1jknwhPhazxIIJ2X6mX
 metabase_version: vUNKNOWN (44d194b)
 source_card_id: skoPT2xiuEcUV8vFkHE6S

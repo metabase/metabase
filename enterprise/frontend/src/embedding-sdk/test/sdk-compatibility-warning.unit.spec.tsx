@@ -66,7 +66,7 @@ const setup = async ({
 let consoleWarnSpy: jest.SpyInstance;
 
 const getWarnMessages = (): string[] =>
-  consoleWarnSpy.mock.calls.map(callArguments => callArguments.join(" "));
+  consoleWarnSpy.mock.calls.map((callArguments) => callArguments.join(" "));
 
 describe("SDK auth errors", () => {
   beforeEach(() => {
@@ -85,7 +85,7 @@ describe("SDK auth errors", () => {
       await setup({ sdkVersion: "0.52.10", mbVersion: "v1.55.0" });
 
       expect(
-        getWarnMessages().filter(message =>
+        getWarnMessages().filter((message) =>
           message.includes(
             "SDK version 0.52.10 is not compatible with MB version v1.55.0, this might cause issues.",
           ),
@@ -97,7 +97,7 @@ describe("SDK auth errors", () => {
       await setup({ sdkVersion: "0.55.10", mbVersion: "v1.55.1" });
 
       expect(
-        getWarnMessages().filter(message =>
+        getWarnMessages().filter((message) =>
           message.includes("is not compatible"),
         ),
       ).toHaveLength(0);
@@ -107,7 +107,7 @@ describe("SDK auth errors", () => {
       await setup({ sdkVersion: "unknown", mbVersion: "v1.55.1" });
 
       expect(
-        getWarnMessages().filter(message =>
+        getWarnMessages().filter((message) =>
           message.includes("is not compatible"),
         ),
       ).toHaveLength(0);

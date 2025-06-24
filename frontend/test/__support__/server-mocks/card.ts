@@ -13,7 +13,7 @@ import { PERMISSION_ERROR } from "./constants";
 
 export function setupCardEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.id}`, card);
-  fetchMock.put(`path:/api/card/${card.id}`, async url => {
+  fetchMock.put(`path:/api/card/${card.id}`, async (url) => {
     const lastCall = fetchMock.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
   });
@@ -30,11 +30,11 @@ export function setupCardQueryMetadataEndpoint(
 export function setupCardsEndpoints(cards: Card[]) {
   fetchMock.get({ url: "path:/api/card", overwriteRoutes: false }, cards);
   setupCardCreateEndpoint();
-  cards.forEach(card => setupCardEndpoints(card));
+  cards.forEach((card) => setupCardEndpoints(card));
 }
 
 export function setupCardCreateEndpoint() {
-  fetchMock.post("path:/api/card", async url => {
+  fetchMock.post("path:/api/card", async (url) => {
     const lastCall = fetchMock.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
   });
@@ -54,7 +54,7 @@ export function setupUnauthorizedCardEndpoints(card: Card) {
 }
 
 export function setupUnauthorizedCardsEndpoints(cards: Card[]) {
-  cards.forEach(card => setupUnauthorizedCardEndpoints(card));
+  cards.forEach((card) => setupUnauthorizedCardEndpoints(card));
 }
 
 export function setupCardQueryEndpoints(card: Card, dataset: Dataset) {

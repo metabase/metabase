@@ -221,11 +221,19 @@
   [[_ field value unit]]
   [:during (normalize-tokens field :ignore-path) value (maybe-normalize-token unit)])
 
+(defn- normalize-value-opts
+  [opts]
+  (some-> opts
+          lib.schema.common/normalize-map
+          ;; `:value` in legacy MBQL expects `snake_case` keys for type info keys.
+          (m/update-existing :base_type keyword)
+          (m/update-existing :semantic_type keyword)))
+
 (defmethod normalize-mbql-clause-tokens :value
   ;; The args of a `value` clause shouldn't be normalized.
   ;; See https://github.com/metabase/metabase/issues/23354 for details
   [[_ value info]]
-  [:value value info])
+  [:value value (normalize-value-opts info)])
 
 (defmethod normalize-mbql-clause-tokens :offset
   [[_tag opts expr n, :as clause]]
@@ -242,7 +250,7 @@
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
-        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*
+        (#{:avg :count :cum-count :distinct :distinct-where :stddev :sum :min :max :+ :- :/ :*
            :sum-where :count-where :share :var :median :percentile}
          (maybe-normalize-token x)))
       (when (mbql-clause? x)

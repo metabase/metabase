@@ -24,7 +24,7 @@ import {
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
 
-const groupIsMappable = group => !isDefaultGroup(group);
+const groupIsMappable = (group) => !isDefaultGroup(group);
 
 function GroupMappingsWidget({
   groupHeading,
@@ -51,7 +51,7 @@ function GroupMappingsWidget({
     setShowAddRow(false);
   };
 
-  const handleAddMapping = async name => {
+  const handleAddMapping = async (name) => {
     const mappingsPlusNewMapping = { ...mappings, [name]: [] };
 
     try {
@@ -66,12 +66,12 @@ function GroupMappingsWidget({
     }
   };
 
-  const handleChangeMapping = name => async (group, selected) => {
+  const handleChangeMapping = (name) => async (group, selected) => {
     const updatedMappings = selected
       ? { ...mappings, [name]: [...mappings[name], group.id] }
       : {
           ...mappings,
-          [name]: mappings[name].filter(id => id !== group.id),
+          [name]: mappings[name].filter((id) => id !== group.id),
         };
 
     try {

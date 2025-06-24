@@ -12,7 +12,7 @@ import { CustomMapContent } from "../Maps.styled";
 
 export function CustomMapFooter() {
   const isAdmin = useSelector(getUserIsAdmin);
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "configuring-metabase/custom-maps" }),
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

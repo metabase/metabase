@@ -18,7 +18,7 @@ export const TypeFilter: SearchFilterComponent<"type"> = {
   type: "dropdown",
   DisplayComponent: TypeFilterDisplay,
   ContentComponent: TypeFilterContent,
-  fromUrl: value => {
+  fromUrl: (value) => {
     if (Array.isArray(value)) {
       return filterEnabledSearchTypes(value);
     }

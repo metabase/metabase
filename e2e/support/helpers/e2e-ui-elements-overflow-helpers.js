@@ -1,4 +1,4 @@
-export const isScrollableHorizontally = element => {
+export const isScrollableHorizontally = (element) => {
   const { clientHeight, offsetHeight } = element;
   const style = window.getComputedStyle(element);
   const borderTopWidth = parseInt(style.borderTopWidth, 10);
@@ -10,7 +10,7 @@ export const isScrollableHorizontally = element => {
   return isHorizontalScrollbarVisible;
 };
 
-export const isScrollableVertically = element => {
+export const isScrollableVertically = (element) => {
   const { clientWidth, offsetWidth } = element;
   const style = window.getComputedStyle(element);
   const borderLeftWidth = parseInt(style.borderLeftWidth, 10);
@@ -34,7 +34,7 @@ export const assertDescendantNotOverflowsContainer = (
     return;
   }
 
-  const getMessage = suffix => {
+  const getMessage = (suffix) => {
     return [message, suffix].filter(Boolean).join(" ");
   };
 
@@ -48,15 +48,15 @@ export const assertDescendantNotOverflowsContainer = (
   );
 };
 
-export const assertIsEllipsified = element => {
+export const assertIsEllipsified = (element) => {
   expect(isEllipsified(element), "is ellipsified").to.equal(true);
 };
 
-export const assertIsNotEllipsified = element => {
+export const assertIsNotEllipsified = (element) => {
   expect(isEllipsified(element), "is ellipsified").to.equal(false);
 };
 
-export const isEllipsified = element => {
+export const isEllipsified = (element) => {
   return (
     element.scrollHeight > element.clientHeight ||
     element.scrollWidth > element.clientWidth

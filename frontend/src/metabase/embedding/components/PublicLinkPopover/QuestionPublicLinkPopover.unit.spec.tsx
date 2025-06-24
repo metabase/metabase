@@ -90,7 +90,7 @@ describe("QuestionPublicLinkPopover", () => {
     const extensionOptions = screen.getAllByTestId("extension-option");
 
     expect(extensionOptions).toHaveLength(3);
-    expect(extensionOptions.map(option => option.textContent)).toEqual([
+    expect(extensionOptions.map((option) => option.textContent)).toEqual([
       "csv",
       "xlsx",
       "json",

@@ -1,11 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { isEqual } from "underscore";
 
-import {
-  cronToScheduleSettings,
-  scheduleSettingsToCron,
-} from "metabase/admin/performance/utils";
 import {
   useCreateNotificationMutation,
   useGetChannelInfoQuery,
@@ -14,7 +10,6 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import SchedulePicker from "metabase/containers/SchedulePicker";
 import CS from "metabase/css/core/index.css";
 import {
   alertIsValid,
@@ -25,10 +20,7 @@ import {
   getHasConfiguredEmailChannel,
 } from "metabase/lib/pulse";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  DEFAULT_ALERT_SCHEDULE,
-  getDefaultQuestionAlertRequest,
-} from "metabase/notifications/utils";
+import { getDefaultQuestionAlertRequest } from "metabase/notifications/utils";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
   getQuestion,
@@ -51,8 +43,8 @@ import type {
   CreateAlertNotificationRequest,
   Notification,
   NotificationCardSendCondition,
+  NotificationCronSubscription,
   NotificationHandler,
-  ScheduleSettings,
   ScheduleType,
   UpdateAlertNotificationRequest,
 } from "metabase-types/api";
@@ -60,8 +52,9 @@ import type {
 import { ChannelSetupModal } from "../ChannelSetupModal";
 import { NotificationChannelsPicker } from "../components/NotificationChannelsPicker";
 
-import { AlertModalSettingsBlock } from "./AlertModalSettingsBlock";
 import { AlertTriggerIcon } from "./AlertTriggerIcon";
+import { AlertModalSettingsBlock } from "./components/AlertModalSettingsBlock/AlertModalSettingsBlock";
+import { NotificationSchedule } from "./components/NotificationSchedule/NotificationSchedule";
 import type { NotificationTriggerOption } from "./types";
 
 const ALERT_TRIGGER_OPTIONS_MAP: Record<
@@ -83,10 +76,13 @@ const ALERT_TRIGGER_OPTIONS_MAP: Record<
 };
 
 const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
+  "every_n_minutes",
   "hourly",
   "daily",
   "weekly",
-] as const;
+  "monthly",
+  "cron",
+];
 
 type CreateOrEditQuestionAlertModalProps = {
   onClose: () => void;
@@ -140,7 +136,7 @@ export const CreateOrEditQuestionAlertModal = ({
       getAlertTriggerOptions({
         question,
         visualizationSettings,
-      }).map(trigger => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
+      }).map((trigger) => ALERT_TRIGGER_OPTIONS_MAP[trigger]),
     [question, visualizationSettings],
   );
 
@@ -236,6 +232,20 @@ export const CreateOrEditQuestionAlertModal = ({
     ? hasConfiguredAnyChannel
     : hasConfiguredEmailChannel;
 
+  const handleScheduleChange = useCallback(
+    (updatedSubscription: NotificationCronSubscription) => {
+      if (!subscription) {
+        return;
+      }
+
+      setNotification({
+        ...notification,
+        subscriptions: [updatedSubscription],
+      });
+    },
+    [setNotification, subscription, notification],
+  );
+
   if (!isLoadingChannelInfo && channelSpec && !channelRequirementsMet) {
     return (
       <ChannelSetupModal
@@ -290,7 +300,7 @@ export const CreateOrEditQuestionAlertModal = ({
                 data={triggerOptions}
                 value={notification.payload.send_condition}
                 w={276}
-                onChange={value =>
+                onChange={(value) =>
                   setNotification({
                     ...notification,
                     payload: {
@@ -303,28 +313,16 @@ export const CreateOrEditQuestionAlertModal = ({
             )}
           </Flex>
         </AlertModalSettingsBlock>
-        <AlertModalSettingsBlock title={t`When do you want to check this?`}>
-          <SchedulePicker
-            mt={0}
-            schedule={
-              cronToScheduleSettings(subscription.cron_schedule) ||
-              DEFAULT_ALERT_SCHEDULE // default is just for typechecking
-            }
+        <AlertModalSettingsBlock
+          title={t`When do you want to check this?`}
+          style={{
+            "--alert-modal-content-padding": "0",
+          }}
+        >
+          <NotificationSchedule
+            subscription={subscription}
             scheduleOptions={ALERT_SCHEDULE_OPTIONS}
-            onScheduleChange={(nextSchedule: ScheduleSettings) => {
-              if (nextSchedule.schedule_type) {
-                setNotification({
-                  ...notification,
-                  subscriptions: [
-                    {
-                      ...subscription,
-                      cron_schedule: scheduleSettingsToCron(nextSchedule),
-                    },
-                  ],
-                });
-              }
-            }}
-            textBeforeInterval={t`Check`}
+            onScheduleChange={handleScheduleChange}
           />
         </AlertModalSettingsBlock>
         <AlertModalSettingsBlock
@@ -340,7 +338,7 @@ export const CreateOrEditQuestionAlertModal = ({
               });
             }}
             emailRecipientText={t`Email alerts to:`}
-            getInvalidRecipientText={domains =>
+            getInvalidRecipientText={(domains) =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
           />
@@ -348,10 +346,15 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Only send this alert once`}
+            styles={{
+              label: {
+                lineHeight: "1.5rem",
+              },
+            }}
             labelPosition="right"
             size="sm"
             checked={notification.payload.send_once}
-            onChange={e =>
+            onChange={(e) =>
               setNotification({
                 ...notification,
                 payload: {

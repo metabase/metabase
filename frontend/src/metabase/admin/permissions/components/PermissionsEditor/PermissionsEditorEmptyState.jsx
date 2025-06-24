@@ -9,7 +9,7 @@ const propTypes = {
   message: PropTypes.string.isRequired,
 };
 
-export const PermissionsEditorEmptyState = props => (
+export const PermissionsEditorEmptyState = (props) => (
   <EmptyStateRoot>
     <EmptyState {...props} />
   </EmptyStateRoot>

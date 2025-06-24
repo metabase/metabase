@@ -57,7 +57,7 @@ class FormattingWidget extends Component {
             <h3 className={CS.mb3}>{name}</h3>
             <ColumnSettings
               value={value[type]}
-              onChange={settings => onChange({ ...value, [type]: settings })}
+              onChange={(settings) => onChange({ ...value, [type]: settings })}
               column={column}
               allowlist={new Set(settings)}
             />

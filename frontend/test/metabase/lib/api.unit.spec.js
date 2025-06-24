@@ -30,7 +30,7 @@ describe("api", () => {
 
   it("should PUT with remaining params as body", async () => {
     expect.assertions(1);
-    fetchMock.put("path:/hello/123", async uri => {
+    fetchMock.put("path:/hello/123", async (uri) => {
       const body = await fetchMock.lastCall(uri).request.json();
       expect(body).toEqual({ other: "stuff" });
       return 200;
@@ -40,7 +40,7 @@ describe("api", () => {
 
   it("should PUT with a specific params as the body", async () => {
     expect.assertions(1);
-    fetchMock.put("path:/hello/123", async uri => {
+    fetchMock.put("path:/hello/123", async (uri) => {
       const body = await fetchMock.lastCall(uri).request.json();
       expect(body).toEqual(["i", "am", "an", "array"]);
       return 200;

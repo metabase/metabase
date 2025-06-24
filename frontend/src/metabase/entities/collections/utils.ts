@@ -70,7 +70,7 @@ export function buildCollectionTree(
   collections: Collection[] = [],
   modelFilter?: (model: CollectionContentModel) => boolean,
 ): CollectionTreeItem[] {
-  return collections.flatMap(collection => {
+  return collections.flatMap((collection) => {
     const isPersonalRoot = collection.id === PERSONAL_COLLECTIONS.id;
 
     const isMatchedByFilter =
@@ -84,7 +84,7 @@ export function buildCollectionTree(
 
     const children = !isRootTrashCollection(collection)
       ? buildCollectionTree(
-          collection.children?.filter(child => !child.archived) || [],
+          collection.children?.filter((child) => !child.archived) || [],
           modelFilter,
         )
       : [];

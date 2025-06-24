@@ -239,7 +239,7 @@ describe("getIsResultDirty", () => {
 
     it("should not be dirty if fields were just made explicit", () => {
       const orderTableFieldIds = Object.values(ORDERS);
-      const orderTableFieldRefs = orderTableFieldIds.map(id => [
+      const orderTableFieldRefs = orderTableFieldIds.map((id) => [
         "field",
         id,
         null,
@@ -282,7 +282,7 @@ describe("getIsResultDirty", () => {
     });
 
     describe("native editor selection/cursor", () => {
-      function getStateWithSelectedQueryText(start, end) {
+      function getStateWithSelectedQueryText(ranges) {
         return getBaseState({
           card: getBaseCard({
             dataset_query: {
@@ -291,7 +291,7 @@ describe("getIsResultDirty", () => {
             },
           }),
           uiControls: {
-            nativeEditorSelectedRange: { start, end },
+            nativeEditorSelectedRange: ranges,
           },
         });
       }
@@ -304,7 +304,9 @@ describe("getIsResultDirty", () => {
         it(`should correctly determine the cursor offset for ${JSON.stringify(
           position,
         )}`, () => {
-          const state = getStateWithSelectedQueryText(position, position);
+          const state = getStateWithSelectedQueryText([
+            { start: position, end: position },
+          ]);
           expect(getNativeEditorCursorOffset(state)).toBe(offset);
         }),
       );
@@ -317,10 +319,18 @@ describe("getIsResultDirty", () => {
         it(`should correctly get selected text from ${JSON.stringify(
           start,
         )} to ${JSON.stringify(end)}`, () => {
-          const state = getStateWithSelectedQueryText(start, end);
+          const state = getStateWithSelectedQueryText([{ start, end }]);
           expect(getNativeEditorSelectedText(state)).toBe(text);
         }),
       );
+
+      it("should correctly get selected text when there are multiple selected ranges", () => {
+        const state = getStateWithSelectedQueryText([
+          { start: { row: 2, column: 0 }, end: { row: 2, column: 2 } },
+          { start: { row: 0, column: 0 }, end: { row: 0, column: 2 } },
+        ]);
+        expect(getNativeEditorSelectedText(state)).toBe("33");
+      });
     });
   });
 

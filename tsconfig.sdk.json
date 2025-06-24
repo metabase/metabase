@@ -6,6 +6,7 @@
     // so that it doesn't accidentally end up in the distributed package
     "tsBuildInfoFile": "./resources/embedding-sdk/.tsbuildinfo",
     "declaration": true,
+    "declarationMap": true,
     "emitDeclarationOnly": true,
     "outDir": "./resources/embedding-sdk/dist",
     "paths": {

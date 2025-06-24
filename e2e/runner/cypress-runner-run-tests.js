@@ -10,7 +10,7 @@ const DEFAULT_PORT = 4000;
 const getHost = (port = null) =>
   `http://localhost:${port ?? process.env.BACKEND_PORT ?? DEFAULT_PORT}`;
 
-const getSampleAppE2eConfig = suite => ({
+const getSampleAppE2eConfig = (suite) => ({
   [suite]: async () => {
     const { appName, env } = SAMPLE_APP_SETUP_CONFIGS[suite];
     const { CLIENT_PORT } = env;
@@ -53,6 +53,7 @@ const configs = {
     };
 
     const userArgs = await parseArguments(args);
+
     const finalConfig = Object.assign({}, defaultConfig, userArgs);
     return finalConfig;
   },

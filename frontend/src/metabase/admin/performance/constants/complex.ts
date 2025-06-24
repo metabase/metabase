@@ -117,4 +117,4 @@ export const getPerformanceTabMetadata = () =>
   ] as (AdminPath & { tabId: string })[];
 
 export const getPerformanceAdminPaths = (metadata: AdminPath[]) =>
-  metadata.map(tab => ({ ...tab, name: `${t`Performance`} - ${tab.name}` }));
+  metadata.map((tab) => ({ ...tab, name: `${t`Performance`} - ${tab.name}` }));

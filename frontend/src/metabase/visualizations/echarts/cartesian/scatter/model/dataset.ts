@@ -18,7 +18,7 @@ export function getScatterPlotDataset(
     } = cardSeries;
     const columnDescs = cardsColumns[index];
 
-    rows.forEach(row => {
+    rows.forEach((row) => {
       const datum: Datum = { [X_AXIS_DATA_KEY]: null };
 
       cols.forEach((column, columnIndex) => {

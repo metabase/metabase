@@ -26,9 +26,9 @@ export const BackIconContainer = styled.span`
 
 export const HideIconButton = styled(IconButtonWrapper)`
   float: right;
-  cursor: ${props => props.disabled && "not-allowed"};
+  cursor: ${(props) => props.disabled && "not-allowed"};
 
   &:hover {
-    color: ${props => !props.disabled && color("brand")};
+    color: ${(props) => !props.disabled && color("brand")};
   }
 `;

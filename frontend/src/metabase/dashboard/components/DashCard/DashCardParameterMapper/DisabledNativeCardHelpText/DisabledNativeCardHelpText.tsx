@@ -59,7 +59,7 @@ interface ParameterHelpTextProps {
 
 function ParameterHelpText({ parameter }: ParameterHelpTextProps) {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
-  const docsUrl = useSelector(state =>
+  const docsUrl = useSelector((state) =>
     getDocsUrl(state, { page: "questions/native-editor/sql-parameters" }),
   );
 

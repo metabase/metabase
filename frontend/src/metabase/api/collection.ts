@@ -25,14 +25,14 @@ import {
 } from "./tags";
 
 export const collectionApi = Api.injectEndpoints({
-  endpoints: builder => ({
+  endpoints: (builder) => ({
     /**
      * @deprecated This endpoint is extremely slow on large instances, it should not be used
      * you probably only need a few collections, just fetch those
      */
     listCollections: builder.query<Collection[], ListCollectionsRequest | void>(
       {
-        query: params => ({
+        query: (params) => ({
           method: "GET",
           url: `/api/collection`,
           params,
@@ -45,7 +45,7 @@ export const collectionApi = Api.injectEndpoints({
       Collection[],
       ListCollectionsTreeRequest | void
     >({
-      query: params => ({
+      query: (params) => ({
         method: "GET",
         url: "/api/collection/tree",
         params,
@@ -73,11 +73,11 @@ export const collectionApi = Api.injectEndpoints({
           params,
         };
       },
-      providesTags: collection =>
+      providesTags: (collection) =>
         collection ? provideCollectionTags(collection) : [],
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
-      query: body => ({
+      query: (body) => ({
         method: "POST",
         url: "/api/collection",
         body,
@@ -145,7 +145,7 @@ export const collectionApi = Api.injectEndpoints({
           idTag("dashboard-question-candidates", collectionId),
           idTag("collection", collectionId),
           listTag("card"),
-          ...(result ? result.moved.map(id => idTag("card", id)) : []),
+          ...(result ? result.moved.map((id) => idTag("card", id)) : []),
         ]),
     }),
   }),

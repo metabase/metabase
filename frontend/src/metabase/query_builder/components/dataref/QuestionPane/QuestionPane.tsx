@@ -127,7 +127,7 @@ const QuestionPane = ({
         {table.fields && (
           <FieldList
             fields={table.fields}
-            onFieldClick={f => onItemClick("field", f)}
+            onFieldClick={(f) => onItemClick("field", f)}
           />
         )}
       </Box>

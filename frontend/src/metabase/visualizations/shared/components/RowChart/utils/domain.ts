@@ -15,7 +15,7 @@ const getExtent = (values: number[]) => {
 
 export const createYDomain = <TDatum>(data: SeriesData<TDatum>[]) => {
   // taking first series assuming all series have the same Y-axis values
-  return data[0]?.bars.map(bar => bar.yValue) ?? [];
+  return data[0]?.bars.map((bar) => bar.yValue) ?? [];
 };
 
 export const createXDomain = <TDatum>(
@@ -23,9 +23,9 @@ export const createXDomain = <TDatum>(
   additionalValues: number[],
   xScaleType: ContinuousScaleType,
 ): ContinuousDomain => {
-  const allXValues = data.flatMap(series =>
+  const allXValues = data.flatMap((series) =>
     series.bars
-      .flatMap(bar => [bar.xStartValue, bar.xEndValue])
+      .flatMap((bar) => [bar.xStartValue, bar.xEndValue])
       .filter(isNotNull),
   );
   const [min, max] = getExtent([...allXValues, ...additionalValues]);

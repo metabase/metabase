@@ -23,7 +23,7 @@ export function RequiredParamToggle(props: RequiredParamToggleProps) {
         disabled={disabled}
         id={id}
         checked={value}
-        onChange={event => onChange(event.currentTarget.checked)}
+        onChange={(event) => onChange(event.currentTarget.checked)}
       />
       <div>
         <label className={S.SettingRequiredLabel} htmlFor={id}>

@@ -34,7 +34,7 @@ describe("scenarios > visualizations > maps", () => {
     // open. That makes it difficult to select each in Cypress, so we click
     // inside both of them before reopening them one-by-one. :(
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    ["Latitude field", "Longitude field"].map(field =>
+    ["Latitude field", "Longitude field"].map((field) =>
       H.leftSidebar().within(() => {
         toggleFieldSelectElement(field);
       }),
@@ -123,7 +123,7 @@ describe("scenarios > visualizations > maps", () => {
     cy.findByText(/See these People/i).click();
 
     cy.log("Reported as a regression since v0.37.0");
-    cy.wait("@dataset").then(xhr => {
+    cy.wait("@dataset").then((xhr) => {
       expect(xhr.request.body.query.filter).not.to.contain("Texas");
     });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

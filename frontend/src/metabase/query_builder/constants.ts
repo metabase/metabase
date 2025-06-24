@@ -8,7 +8,6 @@ export const MODAL_TYPES = {
   ADD_TO_DASHBOARD_SAVE: "add-to-dashboard-save",
   CREATE_ALERT: "create-alert",
   SAVE_QUESTION_BEFORE_EMBED: "save-question-before-embed",
-  FILTERS: "filters",
   TURN_INTO_DATASET: "turn-into-dataset",
   CAN_NOT_CREATE_MODEL: "can-not-create-model",
   NEW_EVENT: "new-event",

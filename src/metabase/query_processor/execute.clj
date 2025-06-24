@@ -43,7 +43,9 @@
   e.g.
 
     (f (f query rff)) -> (f query rff)"
-  [#'update-used-cards/update-used-cards!
+  [#'qp.middleware.enterprise/swap-mirror-db-middleware
+   #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
+   #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
    #'add-preprocessed-query-to-result-metadata-for-userland-query
    #'cache/maybe-return-cached-results

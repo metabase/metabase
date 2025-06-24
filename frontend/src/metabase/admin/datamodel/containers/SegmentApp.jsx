@@ -34,7 +34,7 @@ const UpdateSegmentFormInner = ({
   const [isDirty, setIsDirty] = useState(false);
 
   const handleSubmit = useCallback(
-    async segment => {
+    async (segment) => {
       setIsDirty(false);
 
       try {
@@ -86,7 +86,7 @@ const CreateSegmentForm = ({
   const [, scheduleCallback] = useCallbackEffect();
 
   const handleSubmit = useCallback(
-    segment => {
+    (segment) => {
       setIsDirty(false);
 
       scheduleCallback(async () => {
@@ -113,7 +113,7 @@ const CreateSegmentForm = ({
   );
 };
 
-const SegmentApp = props => {
+const SegmentApp = (props) => {
   if (props.params.id) {
     return <UpdateSegmentForm {...props} />;
   }

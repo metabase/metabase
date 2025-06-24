@@ -7,7 +7,7 @@ export default {
   component: Toaster,
 };
 
-const Template: StoryFn<ToasterProps> = args => {
+const Template: StoryFn<ToasterProps> = (args) => {
   return <Toaster {...args} />;
 };
 

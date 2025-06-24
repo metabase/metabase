@@ -21,6 +21,10 @@
 (mbql-clause/define-tuple-mbql-clause :distinct :- :type/Integer
   [:schema [:ref ::expression/expression]])
 
+(mbql-clause/define-tuple-mbql-clause :distinct-where :- :type/Integer
+  [:schema [:ref ::expression/expression]]
+  [:schema [:ref ::expression/boolean]])
+
 (mbql-clause/define-tuple-mbql-clause :count-where :- :type/Integer
   [:schema [:ref ::expression/boolean]])
 
@@ -97,6 +101,7 @@
              :cum-count
              :count-where
              :distinct
+             :distinct-where
              :max
              :median
              :min

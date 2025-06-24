@@ -79,7 +79,7 @@ function JoinStrategyDropdown({
 }: JoinStrategyDropdownProps) {
   const items = useMemo(
     () =>
-      Lib.availableJoinStrategies(query, stageIndex).map(strategy => ({
+      Lib.availableJoinStrategies(query, stageIndex).map((strategy) => ({
         strategy,
         strategyInfo: Lib.displayInfo(query, stageIndex, strategy),
       })),

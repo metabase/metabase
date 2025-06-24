@@ -10,7 +10,7 @@ export default {
   component: DownloadsStatusLarge,
 };
 
-const Template: StoryFn<DownloadsStatusLargeProps> = args => {
+const Template: StoryFn<DownloadsStatusLargeProps> = (args) => {
   return <DownloadsStatusLarge {...args} />;
 };
 

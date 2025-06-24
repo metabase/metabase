@@ -20,7 +20,7 @@ import {
   TextInput,
 } from "./Text.styled";
 
-const getSettingsStyle = settings => ({
+const getSettingsStyle = (settings) => ({
   [CS.alignCenter]: settings["text.align_horizontal"] === "center",
   [CS.alignEnd]: settings["text.align_horizontal"] === "right",
   [CS.justifyCenter]: settings["text.align_vertical"] === "middle",
@@ -50,7 +50,7 @@ export function Text({
     useToggle(justAdded);
   const isPreviewing = !isFocused;
 
-  const preventDragging = e => e.stopPropagation();
+  const preventDragging = (e) => e.stopPropagation();
 
   const isSingleRow = gridSize?.height === 1;
 
@@ -114,7 +114,7 @@ export function Text({
             placeholder={placeholder}
             value={textValue}
             autoFocus={justAdded || isFocused}
-            onChange={e => setTextValue(e.target.value)}
+            onChange={(e) => setTextValue(e.target.value)}
             onMouseDown={preventDragging}
             onBlur={() => {
               toggleFocusOff();

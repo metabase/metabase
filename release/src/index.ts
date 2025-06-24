@@ -1,4 +1,3 @@
-export * from "./auto-translate";
 export * from "./backports";
 export * from "./github";
 export * from "./linked-issues";

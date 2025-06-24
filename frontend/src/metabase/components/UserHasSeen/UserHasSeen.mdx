@@ -1,0 +1,32 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="Patterns/Product Callouts/UserHasSeen" />
+
+# UserHasSeen
+
+This is a convience API around tracking whether users have seen / acknowledged something in the app, and is built on top of the User-Key-Value api on the backend.
+This was originally added as a way to surrport product callouts in the app, but could be used anytime we need to track a flag on a per-user basis
+
+# Docs
+
+This component accepts the following props:
+
+- `id: string` The id of the thing we want the user to acknowledge. This should be unique across the application
+- `withContext: boolean` Flag that determines if this component should attempt to work with the `UserHasSeenAll` component if it is present. Defaults to `true`
+- `children: ({hasSeen: boolean, ack: () => void})` Function to render children that is passed the hasSeen flag, as well as an acknowledgement function that can be used to set `hasSeen` to true
+
+# Examples
+
+In the below example, we show how this can be used to show a badge next to a new product feature that is in an item. We use `hasSeen` to determine if a badge is displayed, and we
+use `ack` in the `onClick` handler to set the value to true, causing the badge to be removed and the value on the back end to be updated.
+
+```
+<UserHasSeen id="some-key">
+    {(hasSeen, ack) => (
+        <Menu.Item
+            onClick={ack}
+            rightSection={!hasSeen ? <Badge>{t`New`}</Badge> : null}
+            >{t`I'm a product feature 😀`}</Menu.Item>
+    )}
+</UserHasSeen>
+```

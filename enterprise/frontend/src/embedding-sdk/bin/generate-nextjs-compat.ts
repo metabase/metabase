@@ -19,7 +19,7 @@ export type ComponentDefinition = {
 // { mainComponent: "MetabaseProvider", subComponents: [] },
 const COMPONENTS_TO_EXPORT: ComponentDefinition[] =
   getPublicComponents().filter(
-    component => component.mainComponent !== "MetabaseProvider",
+    (component) => component.mainComponent !== "MetabaseProvider",
   );
 
 // END OF CONFIGURATION
@@ -91,7 +91,7 @@ const ${mainComponent} = dynamic(
 
 ${subComponents
   .map(
-    subComponent => `${mainComponent}.${subComponent} = dynamic(
+    (subComponent) => `${mainComponent}.${subComponent} = dynamic(
 () =>
   import("./main.bundle.js").then((m) => {
     return { default: m.${mainComponent}.${subComponent} };
@@ -109,7 +109,7 @@ ${match(type)
 };
 
 const generateAllComponents = (type: "cjs" | "js") => {
-  return COMPONENTS_TO_EXPORT.map(component =>
+  return COMPONENTS_TO_EXPORT.map((component) =>
     generateCodeFor({ component, type }),
   ).join("\n");
 };
@@ -168,7 +168,4 @@ writeToFile("nextjs.js", nextjs_js);
 writeToFile("nextjs-no-ssr.cjs", nextjs_no_ssr_cjs);
 writeToFile("nextjs-no-ssr.js", nextjs_no_ssr_js);
 
-writeToFile(
-  "nextjs.d.ts",
-  `export * from "./enterprise/frontend/src/embedding-sdk/index.d.ts";`,
-);
+writeToFile("nextjs.d.ts", `export * from "./index.d.ts";`);

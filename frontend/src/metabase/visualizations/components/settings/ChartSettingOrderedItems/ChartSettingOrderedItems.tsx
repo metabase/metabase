@@ -52,7 +52,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   getId,
   removeIcon,
   accentColorOptions,
-  getItemColor = item => item.color,
+  getItemColor = (item) => item.color,
   dividers = [],
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;

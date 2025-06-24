@@ -67,7 +67,7 @@ const isCreator = (item, user) => {
   return user != null && user.id === item.creator?.id;
 };
 
-const getUnsubscribeMessage = type => {
+const getUnsubscribeMessage = (type) => {
   switch (type) {
     case "alert":
       return t`You’ll stop receiving this alert from now on. `;

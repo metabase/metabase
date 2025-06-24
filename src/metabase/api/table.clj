@@ -9,11 +9,16 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.types :as types]
@@ -25,6 +30,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.xrays.core :as xrays]
+   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -37,8 +43,12 @@
   "Schema for a valid table field ordering."
   (into [:enum] (map name table/field-orderings)))
 
-(defn- fix-schema [table]
-  (update table :schema str))
+(defn- present-table
+  "Given a table, shape it for the API."
+  [table]
+  (-> table
+      (update :db dissoc :router_database_id)
+      (update :schema str)))
 
 (api.macros/defendpoint :get "/"
   "Get all `Tables`."
@@ -46,7 +56,7 @@
   (as-> (t2/select :model/Table, :active true, {:order-by [[:name :asc]]}) tables
     (t2/hydrate tables :db)
     (into [] (comp (filter mi/can-read?)
-                   (map fix-schema))
+                   (map present-table))
           tables)))
 
 (api.macros/defendpoint :get "/:id"
@@ -61,7 +71,35 @@
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
         (t2/hydrate :db :pk_field)
-        fix-schema)))
+        present-table)))
+
+(api.macros/defendpoint :get "/:table-id/data"
+  "Get the data for the given table"
+  [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
+  (let [table (t2/select-one :model/Table :id table-id)
+        db-id (:db_id table)]
+    (api/read-check table)
+    (qp.store/with-metadata-provider db-id
+      (let [mp       (qp.store/metadata-provider)
+            query    (-> (lib/query mp (lib.metadata/table mp table-id))
+                         (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                         qp/userland-query-with-default-constraints
+                         (update :info merge {:executed-by api/*current-user-id*
+                                              :context     :table-grid
+                                              :card-id     nil}))]
+        (events/publish-event! :event/table-read {:object  table
+                                                  :user-id api/*current-user-id*})
+        (span/with-span!
+          {:name "query-table-async"}
+          (qp.streaming/streaming-response [rff :api]
+            (qp/process-query query
+             ;; For now, doing this transformation here makes it easy to iterate on our payload shape.
+             ;; In the future, we might want to implement a new export-type, say `:api/table`, instead.
+             ;; Then we can avoid building non-relevant fields, only to throw them away again.
+                              (qp.streaming/transforming-query-response
+                               rff
+                               (fn [response]
+                                 (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -357,7 +395,7 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
-        fix-schema
+        present-table
         (update :fields (partial filter (fn [{visibility-type :visibility_type}]
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
@@ -378,7 +416,7 @@
         (-> table
             (m/dissoc-in [:db :details])
             format-fields-for-response
-            fix-schema
+            present-table
             (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
 
 (defenterprise fetch-table-query-metadata
@@ -500,7 +538,7 @@
     (let [cards (t2/select :model/Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                                         :c.description :c.collection_id :c.database_id :c.type
-                                        :c.source_card_id :c.created_at :c.entity_id
+                                        :c.source_card_id :c.created_at :c.entity_id :c.card_schema
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
                             :left-join [[{:select   [:moderated_item_id :status]
@@ -565,7 +603,8 @@
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (t2/hydrate origin-field [:table :db])
+       :origin         (-> (t2/hydrate origin-field [:table :db])
+                           (update :table present-table))
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 

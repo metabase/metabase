@@ -117,7 +117,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
 }: Props<Entity, EntityWrapper>) {
   const dispatch = useDispatch();
 
-  const entityType = useSelector(state =>
+  const entityType = useSelector((state) =>
     typeof entityTypeProp === "function"
       ? entityTypeProp(state, props)
       : entityTypeProp,
@@ -132,7 +132,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
     }, [entityType]);
 
   const nonPaginatedEntityQuery = useSelector(
-    state =>
+    (state) =>
       typeof entityQueryProp === "function"
         ? entityQueryProp(state, props)
         : entityQueryProp,
@@ -160,7 +160,7 @@ export function EntityListLoader<Entity, EntityWrapper>({
 
   const entityOptions = useMemo(() => ({ entityQuery }), [entityQuery]);
 
-  const list = useSelector(state => {
+  const list = useSelector((state) => {
     return match(selectorName)
       .with("getList", () => {
         return entityDefinition.selectors.getList(state, entityOptions);
@@ -174,26 +174,26 @@ export function EntityListLoader<Entity, EntityWrapper>({
       .exhaustive();
   });
 
-  const fetched = useSelector(state => {
+  const fetched = useSelector((state) => {
     const value = entityDefinition.selectors.getFetched(state, entityOptions);
     return Boolean(value);
   });
 
-  const loaded = useSelector(state => {
+  const loaded = useSelector((state) => {
     const value = entityDefinition.selectors.getLoaded(state, entityOptions);
     return Boolean(value);
   });
 
-  const loading = useSelector(state => {
+  const loading = useSelector((state) => {
     const value = entityDefinition.selectors.getLoading(state, entityOptions);
     return Boolean(value);
   });
 
-  const error = useSelector(state => {
+  const error = useSelector((state) => {
     return entityDefinition.selectors.getError(state, entityOptions);
   });
 
-  const metadata = useSelector(state => {
+  const metadata = useSelector((state) => {
     return entityDefinition.selectors.getListMetadata(state, entityOptions);
   });
 
@@ -202,10 +202,10 @@ export function EntityListLoader<Entity, EntityWrapper>({
       return list;
     }
 
-    return list.map(object => entityDefinition.wrapEntity(object, dispatch));
+    return list.map((object) => entityDefinition.wrapEntity(object, dispatch));
   }, [dispatch, list, entityDefinition, wrapped]);
 
-  const reloadInterval = useSelector(state => {
+  const reloadInterval = useSelector((state) => {
     if (typeof reloadIntervalProp === "function") {
       return reloadIntervalProp(state, props, list);
     }

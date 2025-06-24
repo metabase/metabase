@@ -4,15 +4,16 @@ import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { EXPRESSION_FUNCTIONS, MBQL_CLAUSES } from "../config";
-import { TOKEN } from "../tokenizer";
+import { GROUP } from "../pratt";
+import { getDatabase } from "../utils";
 
 import {
   content,
   expressionClauseCompletion,
   fuzzyMatcher,
-  getDatabase,
   isFieldReference,
   isIdentifier,
+  isOperator,
   tokenAtPos,
 } from "./util";
 
@@ -34,17 +35,16 @@ export function suggestFunctions({
   }
 
   const database = getDatabase(query, metadata);
-  const ALIASES = ["case"];
-  const functions = [...EXPRESSION_FUNCTIONS, ...ALIASES]
-    .map(name => MBQL_CLAUSES[name])
-    .filter(clause => clause && database?.hasFeature(clause.requiresFeature))
+  const functions = [...EXPRESSION_FUNCTIONS]
+    .map((name) => MBQL_CLAUSES[name])
+    .filter((clause) => clause && database?.hasFeature(clause.requiresFeature))
     .filter(function disableOffsetInFilterExpressions(clause) {
       const isOffset = clause.name === "offset";
       const isFilterExpression = startRule === "boolean";
       const isOffsetInFilterExpression = isOffset && isFilterExpression;
       return !isOffsetInFilterExpression;
     })
-    .map(func =>
+    .map((func) =>
       expressionClauseCompletion(func, {
         type: "function",
         database,
@@ -58,18 +58,19 @@ export function suggestFunctions({
     const source = context.state.doc.toString();
     const token = tokenAtPos(source, context.pos);
 
-    if (!token || !isIdentifier(token) || isFieldReference(token)) {
+    if (
+      !token ||
+      !(isIdentifier(token) || isOperator(token)) ||
+      isFieldReference(token)
+    ) {
       return null;
     }
 
     // do not expand template if the next token is a (
     const next = tokenAtPos(source, token.end + 1);
-    const options = matcher(content(source, token)).map(option => ({
+    const options = matcher(content(source, token)).map((option) => ({
       ...option,
-      apply:
-        next?.type === TOKEN.Operator && next.op === "("
-          ? undefined
-          : option.apply,
+      apply: next?.type === GROUP ? undefined : option.apply,
     }));
 
     return {

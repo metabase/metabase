@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.task-history :as task-history]
    [metabase.query-processor.interface :as qp.i]
@@ -213,15 +214,16 @@
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  ((with-duplicate-ops-prevented
-    operation database
-    (with-sync-events
-     operation database
-     (with-start-and-finish-logging
-      message
-      (with-db-logging-disabled
-       (sync-in-context database
-                        (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+  (when (database/should-sync? database)
+    ((with-duplicate-ops-prevented
+      operation database
+      (with-sync-events
+       operation database
+       (with-start-and-finish-logging
+        message
+        (with-db-logging-disabled
+         (sync-in-context database
+                          (partial do-with-error-handling (format "Error in sync step %s" message) f)))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things

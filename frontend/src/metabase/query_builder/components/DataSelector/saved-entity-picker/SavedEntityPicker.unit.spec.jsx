@@ -87,7 +87,7 @@ describe("SavedEntityPicker", () => {
     await setup();
 
     expect(
-      screen.getAllByTestId("tree-item-name").map(node => node.textContent),
+      screen.getAllByTestId("tree-item-name").map((node) => node.textContent),
     ).toEqual([
       "Our analytics",
       "Your personal collection",
@@ -99,7 +99,7 @@ describe("SavedEntityPicker", () => {
     await setup();
 
     expect(
-      screen.getAllByTestId("option-text").map(node => node.textContent),
+      screen.getAllByTestId("option-text").map((node) => node.textContent),
     ).toEqual(["a", "A", "B"]);
   });
 });

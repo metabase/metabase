@@ -136,7 +136,7 @@ describe("Tooltip", () => {
         <div>
           <Tooltip reference={eventTarget} tooltip="reference tooltip" isOpen />
           <div
-            onClick={event => {
+            onClick={(event) => {
               setEventTarget(event.target);
             }}
             style={{ width: 100, height: 100 }}

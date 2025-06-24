@@ -10,7 +10,6 @@ import {
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
-  mockScrollBy,
   renderWithProviders,
   screen,
 } from "__support__/ui";
@@ -87,7 +86,6 @@ function setup({
   searchResults = [],
   collectionItems = [],
 }: SetupOpts) {
-  mockScrollBy();
   mockGetBoundingClientRect();
   setupCollectionsEndpoints({ collections: COLLECTIONS });
 

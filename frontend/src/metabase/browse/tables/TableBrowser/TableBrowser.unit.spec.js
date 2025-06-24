@@ -23,7 +23,7 @@ describe("TableBrowser", () => {
 
   it.each(["incomplete", "complete"])(
     "should render syncing tables, regardless of the database's initial_sync_status",
-    initial_sync_status => {
+    (initial_sync_status) => {
       const database = getDatabase({ initial_sync_status });
 
       const tables = [
@@ -83,6 +83,6 @@ const getTable = ({ id, name, initial_sync_status }) => ({
   initial_sync_status,
 });
 
-const getTableUrl = table => {
+const getTableUrl = (table) => {
   return `/question/${table.id}`;
 };

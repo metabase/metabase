@@ -41,7 +41,7 @@ export const TabButtonInput = styled.input<TabButtonProps & { value: string }>`
   font-weight: bold;
   text-align: center;
 
-  ${props =>
+  ${(props) =>
     props.disabled &&
     css`
       pointer-events: none;
@@ -52,20 +52,20 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
   display: flex;
   height: 1.875rem;
   padding: 0.25rem;
-  color: ${props =>
+  color: ${(props) =>
     props.isSelected && !props.disabled
       ? "var(--mb-color-brand)"
       : "var(--mb-color-text-primary)"};
-  opacity: ${props => (props.disabled ? 0.3 : 1)};
+  opacity: ${(props) => (props.disabled ? 0.3 : 1)};
   font-size: 0.75rem;
   font-weight: 700;
-  cursor: ${props => (props.disabled ? "default" : "pointer")};
+  cursor: ${(props) => (props.disabled ? "default" : "pointer")};
   border-bottom: 0.125rem solid
-    ${props =>
+    ${(props) =>
       props.isSelected && !props.disabled ? color("brand") : "transparent"};
 
   :hover {
-    ${props =>
+    ${(props) =>
       !props.disabled &&
       css`
         color: var(--mb-color-brand);
@@ -81,7 +81,7 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
   color: inherit;
   border: none;
 
-  ${props =>
+  ${(props) =>
     props.isOpen &&
     !props.disabled &&
     css`
@@ -89,7 +89,7 @@ export const MenuButton = styled(Button)<TabButtonProps & { isOpen: boolean }>`
       background-color: var(--mb-color-bg-medium);
     `}
   &:hover,:focus {
-    ${props =>
+    ${(props) =>
       props.disabled
         ? css`
             color: var(--mb-color-text-dark);

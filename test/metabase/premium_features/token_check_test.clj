@@ -38,9 +38,9 @@
   [token token-check-response]
   (http-fake/with-fake-routes-in-isolation
     {{:address      (#'token-check/token-status-url token @#'token-check/token-check-url)
-      :query-params {:users      (str (#'token-check/active-users-count))
-                     :site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
-                     :mb-version (:tag config/mb-version-info)}}
+      :query-params (merge (#'token-check/stats-for-token-request)
+                           {:site-uuid  (public-settings/site-uuid-for-premium-features-token-checks)
+                            :mb-version (:tag config/mb-version-info)})}
      (constantly token-check-response)}
     (#'token-check/fetch-token-status* token)))
 
@@ -154,13 +154,13 @@
   (testing "No DB calls are made for the user count when checking token status if the status is cached"
     (let [token (random-token)]
       (t2/with-call-count [call-count]
-        ;; First fetch, should trigger a DB call to fetch user count
+        ;; First fetch, should trigger a DB call to fetch user count and db calls for other stats
         (#'token-check/fetch-token-status token)
-        (is (= 1 (call-count)))
+        (is (= 6 (call-count)))
 
         ;; Subsequent fetches with the same token should not trigger additional DB calls
         (#'token-check/fetch-token-status token)
-        (is (= 1 (call-count)))))))
+        (is (= 6 (call-count)))))))
 
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response

@@ -54,7 +54,7 @@ const setup = async () => {
 describe("uploadManagementTable", () => {
   it("should render a table with names", async () => {
     await setup();
-    sampleTables.forEach(table => {
+    sampleTables.forEach((table) => {
       expect(screen.getByText(table.name)).toBeInTheDocument();
     });
   });
@@ -176,7 +176,7 @@ describe("uploadManagementTable", () => {
     await waitFor(() =>
       expect(screen.queryByText("Delete")).not.toBeInTheDocument(),
     );
-    expect(fetchMock.calls().map(call => call?.[1]?.method)).toEqual([
+    expect(fetchMock.calls().map((call) => call?.[1]?.method)).toEqual([
       "GET",
       "DELETE",
       "DELETE",

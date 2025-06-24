@@ -19,7 +19,7 @@ export default {
   argTypes,
 };
 
-const Template: StoryFn<ChipProps> = args => {
+const Template: StoryFn<ChipProps> = (args) => {
   return <Chip {...args} />;
 };
 

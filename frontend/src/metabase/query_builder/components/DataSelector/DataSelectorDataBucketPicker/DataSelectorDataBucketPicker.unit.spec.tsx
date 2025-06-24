@@ -17,8 +17,9 @@ const setup = (dataTypes: DataTypeInfoItem[]) => {
 describe("DataSelectorDataBucketPicker", () => {
   it("should display all buckets", () => {
     const dataTypes = getDataTypes({
-      hasMetrics: false,
       hasModels: true,
+      hasTables: true,
+      hasMetrics: false,
       hasSavedQuestions: true,
       hasNestedQueriesEnabled: true,
     });

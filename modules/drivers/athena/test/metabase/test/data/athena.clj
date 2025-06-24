@@ -46,6 +46,7 @@
    :access_key                    (tx/db-test-env-var-or-throw :athena :access-key)
    :secret_key                    (tx/db-test-env-var-or-throw :athena :secret-key)
    :s3_staging_dir                (tx/db-test-env-var-or-throw :athena :s3-staging-dir)
+   :catalog                       "AwsDataCatalog"
    :workgroup                     "primary"
    ;; HACK -- this is here so the Athena driver sync code only syncs the database in question -- see documentation
    ;; for [[metabase.driver.athena/fast-active-tables]] for more information.

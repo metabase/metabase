@@ -22,7 +22,7 @@ export const Root = styled.div<{
   flex-direction: column;
   overflow: auto;
 
-  ${props =>
+  ${(props) =>
     props.hasScroll &&
     css`
       position: absolute;
@@ -32,7 +32,7 @@ export const Root = styled.div<{
       bottom: 0;
     `}
 
-  ${props =>
+  ${(props) =>
     props.isBordered &&
     css`
       border: 1px solid var(--mb-color-border);
@@ -40,7 +40,7 @@ export const Root = styled.div<{
       box-shadow: 0 2px 2px var(--mb-color-shadow);
     `}
 
-  ${props =>
+  ${(props) =>
     // Prevents https://github.com/metabase/metabase/issues/40660
     // when printing an embedded dashboard
     props.hasVisibleOverflowWhenPriting &&
@@ -167,7 +167,7 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  ${props => footerVariantStyles[props.variant]}
+  ${(props) => footerVariantStyles[props.variant]}
   height: calc(50 / 16 * 1rem);
   padding: 0 1em;
 

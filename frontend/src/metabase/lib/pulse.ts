@@ -89,13 +89,13 @@ export function fieldsAreValid(channel: Channel, channelSpec: ChannelSpec) {
   }
 
   return channelSpec.fields
-    .filter(field => field.required)
-    .every(field => Boolean(channel.details?.[field.name]));
+    .filter((field) => field.required)
+    .every((field) => Boolean(channel.details?.[field.name]));
 }
 
 function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
   return (
-    pulse.channels.filter(channel =>
+    pulse.channels.filter((channel) =>
       channelIsValid(channel, channelSpecs?.[channel.channel_type]),
     ).length > 0 || false
   );
@@ -138,7 +138,7 @@ export function dashboardPulseIsValid(
 export function emailIsEnabled(pulse: Pulse) {
   return (
     pulse.channels.filter(
-      channel => channel.channel_type === "email" && channel.enabled,
+      (channel) => channel.channel_type === "email" && channel.enabled,
     ).length > 0
   );
 }
@@ -152,13 +152,13 @@ export function cleanPulse(pulse: Pulse, channelSpecs: any) {
 }
 
 function cleanPulseChannels(channels: Channel[], channelSpecs: any) {
-  return channels.filter(channel =>
+  return channels.filter((channel) =>
     channelIsValid(channel, channelSpecs?.[channel.channel_type]),
   );
 }
 
 function cleanPulseParameters(parameters: PulseParameter[]) {
-  return parameters.map(parameter => {
+  return parameters.map((parameter) => {
     const { default: defaultValue, name, slug, type, value, id } = parameter;
     const normalizedValue = normalizeParameterValue(type, value);
 
@@ -234,7 +234,7 @@ export const formatChannel = (channel: Channel): string => {
     formatChannelDetails(channel),
   ];
 
-  return parts.filter(p => p).join(" ");
+  return parts.filter((p) => p).join(" ");
 };
 
 export const formatChannelType = ({ channel_type }: Channel): string => {
@@ -334,14 +334,14 @@ export const getRecipientsCount = (
   channelType: "email" | "slack",
 ) => {
   return item.channels
-    .filter(channel => channel.channel_type === channelType)
+    .filter((channel) => channel.channel_type === channelType)
     .reduce((total, channel) => total + (channel.recipients?.length || 0), 0);
 };
 
 export const canArchiveLegacyAlert = (item: Alert, user: User): boolean => {
-  const recipients = item.channels.flatMap(channel => {
+  const recipients = item.channels.flatMap((channel) => {
     if (channel.recipients) {
-      return channel.recipients.map(recipient => recipient.id);
+      return channel.recipients.map((recipient) => recipient.id);
     } else {
       return [];
     }
@@ -358,7 +358,7 @@ export const getHasConfiguredAnyChannel = (
   formInput: ChannelApiResponse | undefined,
 ) =>
   (formInput?.channels &&
-    _.some(Object.values(formInput.channels), c => c.configured)) ||
+    _.some(Object.values(formInput.channels), (c) => c.configured)) ||
   false;
 
 export const getHasConfiguredEmailChannel = (
@@ -367,6 +367,6 @@ export const getHasConfiguredEmailChannel = (
   (formInput?.channels &&
     _.some(
       Object.values(formInput.channels),
-      c => c.type === "email" && c.configured,
+      (c) => c.type === "email" && c.configured,
     )) ||
   false;

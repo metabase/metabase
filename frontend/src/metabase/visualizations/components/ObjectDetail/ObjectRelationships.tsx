@@ -3,10 +3,9 @@ import { inflect } from "inflection";
 import { jt, t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
-import { Icon } from "metabase/ui";
+import { Icon, Loader } from "metabase/ui";
 import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
 import {
@@ -16,10 +15,10 @@ import {
 import type { ForeignKeyReferences } from "./types";
 
 export interface RelationshipsProps {
-  objectName: string;
-  tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: ForeignKeyReferences;
-  foreignKeyClicked: (fk: ForeignKey) => void;
+  objectName?: string;
+  tableForeignKeys?: ForeignKey[];
+  tableForeignKeyReferences?: ForeignKeyReferences;
+  foreignKeyClicked?: (fk: ForeignKey) => void;
 }
 
 export function Relationships({
@@ -51,14 +50,14 @@ export function Relationships({
       </div>
 
       <ul>
-        {sortedForeignTables.map(fk => (
+        {sortedForeignTables.map((fk) => (
           <Relationship
             key={`${fk.origin_id}-${fk.destination_id}`}
             fk={fk}
             fkCountInfo={
               fk.origin?.id != null
                 ? tableForeignKeyReferences?.[Number(fk.origin.id)]
-                : null
+                : undefined
             }
             fkCount={
               (fk.origin?.table != null &&
@@ -75,12 +74,14 @@ export function Relationships({
 
 interface RelationshipProps {
   fk: ForeignKey;
-  fkCountInfo: {
-    status: number;
-    value: number;
-  } | null;
+  fkCountInfo:
+    | {
+        status: number;
+        value: number;
+      }
+    | undefined;
   fkCount: number;
-  foreignKeyClicked: (fk: ForeignKey) => void;
+  foreignKeyClicked?: (fk: ForeignKey) => void;
 }
 
 function Relationship({
@@ -108,18 +109,22 @@ function Relationship({
     <li data-testid={`fk-relation-${originTableName.toLowerCase()}`}>
       <ObjectRelationContent
         isClickable={fkClickable}
-        onClick={fkClickable ? () => foreignKeyClicked(fk) : undefined}
+        onClick={
+          fkClickable && foreignKeyClicked
+            ? () => foreignKeyClicked(fk)
+            : undefined
+        }
       >
         <div>
-          <h2>{isLoaded ? fkCountValue : <LoadingSpinner size={25} />}</h2>
+          <h2>{isLoaded ? fkCountValue : <Loader size="xs" />}</h2>
           <h5 className={CS.block}>
             {relationName}
             {via}
           </h5>
         </div>
-        {fkClickable && (
+        {fkClickable && foreignKeyClicked && (
           <IconBorder className={CS.flexAlignRight}>
-            <Icon name="chevronright" size={10} />
+            <Icon data-testid="click-icon" name="chevronright" size={10} />
           </IconBorder>
         )}
       </ObjectRelationContent>

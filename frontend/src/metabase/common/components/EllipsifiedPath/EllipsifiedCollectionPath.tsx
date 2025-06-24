@@ -15,7 +15,7 @@ export const EllipsifiedCollectionPath = ({
   return (
     <EllipsifiedPath
       tooltip={getCollectionPathAsString(collection)}
-      items={getCollectionPath(collection).map(c => getCollectionName(c))}
+      items={getCollectionPath(collection).map((c) => getCollectionName(c))}
     />
   );
 };

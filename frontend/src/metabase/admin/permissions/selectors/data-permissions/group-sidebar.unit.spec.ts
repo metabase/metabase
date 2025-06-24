@@ -64,7 +64,7 @@ describe("getGroupsDataPermissionEditor", () => {
     })?.entities;
 
     expect(entities).toHaveLength(3);
-    expect(entities?.map(entity => entity.name)).toEqual([
+    expect(entities?.map((entity) => entity.name)).toEqual([
       "All Users",
       "Group starting with full access",
       "Group starting with no access at all",

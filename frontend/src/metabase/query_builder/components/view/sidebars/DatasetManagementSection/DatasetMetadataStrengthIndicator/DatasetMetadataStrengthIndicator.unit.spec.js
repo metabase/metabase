@@ -59,7 +59,7 @@ describe("DatasetMetadataStrengthIndicator", () => {
       resultMetadata: [FULLY_INCOMPLETE_METADATA],
       completenessPercent: "0%",
     },
-  ].forEach(testCase => {
+  ].forEach((testCase) => {
     const { name, resultMetadata, completenessPercent } = testCase;
 
     describe(name, () => {

@@ -53,7 +53,7 @@ export function QuestionActivityTimeline({
     <Timeline
       events={events}
       data-testid="saved-question-history-list"
-      revert={revision => dispatch(revertToRevision(revision))}
+      revert={(revision) => dispatch(revertToRevision(revision))}
       canWrite={question.canWrite()}
     />
   );

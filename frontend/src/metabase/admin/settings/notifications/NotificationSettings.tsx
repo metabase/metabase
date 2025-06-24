@@ -59,7 +59,7 @@ export const NotificationSettings = () => {
         </Flex>
         {hasChannels ? (
           <Stack>
-            {channels?.map(c => (
+            {channels?.map((c) => (
               <ChannelBox
                 key={`channel-${c.id}`}
                 title={c.name}

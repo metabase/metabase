@@ -69,14 +69,14 @@ describe("scenarios > metrics > question", () => {
 
   it("should be able to add a filter with an ad-hoc question", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC, { visitQuestion: true });
-    cy.findByTestId("qb-header-action-panel")
-      .button(/Filter/)
-      .click();
-    H.modal().within(() => {
+    H.filter();
+    H.popover().within(() => {
       cy.findByText("Product").click();
+      cy.findByText("Category").click();
       cy.findByText("Gadget").click();
-      cy.button("Apply filters").click();
+      cy.button("Add filter").click();
     });
+    H.runButtonOverlay().click();
     cy.findByTestId("scalar-container")
       .findByText("4,939")
       .should("be.visible");
@@ -93,7 +93,7 @@ describe("scenarios > metrics > question", () => {
     H.enterCustomColumnDetails({
       formula: `[${ORDERS_TIMESERIES_METRIC.name}] * 2`,
       name: "Expression",
-      blur: true,
+      format: true,
     });
     H.popover().button("Update").should("not.be.disabled").click();
     H.echartsContainer().findByText("Expression").should("be.visible");

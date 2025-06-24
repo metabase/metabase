@@ -1,4 +1,9 @@
-import { TYPE as cljs_TYPE } from "cljs/metabase.types";
+import {
+  LEVEL_ONE_TYPES as cljs_LEVEL_ONE_TYPES,
+  TYPE as cljs_TYPE,
+} from "cljs/metabase.types";
+
+export const LEVEL_ONE_TYPES: string[] = cljs_LEVEL_ONE_TYPES;
 
 export const TYPE: Record<string, string> = cljs_TYPE;
 

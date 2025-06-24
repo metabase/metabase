@@ -35,7 +35,7 @@ export const RecipientPicker = ({
     onRecipientsChange(newRecipients);
   };
 
-  const isValid = recipients.every(r => recipientIsValid(r));
+  const isValid = recipients.every((r) => recipientIsValid(r));
   const domains = useSetting("subscription-allowed-domains");
 
   return (
@@ -43,7 +43,7 @@ export const RecipientPicker = ({
       <div>
         <TokenField
           value={recipients}
-          options={users ? users.map(user => ({ value: user })) : []}
+          options={users ? users.map((user) => ({ value: user })) : []}
           onChange={handleOnChange}
           className={S.tokenField}
           idKey={(item: RecipientPickerValue) =>
@@ -56,8 +56,8 @@ export const RecipientPicker = ({
           }
           autoFocus={autoFocus && recipients.length === 0}
           multi
-          valueRenderer={value => value.common_name ?? value.email}
-          optionRenderer={option => (
+          valueRenderer={(value) => value.common_name ?? value.email}
+          optionRenderer={(option) => (
             <div className={cx(CS.flex, CS.alignCenter)}>
               <Text color="text-white">
                 <UserAvatar user={option.value} />
@@ -66,8 +66,8 @@ export const RecipientPicker = ({
             </div>
           )}
           filterOption={filterOption}
-          validateValue={value => recipientIsValid(value)}
-          parseFreeformValue={inputValue => {
+          validateValue={(value) => recipientIsValid(value)}
+          parseFreeformValue={(inputValue) => {
             if (isEmail(inputValue)) {
               return { email: inputValue };
             }

@@ -8,7 +8,7 @@ export function setupSearchEndpoints(
 ) {
   fetchMock.get(
     "path:/api/search",
-    uri => {
+    (uri) => {
       const url = new URL(uri);
       const models = url.searchParams.getAll("models");
       const limit = Number(url.searchParams.get("limit")) || 50;

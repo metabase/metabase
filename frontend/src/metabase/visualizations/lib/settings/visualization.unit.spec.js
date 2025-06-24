@@ -47,7 +47,7 @@ describe("visualization_settings", () => {
       ];
 
       describe("non-histgram units", () => {
-        NON_HISTOGRAM_UNITS.forEach(unit => {
+        NON_HISTOGRAM_UNITS.forEach((unit) => {
           it(`should default ${unit} to false`, () => {
             const settings = getComputedSettingsForSeries(
               cardWithTimeseriesBreakout({ unit }),
@@ -58,7 +58,7 @@ describe("visualization_settings", () => {
       });
 
       describe("histgram units", () => {
-        HISTOGRAM_UNITS.forEach(unit => {
+        HISTOGRAM_UNITS.forEach((unit) => {
           it(`should default ${unit} to true`, () => {
             const settings = getComputedSettingsForSeries(
               cardWithTimeseriesBreakout({ unit }),

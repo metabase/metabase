@@ -52,10 +52,11 @@ const FileUploadLarge = ({
 
   const status = {
     title,
-    items: uploads.map(upload => ({
+    items: uploads.map((upload) => ({
       id: upload.id,
       title: getName(upload),
       icon: "model",
+      href: upload.modelId ? `/model/${upload.modelId}` : undefined,
       description: Description({ upload }),
       isInProgress: isUploadInProgress(upload),
       isCompleted: isUploadCompleted(upload),
@@ -91,7 +92,7 @@ const getTitle = (
 ) => {
   const isDone = uploads.every(isUploadCompleted);
   const isOnlyReplace = uploads.every(
-    upload => upload.uploadMode === UploadMode.replace,
+    (upload) => upload.uploadMode === UploadMode.replace,
   );
   const isError = uploads.some(isUploadAborted);
 
@@ -122,7 +123,7 @@ const getLoadingMessage = (time: number) => {
 
 const Description = ({ upload }: { upload: FileUpload }) => {
   if (upload.status === "complete" && upload.modelId) {
-    return <Link to={`/model/${upload.modelId}`}>Start exploring</Link>;
+    return t`Start exploring`;
   }
 
   if (upload.status === "error") {

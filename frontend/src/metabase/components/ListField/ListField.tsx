@@ -9,7 +9,7 @@ import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { delay } from "metabase/lib/delay";
-import { Checkbox, Flex } from "metabase/ui";
+import { Checkbox, Flex, Text } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -27,8 +27,10 @@ function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
   options: Option[],
 ): Option {
-  const optionsMap = new Map(options.map(option => [option[0], option]));
-  return values.filter(value => !optionsMap.has(value)).map(value => [value]);
+  const optionsMap = new Map(options.map((option) => [option[0], option]));
+  return values
+    .filter((value) => !optionsMap.has(value))
+    .map((value) => [value]);
 }
 
 export const ListField = ({
@@ -46,7 +48,7 @@ export const ListField = ({
   );
 
   const augmentedOptions = useMemo(() => {
-    return [...options.filter(option => option[0] != null), ...addedOptions];
+    return [...options.filter((option) => option[0] != null), ...addedOptions];
   }, [addedOptions, options]);
 
   const sortedOptions = useMemo(() => {
@@ -54,7 +56,7 @@ export const ListField = ({
       return augmentedOptions;
     }
 
-    const [selected, unselected] = _.partition(augmentedOptions, option =>
+    const [selected, unselected] = _.partition(augmentedOptions, (option) =>
       selectedValues.has(option[0]),
     );
 
@@ -71,7 +73,7 @@ export const ListField = ({
       return sortedOptions;
     }
 
-    return augmentedOptions.filter(option => {
+    return augmentedOptions.filter((option) => {
       if (!option || option.length === 0) {
         return false;
       }
@@ -101,7 +103,7 @@ export const ListField = ({
 
   const handleToggleOption = (option: any) => {
     const newSelectedValues = selectedValues.has(option)
-      ? Array.from(selectedValues).filter(value => value !== option)
+      ? Array.from(selectedValues).filter((value) => value !== option)
       : [...selectedValues, option];
 
     setSelectedValues(new Set(newSelectedValues));
@@ -111,13 +113,13 @@ export const ListField = ({
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (
       event.key === "Enter" &&
-      !_.find(augmentedOptions, option => option[0] === filter)
+      !_.find(augmentedOptions, (option) => option[0] === filter)
     ) {
       setAddedOptions([...addedOptions, [filter]]);
     }
   };
 
-  const handleFilterChange: InputProps["onChange"] = e =>
+  const handleFilterChange: InputProps["onChange"] = (e) =>
     setFilter(e.target.value);
 
   const handleToggleAll = () => {
@@ -166,7 +168,11 @@ export const ListField = ({
             <OptionContainer>
               <Checkbox
                 variant="stacked"
-                label={getToggleAllLabel(debouncedFilter, isAll)}
+                label={
+                  <Text c="text-secondary">
+                    {debouncedFilter ? t`Select these` : t`Select all`}
+                  </Text>
+                }
                 checked={isAll}
                 indeterminate={!isAll && !isNone}
                 onChange={handleToggleAll}
@@ -188,11 +194,3 @@ export const ListField = ({
     </>
   );
 };
-
-function getToggleAllLabel(searchValue: string, isAll: boolean) {
-  if (isAll) {
-    return t`Select none`;
-  } else {
-    return searchValue ? t`Select these` : t`Select all`;
-  }
-}

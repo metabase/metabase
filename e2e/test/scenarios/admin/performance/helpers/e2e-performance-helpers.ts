@@ -140,7 +140,7 @@ export const freezeServerTime = ({
       "add-ms": addMilliseconds,
       time,
     })
-    .then(response => {
+    .then((response) => {
       if (wrapServerTimeAs) {
         cy.wrap(response.body.time).as(wrapServerTimeAs);
       }

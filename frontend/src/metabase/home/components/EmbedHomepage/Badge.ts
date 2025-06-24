@@ -35,7 +35,7 @@ export const Badge = styled.span<{
   font-size: ${({ fz, theme }) => (fz ? theme.fontSizes[fz] : "0.625rem")};
   font-weight: 700;
   border-radius: 4px;
-  text-transform: ${props =>
+  text-transform: ${(props) =>
     (props.uppercase ?? true) ? "uppercase" : "none"};
   color: ${({ color }) => COLOR_VARIANTS[color].color};
   background: ${({ color }) => COLOR_VARIANTS[color].background};

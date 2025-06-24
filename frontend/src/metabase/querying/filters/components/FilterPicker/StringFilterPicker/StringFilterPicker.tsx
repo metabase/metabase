@@ -13,7 +13,7 @@ import { StringFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { WIDTH } from "../constants";
+import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterPickerWidgetProps } from "../types";
 
 export function StringFilterPicker({
@@ -93,7 +93,7 @@ export function StringFilterPicker({
           {type === "partial" && (
             <CaseSensitiveOption
               value={options.caseSensitive ?? false}
-              onChange={newValue => setOptions({ caseSensitive: newValue })}
+              onChange={(newValue) => setOptions({ caseSensitive: newValue })}
             />
           )}
         </FilterPickerFooter>
@@ -127,6 +127,7 @@ function StringValueInput({
           stageIndex={stageIndex}
           column={column}
           values={values}
+          comboboxProps={COMBOBOX_PROPS}
           autoFocus
           onChange={onChange}
         />
@@ -139,10 +140,8 @@ function StringValueInput({
       <Box p="md" pb={0} mah="40vh" style={{ overflow: "auto" }}>
         <MultiAutocomplete
           value={values}
-          data={[]}
           placeholder={t`Enter some text`}
-          autoFocus
-          w="100%"
+          comboboxProps={COMBOBOX_PROPS}
           aria-label={t`Filter value`}
           onChange={onChange}
         />
@@ -166,7 +165,7 @@ function CaseSensitiveOption({ value, onChange }: CaseSensitiveOptionProps) {
         size="xs"
         label={t`Case sensitive`}
         checked={value}
-        onChange={e => onChange(e.target.checked)}
+        onChange={(e) => onChange(e.target.checked)}
       />
     </Flex>
   );

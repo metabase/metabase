@@ -11,7 +11,7 @@ const COLLECTION_ID = 1;
 const createCollectionEssentialsList = (
   idList: CollectionId[],
 ): CollectionEssentials[] => {
-  return idList.map(id => createMockCollectionEssential({ id }));
+  return idList.map((id) => createMockCollectionEssential({ id }));
 };
 
 const setup = ({

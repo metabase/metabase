@@ -66,7 +66,7 @@ export const computeInitialTabId = <
   tabs: EntityPickerTab<Id, Model, Item>[];
   defaultToRecentTab: boolean;
 }): string => {
-  const hasRecents = tabs.some(tab => tab.id === RECENTS_TAB_ID);
+  const hasRecents = tabs.some((tab) => tab.id === RECENTS_TAB_ID);
 
   if (hasRecents && defaultToRecentTab) {
     return RECENTS_TAB_ID;
@@ -74,7 +74,7 @@ export const computeInitialTabId = <
 
   const initialValueTab =
     initialValue?.model &&
-    tabs.find(tab => tab.models.includes(initialValue.model as Model));
+    tabs.find((tab) => tab.models.includes(initialValue.model as Model));
 
   if (initialValueTab) {
     return initialValueTab.id;
@@ -139,7 +139,7 @@ export const isSearchFolder = <
 };
 
 const isSearchModel = (model: string): model is SearchModel => {
-  return SEARCH_MODELS.some(searchModel => searchModel === model);
+  return SEARCH_MODELS.some((searchModel) => searchModel === model);
 };
 
 const isArrayOfSearchModels = (models: string[]): models is SearchModel[] => {
@@ -196,18 +196,20 @@ export const getScopedSearchResults = <
 
   if (folder.model === "database") {
     return searchResults.filter(
-      result => result.model === "table" && result.database_id === folder.id,
+      (result) => result.model === "table" && result.database_id === folder.id,
     );
   }
 
   if (folder.model === "schema") {
     return searchResults.filter(
-      result => result.model === "table" && result.table_schema === folder.id,
+      (result) => result.model === "table" && result.table_schema === folder.id,
     );
   }
 
   if (folder.model === "collection") {
-    return searchResults.filter(result => result.collection?.id === folder.id);
+    return searchResults.filter(
+      (result) => result.collection?.id === folder.id,
+    );
   }
 
   return [];

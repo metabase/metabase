@@ -115,18 +115,18 @@ function axisCost(seriesExtents, favorUnsplit = true) {
 export function computeSplit(extents, left = [], right = []) {
   const unassigned = extents
     .map((e, i) => i)
-    .filter(i => left.indexOf(i) < 0 && right.indexOf(i) < 0);
+    .filter((i) => left.indexOf(i) < 0 && right.indexOf(i) < 0);
 
   // if any are assigned to right we have decided to split so don't favor unsplit
   const favorUnsplit = right.length > 0;
 
-  const cost = split =>
+  const cost = (split) =>
     axisCost(
-      split[0].map(i => extents[i]),
+      split[0].map((i) => extents[i]),
       favorUnsplit,
     ) +
     axisCost(
-      split[1].map(i => extents[i]),
+      split[1].map((i) => extents[i]),
       favorUnsplit,
     );
 
@@ -165,7 +165,7 @@ export function isSameSeries(seriesA, seriesB) {
 }
 
 export function colorShades(color, count) {
-  return _.range(count).map(i =>
+  return _.range(count).map((i) =>
     colorShade(color, 1 - Math.min(0.25, 1 / count) * i),
   );
 }
@@ -177,13 +177,15 @@ export function colorShade(hex, shade = 0) {
   }
   const components = (
     match[1] != null ? match.slice(1, 4) : match.slice(4, 7)
-  ).map(d => parseInt(d, 16));
+  ).map((d) => parseInt(d, 16));
   const min = Math.min(...components);
   const max = Math.max(...components);
   return (
     "#" +
     components
-      .map(c => Math.round(min + (max - min) * shade * (c / 255)).toString(16))
+      .map((c) =>
+        Math.round(min + (max - min) * shade * (c / 255)).toString(16),
+      )
       .join("")
   );
 }
@@ -199,7 +201,7 @@ export function getColumnCardinality(cols, rows, index) {
     cardinalityCache.set(
       key,
       dataset
-        .dimension(d => d[index])
+        .dimension((d) => d[index])
         .group()
         .size(),
     );
@@ -214,7 +216,7 @@ export function getColumnExtent(cols, rows, index) {
   if (!extentCache.has(col)) {
     extentCache.set(
       col,
-      d3.extent(rows, row => row[index]),
+      d3.extent(rows, (row) => row[index]),
     );
   }
   return extentCache.get(col);
@@ -282,9 +284,9 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
   // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
-  const metricColumns = cols.filter(col => isMetric(col));
+  const metricColumns = cols.filter((col) => isMetric(col));
   const dimensionNotMetricColumns = cols.filter(
-    col => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && !isMetric(col),
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
@@ -321,8 +323,8 @@ export function getSingleSeriesDimensionsAndMetrics(
   }
 
   return {
-    dimensions: dimensions.length > 0 ? dimensions.map(c => c.name) : [null],
-    metrics: metrics.length > 0 ? metrics.map(c => c.name) : [null],
+    dimensions: dimensions.length > 0 ? dimensions.map((c) => c.name) : [null],
+    metrics: metrics.length > 0 ? metrics.map((c) => c.name) : [null],
   };
 }
 
@@ -347,7 +349,7 @@ export function computeMaxDecimalsForValues(values, options) {
     let maxDecimalCount = 0;
     for (const value of values) {
       const parts = formatter.formatToParts(value);
-      const part = parts.find(p => p.type === "fraction");
+      const part = parts.find((p) => p.type === "fraction");
       const decimalCount = part ? part.value.length : 0;
       if (decimalCount > maxDecimalCount) {
         maxDecimalCount = decimalCount;
@@ -367,8 +369,8 @@ export const preserveExistingColumnsOrder = (prevColumns, newColumns) => {
   const newSet = new Set(newColumns);
   const prevSet = new Set(prevColumns);
 
-  const addedColumns = newColumns.filter(column => !prevSet.has(column));
-  const prevOrderedColumnsExceptRemoved = prevColumns.map(column =>
+  const addedColumns = newColumns.filter((column) => !prevSet.has(column));
+  const prevOrderedColumnsExceptRemoved = prevColumns.map((column) =>
     newSet.has(column) ? column : null,
   );
 
@@ -437,10 +439,10 @@ function findSankeyColumnPair(dimensionColumns, rows) {
   for (let i = 0; i < pairsToCheck; i++) {
     const sourceCol = dimensionColumns[i];
 
-    const sourceValues = new Set(rows.map(row => row[sourceCol.index]));
+    const sourceValues = new Set(rows.map((row) => row[sourceCol.index]));
 
-    const targetCol = dimensionColumns.slice(i + 1).find(maybeTarget => {
-      return rows.some(row => sourceValues.has(row[maybeTarget.index]));
+    const targetCol = dimensionColumns.slice(i + 1).find((maybeTarget) => {
+      return rows.some((row) => sourceValues.has(row[maybeTarget.index]));
     });
 
     if (targetCol) {

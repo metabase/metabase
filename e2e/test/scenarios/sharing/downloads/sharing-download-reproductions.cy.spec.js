@@ -26,9 +26,9 @@ describe("issue 10803", () => {
     );
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it(`should format the date properly for ${fileType} in saved questions (metabase#10803)`, () => {
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.downloadAndAssert(
           { fileType, questionId, logResults: true, raw: true },
           testWorkbookDatetimes,
@@ -82,7 +82,7 @@ describe.skip("issue 18219", () => {
     cy.signInAsAdmin();
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it("should format temporal units on export (metabase#18219)", () => {
       H.createQuestion(questionDetails).then(({ body: { id: questionId } }) => {
         H.visitQuestion(questionId);
@@ -209,7 +209,7 @@ describe("issue 18382", () => {
     H.visitQuestionAdhoc(questionDetails);
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it(`should handle the old syntax in downloads for ${fileType} (metabase#18382)`, () => {
       // TODO: Please remove this line when issue gets fixed
       cy.skipOn(fileType === "csv");
@@ -251,7 +251,7 @@ describe("issue 18440", () => {
     });
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it(`export should include a column with remapped values for ${fileType} (metabase#18440-1)`, () => {
       H.visitQuestionAdhoc(questionDetails);
 
@@ -358,7 +358,7 @@ describe("issue 18729", () => {
     cy.signInAsAdmin();
   });
 
-  ["csv", "xlsx"].forEach(fileType => {
+  ["csv", "xlsx"].forEach((fileType) => {
     it(`should properly format the 'X of Y'dates in ${fileType} exports (metabase#18729)`, () => {
       H.visitQuestionAdhoc(questionDetails);
 
@@ -379,7 +379,7 @@ describe("issue 19889", () => {
 
   function saveAndOverwrite() {
     cy.findByText("Save").click();
-    cy.findByTestId("save-question-modal").within(modal => {
+    cy.findByTestId("save-question-modal").within((modal) => {
       cy.findByText("Save").click();
     });
   }
@@ -414,9 +414,9 @@ describe("issue 19889", () => {
     cy.findByText("Started from").click(); // Give DOM some time to update
   });
 
-  testCases.forEach(fileType => {
+  testCases.forEach((fileType) => {
     it("should order columns correctly in unsaved native query exports", () => {
-      H.downloadAndAssert({ fileType, raw: true }, sheet => {
+      H.downloadAndAssert({ fileType, raw: true }, (sheet) => {
         expect(sheet["A1"].v).to.equal("column b");
         expect(sheet["B1"].v).to.equal("column a");
         expect(sheet["C1"].v).to.equal("column c");
@@ -426,8 +426,8 @@ describe("issue 19889", () => {
     it("should order columns correctly in saved native query exports", () => {
       saveAndOverwrite();
 
-      cy.get("@questionId").then(questionId => {
-        H.downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+      cy.get("@questionId").then((questionId) => {
+        H.downloadAndAssert({ fileType, questionId, raw: true }, (sheet) => {
           expect(sheet["A1"].v).to.equal("column b");
           expect(sheet["B1"].v).to.equal("column a");
           expect(sheet["C1"].v).to.equal("column c");
@@ -444,10 +444,10 @@ describe("issue 19889", () => {
 
       saveAndOverwrite();
 
-      cy.get("@questionId").then(questionId => {
+      cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
-        H.downloadAndAssert({ fileType, questionId, raw: true }, sheet => {
+        H.downloadAndAssert({ fileType, questionId, raw: true }, (sheet) => {
           expect(sheet["A1"].v).to.equal("column x");
           expect(sheet["B1"].v).to.equal("column y");
           expect(sheet["C1"].v).to.equal("column c");
@@ -486,7 +486,7 @@ describe("metabase#28834", () => {
 
   it("should be able to export unsaved native query results as CSV even after the query has changed", () => {
     const fileType = "csv";
-    H.downloadAndAssert({ fileType, raw: true }, sheet => {
+    H.downloadAndAssert({ fileType, raw: true }, (sheet) => {
       expect(sheet["A1"].v).to.equal("column a");
       expect(sheet["A2"].v).to.equal("1");
       expect(sheet["A3"]).to.be.undefined;
@@ -495,7 +495,7 @@ describe("metabase#28834", () => {
 
   it("should be able to export unsaved native query results as XLSX even after the query has changed", () => {
     const fileType = "xlsx";
-    H.downloadAndAssert({ fileType, raw: true }, sheet => {
+    H.downloadAndAssert({ fileType, raw: true }, (sheet) => {
       expect(sheet["A1"].v).to.equal("column a");
       expect(sheet["A2"].v).to.equal(1);
       expect(sheet["A3"]).to.be.undefined;

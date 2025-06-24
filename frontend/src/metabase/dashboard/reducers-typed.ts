@@ -61,7 +61,7 @@ import { syncParametersAndEmbeddingParams } from "./utils";
 
 export const dashboardId = createReducer(
   INITIAL_DASHBOARD_STATE.dashboardId,
-  builder => {
+  (builder) => {
     builder.addCase(INITIALIZE, () => null);
     builder.addCase(
       fetchDashboard.fulfilled,
@@ -86,7 +86,7 @@ export const missingActionParameters = handleActions(
 
 export const autoApplyFilters = createReducer(
   INITIAL_DASHBOARD_STATE.autoApplyFilters,
-  builder => {
+  (builder) => {
     builder.addCase<
       string,
       {
@@ -105,13 +105,13 @@ export const autoApplyFilters = createReducer(
   },
 );
 
-export const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, builder => {
+export const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, (builder) => {
   builder.addCase(setDisplayTheme, (_state, { payload }) => payload || null);
 });
 
 export const slowCards = createReducer(
   INITIAL_DASHBOARD_STATE.slowCards,
-  builder => {
+  (builder) => {
     builder.addCase(markCardAsSlow, (state, { payload: { id, result } }) => ({
       ...state,
       [id]: result,
@@ -162,7 +162,7 @@ export const editingDashboard = handleActions(
 
 export const loadingControls = createReducer(
   INITIAL_DASHBOARD_STATE.loadingControls,
-  builder => {
+  (builder) => {
     builder.addCase(setDocumentTitle, (state, { payload }) => {
       state.documentTitle = payload;
     });
@@ -175,15 +175,15 @@ export const loadingControls = createReducer(
 
     builder.addCase(INITIALIZE, () => INITIAL_DASHBOARD_STATE.loadingControls);
 
-    builder.addCase(fetchDashboard.pending, state => {
+    builder.addCase(fetchDashboard.pending, (state) => {
       state.isLoading = true;
     });
 
-    builder.addCase(fetchDashboard.fulfilled, state => {
+    builder.addCase(fetchDashboard.fulfilled, (state) => {
       state.isLoading = false;
     });
 
-    builder.addCase(fetchDashboard.rejected, state => {
+    builder.addCase(fetchDashboard.rejected, (state) => {
       state.isLoading = false;
     });
   },
@@ -192,7 +192,7 @@ export const loadingControls = createReducer(
 const DEFAULT_SIDEBAR = { props: {} };
 export const sidebar = createReducer(
   INITIAL_DASHBOARD_STATE.sidebar,
-  builder => {
+  (builder) => {
     builder.addCase(INITIALIZE, () => DEFAULT_SIDEBAR);
     builder.addCase(RESET, () => DEFAULT_SIDEBAR);
     builder.addCase(REMOVE_PARAMETER, () => DEFAULT_SIDEBAR);
@@ -220,7 +220,7 @@ export const sidebar = createReducer(
 
 export const parameterValues = createReducer(
   INITIAL_DASHBOARD_STATE.parameterValues,
-  builder => {
+  (builder) => {
     builder.addCase(
       initialize,
       (state, { payload: { clearCache = true } = {} }) => {
@@ -297,7 +297,7 @@ function newDashboard(
 
 export const dashboards = createReducer(
   INITIAL_DASHBOARD_STATE.dashboards,
-  builder => {
+  (builder) => {
     builder
       .addCase(fetchDashboard.fulfilled, (state, { payload }) => ({
         ...state,
@@ -367,9 +367,9 @@ export const dashboards = createReducer(
 
 export const loadingDashCards = createReducer(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
-  builder => {
+  (builder) => {
     builder
-      .addCase(initialize, state => ({
+      .addCase(initialize, (state) => ({
         ...state,
         loadingStatus: "idle",
       }))
@@ -395,7 +395,9 @@ export const loadingDashCards = createReducer(
       .addCase(fetchCardDataAction.fulfilled, (state, { payload = {} }) => {
         const { dashcard_id, currentTime } = payload;
         if (dashcard_id) {
-          const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+          const loadingIds = state.loadingIds.filter(
+            (id) => id !== dashcard_id,
+          );
           return {
             ...state,
             loadingIds,
@@ -407,14 +409,14 @@ export const loadingDashCards = createReducer(
       })
       .addCase(cancelFetchCardData, (state, action) => {
         const { dashcard_id } = action.payload;
-        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        const loadingIds = state.loadingIds.filter((id) => id !== dashcard_id);
         return {
           ...state,
           loadingIds,
           ...(loadingIds.length === 0 ? { startTime: null } : {}),
         };
       })
-      .addCase(reset, state => ({
+      .addCase(reset, (state) => ({
         ...state,
         loadingStatus: "idle",
       }));
@@ -423,7 +425,7 @@ export const loadingDashCards = createReducer(
 
 export const dashcardData = createReducer(
   INITIAL_DASHBOARD_STATE.dashcardData,
-  builder => {
+  (builder) => {
     builder
       .addCase(initialize, (state, action) => {
         const { clearCache = true } = action.payload ?? {};

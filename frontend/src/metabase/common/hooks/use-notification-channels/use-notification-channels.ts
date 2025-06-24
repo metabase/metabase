@@ -4,7 +4,7 @@ export const useHasAnyNotificationChannel = (): boolean => {
   const { data: channelInfo } = useGetChannelInfoQuery();
 
   return Object.values(channelInfo?.channels ?? {})?.some(
-    channel => channel.configured,
+    (channel) => channel.configured,
   );
 };
 

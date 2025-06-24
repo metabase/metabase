@@ -49,7 +49,7 @@ export interface LoadQuestionHookResult {
 }
 
 export function useLoadQuestion({
-  cardId,
+  questionId,
   options,
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
@@ -80,7 +80,7 @@ export function useLoadQuestion({
   // Avoid re-running the query if the parameters haven't changed.
   const sqlParameterKey = getParameterDependencyKey(initialSqlParameters);
 
-  const shouldLoadQuestion = cardId != null || deserializedCard != null;
+  const shouldLoadQuestion = questionId != null || deserializedCard != null;
   const [isQuestionLoading, setIsQuestionLoading] =
     useState(shouldLoadQuestion);
 
@@ -92,7 +92,7 @@ export function useLoadQuestion({
       loadQuestionSdk({
         options,
         deserializedCard,
-        cardId,
+        questionId: questionId,
         initialSqlParameters,
       }),
     ).finally(() => {
@@ -110,7 +110,7 @@ export function useLoadQuestion({
     mergeQuestionState(results);
 
     return { ...results, originalQuestion };
-  }, [dispatch, options, deserializedCard, cardId, sqlParameterKey]);
+  }, [dispatch, options, deserializedCard, questionId, sqlParameterKey]);
 
   const [runQuestionState, queryQuestion] = useAsyncFn(async () => {
     if (!question) {
@@ -140,7 +140,7 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
-          optimisticUpdateQuestion: question =>
+          optimisticUpdateQuestion: (question) =>
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
         }),
@@ -158,7 +158,7 @@ export function useLoadQuestion({
           ...params,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: question => mergeQuestionState({ question }),
+          onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
             mergeQuestionState({ queryResults: [null] }),
         }),

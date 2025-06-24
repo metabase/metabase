@@ -13,10 +13,31 @@ const TIMESERIES_UNITS = new Set([
 ]);
 
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
-  return (
-    dimensionIsExplicitTimeseries({ cols, rows }, i) ||
-    moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
-  );
+  if (dimensionIsExplicitTimeseries({ cols, rows }, i)) {
+    return true;
+  }
+
+  let hasNonNull = false;
+
+  for (const row of rows) {
+    const value = row[i];
+
+    if (value == null) {
+      continue;
+    }
+
+    hasNonNull = true;
+
+    if (typeof value === "number" && !Number.isInteger(value)) {
+      return false;
+    }
+
+    if (!moment(value, moment.ISO_8601).isValid()) {
+      return false;
+    }
+  }
+
+  return hasNonNull;
 }
 
 export function dimensionIsExplicitTimeseries({ cols }, i) {

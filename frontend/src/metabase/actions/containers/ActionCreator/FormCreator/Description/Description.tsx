@@ -8,7 +8,7 @@ import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { InfoText } from "./Description.styled";
 
 export function Description() {
-  const docsLink = useSelector(state =>
+  const docsLink = useSelector((state) =>
     getDocsUrl(state, { page: "actions/custom" }),
   );
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);

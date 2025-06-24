@@ -54,7 +54,7 @@ export const MoveQuestionsIntoDashboardsModal = withRouter(
 
     const handleBulkMoveQuestionIntoDashboards = async () => {
       if (collectionId) {
-        const cardIds = candidatesReq.data?.data.map(card => card.id) ?? [];
+        const cardIds = candidatesReq.data?.data.map((card) => card.id) ?? [];
         try {
           await bulkMove({ collectionId, cardIds }).unwrap();
           dispatch(

@@ -54,7 +54,7 @@ export const LanguageStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         {t`This language will be used throughout Metabase and will be the default for new users.`}
       </StepDescription>
       <LocaleGroup role="radiogroup">
-        {locales.map(item => (
+        {locales.map((item) => (
           <LocaleItem
             key={item.code}
             locale={item}

@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { OPERATOR } from "./tokenizer";
 import type { MBQLClauseMap } from "./types";
 
 export const EDITOR_QUOTES = {
@@ -34,6 +35,7 @@ export const OPERATOR_PRECEDENCE: Record<string, number> = {
   or: 5,
 };
 
+// `type` and `args` types have no effect. Type checking is done by MBQL lib.
 export const MBQL_CLAUSES: MBQLClauseMap = {
   // aggregation functions
   count: { displayName: `Count`, type: "aggregation", args: [] },
@@ -74,6 +76,12 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "aggregation",
     args: ["boolean"],
   },
+  "distinct-where": {
+    displayName: `DistinctIf`,
+    type: "aggregation",
+    args: ["number", "boolean"],
+    requiresFeature: "distinct-where",
+  },
   "sum-where": {
     displayName: `SumIf`,
     type: "aggregation",
@@ -91,6 +99,25 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "number"],
     requiresFeature: "percentile-aggregations",
   },
+  // cast functions
+  text: {
+    displayName: "text",
+    type: "string",
+    args: ["expression"],
+    requiresFeature: "expressions/text",
+  },
+  integer: {
+    displayName: "integer",
+    type: "number",
+    args: ["expression"],
+    requiresFeature: "expressions/integer",
+  },
+  date: {
+    displayName: "date",
+    type: "datetime",
+    args: ["expression"],
+    requiresFeature: "expressions/date",
+  },
   // string functions
   lower: { displayName: `lower`, type: "string", args: ["string"] },
   upper: { displayName: `upper`, type: "string", args: ["string"] },
@@ -104,10 +131,27 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
       }
     },
   },
+  "split-part": {
+    displayName: "splitPart",
+    type: "string",
+    args: ["string", "string", "number"],
+    validator: function (_arg: any, _delimeter: string, position: number) {
+      if (position < 1) {
+        return t`Expected positive integer but found ${position}`;
+      }
+    },
+    requiresFeature: "split-part",
+  },
   "regex-match-first": {
     displayName: `regexextract`,
     type: "string",
     args: ["string", "string"],
+    requiresFeature: "regex",
+  },
+  path: {
+    displayName: `path`,
+    type: "string",
+    args: ["string"],
     requiresFeature: "regex",
   },
   concat: {
@@ -123,8 +167,8 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   length: { displayName: `length`, type: "number", args: ["string"] },
   trim: { displayName: `trim`, type: "string", args: ["string"] },
-  rtrim: { displayName: `rtrim`, type: "string", args: ["string"] },
-  ltrim: { displayName: `ltrim`, type: "string", args: ["string"] },
+  rtrim: { displayName: `rTrim`, type: "string", args: ["string"] },
+  ltrim: { displayName: `lTrim`, type: "string", args: ["string"] },
   domain: {
     displayName: `domain`,
     type: "string",
@@ -263,22 +307,22 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     args: ["number", "string"],
   },
   "is-null": {
-    displayName: `isnull`,
+    displayName: `isNull`,
     type: "boolean",
     args: ["expression"],
   },
   "not-null": {
-    displayName: `notnull`,
+    displayName: `notNull`,
     type: "boolean",
     args: ["expression"],
   },
   "is-empty": {
-    displayName: `isempty`,
+    displayName: `isEmpty`,
     type: "boolean",
     args: ["expression"],
   },
   "not-empty": {
-    displayName: `notempty`,
+    displayName: `notEmpty`,
     type: "boolean",
     args: ["expression"],
   },
@@ -287,19 +331,42 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     displayName: `coalesce`,
     type: "expression",
     args: ["expression", "expression"],
+    argType(_index, _args, type) {
+      return type;
+    },
     multiple: true,
   },
   case: {
     displayName: `case`,
     type: "expression",
-    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
+    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
+    argType(index, args, type) {
+      const len = args.length;
+      if (len % 2 === 1 && index === len - 1) {
+        return type;
+      }
+      if (index % 2 === 1) {
+        return type;
+      }
+      return "boolean";
+    },
   },
   if: {
     displayName: `if`,
     type: "expression",
-    args: ["expression", "expression"],
     multiple: true,
+    args: ["expression", "expression"],
+    argType(index, args, type) {
+      const len = args.length;
+      if (len % 2 === 1 && index === len - 1) {
+        return type;
+      }
+      if (index % 2 === 1) {
+        return type;
+      }
+      return "boolean";
+    },
   },
   offset: {
     displayName: `Offset`,
@@ -314,44 +381,86 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     hasOptions: true,
   },
   // boolean operators
-  and: { displayName: `AND`, type: "boolean", args: ["boolean", "boolean"] },
-  or: { displayName: `OR`, type: "boolean", args: ["boolean", "boolean"] },
-  not: { displayName: `NOT`, type: "boolean", args: ["boolean"] },
+  and: {
+    displayName: `AND`,
+    type: "boolean",
+    multiple: true,
+    args: ["boolean", "boolean"],
+    argType() {
+      return "boolean";
+    },
+  },
+  or: {
+    displayName: `OR`,
+    type: "boolean",
+    multiple: true,
+    args: ["boolean", "boolean"],
+    argType() {
+      return "boolean";
+    },
+  },
+  not: {
+    displayName: `NOT`,
+    type: "boolean",
+    args: ["boolean"],
+  },
   // numeric operators
   "*": {
     displayName: "*",
-    tokenName: "Multi",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   "/": {
     displayName: "/",
-    tokenName: "Div",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   "-": {
     displayName: "-",
-    tokenName: "Minus",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   "+": {
     displayName: "+",
-    tokenName: "Plus",
     type: "number",
     args: ["number", "number"],
+    multiple: true,
+    argType(_index, _args, type) {
+      if (type === "aggregation") {
+        return "aggregation";
+      }
+      return "number";
+    },
   },
   // comparison operators
   "=": {
     displayName: "=",
-    tokenName: "Equal",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "!=": {
     displayName: "!=",
-    tokenName: "NotEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
@@ -370,25 +479,21 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   },
   "<=": {
     displayName: "<=",
-    tokenName: "LessThanEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   ">=": {
     displayName: ">=",
-    tokenName: "GreaterThanEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "<": {
     displayName: "<",
-    tokenName: "LessThan",
     type: "boolean",
     args: ["expression", "expression"],
   },
   ">": {
     displayName: ">",
-    tokenName: "GreaterThan",
     type: "boolean",
     args: ["expression", "expression"],
   },
@@ -495,7 +600,7 @@ export function getExpressionName(mbqlName: string) {
 }
 export function getMBQLName(expressionName: string) {
   // case-insensitive
-  return EXPRESSION_TO_MBQL_NAME.get(expressionName.toLowerCase());
+  return EXPRESSION_TO_MBQL_NAME.get(expressionName.trim().toLowerCase());
 }
 
 export const AGGREGATION_FUNCTIONS = new Set([
@@ -507,6 +612,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "sum",
   "cum-sum",
   "distinct",
+  "distinct-where",
   "stddev",
   "offset",
   "avg",
@@ -519,11 +625,17 @@ export const AGGREGATION_FUNCTIONS = new Set([
 ]);
 
 export const EXPRESSION_FUNCTIONS = new Set([
+  // cast
+  "text",
+  "integer",
+  "date",
   // string
   "lower",
   "upper",
   "substring",
+  "split-part",
   "regex-match-first",
+  "path",
   "concat",
   "replace",
   "trim",
@@ -578,19 +690,34 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "does-not-contain",
   // other
   "if",
+  "case",
   "coalesce",
 ]);
 
-const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
+export const NUMBER_OPERATORS = new Set([
+  OPERATOR.Plus,
+  OPERATOR.Minus,
+  OPERATOR.Star,
+  OPERATOR.Slash,
+]);
 
 // operators in which order of operands doesn't matter
 export const EXPRESSION_OPERATOR_WITHOUT_ORDER_PRIORITY = new Set(["+", "*"]);
 
-export const FILTER_OPERATORS = new Set(["!=", "<=", ">=", "<", ">", "="]);
+export const COMPARISON_OPERATORS = new Set([
+  OPERATOR.Equal,
+  OPERATOR.NotEqual,
+  OPERATOR.GreaterThan,
+  OPERATOR.LessThan,
+  OPERATOR.GreaterThanEqual,
+  OPERATOR.LessThanEqual,
+]);
 
-const BOOLEAN_UNARY_OPERATORS = new Set(["not"]);
-const LOGICAL_AND_OPERATOR = new Set(["and"]);
-const LOGICAL_OR_OPERATOR = new Set(["or"]);
+export const LOGICAL_OPERATORS = new Set([
+  OPERATOR.Not,
+  OPERATOR.And,
+  OPERATOR.Or,
+]);
 
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
@@ -598,34 +725,14 @@ export const FUNCTIONS = new Set([
 ]);
 
 export const OPERATORS = new Set([
-  ...EXPRESSION_OPERATORS,
-  ...FILTER_OPERATORS,
-  ...BOOLEAN_UNARY_OPERATORS,
-  ...LOGICAL_AND_OPERATOR,
-  ...LOGICAL_OR_OPERATOR,
+  ...NUMBER_OPERATORS,
+  ...COMPARISON_OPERATORS,
+  ...LOGICAL_OPERATORS,
 ]);
 
-export const POPULAR_FUNCTIONS = [
-  "case",
-  "concat",
-  "contains",
-  "between",
-  "coalesce",
-];
-
-export const POPULAR_FILTERS = [
-  "contains",
-  "case",
-  "between",
-  "interval",
-  "concat",
-  "round",
-];
-
-export const POPULAR_AGGREGATIONS = [
-  "count",
-  "distinct",
-  "count-where",
-  "sum",
-  "avg",
-];
+export const FIELD_MARKERS = new Set([
+  "dimension",
+  "field",
+  "segment",
+  "metric",
+]);

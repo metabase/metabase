@@ -53,7 +53,7 @@ const TestComponent = () => {
 
   return (
     <div>
-      {data.map(item => (
+      {data.map((item) => (
         <div key={item.id}>{item.name}</div>
       ))}
       <div data-testid="metadata">

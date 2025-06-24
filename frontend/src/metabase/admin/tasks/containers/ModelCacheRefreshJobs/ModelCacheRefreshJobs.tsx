@@ -117,7 +117,7 @@ function ModelCacheRefreshJobs({ onRefresh }: Props) {
   const { data: persistedModels, total } = data ?? { data: [], total: 0 };
   const hasPagination = total > PAGE_SIZE;
   const modelCacheInfo = persistedModels.filter(
-    cacheInfo => cacheInfo.state !== "deletable",
+    (cacheInfo) => cacheInfo.state !== "deletable",
   );
 
   if (error || isFetching) {
@@ -155,7 +155,7 @@ function ModelCacheRefreshJobs({ onRefresh }: Props) {
           </tr>
         </thead>
         <tbody>
-          {modelCacheInfo.map(job => (
+          {modelCacheInfo.map((job) => (
             <JobTableItem
               key={job.id}
               job={job}

@@ -205,3 +205,19 @@
                                         {:base_type :type/Text}])
                     [["2024-08-09" 10.0 "weekday"]
                      ["2024-08-10" 20.0 "weekend"]])))))
+
+(deftest datetime-unit-insights
+  (testing "A timeseries column with a :type/Text base type can still produce insights if it has a valid :unit (#12388)"
+    (are [assertion datetime-col] (assertion
+                                   (transduce identity
+                                              (insights/insights [datetime-col
+                                                                  {:base_type :type/Number}])
+                                              [["2024-08-09" 10.0]
+                                               ["2024-08-10" 20.0]]))
+      nil?  {:base_type :type/Text}
+      ;; Extraction unit (day-of-week) is classified as a numeric column and doesn't produce insights here
+      nil?  {:base_type :type/Text :unit :day-of-week}
+      ;; Spot check truncation units — should all generate insights
+      some? {:base_type :type/Text :unit :day}
+      some? {:base_type :type/Text :unit :month}
+      some? {:base_type :type/Text :unit :year})))

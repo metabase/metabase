@@ -57,7 +57,7 @@ const MetadataTableSettings = ({
   table,
   params: { schemaId },
 }: MetadataTableSettingsProps) => {
-  const schema = schemas.find(schema => schema.id === schemaId);
+  const schema = schemas.find((schema) => schema.id === schemaId);
   const [rescanTableFieldValues] = useRescanTableFieldValuesMutation();
   const [discardTableFieldValues] = useDiscardTableFieldValuesMutation();
 

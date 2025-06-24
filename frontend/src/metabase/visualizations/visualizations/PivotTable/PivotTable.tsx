@@ -106,7 +106,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const updateHeaderWidths = useCallback(
       (newHeaderWidths: Partial<HeaderWidthType>) => {
-        setHeaderWidths(prevHeaderWidths => ({
+        setHeaderWidths((prevHeaderWidths) => ({
           ...prevHeaderWidths,
           ...newHeaderWidths,
         }));
@@ -135,7 +135,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
 
     const getColumnTitle = useCallback(
       function (columnIndex: number) {
-        const column = data.cols.filter(col => !isPivotGroupColumn(col))[
+        const column = data.cols.filter((col) => !isPivotGroupColumn(col))[
           columnIndex
         ];
         return getTitleForColumn(column, settings);
@@ -144,7 +144,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
     );
 
     function isColumnCollapsible(columnIndex: number) {
-      const columns = data.cols.filter(col => !isPivotGroupColumn(col));
+      const columns = data.cols.filter((col) => !isPivotGroupColumn(col));
       if (typeof settings.column != "function") {
         throw new Error(
           `Invalid pivot table settings format, missing nested column settings: ${JSON.stringify(
@@ -233,7 +233,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (columnsChanged) {
         const newLeftHeaderWidths = getLeftHeaderWidths({
           rowIndexes: pivoted?.rowIndexes,
-          getColumnTitle: idx => getColumnTitle(idx),
+          getColumnTitle: (idx) => getColumnTitle(idx),
           leftHeaderItems: pivoted?.leftHeaderItems,
           font: { fontFamily, fontSize },
         });
@@ -345,6 +345,7 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       rowIndexes,
       columnIndexes,
       valueIndexes,
+      columnsWithoutPivotGroup,
     } = pivoted;
 
     const topHeaderRows =
@@ -358,9 +359,40 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
       if (!clicked) {
         return undefined;
       }
+
+      // The CLJS code adds `colIdx` to the objects used for click handling instead of the entire column
+      // to avoid duplicate column metadata conversions from CLJS data structures to JS objects
+      const { colIdx, ...updatedClicked } = clicked;
+      if (typeof colIdx === "number") {
+        updatedClicked.column = columnsWithoutPivotGroup[colIdx];
+        updatedClicked.data ??= [
+          {
+            value: updatedClicked.value,
+            col: columnsWithoutPivotGroup[colIdx] || null,
+          },
+        ];
+      } else if (updatedClicked.data) {
+        updatedClicked.data = updatedClicked.data.map(
+          ({ colIdx, ...item }) => ({
+            ...item,
+            col: colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+          }),
+        );
+      }
+
+      if (updatedClicked.dimensions) {
+        updatedClicked.dimensions = updatedClicked.dimensions.map(
+          ({ colIdx, ...item }) => ({
+            ...item,
+            column:
+              colIdx !== undefined ? columnsWithoutPivotGroup[colIdx] : null,
+          }),
+        );
+      }
+
       return (e: React.MouseEvent) =>
         onVisualizationClick({
-          ...clicked,
+          ...updatedClicked,
           event: e.nativeEvent,
           settings,
         });
@@ -529,21 +561,23 @@ const PivotTableInner = forwardRef<HTMLDivElement, VisualizationProps>(
                           key,
                           style,
                           isScrolling,
-                        }) => (
-                          <BodyCell
-                            key={key}
-                            style={style}
-                            showTooltip={!isScrolling}
-                            rowSection={getRowSection(columnIndex, rowIndex)}
-                            isNightMode={isNightMode}
-                            getCellClickHandler={getCellClickHandler}
-                            cellWidths={getCellWidthsForSection(
-                              valueHeaderWidths,
-                              valueIndexes,
-                              columnIndex,
-                            )}
-                          />
-                        )}
+                        }) => {
+                          return (
+                            <BodyCell
+                              key={key}
+                              style={style}
+                              showTooltip={!isScrolling}
+                              rowSection={getRowSection(columnIndex, rowIndex)}
+                              isNightMode={isNightMode}
+                              getCellClickHandler={getCellClickHandler}
+                              cellWidths={getCellWidthsForSection(
+                                valueHeaderWidths,
+                                valueIndexes,
+                                columnIndex,
+                              )}
+                            />
+                          );
+                        }}
                         onScroll={({ scrollLeft, scrollTop }) =>
                           onScroll({ scrollLeft, scrollTop } as OnScrollParams)
                         }

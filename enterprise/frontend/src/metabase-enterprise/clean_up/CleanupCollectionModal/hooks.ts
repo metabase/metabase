@@ -11,9 +11,9 @@ export const usePagination = ({
   const [total, setTotal] = useState<number>(0);
   const [page, setPage] = useState(initialPage ?? 0);
 
-  const onNextPage = useCallback(() => setPage(prev => prev + 1), [setPage]);
+  const onNextPage = useCallback(() => setPage((prev) => prev + 1), [setPage]);
   const onPreviousPage = useCallback(
-    () => setPage(prev => prev - 1),
+    () => setPage((prev) => prev - 1),
     [setPage],
   );
   const resetPage = useCallback(

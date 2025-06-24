@@ -7,7 +7,7 @@ export default {
   component: Markdown,
 };
 
-const Template: StoryFn<MarkdownProps> = args => {
+const Template: StoryFn<MarkdownProps> = (args) => {
   return <Markdown {...args} />;
 };
 

@@ -1,17 +1,17 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component } from "react";
+import { useEffect } from "react";
 import { push } from "react-router-redux";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
+import { useGetUserQuery } from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
-import Users from "metabase/entities/users";
-import { connect } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 
 import { clearTemporaryPassword } from "../people";
@@ -19,34 +19,47 @@ import { getUserTemporaryPassword } from "../selectors";
 
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
-class UserSuccessModal extends Component {
-  componentWillUnmount() {
-    this.props.clearTemporaryPassword(this.props.params.userId);
+export function UserSuccessModal({ params }) {
+  const userId = parseInt(params.userId);
+  const { data: user, isLoading, error } = useGetUserQuery(userId);
+
+  const temporaryPassword = useSelector((state) =>
+    getUserTemporaryPassword(state, { userId }),
+  );
+  const hasSsoEnabled = useSelector(isSsoEnabled);
+  const hasPasswordLoginEnabled = useSelector((state) =>
+    getSetting(state, "enable-password-login"),
+  );
+  const dispatch = useDispatch();
+
+  const handleClose = () => {
+    dispatch(push("/admin/people"));
+  };
+
+  useEffect(() => {
+    return () => dispatch(clearTemporaryPassword(userId));
+  }, [userId, dispatch]);
+
+  if (!user || isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  render() {
-    const {
-      onClose,
-      user,
-      temporaryPassword,
-      isSsoEnabled,
-      isPasswordLoginEnabled,
-    } = this.props;
-    const ssoEnabled = isSsoEnabled && !isPasswordLoginEnabled;
-    return (
-      <ModalContent
-        title={t`${user.common_name} has been added`}
-        footer={<Button primary onClick={() => onClose()}>{t`Done`}</Button>}
-        onClose={onClose}
-      >
-        {temporaryPassword ? (
-          <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
-        ) : (
-          <EmailSuccess isSsoEnabled={ssoEnabled} user={user} />
-        )}
-      </ModalContent>
-    );
-  }
+  return (
+    <ModalContent
+      title={t`${user.common_name} has been added`}
+      footer={<Button primary onClick={handleClose}>{t`Done`}</Button>}
+      onClose={handleClose}
+    >
+      {temporaryPassword ? (
+        <PasswordSuccess user={user} temporaryPassword={temporaryPassword} />
+      ) : (
+        <EmailSuccess
+          isSsoEnabled={hasSsoEnabled && !hasPasswordLoginEnabled}
+          user={user}
+        />
+      )}
+    </ModalContent>
+  );
 }
 
 const EmailSuccess = ({ user, isSsoEnabled }) => {
@@ -95,21 +108,3 @@ const PasswordSuccess = ({ user, temporaryPassword }) => (
     </div>
   </div>
 );
-export default _.compose(
-  Users.load({
-    id: (state, props) => props.params.userId,
-  }),
-  connect(
-    (state, props) => ({
-      temporaryPassword: getUserTemporaryPassword(state, {
-        userId: props.params.userId,
-      }),
-      isSsoEnabled: isSsoEnabled(state),
-      isPasswordLoginEnabled: getSetting(state, "enable-password-login"),
-    }),
-    {
-      onClose: () => push("/admin/people"),
-      clearTemporaryPassword,
-    },
-  ),
-)(UserSuccessModal);

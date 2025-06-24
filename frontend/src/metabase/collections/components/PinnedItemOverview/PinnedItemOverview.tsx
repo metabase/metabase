@@ -41,7 +41,7 @@ function PinnedItemOverview({
   onCopy,
   onMove,
 }: Props) {
-  const sortedItems = _.sortBy(items, item => item.collection_position);
+  const sortedItems = _.sortBy(items, (item) => item.collection_position);
   const {
     card: cardItems = [],
     dashboard: dashboardItems = [],
@@ -67,7 +67,7 @@ function PinnedItemOverview({
               (cardGroup, cardGroupIndex) =>
                 cardGroup.length > 0 && (
                   <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
+                    {cardGroup.map((item) => (
                       <div key={item.id} className={CS.relative}>
                         <PinnedItemSortDropTarget
                           isFrontTarget
@@ -110,7 +110,7 @@ function PinnedItemOverview({
               (cardGroup, cardGroupIndex) =>
                 cardGroup.length > 0 && (
                   <Grid key={cardGroupIndex}>
-                    {cardGroup.map(item => (
+                    {cardGroup.map((item) => (
                       <div key={item.id} className={CS.relative}>
                         <PinnedItemSortDropTarget
                           isFrontTarget
@@ -150,7 +150,7 @@ function PinnedItemOverview({
           <div>
             <SectionTitle title={t`Dashboards`} icon="dashboard" />
             <Grid>
-              {dashboardItems.map(item => (
+              {dashboardItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget
@@ -196,7 +196,7 @@ function PinnedItemOverview({
               }
             />
             <Grid>
-              {modelItems.map(item => (
+              {modelItems.map((item) => (
                 <div key={item.id} className={CS.relative}>
                   <PinnedItemSortDropTarget
                     isFrontTarget

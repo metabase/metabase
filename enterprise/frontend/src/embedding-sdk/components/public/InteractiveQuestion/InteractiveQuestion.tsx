@@ -1,12 +1,13 @@
-import type { PropsWithChildren } from "react";
+import type { ReactNode } from "react";
 
-import type { FlexibleSizeProps } from "embedding-sdk/components/private/FlexibleSizeComponent";
 import {
   BackButton,
   Breakout,
   BreakoutDropdown,
   ChartTypeDropdown,
   ChartTypeSelector,
+  DownloadWidget,
+  DownloadWidgetDropdown,
   Editor,
   EditorButton,
   Filter,
@@ -26,29 +27,39 @@ import {
   type InteractiveQuestionProviderProps,
 } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
-  InteractiveQuestionResult,
-  type InteractiveQuestionResultProps,
-} from "embedding-sdk/components/private/InteractiveQuestionResult";
+  InteractiveQuestionDefaultView,
+  type InteractiveQuestionDefaultViewProps,
+} from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SDKCollectionReference } from "embedding-sdk/store/collections";
+import type { InteractiveQuestionQuestionIdProps } from "embedding-sdk/components/public/InteractiveQuestion/types";
 
-export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: InteractiveQuestionProviderProps["cardId"];
-  plugins?: InteractiveQuestionProviderProps["componentPlugins"];
-  /**
-   * When this is defined, the collection picker will be hidden and
-   * the question will be saved to this collection.
-   **/
-  saveToCollection?: SDKCollectionReference;
-}> &
-  Pick<
-    InteractiveQuestionProviderProps,
-    | "onBeforeSave"
-    | "onSave"
-    | "entityTypeFilter"
-    | "isSaveEnabled"
-    | "initialSqlParameters"
-  >;
+/**
+ * @interface
+ */
+export type BaseInteractiveQuestionProps =
+  InteractiveQuestionQuestionIdProps & {
+    /**
+     * The children of the MetabaseProvider component.s
+     */
+    children?: ReactNode;
+    plugins?: InteractiveQuestionProviderProps["componentPlugins"];
+  } & Pick<
+      InteractiveQuestionProviderProps,
+      | "onBeforeSave"
+      | "onSave"
+      | "entityTypeFilter"
+      | "isSaveEnabled"
+      | "initialSqlParameters"
+      | "withDownloads"
+      | "targetCollection"
+    >;
+
+/**
+ * @interface
+ * @category InteractiveQuestion
+ */
+export type InteractiveQuestionProps = BaseInteractiveQuestionProps &
+  InteractiveQuestionDefaultViewProps;
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -64,24 +75,24 @@ export const _InteractiveQuestion = ({
   onSave,
   entityTypeFilter,
   isSaveEnabled,
-  saveToCollection,
+  targetCollection,
   withChartTypeSelector = true,
+  withDownloads = false,
   initialSqlParameters,
-}: InteractiveQuestionProps &
-  InteractiveQuestionResultProps &
-  FlexibleSizeProps): JSX.Element | null => (
+}: InteractiveQuestionProps): JSX.Element | null => (
   <InteractiveQuestionProvider
-    cardId={questionId}
+    questionId={questionId}
     componentPlugins={plugins}
     onBeforeSave={onBeforeSave}
     onSave={onSave}
     entityTypeFilter={entityTypeFilter}
     isSaveEnabled={isSaveEnabled}
-    saveToCollection={saveToCollection}
+    targetCollection={targetCollection}
     initialSqlParameters={initialSqlParameters}
+    withDownloads={withDownloads}
   >
     {children ?? (
-      <InteractiveQuestionResult
+      <InteractiveQuestionDefaultView
         height={height}
         width={width}
         className={className}
@@ -94,6 +105,13 @@ export const _InteractiveQuestion = ({
   </InteractiveQuestionProvider>
 );
 
+/**
+ * A component that renders an interactive question.
+ *
+ * @function
+ * @category InteractiveQuestion
+ * @param props
+ */
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
 ) as typeof _InteractiveQuestion & {
@@ -119,6 +137,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   QuestionSettingsDropdown: typeof QuestionSettingsDropdown;
   Breakout: typeof Breakout;
   BreakoutDropdown: typeof BreakoutDropdown;
+  DownloadWidget: typeof DownloadWidget;
+  DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -128,10 +148,8 @@ InteractiveQuestion.ResetButton = QuestionResetButton;
 InteractiveQuestion.Title = Title;
 InteractiveQuestion.Summarize = Summarize;
 InteractiveQuestion.SummarizeDropdown = SummarizeDropdown;
-/** @deprecated Use `InteractiveQuestion.Editor` instead */
 InteractiveQuestion.Notebook = Editor;
 InteractiveQuestion.Editor = Editor;
-/** @deprecated Use `InteractiveQuestion.EditorButton` instead */
 InteractiveQuestion.NotebookButton = EditorButton;
 InteractiveQuestion.EditorButton = EditorButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
@@ -143,5 +161,7 @@ InteractiveQuestion.QuestionSettingsDropdown = QuestionSettingsDropdown;
 InteractiveQuestion.BreakoutDropdown = BreakoutDropdown;
 InteractiveQuestion.Breakout = Breakout;
 InteractiveQuestion.ChartTypeDropdown = ChartTypeDropdown;
+InteractiveQuestion.DownloadWidget = DownloadWidget;
+InteractiveQuestion.DownloadWidgetDropdown = DownloadWidgetDropdown;
 
 export { InteractiveQuestion };

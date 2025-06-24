@@ -1,29 +1,32 @@
 import type { FormEvent, MouseEventHandler } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { push } from "react-router-redux";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import ModalContent from "metabase/components/ModalContent";
-import Alert from "metabase/core/components/Alert";
-import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
+import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { MetabaseApi } from "metabase/services";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { DatabaseUsageInfo } from "metabase-types/api";
+import {
+  Alert,
+  Box,
+  type BoxProps,
+  Button,
+  Flex,
+  Icon,
+  Input,
+  Modal,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "metabase/ui";
+import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";
 
-import {
-  DatabaseNameInputContainer,
-  DeleteDatabaseModalFooter,
-  DeleteDatabaseModalRoot,
-  DeleteDatabaseModalSection,
-  ErrorMessage,
-} from "./DeleteDatabaseModal.styled";
-
 const entityTypesCount = (usageInfo: DatabaseUsageInfo) => {
-  return Object.values(usageInfo).filter(value => value > 0).length;
+  return Object.values(usageInfo).filter((value) => value > 0).length;
 };
 
 const hasContentInDatabase = (usageInfo: DatabaseUsageInfo) => {
@@ -46,16 +49,25 @@ const getErrorMessage = (error: any) => {
 };
 
 export interface DeleteDatabaseModalProps {
+  opened: boolean;
+  title: string;
+  defaultDatabaseRemovalMessage: string;
   onClose: () => void;
-  onDelete: (database: Database) => void;
-  database: Database;
+  onDelete: () => Promise<void>;
+  database: Pick<Database, "id" | "name" | "router_user_attribute">;
 }
 
-const DeleteDatabaseModal = ({
+export const DeleteDatabaseModal = ({
+  opened,
   database,
+  title,
+  defaultDatabaseRemovalMessage,
   onClose,
   onDelete,
+  ...props
 }: DeleteDatabaseModalProps) => {
+  const dispatch = useDispatch();
+
   const { value: usageInfo, loading } = useAsync(
     async () => await MetabaseApi.db_usage_info({ dbId: database.id }),
   );
@@ -70,16 +82,17 @@ const DeleteDatabaseModal = ({
     e.preventDefault();
 
     try {
-      await onDelete(database);
+      await onDelete();
       onClose();
     } catch (error) {
       setError(error);
     }
   };
 
-  const handleEditConnectionDetailsClick: MouseEventHandler = e => {
+  const handleEditConnectionDetailsClick: MouseEventHandler = (e) => {
     e.preventDefault();
     onClose();
+    dispatch(push(Urls.editDatabase(database.id)));
   };
 
   const hasContent = usageInfo && hasContentInDatabase(usageInfo);
@@ -97,25 +110,41 @@ const DeleteDatabaseModal = ({
   const errorMessage = getErrorMessage(error);
   const hasMoreThanOneEntityType = usageInfo && entityTypesCount(usageInfo) > 1;
 
+  const databaseNameConfirmationRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (isContentRemovalConfirmed || !hasContent) {
+      databaseNameConfirmationRef.current?.focus();
+    }
+  }, [isContentRemovalConfirmed, hasContent]);
+
   return (
-    <ModalContent
-      title={t`Delete the ${database.name} database?`}
+    <Modal
+      opened={opened}
+      title={title || t`Delete the ${database.name} database?`}
       onClose={onClose}
+      padding="xl"
+      {...props}
     >
       <LoadingAndErrorWrapper loading={loading}>
-        <DeleteDatabaseModalRoot
+        <Stack
+          component="form"
+          mt="md"
+          gap="md"
           onSubmit={canDelete ? handleSubmit : undefined}
         >
           {hasContent && (
             <DeleteDatabaseModalSection isHidden={isContentRemovalConfirmed}>
-              <Alert icon="info">
-                {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
-                  <Button
-                    key="button"
-                    onlyText
-                    onClick={handleEditConnectionDetailsClick}
-                  >{t`edit your connection details.`}</Button>
-                )}`}
+              <Alert color="bg-dark" icon={<Icon name="info" />}>
+                <Text>
+                  {jt`If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just ${(
+                    <UnstyledButton
+                      key="button"
+                      onClick={handleEditConnectionDetailsClick}
+                      c="brand"
+                      fw="bold"
+                    >{t`edit your connection details.`}</UnstyledButton>
+                  )}`}
+                </Text>
               </Alert>
             </DeleteDatabaseModalSection>
           )}
@@ -138,8 +167,8 @@ const DeleteDatabaseModal = ({
           <DeleteDatabaseModalSection
             isHidden={!isContentRemovalConfirmed && hasContent}
           >
-            <Alert icon="warning" variant="error">
-              {t`This will delete every saved question, model, metric, and segment you’ve made that uses this data, and can’t be undone!`}
+            <Alert icon={<Icon name="warning" />} color="error">
+              <Text>{defaultDatabaseRemovalMessage}</Text>
             </Alert>
           </DeleteDatabaseModalSection>
           <DeleteDatabaseModalSection
@@ -150,29 +179,52 @@ const DeleteDatabaseModal = ({
                 <strong key="name">{database.name}</strong>
               )} in this box:`}
             </p>
-            <DatabaseNameInputContainer>
-              <Input
-                fullWidth
-                data-testid="database-name-confirmation-input"
-                autoFocus
-                placeholder={t`Are you completely sure?`}
-                value={databaseNameConfirmation}
-                onChange={e => setDatabaseNameConfirmation(e.target.value)}
-              />
-            </DatabaseNameInputContainer>
+            <Input
+              w="20rem"
+              data-testid="database-name-confirmation-input"
+              data-autofocus="true"
+              placeholder={t`Are you completely sure?`}
+              value={databaseNameConfirmation}
+              ref={databaseNameConfirmationRef}
+              onChange={(e) => setDatabaseNameConfirmation(e.target.value)}
+            />
           </DeleteDatabaseModalSection>
-          <DeleteDatabaseModalFooter>
-            {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
+          <Flex gap="sm" justify="flex-end" align="center">
+            {errorMessage && (
+              <Box c="error" px="md">
+                {errorMessage}
+              </Box>
+            )}
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
-            <Button danger type="submit" disabled={!canDelete}>
+            <Button
+              color="error"
+              variant="filled"
+              type="submit"
+              disabled={!canDelete}
+            >
               {deleteButtonLabel}
             </Button>
-          </DeleteDatabaseModalFooter>
-        </DeleteDatabaseModalRoot>
+          </Flex>
+        </Stack>
       </LoadingAndErrorWrapper>
-    </ModalContent>
+    </Modal>
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteDatabaseModal;
+export const DeleteDatabaseModalSection = ({
+  isHidden,
+  ...props
+}: { isHidden?: boolean; children: React.ReactNode } & BoxProps) => {
+  return (
+    <Box
+      h={isHidden ? 0 : "unset"}
+      opacity={isHidden ? 0 : 1}
+      p="xs"
+      style={{
+        transition: "all 350ms, opacity 200ms",
+        overflow: "hidden",
+      }}
+      {...props}
+    />
+  );
+};

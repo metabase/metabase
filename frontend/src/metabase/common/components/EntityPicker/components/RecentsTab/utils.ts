@@ -38,10 +38,10 @@ export function getRecentGroups(items: RecentItem[]) {
       }
       return groups;
     },
-    dateBuckets.map(bucket => ({ ...bucket, items: [] })),
+    dateBuckets.map((bucket) => ({ ...bucket, items: [] })),
   );
 
-  return groups.filter(group => group.items.length > 0);
+  return groups.filter((group) => group.items.length > 0);
 }
 
 // put a recent item into the shape expected by ResultItem component

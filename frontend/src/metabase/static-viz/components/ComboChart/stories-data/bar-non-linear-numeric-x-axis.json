@@ -1,0 +1,184 @@
+[
+  {
+    "data": {
+      "rows": [
+        [10, 100],
+        [20, 200],
+        [30, 300],
+        [40, 400],
+        [50, 500],
+        [60, 600],
+        [70, 700],
+        [80, 800],
+        [90, 900],
+        [100, 1000],
+        [110, 1100],
+        [120, 1200],
+        [130, 1300],
+        [140, 1400],
+        [150, 1500],
+        [160, 1600],
+        [170, 1700],
+        [180, 1800],
+        [190, 1900],
+        [200, 2000]
+      ],
+      "results_timezone": "UTC",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "x",
+            "field_ref": [
+              "field",
+              "x",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "database_type": "int4",
+            "name": "x",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 20,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 10,
+                  "q1": 55,
+                  "q3": 155,
+                  "max": 200,
+                  "sd": 59.16079783099616,
+                  "avg": 105
+                }
+              }
+            }
+          },
+          {
+            "display_name": "y",
+            "field_ref": [
+              "field",
+              "y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "database_type": "int4",
+            "name": "y",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 20,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 100,
+                  "q1": 550,
+                  "q3": 1550,
+                  "max": 2000,
+                  "sd": 591.6079783099616,
+                  "avg": 1050
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "UTC",
+      "format-rows?": true,
+      "cols": [
+        {
+          "display_name": "x",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "x",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "x",
+          "base_type": "type/Integer",
+          "database_type": "int4",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "y",
+          "base_type": "type/Integer",
+          "database_type": "int4",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 10 x, 100 y\nunion all select 20, 200\nunion all select 30, 300\nunion all select 40, 400\nunion all select 50, 500\nunion all select 60, 600\nunion all select 70, 700\nunion all select 80, 800\nunion all select 90, 900\nunion all select 100, 1000\nunion all select 110, 1100\nunion all select 120, 1200\nunion all select 130, 1300\nunion all select 140, 1400\nunion all select 150, 1500\nunion all select 160, 1600\nunion all select 170, 1700\nunion all select 180, 1800\nunion all select 190, 1900\nunion all select 200, 2000"
+      },
+      "is_sandboxed": false,
+      "insights": null
+    },
+    "cached": null,
+    "database_id": 2,
+    "started_at": "2025-04-03T23:38:34.344821-04:00",
+    "json_query": {
+      "database": 2,
+      "type": "native",
+      "native": {
+        "template-tags": {},
+        "query": "select 10 x, 100 y\nunion all select 20, 200\nunion all select 30, 300\nunion all select 40, 400\nunion all select 50, 500\nunion all select 60, 600\nunion all select 70, 700\nunion all select 80, 800\nunion all select 90, 900\nunion all select 100, 1000\nunion all select 110, 1100\nunion all select 120, 1200\nunion all select 130, 1300\nunion all select 140, 1400\nunion all select 150, 1500\nunion all select 160, 1600\nunion all select 170, 1700\nunion all select 180, 1800\nunion all select 190, 1900\nunion all select 200, 2000\n"
+      },
+      "middleware": {
+        "js-int-to-string?": true,
+        "userland-query?": true,
+        "add-default-userland-constraints?": true
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "ad-hoc",
+    "row_count": 20,
+    "running_time": 24,
+    "card": {
+      "displayIsLocked": true,
+      "parameters": [],
+      "visualization_settings": {
+        "graph.dimensions": ["x"],
+        "graph.metrics": ["y"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.x_axis.scale": "pow"
+      },
+      "type": "question",
+      "entity_id": "W6mQO9kOvPxdPesZbiAxa",
+      "display": "bar",
+      "dataset_query": {
+        "database": 2,
+        "info": {
+          "card-entity-id": "W6mQO9kOvPxdPesZbiAxa"
+        },
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 10 x, 100 y\nunion all select 20, 200\nunion all select 30, 300\nunion all select 40, 400\nunion all select 50, 500\nunion all select 60, 600\nunion all select 70, 700\nunion all select 80, 800\nunion all select 90, 900\nunion all select 100, 1000\nunion all select 110, 1100\nunion all select 120, 1200\nunion all select 130, 1300\nunion all select 140, 1400\nunion all select 150, 1500\nunion all select 160, 1600\nunion all select 170, 1700\nunion all select 180, 1800\nunion all select 190, 1900\nunion all select 200, 2000\n"
+        }
+      },
+      "creationType": "native_question",
+      "collection_id": null
+    }
+  }
+]

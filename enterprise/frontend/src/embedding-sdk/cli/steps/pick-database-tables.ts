@@ -11,7 +11,7 @@ import {
 } from "../utils/propagate-error-response";
 import { retry } from "../utils/retry";
 
-export const pickDatabaseTables: CliStepMethod = async state => {
+export const pickDatabaseTables: CliStepMethod = async (state) => {
   const { instanceUrl, databaseId, cookie = "" } = state;
 
   const spinner = ora("Fetching database schemas and tables…").start();
@@ -78,7 +78,7 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
   if (!state.useSampleDatabase) {
     chosenTableIds = await checkbox({
-      validate: choices => {
+      validate: (choices) => {
         if (choices.length === 0) {
           return "Pick 1 - 3 tables to embed.";
         }
@@ -90,7 +90,7 @@ export const pickDatabaseTables: CliStepMethod = async state => {
         return true;
       },
       message: "Pick 1 - 3 tables to embed:",
-      choices: tablesWithoutMetadata.map(table => ({
+      choices: tablesWithoutMetadata.map((table) => ({
         name: table.name,
         value: table.id,
       })),
@@ -99,8 +99,8 @@ export const pickDatabaseTables: CliStepMethod = async state => {
     // The user does not know about the sample database's structure,
     // so we pick a couple tables for them.
     chosenTableIds = tablesWithoutMetadata
-      .filter(item => SAMPLE_DATABASE_SELECTED_TABLES.includes(item.name))
-      .map(table => table.id);
+      .filter((item) => SAMPLE_DATABASE_SELECTED_TABLES.includes(item.name))
+      .map((table) => table.id);
   }
 
   spinner.start("Fetching table metadata...");
@@ -128,7 +128,7 @@ export const pickDatabaseTables: CliStepMethod = async state => {
           await propagateErrorResponse(res);
 
           const metadataResult = (await res.json()) as { tables: Table[] };
-          const table = metadataResult.tables.find(t => t.id === tableId);
+          const table = metadataResult.tables.find((t) => t.id === tableId);
 
           if (!table) {
             throw new Error(`Table "${tableId}" not found.`);

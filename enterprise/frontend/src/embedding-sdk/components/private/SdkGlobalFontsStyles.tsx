@@ -18,7 +18,7 @@ export const SdkFontsGlobalStyles = ({ baseUrl }: { baseUrl: string }) => {
 
       // custom fonts
       ${fontFiles?.map(
-        file => css`
+        (file) => css`
           @font-face {
             font-family: "Custom";
             src: url(${encodeURI(file.src)}) format("${file.fontFormat}");

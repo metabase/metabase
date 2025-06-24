@@ -24,7 +24,7 @@ const questionDetails = {
   },
 };
 
-const questionDetailsWithRequiredFilter = produce(questionDetails, draft => {
+const questionDetailsWithRequiredFilter = produce(questionDetails, (draft) => {
   draft.native["template-tags"].filter.required = true;
 });
 

@@ -16,10 +16,7 @@ import {
   FormTextarea,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
-import {
-  field_semantic_types,
-  field_visibility_types,
-} from "metabase/lib/core";
+import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import { Box, Radio, Tabs } from "metabase/ui";
 import ColumnSettings, {
@@ -31,9 +28,10 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
+import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTargetPicker";
+import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
 import MappedFieldPicker from "./MappedFieldPicker";
-import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";
 
 const propTypes = {
   dataset: PropTypes.object.isRequired,
@@ -55,23 +53,12 @@ function getVisibilityTypeName(visibilityType) {
   return visibilityType.name;
 }
 
-function getSemanticTypeOptions() {
-  return [
-    ...field_semantic_types,
-    {
-      id: null,
-      name: t`No special type`,
-      section: t`Other`,
-    },
-  ];
-}
-
-const visibilityTypeOptions = field_visibility_types
-  .filter(type => type.id !== "sensitive")
-  .map(type => ({
-    name: getVisibilityTypeName(type),
-    value: type.id,
-  }));
+const visibilityTypeOptions = FIELD_VISIBILITY_TYPES.filter(
+  (type) => type.id !== "sensitive",
+).map((type) => ({
+  name: getVisibilityTypeName(type),
+  value: type.id,
+}));
 
 const VIEW_AS_FIELDS = ["view_as", "link_text", "link_url"];
 
@@ -125,7 +112,7 @@ function DatasetFieldMetadataSidebar({
   const [tab, setTab] = useState(TAB.SETTINGS);
 
   const handleFormattingSettingsChange = useCallback(
-    settings => {
+    (settings) => {
       onFieldMetadataChange({ settings });
     },
     [onFieldMetadataChange],
@@ -158,7 +145,7 @@ function DatasetFieldMetadataSidebar({
   }, [tab, hasColumnFormattingOptions]);
 
   const onLastEssentialFieldKeyDown = useCallback(
-    e => {
+    (e) => {
       const isNextFieldAction = !e.shiftKey && e.key === "Tab";
       if (isNextFieldAction && isLastField) {
         e.preventDefault();
@@ -174,7 +161,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleDisplayNameChange = useCallback(
-    e =>
+    (e) =>
       onFieldMetadataChangeDebounced({
         display_name: e.target.value,
       }),
@@ -182,7 +169,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleDescriptionChange = useCallback(
-    e =>
+    (e) =>
       onFieldMetadataChangeDebounced({
         description: e.target.value,
       }),
@@ -190,15 +177,15 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleSemanticTypeChange = useCallback(
-    value =>
+    (value) =>
       onFieldMetadataChange({
         semantic_type: value,
       }),
     [onFieldMetadataChange],
   );
 
-  const handleFKTargetChange = useCallback(
-    value =>
+  const handleFkTargetChange = useCallback(
+    (value) =>
       onFieldMetadataChange({
         fk_target_field_id: value,
       }),
@@ -206,7 +193,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleVisibilityTypeChange = useCallback(
-    value =>
+    (value) =>
       onFieldMetadataChange({
         visibility_type: value,
       }),
@@ -214,7 +201,7 @@ function DatasetFieldMetadataSidebar({
   );
 
   const handleShouldIndexChange = useCallback(
-    e =>
+    (e) =>
       onFieldMetadataChange({
         should_index: e.target.checked,
       }),
@@ -254,9 +241,6 @@ function DatasetFieldMetadataSidebar({
                       },
                     },
                     input: {
-                      paddingTop: "1.375rem",
-                      paddingBottom: "0.5rem",
-                      height: "auto",
                       fontWeight: "bold",
                     },
                   }}
@@ -281,22 +265,20 @@ function DatasetFieldMetadataSidebar({
                   </Box>
                 )}
                 <Box mb="1.5rem">
-                  <SemanticTypePicker
+                  <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
-                    name="semantic_type"
-                    label={t`Column type`}
+                    field={field}
                     tabIndex={EDITOR_TAB_INDEXES.ESSENTIAL_FORM_FIELD}
-                    onKeyDown={onLastEssentialFieldKeyDown}
-                    options={getSemanticTypeOptions()}
                     onChange={handleSemanticTypeChange}
+                    onKeyDown={onLastEssentialFieldKeyDown}
                   />
                 </Box>
                 {isFK(formFieldValues) && (
                   <Box mb="1.5rem">
-                    <FKTargetPicker
-                      name="fk_target_field_id"
+                    <DatasetFieldMetadataFkTargetPicker
                       databaseId={dataset.databaseId()}
-                      onChange={handleFKTargetChange}
+                      field={field}
+                      onChange={handleFkTargetChange}
                     />
                   </Box>
                 )}
@@ -305,7 +287,7 @@ function DatasetFieldMetadataSidebar({
               <Tabs value={tab} onChange={setTab}>
                 {hasColumnFormattingOptions ? (
                   <Tabs.List px="1rem">
-                    {TAB_OPTIONS.map(option => (
+                    {TAB_OPTIONS.map((option) => (
                       <Tabs.Tab
                         value={option.value}
                         key={`tab-${option.value}`}
@@ -327,7 +309,7 @@ function DatasetFieldMetadataSidebar({
                       }}
                       onChange={handleVisibilityTypeChange}
                     >
-                      {visibilityTypeOptions.map(option => (
+                      {visibilityTypeOptions.map((option) => (
                         <Radio
                           key={`visibility-type-${option.value}`}
                           value={option.value}

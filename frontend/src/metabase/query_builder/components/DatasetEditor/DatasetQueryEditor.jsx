@@ -77,7 +77,7 @@ function DatasetQueryEditor({
         <NativeQueryEditor
           {...props}
           question={question}
-          query={question.legacyQuery()} // memoized query
+          query={question.legacyNativeQuery()} // memoized query
           isInitiallyOpen
           hasTopBar={isActive}
           hasEditingSidebar={isActive}

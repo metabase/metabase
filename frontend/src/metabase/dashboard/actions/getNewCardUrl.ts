@@ -85,7 +85,7 @@ export function getParametersMappedToDashcard(
   dashcard: QuestionDashboardCard,
 ): ParameterWithTarget[] {
   const { parameter_mappings } = dashcard;
-  return (parameters || []).flatMap(parameter => {
+  return (parameters || []).flatMap((parameter) => {
     const mapping = _.findWhere(parameter_mappings || [], {
       parameter_id: parameter.id,
     });

@@ -19,14 +19,27 @@ fk_target_field_id:
 - public
 - v_databases
 - entity_qualified_id
-dimensions: []
+dimensions:
+- created_at: '2025-04-01T14:06:49.716683Z'
+  entity_id: GQmEDdTJkQ_WjQDduKN7G
+  human_readable_field_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - name
+  name: Database Qualified ID
+  type: external
+  serdes/meta:
+  - id: GQmEDdTJkQ_WjQDduKN7G
+    label: database_qualified_id
+    model: Dimension
 json_unfolding: false
 parent_id: null
 coercion_strategy: null
 preview_display: true
-position: 2
+position: 3
 custom_position: 0
-database_position: 2
+database_position: 3
 has_field_values: auto-list
 settings: null
 caveats: null
@@ -43,4 +56,4 @@ serdes/meta:
   model: Field
 database_indexed: false
 database_partitioned: null
-entity_id: GiS4njKAxvFNjsBVHEF0h
+entity_id: _SEDOO8jSZCbU5ej9iFbH

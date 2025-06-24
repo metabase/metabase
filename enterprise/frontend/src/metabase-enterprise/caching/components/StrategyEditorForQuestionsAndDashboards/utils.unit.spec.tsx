@@ -154,7 +154,9 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
         const b = formatValueForSorting(rowB, "policy") as string;
         return a.localeCompare(b);
       });
-      const strategies = sorted.map(row => getShortStrategyLabel(row.strategy));
+      const strategies = sorted.map((row) =>
+        getShortStrategyLabel(row.strategy),
+      );
       expect(strategies).toEqual([
         "Adaptive",
         "Duration: 1h",
@@ -173,7 +175,7 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
         const b = formatValueForSorting(rowB, "collection") as string;
         return a.localeCompare(b);
       });
-      const collections = sorted.map(row =>
+      const collections = sorted.map((row) =>
         row.collection ? getCollectionPathAsString(row.collection) : null,
       );
       expect(collections).toEqual([

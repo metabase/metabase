@@ -7,6 +7,7 @@ import {
   type CellFormatter,
 } from "metabase/data-grid";
 import { alpha, color } from "metabase/lib/colors";
+import type { ColumnSettings } from "metabase-types/api";
 
 import S from "./MiniBarCell.module.css";
 
@@ -16,6 +17,14 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
+const resolveMax = (min: number, max: number, number_style: string) => {
+  // For pure percent columns with values within [0, 1] use 1 as top range of minibar
+  if (number_style === "percent" && min >= 0 && max <= 1) {
+    return 1;
+  }
+  return max;
+};
+
 export interface MiniBarCellProps<TValue> {
   value: TValue;
   extent: [number, number];
@@ -24,6 +33,7 @@ export interface MiniBarCellProps<TValue> {
   align?: CellAlign;
   rowIndex: number;
   columnId: string;
+  columnSettings: ColumnSettings;
 }
 
 export const MiniBarCell = <TValue,>({
@@ -34,6 +44,7 @@ export const MiniBarCell = <TValue,>({
   align,
   rowIndex,
   columnId,
+  columnSettings,
 }: MiniBarCellProps<TValue>) => {
   if (typeof value !== "number") {
     return null;
@@ -41,8 +52,9 @@ export const MiniBarCell = <TValue,>({
 
   const hasNegative = min < 0;
   const isNegative = value < 0;
+  const resolvedMax = resolveMax(min, max, columnSettings["number_style"]);
   const barPercent =
-    (Math.abs(value) / Math.max(Math.abs(min), Math.abs(max))) * 100;
+    (Math.abs(value) / Math.max(Math.abs(min), Math.abs(resolvedMax))) * 100;
   const barColor = isNegative ? color("error") : color("brand");
 
   const barStyle = !hasNegative
@@ -75,47 +87,55 @@ export const MiniBarCell = <TValue,>({
       backgroundColor={backgroundColor}
       align={align}
     >
-      {/* TEXT VALUE */}
-      <div
-        className={cx(CS.textEllipsis, CS.textBold, CS.textRight, CS.flexFull)}
-        style={{ minWidth: LABEL_MIN_WIDTH }}
-      >
-        {formatter(value, rowIndex, columnId)}
-      </div>
-      {/* OUTER CONTAINER BAR */}
-      <div
-        data-testid="mini-bar-container"
-        className={CS.ml1}
-        style={{
-          position: "relative",
-          width: BAR_WIDTH,
-          height: BAR_HEIGHT,
-          backgroundColor: alpha(barColor, 0.2),
-          borderRadius: BORDER_RADIUS,
-        }}
-      >
-        {/* INNER PROGRESS BAR */}
+      <div className={S.minibarWrapper}>
+        {/* TEXT VALUE */}
         <div
+          className={cx(
+            CS.textEllipsis,
+            CS.textBold,
+            CS.textRight,
+            CS.flexFull,
+          )}
+          style={{ minWidth: LABEL_MIN_WIDTH }}
+        >
+          {formatter(value, rowIndex, columnId)}
+        </div>
+        {/* OUTER CONTAINER BAR */}
+        <div
+          data-testid="mini-bar-container"
+          className={CS.ml1}
           style={{
-            position: "absolute",
-            top: 0,
-            bottom: 0,
-            backgroundColor: barColor,
-            ...barStyle,
+            position: "relative",
+            width: BAR_WIDTH,
+            height: BAR_HEIGHT,
+            backgroundColor: alpha(barColor, 0.2),
+            borderRadius: BORDER_RADIUS,
           }}
-        />
-        {/* CENTER LINE */}
-        {hasNegative && (
+        >
+          {/* INNER PROGRESS BAR */}
           <div
+            data-testid="mini-bar"
             style={{
               position: "absolute",
-              left: "50%",
               top: 0,
               bottom: 0,
-              borderLeft: `1px solid ${color("white")}`,
+              backgroundColor: barColor,
+              ...barStyle,
             }}
           />
-        )}
+          {/* CENTER LINE */}
+          {hasNegative && (
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: 0,
+                bottom: 0,
+                borderLeft: `1px solid ${color("white")}`,
+              }}
+            />
+          )}
+        </div>
       </div>
     </BaseCell>
   );

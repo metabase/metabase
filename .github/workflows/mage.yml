@@ -1,0 +1,27 @@
+name: Mage Tests
+
+on:
+  pull_request:
+    paths: ["mage/**", "test/mage/**"]
+
+jobs:
+  # run mage tests even if the rest of be isnt needed
+  mage-tests:
+    runs-on: ubuntu-22.04
+    name: Mage
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'kondo'
+      - name: Setup Babashka
+        uses: turtlequeue/setup-babashka@v1.7.0
+        with:
+          babashka-version: 1.12.197
+      - name: Check bb runs
+        run: bb --version
+      - name: bb task list
+        run: bb tasks
+      - name: Run mage tests
+        run: bb ./test/mage/runtests.clj

@@ -185,7 +185,7 @@ export function getSettingsWidgets(
   extra = {},
 ) {
   return Object.keys(settingDefs)
-    .map(settingId =>
+    .map((settingId) =>
       getSettingWidget(
         settingDefs,
         settingId,
@@ -196,7 +196,7 @@ export function getSettingsWidgets(
         extra,
       ),
     )
-    .filter(widget => widget.widget);
+    .filter((widget) => widget.widget);
 }
 
 export function getPersistableDefaultSettings(settingsDefs, completeSettings) {

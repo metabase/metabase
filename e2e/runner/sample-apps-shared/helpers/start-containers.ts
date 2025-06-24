@@ -42,7 +42,7 @@ export async function startContainers({
   }
 
   if (!process.env.CI) {
-    ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach(signal => {
+    ["exit", "SIGINT", "SIGTERM", "uncaughtException"].forEach((signal) => {
       process.on(signal, () => {
         console.log(`Parent received ${signal}, killing stopping app...`);
 

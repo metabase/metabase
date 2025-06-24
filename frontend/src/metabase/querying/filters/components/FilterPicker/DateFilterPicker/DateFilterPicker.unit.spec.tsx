@@ -1,10 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import {
-  mockScrollIntoView,
-  renderWithProviders,
-  screen,
-} from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
@@ -32,7 +28,6 @@ interface SetupOpts {
 function setup({ query, column, filter, isNew = false }: SetupOpts) {
   const onChange = jest.fn();
   const onBack = jest.fn();
-  mockScrollIntoView();
 
   renderWithProviders(
     <DateFilterPicker

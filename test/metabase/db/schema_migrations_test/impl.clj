@@ -14,6 +14,7 @@
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.connection :as mdb.connection]
+   [metabase.db.custom-migrations.util :as custom-migrations.util]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.liquibase :as liquibase]
    [metabase.db.test-util :as mdb.test-util]
@@ -74,10 +75,11 @@
   (do-with-temp-empty-app-db*
    driver
    (fn [^javax.sql.DataSource data-source]
-     ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
-     ;; open
+      ;; it should be ok to open multiple connections to this `data-source`; it should stay open as long as `conn` is
+      ;; open
      (with-open [conn (.getConnection data-source)]
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)]
+       (binding [mdb.connection/*application-db* (mdb.connection/application-db driver data-source)
+                 custom-migrations.util/*allow-temp-scheduling* false]
          (f conn))))))
 
 (defmacro with-temp-empty-app-db

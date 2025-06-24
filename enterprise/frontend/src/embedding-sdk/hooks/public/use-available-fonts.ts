@@ -3,6 +3,8 @@ import { getSetting } from "metabase/selectors/settings";
 
 export const useAvailableFonts = () => {
   return {
-    availableFonts: useSelector(state => getSetting(state, "available-fonts")),
+    availableFonts: useSelector((state) =>
+      getSetting(state, "available-fonts"),
+    ),
   };
 };

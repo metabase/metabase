@@ -34,7 +34,8 @@
           :position                  (:position field)
           :database-position         (:database_position field)
           :database-partitioned      (:database_partitioned field)
-          :database-required         (:database_required field)})
+          :database-required         (:database_required field)
+          :visibility-type           (:visibility_type field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set

@@ -8,8 +8,8 @@ export function updateTemporalBucketing(
 ) {
   const bucket =
     columns
-      .map(column => Lib.temporalBucket(column))
-      .find(bucket => bucket != null) ?? null;
+      .map((column) => Lib.temporalBucket(column))
+      .find((bucket) => bucket != null) ?? null;
 
   return Lib.joinConditionUpdateTemporalBucketing(
     query,

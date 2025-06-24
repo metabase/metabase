@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { SettingInputBlurChange } from "./SettingInput/SettingInput.styled";
 
-const maybeSingletonList = value => (value ? [value] : null);
+const maybeSingletonList = (value) => (value ? [value] : null);
 
 const SettingCommaDelimitedInput = ({
   setting,
@@ -24,10 +24,14 @@ const SettingCommaDelimitedInput = ({
       placeholder={setting.placeholder}
       // If the input's value is empty, setting.value should be null
       onChange={
-        fireOnChange ? e => onChange(maybeSingletonList(e.target.value)) : null
+        fireOnChange
+          ? (e) => onChange(maybeSingletonList(e.target.value))
+          : null
       }
       onBlurChange={
-        !fireOnChange ? e => onChange(maybeSingletonList(e.target.value)) : null
+        !fireOnChange
+          ? (e) => onChange(maybeSingletonList(e.target.value))
+          : null
       }
       autoFocus={autoFocus}
     />

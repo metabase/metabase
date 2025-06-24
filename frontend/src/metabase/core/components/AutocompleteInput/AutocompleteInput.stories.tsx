@@ -8,7 +8,7 @@ export default {
   component: AutocompleteInput,
 };
 
-const Template: StoryFn<typeof AutocompleteInput> = args => {
+const Template: StoryFn<typeof AutocompleteInput> = (args) => {
   const [value, setValue] = useState("");
   return (
     <AutocompleteInput
@@ -43,17 +43,17 @@ export const CustomFilter = {
       if (!value) {
         return [];
       } else {
-        return options.filter(o => o.includes(value[0]));
+        return options.filter((o) => o.includes(value[0]));
       }
     },
   },
 };
 
-const CustomOptionClickTemplate: StoryFn<typeof AutocompleteInput> = args => {
+const CustomOptionClickTemplate: StoryFn<typeof AutocompleteInput> = (args) => {
   const [value, setValue] = useState("");
 
   const handleOptionSelect = (option: string) => {
-    setValue(v => `${v}${option}`);
+    setValue((v) => `${v}${option}`);
   };
   return (
     <AutocompleteInput
