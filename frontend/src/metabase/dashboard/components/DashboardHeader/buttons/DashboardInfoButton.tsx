@@ -3,11 +3,15 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
+import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 export const DashboardInfoButton = () => {
-  const { getIsShowDashboardInfoSidebar, closeSidebar, setSidebar } = useDashboardContext();
-  const isShowingDashboardInfoSidebar = getIsShowDashboardInfoSidebar();
+  const { closeSidebar, setSidebar } = useDashboardContext();
+  const isShowingDashboardInfoSidebar = useSelector(
+    getIsShowDashboardInfoSidebar,
+  );
 
   const handleClick = () => {
     isShowingDashboardInfoSidebar
