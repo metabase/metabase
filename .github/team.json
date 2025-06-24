@@ -28,6 +28,7 @@
       "name": "Drivers",
       "label": ".Team/Drivers",
       "members": [
+        "snoe",
         "rileythomp"
       ]
     },
