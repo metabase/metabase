@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-508-select-dashboards-and-questions-for-new-iframe-embedding",
-    "hash": "651aba754e39617775dda379170043068f495ff4"
+    "hash": "4ce77ae10b40471463a191dfce881badc37a16c5"
   },
   "upstream": {
     "branch": "emb-549-end-to-end-tests-for-selecting-resource-to-embed-for-new"
