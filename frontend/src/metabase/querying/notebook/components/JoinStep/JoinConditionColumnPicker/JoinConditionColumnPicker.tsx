@@ -150,7 +150,7 @@ interface JoinColumnDropdownProps {
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
   isLhsExpression: boolean;
-  onChange: (column: Lib.ExpressionClause) => void;
+  onChange: (column: Lib.ExpressionClause, bucket: Lib.Bucket | null) => void;
   onClose: () => void;
 }
 
@@ -182,7 +182,7 @@ function JoinColumnDropdown({
   );
 
   const handleX = (_name: string, newExpression: Lib.ExpressionClause) => {
-    onChange(newExpression);
+    onChange(newExpression, null);
     onClose();
   };
 
@@ -223,7 +223,7 @@ interface JoinColumnPickerProps {
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
   isLhsExpression: boolean;
-  onChange: (column: Lib.ExpressionClause) => void;
+  onChange: (column: Lib.ExpressionClause, bucket: Lib.Bucket | null) => void;
   onExpressionSelect: () => void;
   onClose: () => void;
 }
@@ -261,7 +261,7 @@ function JoinColumnPicker({
   ]);
 
   const handleColumnSelect = (column: Lib.ColumnMetadata) => {
-    onChange(Lib.expressionClause(column));
+    onChange(Lib.expressionClause(column), Lib.temporalBucket(column));
   };
 
   return (

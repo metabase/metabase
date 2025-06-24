@@ -1,22 +1,20 @@
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 export function updateTemporalBucketing(
-  _query: Lib.Query,
-  _stageIndex: number,
+  query: Lib.Query,
+  stageIndex: number,
   condition: Lib.JoinCondition,
-  _expressions: Lib.ExpressionClause[],
+  expressions: Lib.ExpressionClause[],
 ) {
-  return condition;
+  const bucket =
+    expressions
+      .map((expression) => Lib.temporalBucket(expression))
+      .find((bucket) => bucket != null) ?? null;
 
-  // const bucket =
-  //   expressions
-  //     .map((expression) => Lib.temporalBucket(expression))
-  //     .find((bucket) => bucket != null) ?? null;
-  //
-  // return Lib.joinConditionUpdateTemporalBucketing(
-  //   query,
-  //   stageIndex,
-  //   condition,
-  //   bucket,
-  // );
+  return Lib.joinConditionUpdateTemporalBucketing(
+    query,
+    stageIndex,
+    condition,
+    bucket,
+  );
 }
