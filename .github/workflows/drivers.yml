@@ -33,19 +33,21 @@ jobs:
               break
             fi
           done
+          IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}"
           echo "GitHub Actor: ${{ github.actor }}"
           echo "Team Members: ${REQUIRED_TEAM_MEMBERS}"
           echo "Is Required Team Member: ${IS_REQUIRED_MEMBER}"
+          echo "Is master or release: "${IS_MASTER_OR_RELEASE}"
           # Logic to determine if tier 3 tests should skip
-          # Skip if not a required team member AND not merging into master or release branches
+          # Skip if not a required team member AND not on master or release branches
           if [[ "${IS_REQUIRED_MEMBER}" == "true" ]]; then
-            echo "::set-output name=skip::false"
+            echo "skip=false >> $GITHUB_OUTPUT"
             echo "User is a required team member. Tier 3 driver tests will run."
-          elif [[ "${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-') }}" == "true" ]]; then
-            echo "::set-output name=skip::false"
+          elif [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
+            echo "skip=false" >> $GITHUB_OUTPUT
             echo "Merging into master or a release branch. Tier 3 driver tests will run."
           else
-            echo "::set-output name=skip::true"
+            echo skip=true" >> $GITHUB_OUTPUT
             echo "User is not a required team member and not merging into master/release. Tier 3 driver tests will be skipped."
           fi
         shell: bash
