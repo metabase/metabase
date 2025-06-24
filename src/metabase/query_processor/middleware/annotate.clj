@@ -73,12 +73,27 @@
          (dissoc :lib/type)
          ->snake_case))))
 
+(defn- expected-cols-using-legacy-display-names [query initial-cols]
+  (let [cols        (expected-cols query initial-cols)
+        legacy-cols (:cols (qp.store/with-metadata-provider (lib.metadata/->metadata-provider query)
+                             (annotate.legacy/update-metadata
+                              (lib.convert/->legacy-MBQL query)
+                              {:cols initial-cols})))]
+    (println "(map :display_name legacy-cols):" (pr-str (map :display_name legacy-cols))) ; NOCOMMIT
+    (if-not (= (count cols) (count legacy-cols))
+      cols
+      (mapv (fn [col legacy-col]
+              (merge
+               col
+               (u/select-non-nil-keys legacy-col [:display_name])))
+            cols
+            legacy-cols))))
+
 (mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query
    rff              :- ::qp.schema/rff
    initial-metadata :- ::metadata]
-  (qp.debug/debug> (list `add-column-info query initial-metadata))
-  (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
+  (let [metadata' (update initial-metadata :cols #(expected-cols-using-legacy-display-names query %))]
     (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
     (rff metadata')))
 
@@ -122,7 +137,7 @@
   [query            :- ::lib.schema/query
    rff              :- ::qp.schema/rff
    initial-metadata :- ::metadata]
-  (let [metadata' (update initial-metadata :cols #(expected-cols query %))]
+  (let [metadata' (update initial-metadata :cols #(expected-cols-using-legacy-display-names query %))]
     (qp.debug/debug> (list `add-column-info query initial-metadata '=> metadata'))
     (infer-base-type-xform metadata' (rff metadata'))))
 
@@ -147,23 +162,11 @@
    rff   :- ::qp.schema/rff]
   (mu/fn :- ::qp.schema/rf
     [initial-metadata :- ::metadata]
-    (let [f               (if (needs-type-inference? query initial-metadata)
-                            add-column-info-with-type-inference
-                            add-column-info-no-type-inference)
-          metadata        (f query rff initial-metadata)
-          legacy-metadata (qp.store/with-metadata-provider (lib.metadata/->metadata-provider query)
-                            (annotate.legacy/update-metadata
-                             (lib.convert/->legacy-MBQL query)
-                             initial-metadata))]
-      (if-not (= (count (:cols metadata)) (count (:cols legacy-metadata)))
-        metadata
-        (update metadata :cols (fn [cols]
-                                 (mapv (fn [col legacy-col]
-                                         (merge
-                                          col
-                                          (u/select-non-nil-keys legacy-col [:display_name])))
-                                       cols
-                                       (:cols legacy-metadata))))))))
+    (qp.debug/debug> (list `add-column-info query initial-metadata))
+    (let [f (if (needs-type-inference? query initial-metadata)
+              add-column-info-with-type-inference
+              add-column-info-no-type-inference)]
+      (f query rff initial-metadata))))
 
 ;;;;
 ;;;; NONSENSE

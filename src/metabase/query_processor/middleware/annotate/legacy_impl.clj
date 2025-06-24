@@ -532,23 +532,6 @@
                   (mbql-cols source-query outer-query results))]
     (qp.util/combine-metadata columns source-metadata)))
 
-(defn- idents-for-model
-  [cols card-entity-id]
-  ;; Safety checks during dev and test.
-  (when-not config/is-prod?
-    (when-not (every? :ident cols)
-      (throw (ex-info "idents-for-model with missing idents" {:cols           cols
-                                                              :card-entity-id card-entity-id})))
-    (when-not (string? card-entity-id)
-      (throw (ex-info "idents-for-model with blank card-entity-id" {:cols cols}))))
-
-  (for [col cols]
-    (cond-> col
-      ;; Check that the ident isn't already set for the source model, to avoid "double-bagging".
-      ;; That only applies to `:source :fields` columns though - not expressions, aggregations, etc.
-      (not (lib/valid-model-ident? col card-entity-id))
-      (lib/add-model-ident card-entity-id))))
-
 (defn- mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
@@ -562,11 +545,6 @@
       source-query
       (cond-> (cols-for-source-query inner-query outer-query results)
         true       (u/prog1 #_sq-cols (qp.debug/debug> [`cols-for-source-query <>]))
-        model?     ((fn [sq-cols]
-                      (u/prog1 (idents-for-model sq-cols entity-id)
-                        (qp.debug/debug> [`idents-for-model entity-id sq-cols '=>
-                                          ^{:portal.viewer/default :portal.viewer/diff}
-                                          [(vec sq-cols) (vec <>)]]))))
         (seq cols) ((fn [sq-cols]
                       (u/prog1 (flow-field-metadata sq-cols cols model?)
                         (qp.debug/debug> [`flow-field-metadata 'sq-cols sq-cols 'cols cols 'model? model? '=>
@@ -670,18 +648,9 @@
        (map lib.temporal-bucket/ensure-temporal-unit-in-display-name)
        (map lib.binning/ensure-binning-in-display-name)))
 
-;; TODO: Start recording the :ident of the inner column under a different key.
-;; TODO: Use `:ident`s for matching up model metadata!
 (defn- merge-model-metadata
   [query-metadata model-metadata _card-entity-id]
-  (qp.util/combine-metadata query-metadata model-metadata)
-  ;; FIXME: Breadcrumbs during development.
-  #_(qp.util/combine-metadata
-     (for [{:keys [source name display_name] :as col} query-metadata]
-       (cond-> col
-         (and (= source :native)
-              (= name display_name)) (assoc :display_name (humanization/name->human-readable-name name))))
-     model-metadata))
+  (qp.util/combine-metadata query-metadata model-metadata))
 
 (defn update-metadata
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
