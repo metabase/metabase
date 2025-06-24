@@ -520,6 +520,24 @@ describe("scenarios > embedding > dashboard parameters", () => {
         H.assertSheetRowsCount(54)(sheet);
       },
     );
+
+    cy.log(
+      "The PDF download button should be clickable when there is no title, but has parameters (metabase#59503)",
+    );
+    cy.get("@dashboardId2").then((dashboardId) => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+      H.visitEmbeddedPage(payload, {
+        pageStyle: {
+          downloads: true,
+          titled: false,
+        },
+      });
+    });
+
+    cy.button("Download as PDF").should("be.visible").click();
   });
 
   it("should send 'X-Metabase-Client' header for api requests", () => {
