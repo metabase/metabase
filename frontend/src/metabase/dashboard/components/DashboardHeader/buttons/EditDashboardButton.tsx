@@ -5,7 +5,8 @@ import { useDashboardContext } from "metabase/dashboard/context/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 export const EditDashboardButton = () => {
-  const { dashboard, onRefreshPeriodChange, setEditingDashboard } = useDashboardContext();
+  const { dashboard, onRefreshPeriodChange, setEditingDashboard } =
+    useDashboardContext();
   const onBeginEditing = () => {
     if (dashboard) {
       onRefreshPeriodChange(null);
