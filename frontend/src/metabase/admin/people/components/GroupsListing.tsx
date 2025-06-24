@@ -5,12 +5,12 @@ import _ from "underscore";
 
 import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import Link from "metabase/common/components/Link";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import UserAvatar from "metabase/components/UserAvatar";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   getGroupNameLocalized,

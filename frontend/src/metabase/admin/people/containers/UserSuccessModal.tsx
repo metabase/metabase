@@ -4,10 +4,10 @@ import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 
 import { useGetUserQuery } from "metabase/api";
+import Link from "metabase/common/components/Link";
 import { ConfirmModal } from "metabase/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import PasswordReveal from "metabase/components/PasswordReveal";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";

@@ -2,10 +2,10 @@ import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
 import { jt, t } from "ttag";
 
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import Modal from "metabase/components/Modal";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 import SlackAppsLink from "../SlackAppsLink";
 import SlackBadge from "../SlackBadge";

@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { type PropsWithChildren, type ReactNode, useState } from "react";
 
+import { Sortable } from "metabase/common/components/Sortable";
 import { FieldSet } from "metabase/components/FieldSet";
-import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";

@@ -21,10 +21,10 @@ import {
   isItemPinned,
   isPreviewShown,
 } from "metabase/collections/utils";
+import CheckBox from "metabase/common/components/CheckBox";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import Swapper from "metabase/common/components/Swapper";
 import EntityMenu from "metabase/components/EntityMenu";
-import CheckBox from "metabase/core/components/CheckBox";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Swapper from "metabase/core/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type { IconName, IconProps } from "metabase/ui";

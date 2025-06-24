@@ -10,8 +10,8 @@ import {
   SettingsLicenseContainer,
 } from "metabase/admin/settings/components/SettingsLicense";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { connect } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";

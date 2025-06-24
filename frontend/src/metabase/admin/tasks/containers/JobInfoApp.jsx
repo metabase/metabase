@@ -3,9 +3,9 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
+import Link from "metabase/common/components/Link";
 import AdminHeader from "metabase/components/AdminHeader";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex } from "metabase/ui";

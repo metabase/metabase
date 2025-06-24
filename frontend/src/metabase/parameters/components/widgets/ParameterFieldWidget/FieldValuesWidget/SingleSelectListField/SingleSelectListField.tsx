@@ -3,11 +3,11 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { InputProps } from "metabase/common/components/Input";
+import Input from "metabase/common/components/Input";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import type { InputProps } from "metabase/core/components/Input";
-import Input from "metabase/core/components/Input";
 import { delay } from "metabase/lib/delay";
 import { Flex } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import { AppBanner } from "metabase/components/AppBanner";
 import {
   Archived,
@@ -12,7 +13,6 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/components/ErrorPages";
-import { ContentViewportContext } from "metabase/core/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { initializeIframeResizer } from "metabase/lib/dom";

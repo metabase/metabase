@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { Link } from "react-router";
 
-import { Ellipsified } from "metabase/core/components/Ellipsified";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Icon } from "metabase/ui";
 
 import S from "./Breadcrumbs.module.css";

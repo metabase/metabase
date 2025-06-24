@@ -8,11 +8,11 @@ import {
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
 import { useAdminSetting } from "metabase/api/utils";
+import Alert from "metabase/common/components/Alert";
+import Link from "metabase/common/components/Link";
 import { useSetting, useToast } from "metabase/common/hooks";
 import ActionButton from "metabase/components/ActionButton";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
-import Alert from "metabase/core/components/Alert";
-import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   Box,

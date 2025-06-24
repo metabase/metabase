@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import SelectButton from "metabase/common/components/SelectButton";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import SelectButton from "metabase/core/components/SelectButton";
 import { alpha, color } from "metabase/lib/colors";
 
 export const FieldMappingRoot = styled.div`

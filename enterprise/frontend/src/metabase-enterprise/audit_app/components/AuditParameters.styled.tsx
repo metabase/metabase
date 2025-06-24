@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Input from "metabase/core/components/Input";
+import Input from "metabase/common/components/Input";
 
 export const AuditParametersInput = styled(Input)`
   display: inline-flex;
