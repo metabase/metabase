@@ -851,6 +851,18 @@
         (lib.filter/> column 10)
         (lib.filter/and (lib.filter/is-null column) true)))))
 
+(deftest ^:parallel join-condition-clause-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (=? [:= {} lhs rhs]
+            (lib.fe-util/join-condition-clause := lhs rhs)))))
+
+(deftest ^:parallel join-condition-parts-test
+  (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
+        rhs (lib/ref (meta/field-metadata :products :id))]
+    (is (= {:operator :=, :lhs-expression lhs, :rhs-expression rhs}
+           (lib.fe-util/join-condition-parts (lib/= lhs rhs))))))
+
 (deftest ^:parallel date-parts-display-name-test
   (let [created-at (meta/field-metadata :products :created-at)
         date-arg-1 "2023-11-02"

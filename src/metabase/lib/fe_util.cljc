@@ -734,7 +734,7 @@
    [:lhs-expression ::lib.schema.expression/expression]
    [:rhs-expression ::lib.schema.expression/expression]])
 
-(mu/defn join-condition-clause :- ::lib.schema.expression
+(mu/defn join-condition-clause :- ::lib.schema.join/condition
   "Creates a join condition from the operator, LHS and RHS expressions."
   [operator       :- ::lib.schema.join/condition.operator
    lhs-expression :- ::lib.schema.expression/expression
@@ -743,7 +743,7 @@
 
 (mu/defn join-condition-parts :- [:maybe JoinConditionParts]
   "Destructures a join condition created by [[join-condition-clause]]."
-  [join-condition :- :lib.schema.join/condition]
+  [join-condition :- ::lib.schema.join/condition]
   (lib.util.match/match-one join-condition
     [(op :guard lib.schema.join/condition-operators) _ lhs rhs]
     {:operator op, :lhs-expression lhs, :rhs-expression rhs}
