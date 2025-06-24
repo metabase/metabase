@@ -33,6 +33,10 @@ jobs:
               break
             fi
           done
+          REF_NAME="${{ github.ref_name }}"
+          REF="${{ github.ref }}"
+          HEAD_REF="${{ github.head_ref }}"
+          BRANCH_NAME="${{ github.head_ref || github.ref_name }}"
           IS_MASTER_OR_RELEASE="${{ github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/dri-370-') }}"
           HAS_RUN_TESTS_LABEL="${{ contains(github.event.pull_request.labels.*.name, 'run-tests') }}"
 
