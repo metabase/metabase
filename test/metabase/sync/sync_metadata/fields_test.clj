@@ -5,15 +5,18 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.query-processor :as qp]
    [metabase.sync.core :as sync]
+   [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
    [metabase.sync.sync-metadata.fks :as sync-fks]
    [metabase.sync.util :as sync-util]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
@@ -138,6 +141,30 @@
                   {:before-sync field-before-sync
                    :after-sync  (get-field-to-update)})))))))
 
+(deftest base-type-change-test
+  (testing "when a column changes base type, coercion_strategy is reset"
+    (mt/with-temp-copy-of-db
+      (let [db (mt/db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+        (doseq [statement ["DROP TABLE IF EXISTS \"base_type_change_test\";"
+                           "CREATE TABLE \"base_type_change_test\" (\"string_tbc_int_col\" VARCHAR);"
+                           "INSERT INTO \"base_type_change_test\" (\"string_tbc_int_col\") VALUES ('1'), ('2'), ('3');"]]
+          (jdbc/execute! db-spec [statement]))
+        (sync/sync-database! db)
+        (let [field (t2/select-one [:model/Field :id] :name "string_tbc_int_col")]
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" (:id field)) {:coercion_strategy :Coercion/String->Integer})
+
+          (sync/sync-database! db)
+
+          (is (=? {:effective_type :type/Integer :coercion_strategy :Coercion/String->Integer}
+                  (t2/select-one :model/Field :name "string_tbc_int_col")))
+
+          (jdbc/execute! db-spec ["ALTER TABLE \"base_type_change_test\" ALTER COLUMN \"string_tbc_int_col\" TYPE int USING \"string_tbc_int_col\"::integer;"])
+          (sync/sync-database! db)
+
+          (is (=? {:coercion_strategy nil}
+                  (t2/select-one :model/Field :name "string_tbc_int_col"))))))))
+
 (deftest dont-show-deleted-fields-test
   (testing "make sure deleted fields doesn't show up in `:fields` of a table"
     (is (= {:before-sync #{"species" "example_name"}
@@ -231,6 +258,10 @@
         (let [db (mt/db)
               db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
               get-fk #(t2/select-one :model/Field (mt/id :country :continent_id))]
+          (testing "initially, country's continent_id is targeting nothing"
+            (is (=? {:fk_target_field_id nil
+                     :semantic_type      nil}
+                    (get-fk))))
           ;; 1. add FK relationship in the database targeting continent_1
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_1(id);")
           (sync/sync-database! db {:scan :schema})
@@ -241,11 +272,11 @@
           ;; 2. drop the FK relationship in the database with SQL
           (jdbc/execute! db-spec "ALTER TABLE country DROP CONSTRAINT country_continent_id_fkey;")
           (sync/sync-database! db {:scan :schema})
-          ;; FIXME: The following test fails. The FK relationship is still there in the Metabase database (metabase#39687)
-          #_(testing "after dropping the FK relationship, country's continent_id is targeting nothing"
-              (is (=? {:fk_target_field_id nil
-                       :semantic_type      :type/Category}
-                      (get-fk))))
+          (is (= [] (into [] (fetch-metadata/fk-metadata db))))
+          (testing "after dropping the FK relationship, country's continent_id is targeting nothing"
+            (is (=? {:fk_target_field_id nil
+                     :semantic_type      nil}
+                    (get-fk))))
           ;; 3. add back the FK relationship but targeting continent_2
           (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent_2(id);")
           (sync/sync-database! db {:scan :schema})
@@ -267,17 +298,43 @@
                    :semantic-type     semantic_type
                    :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
         (testing "before"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
                  (state))))
         (t2/update! :model/Field (mt/id :checkins :user_id) {:semantic_type nil, :fk_target_field_id nil})
         (testing "after"
-          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0}
-                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0}
+          (is (= {:step-info         {:total-fks 6, :updated-fks 1, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 1, :total-failed 0, :retired-fks 0}
                   :semantic-type     :type/FK
                   :fk-target-exists? true}
+                 (state))))))))
+
+(deftest sync-table-fks-test2
+  (testing "Check that sync-table! causes FKs to be left alone if they'd override user-set values"
+    (mt/with-temp-copy-of-db
+      (letfn [(state []
+                (let [{:keys                  [step-info]
+                       {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
+                      {:keys [semantic_type fk_target_field_id]} (t2/select-one [:model/Field :semantic_type :fk_target_field_id]
+                                                                                :id (mt/id :checkins :user_id))]
+                  {:step-info         (sync.util-test/only-step-keys step-info)
+                   :task-details      task_details
+                   :semantic-type     semantic_type
+                   :fk-target-exists? (t2/exists? :model/Field :id fk_target_field_id)}))]
+        (testing "before"
+          (is (= {:step-info         {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :semantic-type     :type/FK
+                  :fk-target-exists? true}
+                 (state))))
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" (mt/id :checkins :user_id)) {:semantic_type :type/Name})
+        (testing "after"
+          (is (= {:step-info         {:total-fks 6 :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :task-details      {:total-fks 6, :updated-fks 0, :total-failed 0, :retired-fks 0}
+                  :semantic-type     :type/Name
+                  :fk-target-exists? false}
                  (state))))))))
 
 (deftest case-sensitive-conflict-test
@@ -418,3 +475,44 @@
         (is (not= ::thrown
                   (try (sync-fields/sync-fields-for-table! (mt/db) table)
                        (catch Throwable _ ::thrown))))))))
+
+(deftest visibility-type-stays-normal-after-manual-change-test
+  (testing "visibility_type remains :normal after being manually changed from :details-only"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "visibility_type_json_test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name  "visibility_type_json_test"
+                                                                 :json-unfolding true})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+
+        (doseq [statement
+                ["CREATE TABLE IF NOT EXISTS test_table (
+                    id INT PRIMARY KEY,
+                    something JSONB);"
+                 "INSERT INTO test_table (id, something) VALUES (
+                    1,
+                    jsonb_build_object(
+                     'field1', repeat('Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ', 500),
+                     'field2', repeat('The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs. How vexingly quick daft zebras jump! ', 500)));"]]
+          (jdbc/execute! spec [statement]))
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (mt/with-db database
+            (sync/sync-database! database)
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-after-first-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+              (is (= :details-only (:visibility_type field-after-first-sync))
+                  "First sync should set visibility_type to :details-only for large JSONB"))
+
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-id (t2/select-one-pk :model/Field :table_id table-id :name "something")]
+
+              (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:visibility_type :normal})
+
+              (let [field-after-manual-change (t2/select-one :model/Field :id field-id)]
+                (is (= :normal (:visibility_type field-after-manual-change))
+                    "Manual change should set visibility_type to :normal")))
+
+            (sync/sync-database! database)
+            (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id database) :name "test_table")
+                  field-after-second-sync (t2/select-one :model/Field :table_id table-id :name "something")]
+              (is (= :normal (:visibility_type field-after-second-sync))
+                  "Second sync should preserve manually set :normal visibility_type"))))))))
