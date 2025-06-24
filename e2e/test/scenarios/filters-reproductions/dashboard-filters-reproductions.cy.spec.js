@@ -1158,9 +1158,7 @@ describe("issue 21528", () => {
     H.popover().findByText("Admin settings").click();
     H.appBar().findByText("Table Metadata").click();
     cy.findByRole("main")
-      .findByText(
-        "Select any table to see its schema and add or edit metadata.",
-      )
+      .findByText("Start by selecting data to model")
       .should("be.visible");
     cy.findByTestId("admin-navbar").findByText("Exit admin").click();
 
