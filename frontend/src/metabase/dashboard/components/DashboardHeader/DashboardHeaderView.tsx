@@ -1,23 +1,20 @@
 import cx from "classnames";
 import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { t } from "ttag";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/common/components/EditBar";
-import EditableText from "metabase/common/components/EditableText";
 import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";
 import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
   resetParameters,
-  updateDashboard,
 } from "metabase/dashboard/actions";
-import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { Title } from "metabase/dashboard/context/components";
 import {
   getCanResetFilters,
   getIsEditing,
@@ -80,7 +77,6 @@ export function DashboardHeaderView({
   const isNavBarOpen = useSelector(getIsNavbarOpen);
   const isEditing = useSelector(getIsEditing);
 
-  const setDashboardAttribute = useSetDashboardAttributeHandler();
   const [showSubHeader, setShowSubHeader] = useState(true);
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
@@ -140,16 +136,6 @@ export function DashboardHeaderView({
     ],
   );
 
-  const handleUpdateCaption = useCallback(
-    async (name: string) => {
-      await setDashboardAttribute("name", name);
-      if (!isEditing) {
-        await dispatch(updateDashboard({ attributeNames: ["name"] }));
-      }
-    },
-    [setDashboardAttribute, isEditing, dispatch],
-  );
-
   useEffect(() => {
     const timerId = setTimeout(() => {
       if (isLastEditInfoVisible) {
@@ -199,16 +185,7 @@ export function DashboardHeaderView({
                 })}
               >
                 <Flex className={S.HeaderCaptionContainer}>
-                  <EditableText
-                    className={S.HeaderCaption}
-                    key={dashboard.name}
-                    initialValue={dashboard.name}
-                    placeholder={t`Add title`}
-                    isDisabled={!dashboard.can_write}
-                    data-testid="dashboard-name-heading"
-                    onChange={handleUpdateCaption}
-                    maxLength={100}
-                  />
+                  <Title className={S.HeaderCaption} />
                   <PLUGIN_MODERATION.EntityModerationIcon
                     dashboard={dashboard}
                   />

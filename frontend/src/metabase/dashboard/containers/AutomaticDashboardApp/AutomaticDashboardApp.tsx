@@ -21,6 +21,7 @@ import {
   DashboardContextProvider,
   useDashboardContext,
 } from "metabase/dashboard/context";
+import { Title } from "metabase/dashboard/context/components";
 import { SetTitle } from "metabase/hoc/Title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -127,9 +128,7 @@ const AutomaticDashboardAppInner = () => {
                 <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
                   <XrayIcon />
                   <div>
-                    <h2 className={cx(CS.textWrap, CS.mr2)}>
-                      {dashboard && <TransientTitle dashboard={dashboard} />}
-                    </h2>
+                    <Title className={cx(CS.textWrap, CS.mr2, CS.h2)} />
                   </div>
                   {savedDashboardId != null ? (
                     <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
@@ -246,10 +245,3 @@ export const AutomaticDashboardApp = ({
     </DashboardContextProvider>
   );
 };
-
-const TransientTitle = ({ dashboard }: { dashboard: Dashboard }) =>
-  dashboard.transient_name ? (
-    <span>{dashboard.transient_name}</span>
-  ) : dashboard.name ? (
-    <span>{dashboard.name}</span>
-  ) : null;

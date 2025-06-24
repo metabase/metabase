@@ -39,6 +39,7 @@ import {
   setSidebar,
   showAddParameterPopover,
   toggleSidebar,
+  updateDashboard,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import { connect } from "metabase/lib/redux";
@@ -131,6 +132,7 @@ export const mapDispatchToProps = {
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
+  updateDashboard,
   updateDashboardAndCards,
   setSidebar,
   hideAddParameterPopover,
