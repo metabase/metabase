@@ -83,10 +83,7 @@ function setup({
   const onReplaceCard = jest.fn();
 
   renderWithProviders(
-    <MockDashboardContext
-      dashboardId={dashboard.id}
-      navigateToNewCardFromDashboard={null}
-    >
+    <MockDashboardContext dashboardId={dashboard.id}>
       <DashCard
         dashboard={dashboard}
         dashcard={dashcard}
