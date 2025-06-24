@@ -55,7 +55,9 @@ export const DataModel = ({ children, location, params }: Props) => {
     data: table,
     error,
     isLoading,
-  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId));
+  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(tableId), {
+    refetchOnMountOrArgChange: true,
+  });
   const field = table?.fields?.find((field) => field.id === fieldId);
   const [previewType, setPreviewType] = useState<PreviewType>("table");
 
