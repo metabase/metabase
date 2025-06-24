@@ -3,6 +3,7 @@ import type {
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
+import type { Engine } from "metabase-types/api";
 
 type SimpleEventSchema = {
   event: string;
@@ -26,6 +27,12 @@ type CSVUploadClickedEvent = ValidateEvent<{
 export type DatabaseAddClickedEvent = ValidateEvent<{
   event: "database_add_clicked";
   triggered_from: "db-list";
+}>;
+
+export type DatabaseEngineSelectedEvent = ValidateEvent<{
+  event: "database_setup_selected";
+  event_detail: Engine["driver-name"];
+  triggered_from: "add-data-modal";
 }>;
 
 type OnboardingChecklistOpenedEvent = ValidateEvent<{
@@ -172,6 +179,7 @@ export type AddDataModalTabEvent = ValidateEvent<{
 export type SimpleEvent =
   | CSVUploadClickedEvent
   | DatabaseAddClickedEvent
+  | DatabaseEngineSelectedEvent
   | NewIFrameCardCreatedEvent
   | NewsletterToggleClickedEvent
   | OnboardingChecklistOpenedEvent
