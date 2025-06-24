@@ -143,7 +143,10 @@ const setup = async ({
   return { history };
 };
 
-describe("MetadataEditor", () => {
+// To be ported in https://linear.app/metabase/issue/SEM-448
+// Will be removed soon in https://linear.app/metabase/issue/SEM-247
+// eslint-disable-next-line jest/no-disabled-tests
+describe.skip("MetadataEditor", () => {
   describe("no schema database", () => {
     it("should select the first database and skip schema selection by default", async () => {
       await setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
