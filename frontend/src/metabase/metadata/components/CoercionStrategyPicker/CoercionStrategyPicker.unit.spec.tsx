@@ -54,7 +54,7 @@ describe("CoercionStrategyPicker", () => {
   it("does not show error when type is selected", async () => {
     setup({
       field: createProductsVendorField(),
-      initialValue: "Coercion/String->Float",
+      initialValue: "String → Float",
     });
 
     await userEvent.click(screen.getByPlaceholderText("Select data type"));
@@ -72,10 +72,10 @@ describe("CoercionStrategyPicker", () => {
 
     const dropdown = within(screen.getByRole("listbox"));
 
-    await userEvent.click(dropdown.getByText("Coercion/String->Float"));
+    await userEvent.click(dropdown.getByText("String → Float"));
 
     expect(screen.getByPlaceholderText("Select data type")).toHaveValue(
-      "Coercion/String->Float",
+      "String → Float",
     );
   });
 
@@ -83,12 +83,12 @@ describe("CoercionStrategyPicker", () => {
     setup({ field: createProductsVendorField() });
 
     await assertCoercionTypesVisibility([
-      "Coercion/ISO8601->Time",
-      "Coercion/ISO8601->Date",
-      "Coercion/YYYYMMDDHHMMSSString->Temporal",
-      "Coercion/ISO8601->DateTime",
-      "Coercion/String->Integer",
-      "Coercion/String->Float",
+      "ISO 8601 → Time",
+      "ISO 8601 → Date",
+      "YYYYMMDDHHMMSS string → Temporal",
+      "ISO 8601 → Datetime",
+      "String → Integer",
+      "String → Float",
     ]);
   });
 
@@ -96,17 +96,17 @@ describe("CoercionStrategyPicker", () => {
     setup({ field: createOrdersQuantityField() });
 
     await assertCoercionTypesVisibility([
-      "Coercion/UNIXMicroSeconds->DateTime",
-      "Coercion/UNIXMilliSeconds->DateTime",
-      "Coercion/UNIXNanoSeconds->DateTime",
-      "Coercion/UNIXSeconds->DateTime",
+      "UNIX microseconds → Datetime",
+      "UNIX milliseconds → Datetime",
+      "UNIX nanoseconds → Datetime",
+      "UNIX seconds → Datetime",
     ]);
   });
 
-  it("shows no coercion types for temporal fields", async () => {
+  it("shows appropriate coercion types for temporal fields", async () => {
     setup({ field: createProductsCreatedAtField() });
 
-    await assertCoercionTypesVisibility([]);
+    await assertCoercionTypesVisibility(["DateTime → Date"]);
   });
 });
 
