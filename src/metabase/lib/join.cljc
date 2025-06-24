@@ -731,7 +731,7 @@
   join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
   of [[join-condition-rhs-columns]].) See #32005 for more info.
 
-  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+  If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-expression-or-nil` so we can
   mark the current column as `:selected` in the metadata/display info.
 
   If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
@@ -740,15 +740,15 @@
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns.
 
   Unlike most other things that return columns, implicitly-joinable columns ARE NOT returned here."
-  ([query joinable lhs-column-or-nil rhs-column-or-nil]
-   (join-condition-lhs-columns query -1 joinable lhs-column-or-nil rhs-column-or-nil))
+  ([query joinable lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-lhs-columns query -1 joinable lhs-expression-or-nil rhs-expression-or-nil))
 
-  ([query              :- ::lib.schema/query
-    stage-number       :- :int
-    join-or-joinable   :- [:maybe JoinOrJoinable]
-    lhs-column-or-nil  :- [:maybe lib.join.util/Field]
+  ([query                  :- ::lib.schema/query
+    stage-number           :- :int
+    join-or-joinable       :- [:maybe JoinOrJoinable]
+    lhs-expression-or-nil  :- [:maybe :lib.schema.expression/expression]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _rhs-column-or-nil :- [:maybe lib.join.util/Field]]
+    _rhs-expression-or-nil :- [:maybe :lib.schema.expression/expression]]
    ;; calculate all the visible columns including the existing join; then filter out any columns that come from the
    ;; existing join and any subsequent joins. The reason for doing things this way rather than removing the joins
    ;; before calculating visible columns is that we don't want to either create possibly-invalid queries, or have to
@@ -769,7 +769,10 @@
           (remove (fn [col]
                     (when-let [col-join-alias (lib.join.util/current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
-          (mark-selected-column query stage-number lhs-column-or-nil)
+          (mark-selected-column query
+                                stage-number
+                                (when (lib.util/field-clause? lhs-expression-or-nil)
+                                  lhs-expression-or-nil))
           sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
@@ -781,19 +784,19 @@
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
 
-  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-column-or-nil` so we can
+  If the right-hand-side column has already been chosen and we're UPDATING it, pass in `rhs-expression-or-nil` so we can
   mark the current column as `:selected` in the metadata/display info.
 
   Results will be returned in a 'somewhat smart' order with PKs and FKs returned before other columns."
-  ([query joinable lhs-column-or-nil rhs-column-or-nil]
-   (join-condition-rhs-columns query -1 joinable lhs-column-or-nil rhs-column-or-nil))
+  ([query joinable lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-rhs-columns query -1 joinable lhs-expression-or-nil rhs-expression-or-nil))
 
-  ([query              :- ::lib.schema/query
-    stage-number       :- :int
-    join-or-joinable   :- JoinOrJoinable
+  ([query                  :- ::lib.schema/query
+    stage-number           :- :int
+    join-or-joinable       :- JoinOrJoinable
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
-    _lhs-column-or-nil :- [:maybe lib.join.util/Field]
-    rhs-column-or-nil  :- [:maybe lib.join.util/Field]]
+    _lhs-expression-or-nil :- [:maybe :lib.schema.expression/expression]
+    rhs-expression-or-nil  :- [:maybe :lib.schema.expression/expression]]
    ;; I was on the fence about whether these should get `:lib/source :source/joins` or not -- it seems like based on
    ;; the QB UI they shouldn't. See screenshots in #31174
    (let [joinable          (if (join? join-or-joinable)
@@ -801,8 +804,8 @@
                              join-or-joinable)
          join-alias        (when (join? join-or-joinable)
                              (lib.join.util/current-join-alias join-or-joinable))
-         rhs-column-or-nil (when rhs-column-or-nil
-                             (cond-> rhs-column-or-nil
+         rhs-column-or-nil (when (lib.util/field-clause? rhs-expression-or-nil)
+                             (cond-> rhs-expression-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
      (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
@@ -816,14 +819,14 @@
   "Return a sequence of valid filter clause operators that can be used to build a join condition. In the Query Builder
   UI, this can be chosen at any point before or after choosing the LHS and RHS. Invalid options are not currently
   filtered out based on values of the LHS or RHS, but in the future we can add this -- see #31174."
-  ([query lhs-column-or-nil rhs-column-or-nil]
-   (join-condition-operators query -1 lhs-column-or-nil rhs-column-or-nil))
+  ([query lhs-expression-or-nil rhs-expression-or-nil]
+   (join-condition-operators query -1 lhs-expression-or-nil rhs-expression-or-nil))
 
-  ([_query             :- ::lib.schema/query
-    _stage-number      :- :int
+  ([_query                 :- ::lib.schema/query
+    _stage-number          :- :int
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible options out.
-    _lhs-column-or-nil :- [:maybe ::lib.schema.metadata/column]
-    _rhs-column-or-nil :- [:maybe ::lib.schema.metadata/column]]
+    _lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
+    _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
    lib.filter.operator/join-operators))
 
@@ -956,11 +959,11 @@
           cols)))
 
 (defn- join-lhs-display-name-from-condition-lhs
-  [query stage-number join-or-joinable condition-lhs-column-or-nil]
-  (when-let [condition-lhs-column (or condition-lhs-column-or-nil
-                                      (when (join? join-or-joinable)
-                                        (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs-column)]
+  [query stage-number join-or-joinable condition-lhs-or-nil]
+  (when-let [condition-lhs (or condition-lhs-or-nil
+                               (when (join? join-or-joinable)
+                                 (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
+    (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs)]
       (get-in display-info [:table :display-name]))))
 
 (defn- first-join?
@@ -1017,7 +1020,7 @@
     1a. If `join-or-joinable` is a join, we can take the condition LHS column from the join itself, since a join will
         always have a condition. This should only apply to [[standard-join-condition?]] conditions.
 
-    1b. When building a join, you can optionally pass in `condition-lhs-column-or-nil` yourself.
+    1b. When building a join, you can optionally pass in `condition-lhs-expression-or-nil` yourself.
 
   2. If the condition LHS column is unknown, and this is the first join in the first stage of a query, and the query
      uses a `:source-table`, then use the display name for the source Table.
@@ -1030,21 +1033,22 @@
   ([query join-or-joinable]
    (join-lhs-display-name query join-or-joinable nil))
 
-  ([query join-or-joinable condition-lhs-column-or-nil]
-   (join-lhs-display-name query -1 join-or-joinable condition-lhs-column-or-nil))
+  ([query join-or-joinable condition-lhs-expression-or-nil]
+   (join-lhs-display-name query -1 join-or-joinable condition-lhs-expression-or-nil))
 
-  ([query                       :- ::lib.schema/query
-    stage-number                :- :int
-    join-or-joinable            :- [:maybe JoinOrJoinable]
-    condition-lhs-column-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
+  ([query                           :- ::lib.schema/query
+    stage-number                    :- :int
+    join-or-joinable                :- [:maybe JoinOrJoinable]
+    condition-lhs-expression-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
    (or
-    (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-column-or-nil)
+    (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-expression-or-nil)
     (join-lhs-display-name-for-first-join-in-first-stage query stage-number join-or-joinable)
     (i18n/tru "Previous results"))))
 
 (mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
   "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
-   Must be called on a standard join condition as per [[standard-join-condition?]].
+   Must be called on a standard join condition as per [[standard-join-condition?]], otherwise the join condition will be
+   ignored.
    This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
    Fields that do not support the provided option will be ignored."
   ([query :- ::lib.schema/query
@@ -1059,19 +1063,19 @@
     option-or-unit :- [:maybe [:or
                                ::lib.schema.temporal-bucketing/option
                                ::lib.schema.temporal-bucketing/unit]]]
-   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
-     (assert (standard-join-condition? join-condition)
-             (i18n/tru "Non-standard join condition. {0}" (pr-str join-condition)))
-     (let [unit (cond-> option-or-unit
-                  (not (keyword? option-or-unit)) :unit)
-           stage-number (lib.util/canonical-stage-index query stage-number)
-           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
-           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
-       (cond-> join-condition
-         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
-         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+   (if-not (standard-join-condition? join-condition)
+     join-condition)
+   (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)
+         unit (cond-> option-or-unit
+                (not (keyword? option-or-unit)) :unit)
+         stage-number (lib.util/canonical-stage-index query stage-number)
+         available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+         available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+         sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+         sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+     (cond-> join-condition
+       sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+       sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit)))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :joins
   [query stage-number _key]

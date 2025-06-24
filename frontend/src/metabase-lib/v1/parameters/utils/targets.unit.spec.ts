@@ -618,8 +618,6 @@ function createComplex2StageQuery() {
   const createdAt = findLHSColumn("ORDERS", "CREATED_AT");
   const reviewsCreatedAt = findRHSColumn("REVIEWS", "CREATED_AT");
   const condition = Lib.joinConditionClause(
-    baseQuery,
-    stageIndex,
     defaultOperator,
     reviewsCreatedAt,
     createdAt,
@@ -654,8 +652,6 @@ function ordersJoinReviewsOnProductId() {
   const productsId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const reviewsProductId = findRHSColumn("REVIEWS", "PRODUCT_ID");
   const condition = Lib.joinConditionClause(
-    queryOrders,
-    stageIndex,
     defaultOperator,
     reviewsProductId,
     productsId,

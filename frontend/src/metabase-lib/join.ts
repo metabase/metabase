@@ -45,10 +45,10 @@ export function joinClause(
 
 export function joinConditionClause(
   operator: JoinConditionOperator,
-  lhs: ColumnMetadata | ExpressionClause,
-  rhs: ColumnMetadata | ExpressionClause,
+  lhsExpression: ColumnMetadata | ExpressionClause,
+  rhsExpression: ColumnMetadata | ExpressionClause,
 ): JoinCondition {
-  return ML.join_condition_clause(operator, lhs, rhs);
+  return ML.join_condition_clause(operator, lhsExpression, rhsExpression);
 }
 
 export function joinConditionParts(
@@ -112,7 +112,7 @@ export function joinConditionUpdateTemporalBucketing(
  * join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
  * of `joinConditionRHSColumns`.) See #32005 for more info.
  *
- * If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-column-or-nil` so we can
+ * If the left-hand-side column has already been chosen and we're UPDATING it, pass in `lhs-expression-or-nil` so we can
  * mark the current column as `:selected` in the metadata/display info.
  *
  * If the right-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
@@ -126,15 +126,15 @@ export function joinConditionLHSColumns(
   query: Query,
   stageIndex: number,
   joinOrJoinable?: JoinOrJoinable,
-  lhsColumn?: ExpressionClause,
-  rhsColumn?: ExpressionClause,
+  lhsExpression?: ExpressionClause,
+  rhsExpression?: ExpressionClause,
 ): ColumnMetadata[] {
   return ML.join_condition_lhs_columns(
     query,
     stageIndex,
     joinOrJoinable,
-    lhsColumn,
-    rhsColumn,
+    lhsExpression,
+    rhsExpression,
   );
 }
 
@@ -273,7 +273,7 @@ export function joinableColumns(
  *   1a. If `joinOrJoinable` is a join, we can take the condition LHS column from the join itself, since a join will
  *       always have a condition.
  *
- *   1b. When building a join, you can optionally pass in `conditionLHSColumn` yourself.
+ *   1b. When building a join, you can optionally pass in `conditionLHSExpression` yourself.
  *
  * 2. If the condition LHS column is unknown, and this is the first join in the first stage of a query, and the query
  *    uses a source Table, then use the display name for the source Table.
@@ -288,12 +288,12 @@ export function joinLHSDisplayName(
   query: Query,
   stageIndex: number,
   joinOrJoinable?: JoinOrJoinable,
-  conditionLHSColumn?: ExpressionClause,
+  conditionLHSExpression?: ExpressionClause,
 ): string {
   return ML.join_lhs_display_name(
     query,
     stageIndex,
     joinOrJoinable,
-    conditionLHSColumn,
+    conditionLHSExpression,
   );
 }

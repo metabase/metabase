@@ -45,11 +45,11 @@ export function JoinDraft({
   );
   const [selectedRhsTableColumns, setSelectedRhsTableColumns] =
     useState(rhsTableColumns);
-  const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
+  const [lhsExpression, setLhsExpression] = useState<Lib.ExpressionClause>();
 
   const lhsTableName = useMemo(
-    () => Lib.joinLHSDisplayName(query, stageIndex, rhsTable, lhsColumn),
-    [query, stageIndex, rhsTable, lhsColumn],
+    () => Lib.joinLHSDisplayName(query, stageIndex, rhsTable, lhsExpression),
+    [query, stageIndex, rhsTable, lhsExpression],
   );
 
   const rhsTableName = useMemo(
@@ -95,7 +95,7 @@ export function JoinDraft({
     setRhsTable(initialRhsTable);
     setRhsTableColumns(rhsTableColumns);
     setSelectedRhsTableColumns(rhsTableColumns);
-    setLhsColumn(undefined);
+    setLhsExpression(undefined);
   };
 
   const handleResetRef = useLatest(handleReset);
@@ -157,7 +157,7 @@ export function JoinDraft({
               isReadOnly={isReadOnly}
               isRemovable={false}
               onChange={handleConditionChange}
-              onLhsColumnChange={setLhsColumn}
+              onLhsExpressionChange={setLhsExpression}
             />
           </NotebookCell>
         </>
