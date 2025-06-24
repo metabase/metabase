@@ -162,6 +162,7 @@
           param
           value
           #(let [field-ids (into #{} (map :field-id (param->fields param)))]
+             (println ">>>>> " field-ids)
              (-> (if (= (count field-ids) 1)
                    (chain-filter/chain-filter (first field-ids) (chain-filter-constraints dashboard (assoc constraint-param-key->value param-key value))
                                               :relax-fk-requirement? true :limit 1)
