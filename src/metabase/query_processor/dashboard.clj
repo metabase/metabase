@@ -49,15 +49,13 @@
      (:type request-param))))
 
 (defn- convert-request-param-value [request-param matching-param]
-  ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
-  ;; vector so the parameter handling code doesn't explode.
   (let [value (:value request-param)]
-           (when (and (params.ops/operator? (:type matching-param))
-                      (if (string? value)
-                        (not (str/blank? value))
-                        (some? value))
-                      (not (sequential? value)))
-             {:value [value]})))
+    (when (and (params.ops/operator? (:type matching-param))
+               (if (string? value)
+                 (not (str/blank? value))
+                 (some? value))
+               (not (sequential? value)))
+      {:value [value]})))
 
 (defn- resolve-param-for-card
   [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
@@ -71,7 +69,7 @@
   (if-let [matching-param (get param-id->param param-id)]
     (do
       (log/tracef "Found matching Dashboard parameter\n%s" (u/pprint-to-str (update matching-param :mappings (fn [mappings]
-                                                                                                                 (into #{} (map #(dissoc % :dashcard)) mappings)))))
+                                                                                                               (into #{} (map #(dissoc % :dashcard)) mappings)))))
       ;; now find the mapping for this specific card. If there is no mapping, we can just ignore this parameter.
       (when-let [matching-mapping (or (some (fn [mapping]
                                               (when (and (= (:card_id mapping) card-id)
