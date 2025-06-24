@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 import { getIsEmbedding } from "metabase/selectors/embed";
-import { METABOT_TAG, metabotApi } from "metabase-enterprise/api";
 
 import {
   FIXED_METABOT_IDS,
@@ -13,6 +12,11 @@ import type { MetabotStoreState } from "./types";
 
 export const getMetabot = (state: MetabotStoreState) =>
   state.plugins.metabotPlugin;
+
+export const getUseStreaming = createSelector(
+  getMetabot,
+  (metabot) => metabot.useStreaming,
+);
 
 export const getMetabotVisible = createSelector(
   getMetabot,
@@ -40,14 +44,19 @@ export const getLastAgentMessagesByType = createSelector(
   },
 );
 
+export const getActiveToolCall = createSelector(
+  getMetabot,
+  (metabot) => metabot.activeToolCall,
+);
+
 export const getIsProcessing = createSelector(
   getMetabot,
   (metabot) => metabot.isProcessing,
 );
 
-export const getLastSentContext = createSelector(
+export const getHistory = createSelector(
   getMetabot,
-  (metabot) => metabot.lastSentContext,
+  (metabot) => metabot.history,
 );
 
 export const getMetabotConversationId = createSelector(
@@ -74,21 +83,11 @@ export const getMetabotId = createSelector(getIsEmbedding, (isEmbedding) =>
   isEmbedding ? FIXED_METABOT_IDS.EMBEDDED : FIXED_METABOT_IDS.DEFAULT,
 );
 
-export const getPrevAgentResponse = metabotApi.endpoints.metabotAgent.select({
-  requestId: undefined,
-  fixedCacheKey: METABOT_TAG,
-});
-
-/**
- * Used to access values like history + state from the previous request
- * which are meant to be repeated back on future requests
- */
-export const getPrevAgentRequestMeta = createSelector(
-  getPrevAgentResponse,
-  (res) => {
-    return {
-      state: res.data?.state ?? {},
-      history: res.data?.history ?? [],
-    };
-  },
+export const getAgentRequestMetadata = createSelector(
+  getHistory,
+  getMetabotState,
+  (history, state) => ({
+    state,
+    history,
+  }),
 );
