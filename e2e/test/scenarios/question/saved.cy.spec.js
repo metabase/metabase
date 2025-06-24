@@ -468,7 +468,7 @@ describe("scenarios > question > saved", () => {
 
     function hideTable({ name, id, visibilityType }) {
       // Since v56 it's no longer possible to specify the reason (e.g. "technical" or "cruft")
-      // for hiding the table via the UI.
+      // for hiding the table via UI.
       // We still want to support cases where visibility type has been set to such values in
       // the past, so we simulate it with API call.
       if (visibilityType === "technical" || visibilityType === "cruft") {
