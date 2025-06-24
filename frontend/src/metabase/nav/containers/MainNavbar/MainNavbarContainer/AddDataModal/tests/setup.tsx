@@ -97,3 +97,18 @@ export const setupAdvancedPermissions = (opts: Partial<SetupOpts>) => {
     tokenFeatures: { advanced_permissions: true },
   });
 };
+
+export const setupHostedInstance = (opts: Partial<SetupOpts>) => {
+  return setup({
+    ...opts,
+    isHosted: true,
+    hasEnterprisePlugins: true,
+    tokenFeatures: { hosting: true, ...opts.tokenFeatures },
+  });
+};
+
+export const setupProUpload = (opts: Partial<SetupOpts>) =>
+  setupHostedInstance({
+    ...opts,
+    tokenFeatures: { attached_dwh: true },
+  });
