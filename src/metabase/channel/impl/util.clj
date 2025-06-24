@@ -6,7 +6,7 @@
    [metabase.system.core :as system]))
 
 (defn render-filters
-  "Renders dashboard parameters as a table.
+  "Renders dashboard parameters as a Hiccup table.
    Each parameter is rendered in a separate row with its name and value.
    The `parameters` argument should be a collection of parameter maps."
   [parameters]
@@ -52,10 +52,9 @@
 (defn remove-inline-parameters
   "Filters out parameters that are inline parameters in the given dashboard parts. Useful for obtaining a list of only
   top-level dashboard parameters."
-  [dashboard-parts parameters]
+  [parameters dashboard-parts]
   (let [inline-param-ids (->> dashboard-parts
                               (mapcat :inline_parameters)
                               (map :id)
                               set)]
-    (filter #(not (inline-param-ids (:id %)))
-            parameters)))
+    (filter #(not (inline-param-ids (:id %))) parameters)))

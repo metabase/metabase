@@ -527,7 +527,30 @@
        (testing "Header card with inline parameters includes parameter values below header"
          (is (= (rasta-dashsub-message {:message [{"(?s)## Dashboard Header.*State.*CA, NY, and NJ" true}
                                                   pulse.test-util/png-attachment]})
-                (mt/summarize-multipart-single-email email #"(?s)## Dashboard Header.*State.*CA, NY, and NJ")))))}}))
+                (mt/summarize-multipart-single-email email #"(?s)## Dashboard Header.*State.*CA, NY, and NJ")))))
+
+     :slack
+     (fn [{:keys [card-id dashboard-id]} [pulse-results]]
+       (testing "Header card with inline parameters includes parameter values below header"
+         (is (= {:channel-id "#general"
+                 :attachments
+                 [{:blocks [{:type "header", :text {:type "plain_text", :text "Aviary KPIs", :emoji true}}
+                            {:type "section",
+                             :fields [{:type "mrkdwn", :text "*Quarter and Year*\nQ1, 2021"}]}
+                            {:type "section",
+                             :fields (append-subscription-branding-content [{:type "mrkdwn",
+                                                                             :text (str "<https://testmb.com/dashboard/"
+                                                                                        dashboard-id
+                                                                                        "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase by Rasta Toucan*>")}])}]}
+                  {:title           pulse.test-util/card-name
+                   :rendered-info   {:attachments false, :content true, :render/text true},
+                   :title_link      (str "https://testmb.com/question/" card-id)
+                   :attachment-name "image.png"
+                   :fallback        pulse.test-util/card-name}
+                  {:blocks [{:type "section" :text {:type "mrkdwn" :text "*## Dashboard Header*"}}
+                            {:type "section",
+                             :fields [{:type "mrkdwn", :text "*State*\nCA, NY, and NJ"}]}]}]}
+                (pulse.test-util/thunk->boolean pulse-results)))))}}))
 
 (deftest dashboard-with-link-card-test
   (tests!

@@ -266,9 +266,9 @@
                                                     :management_url     (if (nil? non-user-email)
                                                                           (urls/notification-management-url)
                                                                           (pulse-unsubscribe-url-for-non-user (:id dashboard_subscription) non-user-email))
-                                                    :filters            (some->> (seq parameters)
-                                                                                 (impl.util/remove-inline-parameters dashboard_parts)
-                                                                                 (impl.util/render-filters))})
+                                                    :filters            (some-> (seq parameters)
+                                                                                (impl.util/remove-inline-parameters dashboard_parts)
+                                                                                (impl.util/render-filters))})
                                   (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
     (construct-emails template message-context-fn attachments recipients)))
 
