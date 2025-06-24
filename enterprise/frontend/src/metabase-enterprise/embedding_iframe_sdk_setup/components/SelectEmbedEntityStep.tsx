@@ -12,7 +12,7 @@ import type {
   SdkIframeEmbedSetupRecentItem,
 } from "../types";
 
-import { SelectEmbedEntityEmptyState } from "./SelectEmbedEntityEmptyState";
+import { SelectEmbedEntityMissingRecents } from "./SelectEmbedEntityEmptyState";
 import S from "./SelectEmbedEntityStep.module.css";
 
 export const SelectEmbedEntityStep = () => {
@@ -105,7 +105,7 @@ export const SelectEmbedEntityStep = () => {
   const renderSelectEntityList = () => {
     if (recentItems.length === 0) {
       return (
-        <SelectEmbedEntityEmptyState
+        <SelectEmbedEntityMissingRecents
           experience={experience}
           openPicker={openPicker}
         />
