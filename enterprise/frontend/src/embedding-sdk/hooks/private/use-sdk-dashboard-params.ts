@@ -58,6 +58,7 @@ export const useSdkDashboardParams = ({
   dashboardId: dashboardIdProp,
   withDownloads,
   withTitle,
+  withCardTitle,
   hiddenParameters,
 }: SdkDashboardDisplayProps) => {
   const { id: dashboardId, isLoading = false } = useValidatedEntityId({
@@ -73,7 +74,9 @@ export const useSdkDashboardParams = ({
     ...pick(
       {
         titled: withTitle,
+        cardTitled: withCardTitle,
         hideDownloadButton,
+        downloadsEnabled: { pdf: withDownloads, results: withDownloads },
         hideParameters: hiddenParameters?.join(",") ?? null,
       },
       isNotNull,
