@@ -14,11 +14,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { SmallGenericError } from "metabase/components/ErrorPages";
-import ExplicitSize from "metabase/components/ExplicitSize";
+import { SmallGenericError } from "metabase/common/components/ErrorPages";
+import ExplicitSize from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { CardSlownessStatus } from "metabase/dashboard/components/DashCard/types";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { formatNumber } from "metabase/lib/formatting";
 import { connect } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
@@ -62,7 +63,6 @@ import {
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
 import { memoizeClass } from "metabase-lib/v1/utils";
 import type {
@@ -147,7 +147,6 @@ type VisualizationOwnProps = {
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
-  query?: NativeQuery;
   rawSeries?: (
     | SingleSeries
     | {
@@ -162,6 +161,7 @@ type VisualizationOwnProps = {
   showWarnings?: boolean;
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
+  tc?: ContentTranslationFunction;
   uuid?: string;
   token?: string;
   onOpenChartSettings?: (data: {
@@ -601,7 +601,6 @@ class Visualization extends PureComponent<
       metadata,
       mode,
       onEditSummary,
-      query,
       queryBuilderMode,
       rawSeries = [],
       visualizerRawSeries,
@@ -639,6 +638,7 @@ class Visualization extends PureComponent<
 
     const clickActions = this.getClickActions(clicked);
     const regularClickActions = clickActions.filter(isRegularClickAction);
+
     // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
@@ -658,7 +658,7 @@ class Visualization extends PureComponent<
       } else {
         try {
           if (visualization.checkRenderable && series) {
-            visualization.checkRenderable(series, settings, query);
+            visualization.checkRenderable(series, settings);
           }
         } catch (e: unknown) {
           error =

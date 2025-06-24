@@ -95,7 +95,7 @@
                    (assoc :lib/card-id card-id)
 
                    (:metabase.lib.field/temporal-unit col)
-                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
+                   (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit col)))
 
                    ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
                    ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be

@@ -84,26 +84,24 @@
                    (count (et/regex-email-bodies #"external services"))))))))))
 
 (deftest fetch-creators-test
-  (let [creator-id 33
-        creator-email "creator@metabase.com"]
-    (mt/with-temp [:model/User _ {:email creator-email :id creator-id}
-                   :model/User _ {:email "noncreator@metabase.com"}
-                   :model/Dashboard _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id :query_type "native"}
-                   :model/Card _ {:creator_id creator-id :query_type "native"}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}
-                   :model/Card _ {:creator_id creator-id}]
-      (testing "Test we only fetch creators with the correct number of questions and dashboards."
-        (let [creators (#'creator-sentiment-emails/fetch-creators false)]
-          (is (= 1 (count creators)))
-          (is (= creator-email (-> creators first :email)))))
+  (mt/with-temp [:model/User {creator-email :email creator-id :id} {}
+                 :model/User _ {:email "noncreator@metabase.com"}
+                 :model/Dashboard _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id :query_type "native"}
+                 :model/Card _ {:creator_id creator-id :query_type "native"}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}
+                 :model/Card _ {:creator_id creator-id}]
+    (testing "Test we only fetch creators with the correct number of questions and dashboards."
+      (let [creators (#'creator-sentiment-emails/fetch-creators false)]
+        (is (= 1 (count creators)))
+        (is (= creator-email (-> creators first :email)))))
 
-      (testing "Whitelabelling only fetches superusers (doesn't fetch anyone)."
-        (let [creators (#'creator-sentiment-emails/fetch-creators true)]
-          (is (= 0 (count creators))))))))
+    (testing "Whitelabelling only fetches superusers (doesn't fetch anyone)."
+      (let [creators (#'creator-sentiment-emails/fetch-creators true)]
+        (is (= 0 (count creators)))))))

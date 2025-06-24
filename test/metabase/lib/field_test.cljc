@@ -1760,7 +1760,19 @@
                  (:venues/native (lib.tu/mock-cards)))
                 lib/append-stage
                 lib/visible-columns
-                first)))))
+                first))))
+    (is (= {:field-id nil
+            :search-field-id nil
+            :search-field nil
+            :has-field-values :none}
+           (lib.field/field-values-search-info
+            meta/metadata-provider
+            (->> (lib.tu/query-with-stage-metadata-from-card
+                  meta/metadata-provider
+                  (:venues/native (lib.tu/mock-cards)))
+                 lib/append-stage
+                 lib/visible-columns
+                 (m/find-first (comp #{"NAME"} :name)))))))
   (testing "field-id with custom metadata (#37100)"
     (is (=? {:field-id 1
              :search-field-id 1

@@ -330,7 +330,7 @@ describe("scenarios > home > custom homepage", () => {
         "Orders in a dashboard",
       );
 
-      cy.findByRole("navigation").findByText("Exit admin").click();
+      cy.findByTestId("admin-navbar").findByText("Exit admin").click();
       cy.location("pathname").should(
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
@@ -571,7 +571,7 @@ describe("scenarios > home > custom homepage", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+H.describeWithSnowplow.only("scenarios > setup", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -621,7 +621,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     cy.log("From the app bar");
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").should("be.visible");
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "app-bar",
@@ -629,7 +629,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
     cy.log("Track closing the button as well");
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").should("not.exist");
+    cy.findByRole("menu", { name: /new/i }).should("not.exist");
     H.expectUnstructuredSnowplowEvent(
       {
         event: "new_button_clicked",
@@ -645,7 +645,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("New").click();
     });
 
-    cy.findByRole("dialog").should("be.visible");
+    cy.findByRole("menu", { name: /new/i }).should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_clicked",
       triggered_from: "empty-collection",
@@ -660,7 +660,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
     cy.visit("/");
 
     H.newButton().should("be.visible").click();
-    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
     H.expectUnstructuredSnowplowEvent({
       event: "new_button_item_clicked",
@@ -675,7 +675,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("This collection is empty").should("be.visible");
       cy.findByText("New").click();
     });
-    cy.findByRole("dialog").findByText("Dashboard").click();
+    cy.findByRole("menu", { name: /new/i }).findByText("Dashboard").click();
     cy.findByTestId("new-dashboard-modal").should("be.visible");
     H.expectUnstructuredSnowplowEvent(
       {

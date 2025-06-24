@@ -5,7 +5,7 @@ import { getEmailDomain } from "metabase/lib/email";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { formatTimeWithUnit } from "metabase/lib/formatting/time";
 import MetabaseSettings from "metabase/lib/settings";
-import { formatFrame } from "metabase/lib/time";
+import { formatFrame } from "metabase/lib/time-dayjs";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,

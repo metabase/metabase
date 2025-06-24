@@ -9,7 +9,6 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -22,7 +21,7 @@
 
 (defn- do-with-download-perms!
   [db-or-id graph f]
-  (let [all-users-group-id (u/the-id (perms-group/all-users))
+  (let [all-users-group-id (u/the-id (perms/all-users-group))
         db-id              (u/the-id db-or-id)
         revision           (:revision (data-perms.graph/api-graph))]
     (mt/with-premium-features #{:advanced-permissions}
