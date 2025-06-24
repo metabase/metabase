@@ -17,7 +17,7 @@ jobs:
   determine-driver-skips:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.check_team_and_branch.outputs.skip }}
+      skip: ${{ steps.check_team_and_branch.outputs.skip == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
