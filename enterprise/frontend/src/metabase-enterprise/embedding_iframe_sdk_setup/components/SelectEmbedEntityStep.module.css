@@ -5,6 +5,6 @@
   user-select: none;
 }
 
-.EntityCardSelected {
+.EntityCard[data-selected="true"] {
   border-color: var(--mb-color-brand);
 }
