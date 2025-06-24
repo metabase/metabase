@@ -5,10 +5,10 @@ import type {
   DeleteMappingModalValueType,
   GroupIds,
 } from "metabase/admin/types";
-import Modal from "metabase/components/Modal";
-import { ModalFooter } from "metabase/components/ModalContent";
-import Button from "metabase/core/components/Button";
-import Radio from "metabase/core/components/Radio";
+import Button from "metabase/common/components/Button";
+import Modal from "metabase/common/components/Modal";
+import { ModalFooter } from "metabase/common/components/ModalContent";
+import Radio from "metabase/common/components/Radio";
 import CS from "metabase/css/core/index.css";
 
 import {

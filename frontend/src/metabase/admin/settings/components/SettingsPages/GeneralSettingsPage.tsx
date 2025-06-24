@@ -1,10 +1,13 @@
 import { jt, t } from "ttag";
 
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { AnonymousTrackingInput } from "../widgets/AnonymousTrackingInput";
 import { CustomHomepageDashboardSetting } from "../widgets/CustomHomepageDashboardSetting";
