@@ -2,7 +2,7 @@ import type { Location } from "history";
 import type { InjectedRouter, Route } from "react-router";
 import { withRouter } from "react-router";
 
-import { useConfirmRouteLeaveModal } from "metabase/hooks/use-confirm-route-leave-modal";
+import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
 
 import { LeaveConfirmModal } from "./LeaveConfirmModal";
 

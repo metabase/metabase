@@ -6,9 +6,9 @@ import {
   useDeleteMembershipMutation,
   useUpdateMembershipMutation,
 } from "metabase/api";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
 import {
   canEditMembership,
   getGroupNameLocalized,

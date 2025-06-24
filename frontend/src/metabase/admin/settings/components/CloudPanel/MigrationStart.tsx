@@ -1,8 +1,8 @@
 import { t } from "ttag";
 
 import { UpsellCloud } from "metabase/admin/upsells/UpsellCloud";
+import { useToggle } from "metabase/common/hooks/use-toggle";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useToggle } from "metabase/hooks/use-toggle";
 import { Box, Button, Icon, Modal, Text } from "metabase/ui";
 
 interface MigrationStartProps {

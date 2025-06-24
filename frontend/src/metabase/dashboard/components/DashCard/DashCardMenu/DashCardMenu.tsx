@@ -9,13 +9,13 @@ import type { MetabasePluginsConfig } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { transformSdkQuestion } from "embedding-sdk/lib/transform-question";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import CS from "metabase/css/core/index.css";
 import {
   canDownloadResults,
   canEditQuestion,
 } from "metabase/dashboard/components/DashCard/DashCardMenu/utils";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
-import { useUserKeyValue } from "metabase/hooks/use-user-key-value";
 import { useStore } from "metabase/lib/redux";
 import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
