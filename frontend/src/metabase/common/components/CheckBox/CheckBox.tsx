@@ -3,7 +3,6 @@ import type {
   FocusEvent,
   HTMLAttributes,
   ReactElement,
-  Ref,
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
@@ -71,7 +70,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
       onBlur,
       ...props
     }: CheckBoxProps,
-    ref: Ref<HTMLLabelElement>,
+    ref: React.Ref<HTMLLabelElement>,
   ): JSX.Element {
     const isControlledCheckBoxInput = !!onChange;
     const labelRef = useRef<HTMLSpanElement>(null);

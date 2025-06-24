@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
@@ -29,7 +29,7 @@ export const FormSecretKey = forwardRef(function FormSecretKey(
     onBlur,
     ...props
   }: FormSecretKeyProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const [{ value }, { error, touched }, { setValue, setTouched }] =

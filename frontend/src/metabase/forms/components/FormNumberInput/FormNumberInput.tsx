@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { FocusEvent, Ref } from "react";
+import type { FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { NumberInputProps } from "metabase/ui";
@@ -12,7 +12,7 @@ export interface FormNumberInputProps extends Omit<NumberInputProps, "value"> {
 
 export const FormNumberInput = forwardRef(function FormNumberInput(
   { name, nullable, onChange, onBlur, ...props }: FormNumberInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);

@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref, UIEventHandler } from "react";
+import type { HTMLAttributes, UIEventHandler } from "react";
 import { forwardRef, useContext, useMemo } from "react";
 
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -18,7 +18,7 @@ export interface TabListProps<T>
 
 const TabList = forwardRef(function TabGroup<T>(
   { value, onChange, onScroll, children, ...props }: TabListProps<T>,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const idPrefix = useUniqueId();
   const outerContext = useContext(TabContext);

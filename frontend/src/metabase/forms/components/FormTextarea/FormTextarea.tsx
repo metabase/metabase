@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { TextareaProps } from "metabase/ui";
@@ -13,7 +13,7 @@ export interface FormTextareaProps
 
 export const FormTextarea = forwardRef(function FormTextarea(
   { name, nullable, onChange, onBlur, ...props }: FormTextareaProps,
-  ref: Ref<HTMLTextAreaElement>,
+  ref: React.Ref<HTMLTextAreaElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);

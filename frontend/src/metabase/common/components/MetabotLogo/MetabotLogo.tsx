@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -19,7 +18,7 @@ export interface MetabotLogoProps {
 
 const MetabotLogo = forwardRef(function MetabotLogo(
   { variant = "happy", ...rest }: MetabotLogoProps,
-  ref: Ref<HTMLImageElement>,
+  ref: React.Ref<HTMLImageElement>,
 ) {
   return (
     <LogoRoot

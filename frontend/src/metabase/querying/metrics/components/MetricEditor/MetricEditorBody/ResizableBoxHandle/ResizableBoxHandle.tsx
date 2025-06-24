@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type Ref, forwardRef } from "react";
+import { type HTMLAttributes, forwardRef } from "react";
 import _ from "underscore";
 
 import { Box, Flex, rem } from "metabase/ui";
@@ -7,7 +7,7 @@ import S from "./ResizableBoxHandle.module.css";
 
 export const ResizableBoxHandle = forwardRef(function ResizableBoxHandle(
   props: HTMLAttributes<HTMLDivElement>,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <Flex

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -217,7 +216,7 @@ export function getBucketListItem(
 
 const TriggerButton = forwardRef(function TriggerButton(
   { className, ...props }: ButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   return (
     <Button ref={ref} className={cx(S.triggerButton, className)} {...props} />

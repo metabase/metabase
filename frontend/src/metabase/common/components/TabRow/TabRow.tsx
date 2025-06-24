@@ -15,7 +15,6 @@ import {
 } from "@dnd-kit/sortable";
 import { useMergedRef } from "@mantine/hooks";
 import {
-  type Ref,
   forwardRef,
   useCallback,
   useLayoutEffect,
@@ -51,7 +50,7 @@ const TabRowInner = forwardRef<HTMLDivElement, TabRowProps<unknown>>(
       handleDragEnd,
       ...props
     }: TabRowProps<T>,
-    ref: Ref<HTMLDivElement>,
+    ref: React.Ref<HTMLDivElement>,
   ) {
     const tabListRef = useRef<HTMLDivElement>(null);
     const mergedRef = useMergedRef(tabListRef, ref);

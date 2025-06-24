@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import ColorInput from "metabase/common/components/ColorInput";
@@ -22,7 +22,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
     onChange,
     ...props
   }: ColorPickerTriggerProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <Group {...props} ref={ref} wrap="nowrap">

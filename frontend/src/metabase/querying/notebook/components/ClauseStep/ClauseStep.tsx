@@ -4,7 +4,6 @@ import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMergedRef } from "@mantine/hooks";
-import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { Icon } from "metabase/ui";
@@ -159,7 +158,7 @@ type ClauseStepDndItemProps = {
 
 const ClauseStepDndItem = forwardRef(function ClauseStepDndItem(
   { index, readOnly, children }: ClauseStepDndItemProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({

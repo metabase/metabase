@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, Ref } from "react";
+import type { ChangeEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { FileInputProps } from "metabase/common/components/FileInput";
@@ -29,7 +29,7 @@ const FormFileInput = forwardRef(function FormFileInput(
     optional,
     ...props
   }: FormFileInputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ onBlur }, { error, touched }, { setValue }] = useField(name);

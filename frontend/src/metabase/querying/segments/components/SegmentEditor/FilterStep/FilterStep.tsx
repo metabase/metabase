@@ -1,4 +1,4 @@
-import { type Ref, forwardRef, useState } from "react";
+import { forwardRef, useState } from "react";
 import { t } from "ttag";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
@@ -122,7 +122,7 @@ type AddFilterButtonProps = {
 
 const AddFilterButton = forwardRef(function AddFilterButton(
   { compact, disabled, onClick }: AddFilterButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   return (
     <Button

@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { FocusEvent, Ref } from "react";
+import type { FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
@@ -17,7 +17,7 @@ interface FormGroupWidgetProps
 // single-select widget for selecting a permissions group
 export const FormGroupWidget = forwardRef(function FormGroupWidget(
   { name, nullable, onChange, onBlur, ...props }: FormGroupWidgetProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] = useField<
     GroupId | null | undefined

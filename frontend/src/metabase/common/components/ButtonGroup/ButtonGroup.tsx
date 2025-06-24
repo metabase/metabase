@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import { ButtonGroupRoot } from "./ButtonGroup.styled";
@@ -9,7 +9,7 @@ export interface ButtonGroupProps extends HTMLAttributes<HTMLDivElement> {
 
 const ButtonGroup = forwardRef(function ButtonGroup(
   { children, ...props }: ButtonGroupProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <ButtonGroupRoot {...props} ref={ref}>

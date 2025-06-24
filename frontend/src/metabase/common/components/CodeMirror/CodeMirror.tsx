@@ -4,7 +4,7 @@ import ReactCodeMirror, {
   type ReactCodeMirrorRef,
 } from "@uiw/react-codemirror";
 import cx from "classnames";
-import { type Ref, forwardRef, useRef } from "react";
+import { forwardRef, useRef } from "react";
 
 import S from "./CodeMirror.module.css";
 import { type HighlightRange, useHighlightRanges } from "./highlights";
@@ -17,7 +17,7 @@ export type CodeMirrorProps = ReactCodeMirrorProps &
 
 export const CodeMirror = forwardRef(function CodeMirrorInner(
   props: CodeMirrorProps,
-  ref: Ref<ReactCodeMirrorRef>,
+  ref: React.Ref<ReactCodeMirrorRef>,
 ) {
   const {
     className,

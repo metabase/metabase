@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { MouseEvent, Ref } from "react";
+import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
@@ -23,7 +23,7 @@ export const ColorRange = forwardRef(function ColorRange(
     onSelect,
     ...props
   }: ColorRangeProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const scale = useMemo(() => {
     return getColorScale([0, sections - 1], colors, isQuantile);

@@ -4,7 +4,7 @@ import type {
   SelectProps as MantineSelectProps,
 } from "@mantine/core";
 import { Select as MantineSelect } from "@mantine/core";
-import { type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 export * from "./SelectItem";
 
 import type { IconName } from "../../icons";
@@ -32,7 +32,7 @@ export interface SelectProps<Value extends string | null = string>
 
 function _Select<Value extends string | null>(
   props: SelectProps<Value>,
-  ref: Ref<HTMLElement>,
+  ref: React.Ref<HTMLElement>,
 ) {
   return (
     // @ts-expect-error -- our tighter types are better

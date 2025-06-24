@@ -4,7 +4,6 @@ import {
   type ComponentType,
   type ErrorInfo,
   PureComponent,
-  type Ref,
   forwardRef,
 } from "react";
 import React from "react";
@@ -105,7 +104,7 @@ type StateProps = {
 };
 
 type ForwardedRefProps = {
-  forwardedRef: Ref<HTMLDivElement>;
+  forwardedref: React.Ref<HTMLDivElement>;
 };
 
 type OnChangeCardAndRunOpts = {

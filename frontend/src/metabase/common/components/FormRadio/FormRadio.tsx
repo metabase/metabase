@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { Key, Ref } from "react";
+import type { Key } from "react";
 import { forwardRef } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -37,7 +37,7 @@ const FormRadio = forwardRef(function FormRadio<
     optional,
     ...props
   }: FormRadioProps<TValue, TOption>,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);
 

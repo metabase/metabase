@@ -1,4 +1,4 @@
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { forwardRef, useLayoutEffect, useState } from "react";
 
 import { type NumberValue, parseNumber } from "metabase/lib/number";
@@ -11,7 +11,7 @@ type NumberFilterInputProps = Omit<TextInputProps, "value" | "onChange"> & {
 
 export const NumberFilterInput = forwardRef(function NumberFilterInput(
   { value, onChange, onFocus, onBlur, ...props }: NumberFilterInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [inputValue, setInputValue] = useState(formatValue(value));
   const [isFocused, setIsFocused] = useState(false);

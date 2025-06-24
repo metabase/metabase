@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { ChipGroupProps, GroupProps, TextProps } from "metabase/ui";
@@ -23,7 +22,7 @@ export const FormChipGroup = forwardRef(function FormChipGroup(
     labelProps,
     ...props
   }: FormChipGroupProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [{ value }, _meta, { setValue }] = useField(name);
 

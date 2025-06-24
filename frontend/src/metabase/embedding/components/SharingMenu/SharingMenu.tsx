@@ -1,4 +1,4 @@
-import React, { type Ref, forwardRef } from "react";
+import React, { forwardRef } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
@@ -39,7 +39,7 @@ export const SharingButton = forwardRef(function _SharingButton(
     onClick?: () => void;
     disabled?: boolean;
   },
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   return (
     <ToolbarButton

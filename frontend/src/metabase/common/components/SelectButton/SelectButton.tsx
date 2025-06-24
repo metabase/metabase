@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ButtonHTMLAttributes, Ref } from "react";
+import type { ButtonHTMLAttributes } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import * as React from "react";
 
@@ -44,7 +44,7 @@ const SelectButton = forwardRef(function SelectButton(
     classNames = {},
     ...rest
   }: SelectButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const handleClear = useCallback(
     (event: React.MouseEvent) => {

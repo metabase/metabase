@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef } from "react";
 
 import type { TextProps } from "metabase/ui";
@@ -10,7 +9,7 @@ export type FormErrorMessageProps = TextProps;
 
 export const FormErrorMessage = forwardRef(function FormErrorMessage(
   props: FormErrorMessageProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const message = useFormErrorMessage();
   if (!message) {

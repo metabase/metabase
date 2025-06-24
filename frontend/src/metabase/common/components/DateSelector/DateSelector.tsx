@@ -1,6 +1,5 @@
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -36,7 +35,7 @@ const DateSelector = forwardRef(function DateSelector(
     onHasTimeChange,
     onSubmit,
   }: DateSelectorProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ): JSX.Element {
   const today = useMemo(() => moment().startOf("date"), []);
 

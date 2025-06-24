@@ -14,7 +14,6 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
 import type { VirtualGrid } from "./hooks/use-virtual-grid";
@@ -257,7 +256,7 @@ export type SelectedCell = {
 
 export interface DataGridInstance<TData> {
   table: Table<TData>;
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: React.RefObject<HTMLDivElement>;
   virtualGrid: VirtualGrid;
   measureRoot: React.ReactNode;
   columnsReordering: ColumnsReordering;

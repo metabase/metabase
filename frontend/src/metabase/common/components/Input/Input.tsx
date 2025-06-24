@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, MouseEvent, Ref } from "react";
+import type { InputHTMLAttributes, MouseEvent } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -60,7 +60,7 @@ const BaseInput = forwardRef(function Input(
     onChange,
     ...props
   }: InputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const showResetButton =
     onResetClick && value != null && String(value).length > 0;

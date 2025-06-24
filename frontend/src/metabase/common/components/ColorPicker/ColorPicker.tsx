@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -20,7 +20,7 @@ export interface ColorPickerProps extends ColorPickerAttributes {
 
 const ColorPicker = forwardRef(function ColorPicker(
   { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <TippyPopoverWithTrigger

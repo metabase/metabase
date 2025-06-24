@@ -1,4 +1,4 @@
-import type { ChangeEvent, FocusEvent, InputHTMLAttributes, Ref } from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 
 import Input from "metabase/common/components/Input";
@@ -20,7 +20,7 @@ export interface NumericInputProps extends NumericInputAttributes {
  */
 const NumericInput = forwardRef(function NumericInput(
   { value, onFocus, onBlur, onChange, ...props }: NumericInputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const valueText = useMemo(() => value?.toString() ?? "", [value]);
   const [inputText, setInputText] = useState(valueText);

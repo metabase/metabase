@@ -1,5 +1,4 @@
 import {
-  type Ref,
   createRef,
   forwardRef,
   useCallback,
@@ -698,7 +697,7 @@ export const Onboarding = () => {
 
 const VideoTutorial = forwardRef(function VideoTutorial(
   { id, si, title }: { id: string; si?: string; title: string },
-  ref: Ref<HTMLIFrameElement>,
+  ref: React.Ref<HTMLIFrameElement>,
 ) {
   return (
     <iframe

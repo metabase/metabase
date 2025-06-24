@@ -5,7 +5,6 @@ import type {
 } from "@tanstack/react-table";
 import cx from "classnames";
 import {
-  type Ref,
   forwardRef,
   useCallback,
   useEffect,
@@ -162,7 +161,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onVisualizationClick,
     onUpdateVisualizationSettings,
   }: TableProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const getInfoPopoversDisabledRef = useLatest(() => {
     return clicked !== null || !hasMetadataPopovers || isDashboard;

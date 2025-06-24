@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -21,7 +21,7 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
     tooltipPlacement,
     ...props
   }: BookmarkToggleProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const [isAnimating, setIsAnimating] = useState(false);
 

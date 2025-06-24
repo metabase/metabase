@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 import cx from "classnames";
-import type { ButtonHTMLAttributes, ElementType, Ref } from "react";
+import type { ButtonHTMLAttributes, ElementType } from "react";
 import { forwardRef } from "react";
 import _ from "underscore";
 
@@ -107,7 +107,7 @@ const BaseButton = forwardRef(function BaseButton(
     classNames = {},
     ...props
   }: ButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const variantClasses = BUTTON_VARIANTS.filter((variant) => props[variant])
     .map((variant) => VARIANT_TO_CLASS_MAP[variant])

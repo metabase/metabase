@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
@@ -93,7 +92,7 @@ const DashboardPickerInner = (
     onItemSelect,
     onPathChange,
   }: DashboardPickerProps,
-  ref: Ref<unknown>,
+  ref: React.Ref<unknown>,
 ) => {
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({ idPath: ["root"], models });

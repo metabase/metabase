@@ -1,6 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import cx from "classnames";
-import type { CSSProperties, Key, ReactElement, RefObject } from "react";
+import type { CSSProperties, Key, ReactElement } from "react";
 import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
@@ -96,7 +96,7 @@ class BaseSelect<TValue, TOption = SelectOption<TValue>> extends Component<
   SelectProps<TValue, TOption>
 > {
   _popover?: any;
-  selectButtonRef: RefObject<any>;
+  selectButtonRef: React.RefObject<any>;
   _getValues: () => TValue[];
   _getValuesSet: () => Set<TValue>;
 

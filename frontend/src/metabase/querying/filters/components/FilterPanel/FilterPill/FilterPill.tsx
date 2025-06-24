@@ -1,4 +1,4 @@
-import type { HTMLAttributes, MouseEvent, Ref } from "react";
+import type { HTMLAttributes, MouseEvent } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -12,7 +12,7 @@ interface FilterPillProps extends HTMLAttributes<HTMLDivElement> {
 
 export const FilterPill = forwardRef(function FilterPill(
   { children, onRemoveClick, ...props }: FilterPillProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const handleRemoveClick = (event: MouseEvent) => {
     event.stopPropagation();

@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import { useFormErrorMessage } from "metabase/forms";
@@ -15,7 +15,7 @@ export interface FormErrorMessageProps
  */
 const FormErrorMessage = forwardRef(function FormErrorMessage(
   { inline, ...props }: FormErrorMessageProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const message = useFormErrorMessage();
   if (!message) {

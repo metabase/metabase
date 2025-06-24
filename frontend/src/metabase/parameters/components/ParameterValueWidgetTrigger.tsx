@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -23,7 +23,7 @@ function ParameterValueWidgetTriggerInner(
     className?: string;
     mimicMantine?: boolean;
   },
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   if (mimicMantine) {
     return (

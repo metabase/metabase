@@ -1,4 +1,4 @@
-import { type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
@@ -19,7 +19,7 @@ import type {
 
 const MenuTarget = forwardRef(function _MenuTarget(
   _props,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return <Box h="2rem" ref={ref} />;
 });

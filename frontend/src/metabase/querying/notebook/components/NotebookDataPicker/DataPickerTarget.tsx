@@ -1,4 +1,4 @@
-import { type MouseEvent, type Ref, forwardRef } from "react";
+import { type MouseEvent, forwardRef } from "react";
 
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
@@ -24,7 +24,7 @@ export const DataPickerTarget = forwardRef(function DataPickerTarget(
     onAuxClick,
     getTableIcon = defaultGetTableIcon,
   }: DataPickerTargetProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   return (
     <UnstyledButton

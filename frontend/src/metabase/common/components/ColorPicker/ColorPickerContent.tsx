@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef, useCallback } from "react";
 import type { ColorState } from "react-color";
 
@@ -19,7 +19,7 @@ export interface ColorPickerContentProps extends ColorPickerContentAttributes {
 
 const ColorPickerContent = forwardRef(function ColorPickerContent(
   { value, onChange, ...props }: ColorPickerContentProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const handleChange = useCallback(
     (state: ColorState) => onChange?.(state.hex),

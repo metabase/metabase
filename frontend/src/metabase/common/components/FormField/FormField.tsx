@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -46,7 +46,7 @@ const FormField = forwardRef(function FormField(
     optional,
     ...props
   }: FormFieldProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const hasTitle = Boolean(title);
   const hasDescription = Boolean(description);

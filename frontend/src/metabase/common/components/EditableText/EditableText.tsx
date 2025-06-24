@@ -5,7 +5,6 @@ import type {
   HTMLAttributes,
   KeyboardEvent,
   MouseEvent,
-  Ref,
 } from "react";
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
@@ -51,7 +50,7 @@ const EditableText = forwardRef(function EditableText(
     "data-testid": dataTestId,
     ...props
   }: EditableTextProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue);

@@ -1,4 +1,4 @@
-import { type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
 
 import {

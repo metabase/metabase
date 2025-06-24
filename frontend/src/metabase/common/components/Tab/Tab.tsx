@@ -1,4 +1,4 @@
-import type { HTMLAttributes, MouseEvent, Ref } from "react";
+import type { HTMLAttributes, MouseEvent } from "react";
 import { forwardRef, useCallback, useContext } from "react";
 
 import type { IconName } from "metabase/ui";
@@ -16,7 +16,7 @@ export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {
 
 const Tab = forwardRef(function Tab<T>(
   { value, icon, children, onClick, ...props }: TabProps<T>,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
   const tabId = getTabId(idPrefix, value);

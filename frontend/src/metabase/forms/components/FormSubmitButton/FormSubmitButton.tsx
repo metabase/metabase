@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -27,7 +26,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     onSuccess,
     ...props
   }: FormSubmitButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
 

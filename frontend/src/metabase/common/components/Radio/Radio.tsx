@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Key, Ref } from "react";
+import type { HTMLAttributes, Key } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import _ from "underscore";
 
@@ -76,7 +76,7 @@ const BaseRadio = forwardRef(function Radio<
     onOptionClick,
     ...props
   }: RadioProps<TValue, TOption>,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const { RadioGroup } = VARIANTS[variant];
   const groupName = useMemo(() => name ?? _.uniqueId("radio-"), [name]);

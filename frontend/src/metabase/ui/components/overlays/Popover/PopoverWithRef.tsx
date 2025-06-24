@@ -1,6 +1,5 @@
 import {
   type PropsWithChildren,
-  type Ref,
   forwardRef,
   useEffect,
   useMemo,
@@ -28,7 +27,7 @@ export const PopoverWithRef = ({
   const Target = useMemo(() => {
     return forwardRef(function Target(
       _props: unknown,
-      ref: Ref<Element> | null,
+      ref: React.Ref<Element> | null,
     ) {
       useEffect(() => {
         if (typeof ref === "function") {

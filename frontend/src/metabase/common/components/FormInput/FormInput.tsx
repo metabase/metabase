@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, Ref } from "react";
+import type { ChangeEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -37,7 +37,7 @@ const FormInput = forwardRef(function FormInput(
     optional,
     ...props
   }: FormInputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);

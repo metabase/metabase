@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -37,7 +36,7 @@ const FormSelect = forwardRef(function FormSelect<
     optional,
     ...props
   }: FormSelectProps<TValue, TOption>,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);

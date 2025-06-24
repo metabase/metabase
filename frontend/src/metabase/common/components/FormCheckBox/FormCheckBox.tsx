@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { Ref } from "react";
 import { forwardRef } from "react";
 
 import type { CheckBoxProps } from "metabase/common/components/CheckBox";
@@ -28,7 +27,7 @@ const FormCheckBox = forwardRef(function FormCheckBox(
     optional,
     ...props
   }: FormCheckBoxProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onChange, onBlur }, { error, touched }] = useField(name);
