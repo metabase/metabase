@@ -139,11 +139,7 @@ export const SelectEmbedEntityStep = () => {
           }
           onChange={handlePickerModalEntitySelect}
           onClose={closePicker}
-          options={{
-            showPersonalCollections: true,
-            showRootCollection: true,
-            hasConfirmButtons: false,
-          }}
+          options={MODAL_OPTIONS}
         />
       );
     }
@@ -151,7 +147,7 @@ export const SelectEmbedEntityStep = () => {
     if (experience === "chart") {
       return (
         <QuestionPickerModal
-          title={t`Select a question`}
+          title={t`Select a chart`}
           value={
             settings.questionId
               ? { id: settings.questionId, model: "card" }
@@ -159,11 +155,7 @@ export const SelectEmbedEntityStep = () => {
           }
           onChange={handlePickerModalEntitySelect}
           onClose={closePicker}
-          options={{
-            showPersonalCollections: true,
-            showRootCollection: true,
-            hasConfirmButtons: false,
-          }}
+          options={MODAL_OPTIONS}
         />
       );
     }
@@ -216,3 +208,9 @@ const getEmbedDescription = (experience: string) =>
     .with("chart", () => t`Choose from your recently visited charts`)
     .with("exploration", () => null)
     .otherwise(() => t`Choose your content to embed`);
+
+const MODAL_OPTIONS = {
+  showPersonalCollections: true,
+  showRootCollection: true,
+  hasConfirmButtons: false,
+} as const;
