@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-506-live-previews-for-new-iframe-embed-flow",
-    "hash": "14ab69a3370e170d075090785d858f04e8c26ba2"
+    "hash": "53ca5c77e1a21037dbf937afce87b991ad0666fa"
   },
   "upstream": {
     "branch": "emb-508-select-dashboards-and-questions-for-new-iframe-embedding"
