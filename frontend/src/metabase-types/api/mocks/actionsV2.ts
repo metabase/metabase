@@ -1,5 +1,5 @@
 import { getNextId } from "__support__/utils";
-import type { ListActionItem, ModelWithActionsItem } from "metabase-types/api";
+import type { ListActionItem } from "metabase-types/api";
 
 export const createMockActionListItem = (
   opts: Partial<ListActionItem> = {},
@@ -59,18 +59,4 @@ export const createMockModelActions = (
       ...opts,
     }),
   ];
-};
-
-export const createMockModelWithActions = (
-  opts: Partial<ModelWithActionsItem> = {},
-): ModelWithActionsItem => {
-  return {
-    collection_id: null,
-    collection_name: null,
-    collection_position: 1,
-    description: null,
-    id: getNextId(),
-    name: "Model With Actions Mock",
-    ...opts,
-  };
 };

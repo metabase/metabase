@@ -5,7 +5,6 @@ import type {
   ModelItem,
   SchemaItem,
   TableItem,
-  TablePickerValue,
 } from "metabase/common/components/DataPicker";
 import type {
   CardId,
@@ -14,7 +13,7 @@ import type {
   DatabaseId,
   DatabaseWithActionsItem,
   ListActionItem,
-  ModelWithActionsItem,
+  SearchResult,
   TableId,
   TableWithActionsItem,
 } from "metabase-types/api";
@@ -62,7 +61,7 @@ export const isActionItem = (
 };
 
 export const getModelItem = (
-  modelItems: ModelWithActionsItem[] | undefined,
+  modelItems: SearchResult[] | undefined,
   modelId: CardId | undefined,
 ): ModelItem | null => {
   if (typeof modelId === "undefined") {
@@ -87,18 +86,6 @@ export const getCollectionItem = (
   const name = item?.name ?? "";
 
   return { model: "collection", id: collectionId, name };
-};
-
-export const isModelItem = (
-  value: TableActionPickerItem | ModelActionPickerItem | undefined,
-): value is ModelItem => {
-  return value?.model === "dataset";
-};
-
-export const isTableItem = (
-  value: TableActionPickerItem | ModelActionPickerItem | undefined,
-): value is TablePickerValue => {
-  return value?.model === "table";
 };
 
 export const getDbItem = (

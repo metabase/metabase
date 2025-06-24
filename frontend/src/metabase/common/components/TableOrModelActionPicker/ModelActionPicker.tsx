@@ -4,11 +4,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator/ActionCreator";
-import {
-  skipToken,
-  useListActionsV2Query,
-  useListModelsWithActionsQuery,
-} from "metabase/api";
+import { skipToken, useListActionsV2Query, useSearchQuery } from "metabase/api";
 import type { ActionItem } from "metabase/common/components/DataPicker/types";
 import {
   AutoScrollBox,
@@ -22,6 +18,7 @@ import type {
   CardId,
   CollectionId,
   DataGridWritebackActionId,
+  SearchResult,
 } from "metabase-types/api";
 
 import { ActionList } from "./ActionList";
@@ -69,38 +66,42 @@ export const ModelActionPicker = ({
 
   const {
     data: modelsResponse,
-    error: errorModels,
     isFetching: isLoadingModels,
-  } = useListModelsWithActionsQuery();
+    error: errorModels,
+  } = useSearchQuery({
+    models: ["dataset"],
+    model_ancestors: false,
+    include_metadata: false,
+  }); // TODO: most likely we should handle pagination here, but for now we just reused the logic of a previous picker
 
-  const allModels = isLoadingModels ? undefined : modelsResponse?.models;
+  const allModels = isLoadingModels
+    ? undefined
+    : (modelsResponse?.data as SearchResult<CardId>[] | undefined);
 
   const collections = useMemo(() => {
     const result: CollectionListItem[] = [];
     const addedCollectionsSet = new Set();
 
-    allModels?.forEach(
-      ({ collection_id, collection_position, collection_name }) => {
-        const ensuredId = collection_id || "root";
+    allModels?.forEach(({ collection, collection_position }) => {
+      const ensuredId = collection.id || "root";
 
-        if (ensuredId && !addedCollectionsSet.has(ensuredId)) {
-          result.push({
-            id: ensuredId,
-            name: collection_name ?? t`Our Analytics`,
-            model: "collection",
-            position: collection_position,
-          });
-          addedCollectionsSet.add(ensuredId);
-        }
-      },
-    );
+      if (ensuredId && !addedCollectionsSet.has(ensuredId)) {
+        result.push({
+          id: ensuredId,
+          name: collection.name ?? t`Our Analytics`,
+          model: "collection",
+          position: collection_position,
+        });
+        addedCollectionsSet.add(ensuredId);
+      }
+    });
 
     return result;
   }, [allModels]);
 
   const models = useMemo(() => {
-    return allModels?.filter(({ collection_id: itemCollectionId }) => {
-      const ensuredId = itemCollectionId || "root";
+    return allModels?.filter((model) => {
+      const ensuredId = model.collection.id || "root";
       return ensuredId === collectionId;
     });
   }, [allModels, collectionId]);

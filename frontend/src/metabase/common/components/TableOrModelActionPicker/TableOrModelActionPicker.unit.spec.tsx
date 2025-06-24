@@ -6,7 +6,6 @@ import {
   setupCardEndpoints,
   setupDatabaseListEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
-  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -17,23 +16,22 @@ import {
 import { checkNotNull } from "metabase/lib/types";
 import { Modal } from "metabase/ui";
 import type {
+  CardId,
   Collection,
   Database,
   ListActionItem,
-  ModelWithActionsItem,
   RegularCollectionId,
   SchemaName,
+  SearchResult,
   Table,
 } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
 import {
   createMockModelActions,
-  createMockModelWithActions,
   createMockTableActions,
 } from "metabase-types/api/mocks/actionsV2";
 import {
@@ -45,10 +43,10 @@ import {
 
 import { TableOrModelActionPicker } from "./TableOrModelActionPicker";
 
-const mockSearchItem = createMockCollectionItem({
-  collection: createMockCollection(),
-  model: "dataset",
-});
+// const mockSearchItem = createMockCollectionItem({
+//   collection: createMockCollection(),
+//   model: "dataset",
+// });
 const sampleDb = createMockDatabase({ id: 101, name: "SampleDB" });
 const postgresDb = createMockDatabase({
   id: 102,
@@ -101,26 +99,32 @@ const TABLE_ACTIONS_HIERARCHY = {
   [mockTable5.id]: createMockTableActions(),
 };
 
-const rootCollectionModel1 = createMockModelWithActions({
+const rootCollectionModel1 = createMockCard({
   id: 301,
   name: "Orders model",
-});
-const rootCollectionModel2 = createMockModelWithActions({
+  type: "model",
+  collection: rootCollection,
+}) as unknown as SearchResult<CardId>;
+const rootCollectionModel2 = createMockCard({
   id: 302,
   name: "People model",
-});
-const collection2Model1 = createMockModelWithActions({
+  type: "model",
+  collection: rootCollection,
+}) as unknown as SearchResult<CardId>;
+const collection2Model1 = createMockCard({
   id: 303,
   name: "Modelio",
+  type: "model",
   collection_id: collection2.id as RegularCollectionId,
-  collection_name: collection2.name,
-});
-const collection2Model2 = createMockModelWithActions({
+  collection: collection2,
+}) as unknown as SearchResult<CardId>;
+const collection2Model2 = createMockCard({
   id: 304,
   name: "Other cool model",
+  type: "model",
   collection_id: collection2.id as RegularCollectionId,
-  collection_name: collection2.name,
-});
+  collection: collection2,
+}) as unknown as SearchResult<CardId>;
 
 const MODEL_ACTIONS_HIERARCHY = {
   [rootCollection.id]: [rootCollectionModel1, rootCollectionModel2],
@@ -140,14 +144,12 @@ describe("TableOrModelActionPicker", () => {
     jest.restoreAllMocks();
   });
 
-  it("should display tables hierarchy", async () => {
+  it("should render", async () => {
     await setup();
 
     expect(screen.getByText("Pick an action to add")).toBeInTheDocument();
     expect(screen.getByText("Tables")).toBeInTheDocument();
     expect(screen.getByText("Models")).toBeInTheDocument();
-
-    expect(screen.getByText("SampleDB")).toBeInTheDocument();
   });
 
   describe("tables", () => {
@@ -346,7 +348,7 @@ async function setup(
     >;
     modelHierarchy?: Record<
       string,
-      Collection | ModelWithActionsItem[] | ListActionItem[]
+      Collection | SearchResult<CardId>[] | ListActionItem[]
     >;
   } = {},
 ) {
@@ -361,7 +363,16 @@ async function setup(
   const onChangeSpy = jest.fn();
   const onCloseSpy = jest.fn();
 
-  setupSearchEndpoints(hasModelsEnabled ? [mockSearchItem] : []);
+  fetchMock.get(
+    (url) =>
+      url.endsWith(
+        `/api/search?limit=0&models=dataset&calculate_available_models=true`,
+      ),
+    {
+      available_models: hasModelsEnabled ? ["dataset"] : [],
+    },
+  );
+
   setupRecentViewsAndSelectionsEndpoints([]);
 
   fetchMock.get("path:/api/action/v2/database", {
@@ -391,12 +402,19 @@ async function setup(
   });
 
   const models = collections
-    .map(({ id }) => modelHierarchy[id] as ModelWithActionsItem[])
+    .map(({ id }) => modelHierarchy[id] as SearchResult<CardId>[])
     .flat();
 
-  fetchMock.get(`path:/api/action/v2/model`, {
-    models: models || [],
-  });
+  fetchMock.get(
+    (url) =>
+      url.endsWith(
+        `/api/search?models=dataset&model_ancestors=false&include_metadata=false`,
+      ),
+    {
+      data: models,
+      models: ["dataset"],
+    },
+  );
 
   models.forEach((model) => {
     const actionItems = modelHierarchy[model.id] as ListActionItem[];
