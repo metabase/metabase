@@ -1,14 +1,19 @@
+import { useDisclosure } from "@mantine/hooks";
+import React, { type ReactElement } from "react";
 import { t } from "ttag";
-
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
-import { Divider, Flex, Text } from "metabase/ui";
 
 import {
   AdminNavItem,
   type AdminNavItemProps,
   AdminNavWrapper,
-} from "../AdminNav";
+} from "metabase/admin/components/AdminNav";
+import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { useHasTokenFeature } from "metabase/common/hooks";
+import { useSelector } from "metabase/lib/redux";
+import { getLocation } from "metabase/selectors/routing";
+import { Divider, Flex } from "metabase/ui";
+
+import { UpdatesNavItem } from "./UpdatesNavItem";
 
 const NavDivider = () => <Divider my="sm" />;
 
@@ -23,11 +28,7 @@ export function SettingsNav() {
   return (
     <AdminNavWrapper>
       <SettingsNavItem path="general" label={t`General`} icon="gear" />
-      <SettingsNavItem
-        path="authentication"
-        label={t`Authentication`}
-        icon="lock"
-      >
+      <SettingsNavItem label={t`Authentication`} path="auth" icon="lock">
         <SettingsNavItem path="authentication" label={t`Overview`} />
         {hasScim && (
           <SettingsNavItem
@@ -48,9 +49,7 @@ export function SettingsNav() {
         label={t`Notification channels`}
         icon="bell"
       />
-      {!hasHosting && (
-        <SettingsNavItem path="updates" label={t`Updates`} icon="sparkles" />
-      )}
+      {!hasHosting && <UpdatesNavItem />}
       <NavDivider />
       <SettingsNavItem
         path="localization"
@@ -62,21 +61,25 @@ export function SettingsNav() {
         path="whitelabel"
         label={
           <Flex gap="sm" align="center">
-            <Text>{t`Appearance`}</Text>
+            <span>{t`Appearance`}</span>
             {!hasWhitelabel && <UpsellGem />}
           </Flex>
         }
         icon="palette"
       >
-        {hasWhitelabel && (
-          <>
-            <SettingsNavItem path="whitelabel/branding" label={t`Branding`} />
-            <SettingsNavItem
-              path="whitelabel/conceal-metabase"
-              label={t`Conceal Metabase`}
-            />
-          </>
-        )}
+        {hasWhitelabel && [
+          // using an array so that child path detection can access them as direct children
+          <SettingsNavItem
+            key="branding"
+            path="whitelabel/branding"
+            label={t`Branding`}
+          />,
+          <SettingsNavItem
+            key="conceal"
+            path="whitelabel/conceal-metabase"
+            label={t`Conceal Metabase`}
+          />,
+        ]}
       </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
@@ -85,11 +88,7 @@ export function SettingsNav() {
         label={t`Public sharing`}
         icon="share"
       />
-      <SettingsNavItem
-        path="embedding-in-other-applications"
-        label={t`Embedding`}
-        icon="embed"
-      >
+      <SettingsNavItem path="embedding" label={t`Embedding`} icon="embed">
         <SettingsNavItem
           path="embedding-in-other-applications"
           label={t`Overview`}
@@ -115,7 +114,7 @@ export function SettingsNav() {
         path="cloud"
         label={
           <Flex gap="sm" align="center">
-            <Text>{t`Cloud`}</Text>
+            <span>{t`Cloud`}</span>
             {!hasHosting && <UpsellGem />}
           </Flex>
         }
@@ -125,11 +124,32 @@ export function SettingsNav() {
   );
 }
 
-function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
+const hasActiveChild = (children: ReactElement[], pathname: string) =>
+  children.length > 0 &&
+  children.some(
+    (child) => child?.props?.path && pathname.includes(child.props.path),
+  );
+
+export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
+  const children = React.Children.toArray(
+    navItemProps.children,
+  ) as ReactElement[];
+  const currentPath: string = useSelector(getLocation)?.pathname ?? "";
+  const [isOpen, { toggle: toggleOpen }] = useDisclosure(
+    currentPath.includes(path),
+  );
+
+  const showActive =
+    (!isOpen && hasActiveChild(children, currentPath)) ||
+    currentPath === `/admin/settings/${path}`;
+
   return (
     <AdminNavItem
       data-testid={`settings-sidebar-link`}
       path={`/admin/settings/${path}`}
+      opened={isOpen}
+      active={showActive}
+      onClick={toggleOpen}
       {...navItemProps}
     />
   );
