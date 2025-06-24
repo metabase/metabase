@@ -39,6 +39,7 @@ import {
   setSidebar,
   showAddParameterPopover,
   toggleSidebar,
+  updateDashboard,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import {
@@ -141,6 +142,7 @@ export const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   updateDashboardAndCards,
+  updateDashboard,
   setSidebar,
   hideAddParameterPopover,
   fetchDashboard,
