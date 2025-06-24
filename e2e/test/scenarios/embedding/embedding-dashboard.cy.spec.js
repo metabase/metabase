@@ -537,7 +537,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       });
     });
 
-    cy.findByTestId("export-as-pdf-button").should("be.visible").click();
+    cy.button("Download as PDF").should("be.visible").click();
   });
 
   it("should send 'X-Metabase-Client' header for api requests", () => {
