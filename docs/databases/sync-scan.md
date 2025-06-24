@@ -101,11 +101,11 @@ Metabase syncs and scans regularly, but if the database administrator has just c
 
 ### Using an API key
 
-If you're using an [API key](../people-and-groups/api-keys.md), you can use: `/api/notify/db/:id`.
+You can use: `/api/notify/db/:id`.
 
 We created this endpoint so that people could notify their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
 
-To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable.
+To use this endpoint, you must pass an API key by defining the `MB_API_KEY` environment variable. This API key is distinct from Metabase's [API keys](../people-and-groups/api-keys.md).
 
 ### Using a session token
 
