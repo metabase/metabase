@@ -47,6 +47,8 @@ Options include:
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when someone adds a new filter widget to a dashboard or SQL question (i.e., they add a parameter to their SQL query).
 - **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never really have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
+Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#changing-the-filter-widget), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for 14 days) to populate that dropdown; otherwise it will re-scan that field for the most up-to-date values.
+
 ## Manually syncing tables and columns
 
 1. Go to **Admin settings** > **Databases** > your database.
