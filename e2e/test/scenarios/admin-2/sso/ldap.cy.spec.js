@@ -174,7 +174,7 @@ describe(
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.intercept("PUT", "/api/ldap/settings").as("updateLdapSettings");
     });
 
