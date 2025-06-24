@@ -116,13 +116,40 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click();
 
+      cy.log("should not show recent dashboards description when no recents");
       cy.findByText("Choose from your recently visited dashboards").should(
         "not.exist",
       );
+
+      cy.log("should show empty state with title and description");
+      cy.findByTestId("embed-empty-state").should("be.visible");
+      cy.findByText("No recent dashboards").should("be.visible");
+      cy.findByText(/You haven't visited any dashboards recently/).should(
+        "be.visible",
+      );
+
+      cy.log("should show search link in empty state description");
+      cy.findByText("search for dashboards").should("be.visible");
+
+      cy.log("should not show any recent item cards");
+      cy.findByTestId("embed-recent-item-card").should("not.exist");
     });
 
-    // - Empty state is shown when no recent activities
-    // - Empty state has illustration and search button
-    // - Search button opens dashboard/question search modal
+    cy.log("test empty state for chart experience");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Back").click();
+      cy.findByText("Chart").click();
+
+      cy.findByText("Choose from your recently visited charts").should(
+        "not.exist",
+      );
+
+      cy.findByTestId("embed-empty-state").should("be.visible");
+      cy.findByText("No recent charts").should("be.visible");
+      cy.findByText(/You haven't visited any charts recently/).should(
+        "be.visible",
+      );
+      cy.findByText("search for charts").should("be.visible");
+    });
   });
 });
