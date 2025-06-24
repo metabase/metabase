@@ -2403,7 +2403,7 @@
    :position                   2
    :visibility-type            :normal
    :preview-display            true
-   :display-name               "Created By"
+   :display-name               "Updated By"
    :database-position          2
    :database-required          false
    :fingerprint                {:global {:distinct-count 2, :nil% 0.0}}
