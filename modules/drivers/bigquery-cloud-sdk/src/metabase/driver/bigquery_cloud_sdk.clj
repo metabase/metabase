@@ -26,10 +26,8 @@
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery
     BigQuery
-    BigQuery$DatasetOption
     BigQuery$DatasetListOption
     BigQuery$JobOption
-    BigQuery$TableListOption
     BigQuery$TableDataListOption
     BigQuery$TableOption
     BigQueryException
@@ -114,14 +112,6 @@
                                              exclusion-patterns
                                              dataset-id)]
       dataset-id)))
-
-(defn- list-tables
-  "Fetch all tables given database `details` and dataset-id"
-  [details dataset-id]
-  (let [client (database-details->client details)
-        ^Dataset dataset (.getDataset client ^String dataset-id (u/varargs BigQuery$DatasetOption))]
-    (for [^Table table (some-> dataset (.list (u/varargs BigQuery$TableListOption)) .iterateAll)]
-      (.. table getTableId getTable))))
 
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details]
@@ -385,13 +375,22 @@
    Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
   64)
 
+(defn- list-table-names [driver database project-id dataset-id]
+  (try
+    (eduction (map :table_name)
+              (query-honeysql driver database
+                              {:select [:table_name]
+                               :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
+    (catch Throwable e
+      (log/warnf e "error in list-table-names for dataset: %s" dataset-id))))
+
 (defmethod driver/describe-fields :bigquery-cloud-sdk
   [driver database & {:keys [schema-names table-names]}]
   (let [project-id (get-project-id (:details database))
         dataset-ids (or schema-names (list-datasets (:details database)))]
     (eduction
      (mapcat (fn [dataset-id]
-               (let [table-names (or table-names (list-tables (:details database) dataset-id))]
+               (let [table-names (or table-names (list-table-names driver database project-id dataset-id))]
                  (eduction
                   (x/partition num-table-partitions num-table-partitions [])
                   (mapcat #(describe-dataset-fields-reducible driver database project-id dataset-id %))
