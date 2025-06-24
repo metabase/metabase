@@ -27,6 +27,8 @@ export interface SdkIframeEmbedSetupContextType {
     type: "dashboard" | "question",
     recentItem: SdkIframeEmbedSetupRecentItem,
   ) => void;
+
+  isEmbedOptionsLoaded: boolean;
 }
 
 export const SdkIframeEmbedSetupContext =
