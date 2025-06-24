@@ -22,8 +22,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     it("shows the most recent dashboard from the activity log by default", () => {
       const dashboardName = "Orders in a dashboard";
 
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
+      visitNewEmbedPage();
 
       cy.log("assert that the most recent dashboard is the one we expect");
       cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
@@ -34,8 +33,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
         expect(recentItem.name).to.be.equal(dashboardName);
       });
 
-      const iframe = H.getIframeBody();
-      iframe.within(() => {
+      H.getIframeBody().within(() => {
         cy.log("dashboard title is visible");
         cy.findByText(dashboardName).should("be.visible");
 
@@ -45,31 +43,37 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     });
 
     it("shows the most recent question from the activity log when selected", () => {
+      const questionName = "Orders, Count";
+
       cy.log("go to a question to add to the activity log");
       cy.visit(`/question/${ORDERS_COUNT_QUESTION_ID}`);
       cy.wait("@cardQuery");
 
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
+      visitNewEmbedPage();
+
+      cy.log("assert that the most recent dashboard is the one we expect");
+      cy.get<RecentActivityIntercept>("@recentActivity").should((intercept) => {
+        const recentItem = intercept.response?.body.recents?.filter(
+          (recent) => recent.model === "card",
+        )?.[0];
+
+        expect(recentItem.name).to.be.equal(questionName);
+      });
 
       getEmbedSidebar().findByText("Chart").click();
       cy.wait("@cardQuery");
 
-      const iframe = H.getIframeBody();
-      iframe.within(() => {
+      H.getIframeBody().within(() => {
         cy.log("question title is visible");
-        cy.findByText("Orders, Count").should("be.visible");
+        cy.findByText(questionName).should("be.visible");
       });
     });
 
     it("shows exploration template when selected", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
-
+      visitNewEmbedPage();
       getEmbedSidebar().findByText("Exploration").click();
 
-      const iframe = H.getIframeBody();
-      iframe.within(() => {
+      H.getIframeBody().within(() => {
         cy.log("data picker is visible");
         cy.findByText("Pick your starting data").should("be.visible");
       });
@@ -85,8 +89,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     });
 
     it("shows dashboard of id=1 when activity log is empty", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
+      visitNewEmbedPage();
       cy.wait("@emptyRecentItems");
 
       cy.log("dashboard title and card of id=1 should be visible");
@@ -97,8 +100,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     });
 
     it("shows question of id=1 when activity log is empty and chart is selected", () => {
-      cy.visit("/embed/new");
-      cy.wait("@dashboard");
+      visitNewEmbedPage();
       cy.wait("@emptyRecentItems");
 
       getEmbedSidebar().findByText("Chart").click();
@@ -112,3 +114,8 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
 });
 
 const getEmbedSidebar = () => cy.findByRole("complementary");
+
+const visitNewEmbedPage = () => {
+  cy.visit("/embed/new");
+  cy.wait("@dashboard");
+};
