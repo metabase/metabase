@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
@@ -11,8 +10,8 @@ import { Flex, Icon, Text, Title } from "metabase/ui";
 import { PermissionIconContainer } from "./PermissionHelpDescription.styled";
 
 interface PermissionHelpDescriptionProps {
-  name: ReactNode;
-  description?: ReactNode;
+  name: React.ReactNode;
+  description?: React.ReactNode;
   icon: IconName;
   iconColor: string;
   hasUpgradeNotice?: boolean;

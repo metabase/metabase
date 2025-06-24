@@ -1,6 +1,6 @@
 import type { Location } from "history";
 import * as React from "react";
-import { type ReactNode, useMemo } from "react";
+import { useMemo } from "react";
 import reactAnsiStyle from "react-ansi-style";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
@@ -24,7 +24,7 @@ import {
 } from "./utils";
 
 interface LogsProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
   location: Location;
   // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB isntance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable

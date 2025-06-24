@@ -1,7 +1,7 @@
 import type { PopoverDropdownProps } from "@mantine/core";
 import { Popover as MantinePopover } from "@mantine/core";
 import cx from "classnames";
-import { type Ref, forwardRef, useEffect } from "react";
+import { forwardRef, useEffect } from "react";
 
 import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
 import ZIndex from "metabase/css/core/z-index.module.css";
@@ -20,7 +20,7 @@ type ExtendedPopoverDropdownProps = PopoverDropdownProps & {
 
 const PopoverDropdown = forwardRef(function PopoverDropdown(
   props: ExtendedPopoverDropdownProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();

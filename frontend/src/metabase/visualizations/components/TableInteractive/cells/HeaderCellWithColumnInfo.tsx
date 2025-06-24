@@ -1,4 +1,3 @@
-import type React from "react";
 import { memo, useMemo } from "react";
 
 import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";

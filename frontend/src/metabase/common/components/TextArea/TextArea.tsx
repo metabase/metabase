@@ -1,4 +1,4 @@
-import type { Ref, TextareaHTMLAttributes } from "react";
+import type { TextareaHTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import { TextAreaRoot } from "./TextArea.styled";
@@ -11,7 +11,7 @@ export interface TextAreaProps
 
 const TextArea = forwardRef(function TextArea(
   { error, fullWidth, ...props }: TextAreaProps,
-  ref: Ref<HTMLTextAreaElement>,
+  ref: React.Ref<HTMLTextAreaElement>,
 ) {
   return (
     <TextAreaRoot {...props} ref={ref} hasError={error} fullWidth={fullWidth} />

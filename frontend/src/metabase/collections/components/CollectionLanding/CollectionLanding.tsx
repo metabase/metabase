@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { replace } from "react-router-redux";
 
@@ -11,7 +10,7 @@ import { CollectionContent } from "../CollectionContent";
 
 export interface CollectionLandingProps {
   params: CollectionLandingParams;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export interface CollectionLandingParams {

@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { TextInputProps } from "metabase/ui";
@@ -23,7 +23,7 @@ export const FormTextInput = forwardRef(function FormTextInput(
     onBlur,
     ...props
   }: FormTextInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);

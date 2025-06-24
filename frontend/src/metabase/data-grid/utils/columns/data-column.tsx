@@ -3,7 +3,6 @@ import type {
   ColumnDef,
   ColumnSizingState,
 } from "@tanstack/react-table";
-import type React from "react";
 import { memo } from "react";
 
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";

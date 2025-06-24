@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -38,7 +37,7 @@ export interface BaseBucketPickerPopoverProps {
   color?: ColorName;
   initiallyVisibleItemsCount: number;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
-  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
+  renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => React.ReactNode;
   onSelect: (column: Lib.Bucket | NoBucket) => void;
   className?: string;
   classNames?: {
@@ -217,7 +216,7 @@ export function getBucketListItem(
 
 const TriggerButton = forwardRef(function TriggerButton(
   { className, ...props }: ButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   return (
     <Button ref={ref} className={cx(S.triggerButton, className)} {...props} />

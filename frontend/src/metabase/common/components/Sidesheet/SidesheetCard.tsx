@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import CS from "metabase/css/core/index.css";
 import {

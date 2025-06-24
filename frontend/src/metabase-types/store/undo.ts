@@ -1,5 +1,3 @@
-import type { ReactNode, RefObject } from "react";
-
 import type { IconName } from "metabase/ui";
 import type { DashCardId, DashboardTabId } from "metabase-types/api";
 
@@ -7,7 +5,7 @@ export interface Undo {
   id: string | number;
   type?: string;
   action?: (() => void) | null;
-  message?: ReactNode | ((undo: Undo) => ReactNode);
+  message?: React.ReactNode | ((undo: Undo) => React.ReactNode);
   timeout?: number;
   initialTimeout?: number;
   actions?: (() => void)[];
@@ -28,7 +26,7 @@ export interface Undo {
   count?: number;
   verb?: string;
   subject?: string;
-  ref?: RefObject<HTMLDivElement>;
+  ref?: React.RefObject<HTMLDivElement>;
 }
 
 export type UndoState = Undo[];

@@ -1,4 +1,4 @@
-import type { ChangeEvent, InputHTMLAttributes, Ref } from "react";
+import type { ChangeEvent, InputHTMLAttributes } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { ToggleRoot } from "./Toggle.styled";
@@ -15,7 +15,7 @@ export interface ToggleProps
 /** @deprecated use metabase/ui Switch instead */
 const Toggle = forwardRef(function Toggle(
   { className, value, small, color, onChange, ...rest }: ToggleProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ): JSX.Element {
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {

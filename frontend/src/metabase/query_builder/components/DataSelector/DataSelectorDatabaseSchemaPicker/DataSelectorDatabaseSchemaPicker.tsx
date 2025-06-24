@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/common/components/AccordionList";

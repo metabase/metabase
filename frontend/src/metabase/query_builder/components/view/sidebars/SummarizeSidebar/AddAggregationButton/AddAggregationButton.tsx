@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -24,7 +23,7 @@ export function AddAggregationButton({
   const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
   const operators = Lib.availableAggregationOperators(query, stageIndex);
 
-  const renderTooltip = (children: ReactNode) =>
+  const renderTooltip = (children: React.ReactNode) =>
     hasAggregations ? (
       <Tooltip label={t`Add a function or metric`}>{children}</Tooltip>
     ) : (

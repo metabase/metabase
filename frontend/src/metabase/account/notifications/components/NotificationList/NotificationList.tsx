@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
@@ -21,7 +21,7 @@ import {
 type NotificationListProps = {
   listItems: NotificationListItem[];
   user: User;
-  children?: ReactNode;
+  children?: React.ReactNode;
   canManageSubscriptions: boolean;
   onHelp: () => void;
   onUnsubscribe: (listItem: NotificationListItem) => void;
@@ -75,7 +75,11 @@ export const NotificationList = ({
   );
 };
 
-const NotificationEmptyState = ({ children }: { children?: ReactNode }) => {
+const NotificationEmptyState = ({
+  children,
+}: {
+  children?: React.ReactNode;
+}) => {
   return (
     <>
       <NotificationSection>

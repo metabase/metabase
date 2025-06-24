@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { Ref, TextareaHTMLAttributes } from "react";
+import type { TextareaHTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
@@ -14,7 +14,7 @@ interface FormTextAreaProps
 
 const FormTextArea = forwardRef(function FormTextArea(
   { className, touched, error, ...props }: FormTextAreaProps,
-  ref: Ref<HTMLTextAreaElement>,
+  ref: React.Ref<HTMLTextAreaElement>,
 ) {
   return (
     <FormTextAreaRoot

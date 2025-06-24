@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import {
   StepLabel,
   StepLabelText,
@@ -10,7 +8,7 @@ import {
 interface ActiveStepProps {
   title: string;
   label: number;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const ActiveStep = ({

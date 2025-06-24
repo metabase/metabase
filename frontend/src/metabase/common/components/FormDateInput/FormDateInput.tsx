@@ -1,7 +1,6 @@
 import { useField } from "formik";
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
 import type { DateWidgetProps } from "metabase/common/components/DateWidget";
@@ -16,7 +15,7 @@ export interface FormDateInputProps
   > {
   name: string;
   title?: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
   nullable?: boolean;
   optional?: boolean;
 }
@@ -32,7 +31,7 @@ const FormDateInput = forwardRef(function FormDateInput(
     optional,
     ...props
   }: FormDateInputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);

@@ -1,12 +1,9 @@
 /* eslint-disable complexity */
 import cx from "classnames";
 import {
-  type CSSProperties,
   type ComponentType,
   type ErrorInfo,
   PureComponent,
-  type ReactNode,
-  type Ref,
   forwardRef,
 } from "react";
 import React from "react";
@@ -107,7 +104,7 @@ type StateProps = {
 };
 
 type ForwardedRefProps = {
-  forwardedRef: Ref<HTMLDivElement>;
+  forwardedRef: React.Ref<HTMLDivElement>;
 };
 
 type OnChangeCardAndRunOpts = {
@@ -117,11 +114,11 @@ type OnChangeCardAndRunOpts = {
 };
 
 type VisualizationOwnProps = {
-  actionButtons?: ReactNode | null;
+  actionButtons?: React.ReactNode | null;
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
-  error?: ReactNode;
+  error?: React.ReactNode;
   errorIcon?: IconName;
   errorMessageOverride?: string;
   expectedDuration?: number;
@@ -159,7 +156,7 @@ type VisualizationOwnProps = {
   settings?: VisualizationSettings;
   showTitle?: boolean;
   showWarnings?: boolean;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
   uuid?: string;
@@ -188,7 +185,7 @@ type VisualizationProps = StateDispatchProps &
 type VisualizationState = {
   clicked: ClickObject | null;
   computedSettings: Record<string, string>;
-  error: ReactNode;
+  error: React.ReactNode;
   genericError: ErrorInfo | null;
   getHref: (() => string) | undefined;
   hovered: HoveredObject | null;

@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { useMemo, useRef } from "react";
 
 import TippyPopoverWithTrigger from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";

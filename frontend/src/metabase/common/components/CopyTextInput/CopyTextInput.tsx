@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef } from "react";
 
 import type { TextInputProps } from "metabase/ui";
@@ -13,7 +12,7 @@ const defaultProps = {
 
 export const CopyTextInput = forwardRef(function CopyTextInput(
   props: TextInputProps & { value: string },
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   return (
     <TextInput

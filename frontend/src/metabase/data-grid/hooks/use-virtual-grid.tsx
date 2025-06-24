@@ -6,7 +6,6 @@ import {
   defaultRangeExtractor,
   useVirtualizer,
 } from "@tanstack/react-virtual";
-import type React from "react";
 import { useCallback, useMemo } from "react";
 
 interface VirtualGridOptions<TData> {

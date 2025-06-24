@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -10,8 +9,8 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
   name: string;
   title?: string;
-  actions?: ReactNode;
-  description?: ReactNode;
+  actions?: React.ReactNode;
+  description?: React.ReactNode;
   optional?: boolean;
 }
 
@@ -27,7 +26,7 @@ const FormToggle = forwardRef(function FormToggle(
     optional,
     ...props
   }: FormToggleProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);

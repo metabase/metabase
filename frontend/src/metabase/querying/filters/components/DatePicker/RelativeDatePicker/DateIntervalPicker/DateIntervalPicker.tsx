@@ -1,4 +1,3 @@
-import type { FormEvent, ReactNode } from "react";
 import { t } from "ttag";
 
 import type {
@@ -32,7 +31,7 @@ import { setDefaultOffset, setUnit } from "./utils";
 interface DateIntervalPickerProps {
   value: RelativeDatePickerValue;
   availableUnits: DatePickerUnit[];
-  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => React.ReactNode;
   onChange: (value: RelativeDatePickerValue) => void;
   onSubmit: () => void;
 }
@@ -65,7 +64,7 @@ export function DateIntervalPicker({
     onChange(setDefaultOffset(value));
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     onSubmit();
   };

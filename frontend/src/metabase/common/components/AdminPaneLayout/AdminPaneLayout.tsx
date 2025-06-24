@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
-
 import { AdminPaneTitle } from "./AdminPaneTitle";
 import type { AdminPaneProps } from "./types";
 
 type AdminPaneLayoutProps = AdminPaneProps & {
-  children: ReactNode;
+  children: React.ReactNode;
 };
 
 export const AdminPaneLayout = ({

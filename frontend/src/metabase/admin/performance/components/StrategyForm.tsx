@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { useFormikContext } from "formik";
-import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
@@ -315,7 +314,7 @@ const FormButtonsGroup = ({
   children,
   isInSidebar,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   isInSidebar?: boolean;
 }) => {
   return (
@@ -555,9 +554,9 @@ const Field = ({
   subtitle,
   children,
 }: {
-  title: ReactNode;
-  subtitle?: ReactNode;
-  children: ReactNode;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  children: React.ReactNode;
 }) => {
   return (
     <label>

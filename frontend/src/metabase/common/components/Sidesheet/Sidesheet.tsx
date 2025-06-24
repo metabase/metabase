@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type React from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 import { uniqueId } from "underscore";

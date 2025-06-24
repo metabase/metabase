@@ -1,4 +1,3 @@
-import type React from "react";
 import { t } from "ttag";
 
 import { Button, type ButtonProps, Icon, Tooltip } from "metabase/ui";

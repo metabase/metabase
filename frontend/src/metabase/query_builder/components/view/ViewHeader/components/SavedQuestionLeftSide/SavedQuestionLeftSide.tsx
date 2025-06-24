@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";

@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Switch } from "metabase/ui";
 
@@ -13,7 +11,7 @@ import {
 export interface ImageToggleProps {
   label: string;
   value: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onChange: (value: boolean) => void;
 }
 

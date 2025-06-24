@@ -1,5 +1,5 @@
 import { Text } from "@mantine/core";
-import { type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { Icon, type IconName } from "metabase/ui";
 
@@ -13,7 +13,7 @@ export interface DefaultSelectItemProps extends SelectItemProps {
 
 export const DefaultSelectItem = forwardRef(function DefaultSelectItem(
   { icon, label, value, ...props }: DefaultSelectItemProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <SelectItem ref={ref} {...props}>

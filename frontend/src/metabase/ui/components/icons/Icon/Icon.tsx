@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 import { Box, type BoxProps } from "@mantine/core";
 import cx from "classnames";
-import type { MouseEvent, ReactNode, SVGAttributes } from "react";
+import type { MouseEvent, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
 import { Tooltip } from "../../overlays/Tooltip";
@@ -16,7 +16,7 @@ export type IconProps = SVGAttributes<SVGSVGElement> &
   BoxProps & {
     name: IconName;
     size?: string | number;
-    tooltip?: ReactNode;
+    tooltip?: React.ReactNode;
     onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
     className?: string;
   };

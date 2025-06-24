@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes } from "react";
 
 import Subhead from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
@@ -11,8 +11,8 @@ export interface ViewSectionProps
   extends HTMLAttributes<HTMLDivElement>,
     FlexProps {
   className?: string;
-  style?: CSSProperties;
-  children?: ReactNode;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
 }
 
 const ViewSection = ({
@@ -27,7 +27,7 @@ const ViewSection = ({
 );
 
 interface ViewHeadingProps extends HTMLAttributes<HTMLDivElement> {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const ViewHeading = ({ children, ...props }: ViewHeadingProps) => (
@@ -35,7 +35,7 @@ export const ViewHeading = ({ children, ...props }: ViewHeadingProps) => (
 );
 
 interface ViewSubHeadingProps extends HTMLAttributes<HTMLDivElement> {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const ViewSubHeading = ({ children, ...props }: ViewSubHeadingProps) => (

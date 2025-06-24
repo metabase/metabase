@@ -1,4 +1,3 @@
-import type React from "react";
 import { useCallback, useMemo } from "react";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";

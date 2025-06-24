@@ -1,16 +1,16 @@
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef, useContext } from "react";
 
 import { TabContext, getTabId, getTabPanelId } from "../Tab";
 
 export interface TabPanelProps<T> extends HTMLAttributes<HTMLDivElement> {
   value?: T;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const TabPanel = forwardRef(function TabPanel<T>(
   { value, children, ...props }: TabPanelProps<T>,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const { value: selectedValue, idPrefix } = useContext(TabContext);
   const tabId = getTabId(idPrefix, value);

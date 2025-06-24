@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { SwitchProps } from "metabase/ui";
@@ -11,7 +11,7 @@ export interface FormSwitchProps extends Omit<SwitchProps, "value" | "error"> {
 
 export const FormSwitch = forwardRef(function FormSwitch(
   { name, onChange, onBlur, ...props }: FormSwitchProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);

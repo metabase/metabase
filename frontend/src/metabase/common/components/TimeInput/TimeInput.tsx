@@ -1,6 +1,5 @@
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 import { t } from "ttag";
 
@@ -39,7 +38,7 @@ const TimeInput = forwardRef(function TimeInput(
     onChange,
     onClear,
   }: TimeInputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ): JSX.Element {
   const is24HourMode = timeFormat === "HH:mm";
   const hoursText = value.format(is24HourMode ? "HH" : "hh");

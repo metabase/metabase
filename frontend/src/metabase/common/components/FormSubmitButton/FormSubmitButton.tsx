@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -19,7 +18,7 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
  */
 const FormSubmitButton = forwardRef(function FormSubmitButton(
   { primary, success, danger, disabled, ...props }: FormSubmitButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const { status, isDisabled } = useFormSubmitButton({ isDisabled: disabled });
   const submitTitle = getSubmitButtonTitle(status, props);

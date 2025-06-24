@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef, useCallback } from "react";
 
 import { ColorPill } from "metabase/common/components/ColorPill";
@@ -15,7 +15,7 @@ export interface ColorSelectorPopoverProps
 
 const ColorSelectorPopover = forwardRef(function ColorSelector(
   { value, colors, onChange, onClose, ...props }: ColorSelectorPopoverProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const handleSelect = useCallback(
     (newValue: string) => {

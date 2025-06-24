@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -22,7 +22,7 @@ export interface CollectionMenuProps {
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
 }
 
-const mergeArrays = (arr: ReactNode[][]): ReactNode[] => {
+const mergeArrays = (arr: React.ReactNode[][]): React.ReactNode[] => {
   const filteredArr = arr.filter((v) => v.length > 0);
   return filteredArr.length === 0
     ? []

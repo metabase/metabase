@@ -1,9 +1,4 @@
-import type {
-  KeyboardEvent,
-  MouseEvent,
-  ReactNode,
-  SyntheticEvent,
-} from "react";
+import type { KeyboardEvent, MouseEvent, SyntheticEvent } from "react";
 
 import { useScrollOnMount } from "metabase/common/hooks/use-scroll-on-mount";
 
@@ -13,7 +8,7 @@ export interface BaseSelectListItemProps {
   id: string | number;
   name: string;
   onSelect: (id: string | number, event: SyntheticEvent) => void;
-  children: ReactNode;
+  children: React.ReactNode;
   isSelected?: boolean;
   size?: "small" | "medium";
   className?: string;

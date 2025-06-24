@@ -1,4 +1,3 @@
-import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -18,7 +17,7 @@ interface JoinTablePickerProps {
   table: Lib.Joinable | undefined;
   color: string;
   isReadOnly: boolean;
-  columnPicker: ReactNode;
+  columnPicker: React.ReactNode;
   onChange: (table: Lib.Joinable) => void;
 }
 
@@ -64,7 +63,7 @@ export function JoinTablePicker({
 }
 
 interface JoinTableColumnPickerProps {
-  columnPicker: ReactNode;
+  columnPicker: React.ReactNode;
 }
 
 function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
@@ -79,7 +78,7 @@ function JoinTableColumnPicker({ columnPicker }: JoinTableColumnPickerProps) {
             style={
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as CSSProperties
+              } as React.CSSProperties
             }
             onClick={() => setIsOpened(!isOpened)}
             aria-label={t`Pick columns`}

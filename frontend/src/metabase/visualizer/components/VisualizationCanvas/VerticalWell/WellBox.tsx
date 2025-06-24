@@ -1,11 +1,11 @@
-import { type ReactNode, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { Box } from "metabase/ui";
 
 interface WellBoxProps {
   isHighlighted: boolean;
   isOver: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const WellBox = forwardRef<HTMLDivElement, WellBoxProps>(

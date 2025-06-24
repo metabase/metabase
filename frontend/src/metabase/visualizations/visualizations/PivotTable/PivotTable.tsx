@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 import {
   forwardRef,
   useCallback,

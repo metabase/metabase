@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type React from "react";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 

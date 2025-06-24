@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import { alpha, darken } from "metabase/lib/colors";
@@ -32,7 +31,7 @@ export function EditorTabs({
             darken(theme.fn.themeColor("brand")),
             0.3,
           ),
-        } as CSSProperties
+        } as React.CSSProperties
       }
     >
       <li>

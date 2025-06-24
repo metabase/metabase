@@ -1,4 +1,4 @@
-import { Children, type ReactNode, isValidElement } from "react";
+import { Children, isValidElement } from "react";
 
 import { Text } from "metabase/ui";
 
@@ -43,11 +43,11 @@ import { combineConsecutiveStrings } from "./utils";
 export const GroupControlsTogether = ({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) => {
-  const childNodes: ReactNode[] = Children.toArray(children);
-  const groupedNodes: ReactNode[] = [];
-  let currentGroup: ReactNode[] = [];
+  const childNodes: React.ReactNode[] = Children.toArray(children);
+  const groupedNodes: React.ReactNode[] = [];
+  let currentGroup: React.ReactNode[] = [];
 
   const compactChildren = combineConsecutiveStrings(childNodes);
 

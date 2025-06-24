@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";
@@ -18,7 +17,7 @@ type Props = {
   icon?: IconName;
   onBack?: () => void;
   onClose?: () => void;
-  actions?: ReactNode;
+  actions?: React.ReactNode;
 };
 
 function getHeaderVariant({

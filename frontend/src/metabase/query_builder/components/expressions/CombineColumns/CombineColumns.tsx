@@ -1,4 +1,3 @@
-import type { FormEventHandler } from "react";
 import { useState } from "react";
 import { jt, t } from "ttag";
 
@@ -137,7 +136,7 @@ export function CombineColumns({
     }));
   };
 
-  const handleSubmit: FormEventHandler = (event) => {
+  const handleSubmit: React.FormEventHandler = (event) => {
     event.preventDefault();
 
     const name = getExpressionName(query, stageIndex, columnsAndSeparators);

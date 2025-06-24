@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
+import type { ButtonHTMLAttributes, MouseEvent } from "react";
 import { forwardRef } from "react";
 
 import type { ActionIconProps, IconName, TooltipProps } from "metabase/ui";
@@ -27,7 +27,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
     disabled,
     ...actionIconProps
   }: ToolbarButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const handleButtonClick = (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();

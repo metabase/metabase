@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, forwardRef, memo } from "react";
+import { forwardRef, memo } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";
@@ -59,7 +59,7 @@ export const HeaderCellPill = forwardRef<HTMLDivElement, HeaderCellBaseProps>(
 
 export interface HeaderCellWrapperProp extends HeaderCellProps {
   className?: string;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export const HeaderCellWrapper = ({

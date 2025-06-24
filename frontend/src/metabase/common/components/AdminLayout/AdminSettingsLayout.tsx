@@ -1,5 +1,3 @@
-import type React from "react";
-
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Box } from "metabase/ui";
 

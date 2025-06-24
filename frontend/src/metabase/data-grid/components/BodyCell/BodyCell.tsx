@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type React from "react";
 import { type MouseEventHandler, memo, useCallback, useMemo } from "react";
 
 import { BaseCell } from "metabase/data-grid/components/BaseCell/BaseCell";

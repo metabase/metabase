@@ -1,12 +1,10 @@
-import type { ReactNode } from "react";
-
 import Button from "metabase/common/components/Button";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { ButtonContainer } from "./ChartSettingsErrorButton.styled";
 
 interface ChartSettingsErrorButtonProps {
-  message: ReactNode;
+  message: React.ReactNode;
   buttonLabel: string;
   onClick: (initial: VisualizationSettings) => void;
 }

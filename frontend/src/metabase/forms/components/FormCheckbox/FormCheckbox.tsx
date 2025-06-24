@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, FocusEvent, Ref } from "react";
+import type { ChangeEvent, FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { CheckboxProps } from "metabase/ui";
@@ -12,7 +12,7 @@ export interface FormCheckboxProps
 
 export const FormCheckbox = forwardRef(function FormCheckbox(
   { name, onChange, onBlur, ...props }: FormCheckboxProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);

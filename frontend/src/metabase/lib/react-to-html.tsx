@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 
@@ -7,7 +6,7 @@ import { createRoot } from "react-dom/client";
  *
  * https://18.react.dev/reference/react-dom/server/renderToString#removing-rendertostring-from-the-client-code
  */
-export function reactNodeToHtmlString(node: ReactNode) {
+export function reactNodeToHtmlString(node: React.ReactNode) {
   const container = document.createElement("div");
   const root = createRoot(container);
 

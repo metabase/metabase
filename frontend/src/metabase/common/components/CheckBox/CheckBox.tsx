@@ -3,8 +3,6 @@ import type {
   FocusEvent,
   HTMLAttributes,
   ReactElement,
-  ReactNode,
-  Ref,
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
@@ -29,7 +27,7 @@ import { isEllipsisActive } from "./utils";
 export interface CheckBoxProps
   extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
   name?: string;
-  label?: ReactNode;
+  label?: React.ReactNode;
   labelEllipsis?: boolean;
   checked?: boolean;
   indeterminate?: boolean;
@@ -45,7 +43,7 @@ export interface CheckBoxProps
 
 interface CheckboxTooltipProps {
   hasTooltip: boolean;
-  tooltipLabel: ReactNode;
+  tooltipLabel: React.ReactNode;
   /**
    * The child element must be a single element as mantine Tooltip doesn't accept fragment or array as children
    */
@@ -72,7 +70,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
       onBlur,
       ...props
     }: CheckBoxProps,
-    ref: Ref<HTMLLabelElement>,
+    ref: React.Ref<HTMLLabelElement>,
   ): JSX.Element {
     const isControlledCheckBoxInput = !!onChange;
     const labelRef = useRef<HTMLSpanElement>(null);

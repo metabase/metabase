@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -31,7 +30,7 @@ const RunButton = forwardRef(function RunButton(
     hidden,
     ...props
   }: RunButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const icon = getButtonIcon(isRunning, isDirty);
   const ariaLabel = getButtonLabel(isRunning, isDirty);

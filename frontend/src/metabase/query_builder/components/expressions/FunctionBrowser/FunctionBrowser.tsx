@@ -2,7 +2,6 @@ import {
   type ChangeEvent,
   Children,
   type MouseEvent,
-  type ReactNode,
   useCallback,
   useMemo,
   useState,
@@ -23,7 +22,7 @@ import S from "./FunctionBrowser.module.css";
 import { getDatabase, getFilteredClauses, getSearchPlaceholder } from "./utils";
 
 const components = {
-  code(props: { children: ReactNode }) {
+  code(props: { children: React.ReactNode }) {
     const children = Children.toArray(props.children);
     if (!children.every((child) => typeof child === "string")) {
       return <code>{children}</code>;

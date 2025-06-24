@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 
@@ -8,7 +7,7 @@ interface FieldSetProps {
   legend?: string;
   required?: boolean;
   noPadding?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export function FieldSet({

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -9,9 +8,9 @@ import CS from "metabase/css/core/index.css";
 
 interface ConfirmContentProps {
   "data-testid"?: string;
-  title: string | ReactNode;
+  title: string | React.ReactNode;
   content?: string | null;
-  message?: string | ReactNode;
+  message?: string | React.ReactNode;
   onClose?: () => void;
   onAction?: () => void;
   onCancel?: () => void;

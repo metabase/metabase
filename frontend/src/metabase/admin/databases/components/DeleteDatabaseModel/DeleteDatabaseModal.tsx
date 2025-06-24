@@ -1,4 +1,4 @@
-import type { FormEvent, MouseEventHandler } from "react";
+import type { MouseEventHandler } from "react";
 import { useEffect, useRef, useState } from "react";
 import { push } from "react-router-redux";
 import { useAsync } from "react-use";
@@ -78,7 +78,7 @@ export const DeleteDatabaseModal = ({
   const [databaseNameConfirmation, setDatabaseNameConfirmation] = useState("");
   const [error, setError] = useState<any>(null);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {

@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 export interface CommonModalProps {
   // takes over the entire screen
   fullPageModal?: boolean;
@@ -7,7 +5,7 @@ export interface CommonModalProps {
   formModal?: boolean;
   centeredTitle?: boolean;
 
-  headerActions?: ReactNode;
+  headerActions?: React.ReactNode;
   onClose?: () => void;
   onBack?: () => void;
 }

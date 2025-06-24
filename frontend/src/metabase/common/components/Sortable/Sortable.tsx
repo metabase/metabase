@@ -4,10 +4,8 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import cx from "classnames";
 import {
-  type CSSProperties,
   type ElementType,
   type MutableRefObject,
-  type ReactNode,
   useEffect,
   useRef,
 } from "react";
@@ -18,15 +16,15 @@ export interface SortableProps {
   id: UniqueIdentifier;
   as?: ElementType;
   children:
-    | ReactNode
+    | React.ReactNode
     | ((data: {
         dragHandleRef: MutableRefObject<HTMLElement | null>;
         dragHandleListeners: SyntheticListenerMap | undefined;
-      }) => ReactNode);
+      }) => React.ReactNode);
   disabled?: boolean;
   className?: string;
-  style?: CSSProperties;
-  draggingStyle?: CSSProperties;
+  style?: React.CSSProperties;
+  draggingStyle?: React.CSSProperties;
   role?: string;
 }
 

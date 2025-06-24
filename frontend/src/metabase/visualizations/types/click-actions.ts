@@ -1,5 +1,3 @@
-import type React from "react";
-
 import type { IconName } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import type * as Lib from "metabase-lib";

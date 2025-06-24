@@ -1,5 +1,4 @@
 import { useHover } from "@mantine/hooks";
-import type React from "react";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 

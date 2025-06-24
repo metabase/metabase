@@ -1,4 +1,4 @@
-import type { ChangeEvent, FocusEvent, HTMLAttributes, Ref } from "react";
+import type { ChangeEvent, FocusEvent, HTMLAttributes } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -20,7 +20,7 @@ export interface FileInputProps extends FileInputAttributes {
 
 const FileInput = forwardRef(function FileInput(
   { name, autoFocus, onChange, onFocus, onBlur, ...props }: FileInputProps,
-  ref: Ref<HTMLLabelElement>,
+  ref: React.Ref<HTMLLabelElement>,
 ): JSX.Element {
   const [hasValue, setHasValue] = useState(false);
 

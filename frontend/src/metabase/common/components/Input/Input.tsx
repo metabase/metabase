@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import type { InputHTMLAttributes, MouseEvent } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -24,12 +24,12 @@ export type InputAttributes = Omit<
 >;
 
 export interface InputProps extends InputAttributes {
-  inputRef?: Ref<HTMLInputElement>;
+  inputRef?: React.Ref<HTMLInputElement>;
   size?: InputSize;
   error?: boolean;
   fullWidth?: boolean;
   leftIcon?: IconName;
-  leftIconTooltip?: ReactNode;
+  leftIconTooltip?: React.ReactNode;
   rightIcon?: IconName;
   rightIconTooltip?: string;
   subtitle?: string;
@@ -60,7 +60,7 @@ const BaseInput = forwardRef(function Input(
     onChange,
     ...props
   }: InputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const showResetButton =
     onResetClick && value != null && String(value).length > 0;

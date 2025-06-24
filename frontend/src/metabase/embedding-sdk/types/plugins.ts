@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 
@@ -19,7 +17,7 @@ export type DashboardCardMenuCustomElement = ({
   question,
 }: {
   question: MetabaseQuestion;
-}) => ReactNode;
+}) => React.ReactNode;
 
 export type CustomDashboardCardMenuItem = ({
   question,

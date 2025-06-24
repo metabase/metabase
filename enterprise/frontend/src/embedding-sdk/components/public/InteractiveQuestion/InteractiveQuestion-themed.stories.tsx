@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import {
   MetabaseProvider,
   type MetabaseTheme,
@@ -28,7 +26,7 @@ const Wrapper = ({
   children,
   theme,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
   theme: MetabaseTheme;
 }) => (
   <MetabaseProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>

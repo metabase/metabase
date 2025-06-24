@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { t } from "ttag";
 
 import AdminAwareEmptyState from "metabase/common/components/AdminAwareEmptyState";
@@ -32,7 +31,7 @@ const emptyStateData = {
 };
 
 interface SegmentListProps {
-  style?: CSSProperties;
+  style?: React.CSSProperties;
 }
 
 export function SegmentList({ style }: SegmentListProps) {

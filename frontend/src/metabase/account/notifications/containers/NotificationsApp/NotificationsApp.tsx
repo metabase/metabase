@@ -1,4 +1,4 @@
-import type { JSX, ReactNode } from "react";
+import type { JSX } from "react";
 import { useMemo } from "react";
 
 import type { NotificationListItem } from "metabase/account/notifications/types";
@@ -21,7 +21,7 @@ import { NotificationList } from "../../components/NotificationList";
 
 interface NotificationsAppProps {
   pulses: Alert[];
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const NotificationsAppInner = ({

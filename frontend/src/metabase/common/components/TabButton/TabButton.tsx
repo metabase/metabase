@@ -8,7 +8,6 @@ import type {
   HTMLAttributes,
   KeyboardEventHandler,
   MouseEventHandler,
-  Ref,
 } from "react";
 import {
   forwardRef,
@@ -79,7 +78,7 @@ const _TabButton = forwardRef(function TabButton(
     showMenu: showMenuProp = true,
     ...props
   }: TabButtonProps,
-  inputRef: Ref<HTMLInputElement>,
+  inputRef: React.Ref<HTMLInputElement>,
 ) {
   const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
   const isSelected = value === selectedValue;

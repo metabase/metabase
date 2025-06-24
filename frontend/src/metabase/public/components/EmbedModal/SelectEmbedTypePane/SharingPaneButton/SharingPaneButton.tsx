@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { MouseEventHandler, ReactNode } from "react";
+import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
@@ -9,9 +9,9 @@ import S from "./SharingPaneButton.module.css";
 
 type SharingOptionProps = {
   illustration: JSX.Element;
-  children: ReactNode;
+  children: React.ReactNode;
   title: string;
-  badge?: ReactNode;
+  badge?: React.ReactNode;
   onClick?: MouseEventHandler;
   "data-testid"?: string;
   isDisabled?: boolean;

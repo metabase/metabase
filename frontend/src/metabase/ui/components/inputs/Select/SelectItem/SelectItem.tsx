@@ -1,6 +1,6 @@
 import { type BoxProps, Group, type MantineSize } from "@mantine/core";
 import cx from "classnames";
-import { type HTMLAttributes, type Ref, forwardRef } from "react";
+import { type HTMLAttributes, forwardRef } from "react";
 
 import SS from "../Select.module.css";
 
@@ -23,7 +23,7 @@ export const SelectItem = forwardRef(function SelectItem(
     selected,
     ...props
   }: SelectItemProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <Group

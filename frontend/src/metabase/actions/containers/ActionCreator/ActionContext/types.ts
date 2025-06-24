@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import type { WritebackAction } from "metabase-types/api";
 
 export type EditableActionParams = Pick<
@@ -13,5 +11,5 @@ export type EditorBodyProps = {
 
 export interface ActionContextProviderProps<T = WritebackAction> {
   initialAction?: T;
-  children: ReactNode;
+  children: React.ReactNode;
 }

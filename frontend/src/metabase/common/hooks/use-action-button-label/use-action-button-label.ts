@@ -1,7 +1,7 @@
-import { type ReactNode, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 interface UseActionButtonLabelProps {
-  defaultLabel: string | ReactNode;
+  defaultLabel: string | React.ReactNode;
   timeout?: number;
 }
 

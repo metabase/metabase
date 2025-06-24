@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
@@ -9,8 +8,8 @@ import type { ScheduleSettings } from "metabase-types/api";
 
 import { defaultDay, defaultHour } from "./constants";
 
-export const combineConsecutiveStrings = (arr: ReactNode[]) => {
-  return arr.reduce<ReactNode[]>((acc, node) => {
+export const combineConsecutiveStrings = (arr: React.ReactNode[]) => {
+  return arr.reduce<React.ReactNode[]>((acc, node) => {
     const previousNode = acc.at(-1);
     if (typeof node === "string" && typeof previousNode === "string") {
       return [...acc.slice(0, acc.length - 1), previousNode + ` ${node}`];

@@ -1,5 +1,5 @@
 import { bindActionCreators } from "@reduxjs/toolkit";
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType } from "react";
 import { useEffect, useMemo } from "react";
 import { match } from "ts-pattern";
 import _ from "underscore";
@@ -54,7 +54,9 @@ interface Props<Entity, EntityWrapper> {
   allFetched?: boolean;
   allLoaded?: boolean;
   allLoading?: boolean;
-  ComposedComponent: (props: ChildrenProps<Entity, EntityWrapper>) => ReactNode;
+  ComposedComponent: (
+    props: ChildrenProps<Entity, EntityWrapper>,
+  ) => React.ReactNode;
   entityQuery?: EntityQuery | EntityQuerySelector;
   entityType: EntityType | EntityTypeSelector;
   initialPage?: number;
@@ -352,7 +354,7 @@ export const entityListLoader =
   (
     ComposedComponent: (
       props: ChildrenProps<Entity, EntityWrapper>,
-    ) => ReactNode,
+    ) => React.ReactNode,
   ) =>
     function EntityListLoaderWrapper(props: any) {
       return (

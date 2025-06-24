@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { ChangeEvent, ReactNode, Ref } from "react";
+import type { ChangeEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import FormField from "metabase/common/components/FormField";
@@ -14,8 +14,8 @@ export interface FormTextAreaProps
   > {
   name: string;
   title?: string;
-  actions?: ReactNode;
-  description?: ReactNode;
+  actions?: React.ReactNode;
+  description?: React.ReactNode;
   nullable?: boolean;
   infoLabel?: string;
   infoTooltip?: string;
@@ -41,7 +41,7 @@ const FormTextArea = forwardRef(function FormTextArea(
     optional,
     ...props
   }: FormTextAreaProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onBlur }, { error, touched }, { setValue }] = useField(name);

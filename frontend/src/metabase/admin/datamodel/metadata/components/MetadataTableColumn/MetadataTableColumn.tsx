@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { useCallback } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
@@ -25,7 +24,7 @@ interface OwnProps {
   selectedDatabaseId: DatabaseId;
   selectedSchemaId: SchemaId;
   selectedTableId: TableId;
-  dragHandle?: ReactNode;
+  dragHandle?: React.ReactNode;
 }
 
 interface DispatchProps {
@@ -149,7 +148,7 @@ const MetadataTableColumn = ({
   );
 };
 
-const Label = ({ children }: { children: ReactNode }) => {
+const Label = ({ children }: { children: React.ReactNode }) => {
   const { fontFamilyMonospace } = getThemeOverrides();
 
   return (

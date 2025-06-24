@@ -1,7 +1,6 @@
 import cx from "classnames";
 import debounce from "lodash.debounce";
 import type {
-  CSSProperties,
   ComponentType,
   ForwardedRef,
   MutableRefObject,
@@ -41,7 +40,7 @@ type ExplicitSizeState = {
 type InnerProps = {
   forwardedRef: ForwardedRef<unknown>;
   className?: string;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   onUpdateSize?: () => void;
 };
 

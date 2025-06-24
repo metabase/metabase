@@ -1,4 +1,4 @@
-import { type CSSProperties, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
@@ -102,7 +102,7 @@ function DataFieldPopover({
             style={
               {
                 "--notebook-cell-container-padding": CONTAINER_PADDING,
-              } as CSSProperties
+              } as React.CSSProperties
             }
             aria-label={t`Pick columns`}
             data-testid="fields-picker"

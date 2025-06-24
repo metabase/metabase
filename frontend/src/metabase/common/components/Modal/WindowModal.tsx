@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties } from "react";
 import { Component } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 
@@ -24,7 +23,7 @@ export type WindowModalProps = BaseModalProps & {
   onClose?: () => void;
   fullPageModal?: boolean;
   formModal?: boolean;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   "data-testid"?: string;
   "aria-labelledby"?: string;
   zIndex?: number;

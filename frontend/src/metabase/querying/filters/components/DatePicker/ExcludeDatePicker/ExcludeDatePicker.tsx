@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type {
@@ -38,7 +38,7 @@ export interface ExcludeDatePickerProps {
   value?: ExcludeDatePickerValue;
   availableOperators: DatePickerOperator[];
   availableUnits: DatePickerUnit[];
-  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => React.ReactNode;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -154,7 +154,7 @@ export function ExcludeOptionPicker({
 interface ExcludeValuePickerProps {
   unit: DatePickerExtractionUnit;
   initialValues: number[];
-  renderSubmitButton: (props: DatePickerSubmitButtonProps) => ReactNode;
+  renderSubmitButton: (props: DatePickerSubmitButtonProps) => React.ReactNode;
   onChange: (value: ExcludeDatePickerValue) => void;
   onBack: () => void;
 }
@@ -192,7 +192,7 @@ function ExcludeValuePicker({
     }
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (isValid) {
       onChange(getExcludeUnitValue(unit, values));

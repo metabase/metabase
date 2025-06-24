@@ -1,15 +1,13 @@
-import type { ReactNode } from "react";
-
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Flex, Text, Title } from "metabase/ui";
 
 type EmbeddingOptionProps = {
   title: string;
-  label?: ReactNode;
-  children?: ReactNode;
-  description: ReactNode;
-  icon: ReactNode;
+  label?: React.ReactNode;
+  children?: React.ReactNode;
+  description: React.ReactNode;
+  icon: React.ReactNode;
 };
 
 export function EmbeddingOption({

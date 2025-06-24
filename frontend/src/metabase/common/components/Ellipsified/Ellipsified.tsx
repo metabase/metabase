@@ -1,16 +1,15 @@
 import type { FloatingPosition } from "@mantine/core/lib";
-import type { CSSProperties, ReactNode } from "react";
 
 import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Text, type TextProps, Tooltip } from "metabase/ui";
 
 interface EllipsifiedProps {
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   className?: string;
   showTooltip?: boolean;
   alwaysShowTooltip?: boolean;
-  tooltip?: ReactNode;
-  children?: ReactNode;
+  tooltip?: React.ReactNode;
+  children?: React.ReactNode;
   tooltipMaxWidth?: number | "auto";
   lines?: number;
   multiline?: boolean;

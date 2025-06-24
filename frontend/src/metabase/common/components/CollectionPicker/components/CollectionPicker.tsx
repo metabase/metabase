@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from "react";
 import { useDeepCompareEffect } from "react-use";
 
@@ -55,7 +54,7 @@ export const CollectionPickerInner = (
     onPathChange,
     models = DEFAULT_MODELS,
   }: CollectionPickerProps,
-  ref: Ref<unknown>,
+  ref: React.Ref<unknown>,
 ) => {
   const defaultPath = useMemo(() => {
     return getStateFromIdPath({

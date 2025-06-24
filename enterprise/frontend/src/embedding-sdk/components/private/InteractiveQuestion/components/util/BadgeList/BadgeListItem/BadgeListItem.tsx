@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type Ref, forwardRef } from "react";
+import { type HTMLAttributes, forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { ActionIcon, Badge, type BadgeProps, Icon } from "metabase/ui";
@@ -14,7 +14,7 @@ interface BadgeListItemProps extends BadgeListItemRootProps {
 
 const _BadgeListItem = (
   { name, onRemoveItem, ...rest }: BadgeListItemProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) => (
   <Badge
     ref={ref}

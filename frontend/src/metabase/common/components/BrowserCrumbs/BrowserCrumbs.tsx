@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 
@@ -12,7 +11,7 @@ import {
 
 // TODO: merge with Breadcrumbs
 
-const Crumb = ({ children }: { children: ReactNode }) => (
+const Crumb = ({ children }: { children: React.ReactNode }) => (
   <h5
     className={cx(CS.textUppercase, CS.textMedium)}
     style={{ fontWeight: 900 }}
@@ -23,7 +22,7 @@ const Crumb = ({ children }: { children: ReactNode }) => (
 
 type BrowserCrumbsType = {
   crumbs: {
-    title: string | ReactNode;
+    title: string | React.ReactNode;
     to?: string;
   }[];
 };

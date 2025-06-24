@@ -1,12 +1,4 @@
-import {
-  type CSSProperties,
-  Fragment,
-  type ReactNode,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Transition,
   TransitionGroup,
@@ -74,7 +66,7 @@ function UndoToast({
   undo: Undo;
   onUndo: () => void;
   onDismiss: () => void;
-  style: CSSProperties;
+  style: React.CSSProperties;
 }) {
   const dispatch = useDispatch();
 
@@ -176,7 +168,7 @@ const Item =
     ? function MockItem({
         children,
       }: {
-        children: (state: TransitionStatus) => ReactNode;
+        children: (state: TransitionStatus) => React.ReactNode;
       }) {
         return children("entered");
       }

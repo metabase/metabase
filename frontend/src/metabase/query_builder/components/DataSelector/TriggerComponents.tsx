@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { CSSProperties, ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -20,11 +19,11 @@ export function Trigger({
   isMantine = false,
 }: {
   className?: string;
-  style?: CSSProperties;
+  style?: React.CSSProperties;
   showDropdownIcon?: boolean;
   iconSize?: number;
   isMantine?: boolean;
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   if (isMantine) {
     return (

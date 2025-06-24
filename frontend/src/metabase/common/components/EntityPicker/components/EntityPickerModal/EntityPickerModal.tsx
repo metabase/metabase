@@ -1,12 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce, usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -98,8 +91,8 @@ export interface EntityPickerModalProps<
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
   isLoadingTabs?: boolean;
-  searchExtraButtons?: ReactNode[];
-  children?: ReactNode;
+  searchExtraButtons?: React.ReactNode[];
+  children?: React.ReactNode;
   disableCloseOnEscape?: boolean;
 }
 

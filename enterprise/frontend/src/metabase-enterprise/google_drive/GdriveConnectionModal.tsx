@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { c, t } from "ttag";
 
 import { reloadSettings } from "metabase/admin/settings/settings";
@@ -105,7 +105,7 @@ function GoogleSheetsConnectModal({
   const [saveFolderLink, { isLoading: isSavingFolderLink }] =
     useSaveGsheetsFolderLinkMutation();
 
-  const onSave = async (event: FormEvent) => {
+  const onSave = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMessage("");
 

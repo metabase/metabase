@@ -7,7 +7,7 @@ import {
 import { useUncontrolled } from "@mantine/hooks";
 import cx from "classnames";
 import dayjs from "dayjs";
-import { type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 import { c } from "ttag";
 
 import CalendarS from "../Calendar/Calendar.module.css";
@@ -35,7 +35,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
     onLevelChange,
     ...props
   }: QuarterPickerProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [value, setValue] = useUncontrolled({
     value: valueProp,

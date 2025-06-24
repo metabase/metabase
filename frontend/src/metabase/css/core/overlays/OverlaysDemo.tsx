@@ -1,10 +1,5 @@
 /* eslint-disable i18next/no-literal-string */
-import {
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useState,
-} from "react";
+import { type Dispatch, type SetStateAction, useState } from "react";
 import _ from "underscore";
 
 import { BulkActionBarPortal } from "metabase/common/components/BulkActionBar/BulkActionBar";
@@ -63,7 +58,7 @@ const _Launchers = ({
   setEntityPickerCount,
   setCommandPaletteCount,
 }: {
-  nestedLaunchers: ReactNode;
+  nestedLaunchers: React.ReactNode;
   setUndoCount: Dispatch<SetStateAction<number>>;
   setToastCount: Dispatch<SetStateAction<number>>;
   setActionToastCount: Dispatch<SetStateAction<number>>;

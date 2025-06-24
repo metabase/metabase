@@ -1,6 +1,3 @@
-import type { ReactNode } from "react";
-import type React from "react";
-
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type { IconName, IconProps } from "metabase/ui";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
@@ -116,7 +113,7 @@ export interface VisualizationProps {
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
-  actionButtons?: ReactNode;
+  actionButtons?: React.ReactNode;
   fontFamily: string;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
@@ -202,7 +199,7 @@ export type VisualizationPassThroughProps = {
     column: number,
     index: number,
     theme: unknown,
-  ) => ReactNode;
+  ) => React.ReactNode;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
 

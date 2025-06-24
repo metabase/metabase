@@ -1,5 +1,3 @@
-import type * as React from "react";
-
 import OnClickOutsideWrapper from "metabase/common/components/OnClickOutsideWrapper";
 
 export function MaybeOnClickOutsideWrapper({

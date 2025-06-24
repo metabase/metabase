@@ -1,4 +1,4 @@
-import { type HTMLAttributes, type Ref, forwardRef } from "react";
+import { type HTMLAttributes, forwardRef } from "react";
 
 import {
   ActionIcon,
@@ -23,7 +23,7 @@ export const ViewFooterButton = forwardRef(function _ViewFooterButton(
     disableTooltip,
     ...actionIconProps
   }: ViewFooterButtonProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <Tooltip label={tooltipLabel} disabled={disableTooltip}>

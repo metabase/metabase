@@ -1,4 +1,4 @@
-import type { CSSProperties, PropsWithChildren } from "react";
+import type { PropsWithChildren } from "react";
 
 import type { CommonStylingProps } from "embedding-sdk/types/props";
 import { Box } from "metabase/ui";
@@ -14,12 +14,12 @@ export type FlexibleSizeProps = PropsWithChildren<
     /**
      * A number or string specifying a CSS size value that specifies the width of the component
      */
-    width?: CSSProperties["width"];
+    width?: React.CSSProperties["width"];
 
     /**
      * A number or string specifying a CSS size value that specifies the height of the component
      */
-    height?: CSSProperties["height"];
+    height?: React.CSSProperties["height"];
   }
 >;
 

@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import type { FocusEvent, Ref } from "react";
+import type { FocusEvent } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { RadioGroupProps } from "metabase/ui";
@@ -12,7 +12,7 @@ export interface FormRadioGroupProps
 
 export const FormRadioGroup = forwardRef(function FormRadioGroup(
   { name, onChange, onBlur, children, ...props }: FormRadioGroupProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [{ value }, { error, touched }, { setValue, setTouched }] =
     useField(name);

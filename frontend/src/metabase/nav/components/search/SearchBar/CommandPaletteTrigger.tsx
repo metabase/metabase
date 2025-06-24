@@ -1,4 +1,3 @@
-import type React from "react";
 import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";

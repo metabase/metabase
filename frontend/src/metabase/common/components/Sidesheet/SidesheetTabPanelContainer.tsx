@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { Box, type MantineStyleProps } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";

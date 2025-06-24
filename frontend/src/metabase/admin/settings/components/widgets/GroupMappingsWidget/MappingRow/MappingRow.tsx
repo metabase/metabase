@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import type * as React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 

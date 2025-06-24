@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { HTMLAttributes, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import { ColorRange } from "metabase/common/components/ColorRange";
@@ -33,7 +33,7 @@ export const ColorRangeSelector = forwardRef(function ColorRangeSelector(
     withinPortal,
     ...props
   }: ColorRangeSelectorProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [opened, { close, toggle }] = useDisclosure(false);
   return (

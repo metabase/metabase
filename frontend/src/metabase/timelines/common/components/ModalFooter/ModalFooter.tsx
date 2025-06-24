@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
-
 import { FooterRoot } from "./ModalFooter.styled";
 
 export interface ModalFooterProps {
   hasPadding?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const ModalFooter = ({

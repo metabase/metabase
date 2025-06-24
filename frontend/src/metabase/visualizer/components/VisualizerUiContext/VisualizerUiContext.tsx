@@ -1,6 +1,5 @@
 import {
   type Dispatch,
-  type ReactNode,
   type SetStateAction,
   createContext,
   useContext,
@@ -34,7 +33,7 @@ const VisualizerUiContext = createContext<VisualizerUiState>({
 });
 
 interface VisualizerUiProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
 export function VisualizerUiProvider({ children }: VisualizerUiProviderProps) {

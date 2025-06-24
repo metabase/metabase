@@ -2,8 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Header } from "@tanstack/react-table";
 import cx from "classnames";
-import type React from "react";
-import { type CSSProperties, memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef } from "react";
 
 import S from "./SortableHeader.module.css";
 
@@ -43,7 +42,7 @@ export const SortableHeader = memo(function SortableHeader<TData, TValue>({
 
   const dragStartPosition = useRef<DragPosition | null>(null);
 
-  const rootStyle = useMemo<CSSProperties>(() => {
+  const rootStyle = useMemo<React.CSSProperties>(() => {
     if (isPinned) {
       return styleProp ?? {};
     }

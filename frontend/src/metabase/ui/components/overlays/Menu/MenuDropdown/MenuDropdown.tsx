@@ -1,6 +1,5 @@
 import type { MenuDropdownProps } from "@mantine/core";
 import { Menu } from "@mantine/core";
-import type { ReactNode } from "react";
 import { useEffect } from "react";
 
 import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
@@ -19,7 +18,7 @@ export function MenuDropdown({ children, ...props }: MenuDropdownProps) {
 }
 
 interface MenuDropdownContentProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 function MenuDropdownContent({ children }: MenuDropdownContentProps) {

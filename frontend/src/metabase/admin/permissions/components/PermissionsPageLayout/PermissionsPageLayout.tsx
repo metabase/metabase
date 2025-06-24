@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { useCallback } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
@@ -45,9 +44,9 @@ import { PermissionsTabs } from "./PermissionsTabs";
 
 type PermissionsPageTab = "data" | "collections" | "application";
 type PermissionsPageLayoutProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   tab: PermissionsPageTab;
-  confirmBar?: ReactNode;
+  confirmBar?: React.ReactNode;
   diff?: PermissionsGraph;
   isDirty?: boolean;
   onSave?: () => void;
@@ -57,7 +56,7 @@ type PermissionsPageLayoutProps = {
   navigateToLocation?: (location: string) => void;
   route: Route;
   navigateToTab?: (tab: string) => void;
-  helpContent?: ReactNode;
+  helpContent?: React.ReactNode;
   showSplitPermsModal?: boolean;
 };
 

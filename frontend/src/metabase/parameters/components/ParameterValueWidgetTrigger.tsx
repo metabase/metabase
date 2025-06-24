@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, type Ref, forwardRef } from "react";
+import { forwardRef } from "react";
 
 import { Flex } from "metabase/ui";
 
@@ -17,13 +17,13 @@ function ParameterValueWidgetTriggerInner(
     className,
     mimicMantine = false,
   }: {
-    children: ReactNode;
+    children: React.ReactNode;
     hasValue: boolean;
     ariaLabel?: string;
     className?: string;
     mimicMantine?: boolean;
   },
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   if (mimicMantine) {
     return (

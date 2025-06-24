@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import Toggle from "metabase/common/components/Toggle";
@@ -13,7 +12,7 @@ type SettingToggleProps = {
   hideLabel: boolean;
   id: string;
   setting: SettingElement;
-  tooltip: ReactNode;
+  tooltip: React.ReactNode;
   onChange: ((value: boolean) => void) | undefined;
   onChangeSetting?: unknown;
   reloadSettings?: unknown;

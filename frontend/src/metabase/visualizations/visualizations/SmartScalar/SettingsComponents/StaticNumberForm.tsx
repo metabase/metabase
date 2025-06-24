@@ -1,4 +1,4 @@
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -39,7 +39,7 @@ export function StaticNumberForm({
     setValue(nextValue || 0);
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
     onChange({

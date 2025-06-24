@@ -6,7 +6,6 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type React from "react";
 import {
   useCallback,
   useEffect,

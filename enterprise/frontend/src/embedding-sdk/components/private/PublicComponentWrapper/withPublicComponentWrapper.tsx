@@ -1,5 +1,3 @@
-import type React from "react";
-
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 
 export function withPublicComponentWrapper<P extends object>(

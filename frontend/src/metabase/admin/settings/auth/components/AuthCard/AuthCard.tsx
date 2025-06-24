@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
@@ -106,8 +105,8 @@ interface AuthCardBodyProps {
   badgeText?: string;
   buttonText?: string;
   buttonEnabled?: boolean;
-  footer?: ReactNode;
-  children?: ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export const AuthCardBody = ({

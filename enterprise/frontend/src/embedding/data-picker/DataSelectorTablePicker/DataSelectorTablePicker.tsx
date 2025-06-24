@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/common/components/AccordionList";
@@ -97,7 +96,7 @@ const DataSelectorTablePicker = ({
     const renderItemIcon = ({ table }: { table: Table }) =>
       table ? <TableInfoIcon table={table} position="top-start" /> : null;
 
-    const renderItemWrapper = (content: ReactNode) => (
+    const renderItemWrapper = (content: React.ReactNode) => (
       <HoverParent>{content}</HoverParent>
     );
 

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useGetSlackManifestQuery } from "metabase/api";
@@ -72,7 +71,7 @@ const SetupSection = ({
   children,
 }: {
   title: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }) => {
   return (
     <Box className={S.SetupSection}>

@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { Ref } from "react";
 import { forwardRef, useMemo } from "react";
 import { t } from "ttag";
 
@@ -94,7 +93,7 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
     isReadOnly,
     onClick,
   }: JoinColumnTargetProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: React.Ref<HTMLButtonElement>,
 ) {
   const column = isLhsColumn ? lhsColumn : rhsColumn;
   const columnInfo = useMemo(

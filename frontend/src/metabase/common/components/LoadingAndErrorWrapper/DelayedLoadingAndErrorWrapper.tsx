@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { LoadingAndErrorWrapper } from "./LoadingAndErrorWrapper";
@@ -8,16 +7,16 @@ export type LoadingAndErrorWrapperProps = {
   error: any;
   loading: any;
   /** Component that indicates that data is loading, for example a spinner */
-  loader?: ReactNode;
+  loader?: React.ReactNode;
   noBackground?: boolean;
   noWrapper?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   style?: object;
   showSpinner?: boolean;
   loadingMessages?: string[];
   messageInterval?: number;
   loadingScenes?: string[];
-  renderError?: (error: any) => ReactNode;
+  renderError?: (error: any) => React.ReactNode;
   "data-testid"?: string;
 };
 

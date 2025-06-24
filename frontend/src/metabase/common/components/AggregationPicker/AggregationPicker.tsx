@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/common/components/AccordionList";
@@ -328,7 +328,7 @@ function renderItemName(item: ListItem) {
   return item.displayName;
 }
 
-function renderItemWrapper(content: ReactNode) {
+function renderItemWrapper(content: React.ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
 

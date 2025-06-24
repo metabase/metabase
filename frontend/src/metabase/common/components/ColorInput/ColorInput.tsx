@@ -1,5 +1,5 @@
 import Color from "color";
-import type { ChangeEvent, FocusEvent, InputHTMLAttributes, Ref } from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
@@ -18,7 +18,7 @@ export interface ColorInputProps extends ColorInputAttributes {
 
 const ColorInput = forwardRef(function ColorInput(
   { value, onFocus, onBlur, onChange, ...props }: ColorInputProps,
-  ref: Ref<HTMLInputElement>,
+  ref: React.Ref<HTMLInputElement>,
 ) {
   const colorText = useMemo(() => getColorHex(value) ?? "", [value]);
   const [inputText, setInputText] = useState(colorText);

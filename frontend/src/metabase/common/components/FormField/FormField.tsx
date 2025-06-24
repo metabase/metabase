@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
@@ -20,8 +20,8 @@ import type { FieldAlignment, FieldOrientation } from "./types";
 
 export interface FormFieldProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
-  actions?: ReactNode;
-  description?: ReactNode;
+  actions?: React.ReactNode;
+  description?: React.ReactNode;
   alignment?: FieldAlignment;
   orientation?: FieldOrientation;
   optional?: boolean;
@@ -46,7 +46,7 @@ const FormField = forwardRef(function FormField(
     optional,
     ...props
   }: FormFieldProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const hasTitle = Boolean(title);
   const hasDescription = Boolean(description);

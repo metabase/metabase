@@ -1,6 +1,4 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
-import type React from "react";
 import { t } from "ttag";
 
 import {
@@ -25,9 +23,9 @@ type Props = {
   onClose?: () => void;
   onDone?: () => void;
   doneButtonText?: string;
-  footer?: ReactNode;
-  children?: ReactNode;
-  headerActions?: ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+  headerActions?: React.ReactNode;
   "data-testid"?: string;
 };
 

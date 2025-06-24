@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useCallback } from "react";
 
 import type { IconProps } from "metabase/ui";
@@ -16,7 +15,7 @@ interface ChartCaptionProps {
   series: Series | null;
   settings: VisualizationSettings;
   icon?: IconProps | null;
-  actionButtons?: ReactNode;
+  actionButtons?: React.ReactNode;
   hasInfoTooltip?: boolean;
   width?: number;
   getHref?: () => string | undefined;

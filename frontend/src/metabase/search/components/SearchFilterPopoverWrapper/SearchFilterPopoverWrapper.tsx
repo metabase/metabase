@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import type {
@@ -14,7 +13,7 @@ import {
 } from "./SearchFilterPopoverWrapper.styled";
 
 type SearchFilterPopoverWrapperProps<T extends FilterTypeKeys = any> = {
-  children: ReactNode;
+  children: React.ReactNode;
   onApply: (value: SearchFilterPropTypes[T]) => void;
   isLoading?: boolean;
 } & StackProps;

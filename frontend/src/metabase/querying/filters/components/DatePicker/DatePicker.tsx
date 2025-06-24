@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 
 import {
   DATE_PICKER_OPERATORS,
@@ -24,8 +24,8 @@ type DatePickerProps = {
   availableOperators?: DatePickerOperator[];
   availableShortcuts?: DatePickerShortcut[];
   availableUnits?: DatePickerUnit[];
-  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
-  renderBackButton?: () => ReactNode;
+  renderSubmitButton?: (props: DatePickerSubmitButtonProps) => React.ReactNode;
+  renderBackButton?: () => React.ReactNode;
   onChange: (value: DatePickerValue) => void;
 };
 

@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { jt, msgid, ngettext, t } from "ttag";
 
 import Dashboards from "metabase/entities/dashboards";

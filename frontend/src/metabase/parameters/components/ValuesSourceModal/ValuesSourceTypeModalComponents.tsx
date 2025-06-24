@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 import {
   LoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
@@ -12,7 +10,7 @@ import { Box, type BoxProps } from "metabase/ui";
 import S from "./ValuesSourceTypeModal.module.css";
 
 interface BoxPropsWithChildren extends BoxProps {
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 export const ModalBodyWithPane = (props: BoxPropsWithChildren) => {

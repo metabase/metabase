@@ -1,5 +1,4 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
-import type * as React from "react";
 import {
   useCallback,
   useEffect,

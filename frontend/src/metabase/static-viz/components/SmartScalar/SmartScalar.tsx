@@ -1,5 +1,3 @@
-import type { CSSProperties } from "react";
-
 import type { RenderingContext } from "metabase/visualizations/types";
 import {
   CHANGE_TYPE_OPTIONS,
@@ -32,7 +30,7 @@ export function SmartScalar({
 
   const comparisons: any[] = trend.comparisons || [];
 
-  const styles: Record<string, CSSProperties> = {
+  const styles: Record<string, React.CSSProperties> = {
     root: {
       fontFamily,
       fontSize: "14px",
@@ -96,7 +94,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
     icon = "↓";
   }
 
-  const styles: Record<string, CSSProperties> = {
+  const styles: Record<string, React.CSSProperties> = {
     root: {
       fontSize: "14px",
     },

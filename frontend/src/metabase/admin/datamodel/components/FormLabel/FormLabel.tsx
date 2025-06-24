@@ -1,9 +1,4 @@
-import type {
-  HTMLAttributes,
-  LabelHTMLAttributes,
-  ReactNode,
-  Ref,
-} from "react";
+import type { HTMLAttributes, LabelHTMLAttributes } from "react";
 import { forwardRef } from "react";
 
 import {
@@ -17,12 +12,12 @@ interface FormLabelProps extends HTMLAttributes<HTMLDivElement> {
   htmlFor?: LabelHTMLAttributes<HTMLLabelElement>["htmlFor"];
   title?: string;
   description?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 }
 
 const FormLabel = forwardRef(function FormLabel(
   { htmlFor, title, description, children, ...props }: FormLabelProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   return (
     <FormLabelRoot {...props} ref={ref}>

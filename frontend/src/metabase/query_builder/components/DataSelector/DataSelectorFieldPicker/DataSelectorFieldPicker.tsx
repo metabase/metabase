@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import AccordionList from "metabase/common/components/AccordionList";
@@ -100,7 +99,7 @@ const DataSelectorFieldPicker = ({
   );
 };
 
-function renderItemWrapper(content: ReactNode) {
+function renderItemWrapper(content: React.ReactNode) {
   return <HoverParent>{content}</HoverParent>;
 }
 

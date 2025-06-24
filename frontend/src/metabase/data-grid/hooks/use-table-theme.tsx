@@ -1,4 +1,4 @@
-import { type ReactNode, createContext, useContext } from "react";
+import { createContext, useContext } from "react";
 
 import type { DataGridTheme } from "metabase/data-grid/types";
 
@@ -7,7 +7,7 @@ const DataGridThemeContext = createContext<DataGridTheme | undefined>(
 );
 
 interface DataGridThemeProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
   theme?: DataGridTheme;
 }
 

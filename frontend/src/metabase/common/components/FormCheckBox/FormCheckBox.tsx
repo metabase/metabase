@@ -1,5 +1,4 @@
 import { useField } from "formik";
-import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { CheckBoxProps } from "metabase/common/components/CheckBox";
@@ -11,7 +10,7 @@ export interface FormCheckBoxProps
   extends Omit<CheckBoxProps, "checked" | "onChange" | "onBlur"> {
   name: string;
   title?: string;
-  description?: ReactNode;
+  description?: React.ReactNode;
   optional?: boolean;
 }
 
@@ -28,7 +27,7 @@ const FormCheckBox = forwardRef(function FormCheckBox(
     optional,
     ...props
   }: FormCheckBoxProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const id = useUniqueId();
   const [{ value, onChange, onBlur }, { error, touched }] = useField(name);

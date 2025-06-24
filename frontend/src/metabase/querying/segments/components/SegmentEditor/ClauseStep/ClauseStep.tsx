@@ -1,12 +1,10 @@
-import type { ReactNode } from "react";
-
 import { Box, Flex } from "metabase/ui";
 
 import S from "./ClauseStep.module.css";
 
 type ClauseStepProps = {
   label?: string;
-  children?: ReactNode;
+  children?: React.ReactNode;
 };
 
 export function ClauseStep({ label, children }: ClauseStepProps) {

@@ -1,6 +1,5 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type React from "react";
 import { forwardRef } from "react";
 
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
@@ -43,7 +42,6 @@ export const PublicComponentStylesWrapper = forwardRef<
       {...props}
       ref={ref}
       dir="ltr"
-      // eslint-disable-next-line react/prop-types -- className is in div props :shrugs:
       className={`mb-wrapper ${props.className}`}
       // Mantine's cssVariablesSelector expects data-mantine-color-scheme to be set on the target element
       data-mantine-color-scheme="light"

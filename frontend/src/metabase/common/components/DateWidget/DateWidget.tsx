@@ -1,5 +1,5 @@
 import type { Moment } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import type { InputHTMLAttributes, Ref } from "react";
+import type { InputHTMLAttributes } from "react";
 import { forwardRef, useCallback, useState } from "react";
 
 import DateInput from "metabase/common/components/DateInput";
@@ -34,7 +34,7 @@ const DateWidget = forwardRef(function DateWidget(
     onHasTimeChange,
     ...props
   }: DateWidgetProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ): JSX.Element {
   const [isOpened, setIsOpened] = useState(false);
 

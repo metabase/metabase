@@ -51,7 +51,7 @@ const DateInput = forwardRef(function DateInput(
     onCalendarClick,
     ...props
   }: DateInputProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);

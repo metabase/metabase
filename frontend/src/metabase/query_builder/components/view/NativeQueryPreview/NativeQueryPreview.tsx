@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
@@ -11,11 +10,11 @@ interface NativeQueryPreviewProps {
   query?: string;
   error?: string;
   isLoading?: boolean;
-  children?: ReactNode;
+  children?: React.ReactNode;
   onClose?: () => void;
 }
 
-const Header = ({ children }: { children: ReactNode }) => (
+const Header = ({ children }: { children: React.ReactNode }) => (
   <Flex align="center" mb="1.5rem">
     {children}
   </Flex>
@@ -56,7 +55,7 @@ const Divider = () => (
   <Box mb="lg" style={{ borderTop: "1px solid var(--mb-color-border)" }}></Box>
 );
 
-const Footer = ({ children }: { children: ReactNode }) => (
+const Footer = ({ children }: { children: React.ReactNode }) => (
   <Flex justify="end" mt="lg">
     {children}
   </Flex>

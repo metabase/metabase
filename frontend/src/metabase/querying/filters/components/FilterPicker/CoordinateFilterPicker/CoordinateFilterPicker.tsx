@@ -1,4 +1,3 @@
-import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
@@ -69,7 +68,7 @@ export function CoordinateFilterPicker({
     }
   };
 
-  const handleFormSubmit = (event: FormEvent) => {
+  const handleFormSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     handleFilterChange({ run: true });
   };

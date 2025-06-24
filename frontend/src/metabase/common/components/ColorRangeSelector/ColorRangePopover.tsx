@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import _ from "underscore";
 
@@ -28,7 +27,7 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
     onClose,
     ...props
   }: ColorRangeContentProps,
-  ref: Ref<HTMLDivElement>,
+  ref: React.Ref<HTMLDivElement>,
 ) {
   const colorMapping = useMemo(() => {
     return customColorMapping ?? getDefaultColorMapping(colors);
