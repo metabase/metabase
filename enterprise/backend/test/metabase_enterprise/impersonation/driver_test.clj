@@ -690,8 +690,7 @@
                                    (sql-jdbc.execute/do-with-connection-with-options
                                     driver/*driver* (mt/id) {}
                                     (fn [^Connection conn]
-                                      (driver/set-role! driver/*driver* conn role-a)
-                                      #_(.execute (.createStatement conn) (format "SET ROLE %s" role-a)))))))]
+                                      (driver/set-role! driver/*driver* conn role-a))))))]
                   (doseq [f futures] @f)
                   (is (= [1 "African"]
                          (sql-jdbc.execute/do-with-connection-with-options
@@ -709,3 +708,34 @@
                            (mt/run-mbql-query checkins
                              {:aggregation [[:count]]})))))))))))))
 
+(comment
+
+  (mt/test-driver :postgres
+    (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
+          futures (doall
+                   (for [i (range max-pool-size)]
+                     (future
+                       (sql-jdbc.execute/do-with-connection-with-options
+                        driver/*driver* (mt/id) {}
+                        (fn [^Connection conn]
+                          (driver/set-role! driver/*driver* conn "role_d"))))))]
+      (doseq [f futures] @f)
+      (let [conn (.getConnection (sql-jdbc.execute/do-with-resolved-connection-data-source driver/*driver* (mt/id) {}))
+            rs (.executeQuery (.createStatement conn) "SELECT current_user;")]
+        (tap> {:rows (some-> rs resultset-seq)}))))
+
+  (mt/test-driver :postgres
+    (let [conn (.getConnection (sql-jdbc.execute/do-with-resolved-connection-data-source driver/*driver* (mt/id) {}))
+          rs (.executeQuery (.createStatement conn) "SELECT current_user;")]
+      (tap> {:rows (some-> rs resultset-seq)})))
+
+  (mt/test-driver :postgres
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver/*driver* (mt/id) {}
+     (fn [^Connection conn]
+       (first (mt/rows (qp/process-query (mt/mbql-query categories)))))))
+
+  (mt/test-driver :postgres
+    (sync/sync-database! (mt/db)))
+
+  (tap> 1))

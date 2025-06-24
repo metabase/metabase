@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.premium-features.core :refer [defenterprise]]
+  ;;  [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -325,7 +326,7 @@
   []
   (pos? *connection-recursion-depth*))
 
-(def ^:private ^:dynamic *db-conn* nil)
+(def ^:dynamic *db-conn* nil)
 
 (mu/defn do-with-resolved-connection
   "Execute
@@ -342,17 +343,32 @@
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
     (cond
-      *db-conn*
-      (f *db-conn*)
+      ;; *db-conn*
+      ;; (do
+      ;;   (tap> "WE ARE USING THIS PATH 000")
+      ;;   (tap> {:depth *connection-recursion-depth*})
+      ;;   (tap> {:db-or-id-or-spec db-or-id-or-spec})
+      ;;   (tap> {:db-conn *db-conn*})
+      ;;   (tap> {:one-off one-off-dbs/*conn*})
+      ;;   (f *db-conn*))
 
       (:connection db-or-id-or-spec)
       (let [conn (:connection db-or-id-or-spec)]
+        (tap> "WE ARE USING THIS PATH 111")
+        ;; (tap> {:db-or-id-or-spec db-or-id-or-spec})
+        (tap> {:db-conn *db-conn*})
+        ;; (tap> {:one-off one-off-dbs/*conn*})
         (f conn))
 
       :else
-      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
-        (binding [*db-conn* conn]
-          (f conn))))))
+      (do
+        (tap> "WE ARE USING THIS PATH 222")
+        ;; (tap> {:db-or-id-or-spec db-or-id-or-spec})
+        (tap> {:db-conn *db-conn*})
+        ;; (tap> {:one-off one-off-dbs/*conn*})
+        (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+          (binding [*db-conn* conn]
+            (f conn)))))))
 
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
@@ -404,6 +420,12 @@
       (catch Throwable e
         (log/debug e "Error setting default holdability for connection")))))
 
+(defn tap-stack-trace [depth]
+  (let [stack-trace (.getStackTrace (Thread/currentThread))]
+    (tap> (str "Current stack trace (depth " depth "):"))
+    (doseq [frame (take depth stack-trace)]
+      (tap> (str "  " frame)))))
+
 (defmethod do-with-connection-with-options :sql-jdbc
   [driver db-or-id-or-spec options f]
   (do-with-resolved-connection
@@ -411,6 +433,11 @@
    db-or-id-or-spec
    options
    (fn [^Connection conn]
+     (tap> {:depth *connection-recursion-depth*})
+     (tap-stack-trace 25)
+     ()
+     (let [rs (.executeQuery (.createStatement conn) "SELECT current_user;")]
+       (tap> {:execute (some-> rs resultset-seq)}))
      (set-default-connection-options! driver db-or-id-or-spec conn options)
      (f conn))))
 

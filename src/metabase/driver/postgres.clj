@@ -270,6 +270,8 @@
        database
        nil
        (fn [^Connection conn]
+         (let [rs (.executeQuery (.createStatement conn) "SELECT current_user;")]
+           (tap> {:postgres (some-> rs resultset-seq)}))
          (reduce
           rf
           init

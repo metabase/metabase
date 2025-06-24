@@ -232,6 +232,8 @@
    database
    nil
    (fn [^java.sql.Connection conn]
+     (let [rs (.executeQuery (.createStatement conn) "SELECT current_user;")]
+       (tap> {:sql-jdbc (some-> rs resultset-seq)}))
      (let [[inclusion-patterns
             exclusion-patterns] (driver.s/db-details->schema-filter-patterns database)]
        (into #{} (sql-jdbc.sync/filtered-syncable-schemas driver conn (.getMetaData conn) inclusion-patterns exclusion-patterns))))))

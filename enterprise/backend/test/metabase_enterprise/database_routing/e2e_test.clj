@@ -24,11 +24,13 @@
               `(do ~@body)
               `(one-off-dbs/with-blank-db
                  (let [~(first names) (data/db)]
+                   (tap> {:one-off-test one-off-dbs/*conn*})
+                   (tap> {:db-conn-test sql-jdbc.execute/*db-conn*})
                    (doseq [statement# ["CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
                                        "SET DB_CLOSE_DELAY -1;"
                                        "CREATE TABLE \"my_database_name\" (str TEXT NOT NULL);"
                                        "GRANT ALL ON \"my_database_name\" TO GUEST;"]]
-                     (jdbc/execute! one-off-dbs/*conn* [statement#]))
+                     (jdbc/execute! {:connection sql-jdbc.execute/*db-conn*} #_one-off-dbs/*conn* [statement#]))
                    ~(wrap (rest names) body)))))]
     (wrap bindings body)))
 
