@@ -95,7 +95,9 @@
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
-                               model-display-name
+                               (when (and model-display-name
+                                          (not (str/includes? model-display-name " → ")))
+                                 model-display-name)
                                original-display-name
                                field-display-name)]
     (or simple-display-name
@@ -127,40 +129,40 @@
 (defn- field-display-name-add-join-alias
   [query
    stage-number
-   {join-alias              :metabase.lib.join/join-alias
-    original-join-alias     :lib/original-join-alias
+   {join-alias          :metabase.lib.join/join-alias
+    original-join-alias :lib/original-join-alias
     ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
     ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
-    source-alias            :source-alias
-    fk-field-id             :fk-field-id
-    table-id                :table-id
-    :as                     _col}
+    source-alias        :source-alias
+    fk-field-id         :fk-field-id
+    table-id            :table-id
+    :as                 _col}
    style
    display-name]
-  (let [join-alias         (or join-alias
-                               original-join-alias
-                               source-alias)
-        join-display-name  (when (and (= style :long)
-                                      ;; don't prepend a join display name if `:display-name` already contains one! Legacy
-                                      ;; result metadata might include it for joined Fields, don't want to add it twice.
-                                      ;; Otherwise we'll end up with display names like
-                                      ;;
-                                      ;;    Products → Products → Category
-                                      (not (str/includes? display-name " → ")))
-                             (or (when fk-field-id
-                                   ;; Implicitly joined column pickers don't use the target table's name, they use the
-                                   ;; FK field's name with "ID" dropped instead.
-                                   ;;
-                                   ;; This is very intentional: one table might have several FKs to one foreign table,
-                                   ;; each with different meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both
-                                   ;; linking to a PEOPLE table). See #30109 for more details.
-                                   (if-let [field (lib.metadata/field query fk-field-id)]
-                                     (-> (lib.metadata.calculation/display-info query stage-number field)
-                                         :display-name
-                                         lib.util/strip-id)
-                                     (let [table (lib.metadata/table-or-card query table-id)]
-                                       (lib.metadata.calculation/display-name query stage-number table style))))
-                                 join-alias))]
+  (let [join-alias        (or join-alias
+                              original-join-alias
+                              source-alias)
+        join-display-name (when (and (= style :long)
+                                     ;; don't prepend a join display name if `:display-name` already contains one! Legacy
+                                     ;; result metadata might include it for joined Fields, don't want to add it twice.
+                                     ;; Otherwise we'll end up with display names like
+                                     ;;
+                                     ;;    Products → Products → Category
+                                     (not (str/includes? display-name " → ")))
+                            (or (when fk-field-id
+                                  ;; Implicitly joined column pickers don't use the target table's name, they use the
+                                  ;; FK field's name with "ID" dropped instead.
+                                  ;;
+                                  ;; This is very intentional: one table might have several FKs to one foreign table,
+                                  ;; each with different meaning (eg. ORDERS.customer_id vs. ORDERS.supplier_id both
+                                  ;; linking to a PEOPLE table). See #30109 for more details.
+                                  (if-let [field (lib.metadata/field query fk-field-id)]
+                                    (-> (lib.metadata.calculation/display-info query stage-number field)
+                                        :display-name
+                                        lib.util/strip-id)
+                                    (let [table (lib.metadata/table-or-card query table-id)]
+                                      (lib.metadata.calculation/display-name query stage-number table style))))
+                                join-alias))]
     (if join-display-name
       (str join-display-name " → " display-name)
       display-name)))

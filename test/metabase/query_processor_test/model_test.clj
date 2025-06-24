@@ -12,42 +12,41 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
+;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
 (deftest ^:parallel model-self-join-test
   (testing "Field references from model joined a second time can be resolved (#48639)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:cards [{:id 1
-                        :dataset-query
-                        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                            ;; I guess this join is named `Reviews`
-                            (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
-                                                           [(lib/=
-                                                             (lib.metadata/field mp (mt/id :products :id))
-                                                             (lib.metadata/field mp (mt/id :reviews :product_id)))])
-                                          (lib/with-join-fields :all)))
-                            lib.convert/->legacy-MBQL)
-                        :database-id (mt/id)
-                        :name "Products+Reviews"
-                        :type :model}]})
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:cards [{:id 2
-                        :dataset-query
-                        (binding [lib.metadata.calculation/*display-name-style* :long]
-                          (as-> (lib/query mp (lib.metadata/card mp 1)) $q
-                            (lib/aggregate $q (lib/sum (->> $q
-                                                            lib/available-aggregation-operators
-                                                            (m/find-first (comp #{:sum} :short))
-                                                            :columns
-                                                            (m/find-first (comp #{"Price"} :display-name)))))
-                            (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
-                                                               (lib/breakoutable-columns $q))
-                                                 (lib/with-temporal-bucket :month)))
-                            (lib.convert/->legacy-MBQL $q)))
-                        :database-id (mt/id)
-                        :name "Products+Reviews Summary"
-                        :type :model}]})
+    (let [mp       (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          mp       (lib.tu/mock-metadata-provider
+                    mp
+                    {:cards [{:id            1
+                              :dataset-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                                 ;; I guess this join is named `Reviews`
+                                                 (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :reviews))
+                                                                                [(lib/=
+                                                                                  (lib.metadata/field mp (mt/id :products :id))
+                                                                                  (lib.metadata/field mp (mt/id :reviews :product_id)))])
+                                                               (lib/with-join-fields :all)))
+                                                 lib.convert/->legacy-MBQL)
+                              :database-id   (mt/id)
+                              :name          "Products+Reviews"
+                              :type          :model}]})
+          mp       (lib.tu/mock-metadata-provider
+                    mp
+                    {:cards [{:id            2
+                              :dataset-query (binding [lib.metadata.calculation/*display-name-style* :long]
+                                               (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                                                 (lib/aggregate $q (lib/sum (->> $q
+                                                                                 lib/available-aggregation-operators
+                                                                                 (m/find-first (comp #{:sum} :short))
+                                                                                 :columns
+                                                                                 (m/find-first (comp #{"Price"} :display-name)))))
+                                                 (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
+                                                                                    (lib/breakoutable-columns $q))
+                                                                      (lib/with-temporal-bucket :month)))
+                                                 (lib.convert/->legacy-MBQL $q)))
+                              :database-id   (mt/id)
+                              :name          "Products+Reviews Summary"
+                              :type          :model}]})
           question (binding [lib.metadata.calculation/*display-name-style* :long]
                      (as-> (lib/query mp (lib.metadata/card mp 1)) $q
                        (lib/breakout $q (-> (m/find-first (comp #{"Reviews → Created At"} :display-name)
@@ -64,7 +63,7 @@
                                                    (lib/breakoutable-columns query))
                                      (throw (ex-info "Failed to find column with display name"
                                                      {:display-name display-name
-                                                      :found       (map :display-name (lib/breakoutable-columns query))}))))]
+                                                      :found        (map :display-name (lib/breakoutable-columns query))}))))]
                          (lib/join $q (-> (lib/join-clause (lib.metadata/card mp 2)
                                                            [(lib/=
                                                              (lib/with-temporal-bucket (find-col $q "Reviews → Created At: Month")

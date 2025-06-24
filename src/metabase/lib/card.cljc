@@ -1,6 +1,5 @@
 (ns metabase.lib.card
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
