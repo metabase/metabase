@@ -86,6 +86,26 @@ describe("scenarios > embedding-sdk > popovers", () => {
     H.popover().findByText("ID").should("be.visible");
   });
 
+  it("should prevent closing the ChartNestedSettingsSeriesSingle popover when clicking it", () => {
+    mountSdkContent(
+      <InteractiveQuestion questionId={ORDERS_BY_YEAR_QUESTION_ID} />,
+    );
+
+    openVizSettingsSidebar();
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("settings-count").click();
+
+      // Clicking at the edge of popover to be sure that the click does not close it
+      cy.findByTestId("series-settings").click(1, 1);
+      cy.findByTestId("series-settings").should("be.visible");
+
+      // Clicking outside of the popover to be sure that the click closes it
+      cy.findByTestId("chartsettings-list-container").click(1, 1);
+      cy.findByTestId("series-settings").should("not.exist");
+    });
+  });
+
   it("should prevent closing the ChartSettingMultiSelect when clicking it", () => {
     cy.get<string>("@questionId").then((questionId) => {
       mountSdkContent(<InteractiveQuestion questionId={questionId} />);
