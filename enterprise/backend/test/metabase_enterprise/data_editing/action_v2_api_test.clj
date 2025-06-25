@@ -250,9 +250,7 @@
             (testing "default table action on a data-grid"
               (is (=? {:status 400}
                       (req {:action_id "dashcard:unknown:built-in-update"
-                            :scope     {:dashcard-id (:id dashcard)}
-                            :input     {:id 1}
-                            :params    {:text "kcab em txet"}}))))
+                            :scope     {:dashcard-id (:id dashcard)}}))))
 
             (testing "custom table action on a data-grid"
               (is (=? {:status 200
@@ -263,8 +261,77 @@
                                  {:id "timestamp", :visibility "hidden"}
                                  {:id "date",      :sourceType "ask-user"}]}}
                       (req {:action_id "dashcard:unknown:update"
-                            :scope     {:dashcard-id (:id dashcard)}
-                            :input     {:id 1}}))))))))))
+                            :scope     {:dashcard-id (:id dashcard)}}))))))))))
+
+(deftest configure-saved-action-on-editable-on-dashboard-test
+  (mt/with-premium-features #{:table-data-editing}
+    (mt/test-drivers #{:h2 :postgres}
+      (data-editing.tu/with-test-tables! [test-table [{:id        'auto-inc-type
+                                                       :text      [:text]
+                                                       :int       [:int]
+                                                       :timestamp [:timestamp]
+                                                       :date      [:date]}
+                                                      {:primary-key [:id]}]]
+
+        (mt/with-temp
+          [:model/Dashboard     dash {}
+           :model/Card          model     {:type           :model
+                                           :table_id       test-table
+                                           :database_id    (mt/id)
+                                           :dataset_query  {:database (mt/id)
+                                                            :type :query
+                                                            :query {:source-table test-table}}}
+           :model/Action        action   {:type           :query
+                                          :name           "update"
+                                          :model_id       (:id model)
+                                          :parameters     [{:id "a"
+                                                            :name "Id"
+                                                            :slug "id"}
+                                                           {:id "b"
+                                                            :name "Name"
+                                                            :slug "name"}
+                                                           {:id "c"
+                                                            :name "Status"
+                                                            :slug "status"}]}
+           :model/ImplicitAction _       {:action_id      (:id action)
+                                          :kind           "row/update"}
+           :model/DashboardCard dashcard  {:dashboard_id   (:id dash)
+                                           :card_id        (:id model)
+                                           :visualization_settings
+                                           {:table_id test-table
+                                            :editableTable.enabledActions
+                                            [{:id                "dashcard:unknown:default"
+                                              :actionId          (:id action)
+                                              :actionType        "data-grid/custom-action"
+                                              :enabled           true}
+                                             {:id                "dashcard:unknown:configured"
+                                              :actionId          (:id action)
+                                              :actionType        "data-grid/custom-action"
+                                              :parameterMappings [{:parameterId "id", :sourceType "ask-user"}
+                                                                  ;; missing name
+                                                                  {:parameterId "status", :sourceType "ask-user"}]
+                                              :enabled           true}]}}]
+          ;; insert a row for the row action
+          (mt/user-http-request :crowberto :post 200
+                                (data-editing.tu/table-url test-table)
+                                {:rows [{:text "a very important string"}]})
+
+          (testing "configure for unsaved action will contains all action params"
+            (is (=? {:parameters [{:id "id", :sourceType "ask-user"}
+                                  {:id "name", :sourceType "ask-user"}
+                                  {:id "status", :sourceType "ask-user"}]}
+                    (mt/user-http-request :crowberto :post 200
+                                          "action/v2/config-form" {:action_id "dashcard:unknown:default"
+                                                                   :scope     {:dashcard-id (:id dashcard)}}))))
+
+          (testing "saved configurations includes any new parameter if exists"
+            (is (=? {:parameters [{:id "id", :sourceType "ask-user"}
+                                  {:id "status", :sourceType "ask-user"}
+                                  ;; name is added even though it's not originally in the saved parameterMappings
+                                  {:id "name", :sourceType "ask-user"}]}
+                    (mt/user-http-request :crowberto :post 200
+                                          "action/v2/config-form" {:action_id "dashcard:unknown:configured"
+                                                                   :scope     {:dashcard-id (:id dashcard)}})))))))))
 
 ;; This covers a more exotic case where we're coming back to edit the config for an action before it has been saved.
 ;; This should cover both the cases where it has never been saved, or where it's simply been edited at least once since

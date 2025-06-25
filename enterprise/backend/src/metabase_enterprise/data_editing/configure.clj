@@ -75,11 +75,13 @@
   "Returns configuration needed for a given action."
   [{:keys [action-id action-kw inner-action] :as action}
    scope]
+  ;; TODO: Chris: we can't rely on getting table-id from scope we should use `(apply-mapping action {} [{}])`
   (if (false? (:configurable action))
     {:status 400, :body "Cannot configure this action"}
     (cond
       ;; Eventually will be put inside a nicely typed :configuration key
       (:param-map action)
+      ;; Dynamically incorporate any new options added since we last saved our configuration.
       (combine-configurations (configuration-for-pending-action action) (configuration (dissoc action :param-map) scope))
 
       (pos-int? action-id)
@@ -96,7 +98,7 @@
           (pos-int? action-id)
           (configuration-for-saved-action action-id)
           (and action-kw (isa? action-kw :table.row/common))
-          ;; TODO remove assumption that all primitives are dable actions
+          ;; TODO remove assumption that all primitives are table actions
           (configuration-for-table-action (:table-id scope) action-kw)
           :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified action})))
 
