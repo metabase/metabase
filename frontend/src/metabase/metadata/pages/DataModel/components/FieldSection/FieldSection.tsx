@@ -77,7 +77,7 @@ const FieldSectionBase = ({
         />
       </Box>
 
-      <Stack gap={12} mb="md">
+      <Stack gap={12} mb={12}>
         <Group align="center" gap="md" justify="space-between">
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
