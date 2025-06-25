@@ -3,8 +3,11 @@ import { t } from "ttag";
 
 import { NudgeToPro } from "metabase/admin/people/components/NudgeToPro";
 import { shouldNudgeToPro } from "metabase/admin/people/selectors";
-import { AdminLayout } from "metabase/components/AdminLayout";
-import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import { AdminLayout } from "metabase/common/components/AdminLayout";
+import {
+  LeftNavPane,
+  LeftNavPaneItem,
+} from "metabase/common/components/LeftNavPane";
 import { useSelector } from "metabase/lib/redux";
 import { Flex } from "metabase/ui";
 

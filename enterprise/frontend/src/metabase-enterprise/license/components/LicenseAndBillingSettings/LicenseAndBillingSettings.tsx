@@ -11,7 +11,7 @@ import {
 } from "metabase/admin/settings/components/SettingsLicense";
 import { ExplorePlansIllustration } from "metabase/admin/settings/components/SettingsLicense/ExplorePlansIllustration";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingSpinner from "metabase/common/components/LoadingSpinner";
 import { connect } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";

@@ -4,10 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetActionQuery } from "metabase/api";
+import { LeaveConfirmationModal } from "metabase/common/components/LeaveConfirmationModal";
+import Modal from "metabase/common/components/Modal";
 import useBeforeUnload from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import Modal from "metabase/components/Modal";
 import type {
   CreateActionParams,
   UpdateActionParams,
