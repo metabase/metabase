@@ -11,9 +11,6 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import NewItemMenu from "./NewItemMenu";
 
-console.warn = jest.fn();
-console.error = jest.fn();
-
 type SetupOpts = {
   databases?: Database[];
   hasModels?: boolean;
@@ -41,6 +38,11 @@ async function setup({
 }
 
 describe("NewItemMenu (EE with token)", () => {
+  beforeEach(() => {
+    console.warn = jest.fn();
+    console.error = jest.fn();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });

@@ -8,9 +8,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import NewItemMenu from "./NewItemMenu";
 
-console.warn = jest.fn();
-console.error = jest.fn();
-
 type SetupOpts = {
   databases?: Database[];
   hasModels?: boolean;
@@ -28,6 +25,11 @@ async function setup({ databases = [SAMPLE_DATABASE] }: SetupOpts = {}) {
 }
 
 describe("NewItemMenu (EE without token)", () => {
+  beforeEach(() => {
+    console.warn = jest.fn();
+    console.error = jest.fn();
+  });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
