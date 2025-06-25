@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/core/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
