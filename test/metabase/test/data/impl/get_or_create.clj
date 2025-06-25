@@ -17,7 +17,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp])
   (:import
@@ -223,12 +222,9 @@
   implicit joins to work."
   [driver dbdef db]
   (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
-    (doseq [{:keys [id fk-target-field-id] :as field} fk-field-infos
-            :when id
-            :let [fk {:semantic_type :type/FK
-                      :fk_target_field_id fk-target-field-id}]]
-      (schema.field-user-settings/upsert-user-settings field fk)
-      (t2/update! :model/Field :id id fk))))
+    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
 
 (defn- load-dataset-data-if-needed!
   "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this

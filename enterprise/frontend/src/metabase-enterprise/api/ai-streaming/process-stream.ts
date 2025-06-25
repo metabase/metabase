@@ -189,7 +189,7 @@ export type AIStreamingConfig = {
   onStreamStateUpdate?: (
     state: ReturnType<typeof accumulateStreamParts>,
   ) => void;
-  onError?: (error: Error) => void;
+  onError?: (error: StreamPartValue<"error">) => void;
 };
 
 export async function processChatResponse(
@@ -248,9 +248,7 @@ export async function processChatResponse(
         config.onToolResultPart?.(streamPart.value);
       }
       if (streamPart.name === "error") {
-        config.onError?.(
-          new Error(streamPart.value ? `${streamPart.value}` : "Unknown error"),
-        );
+        config.onError?.(streamPart.value);
       }
     }
 
