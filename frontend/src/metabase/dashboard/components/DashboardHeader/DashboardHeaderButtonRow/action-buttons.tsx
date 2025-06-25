@@ -141,19 +141,13 @@ export const dashboardActionButtons: Record<
     component: ({
       canResetFilters,
       onResetFilters,
-      onFullscreenChange,
-      isFullscreen,
-      dashboard,
       canEdit,
       openSettingsSidebar,
     }) => (
       <DashboardActionMenu
-        dashboard={dashboard}
         canResetFilters={canResetFilters}
         canEdit={canEdit}
         onResetFilters={onResetFilters}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
         openSettingsSidebar={openSettingsSidebar}
       />
     ),
