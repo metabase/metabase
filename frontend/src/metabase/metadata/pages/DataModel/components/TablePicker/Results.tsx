@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Fragment, type KeyboardEvent, useEffect, useRef } from "react";
 import _ from "underscore";
 
+import { isSyncCompleted } from "metabase/lib/syncing";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import S from "./Results.module.css";
@@ -95,6 +96,8 @@ export function Results({
             parent,
           } = item;
           const isActive = type === "table" && _.isEqual(path, value);
+          const isDisabled =
+            type === "table" && (!item.table || !isSyncCompleted(item.table));
 
           const parentIndex = items.findIndex((item) => item.key === parent);
           const parentItem = virtualItems.find(
@@ -102,6 +105,10 @@ export function Results({
           );
 
           const handleItemSelect = (open?: boolean) => {
+            if (isDisabled) {
+              return;
+            }
+
             toggle?.(key, open);
             if (value && (!isExpanded || type === "table")) {
               onItemClick?.(value);
@@ -155,7 +162,10 @@ export function Results({
               event.preventDefault();
             }
 
-            if (event.code === "Space" || event.code === "Enter") {
+            if (
+              !isDisabled &&
+              (event.code === "Space" || event.code === "Enter")
+            ) {
               // toggle the current item
               handleItemSelect();
               event.preventDefault();
@@ -186,13 +196,16 @@ export function Results({
                 data-index={index}
                 data-open={isExpanded}
                 tabIndex={
-                  selectedIndex === undefined || type === "table"
-                    ? 0
-                    : undefined
+                  isDisabled
+                    ? -1
+                    : selectedIndex === undefined || type === "table"
+                      ? 0
+                      : undefined
                 }
                 style={{
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
+                  pointerEvents: isDisabled ? "none" : undefined,
                 }}
                 data-testid="tree-item"
                 data-type={type}
@@ -226,7 +239,8 @@ export function Results({
                 </Flex>
                 {type === "table" &&
                   value?.tableId !== undefined &&
-                  item.table && (
+                  item.table &&
+                  !isDisabled && (
                     <TableVisibilityToggle
                       className={S.visibilityToggle}
                       table={item.table}

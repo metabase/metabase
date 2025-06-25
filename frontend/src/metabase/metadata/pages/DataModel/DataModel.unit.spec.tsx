@@ -1,19 +1,26 @@
+import userEvent from "@testing-library/user-event";
 import { IndexRedirect, Route } from "react-router";
 
 import {
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupFieldsValuesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
+  waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
+import { getNextId } from "__support__/utils";
 import registerVisualizations from "metabase/visualizations/register";
-import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
+  SAMPLE_DB_FIELD_VALUES,
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
@@ -69,17 +76,27 @@ const SAMPLE_DB_NO_SCHEMA = createSampleDatabase({
   tables: [ORDERS_TABLE_NO_SCHEMA],
 });
 
+const ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE = createOrdersTable({
+  initial_sync_status: "incomplete",
+});
+
+const SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE = createSampleDatabase({
+  name: "Initial sync incomplete",
+  tables: [ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE],
+});
+
 interface SetupOpts {
   databases?: Database[];
   params?: ParsedRouteParams;
 }
 
 function setup({
-  databases = [SAMPLE_DATABASE],
+  databases = [SAMPLE_DB],
   params = DEFAULT_ROUTE_PARAMS,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
+  setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
 
   renderWithProviders(
     <Route path="admin/datamodel">
@@ -116,8 +133,9 @@ describe("DataModel", () => {
     setup();
 
     await waitFor(() => {
-      expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+      expect(getTablePickerDatabase(SAMPLE_DB.name)).toBeInTheDocument();
     });
+
     expect(screen.getByRole("link", { name: /Segments/ })).toBeInTheDocument();
     expect(
       screen.getByText("Start by selecting data to model"),
@@ -129,11 +147,13 @@ describe("DataModel", () => {
       setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
       await waitFor(() => {
-        expect(screen.getByText(SAMPLE_DB_NO_SCHEMA.name)).toBeInTheDocument();
+        expect(
+          getTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
+        ).toBeInTheDocument();
       });
 
       expect(
-        screen.getByText(ORDERS_TABLE_NO_SCHEMA.display_name),
+        getTablePickerTable(ORDERS_TABLE_NO_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
   });
@@ -143,11 +163,393 @@ describe("DataModel", () => {
       setup();
 
       await waitFor(() => {
-        expect(screen.getByText(SAMPLE_DB.name)).toBeInTheDocument();
+        expect(getTablePickerDatabase(SAMPLE_DB.name)).toBeInTheDocument();
       });
 
-      expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
+      expect(
+        getTablePickerTable(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
+    });
+
+    it("should allow to search for a table", async () => {
+      setup();
+      setupSearchEndpoints(
+        [
+          createMockSearchResult({
+            id: getNextId(),
+            model: "table",
+            name: ORDERS_TABLE.display_name,
+            table_name: ORDERS_TABLE.display_name,
+            table_schema: "public",
+            database_name: SAMPLE_DB.name,
+          }),
+        ],
+        { overwriteRoutes: true },
+      );
+
+      const searchValue = ORDERS_TABLE.name.substring(0, 3);
+      await userEvent.type(getTableSearchInput(), searchValue);
+
+      expect(
+        getTablePickerTable(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(PRODUCTS_TABLE.display_name),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not allow to enter an empty table name", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(ORDERS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await userEvent.clear(getTableNameInput());
+      await userEvent.tab();
+
+      expect(getTableNameInput()).toHaveValue(ORDERS_TABLE.display_name);
+    });
+
+    it("should not allow to enter an empty field name in table section", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(ORDERS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+      await userEvent.clear(
+        getTableSectionFieldNameInput(ORDERS_DISCOUNT_FIELD.display_name),
+      );
+      await userEvent.tab();
+
+      expect(
+        getTableSectionFieldNameInput(ORDERS_DISCOUNT_FIELD.display_name),
+      ).toHaveValue(ORDERS_DISCOUNT_FIELD.display_name);
+    });
+
+    it("should not allow to enter an empty field name in field section", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(ORDERS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+      await userEvent.clear(getFieldNameInput());
+      await userEvent.tab();
+
+      expect(getFieldNameInput()).toHaveValue(
+        ORDERS_DISCOUNT_FIELD.display_name,
+      );
+    });
+
+    it("should display visible tables", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(PRODUCTS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(PRODUCTS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        getHideTableButton(PRODUCTS_TABLE.display_name),
+      ).toBeInTheDocument();
+    });
+
+    it("should display hidden tables", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(ORDERS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        getUnhideTableButton(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+    });
+
+    it("clicking on tables with initial_sync_status='incomplete' should not navigate to the table", async () => {
+      setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
+
+      await waitFor(() => {
+        expect(
+          getTablePickerDatabase(SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE.name),
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getByText("Start by selecting data to model"),
+      ).toBeInTheDocument();
+
+      expect(
+        within(
+          getTablePickerTable(
+            ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
+          ),
+        ).queryByRole("button", {
+          name: "Hide table",
+        }),
+      ).not.toBeInTheDocument();
+
+      // This click should not cause a change, as the table should be disabled
+      await expect(
+        userEvent.click(
+          getTablePickerTable(
+            ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
+          ),
+        ),
+      ).rejects.toThrow(/pointer-events: none/);
+
+      expect(
+        screen.getByText("Start by selecting data to model"),
+      ).toBeInTheDocument();
+    });
+
+    it("should display sort options", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(ORDERS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(screen.getByRole("button", { name: /Sorting/ }));
+
+      expect(screen.getByLabelText("Database order")).toBeInTheDocument();
+      expect(screen.getByLabelText("Alphabetical order")).toBeInTheDocument();
+      expect(screen.getByLabelText("Custom order")).toBeInTheDocument();
+      expect(screen.getByLabelText("Auto order")).toBeInTheDocument();
+    });
+
+    it("should display field visibility options", async () => {
+      setup();
+
+      await waitFor(() => {
+        expect(
+          getTablePickerTable(ORDERS_TABLE.display_name),
+        ).toBeInTheDocument();
+      });
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+
+      await userEvent.click(getFieldVisibilityInput());
+
+      const popover = within(await screen.findByRole("listbox"));
+      expect(popover.getByText("Everywhere")).toBeInTheDocument();
+      expect(popover.getByText("Only in detail views")).toBeInTheDocument();
+      expect(popover.getByText("Do not include")).toBeInTheDocument();
     });
   });
 });
+
+function getTableSearchInput() {
+  return screen.getByPlaceholderText("Search tables");
+}
+
+function getTableNameInput() {
+  return screen.getByPlaceholderText("Give this table a name");
+}
+
+/** table picker helpers */
+
+function getTablePickerDatabase(name: string) {
+  const items = screen
+    .getAllByTestId("tree-item")
+    .filter(
+      (element) =>
+        element.getAttribute("data-type") === "database" &&
+        element.textContent?.includes(name),
+    );
+
+  if (items.length !== 1) {
+    throw new Error("Cannot find database in table picker");
+  }
+
+  return items[0];
+}
+
+function getTablePickerSchema(name: string) {
+  return screen
+    .getAllByTestId("tree-item")
+    .filter('[data-type="schema"]')
+    .filter(`:contains("${name}")`);
+}
+
+function getTablePickerTable(name: string) {
+  const items = screen
+    .getAllByTestId("tree-item")
+    .filter(
+      (element) =>
+        element.getAttribute("data-type") === "table" &&
+        element.textContent?.includes(name),
+    );
+
+  if (items.length !== 1) {
+    throw new Error("Cannot find table in table picker");
+  }
+
+  return items[0];
+}
+
+function getTablePickerTables() {
+  return screen.getAllByTestId("tree-item").filter('[data-type="table"]');
+}
+
+function getHideTableButton(name: string) {
+  return within(getTablePickerTable(name)).getByRole("button", {
+    name: "Hide table",
+  });
+}
+
+function getUnhideTableButton(name: string) {
+  return within(getTablePickerTable(name)).getByRole("button", {
+    name: "Unhide table",
+  });
+}
+
+/** table section helpers */
+
+function getTableSection() {
+  return screen.getByTestId("table-section");
+}
+
+function getTableDescriptionInput() {
+  return getTableSection().getByPlaceholderText(
+    "Give this table a description",
+  );
+}
+
+function getTableSortButton() {
+  return getTableSection().button(/Sorting/);
+}
+
+function getTableSortOrderInput() {
+  return getTableSection().getByLabelText("Column order");
+}
+
+function getTableSectionField(name: string) {
+  return within(getTableSection()).getByLabelText(name);
+}
+
+function getTableSectionSortableField(name: string) {
+  return getTableSection().getByLabelText(name);
+}
+
+function getTableSectionSortableFields() {
+  return getTableSection().getAllByRole("listitem");
+}
+
+function getTableSectionFieldNameInput(name: string) {
+  return within(getTableSectionField(name)).getByPlaceholderText(
+    "Give this field a name",
+  );
+}
+
+function getTableSectionFieldDescriptionInput(name: string) {
+  return getTableSectionField(name).getByPlaceholderText("No description yet");
+}
+
+async function clickTableSectionField(name: string) {
+  await userEvent.click(within(getTableSectionField(name)).getByRole("img"));
+}
+
+/** field section helpers */
+
+function getFieldSection() {
+  return screen.getByTestId("field-section");
+}
+
+function getFieldNameInput() {
+  return within(getFieldSection()).getByPlaceholderText(
+    "Give this field a name",
+  );
+}
+
+function getFieldDescriptionInput() {
+  return getFieldSection().getByPlaceholderText(
+    "Give this field a description",
+  );
+}
+
+function getFieldDataTypeInput() {
+  return getFieldSection().getByLabelText("Data type");
+}
+
+function getFieldCoercionToggle() {
+  return getFieldSection().getByLabelText("Cast to a specific data type");
+}
+
+function getFieldCoercionInput() {
+  return getFieldSection().getByPlaceholderText("Select data type");
+}
+
+function getFieldSemanticTypeInput() {
+  return getFieldSection().getByPlaceholderText("Select a semantic type");
+}
+
+function getFieldSemanticTypeCurrenscreenInput() {
+  return getFieldSection().getByPlaceholderText("Select a currenscreen type");
+}
+
+function getFieldSemanticTypeFkTargetInput() {
+  return getFieldSection().getByLabelText("Foreign key target");
+}
+
+function getFieldVisibilityInput() {
+  return within(getFieldSection()).getByPlaceholderText(
+    "Select a field visibility",
+  );
+}
+
+function getFieldFilteringInput() {
+  return getFieldSection().getByPlaceholderText("Select field filtering");
+}
+
+function getFieldDisplayValuesInput() {
+  return getFieldSection().getByPlaceholderText("Select display values");
+}
+
+function getFieldDisplayValuesFkTargetInput() {
+  return getFieldSection().getByPlaceholderText("Choose a field");
+}
+
+function getFieldStyleInput() {
+  return getFieldSection().getByLabelText("Style");
+}
+
+function getFieldPrefixInput() {
+  return getFieldSection().getByTestId("prefix");
+}
+
+function getFieldSuffixInput() {
+  return getFieldSection().getByTestId("suffix");
+}
