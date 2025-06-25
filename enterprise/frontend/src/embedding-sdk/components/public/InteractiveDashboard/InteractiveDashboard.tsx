@@ -185,6 +185,7 @@ const InteractiveDashboardInner = ({
             onLoadWithoutCards={handleLoadWithoutCards}
             onError={(error) => dispatch(setErrorPage(error))}
             downloadsEnabled={{ pdf: withDownloads, results: withDownloads }}
+            dashcardMenu={plugins?.dashboard?.dashboardCardMenu}
           />
         </InteractiveDashboardProvider>
       )}

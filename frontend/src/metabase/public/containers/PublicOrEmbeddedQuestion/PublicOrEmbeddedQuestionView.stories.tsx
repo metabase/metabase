@@ -13,6 +13,7 @@ import {
   NumberColumn,
   StringColumn,
 } from "__support__/visualizations";
+import { Api } from "metabase/api";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
@@ -82,7 +83,7 @@ const initialState = createMockState({
   }),
 });
 
-const store = getStore(publicReducers, initialState);
+const store = getStore(publicReducers, initialState, [Api.middleware]);
 
 const Template: StoryFn<PublicOrEmbeddedQuestionViewProps> = (args) => {
   return <PublicOrEmbeddedQuestionView {...args} />;

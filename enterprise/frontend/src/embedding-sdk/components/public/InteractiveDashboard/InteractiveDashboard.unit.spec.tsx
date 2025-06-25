@@ -9,6 +9,9 @@ import {
   setupCardQueryMetadataEndpoint,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
+  setupLastDownloadFormatEndpoints,
+  setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { screen, waitFor } from "__support__/ui";
@@ -133,9 +136,15 @@ const setup = async ({
     }),
   );
 
+  setupLastDownloadFormatEndpoints();
+
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
 
   setupAlertsEndpoints(tableCard, []);
+
+  setupNotificationChannelsEndpoints({});
+
+  setupDatabasesEndpoints([createMockDatabase()]);
 
   const user = createMockUser();
 
@@ -152,7 +161,6 @@ const setup = async ({
       dashcards: indexBy(dashcards, "id"),
     }),
   });
-
   renderWithSDKProviders(
     <Box h="500px">
       <InteractiveDashboard dashboardId={dashboardId} {...props} />

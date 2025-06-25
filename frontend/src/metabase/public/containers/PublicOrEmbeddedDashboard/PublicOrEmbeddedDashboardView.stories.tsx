@@ -153,7 +153,10 @@ function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
 }
 
 const Template: StoryFn<MockDashboardContextProps> = (args) => (
-  <MockDashboardContext {...args}>
+  <MockDashboardContext
+    {...args}
+    dashboardId={args.dashboardId ?? args.dashboard?.id}
+  >
     <PublicOrEmbeddedDashboardView />
   </MockDashboardContext>
 );
@@ -176,6 +179,14 @@ const defaultArgs: Partial<MockDashboardContextProps> = {
 export const LightThemeDefault = {
   render: Template,
   args: defaultArgs,
+};
+
+export const LightThemeNoResults = {
+  render: Template,
+  args: {
+    ...defaultArgs,
+    dashboard: createDashboard({ dashcards: [] }),
+  },
 };
 
 export const LightThemeScroll = {
