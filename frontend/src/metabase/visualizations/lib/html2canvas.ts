@@ -1,8 +1,10 @@
 export function getHtml2CanvasWrapper(rootElement: HTMLElement) {
   const wrapper = document.createElement("div");
 
-  wrapper.style.visibility = "hidden";
+  wrapper.style.opacity = "0";
   wrapper.style.position = "fixed";
+  wrapper.style.width = "100vw";
+  wrapper.style.height = "100vh";
 
   wrapper.appendChild(rootElement.cloneNode(true));
 

@@ -31,12 +31,18 @@ export function withPropForwarding<TProps>(
   }: PropForwardingConfig<TProps>,
 ): WebComponentElementConstructor {
   return class extends Constructor {
-    static observedAttributes =
-      // r2wc observedAttributes
-      Constructor?.observedAttributes ??
-      // if a WebComponent is created without r2wc
-      propMappings?.map((m) => m.attributeName) ??
-      undefined;
+    static get observedAttributes(): string[] {
+      const parentObservedAttributes = Array.isArray(
+        Constructor?.observedAttributes,
+      )
+        ? Constructor.observedAttributes
+        : [];
+
+      const ownObservedAttributes =
+        propMappings?.map((m) => m.attributeName) ?? [];
+
+      return [...parentObservedAttributes, ...ownObservedAttributes];
+    }
 
     private props: Partial<TProps> = {};
     private observer?: MutationObserver;

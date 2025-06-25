@@ -219,6 +219,7 @@ export const saveDashboardPdf = async ({
     width: contentWidth,
     useCORS: true,
     backgroundColor,
+    removeContainer: false,
     scale: window.devicePixelRatio || 1,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
