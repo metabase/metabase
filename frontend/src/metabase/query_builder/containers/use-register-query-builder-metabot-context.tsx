@@ -185,10 +185,6 @@ const getChartConfigs = async ({
   timelines: Timeline[];
 }): Promise<MetabotChartConfig[]> => {
   try {
-    if (!PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question)) {
-      return [];
-    }
-
     return [
       {
         image_base_64: await getVisualizationDataUri(question),
@@ -196,6 +192,8 @@ const getChartConfigs = async ({
         description: question.description(),
         series: processSeriesData(series, visualizationSettings),
         timeline_events: processTimelineEvents(timelines),
+        query: question.datasetQuery(),
+        display_type: question.display(),
       },
     ];
   } catch (err) {
@@ -245,8 +243,6 @@ export const registerQueryBuilderMetabotContextFn = async ({
       {
         ...questionCtx,
         ...queryCtx,
-        query: question.datasetQuery(),
-        display_type: question.display(),
         chart_configs,
       },
     ],
