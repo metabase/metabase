@@ -53,7 +53,10 @@ export function getMissingColumnsFromVisualizationSettings(options: {
         return false; // This is a data source name reference, not a column
       }
 
-      return !colsForCards[column.sourceId].has(column.originalName);
+      return (
+        !colsForCards[column.sourceId] ||
+        !colsForCards[column.sourceId].has(column.originalName)
+      );
     });
 
     if (missing.length > 0) {

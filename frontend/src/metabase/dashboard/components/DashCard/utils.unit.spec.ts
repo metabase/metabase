@@ -67,4 +67,26 @@ describe("getMissingColumnsFromVisualizationSettings", () => {
       [{ sourceId: "card:2", originalName: "col2", name: "col2" }],
     ]);
   });
+
+  it("handles missing series gracefully", () => {
+    const visualizerEntity: VisualizerVizDefinition = {
+      columnValuesMapping: {
+        col1: [{ sourceId: "card:1", originalName: "col1", name: "col1" }],
+        col2: [{ sourceId: "card:2", originalName: "col2", name: "col2" }],
+      },
+      display: "bar",
+      settings: {},
+    };
+
+    const rawSeries = createMockSeriesWithCols(1, ["col1"]);
+
+    const result = getMissingColumnsFromVisualizationSettings({
+      visualizerEntity,
+      rawSeries,
+    });
+
+    expect(result).toEqual([
+      [{ sourceId: "card:2", originalName: "col2", name: "col2" }],
+    ]);
+  });
 });
