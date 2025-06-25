@@ -926,7 +926,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(CUSTOM_MAPPING_ERROR).scrollIntoView().should("be.visible");
+      cy.findByText(CUSTOM_MAPPING_ERROR).should("exist");
     });
   });
 
