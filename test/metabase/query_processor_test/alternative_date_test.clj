@@ -497,14 +497,14 @@
 ;; Make a fake feature just for tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-string-timestamps]
   [_driver _feature _database]
-  false)
+  true)
 
 ;;; TODO -- it would be better if we just made this feature `true` by default and opted out for the drivers that DO NOT
 ;;; support this feature. That way new drivers get the test automatically without having to opt in.
-(doseq [driver #{:sql :mongo}]
+(doseq [driver #{:athena}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
     [_driver _feature _database]
-    true))
+    false))
 
 (defmulti yyyymmddhhmmss-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-dates]] test below."
