@@ -1,13 +1,11 @@
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
+import { UpsellDevInstances } from "metabase/admin/upsells/UpsellDevInstances";
 import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 
 import { SettingTitle } from "../SettingHeader";
+import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
 import { EmbeddedResources } from "../widgets/PublicLinksListing/EmbeddedResources";
 
 import { EmbeddingSecretKeyWidget } from "./EmbeddingSecretKeyWidget";
@@ -18,6 +16,7 @@ export function StaticEmbeddingSettings() {
 
   return (
     <SettingsPageWrapper title={t`Static embedding`}>
+      <UpsellDevInstances source="embedding-page" />
       <SettingsSection>
         <EmbeddingToggle
           settingKey="enable-embedding-static"
