@@ -367,7 +367,7 @@
                                              (while (and (not (Thread/interrupted))
                                                          (or (not (.get shutdown-flag))
                                                              ;; Continue processing if shutdown flag is set but queue is not empty
-                                                             (pos? #p (queue-size queue))))
+                                                             (pos? (queue-size queue))))
                                                (try
                                                  (let [notification (take-notification-with-timeout! queue 1000)]
                                                    (when notification
@@ -417,12 +417,11 @@
 
 (defn- dispatch!
   [notification]
-  (let [dispatch-fn (:dispatch-fn @simple-blocking-dispatcher
-                                  #_(case (:payload_type notification)
-                                      :notification/system-event
-                                      @simple-blocking-dispatcher
-                                      ;; notification/card, notification/dashboard
-                                      @dedup-priority-dispatcher))]
+  (let [dispatch-fn (:dispatch-fn (case (:payload_type notification)
+                                    :notification/system-event
+                                    @simple-blocking-dispatcher
+                                    ;; notification/card, notification/dashboard
+                                    @dedup-priority-dispatcher))]
     (dispatch-fn notification)))
 
 (mu/defn ^:private send-notification-async!
