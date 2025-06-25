@@ -685,10 +685,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.editDashboard();
         cy.findByTestId("fixed-width-filters").findByText("Unit1").click();
         H.getDashboardCard().findByText("Select…").click();
-        H.popover().findAllByText("Created At").eq(0).click();
+        H.popover().findByText("Created At: Year").click();
         cy.findByTestId("fixed-width-filters").findByText("Unit2").click();
         H.getDashboardCard().findByText("Select…").click();
-        H.popover().findAllByText("Created At").eq(1).click();
+        H.popover().findByText("Created At: Month").click();
         H.saveDashboard();
         cy.wait("@dashcardQuery");
 
@@ -705,7 +705,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
         cy.log("set parameters in a public dashboard");
         cy.signInAsAdmin();
-        cy.get("@dashboardId").then(H.visitPublicDashboard);
+        cy.get<number>("@dashboardId").then(H.visitPublicDashboard);
         cy.wait("@publicDashcardQuery");
         setParametersAndAssertResults("@publicDashcardQuery");
 
