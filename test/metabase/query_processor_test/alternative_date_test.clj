@@ -424,6 +424,16 @@
   (binding [metabase.test.data.databricks/*allow-database-creation* true]
     (metabase.driver/with-driver :databricks
       (metabase.test/dataset yyyymmddhhss-binary-times
+        (metabase.test/db))))
+
+  (binding [metabase.test.data.athena/*allow-database-deletion* true]
+    (tx/destroy-db! :athena metabase.query-processor-test.alternative-date-test/yyyymmddhhss-times))
+
+  (toucan2.core/delete! 'Database :engine "athena", :name "yyyymmddhhss-times (athena)")
+
+  (binding [metabase.test.data.athena/*allow-database-creation* true]
+    (metabase.driver/with-driver :athena
+      (metabase.test/dataset yyyymmddhhss-times
         (metabase.test/db)))))
 
 ;; we make a fake feature for the tests
