@@ -89,43 +89,27 @@
   * table-query-ids - tables that a user will create-queries permissions to run an ad hoc query
   * native? - a flag that will be set if the query requires native permissions.
 
-  The process for assembling this resources matches states in a legacy-MBQL query:
+  The process for assembling this resources matches stages in a legacy-MBQL query:
 
-  1. Does the stage have a :query-permissions/gtapped-table key?
+  1. Does the stage have a :qp/stage-is-from-source-card key?
 
-     This means the stage came from a Sandbox query, so we add the table to both the set of
-     tables we require view-data permissions and the set of tables we require create-queries
-     permissions for, but remove any sibling native permissions before continuing the match.
-
-  2. Does the stage have a :native query and a :qp/stage-is-from-source-card key and is parent-source
-     card-id set?
-
-     Stop the match and do not add anything to the results.
-
-  3. Does the stage have a :native query and a :qp/stage-is-from-source-card key?
-
-     Add the source-card id to the card-ids set and end the match.
-
-  4. Does the stage have a :native query?
-
-     Set the native flag and end the match.
-
-  5. Does the stage have a :source-table and a :qp/state-is-from-source-card key and does the match
-     have the parent-source-card-id argument set?
-
-     Add the table to the table-ids set. Since we are inside a card, we do not check create-queries or
-     native permissions just that the user is allowed to access these tables.
-
-  6. Does the stage have a :source-table and a :qp/state-is-from-source-card key?
-
-     Add the table to the table-ids and table-query-ids set. Add the source-card to the card-ids and
+     If there's no parent-source-card-id, add the source-card id to the card-ids set and
      continue the match setting parent-source-card-id.
 
-  7. Does the stage have a :source-table
+  2. Does the stage have a :query-permissions/gtapped-table key?
 
-     Add the table to the table-ids and table-query-ids set.
+     This means the stage came from a Sandbox query, so we add the table to the table-ids set.
+     If there's no parent-source-card-id, also add it to the table-query-ids set.
+     Remove any sibling native permissions before continuing the match.
 
-  8. continue handled by match "
+  3. Does the stage have a :native query?
+
+     If there's no parent-source-card-id, set the native flag and end the match.
+
+  4. Does the stage have a :source-table?
+
+     Add the table to the table-ids set. If there's no parent-source-card-id, also add it
+     to the table-query-ids set, then continue the match."
   ([query :- :map]
    (query->source-ids query nil))
   ([query :- :map
@@ -138,8 +122,6 @@
                           {:card-ids #{(:qp/stage-is-from-source-card m)}}
                           (query->source-ids (dissoc m :qp/stage-is-from-source-card) (:qp/stage-is-from-source-card m))))
 
-            ;; If we find a table id from a gtapped table add it to the list of table ids here if we fail to get perms
-            ;; for this table we'll check again for this key and try the supplied gtap perms
             (m :guard (every-pred map? :query-permissions/gtapped-table))
             (merge-with merge-source-ids
                         {:table-ids #{(:query-permissions/gtapped-table m)}}
@@ -149,8 +131,6 @@
                         ;; want to mark the whole query as native? if they exist
                         (query->source-ids (dissoc m :query-permissions/gtapped-table :native) parent-source-card-id))
 
-            ;; If we come across a native query, replace it with a card ID if it came from a source card, so we can check
-            ;; permissions on the card and not necessarily require full native query access to the DB
             (m :guard (every-pred map? :native))
             (when-not parent-source-card-id
               {:native? true})
