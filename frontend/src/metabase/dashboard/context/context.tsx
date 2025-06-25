@@ -42,6 +42,7 @@ export type DashboardContextOwnProps = {
   navigateToNewCardFromDashboard:
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
+  onNewQuestion?: () => void;
 };
 
 export type DashboardContextOwnResult = {
@@ -77,6 +78,7 @@ const DashboardContextProviderInner = ({
   onLoad,
   onLoadWithoutCards,
   onError,
+  onNewQuestion,
 
   children,
 
@@ -291,6 +293,7 @@ const DashboardContextProviderInner = ({
         parameterQueryParams,
         onLoad,
         onError,
+        onNewQuestion,
 
         navigateToNewCardFromDashboard,
         isLoading,

@@ -9,6 +9,7 @@ import Input from "metabase/common/components/Input";
 import SelectList from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import { isEmbeddingSdk } from "metabase/env";
@@ -68,9 +69,8 @@ function QuestionPickerInner({
     [databases],
   );
 
-  const onNewQuestion = (type: "native" | "notebook") =>
-    dispatch(addDashboardQuestion(type));
-
+  const { onNewQuestion } = useDashboardContext();
+  const onNewNativeQuestion = () => dispatch(addDashboardQuestion("native"));
   return (
     <div className={S.questionPickerRoot}>
       <Input
@@ -91,7 +91,7 @@ function QuestionPickerInner({
               variant="outline"
               className={S.newButton}
               leftSection={<Icon name="insight" />}
-              onClick={() => onNewQuestion("notebook")}
+              onClick={onNewQuestion}
             >
               {t`New Question`}
             </Button>
@@ -101,7 +101,7 @@ function QuestionPickerInner({
               variant="outline"
               className={S.newButton}
               leftSection={<Icon name="sql" />}
-              onClick={() => onNewQuestion("native")}
+              onClick={onNewNativeQuestion}
             >
               {t`New SQL query`}
             </Button>

@@ -14,6 +14,7 @@ import {
 } from "metabase/dashboard/actions";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
 import { DashboardLeaveConfirmationModal } from "metabase/dashboard/components/DashboardLeaveConfirmationModal";
+import { addDashboardQuestion } from "metabase/dashboard/components/QuestionPicker/actions";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import {
   useDashboardUrlParams,
@@ -132,6 +133,7 @@ export const DashboardApp = ({
         navigateToNewCardFromDashboard={(opts) =>
           dispatch(navigateToNewCardFromDashboard(opts))
         }
+        onNewQuestion={() => dispatch(addDashboardQuestion("notebook"))}
       >
         <DashboardTitle />
         <DashboardFavicon />
