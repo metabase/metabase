@@ -855,8 +855,8 @@
     (doseq [lhs [nil (lib/ref (lib.metadata/field query (meta/id :categories :id)))]
             rhs [nil (lib/ref (lib.metadata/field query (meta/id :venues :category-id)))]]
       (testing (pr-str (list `lib/join-condition-operators `(lib.tu/venues-query) lhs rhs))
-        (is (=? [:= :> :< :>= :<= :!=]
-                (lib/join-condition-operators query lhs rhs)))
+        (is (= [:= :> :< :>= :<= :!=]
+               (lib/join-condition-operators query lhs rhs)))
         (is (= (lib/join-condition-operators query lhs rhs)
                (lib/join-condition-operators query -1 lhs rhs)))))))
 
