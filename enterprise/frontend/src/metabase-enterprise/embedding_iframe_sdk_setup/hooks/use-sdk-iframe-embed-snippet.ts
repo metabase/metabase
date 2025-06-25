@@ -58,6 +58,7 @@ function getSnippet(settings: SdkIframeEmbedTagSettings): string {
 
 <script>
   const { MetabaseEmbed } = window["metabase.embed"];
+
   const embed = new MetabaseEmbed({
     ${formattedSettings}
   });
