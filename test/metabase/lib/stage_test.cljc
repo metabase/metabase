@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
@@ -629,3 +630,19 @@
                              &CATEGORIES__via__CATEGORY_ID.categories.name]}))]
       (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
              (map :lib/desired-column-alias (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})))))))
+
+(deftest ^:parallel propagate-binning-info-test
+  (testing "binning info from previous stages should get propagated"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :name          "Q1"
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [[:field %total {:binning {:strategy :num-bins, :num-bins 10}}]
+                                                           [:field %total {:binning {:strategy :num-bins, :num-bins 50}}]]})}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? [{:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 10}}
+               {:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
+               {:name "count"}]
+              (lib/returned-columns query -1))))))

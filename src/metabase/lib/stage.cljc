@@ -243,12 +243,13 @@
             identity
             (map (fn [col]
                    (-> col
-                       (dissoc ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning)
+                       (dissoc ::lib.join/join-alias ::lib.field/temporal-unit)
                        ;; these keys get propagated so we can use them for display-name purposes. TODO (Cam 6/24/25)
                        ;; -- add to schema and document them.
-                       (set/rename-keys {:fk-field-id   :lib/previous-stage-fk-field-id
-                                         :fk-field-name :lib/previous-stage-fk-field-name
-                                         :fk-join-alias :lib/previous-stage-fk-join-alias})))))
+                       (set/rename-keys {:fk-field-id        :lib/original-fk-field-id
+                                         :fk-field-name      :lib/original-fk-field-name
+                                         :fk-join-alias      :lib/original-fk-join-alias
+                                         ::lib.field/binning :lib/original-binning})))))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)

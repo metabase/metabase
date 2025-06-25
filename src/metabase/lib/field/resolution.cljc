@@ -311,9 +311,9 @@
     :lib/model-display-name
     :lib/original-join-alias
     :lib/original-name
-    :lib/previous-stage-fk-field-id
-    :lib/previous-stage-fk-field-name
-    :lib/previous-stage-fk-join-alias
+    :lib/original-fk-field-id
+    :lib/original-fk-field-name
+    :lib/original-fk-join-alias
     :converted-timezone
     :description
     :display-name

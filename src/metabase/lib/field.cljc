@@ -83,7 +83,7 @@
     ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
     ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
     fk-field-id           :fk-field-id
-    previous-fk-field-id  :lib/previous-stage-fk-field-id
+    original-fk-field-id  :lib/original-fk-field-id
     parent-id             :parent-id
     ;; TODO (Cam 6/19/25) -- not sure why we need both. QUE-1408
     simple-display-name   ::simple-display-name
@@ -101,7 +101,7 @@
                                  model-display-name)
                                original-display-name
                                field-display-name)
-        fk-field-id        (or fk-field-id previous-fk-field-id)]
+        fk-field-id        (or fk-field-id original-fk-field-id)]
     (or simple-display-name
         (when (and parent-id
                    ;; check that we haven't nested yet
@@ -137,7 +137,7 @@
     ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
     source-alias         :source-alias
     fk-field-id          :fk-field-id
-    previous-fk-field-id :lib/previous-stage-fk-field-id
+    original-fk-field-id :lib/original-fk-field-id
     table-id             :table-id
     :as                  _col}
    style
@@ -145,7 +145,7 @@
   (let [join-alias        (or join-alias
                               original-join-alias
                               source-alias)
-        fk-field-id       (or fk-field-id previous-fk-field-id)
+        fk-field-id       (or fk-field-id original-fk-field-id)
         join-display-name (when (and (= style :long)
                                      ;; don't prepend a join display name if `:display-name` already contains one! Legacy
                                      ;; result metadata might include it for joined Fields, don't want to add it twice.
@@ -173,10 +173,12 @@
 
 (defn- field-display-name-add-binning
   [{binning          ::binning
+    original-binning :lib/original-binning
     semantic-type    :semantic-type
     :as              _col}
    display-name]
-  (let [bin-format #(lib.binning/ensure-ends-with-binning % binning semantic-type)
+  (let [binning    (or binning original-binning)
+        bin-format #(lib.binning/ensure-ends-with-binning % binning semantic-type)
         add-bin?   (and binning
                         (not= display-name (bin-format display-name)))]
     ;; temporal unit and binning formatting are only applied if they haven't been applied yet

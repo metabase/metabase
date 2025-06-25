@@ -499,7 +499,7 @@
       (let [query' (lib/breakout query col)
             col'   (first (lib/breakouts-metadata query'))]
         (assert (some? col'))
-        (is (=? {:lib/previous-stage-fk-field-id pos-int?}
+        (is (=? {:lib/original-fk-field-id pos-int?}
                 col')
             ":fk-field-id needs to get propagated as :lib/previous-stage-fk-field-id this to work correctly")
         (is (= "Category → Name"
@@ -1911,3 +1911,54 @@
               ["sum"      "Orders → Sum of Quantity"]]     ; sum(orders.quantity)
              (map (juxt :lib/deduplicated-name :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
+
+(deftest ^:parallel propagate-binning-display-names-test
+  (testing "`<column>: <binning>` display names should get used for columns binned in previous stages"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :name          "Q1"
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:aggregation [[:count]]
+                                             :breakout    [[:field %total {:binning {:strategy :num-bins, :num-bins 10}}]
+                                                           [:field %total {:binning {:strategy :num-bins, :num-bins 50}}]]})}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (doseq [f [#'lib/returned-columns
+                 #'lib/breakoutable-columns]]
+        (testing f
+          (is (= ["Total: 10 bins" "Total: 50 bins" "Count"]
+                 (map :display-name (f query -1))))
+          (testing "with an additional stage"
+            (is (= ["Total: 10 bins" "Total: 50 bins" "Count"]
+                   (map :display-name (f (lib/append-stage query) -1)))))))
+      (testing "Display name in column groups"
+        (let [groups (lib/group-columns (lib/breakoutable-columns query))
+              group  (m/find-first #(= (:display-name (lib/display-info query %)) "Q1")
+                                   groups)]
+          (assert (some? group))
+          (testing "binning info needs to get propagated for this to work correctly"
+            (is (=? [{:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 10}}
+                     {:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
+                     {:name "count"}]
+                    (lib/columns-group-columns group))))
+          (is (= ["Total: 10 bins"
+                  "Total: 50 bins"
+                  "Count"]
+                 (map #(:display-name (lib/display-info query %))
+                      (lib/columns-group-columns group)))))))))
+
+(deftest ^:parallel propagate-binning-display-names-notebook-test
+  (testing "Test this stuff the same way this stuff is tested in the Cypress e2e notebook tests"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id            1
+                        :name          "Q1"
+                        :dataset-query (lib.tu.macros/mbql-query orders
+                                         {:aggregation [[:count]]
+                                          :breakout    [[:field %total {:binning {:strategy :num-bins, :num-bins 10}}]
+                                                        [:field %total {:binning {:strategy :num-bins, :num-bins 50}}]]})}]})]
+      ;; `lib.tu.notebook` functions will throw if they can't find columns with these display names
+      (is (-> (lib/query mp (lib.metadata/card mp 1))
+              (lib/aggregate (lib/count))
+              (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 10 bins"} {})
+              (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 50 bins"} {}))))))

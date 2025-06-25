@@ -453,10 +453,7 @@
                                                      :binning       {:strategy :default}}]]})}]})
           query (lib/query mp {:type :query, :database (meta/id), :query {:source-table "card__1"}})
           expected {:base-type                        :type/Text
-                    ;; not 100% sure which is the 'desired' answer here -- "C → Name: Auto binned: Month" comes from
-                    ;; the source model, but we don't currently propagate the name in that case because it includes
-                    ;; `→`.
-                    :display-name                     "C → Name: Month" #_"C → Name: Auto binned: Month"
+                    :display-name                     "C → Name: Auto binned: Month"
                     :effective-type                   :type/Text
                     :fingerprint                      map?
                     :id                               (meta/id :categories :name)
