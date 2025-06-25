@@ -17,7 +17,7 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "./components/Metabot";
-import { FIXED_METABOT_IDS } from "./constants";
+import { FIXED_METABOT_IDS, METABOT_ERR_MSG } from "./constants";
 import { MetabotProvider } from "./context";
 import {
   type MetabotState,
@@ -192,9 +192,7 @@ describe("metabot-streaming", () => {
       await enterChatMessage("Who is your favorite?");
 
       const lastMessage = await lastChatMessage();
-      expect(lastMessage).toHaveTextContent(
-        /I'm currently offline, try again later./,
-      );
+      expect(lastMessage).toHaveTextContent(METABOT_ERR_MSG.agentOffline);
       expect(
         within(lastMessage!).queryByTestId("metabot-chat-message-retry"),
       ).not.toBeInTheDocument();
@@ -232,7 +230,7 @@ describe("metabot-streaming", () => {
       await enterChatMessage("Who is your favorite?");
 
       expect(await lastChatMessage()).toHaveTextContent(
-        /I'm currently offline, try again later./,
+        METABOT_ERR_MSG.agentOffline,
       );
       expect(await input()).toHaveValue("Who is your favorite?");
     });
@@ -244,7 +242,7 @@ describe("metabot-streaming", () => {
       await enterChatMessage("Who is your favorite?");
 
       expect(await lastChatMessage()).toHaveTextContent(
-        /Something went wrong, try again./,
+        METABOT_ERR_MSG.default,
       );
       expect(await input()).toHaveValue("Who is your favorite?");
     });
@@ -256,7 +254,7 @@ describe("metabot-streaming", () => {
       await enterChatMessage("Who is your favorite?");
 
       expect(await lastChatMessage()).toHaveTextContent(
-        /Something went wrong, try again./,
+        METABOT_ERR_MSG.default,
       );
       expect(await input()).toHaveValue("Who is your favorite?");
     });

@@ -6,13 +6,14 @@ import { useMetabotContext } from "metabase/metabot";
 
 import {
   type MetabotPromptSubmissionResult,
-  getActiveToolCall,
+  getAgentErrorMessages,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
   getMetabotVisible,
+  getToolCalls,
   getUseStreaming,
   resetConversation as resetConversationAction,
   retryPrompt,
@@ -29,6 +30,9 @@ export const useMetabotAgent = () => {
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
     typeof getMessages
+  >;
+  const errorMessages = useSelector(getAgentErrorMessages as any) as ReturnType<
+    typeof getAgentErrorMessages
   >;
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
@@ -114,6 +118,7 @@ export const useMetabotAgent = () => {
       typeof getMetabotVisible
     >,
     messages,
+    errorMessages,
     lastAgentMessages: useSelector(
       getLastAgentMessagesByType as any,
     ) as ReturnType<typeof getLastAgentMessagesByType>,
@@ -125,8 +130,8 @@ export const useMetabotAgent = () => {
     startNewConversation,
     submitInput,
     isDoingScience: isProcessing,
-    activeToolCall: useSelector(getActiveToolCall as any) as ReturnType<
-      typeof getActiveToolCall
+    toolCalls: useSelector(getToolCalls as any) as ReturnType<
+      typeof getToolCalls
     >,
     useStreaming: useSelector(getUseStreaming as any) as ReturnType<
       typeof getUseStreaming
