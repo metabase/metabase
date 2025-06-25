@@ -74,22 +74,22 @@
 (mu/defn configuration :- [:or ::action-configuration [:map [:status ms/PositiveInt]]]
   "Returns configuration needed for a given action."
   [{:keys [action-id action-kw inner-action] :as action}
-   scope]
-  ;; TODO: Chris: we can't rely on getting table-id from scope we should use `(apply-mapping action {} [{}])`
+   scope
+   input]
   (if (false? (:configurable action))
     {:status 400, :body "Cannot configure this action"}
     (cond
       ;; Eventually will be put inside a nicely typed :configuration key
       (:param-map action)
       ;; Dynamically incorporate any new options added since we last saved our configuration.
-      (combine-configurations (configuration-for-pending-action action) (configuration (dissoc action :param-map) scope))
+      (combine-configurations (configuration-for-pending-action action)
+                              (configuration (dissoc action :param-map) scope input))
 
       (pos-int? action-id)
       (configuration-for-saved-action action-id)
 
       (and action-kw (isa? action-kw :table.row/common))
-      ;; TODO eventually we will just get the table-id from having applied the mapping, which supports nesting etc
-      (configuration-for-table-action (:table-id scope) action-kw)
+      (configuration-for-table-action (:table-id input (:table-id scope)) action-kw)
 
       inner-action
       (let [action-id (:action-id inner-action)
@@ -99,7 +99,7 @@
           (configuration-for-saved-action action-id)
           (and action-kw (isa? action-kw :table.row/common))
           ;; TODO remove assumption that all primitives are table actions
-          (configuration-for-table-action (:table-id scope) action-kw)
+          (configuration-for-table-action (:table-id input (:table-id scope)) action-kw)
           :else (ex-info "Not a supported row action" {:status-code 500 :scope scope :unified action})))
 
       ;; TODO support data-grid.row and model.row actions (not important yet)

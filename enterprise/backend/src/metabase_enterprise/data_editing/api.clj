@@ -386,7 +386,10 @@
              ;; I don't think the FE can send a value for ask-user, but our tests do it...
              "ask-user" (assoc acc k (if (contains? params k) override (:value v)))
              "constant" (assoc acc k (or override (:value v)))
-             "row-data" (assoc acc k (or override (get @row (:sourceValueTarget v))))
+             ;; Hack for getting partially mapped data for /configure
+             "row-data" (if-not (seq input)
+                          acc
+                          (assoc acc k (or override (get @row (:sourceValueTarget v)))))
              ;; no mapping? omit the key
              nil acc)))
        {}
@@ -534,8 +537,10 @@
      {}
      ;; TODO pour some malli on me
      {:keys [action_id scope]}]
-    (let [scope (actions/hydrate-scope scope)]
-      (data-editing.configure/configuration (fetch-unified-action scope action_id) scope))))
+    (let [scope   (actions/hydrate-scope scope)
+          unified (fetch-unified-action scope action_id)
+          input   (first (apply-mapping-nested unified nil [nil]))]
+      (data-editing.configure/configuration unified scope input))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/data-editing routes."
