@@ -224,6 +224,24 @@ databaseChangeLog:
                   defaultValueBoolean: true
                   constraints:
                     nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the tenant was updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp of when the tenant was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: attributes
+                  type: ${text.type}
+                  remarks: JSON object containing custom tenant attributes
+                  constraints:
+                    nullable: true
 
   - changeSet:
       id: v56.2025-06-20T11:34:30
@@ -258,6 +276,7 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.app_db.custom_migrations.MoveExistingAtSymbolUserAttributes"
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

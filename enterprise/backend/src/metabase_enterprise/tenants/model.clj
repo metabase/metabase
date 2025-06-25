@@ -2,11 +2,16 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (methodical/defmethod t2/table-name :model/Tenant [_model] :tenant)
+
+(t2/deftransforms :model/Tenant
+  {:attributes mi/transform-json-no-keywordization})
 
 (def Slug
   "The malli schema for a tenant's slug"
@@ -27,7 +32,8 @@
                                      [:= :name n]]}))
 
 (doto :model/Tenant
-  (derive :metabase/model))
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Tenant :member_count]
   [_model k tenants]
@@ -45,3 +51,15 @@
           (into {})))
    :id
    {:default 0}))
+
+(def Attributes
+  "Attributes attached to a tenant that will be passed down to users in the tenant."
+  [:map-of
+   [:and
+    (mu/with-api-error-message
+     ms/KeywordOrString
+     (deferred-tru "attribute keys must be a keyword or string"))
+    (mu/with-api-error-message
+     [:fn (fn [k] (re-matches #"^(?!@).*" (name k)))]
+     (deferred-tru "attribute keys must not start with `@`"))]
+   :any])
