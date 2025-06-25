@@ -500,8 +500,14 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
   });
 
   it("should show the editor when switching from existing question to new question (metabase#60075)", () => {
-    const TestComponent = () => {
-      const [questionId, setQuestionId] = useState<string | number>(1);
+    const TestComponent = ({
+      initialQuestionId,
+    }: {
+      initialQuestionId: string | number;
+    }) => {
+      const [questionId, setQuestionId] = useState<string | number>(
+        initialQuestionId,
+      );
 
       return (
         <Box>
@@ -511,8 +517,8 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       );
     };
 
-    cy.get<number>("@questionId").then(() => {
-      mountSdkContent(<TestComponent />);
+    cy.get<number>("@questionId").then((questionId) => {
+      mountSdkContent(<TestComponent initialQuestionId={questionId} />);
 
       cy.log("shows an existing question initially");
       getSdkRoot().within(() => {
