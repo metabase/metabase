@@ -131,7 +131,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("/api/dataset").as("dataset");
-    // H.setTokenFeatures("all");
+    H.setTokenFeatures("all");
   });
 
   describe("dashcards without click behavior", () => {
