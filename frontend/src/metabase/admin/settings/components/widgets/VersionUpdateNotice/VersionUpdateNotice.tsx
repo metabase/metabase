@@ -1,10 +1,10 @@
 import cx from "classnames";
 import { c, t } from "ttag";
 
-import { getCurrentVersion } from "metabase/admin/settings/selectors";
+import { getCurrentVersion } from "metabase/admin/app/selectors";
 import { useGetVersionInfoQuery } from "metabase/api";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";

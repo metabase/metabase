@@ -1702,3 +1702,86 @@
         (testing description
           (is (= ["Products" "Products_II"]
                  (map :alias (lib/joins new-query)))))))))
+
+(deftest ^:parallel replaced-join-gets-updated-alias-even-with-fks-to-same-field-test
+  (testing "replaced join gets replaced alias even if the replaced fk points to the same field (#40676)"
+    (let [orig-query (-> (lib/query meta/metadata-provider (meta/table-metadata :ic/reports))
+                         (lib/join (lib/join-clause (meta/table-metadata :ic/accounts)
+                                                    [(lib/= (meta/field-metadata :ic/reports :created-by)
+                                                            (meta/field-metadata :ic/accounts :id))])))
+          [orig-join] (lib/joins orig-query)
+          ;; This simulates how the FE updates the join via lib/with-join-conditions and lib/replace-clause.
+          new-query  (lib/replace-clause orig-query orig-join (lib/with-join-conditions
+                                                               orig-join
+                                                               [(lib/= (meta/field-metadata :ic/reports :updated-by)
+                                                                       (meta/field-metadata :ic/accounts :id))]))
+          [new-join] (lib/joins new-query)
+          id->breakout-name (fn [query id]
+                              (->> query
+                                   lib/breakoutable-columns
+                                   (m/find-first #(= id (:id %)))
+                                   (lib/display-info query)
+                                   :long-display-name))
+          orig-name  (id->breakout-name orig-query (meta/id :ic/accounts :name))
+          new-name   (id->breakout-name new-query (meta/id :ic/accounts :name))]
+      (testing "join gets correct join alias"
+        (is (= "IC Accounts - Created By" (:alias orig-join)))
+        (is (= "IC Accounts - Updated By" (:alias new-join))))
+      (testing "breakoutable columns have correct long display name"
+        (is (= "IC Accounts - Created By → Name" orig-name))
+        (is (= "IC Accounts - Updated By → Name" new-name))))))
+
+(deftest ^:parallel stale-clauses-test-unrelated-refs-are-stable
+  (testing "deleting eg. an aggregation should not break a downstream ref to a breakout (#59441)"
+    (let [base1  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                     (lib/join (meta/table-metadata :products))
+                     (lib/aggregate (lib/count))
+                     (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+          cols   (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          base2  (-> base1
+                     (lib/breakout (get cols "Products__CATEGORY"))           ; Explicitly joined
+                     (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE")) ; Implicitly joined
+                     lib/append-stage)
+          [category] (lib/visible-columns base2)
+          ;; Adding an expression based on one of the breakouts.
+          query      (lib/expression base2 "WidgetOrNah" (lib/case [[(lib/= category "Widget") "Widget!"]] "Nah"))
+          [cnt sum]  (lib/aggregations query 0)]
+      (is (=? [:count {}]
+              cnt))
+      (is (=? [:sum {} [:field {} (meta/id :orders :subtotal)]]
+              sum))
+      (is (=? (update-in query [:stages 0 :aggregation] (comp vector first))
+              (lib/remove-clause query 0 sum)))
+      (is (=? (update-in query [:stages 0 :aggregation] (comp vec rest))
+              (lib/remove-clause query 0 cnt))))))
+
+(deftest ^:parallel stale-clauses-test-no-capture-of-later-aggregations
+  (testing "deleting an aggregation in stage 0 should not delete refs to a similar aggregation in stage 1"
+    (let [base1                     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                        (lib/join (meta/table-metadata :products))
+                                        (lib/aggregate (lib/count))
+                                        (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+          cols                      (m/index-by :lib/desired-column-alias (lib/breakoutable-columns base1))
+          base2                     (-> base1
+                                        (lib/breakout (get cols "Products__CATEGORY"))             ; Explicitly joined
+                                        (lib/breakout (get cols "PEOPLE__via__USER_ID__SOURCE"))   ; Implicitly joined
+                                        lib/append-stage)
+          [category _source count0] (lib/visible-columns base2)
+          ;; Adding a second stage with: a filter on stage 0's count, its own count aggregation, and order-by
+          ;; (stage 1's) count, descending.
+          base3                     (-> base2
+                                        (lib/filter (lib/> count0 100))
+                                        (lib/aggregate (lib/count))
+                                        (lib/breakout category))
+          [_cat1 cnt1]              (lib/orderable-columns base3)
+          query                     (lib/order-by base3 cnt1 :desc)
+          [cnt0]                    (lib/aggregations query 0)]
+      (is (=? [:count {}]
+              cnt0))
+      ;; Deleting the :count aggregation from stage 0 should:
+      ;; - Removing the filter on stage 1, which references the :count from stage 0.
+      ;; - Preserve the order-by on stage 1, which references the :count from stage 1.
+      (is (=? (-> query
+                  (update-in [:stages 0 :aggregation] (comp vec rest))
+                  (update-in [:stages 1] dissoc :filters))
+              (lib/remove-clause query 0 cnt0))))))

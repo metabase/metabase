@@ -135,14 +135,14 @@
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.1.0"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
-  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.80"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.80"}
+  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.81"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.81"}
   org.clj-commons/claypoole                 {:mvn/version "1.2.2"}              ; Threadpool tools for Clojure
   org.clj-commons/dirigiste                 {:mvn/version "1.0.4"}              ; Instrumented object pooling
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
                                              :exclusions [org.jsoup/jsoup]}
   org.clojars.pntblnk/clj-ldap              {:mvn/version "0.0.17"}             ; LDAP client
-  org.clojure/clojure                       {:mvn/version "1.12.0"}
+  org.clojure/clojure                       {:mvn/version "1.12.1"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
   org.clojure/core.logic                    {:mvn/version "1.1.0"}              ; optimized pattern matching library for Clojure
@@ -161,9 +161,9 @@
   org.clojure/tools.namespace               {:mvn/version "1.5.0"}
   org.clojure/tools.reader                  {:mvn/version "1.5.2"}
   org.clojure/tools.trace                   {:mvn/version "0.8.0"}              ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.21"}
-  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.21"}
-  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.21"}
+  org.eclipse.jetty/jetty-server            {:mvn/version "12.0.22"}
+  org.eclipse.jetty/jetty-unixdomain-server {:mvn/version "12.0.22"}
+  org.eclipse.jetty.ee9/jetty-ee9-servlet   {:mvn/version "12.0.22"}
   org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server {:mvn/version "12.0.21"}
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.polyglot/js-community         {:mvn/version "24.2.1" :extension "pom"} ; JavaScript engine
@@ -188,8 +188,8 @@
   redux/redux                               {:git/url "https://github.com/metabase/redux"
                                              :sha "4a37feaf817a2a6b5ef688c927f6fd4375964433"}
   riddley/riddley                           {:mvn/version "0.2.0"}              ; code walking lib -- used interally by Potemkin, manifold, etc.
-  ring/ring-core                            {:mvn/version "1.14.1"}             ; HTTP abstraction
-  ring/ring-jetty-adapter                   {:mvn/version "1.14.1"              ; Ring adapter for Jetty
+  ring/ring-core                            {:mvn/version "1.14.2"}             ; HTTP abstraction
+  ring/ring-jetty-adapter                   {:mvn/version "1.14.2"              ; Ring adapter for Jetty
                                              :exclusions  [org.eclipse.jetty/jetty-server
                                                            org.eclipse.jetty/jetty-unixdomain-server
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
@@ -266,7 +266,7 @@
                                   :exclusions  [org.clojure/clojure
                                                 org.clojure/clojurescript]} ; lets you write test fixtures that are clear, concise, and easy to maintain (clojure.spec)
     rewrite-clj/rewrite-clj      {:mvn/version "1.2.50"}                    ; clojure source parsing and rewriting
-    ring/ring-devel              {:mvn/version "1.14.1"}                    ; reload clojure files on the fly
+    ring/ring-devel              {:mvn/version "1.14.2"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.1"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
    :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test"]
@@ -785,7 +785,7 @@
   ;; get the H2 shell with clojure -X:dev:h2
   :h2
   {:extra-paths ["dev/src"]
-   :exec-fn     dev.h2-shell/shell
+   :exec-fn     dev.h2/shell
    :jvm-opts    ["-Dfile.encoding=UTF-8"]}
 
   :generate-automagic-dashboards-pot

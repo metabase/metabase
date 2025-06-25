@@ -21,7 +21,7 @@ describe("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
     H.restore();
     cy.signIn("admin", { skipCache: true });
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
     enableJwtAuth();
 
     const textCard = H.getTextCardDetails({ col: 16, text: "Text text card" });

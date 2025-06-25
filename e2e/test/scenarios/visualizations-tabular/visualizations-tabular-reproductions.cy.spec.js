@@ -1466,3 +1466,45 @@ WHERE NOT (
       .should("be.visible");
   });
 });
+
+describe("issue 55673", { tags: "@flaky" }, () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+    H.openOrdersTable();
+  });
+
+  it("should be able to close a header popover using Escape (metabase#55673)", () => {
+    H.tableHeaderClick("Product ID");
+    cy.findByTestId("click-actions-view").should("be.visible");
+
+    cy.focused().should(
+      "have.attr",
+      "data-testid",
+      "click-actions-sort-control-sort.ascending",
+    );
+    cy.realPress(["Escape"]);
+    cy.findByTestId("click-actions-view").should("not.exist");
+  });
+});
+
+describe("issue 55637", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show column metadata popovers when header cell is clicked (metabase#55637)", () => {
+    H.openOrdersTable();
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("exist");
+
+    H.tableHeaderColumn("ID").click();
+
+    H.tableHeaderColumn("ID").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+
+    H.tableHeaderColumn("Tax").realHover();
+    cy.findByTestId("column-info").should("not.exist");
+  });
+});

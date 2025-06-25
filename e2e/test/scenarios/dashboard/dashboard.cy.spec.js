@@ -1212,7 +1212,7 @@ describe("scenarios > dashboard", () => {
     cy.findByTestId("dashcard").findByText("Orders");
   });
 
-  describe("warn before leave", () => {
+  describe("warn before leave", { tags: "@flaky" }, () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
     });
@@ -1586,7 +1586,7 @@ describe("scenarios > dashboard > caching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   /**

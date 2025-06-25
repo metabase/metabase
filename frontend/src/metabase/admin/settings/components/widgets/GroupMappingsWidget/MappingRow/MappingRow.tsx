@@ -9,7 +9,7 @@ import type {
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import { ConfirmModal } from "metabase/components/ConfirmModal";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { isAdminGroup } from "metabase/lib/groups";

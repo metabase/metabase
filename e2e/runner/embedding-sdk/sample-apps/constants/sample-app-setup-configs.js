@@ -3,7 +3,7 @@ const BRANCH_NAME = "main"; // Affects the `local` testing only. On CI is passed
 const BASE_ENV = {
   WATCH:
     process.env.SAMPLE_APP_ENVIRONMENT === "development" ? "true" : "false",
-  PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_ALL_FEATURES_TOKEN ?? "",
+  PREMIUM_EMBEDDING_TOKEN: process.env.CYPRESS_MB_ALL_FEATURES_TOKEN ?? "",
   MB_PORT: 4300,
   CLIENT_PORT: 4400,
   AUTH_PROVIDER_PORT: 4500,

@@ -1,5 +1,7 @@
 ---
 title: "Configuration overview"
+redirect_from:
+  - /docs/latest/configuring-metabase
 ---
 
 # Configuration overview

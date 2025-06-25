@@ -131,7 +131,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("/api/dataset").as("dataset");
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   describe("dashcards without click behavior", () => {
@@ -1376,7 +1376,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         })();
 
         cy.get("aside").button("Done").click();
-        H.saveDashboard({ waitMs: 250 });
+        H.saveDashboard({ waitMs: 500 });
 
         (function testDashboardDestinationClick() {
           cy.log("it handles 'Count' column click");
@@ -1384,10 +1384,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           getTableCell(COLUMN_INDEX.COUNT)
             .should("have.text", `Count: ${POINT_COUNT}`)
             .click();
-          cy.findAllByTestId("field-set")
-            .should("have.length", 2)
-            .should("contain.text", POINT_COUNT)
-            .should("contain.text", POINT_CREATED_AT_FORMATTED);
+
           cy.get("@targetDashboardId").then((targetDashboardId) => {
             cy.location().should(({ pathname, search }) => {
               expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
@@ -1396,6 +1393,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               );
             });
           });
+
+          cy.findAllByTestId("field-set")
+            .should("have.length", 2)
+            .should("contain.text", POINT_COUNT)
+            .should("contain.text", POINT_CREATED_AT_FORMATTED);
         })();
 
         cy.go("back");
