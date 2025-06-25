@@ -179,8 +179,12 @@
    ;; Noteworthy: If kvs is empty, acts as identity.
    {"$project" {"path" {"$cond" [{"$and" ["$path" "$kvs.k"]}
                                  {"$concat" ["$path" "." "$kvs.k"]}
+                                 ;; !!!
                                  {"$ifNull" ["$kvs.k" "$path"]}]}
-                "val" {"$ifNull" ["$kvs.v" "$val"]}
+                "val" #_{"$ifNull" ["$kvs.v" "$val"]}
+                {"$expr" {"$cond" [{"$and" ["$kvs.k"]}
+                                   "$kvs.v"
+                                   "$val"]}}
                 ;; this is super unfortunate
                 "indices" {"$cond" [{"$ne" ["$index" nil]}
                                     {"$concatArrays" ["$indices" ["$index"]]}
