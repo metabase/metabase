@@ -4,8 +4,10 @@ import { IndexRedirect, Route } from "react-router";
 import {
   setupCardDataset,
   setupDatabasesEndpoints,
+  setupFieldEndpoints,
   setupFieldsValuesEndpoints,
   setupSearchEndpoints,
+  setupTableEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -26,6 +28,8 @@ import {
   createOrdersProductIdField,
   createOrdersTable,
   createOrdersUserIdField,
+  createPeopleIdField,
+  createPeopleTable,
   createProductsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
@@ -337,7 +341,7 @@ describe("DataModel", () => {
       expect(popover.queryByText("Currency")).not.toBeInTheDocument();
     });
 
-    it.only("should show the foreign key target for foreign keys", async () => {
+    it("should show the foreign key target for foreign keys", async () => {
       await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
@@ -356,6 +360,20 @@ describe("DataModel", () => {
       await userEvent.clear(input);
       await userEvent.type(input, "Products");
       expect(popover.getByText("Products → ID")).toBeInTheDocument();
+    });
+
+    it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
+      await setup();
+      setupTableEndpoints(createPeopleTable());
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_USER_ID_FIELD.display_name);
+
+      const input = getFieldSemanticTypeFkTargetInput();
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveValue("");
+      expect(input).toHaveAttribute("placeholder", "Field access denied");
     });
   });
 });

@@ -82,6 +82,12 @@ export const ORDER_PRODUCT_ID_VALUES: GetFieldValuesResponse = {
   has_more_values: false,
 };
 
+export const ORDER_USER_ID_VALUES: GetFieldValuesResponse = {
+  field_id: ORDERS.USER_ID,
+  values: [],
+  has_more_values: false,
+};
+
 export const ORDER_QUANTITY_VALUES: GetFieldValuesResponse = {
   field_id: ORDERS.QUANTITY,
   values: Array.from({ length: 101 }, (_, i) => [i]),
@@ -225,6 +231,7 @@ export const PEOPLE_STATE_VALUES: GetFieldValuesResponse = {
 
 export const SAMPLE_DB_FIELD_VALUES = [
   ORDER_PRODUCT_ID_VALUES,
+  ORDER_USER_ID_VALUES,
   ORDER_QUANTITY_VALUES,
   ORDER_DISCOUNT_VALUES,
   PRODUCT_TITLE_VALUES,
