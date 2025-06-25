@@ -6,7 +6,6 @@ import * as Lib from "metabase-lib";
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
-import { updateTemporalBucketing } from "../utils";
 
 import S from "./JoinConditionDraft.module.css";
 import { getDefaultJoinConditionOperator } from "./utils";
@@ -43,20 +42,27 @@ export function JoinConditionDraft({
   );
   const [lhsExpression, setLhsExpression] = useState<Lib.ExpressionClause>();
   const [rhsExpression, setRhsExpression] = useState<Lib.ExpressionClause>();
+  const [lhsTemporalBucket, setLhsTemporalBucket] = useState<Lib.Bucket | null>(
+    null,
+  );
+  const [rhsTemporalBucket, setRhsTemporalBucket] = useState<Lib.Bucket | null>(
+    null,
+  );
   const [isLhsOpened, setIsLhsOpened] = useState(true);
   const [isRhsOpened, setIsRhsOpened] = useState(false);
 
   const handleColumnChange = (
     lhsExpression: Lib.ExpressionClause | undefined,
     rhsExpression: Lib.ExpressionClause | undefined,
-    newBucket: Lib.Bucket | null,
+    lhsTemporalBucket: Lib.Bucket | null,
+    rhsTemporalBucket: Lib.Bucket | null,
   ) => {
     if (lhsExpression != null && rhsExpression != null) {
-      const newCondition = updateTemporalBucketing(
+      const newCondition = Lib.joinConditionUpdateTemporalBucketing(
         query,
         stageIndex,
         Lib.joinConditionClause(operator, lhsExpression, rhsExpression),
-        newBucket,
+        lhsTemporalBucket ?? rhsTemporalBucket,
       );
       onChange(newCondition);
     }
@@ -64,20 +70,32 @@ export function JoinConditionDraft({
 
   const handleLhsExpressionChange = (
     newLhsExpression: Lib.ExpressionClause,
-    newBucket: Lib.Bucket | null,
+    newLhsTemporalBucket: Lib.Bucket | null,
   ) => {
     setLhsExpression(newLhsExpression);
+    setLhsTemporalBucket(newLhsTemporalBucket);
     setIsRhsOpened(true);
     onLhsExpressionChange?.(newLhsExpression);
-    handleColumnChange(newLhsExpression, rhsExpression, newBucket);
+    handleColumnChange(
+      newLhsExpression,
+      rhsExpression,
+      newLhsTemporalBucket,
+      rhsTemporalBucket,
+    );
   };
 
   const handleRhsExpressionChange = (
     newRhsExpression: Lib.ExpressionClause,
-    newBucket: Lib.Bucket | null,
+    newRhsTemporalBucket: Lib.Bucket | null,
   ) => {
     setRhsExpression(newRhsExpression);
-    handleColumnChange(lhsExpression, newRhsExpression, newBucket);
+    setRhsTemporalBucket(newRhsTemporalBucket);
+    handleColumnChange(
+      lhsExpression,
+      newRhsExpression,
+      lhsTemporalBucket,
+      newRhsTemporalBucket,
+    );
   };
 
   useLayoutEffect(() => {

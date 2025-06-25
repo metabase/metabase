@@ -24,7 +24,7 @@ interface JoinConditionColumnPickerProps {
   isReadOnly: boolean;
   onChange: (
     newExpression: Lib.ExpressionClause,
-    newBucket: Lib.Bucket | null,
+    newTemporalBucket: Lib.Bucket | null,
   ) => void;
   onOpenChange: (isOpened: boolean) => void;
 }
@@ -152,7 +152,7 @@ interface JoinColumnDropdownProps {
   isLhsExpression: boolean;
   onChange: (
     newExpression: Lib.ExpressionClause,
-    newBucket: Lib.Bucket | null,
+    newTemporalBucket: Lib.Bucket | null,
   ) => void;
   onClose: () => void;
 }

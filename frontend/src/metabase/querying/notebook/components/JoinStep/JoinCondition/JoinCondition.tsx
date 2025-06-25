@@ -6,7 +6,6 @@ import * as Lib from "metabase-lib";
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
-import { updateTemporalBucketing } from "../utils";
 
 import S from "./JoinCondition.module.css";
 
@@ -51,8 +50,14 @@ export function JoinCondition({
 
   const syncTemporalBucket = (
     condition: Lib.JoinCondition,
-    newBucket: Lib.Bucket | null,
-  ) => updateTemporalBucketing(query, stageIndex, condition, newBucket);
+    temporalBucket: Lib.Bucket | null,
+  ) =>
+    Lib.joinConditionUpdateTemporalBucketing(
+      query,
+      stageIndex,
+      condition,
+      temporalBucket,
+    );
 
   const handleOperatorChange = (newOperator: Lib.JoinConditionOperator) => {
     const newCondition = createCondition(
@@ -65,26 +70,26 @@ export function JoinCondition({
 
   const handleLhsExpressionChange = (
     newLhsExpression: Lib.ExpressionClause,
-    newBucket: Lib.Bucket | null,
+    newLhsTemporalBucket: Lib.Bucket | null,
   ) => {
     const newCondition = createCondition(
       operator,
       newLhsExpression,
       rhsExpression,
     );
-    onChange(syncTemporalBucket(newCondition, newBucket));
+    onChange(syncTemporalBucket(newCondition, newLhsTemporalBucket));
   };
 
   const handleRhsExpressionChange = (
     newRhsExpression: Lib.ExpressionClause,
-    newBucket: Lib.Bucket | null,
+    newRhsTemporalBucket: Lib.Bucket | null,
   ) => {
     const newCondition = createCondition(
       operator,
       lhsExpression,
       newRhsExpression,
     );
-    onChange(syncTemporalBucket(newCondition, newBucket));
+    onChange(syncTemporalBucket(newCondition, newRhsTemporalBucket));
   };
 
   return (
