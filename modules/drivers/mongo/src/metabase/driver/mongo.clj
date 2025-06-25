@@ -168,14 +168,26 @@
   1000)
 
 (def ^:private unwind-stages
-  [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]}
+  [;; Takes in dcouments of form {"path" ... "val"...}. If the val contains object, expands it to "kvs" array of form
+   ;; [[key value]...], else nil.
+   {"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]}
                                   {"$objectToArray" "$val"}
                                   nil]}}}
-   {"$unwind" {"path" "$kvs" "preserveNullAndEmptyArrays" true}}
+   ;; Takes in documents of form {"path ... "val" ... "kvs" ...}. _Swaps_ the input document for set of documents
+   ;; each for every kvs element. If the kvs is empty, acts as idenity.
+   {"$unwind" {"path" "$kvs" "preserveNullAndEmptyArrays" true "includeArrayIndex" "index"}}
+   ;; Noteworthy: If kvs is empty, acts as identity.
    {"$project" {"path" {"$cond" [{"$and" ["$path" "$kvs.k"]}
                                  {"$concat" ["$path" "." "$kvs.k"]}
                                  {"$ifNull" ["$kvs.k" "$path"]}]}
-                "val" {"$ifNull" ["$kvs.v" "$val"]}}}])
+                "val" {"$ifNull" ["$kvs.v" "$val"]}
+                ;; this is super unfortunate
+                "indices" {"$cond" [{"$ne" ["$index" nil]}
+                                    {"$concatArrays" ["$indices" ["$index"]]}
+                                    "$indices"]}}}
+   ;; Following must have separate stage because it is dependent on adjusted path -- this does not need to be here!!!!
+   ;; WIP trying ensure in the groupping
+   ])
 
 (defn- describe-table-pipeline
   "id always present? as contained in every document, should sort also by name!!! TODO: ensure key!!!"
@@ -191,8 +203,9 @@
              {"coll" collection-name
               "pipeline" [{"$sort" {"_id" -1}}
                           {"$limit" end-n}]}}
-                      ;; TODO: path may be redundant
+            ;; TODO: path may be redundant
             {"$project" {"path" {"$literal" nil}
+                         "indices" {"$literal" []}
                          "val" "$$ROOT"}}]
            ;; Unwind phase: depth first document traversal
            ;; TODO: add "must be included" into unwind-stages
@@ -200,18 +213,24 @@
            ;; Results phase
            ;; TODO: Consider ignoring type with most occurrences. Instead machinery as with nested field columns
            ;;       should be introduced.
-           [{"$group" {"_id" {"path" "$path"
-                              "type" {"$type" "$val"}}
-                       "count" {"$count" {}}}}
-            ;; TODO: Double check. Eg. leaf fields of object type could be filtered out prior groupping.
-            {"$group" {"_id" "$_id.path"
+           [{"$group" {"_id" {"path"   "$path"
+                              "type"   {"$type" "$val"}
+                              "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
+                       "count" {"$count" {}}
+                       "indices" {"$min" "$indices"}}}
+            ;; Precondition is that ensure 1 and ensure 0 fields are disctinct
+            ;; Output: leafs
+            {"$group" {"_id"  "$_id.path"
                        "info" {"$top" {"sortBy" {"count" -1}
                                        "output" {"count" "$count"
-                                                 "type" "$_id.type"}}}}}
+                                                 "type" "$_id.type"
+                                                 "ensure" "$_id.ensure"
+                                                 "indices" "$indices"}}}}}
+            ;; I can project ensure here, not in the groupping
             ;; Sorting by _id ensures _id is present: not 100%, eg. all other fields named __xix
-            {"$sort" {"info.count" -1 "_id" 1}}
+            {"$sort" {"info.ensure" 1 "info.count" -1 "_id" 1}}
             {"$limit" leaf-limit}
-            {"$project" {"_id" 1 "type" "$info.type"}}
+            {"$project" {"_id" 1 "type" "$info.type" "indices" "$info.indices"}}
             {"$project" {"info" 0}}]])))
 
 ;;ok
@@ -260,14 +279,22 @@
                                           (ftree-set-type %2 "object")
                                           (assoc-in (conj %2 :visibility-type) :details-only))
                                      ftree parents-paths)
-                             (ftree-set-type leaf-path leaf-type)))))))
+                             (ftree-set-type leaf-path leaf-type)
+                             ;; hacking in the indices
+                             ((fn [ftree*]
+                                (reduce #(assoc-in %1 (conj (vec (%2 0)) :index) (%2 1))
+                                        ftree*
+                                        @(def bla (map vector
+                                                       ftree-paths
+                                                       (:indices dbfield))))))))))))
 
 (defn- ftree-prewalk
   [ftree f]
   (letfn [(sorted-children-paths
             [ftree* path]
             (->> (get-in ftree* (conj path :children))
-                 keys sort
+                ;; blah
+                 keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
                  (map (partial conj path :children))))
 
           (ftree-prewalk*
@@ -325,11 +352,12 @@
   [ftree]
   (letfn [(ftree->nested-fields*
             [ftree*]
-            (if (not (contains? ftree* :children))
-              ftree*
-              (-> ftree*
-                  (update :children (comp set (partial map ftree->nested-fields*) vals))
-                  (set/rename-keys {:children :nested-fields}))))]
+            (-> (if (not (contains? ftree* :children))
+                  ftree*
+                  (-> ftree*
+                      (update :children (comp set (partial map ftree->nested-fields*) vals))
+                      (set/rename-keys {:children :nested-fields})))
+                (dissoc :index)))]
     @(def rrr2 (:nested-fields (ftree->nested-fields* ftree)))))
 
 (defn- fetch-dbfields-rff
@@ -338,7 +366,7 @@
     ([] (transient []))
     ([r] (persistent! r))
     ([acc row]
-     (conj! acc (zipmap [:path :type] row) #_row))))
+     (conj! acc (zipmap [:path :type :indices] row) #_row))))
 
 (defn- fetch-dbfields
   [database table]
