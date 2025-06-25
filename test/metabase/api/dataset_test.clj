@@ -19,6 +19,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -364,6 +365,174 @@
                      [:error  [:= "You do not have permissions to run this query."]]]
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
+
+(deftest api-card-join-permissions-test
+  (testing "POST /api/dataset should error for card join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection {accessible-collection-id :id} {}
+                         :model/Collection {restricted-collection-id :id} {}]
+            ;; Grant read permissions only to the accessible collection
+            (perms/grant-collection-read-permissions! (perms-group/all-users) accessible-collection-id)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id accessible-collection-id
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}
+                           :model/Card {categories-card-id :id} {:collection_id restricted-collection-id
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:re  "You do not have permissions to view Card"]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-table join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Block all access to venues table
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :no)
+          ;; Allow access to categories table for the card
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-temp [:model/Card {categories-card-id :id} {:collection_id (u/the-id collection)
+                                                                 :dataset_query (mt/mbql-query categories
+                                                                                  {:fields [$id $name]
+                                                                                   :order-by [[:asc $id]]})}]
+              (let [join-query (mt/mbql-query venues
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" categories-card-id)
+                                           :alias "cat"
+                                           :condition [:= $category_id
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-source-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-as-source with table join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues table for the card
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          ;; Block all access to categories table
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :blocked)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-temp [:model/Card {venues-card-id :id} {:collection_id (u/the-id collection)
+                                                             :dataset_query (mt/mbql-query venues
+                                                                              {:fields [$id $name $category_id]
+                                                                               :order-by [[:asc $id]]
+                                                                               :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :categories)
+                                           :alias "cat"
+                                           :condition [:= [:field (mt/id :venues :category_id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-with-join-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-with-join to table permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Block all access to checkins table
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :checkins) :perms/view-data :blocked)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :checkins) :perms/create-queries :no)
+          ;; Allow access to venues and categories tables for the card with join
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query checkins
+                                 {:joins [{:fields :all
+                                           :source-table (format "card__%d" venues-with-join-card-id)
+                                           :alias "venues_card"
+                                           :condition [:= $venue_id
+                                                       [:field (mt/id :venues :id) {:base-type :type/Integer, :join-alias "venues_card"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
+
+(deftest api-card-with-join-source-table-join-permissions-test
+  (testing "POST /api/dataset should error for card-with-join as source with table join permission violations"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          ;; Allow access to venues and categories tables for the card with join
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
+          ;; Block all access to checkins table
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :checkins) :perms/view-data :blocked)
+          (data-perms/set-table-permission! (perms-group/all-users) (mt/id :checkins) :perms/create-queries :no)
+          (mt/with-temp [:model/Collection collection]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-temp [:model/Card {venues-with-join-card-id :id} {:collection_id (u/the-id collection)
+                                                                       :dataset_query (mt/mbql-query venues
+                                                                                        {:fields [$id $name $category_id]
+                                                                                         :joins [{:fields :all
+                                                                                                  :source-table (mt/id :categories)
+                                                                                                  :alias "cat"
+                                                                                                  :condition [:= $category_id
+                                                                                                              [:field (mt/id :categories :id) {:base-type :type/Integer, :join-alias "cat"}]]}]
+                                                                                         :order-by [[:asc $id]]
+                                                                                         :limit 5})}]
+              (let [join-query (mt/mbql-query nil
+                                 {:source-table (format "card__%d" venues-with-join-card-id)
+                                  :joins [{:fields :all
+                                           :source-table (mt/id :checkins)
+                                           :alias "checkins"
+                                           :condition [:= [:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                                       [:field (mt/id :checkins :venue_id) {:base-type :type/Integer, :join-alias "checkins"}]]}]
+                                  :limit 2})]
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/user-http-request :rasta :post "dataset" join-query)))))))))))
 
 (deftest ^:parallel compile-test
   (testing "POST /api/dataset/native"
