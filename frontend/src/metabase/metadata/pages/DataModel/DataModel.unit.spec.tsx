@@ -4,7 +4,12 @@ import {
   setupCardDataset,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
@@ -31,10 +36,10 @@ function setup({
   databases = [SAMPLE_DATABASE],
   params = DEFAULT_ROUTE_PARAMS,
 }: SetupOpts = {}) {
-  setupDatabasesEndpoints(databases);
+  setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
 
-  renderWithProviders(
+  return renderWithProviders(
     <Route path="admin/datamodel">
       <IndexRedirect to="database" />
       <Route path="database" component={DataModel} />
@@ -60,9 +65,18 @@ function setup({
 }
 
 describe("DataModel", () => {
-  it("should work", async () => {
+  beforeEach(() => {
+    // so the virtual list renders correctly in the tests
+    mockGetBoundingClientRect();
+  });
+
+  it("should show empty state by default", async () => {
     setup();
 
+    await waitFor(() => {
+      expect(screen.getByText(SAMPLE_DATABASE.name)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("link", { name: /Segments/ })).toBeInTheDocument();
     expect(
       screen.getByText("Start by selecting data to model"),
     ).toBeInTheDocument();
