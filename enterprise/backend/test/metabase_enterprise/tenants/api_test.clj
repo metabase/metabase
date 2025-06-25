@@ -181,3 +181,93 @@
         (is (not (active? other-user-id))))
       (testing "Now that the tenant is active, it's possible to reactivate a user"
         (mt/user-http-request :crowberto :put 200 (str "user/" other-user-id "/reactivate"))))))
+
+(deftest can-create-tenant-with-attributes
+  (testing "Can create tenant with valid attributes"
+    (mt/with-model-cleanup [:model/Tenant]
+      (let [tenant-data {:name "Tenant with Attributes"
+                         :slug "tenant-attrs"
+                         :attributes {"key1" "value1"
+                                      "key2" "value2"
+                                      "environment" "production"}}]
+        (mt/user-http-request :crowberto :post 200 "ee/tenants/" tenant-data)
+        (let [created-tenant (t2/select-one :model/Tenant :name "Tenant with Attributes")]
+          (is (some? created-tenant))
+          (is (= {"key1" "value1"
+                  "key2" "value2"
+                  "environment" "production"}
+                 (:attributes created-tenant)))))))
+
+  (testing "Can create tenant with keyword attributes (converted to strings)"
+    (mt/with-model-cleanup [:model/Tenant]
+      (let [tenant-data {:name "Tenant with Keyword Attrs"
+                         :slug "tenant-kw-attrs"
+                         :attributes {:region "us-east"
+                                      :tier "premium"}}]
+        (mt/user-http-request :crowberto :post 200 "ee/tenants/" tenant-data)
+        (let [created-tenant (t2/select-one :model/Tenant :name "Tenant with Keyword Attrs")]
+          (is (some? created-tenant))
+          ;; Keywords are converted to strings in the JSON storage
+          (is (= {"region" "us-east"
+                  "tier" "premium"}
+                 (:attributes created-tenant)))))))
+
+  (testing "Cannot create tenant with attributes starting with @"
+    (mt/with-model-cleanup [:model/Tenant]
+      (let [tenant-data {:name "Invalid Tenant"
+                         :slug "invalid-tenant"
+                         :attributes {"@system" "value"
+                                      "valid-key" "value"}}
+            response (mt/user-http-request :crowberto :post 400 "ee/tenants/" tenant-data)]
+        (is (contains? (:errors response) :attributes))
+        (is (contains? (:specific-errors response) :attributes))
+        (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))))))
+
+(deftest can-update-tenant-attributes
+  (testing "Can update tenant attributes via PUT"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant"
+                                           :slug "test-tenant"
+                                           :attributes {"initial" "value"}}]
+      (let [updated-attrs {"updated" "new-value"
+                           "environment" "staging"}
+            response (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id)
+                                           {:attributes updated-attrs})]
+        (is (= updated-attrs (:attributes (t2/select-one :model/Tenant :id id))))
+        (is (= {:id id
+                :name "Test Tenant"
+                :slug "test-tenant"
+                :is_active true
+                :member_count 0}
+               (dissoc response :attributes))))))
+
+  (testing "Can update extisting attributes"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 2"
+                                           :slug "test-tenant-2"
+                                           :attributes {"existing" "value"}}]
+      (let [new-attrs {"existing" "value2"
+                       "new-key" "new-value"}]
+        (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id)
+                              {:attributes new-attrs})
+        (is (= new-attrs (:attributes (t2/select-one :model/Tenant :id id)))))))
+
+  (testing "Can clear attributes by setting to empty map"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 3"
+                                           :slug "test-tenant-3"
+                                           :attributes {"to-be" "cleared"}}]
+      (mt/user-http-request :crowberto :put 200 (str "ee/tenants/" id)
+                            {:attributes {}})
+      (is (= {} (:attributes (t2/select-one :model/Tenant :id id))))))
+
+  (testing "Cannot update with attributes starting with @"
+    (mt/with-temp [:model/Tenant {id :id} {:name "Test Tenant 4"
+                                           :slug "test-tenant-4"
+                                           :attributes {"valid" "value"}}]
+      (let [invalid-attrs {"@system" "value"
+                           "valid-key" "value"}
+            response (mt/user-http-request :crowberto :put 400 (str "ee/tenants/" id)
+                                           {:attributes invalid-attrs})]
+        (is (contains? (:errors response) :attributes))
+        (is (contains? (:specific-errors response) :attributes))
+        (is (contains? (get-in response [:specific-errors :attributes]) (keyword "@system")))
+        ;; Original attributes should remain unchanged
+        (is (= {"valid" "value"} (:attributes (t2/select-one :model/Tenant :id id))))))))

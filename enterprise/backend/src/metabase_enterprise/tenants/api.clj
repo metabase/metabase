@@ -19,6 +19,7 @@
 
 (def ^:private CreateTenantArguments [:map {:closed true}
                                       [:name ms/NonBlankString]
+                                      [:attributes {:optional true} [:maybe tenant/Attributes]]
                                       [:slug Slug]])
 
 (defn create-tenant!
@@ -65,6 +66,7 @@
 (def ^:private UpdateTenantArguments
   [:map {:closed true}
    [:name {:optional true} [:maybe ms/NonBlankString]]
+   [:attributes {:optional true} [:maybe tenant/Attributes]]
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
 
 (mu/defn- update-tenant! [tenant-id :- ms/PositiveInt
