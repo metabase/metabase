@@ -961,13 +961,13 @@ describe("issue 31628", () => {
         /**
          * should truncate value and show value tooltip on hover
          */
-        const scalarContainer = cy.findByTestId("scalar-container");
+        const scalarContainer = () => cy.findByTestId("scalar-container");
 
-        scalarContainer.should(($element) =>
+        scalarContainer().should(($element) =>
           H.assertIsEllipsified($element[0]),
         );
         //TODO: Need to hover on the actual text, not just the container. This is a weird one
-        scalarContainer.realHover({ position: "bottom" });
+        scalarContainer().realHover({ position: "bottom" });
 
         cy.findByRole("tooltip").findByText("18,760").should("exist");
 
@@ -1000,12 +1000,12 @@ describe("issue 31628", () => {
         /**
          * should not truncate value and should not show value tooltip on hover
          */
-        const scalarContainer = cy.findByTestId("scalar-container");
+        const scalarContainer = () => cy.findByTestId("scalar-container");
 
-        scalarContainer.should(($element) =>
+        scalarContainer().should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
@@ -1017,10 +1017,10 @@ describe("issue 31628", () => {
         /**
          * should truncate title and show title tooltip on hover
          */
-        const scalarTitle = cy.findByTestId("scalar-title");
+        const scalarTitle = () => cy.findByTestId("scalar-title");
 
-        scalarTitle.should(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle.realHover();
+        scalarTitle().should(($element) => H.assertIsEllipsified($element[0]));
+        scalarTitle().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SCALAR_QUESTION.name)
@@ -1050,12 +1050,12 @@ describe("issue 31628", () => {
         /**
          * should not truncate value and should not show value tooltip on hover
          */
-        const scalarContainer = cy.findByTestId("scalar-container");
+        const scalarContainer = () => cy.findByTestId("scalar-container");
 
-        scalarContainer.should(($element) =>
+        scalarContainer().should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
@@ -1067,10 +1067,12 @@ describe("issue 31628", () => {
         /**
          * should not truncate title and should not show title tooltip on hover
          */
-        const scalarTitle = cy.findByTestId("scalar-title");
+        const scalarTitle = () => cy.findByTestId("scalar-title");
 
-        scalarTitle.should(($element) => H.assertIsNotEllipsified($element[0]));
-        scalarTitle.realHover();
+        scalarTitle().should(($element) =>
+          H.assertIsNotEllipsified($element[0]),
+        );
+        scalarTitle().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
@@ -1127,12 +1129,12 @@ describe("issue 31628", () => {
         /**
          * it should not truncate value and should not show value tooltip on hover
          */
-        const scalarContainer = cy.findByTestId("scalar-container");
+        const scalarContainer = () => cy.findByTestId("scalar-container");
 
-        scalarContainer.should(($element) =>
+        scalarContainer().should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
@@ -1144,10 +1146,10 @@ describe("issue 31628", () => {
         /**
          * it should truncate title and show title tooltip on hover
          */
-        const scalarTitle = cy.findByTestId("legend-caption-title");
+        const scalarTitle = () => cy.findByTestId("legend-caption-title");
 
-        scalarTitle.should(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle.realHover();
+        scalarTitle().should(($element) => H.assertIsEllipsified($element[0]));
+        scalarTitle().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
@@ -1166,12 +1168,12 @@ describe("issue 31628", () => {
         /**
          * it should show previous value as a percentage only (without truncation)
          */
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = () => cy.findByTestId("scalar-previous-value");
 
-        previousValue.within(() => {
+        previousValue().within(() => {
           cy.contains("35%").should("exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.should(($element) =>
+          previousValue().should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1180,13 +1182,13 @@ describe("issue 31628", () => {
       it("should show previous value as a percentage without decimal places (without truncation, 1000x600)", () => {
         cy.viewport(1000, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = () => cy.findByTestId("scalar-previous-value");
 
-        previousValue.within(() => {
+        previousValue().within(() => {
           cy.contains("35%").should("exist");
           cy.contains("34.72%").should("not.exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.should(($element) =>
+          previousValue().should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1195,9 +1197,9 @@ describe("issue 31628", () => {
       it("should truncate previous value (840x600)", () => {
         cy.viewport(840, 600);
 
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = () => cy.findByTestId("scalar-previous-value");
 
-        previousValue
+        previousValue()
           .findByText("35%")
           .should(($element) => H.assertIsEllipsified($element[0]));
       });
@@ -1216,12 +1218,12 @@ describe("issue 31628", () => {
         /**
          * should not truncate value and should not show value tooltip on hover
          */
-        let scalarContainer = cy.findByTestId("scalar-container");
+        const scalarContainer = () => cy.findByTestId("scalar-container");
 
-        scalarContainer.should(($element) =>
+        scalarContainer().should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
@@ -1233,12 +1235,10 @@ describe("issue 31628", () => {
         /**
          * should truncate title and show title tooltip on hover
          */
-        scalarContainer = cy.findByTestId("legend-caption-title");
+        const captionTitle = () => cy.findByTestId("legend-caption-title");
 
-        scalarContainer.should(($element) =>
-          H.assertIsEllipsified($element[0]),
-        );
-        scalarContainer.realHover();
+        captionTitle().should(($element) => H.assertIsEllipsified($element[0]));
+        captionTitle().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
@@ -1256,12 +1256,12 @@ describe("issue 31628", () => {
         /**
          * should show previous value in full
          */
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = () => cy.findByTestId("scalar-previous-value");
 
-        previousValue.within(() => {
+        previousValue().within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.should(($element) =>
+          previousValue().should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1288,12 +1288,12 @@ describe("issue 31628", () => {
         /**
          * should not truncate value and should not show value tooltip on hover
          */
-        let scalarContainer = cy.findByTestId("scalar-container");
+        const scalarContainer = () => cy.findByTestId("scalar-container");
 
-        scalarContainer.should(($element) =>
+        scalarContainer().should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
-        scalarContainer.realHover();
+        scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
 
@@ -1305,12 +1305,10 @@ describe("issue 31628", () => {
         /**
          * should truncate title and show title tooltip on hover
          */
-        scalarContainer = cy.findByTestId("legend-caption-title");
+        const captionTitle = () => cy.findByTestId("legend-caption-title");
 
-        scalarContainer.should(($element) =>
-          H.assertIsEllipsified($element[0]),
-        );
-        scalarContainer.realHover();
+        captionTitle().should(($element) => H.assertIsEllipsified($element[0]));
+        captionTitle().realHover();
 
         cy.findByRole("tooltip")
           .findByText(SMART_SCALAR_QUESTION.name)
@@ -1328,12 +1326,12 @@ describe("issue 31628", () => {
         /**
          * should show previous value in full
          */
-        const previousValue = cy.findByTestId("scalar-previous-value");
+        const previousValue = () => cy.findByTestId("scalar-previous-value");
 
-        previousValue.within(() => {
+        previousValue().within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.should(($element) =>
+          previousValue().should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
