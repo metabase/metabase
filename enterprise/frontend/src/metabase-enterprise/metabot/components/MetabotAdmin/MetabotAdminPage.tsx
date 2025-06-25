@@ -9,14 +9,14 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   AdminNavItem,
   AdminNavWrapper,
-} from "metabase/admin/settings/components/AdminNav";
+} from "metabase/admin/components/AdminNav";
+import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { SettingsSection } from "metabase/admin/settings/components/SettingsSection";
 import { skipToken, useGetCollectionQuery } from "metabase/api";
+import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks";
-import { AdminSettingsLayout } from "metabase/components/AdminLayout/AdminSettingsLayout";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import { color } from "metabase/lib/colors";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
@@ -219,6 +219,8 @@ function MetabotConfigurationPane({
       {isOpen && (
         <CollectionPickerModal
           title={t`Select a collection`}
+          shouldDisableItem={(item) => item.id === "root"}
+          canSelectItem={(item) => item && item.id !== "root"}
           value={{
             id: collection?.id ?? null,
             model: "collection",

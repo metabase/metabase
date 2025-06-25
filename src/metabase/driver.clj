@@ -705,7 +705,10 @@
     :test/cannot-destroy-db
 
     ;; There are drivers that support uuids in queries, but not in create table as eg. Athena.
-    :test/uuids-in-create-table-statements})
+    :test/uuids-in-create-table-statements
+
+    ;; Does this driver support Metabase's database routing feature?
+    :database-routing})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

@@ -6,9 +6,9 @@ import { t } from "ttag";
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import EditBar from "metabase/components/EditBar";
-import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
-import EditableText from "metabase/core/components/EditableText";
+import EditBar from "metabase/common/components/EditBar";
+import EditableText from "metabase/common/components/EditableText";
+import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";
 import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
@@ -247,7 +247,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <DashboardTabs dashboardId={dashboard.id} isEditing={isEditing} />
+            <DashboardTabs />
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>
