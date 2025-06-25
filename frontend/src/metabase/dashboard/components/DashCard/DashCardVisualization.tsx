@@ -20,6 +20,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -431,6 +432,22 @@ export function DashCardVisualization({
     return () => clearTimeout(timeoutId);
   }, [lastLoad]);
 
+  const display = question?.display();
+  const renderLoadingView = useMemo(() => {
+    return function DashboardLoadingView() {
+      return (
+        <div
+          style={{
+            padding: "0 1rem 1rem",
+            height: "100%",
+          }}
+        >
+          <ChartSkeleton display={display} />
+        </div>
+      );
+    };
+  }, [display]);
+
   return (
     <Visualization
       forceLoading={forceLoading}
@@ -476,6 +493,7 @@ export function DashCardVisualization({
       onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      renderLoadingView={renderLoadingView}
       token={token}
       uuid={uuid}
       titleMenuItems={titleMenuItems}
