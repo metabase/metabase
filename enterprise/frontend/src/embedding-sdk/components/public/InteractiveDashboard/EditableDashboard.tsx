@@ -1,7 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { InteractiveQuestionDefaultView } from "embedding-sdk/components/private/InteractiveQuestionDefaultView";
 import {
   DashboardNotFoundError,
   SdkError,
@@ -85,6 +88,7 @@ const EditableDashboardInner = ({
   );
 };
 
+type RenderMode = "dashboard" | "question" | "queryBuilder";
 /**
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
  *
@@ -141,6 +145,16 @@ export const EditableDashboard = ({
     dashboardId,
   });
 
+  /**
+   * renderMode: dashboard | question | queryBuilder
+   */
+
+  const [renderModeState, setRenderMode] =
+    useState<Extract<RenderMode, "dashboard" | "queryBuilder">>("dashboard");
+  const finalRenderMode: RenderMode = adhocQuestionUrl
+    ? "question"
+    : renderModeState;
+
   const errorPage = useSdkSelector(getErrorPage);
   const dispatch = useSdkDispatch();
   useEffect(() => {
@@ -190,6 +204,9 @@ export const EditableDashboard = ({
         isFullscreen={isFullscreen}
         onFullscreenChange={onFullscreenChange}
         navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+        onNewQuestion={() => {
+          setRenderMode("queryBuilder");
+        }}
         downloadsEnabled={displayOptions.downloadsEnabled}
         background={displayOptions.background}
         bordered={displayOptions.bordered}
@@ -209,19 +226,32 @@ export const EditableDashboard = ({
           })
         }
       >
-        {adhocQuestionUrl ? (
-          <InteractiveAdHocQuestion
-            questionPath={adhocQuestionUrl}
-            onNavigateBack={onNavigateBackToDashboard}
-            {...drillThroughQuestionProps}
-          />
-        ) : (
-          <EditableDashboardInner
-            drillThroughQuestionProps={drillThroughQuestionProps}
-            onEditQuestion={onEditQuestion}
-          />
-        )}
+        {match(finalRenderMode)
+          .with("question", () => (
+            <InteractiveAdHocQuestion
+              // `adhocQuestionUrl` would have value if renderMode is "question"
+              questionPath={adhocQuestionUrl!}
+              onNavigateBack={onNavigateBackToDashboard}
+              {...drillThroughQuestionProps}
+            />
+          ))
+          .with("dashboard", () => (
+            <EditableDashboardInner
+              drillThroughQuestionProps={drillThroughQuestionProps}
+              onEditQuestion={onEditQuestion}
+            />
+          ))
+          .with("queryBuilder", () => <EditableDashboardQueryBuilder />)
+          .exhaustive()}
       </DashboardContextProvider>
     </StyledPublicComponentWrapper>
   );
 };
+
+function EditableDashboardQueryBuilder() {
+  return (
+    <InteractiveQuestionProvider questionId="new">
+      <InteractiveQuestionDefaultView withResetButton withChartTypeSelector />
+    </InteractiveQuestionProvider>
+  );
+}
