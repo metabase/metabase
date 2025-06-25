@@ -28,6 +28,10 @@ export const getMessages = createSelector(
   (metabot) => metabot.messages,
 );
 
+export const getLastMessage = createSelector(getMessages, (messages) =>
+  _.last(messages),
+);
+
 export const getAgentErrorMessages = createSelector(
   getMetabot,
   (metabot) => metabot.errorMessages,

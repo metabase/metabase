@@ -187,8 +187,7 @@ export const MetabotChat = () => {
               {/* loading */}
               {metabot.isDoingScience && (
                 <MetabotThinking
-                  toolCalls={metabot.toolCalls}
-                  useStreaming={metabot.useStreaming}
+                  toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
                 />
               )}
 

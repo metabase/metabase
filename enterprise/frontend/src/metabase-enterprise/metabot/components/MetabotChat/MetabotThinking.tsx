@@ -48,18 +48,18 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
 
 export const MetabotThinking = ({
   toolCalls,
-  useStreaming,
 }: {
   toolCalls: MetabotToolCall[];
-  useStreaming: boolean;
-}) => (
-  <Stack gap="xs">
-    {useStreaming && <ThoughtProcess toolCalls={toolCalls} />}
-    <Loader
-      color="brand"
-      type="dots"
-      size="lg"
-      data-testid="metabot-response-loader"
-    />
-  </Stack>
-);
+}) => {
+  return (
+    <Stack gap="xs">
+      <ThoughtProcess toolCalls={toolCalls} />
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
+    </Stack>
+  );
+};
