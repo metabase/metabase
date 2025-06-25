@@ -44,7 +44,7 @@ export const GetCodeStep = () => {
               setAuthType(value as SdkIframeEmbedSetupAuthType)
             }
           >
-            <Stack gap="xs">
+            <Stack gap="sm">
               <Radio value="user-session" label={t`User Session`} />
 
               <Radio
