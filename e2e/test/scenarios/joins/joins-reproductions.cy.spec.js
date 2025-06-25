@@ -991,8 +991,10 @@ describe("issue 29795", () => {
       cy.findByRole("option", { name: "USER_ID" }).click();
     });
 
-    H.visualize(() => {
-      cy.findAllByText(/User ID/i).should("have.length", 2);
+    H.visualize();
+    H.tableInteractive().within(() => {
+      cy.findByText("User ID").should("be.visible");
+      cy.findByText("native question → USER_ID").should("be.visible");
     });
   });
 });
