@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
@@ -701,3 +702,36 @@
                     cols  (lib.metadata.calculation/visible-columns query)
                     [_op _opts filter-col] (first (lib/filters query))]]
         (is (=? col (lib.equality/find-matching-column query -1 filter-col cols)))))))
+
+(deftest ^:parallel desired-alias-field-ref-selected-test
+  (testing "We should match field refs using desired-column-alias names correctly"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query {:database (meta/id)
+                                           :type     :query
+                                           :query    {:source-table (meta/id :orders)
+                                                      :joins        [{:source-table (meta/id :products)
+                                                                      :alias        "Products"
+                                                                      :condition    [:=
+                                                                                     [:field (meta/id :orders :product-id) nil]
+                                                                                     [:field (meta/id :products :id) {:join-alias "Products"}]]
+                                                                      :fields       :all}]}}}
+                          {:id            2
+                           :dataset-query {:database (meta/id)
+                                           :type     :query
+                                           :query    {:source-table "card__1"}}}]})
+          query (-> (lib/query mp (lib.metadata/card mp 2))
+                    lib/append-stage
+                    (lib/with-fields [[:field
+                                       {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                       "ID"]
+                                      [:field
+                                       {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                       "Products__ID"]]))]
+      (is (=? {:name "ID", :lib/desired-column-alias "Products__ID"}
+              (lib.equality/find-matching-column
+               [:field
+                {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000002"}
+                "Products__ID"]
+               (lib/visible-columns query)))))))

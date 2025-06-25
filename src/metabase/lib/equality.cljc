@@ -18,7 +18,8 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.log :as log]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -136,32 +137,31 @@
          ;; `source-field-name` is not available on old refs
          (or (nil? source-field-name) (clojure.core/= source-field-name (:fk-field-name column)))
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
-    ;; If it's not an implicit join, then either the join aliases must match for an explicit join, or both be nil for
-    ;; an own column.
     (clojure.core/= (column-join-alias column) join-alias)))
 
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
-   columns                              :- [:sequential ::lib.schema.metadata/column]]
+   columns                             :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
       ;; first look for a match on `:name`, then look for a match on `:lib/deduplicated-name`
       (letfn [(matches-for-name [k]
                 (not-empty
-                 (filter #(and (clojure.core/= (get % k) ref-name)
-                               ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                               ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                               (or (and (not (:join-alias opts))
-                                        (#{:source/fields :source/card} (:lib/source %)))
-                                   (matching-join? a-ref %)))
+                 (filter (fn [col]
+                           (and (clojure.core/= (k col) ref-name)
+                                ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                                ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                                (or (and (not (:join-alias opts))
+                                         (#{:source/fields :source/card :source/previous-stage} (:lib/source col)))
+                                    (matching-join? a-ref col))))
                          columns)))]
         (some matches-for-name
-              [;; TODO (Cam 6/12/25) -- if these columns came from the previous stage or a join
+              [ ;; TODO (Cam 6/12/25) -- if these columns came from the previous stage or a join
                ;; then we should look at `:lib/desired-column-alias`, or if they came from the
                ;; current stage we should look at `:lib/source-column-alias`. It's not
                ;; well-defined where these columns come from.
-               #_:lib/desired-column-alias
+               :lib/desired-column-alias
                #_:lib/source-column-alias
                :lib/deduplicated-name
                :name]))))
@@ -438,8 +438,16 @@
    (when (seq cols)
      (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
            matching-selected-cols (into #{}
-                                        (map #(find-matching-column query stage-number % cols))
+                                        (keep (fn [field-ref]
+                                                (or (find-matching-column query stage-number field-ref cols)
+                                                    (do
+                                                      (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str field-ref))
+                                                      nil))))
                                         selected-refs)]
+       (when-not (= (count selected-refs) (count matching-selected-cols))
+         (log/warnf "[mark-selected-columns] %d refs are selected, but we found %d matches"
+                    (count selected-refs)
+                    (count matching-selected-cols)))
        (mapv #(assoc % :selected? (contains? matching-selected-cols %)) cols)))))
 
 (mu/defn matching-column-sets? :- :boolean

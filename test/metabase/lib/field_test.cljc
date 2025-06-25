@@ -2027,3 +2027,52 @@
     (mu/disable-enforcement
       (is (= "Unknown Field"
              (lib/display-name query field-ref))))))
+
+(deftest ^:parallel desired-alias-field-ref-selected-test
+  (testing "We should mark fields using desired-column-alias names as selected correctly"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query {:database (meta/id)
+                                           :type     :query
+                                           :query    {:source-table (meta/id :orders)
+                                                      :joins        [{:source-table (meta/id :products)
+                                                                      :alias        "Products"
+                                                                      :condition    [:=
+                                                                                     [:field (meta/id :orders :product-id) nil]
+                                                                                     [:field (meta/id :products :id) {:join-alias "Products"}]]
+                                                                      :fields       :all}]}}}
+                          {:id            2
+                           :dataset-query {:database (meta/id)
+                                           :type     :query
+                                           :query    {:source-table "card__1"}}}]})
+          query (-> (lib/query mp (lib.metadata/card mp 2))
+                    lib/append-stage
+                    (lib/with-fields [[:field
+                                       {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                       "ID"]
+                                      [:field
+                                       {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                       "Products__ID"]]))]
+      (is (= {"ID"                    true
+              "User ID"               false
+              "Product ID"            false
+              "Subtotal"              false
+              "Tax"                   false
+              "Total"                 false
+              "Discount"              false
+              "Created At"            false
+              "Quantity"              false
+              "Products → ID"         true
+              "Products → Ean"        false
+              "Products → Title"      false
+              "Products → Category"   false
+              "Products → Vendor"     false
+              "Products → Price"      false
+              "Products → Rating"     false
+              "Products → Created At" false}
+             (into
+              {}
+              (comp (map #(lib/display-info query %))
+                    (map (juxt :display-name :selected)))
+              (lib/fieldable-columns query)))))))

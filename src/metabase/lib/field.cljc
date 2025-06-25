@@ -591,6 +591,10 @@
    column       :- lib.metadata.calculation/ColumnMetadataWithSource]
   (let [stage  (lib.util/query-stage query stage-number)
         source (:lib/source column)]
+    (when (and (empty? (:fields stage))
+               (not= source :source/joins))
+      (log/warnf "[add-field] stage :fields is empty, which means everything will already be included; attempt to add %s will no-op"
+                 (pr-str ((some-fn :display-name :name) column))))
     (-> (case source
           (:source/table-defaults
            :source/fields
@@ -624,9 +628,11 @@
                        (lib.util/query-stage stage-number)
                        :fields)
         new-fields (remove-matching-ref column old-fields)]
-    (cond-> query
-      ;; If we couldn't find the field, return the original query unchanged.
-      (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))))
+    (u/prog1 (cond-> query
+               ;; If we couldn't find the field, return the original query unchanged.
+               (< (count new-fields) (count old-fields)) (lib.util/update-query-stage stage-number assoc :fields new-fields))
+      (when (= <> query)
+        (log/errorf "[exclude-field] Failed to remove field %s, query is unchanged." (pr-str ((some-fn :display-name :name) column)))))))
 
 (defn- remove-field-from-join [query stage-number column]
   (let [join        (lib.join/resolve-join query stage-number (::lib.join/join-alias column))
