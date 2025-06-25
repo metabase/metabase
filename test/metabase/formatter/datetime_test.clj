@@ -5,10 +5,11 @@
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.test :as mt]
-   [metabase.util.i18n :as i18n])
+   [metabase.test :as mt])
   (:import
    (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
