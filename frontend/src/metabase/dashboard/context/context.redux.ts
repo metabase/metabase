@@ -7,6 +7,7 @@ import {
   addHeadingDashCardToDashboard,
   addLinkDashCardToDashboard,
   addMarkdownDashCardToDashboard,
+  addParameter,
   cancelFetchDashboardCardData,
   closeDashboard,
   closeSidebar,
@@ -39,8 +40,18 @@ import {
   setSidebar,
   showAddParameterPopover,
   toggleSidebar,
+  updateDashboard,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
+import {
+  createNewTab,
+  deleteTab,
+  duplicateTab,
+  moveTab,
+  renameTab,
+  selectTab,
+  undoDeleteTab,
+} from "metabase/dashboard/actions/tabs";
 import { connect } from "metabase/lib/redux";
 import {
   canManageSubscriptions,
@@ -114,6 +125,7 @@ export const mapDispatchToProps = {
   setSharing,
   toggleSidebar,
   closeSidebar,
+  addParameter,
   setParameterName,
   setParameterType,
   setParameterValue,
@@ -132,6 +144,7 @@ export const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   updateDashboardAndCards,
+  updateDashboard,
   setSidebar,
   hideAddParameterPopover,
   fetchDashboard,
@@ -142,6 +155,14 @@ export const mapDispatchToProps = {
   setArchivedDashboard,
   deletePermanently,
   moveDashboardToCollection,
+
+  createNewTab,
+  deleteTab,
+  duplicateTab,
+  moveTab,
+  renameTab,
+  selectTab,
+  undoDeleteTab,
 };
 
 export const connector = connect(mapStateToProps, mapDispatchToProps);
