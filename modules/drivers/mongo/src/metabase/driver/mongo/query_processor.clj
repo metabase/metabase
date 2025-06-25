@@ -853,6 +853,15 @@
 (defmethod compile-filter :not [[_ subclause]]
   (compile-filter (negate subclause)))
 
+(defmethod compile-filter :expression [expression-clause]
+  (compile-filter [:= expression-clause true]))
+
+(defmethod compile-filter :field [field-clause]
+  (compile-filter [:= field-clause true]))
+
+(defmethod compile-filter :value [value-clause]
+  (compile-filter [:= value-clause true]))
+
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
@@ -908,6 +917,15 @@
 
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
+
+(defmethod compile-cond :expression [expression-clause]
+  (->rvalue expression-clause))
+
+(defmethod compile-cond :field [field-clause]
+  (->rvalue field-clause))
+
+(defmethod compile-cond :value [value-clause]
+  (->rvalue value-clause))
 
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
