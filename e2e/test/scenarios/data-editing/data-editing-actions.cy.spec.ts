@@ -90,6 +90,9 @@ describe(
       H.setTokenFeatures("all");
 
       cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+      cy.intercept("GET", `/api/action/v2/database/${WRITABLE_DB_ID}/table`).as(
+        "getPostgresTables",
+      );
 
       H.setTableEditingEnabledForDB(WRITABLE_DB_ID);
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
@@ -146,6 +149,8 @@ describe(
 
         cy.log("should allow to pick an action");
         cy.findByText("QA Postgres12").click();
+        cy.wait("@getPostgresTables");
+
         cy.findByText("Newtable").click();
         cy.findByText("Create or Update").click();
 
