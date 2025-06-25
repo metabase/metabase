@@ -36,6 +36,7 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/common/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DataGridRowAction } from "metabase/data-grid/types";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
@@ -51,10 +52,7 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
-import type {
-  BasicTableViewColumn,
-  SelectedTableActionState,
-} from "metabase/visualizations/types/table-actions";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -75,7 +73,6 @@ import type {
   DashCardId,
   Dashboard,
   DashboardId,
-  DataGridWritebackAction,
   Database as DatabaseType,
   Dataset,
   DatasetData,
@@ -88,6 +85,7 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  RowValue,
   RowValues,
   Series,
   TableActionDisplaySettings,
@@ -803,27 +801,31 @@ export const PLUGIN_TABLE_ACTIONS = {
   isBuiltInEditableTableAction: (
     _action: EditableTableActionsDisplaySettings,
   ): _action is EditableTableBuiltInActionDisplaySettings => false,
-  useTableActionsExecute: (_params: {
-    actionsVizSettings: TableActionDisplaySettings[] | undefined;
+  useDataGridRowActions: (_params: {
+    actionSettings: EditableTableActionsDisplaySettings[] | undefined;
     datasetData: DatasetData | null | undefined;
   }) =>
     ({
-      tableActions: [],
-      selectedTableActionState: null,
-      handleTableActionRun: _.noop,
-      handleExecuteActionModalClose: _.noop,
+      rowActions: undefined,
+      selectedRowAction: null,
+      onRowActionButtonClick: _.noop,
+      onRowActionFormClose: _.noop,
     }) as {
-      tableActions: DataGridWritebackAction[];
-      selectedTableActionState: SelectedTableActionState | null;
-      handleTableActionRun: (
-        action: DataGridWritebackAction,
+      rowActions: DataGridRowAction[] | undefined;
+      selectedRowAction: {
+        action: DataGridRowAction;
+        input: Record<string, RowValue>;
+      } | null;
+      onRowActionButtonClick: (
+        action: DataGridRowAction,
         row: Row<RowValues>,
       ) => void;
-      handleExecuteActionModalClose: () => void;
+      onRowActionFormClose: () => void;
     },
-  TableActionExecuteModal: PluginPlaceholder as ComponentType<{
+  DataGridActionExecuteModal: PluginPlaceholder as ComponentType<{
+    action?: DataGridRowAction;
+    actionInput?: Record<string, RowValue>;
     scope: ActionScope;
-    selectedTableActionState: SelectedTableActionState | null;
     onClose: () => void;
   }>,
   ConfigureTableActions: PluginPlaceholder as ComponentType<{

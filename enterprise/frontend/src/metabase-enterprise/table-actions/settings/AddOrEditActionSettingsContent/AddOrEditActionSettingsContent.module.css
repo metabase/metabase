@@ -43,7 +43,6 @@
 }
 
 .ParametersModalRightSection {
-  width: 30rem;
   display: flex;
   flex: 1;
   flex-direction: column;

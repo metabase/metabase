@@ -1529,7 +1529,7 @@ describe("issue 48878", () => {
     cy.button("Add action").click();
     cy.button("Pick an action").click();
     H.modal().within(() => {
-      cy.findByText("SQL Model").click();
+      cy.findByText("Models").click();
       cy.findByText("Test action").click();
       cy.button("Done").click();
     });
