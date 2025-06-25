@@ -18,7 +18,7 @@
 (def ^:dynamic *formatting-locale*
   "Dynamic var to hold the current locale for datetime formatting.
   Defaults to the site locale from system settings."
-  (Locale. (system/site-locale)))
+  (Locale. (public-settings/site-locale)))
 
 (defn temporal-string?
   "Returns `true` if the string `s` is parseable as a datetime.
@@ -250,5 +250,5 @@
     (fn [temporal-str]
       (if (str/blank? temporal-str)
         ""
-        (binding [*formatting-locale* (Locale. (system/site-locale))]
+        (binding [*formatting-locale* (Locale. (public-settings/site-locale))]
           (format-timestring timezone-id temporal-str col merged-viz-settings))))))
