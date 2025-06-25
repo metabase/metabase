@@ -169,6 +169,16 @@
   `ID` and `ID_2`, respectively. Kept around because many old field refs use this column name."
   [:maybe :string])
 
+(defn- normalize-column [m]
+  (when (map? m)
+    (-> m
+        lib.schema.common/normalize-map
+        ;; sometimes column metadata from the FE has the NAME stored as the ID for hacky mystery purposes... ignore
+        ;; these busted "IDs"
+        (as-> m (cond-> m
+                  (and (:id m) (not (pos-int? (:id m))))
+                  (dissoc :id))))))
+
 (mr/def ::column
   "Malli schema for a valid map of column metadata, which can mean one of two things:
 
@@ -185,7 +195,7 @@
   [:and
    [:map
     {:error/message    "Valid column metadata"
-     :decode/normalize lib.schema.common/normalize-map}
+     :decode/normalize normalize-column}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
     ;;
     ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have

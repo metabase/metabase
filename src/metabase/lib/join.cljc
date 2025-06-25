@@ -161,7 +161,7 @@
     (do (log/error "with-join-value should not be called with" (pr-str field-or-join))
         field-or-join)))
 
-(mu/defn- maybe-resolve-join :- [:maybe ::lib.schema.join/join]
+(mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
   "Resolve a join with a specific `join-alias`. Returns nil if there's no such join."
   [query        :- ::lib.schema/query
    stage-number :- :int

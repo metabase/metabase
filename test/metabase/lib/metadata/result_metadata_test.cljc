@@ -12,6 +12,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -955,3 +956,48 @@
                    {:name "LONGITUDE",   :description "user description", :display-name "user display name", :semantic-type :type/Cost}
                    {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
                   (result-metadata/returned-columns query))))))))
+
+(deftest ^:parallel propagate-binning-test
+  (testing "Test this stuff the same way this stuff is tested in the Cypress e2e notebook tests"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id            1
+                        :name          "Q1"
+                        :dataset-query (lib.tu.macros/mbql-query orders
+                                         {:aggregation [[:count]]
+                                          :breakout    [[:field %total {:binning {:strategy :num-bins, :num-bins 10}}]
+                                                        [:field %total {:binning {:strategy :num-bins, :num-bins 50}}]]})}]})]
+      (is (=? [{:display-name "Total: 10 bins"
+                :was-binned   true
+                :binning-info {:binning-strategy :num-bins, :strategy :num-bins, :num-bins 10}}
+               {:display-name "Total: 50 bins"
+                :was-binned   true
+                :binning-info {:binning-strategy :num-bins, :strategy :num-bins, :num-bins 50}}
+               {:display-name "Count"}]
+              (-> (lib/query mp (lib.metadata/card mp 1))
+                  (lib/aggregate (lib/count))
+                  (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 10 bins"} {})
+                  (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 50 bins"} {})
+                  result-metadata/returned-columns))))))
+
+(deftest ^:parallel propagate-bucketing-test
+  (testing "Test this stuff the same way this stuff is tested in the Cypress e2e notebook tests"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id            1
+                        :name          "Q1"
+                        :dataset-query (lib.tu.macros/mbql-query orders
+                                         {:aggregation [[:count]]
+                                          :breakout    [[:field %created-at {:temporal-unit :month}]
+                                                        [:field %created-at {:temporal-unit :year}]]})}]})]
+      (is (=? [{:display-name "Created At: Month"
+                :unit         :month}
+               {:display-name "Created At: Year"
+                :unit         :year}
+               {:display-name "Count"}]
+              (-> (lib/query mp (lib.metadata/card mp 1))
+                  lib/append-stage
+                  (lib/aggregate (lib/count))
+                  (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Month"} {})
+                  (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Year"} {})
+                  result-metadata/returned-columns))))))

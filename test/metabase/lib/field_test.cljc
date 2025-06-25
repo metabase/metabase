@@ -1964,6 +1964,23 @@
               (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 10 bins"} {})
               (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 50 bins"} {}))))))
 
+(deftest ^:parallel propagate-bucketing-display-names-notebook-test
+  (testing "Test this stuff the same way this stuff is tested in the Cypress e2e notebook tests"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id            1
+                        :name          "Q1"
+                        :dataset-query (lib.tu.macros/mbql-query orders
+                                         {:aggregation [[:count]]
+                                          :breakout    [[:field %created-at {:temporal-unit :month}]
+                                                        [:field %created-at {:temporal-unit :year}]]})}]})]
+      ;; `lib.tu.notebook` functions will throw if they can't find columns with these display names
+      (is (-> (lib/query mp (lib.metadata/card mp 1))
+              lib/append-stage
+              (lib/aggregate (lib/count))
+              (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Month"} {})
+              (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Year"} {}))))))
+
 (deftest ^:parallel display-info-propagate-join-aliases-test
   (let [mp         (lib.tu/mock-metadata-provider
                     meta/metadata-provider

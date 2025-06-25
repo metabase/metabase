@@ -326,7 +326,7 @@
 
 (defn- add-binning-info [col]
   (merge
-   (when-let [binning-info (:metabase.lib.field/binning col)]
+   (when-let [binning-info ((some-fn :metabase.lib.field/binning :lib/original-binning) col)]
      {:binning-info (merge
                      (when-let [strategy (:strategy binning-info)]
                        {:binning-strategy strategy})
