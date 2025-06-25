@@ -181,6 +181,10 @@ import google_sheet_component from "./google_sheet.svg?component";
 import google_sheet_source from "./google_sheet.svg?source";
 import grabber_component from "./grabber.svg?component";
 import grabber_source from "./grabber.svg?source";
+import greater_than_component from "./greater_than.svg?component";
+import greater_than_source from "./greater_than.svg?source";
+import greater_than_or_equal_component from "./greater_than_or_equal.svg?component";
+import greater_than_or_equal_source from "./greater_than_or_equal.svg?source";
 import grid_component from "./grid.svg?component";
 import grid_source from "./grid.svg?source";
 import group_component from "./group.svg?component";
@@ -223,6 +227,10 @@ import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import learn_component from "./learn.svg?component";
 import learn_source from "./learn.svg?source";
+import less_than_component from "./less_than.svg?component";
+import less_than_source from "./less_than.svg?source";
+import less_than_or_equal_component from "./less_than_or_equal.svg?component";
+import less_than_or_equal_source from "./less_than_or_equal.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
 import lightbulb_source from "./lightbulb.svg?source";
 import line_component from "./line.svg?component";
@@ -1136,6 +1144,22 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: segment_component,
       source: segment_source,
     },
+    less_than: {
+      component: less_than_component,
+      source: less_than_source,
+    },
+    greater_than: {
+      component: greater_than_component,
+      source: greater_than_source,
+    },
+    less_than_or_equal: {
+      component: less_than_or_equal_component,
+      source: less_than_or_equal_source,
+    },
+    greater_than_or_equal: {
+      component: greater_than_or_equal_component,
+      source: greater_than_or_equal_source,
+    },
     shield: {
       component: shield_component,
       source: shield_source,
@@ -1548,6 +1572,10 @@ export type IconName =
   | "table_spaced"
   | "collection"
   | "beaker"
+  | "less_than"
+  | "less_than_or_equal"
+  | "greater_than"
+  | "greater_than_or_equal"
   | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];

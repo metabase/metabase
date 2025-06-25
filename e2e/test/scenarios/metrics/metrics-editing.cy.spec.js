@@ -546,8 +546,8 @@ function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
       cy.findByText(tableName).click();
     }
     cy.findByText(columnName).click();
-    cy.findByPlaceholderText("Min").type(String(minValue));
-    cy.findByPlaceholderText("Max").type(String(maxValue));
+    cy.findByPlaceholderText("Start of range").type(String(minValue));
+    cy.findByPlaceholderText("End of range").type(String(maxValue));
     cy.button("Add filter").click();
   });
 }
