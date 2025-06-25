@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import Calendar from "metabase/components/Calendar";
 import moment from "moment";
-
+import { getMaxRangeDaysFromToken } from 'metabase/query_builder/components/filters/pickers/Utils'
 const SEPARATOR = "~"; // URL-safe
 
 function parseDateRangeValue(value) {
@@ -41,6 +41,22 @@ export default class DateRangeWidget extends Component {
     }
   }
 
+  onChange = (start, end) => {
+    if (end == null) {
+      this.setState({ start, end });
+    } else {
+      const diff = moment(end).diff(moment(start), "days");
+      const maxDays = getMaxRangeDaysFromToken(); // use directly here
+
+      if (maxDays && diff > maxDays) {
+        alert(`Please select a date range within ${maxDays} days.`);
+        return;
+      }
+
+      this.props.setValue(serializeDateRangeValue({ start, end }));
+    }
+  };
+
   render() {
     const { start, end } = this.state;
     return (
@@ -48,13 +64,7 @@ export default class DateRangeWidget extends Component {
         initial={start ? moment(start) : null}
         selected={start ? moment(start) : null}
         selectedEnd={end ? moment(end) : null}
-        onChange={(start, end) => {
-          if (end == null) {
-            this.setState({ start, end });
-          } else {
-            this.props.setValue(serializeDateRangeValue({ start, end }));
-          }
-        }}
+        onChange={this.onChange}
       />
     );
   }

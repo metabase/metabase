@@ -34,14 +34,16 @@ import S from "./ParameterWidget.css";
 import cx from "classnames";
 import _ from "underscore";
 
-const DATE_WIDGETS = {
-  "date/single": DateSingleWidget,
-  "date/range": DateRangeWidget,
-  "date/relative": DateRelativeWidget,
-  "date/month-year": DateMonthYearWidget,
-  "date/quarter-year": DateQuarterYearWidget,
-  "date/all-options": DateAllOptionsWidget,
-};
+const DATE_WIDGETS = isDateRestrictedVersionEnabled()
+  ? { "date/range": DateRangeWidget }
+  : {
+      "date/single": DateSingleWidget,
+      "date/range": DateRangeWidget,
+      "date/relative": DateRelativeWidget,
+      "date/month-year": DateMonthYearWidget,
+      "date/quarter-year": DateQuarterYearWidget,
+      "date/all-options": DateAllOptionsWidget,
+    };
 
 const makeMapStateToProps = () => {
   const getMergedParameterFieldValues = makeGetMergedParameterFieldValues();

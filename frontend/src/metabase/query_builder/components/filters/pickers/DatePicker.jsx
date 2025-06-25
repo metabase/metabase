@@ -362,9 +362,19 @@ export default class DatePicker extends Component {
   };
 
   UNSAFE_componentWillMount() {
-    let operators = this.props.operators || DATE_OPERATORS;
-    if (!this.props.hideEmptinessOperators) {
-      operators = operators.concat(EMPTINESS_OPERATORS);
+    let operators;
+    
+    if (this.props.operators) {
+      // Use explicitly provided operators
+      operators = this.props.operators;
+    } else if (isDateRestrictedVersionEnabled()) {
+      // For restricted version, only show emptiness operators
+      operators = this.props.hideEmptinessOperators ? [] : EMPTINESS_OPERATORS;
+    } else {
+      // Normal version: include date operators
+      operators = this.props.hideEmptinessOperators 
+        ? DATE_OPERATORS 
+        : DATE_OPERATORS.concat(EMPTINESS_OPERATORS);
     }
 
     const operator = getOperator(this.props.filter, operators) || operators[0];
@@ -384,10 +394,10 @@ export default class DatePicker extends Component {
 
     let { operators } = this.state;
 
-    if (includeAllTime) {
+    if (includeAllTime && !isDateRestrictedVersionEnabled()) {
       operators = [ALL_TIME_OPERATOR, ...operators];
     }
-
+    console.log('operators', operators)
     const operator = getOperator(this.props.filter, operators);
     const Widget = operator && operator.widget;
 
