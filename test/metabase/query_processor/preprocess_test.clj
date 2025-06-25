@@ -317,4 +317,9 @@
       (is (=? [{:fk_field_id (meta/id :orders :product-id)}
                {:fk_field_id (meta/id :orders :product-id)}
                {}]
-              (qp.preprocess/query->expected-cols query))))))
+              (qp.preprocess/query->expected-cols query))))
+    (testing "display name should include name of implicitly joined table"
+      (is (=? ["Product → Created At: Month"
+               "Product → Category"
+               "Count"]
+              (map :display_name (qp.preprocess/query->expected-cols query)))))))

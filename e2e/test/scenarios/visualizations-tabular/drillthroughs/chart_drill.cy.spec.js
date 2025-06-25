@@ -101,7 +101,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       if (granularity === "month") {
         cy.findByTestId("qb-filters-panel")
           .findByText(
-            "Created At is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
+            "Created At: Month is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
           )
           .should("exist");
       }
