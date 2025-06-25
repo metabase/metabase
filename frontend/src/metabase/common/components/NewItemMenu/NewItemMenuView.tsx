@@ -1,25 +1,16 @@
-import type { LocationDescriptor } from "history";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import EntityMenu from "metabase/common/components/EntityMenu";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
+import { Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackNewMenuItemClicked } from "./analytics";
-
-type NewMenuItem = {
-  title: string;
-  icon: string;
-  link?: LocationDescriptor;
-  event?: string;
-  action?: () => void;
-  onClose?: () => void;
-};
 
 export interface NewItemMenuProps {
   className?: string;
@@ -31,19 +22,14 @@ export interface NewItemMenuProps {
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
   onCloseNavbar: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
 }
 
 const NewItemMenuView = ({
-  className,
   collectionId,
   trigger,
-  triggerIcon,
-  triggerTooltip,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
-  onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
@@ -52,74 +38,71 @@ const NewItemMenuView = ({
   );
 
   const menuItems = useMemo(() => {
-    const items: NewMenuItem[] = [];
+    const items = [];
 
     if (hasDataAccess) {
-      // TODO: Add anon tracking once we enable onClick
-      items.push({
-        title: t`Question`,
-        icon: "insight",
-        link: Urls.newQuestion({
-          mode: "notebook",
-          creationType: "custom_question",
-          collectionId,
-          cardType: "question",
-        }),
-        onClose: onCloseNavbar,
-      });
+      items.push(
+        <Menu.Item
+          component={ForwardRefLink}
+          to={Urls.newQuestion({
+            mode: "notebook",
+            creationType: "custom_question",
+            collectionId,
+            cardType: "question",
+          })}
+          leftSection={<Icon name="insight" />}
+        >
+          {t`Question`}
+        </Menu.Item>,
+      );
     }
 
     if (hasNativeWrite) {
-      // TODO: Add anon tracking once we enable onClick
-      items.push({
-        title: hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`,
-        icon: "sql",
-        link: Urls.newQuestion({
-          type: "native",
-          creationType: "native_question",
-          collectionId,
-          cardType: "question",
-          databaseId: lastUsedDatabaseId || undefined,
-        }),
-        onClose: onCloseNavbar,
-      });
+      items.push(
+        <Menu.Item
+          component={ForwardRefLink}
+          to={Urls.newQuestion({
+            type: "native",
+            creationType: "native_question",
+            collectionId,
+            cardType: "question",
+            databaseId: lastUsedDatabaseId || undefined,
+          })}
+          leftSection={<Icon name="sql" />}
+        >
+          {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
+        </Menu.Item>,
+      );
     }
-
-    items.push({
-      title: t`Dashboard`,
-      icon: "dashboard",
-      action: () => {
-        trackNewMenuItemClicked("dashboard");
-        dispatch(setOpenModal("dashboard"));
-      },
-    });
+    items.push(
+      <Menu.Item
+        onClick={() => {
+          trackNewMenuItemClicked("dashboard");
+          dispatch(setOpenModal("dashboard"));
+        }}
+        leftSection={<Icon name="dashboard" />}
+      >
+        {t`Dashboard`}
+      </Menu.Item>,
+    );
 
     return items;
   }, [
     hasDataAccess,
     hasNativeWrite,
     collectionId,
-    onCloseNavbar,
     hasDatabaseWithJsonEngine,
     lastUsedDatabaseId,
     dispatch,
   ]);
 
   return (
-    <EntityMenu
-      className={className}
-      // To the best of my knowledge, entity menu items with a `link` prop
-      // do not have `onClick`handlers. Hence, we cannot track their clicks.
-      items={menuItems}
-      trigger={trigger}
-      triggerIcon={triggerIcon}
-      tooltip={triggerTooltip}
-      // I've disabled this transition, since it results in the menu
-      // sometimes not appearing until content finishes loading on complex
-      // dashboards and questions #39303
-      // TODO: Try to restore this transition once we upgrade to React 18 and can prioritize this update
-      transitionDuration={0}
-    />
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <Box>{trigger}</Box>
+      </Menu.Target>
+      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+    </Menu>
   );
 };
 
