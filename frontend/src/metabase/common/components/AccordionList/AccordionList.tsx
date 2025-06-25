@@ -26,14 +26,8 @@ import {
   type Cursor,
   getNextCursor,
   getPrevCursor,
-  itemScore,
-  sectionScore,
+  searchFilter,
 } from "./utils";
-
-// The threshold for the score of search results
-// when fuzzy searching. 0 is a perfect match, 1 is the
-// worst possible match.
-const SEARCH_SCORE_THRESHOLD = 0.4;
 
 type Props<
   TItem extends Item,
@@ -385,36 +379,15 @@ export class AccordionList<
 
     const rows: Row<TItem, TSection>[] = [];
 
-    const searchOptions = {
-      searchText,
+    const sortedSections = searchFilter({
       sections,
+      searchText,
       fuzzySearch,
       searchProp,
-    };
+    });
 
-    const sortedSections = Array.from(sections)
-      .map((section, index) => ({
-        section,
-        sectionScore: isSearching ? sectionScore(section, searchOptions) : 0,
-        sectionIndex: index,
-      }))
-      .filter(
-        ({ sectionScore, section }) =>
-          section.type || sectionScore < SEARCH_SCORE_THRESHOLD,
-      )
-      .sort((a, b) => a.sectionScore - b.sectionScore);
-
-    for (const { section, sectionIndex } of sortedSections) {
+    for (const { section, sectionIndex, items } of sortedSections) {
       const isLastSection = sectionIndex === sections.length - 1;
-
-      const sortedItems = Array.from(section.items ?? [])
-        .map((item, index) => ({
-          item,
-          itemScore: isSearching ? itemScore(item, searchOptions) : 0,
-          itemIndex: index,
-        }))
-        .filter(({ itemScore }) => itemScore < SEARCH_SCORE_THRESHOLD)
-        .sort((a, b) => a.itemScore - b.itemScore);
 
       if (
         section.name &&
@@ -423,7 +396,7 @@ export class AccordionList<
         if (
           !searchable ||
           !globalSearch ||
-          sortedItems?.length > 0 ||
+          items?.length > 0 ||
           section.type === "action"
         ) {
           if (section.type === "action") {
@@ -468,7 +441,7 @@ export class AccordionList<
         section.items.length > 0 &&
         !section.loading
       ) {
-        for (const { itemIndex, item } of sortedItems) {
+        for (const { itemIndex, item } of items) {
           const isLastItem = itemIndex === section.items.length - 1;
           if (itemIsSelected(item, itemIndex)) {
             this._initialSelectedRowIndex = rows.length;

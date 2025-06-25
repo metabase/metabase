@@ -6,6 +6,11 @@ import { isFragment } from "react-is";
 
 import type { Item, Row, SearchProps, Section } from "./types";
 
+// The threshold for the score of search results
+// when fuzzy searching. 0 is a perfect match, 1 is the
+// worst possible match.
+const SEARCH_SCORE_THRESHOLD = 0.4;
+
 export type Cursor = {
   sectionIndex: number;
   itemIndex: number | null;
@@ -129,113 +134,182 @@ export function isReactNode(x: unknown): x is ReactNode {
   );
 }
 
-const getSearchIndex = memoize(function <
+type FilterOptions<TItem extends Item, TSection extends Section<TItem>> = {
+  sections: TSection[];
+  searchProp?: SearchProps<TItem>;
+  fuzzySearch?: boolean;
+  searchText: string;
+};
+
+type SearchOptions<TItem extends Item> = {
+  items: TItem[];
+  searchProp: SearchProps<TItem>;
+  searchText: string;
+};
+
+type SearchStrategy<TItem extends Item> = (
+  options: SearchOptions<TItem>,
+) => ItemScores<TItem>;
+
+type ItemScores<TItem extends Item> = {
+  get(item: TItem): number | undefined;
+};
+
+export function searchFilter<
   TItem extends Item,
   TSection extends Section<TItem>,
 >({
   sections,
+  searchText,
   searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
-}: {
-  sections: TSection[];
-  searchProp?: SearchProps<TItem>;
-}) {
-  const items = sections.flatMap((section) => section.items ?? []);
-  const keys = Array.isArray(searchProp) ? searchProp : [searchProp];
+  fuzzySearch = false,
+}: FilterOptions<TItem, TSection>) {
+  const strategy = searchStrategy({
+    sections,
+    searchText,
+    searchProp,
+    fuzzySearch,
+  });
+  const items = getSearchItems<TItem, TSection>(sections);
+  const scores = strategy({ items, searchText, searchProp });
 
+  return sortAndFilterSections(sections, scores);
+}
+
+const getSearchItems = memoize(function <
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>(sections: TSection[]): TItem[] {
+  return sections.flatMap((section) => section.items ?? []);
+});
+
+/**
+ * searchStrategy picks the correct SearchStrategy based on the
+ * search options.
+ */
+function searchStrategy<TItem extends Item, TSection extends Section<TItem>>({
+  searchText,
+  fuzzySearch,
+}: FilterOptions<TItem, TSection>): SearchStrategy<TItem> {
+  if (searchText === "") {
+    return alwaysMatch;
+  } else if (fuzzySearch) {
+    return searchFuzzy;
+  } else {
+    return searchSubstring;
+  }
+}
+
+/**
+ * alwaysMatch is a SearchStrategy that returns all the items with a score of 0.
+ * It performs no work to see if an item acutally matches the search text.
+ */
+const alwaysMatch = function <TItem extends Item>(): ItemScores<TItem> {
+  return {
+    get(_item: TItem) {
+      return 0;
+    },
+  };
+};
+
+/**
+ * searchFuzzy is a SearchStrategy that use Fuse.js to perform fuzzy search.
+ */
+const searchFuzzy = memoize(function <TItem extends Item>({
+  items,
+  searchText,
+  searchProp,
+}: SearchOptions<TItem>): ItemScores<TItem> {
+  const searchIndex = getFuzzySearchIndex({ items, searchProp });
+  const results = searchIndex.search(searchText, { limit: 50 });
+
+  const scores = new Map<TItem, number>();
+  for (const result of results) {
+    scores.set(result.item, result.score ?? 1);
+  }
+  return scores;
+});
+
+/**
+ * searchSubstring is a SearchStrategy that performs a simple (lowercase) substring
+ * search.
+ */
+const searchSubstring = memoize(function <TItem extends Item>({
+  searchText,
+  searchProp,
+}: SearchOptions<TItem>): ItemScores<TItem> {
+  const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
+  return {
+    get(item: TItem) {
+      for (const prop of searchProps) {
+        const path = prop.split(".");
+        const itemText = String(getIn(item, path) || "");
+        const match = itemText.toLowerCase().includes(searchText.toLowerCase());
+        return match ? 0 : 1;
+      }
+    },
+  };
+});
+
+function sortAndFilterSections<
+  TItem extends Item,
+  TSection extends Section<TItem>,
+>(sections: TSection[], scores: ItemScores<TItem>) {
+  return sections
+    .map((section, sectionIndex) => {
+      const items = sortAndFilterItems(section.items ?? [], scores);
+      const sectionScore = Math.min.apply(
+        null,
+        items.map(({ itemScore }) => itemScore),
+      );
+
+      return {
+        section,
+        sectionScore,
+        sectionIndex,
+        items,
+      };
+    })
+    .filter(
+      ({ sectionScore, section }) =>
+        section.type || sectionScore < SEARCH_SCORE_THRESHOLD,
+    )
+    .sort((a, b) => a.sectionScore - b.sectionScore);
+}
+
+function sortAndFilterItems<TItem extends Item>(
+  items: TItem[],
+  scores: ItemScores<Item>,
+) {
+  return items
+    .map((item, itemIndex) => ({
+      item,
+      itemIndex,
+      itemScore: scores.get(item) ?? 1,
+    }))
+    .filter(({ itemScore }) => itemScore < SEARCH_SCORE_THRESHOLD)
+    .sort((a, b) => a.itemScore - b.itemScore);
+}
+
+/**
+ * Build the Fuse.js index for fuzzy search.
+ *
+ * This is memoized to avoid rebuilding the index for every keystroke.
+ */
+const getFuzzySearchIndex = memoize(function <TItem extends Item>({
+  items,
+  searchProp,
+}: {
+  items: TItem[];
+  searchProp: SearchProps<TItem>;
+}) {
+  const keys = Array.isArray(searchProp) ? searchProp : [searchProp];
   return new Fuse<TItem>(items, {
     keys,
     includeScore: true,
     isCaseSensitive: false,
   });
 });
-
-const search = memoize(function <T>({
-  searchIndex,
-  searchText,
-}: {
-  searchIndex: Fuse<T>;
-  searchText: string;
-}): Map<T, number> | null {
-  if (searchText === "") {
-    return null;
-  }
-  const results = searchIndex
-    .search(searchText, { limit: 50 })
-    .filter((result) => result.score && result.score < 0.6);
-
-  const map = new Map<T, number>();
-  for (const result of results) {
-    map.set(result.item, result.score ?? 1);
-  }
-  return map;
-});
-
-export function itemScore<TItem extends Item, TSection extends Section<TItem>>(
-  item: TItem,
-  {
-    searchText,
-    sections,
-    fuzzySearch = false,
-    searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
-  }: {
-    searchText: string;
-    sections: TSection[];
-    fuzzySearch?: boolean;
-    searchProp?: SearchProps<TItem>;
-  },
-) {
-  if (!searchText || searchText.length === 0) {
-    return 0;
-  }
-
-  if (fuzzySearch) {
-    const searchIndex = getSearchIndex({
-      sections,
-      searchProp,
-    });
-    const searchResults = search({ searchIndex, searchText });
-    return searchResults?.get(item) ?? 1;
-  }
-
-  const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
-  for (const prop of searchProps) {
-    if (searchPredicate(item, searchText, prop)) {
-      return 0;
-    }
-  }
-
-  return 1;
-}
-
-export function sectionScore<
-  TItem extends Item,
-  TSection extends Section<TItem>,
->(
-  section: TSection,
-  options: {
-    searchText: string;
-    sections: TSection[];
-    fuzzySearch?: boolean;
-    searchProp?: SearchProps<TItem>;
-  },
-) {
-  if (!section.items) {
-    return 1;
-  }
-
-  let best = 1;
-  for (const item of section.items) {
-    const score = itemScore(item, options);
-    best = Math.min(best, score);
-  }
-  return best;
-}
-
-function searchPredicate<TItem>(item: TItem, searchText: string, prop: string) {
-  const path = prop.split(".");
-  const itemText = String(getIn(item, path) || "");
-  return itemText.toLowerCase().includes(searchText.toLowerCase());
-}
 
 /**
  * Memoizes a function based on shallow equality of its argument.
