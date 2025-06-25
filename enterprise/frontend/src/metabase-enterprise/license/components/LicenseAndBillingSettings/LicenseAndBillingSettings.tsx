@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { jt, t } from "ttag";
 
 import {
@@ -15,7 +15,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { Box, Divider, Flex, Stack } from "metabase/ui";
+import { Box, Button, Divider, Flex, Modal, Stack, Text } from "metabase/ui";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
@@ -58,17 +58,43 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
+function handleMessageToken(
+  event: MessageEvent,
+  onLicenseToken: (token: string) => void,
+) {
+
+  if (event.origin !== "https://store-metabase-hex6thzxr-metaboat.vercel.app") {
+    return;
+  }
+
+  onLicenseToken(event.data);
+}
+
 export const LicenseAndBillingSettings = () => {
   const { data: allSettings, isLoading: isLoadingToken } =
     useGetAdminSettingsDetailsQuery();
   const settingDetails = allSettings?.["premium-embedding-token"];
   const token = settingDetails?.value;
-
+  const [licenseToken, setLicenseToken] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [sendToast] = useToast();
 
   const sendActivatedToast = useCallback(() => {
     sendToast({ message: t`Your license is active!` });
   }, [sendToast]);
+
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      handleMessageToken(event, setLicenseToken);
+    }
+
+    window.addEventListener("message", onMessage);
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+    };
+  }, []);
 
   const {
     loading: licenseLoading,
@@ -110,6 +136,10 @@ export const LicenseAndBillingSettings = () => {
 
   return (
     <SettingsPageWrapper title={t`License`}>
+      <Box>
+        <Button onClick={() => setIsModalOpen(true)}>{t`Open Modal`}</Button>
+        <Text>{`The license token is: ${licenseToken}`}</Text>
+      </Box>
       <SettingsSection>
         <Stack
           data-testid="license-and-billing-content"
@@ -151,6 +181,27 @@ export const LicenseAndBillingSettings = () => {
           {tokenStatus?.valid && shouldUpsell && <UpsellSection />}
         </Stack>
       </SettingsSection>
+      <Modal
+        opened={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        size="100%"
+        title={t`Upgrade to Metabase Pro`}
+      >
+        <Flex w="100%" h="100%">
+          <iframe
+            src="https://store-metabase-hex6thzxr-metaboat.vercel.app/test-for-iframe"
+            height="600px"
+            width="100%"
+            ref={iframeRef}
+            style={{
+              border: 'none',
+              outline: 'none',
+              boxShadow: 'none',
+              borderRadius: '0',
+            }}
+          />
+        </Flex>
+      </Modal>
     </SettingsPageWrapper>
   );
 };
