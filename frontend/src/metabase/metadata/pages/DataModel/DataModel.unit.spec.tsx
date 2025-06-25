@@ -4,7 +4,6 @@ import { IndexRedirect, Route } from "react-router";
 import {
   setupCardDataset,
   setupDatabasesEndpoints,
-  setupFieldEndpoints,
   setupFieldsValuesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
@@ -28,7 +27,6 @@ import {
   createOrdersProductIdField,
   createOrdersTable,
   createOrdersUserIdField,
-  createPeopleIdField,
   createPeopleTable,
   createProductsTable,
   createSampleDatabase,
@@ -37,6 +35,7 @@ import {
 import { DataModel } from "./DataModel";
 import type { ParsedRouteParams } from "./types";
 import { getUrl } from "./utils";
+import { checkNotNull } from "metabase/lib/types";
 
 registerVisualizations();
 
@@ -128,6 +127,11 @@ async function setup({
 
   await waitFor(() => {
     expect(getTablePickerDatabase(databases[0].name)).toBeInTheDocument();
+  });
+  await waitFor(() => {
+    expect(
+      getTablePickerTable(checkNotNull(databases[0].tables)[0].display_name),
+    ).toBeInTheDocument();
   });
 }
 
@@ -374,6 +378,56 @@ describe("DataModel", () => {
       expect(input).toBeInTheDocument();
       expect(input).toHaveValue("");
       expect(input).toHaveAttribute("placeholder", "Field access denied");
+    });
+
+    it("should not show the foreign key target for non-foreign keys", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_ID_FIELD.display_name);
+
+      expect(
+        within(getFieldSection()).queryByLabelText("Foreign key target"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should show currency settings for currency fields", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+
+      const currencyInput = within(getFieldSection()).getByPlaceholderText(
+        "Select a currency type",
+      );
+      await userEvent.click(currencyInput);
+
+      const popover = within(await screen.findByRole("listbox"));
+      expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
+      expect(popover.getByText("Euro")).toBeInTheDocument();
+
+      await userEvent.clear(currencyInput);
+      await userEvent.type(currencyInput, "Dollar");
+
+      expect(popover.getByText("US Dollar")).toBeInTheDocument();
+      expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
+      expect(popover.queryByText("Euro")).not.toBeInTheDocument();
+    });
+
+    it("should not show currency settings for non-currency fields", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_ID_FIELD.display_name);
+
+      expect(
+        within(getFieldSection()).queryByPlaceholderText(
+          "Select a currency type",
+        ),
+      ).not.toBeInTheDocument();
     });
   });
 });
