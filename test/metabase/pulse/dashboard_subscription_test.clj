@@ -519,7 +519,8 @@
                                              :visualization_settings {:virtual_card {:display "heading"}
                                                                       :text "## Dashboard Header"}
                                              :inline_parameters ["63e719d0"]}]
-        (thunk)))
+        (mt/with-temporary-setting-values [site-name "Metabase Test"]
+          (thunk))))
 
     :assert
     {:email
@@ -541,7 +542,7 @@
                              :fields (append-subscription-branding-content [{:type "mrkdwn",
                                                                              :text (str "<https://testmb.com/dashboard/"
                                                                                         dashboard-id
-                                                                                        "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase by Rasta Toucan*>")}])}]}
+                                                                                        "?state=CA&state=NY&state=NJ&quarter_and_year=Q1-2021|*Sent from Metabase Test by Rasta Toucan*>")}])}]}
                   {:title           pulse.test-util/card-name
                    :rendered-info   {:attachments false, :content true, :render/text true},
                    :title_link      (str "https://testmb.com/question/" card-id)
