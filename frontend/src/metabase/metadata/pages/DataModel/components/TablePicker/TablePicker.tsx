@@ -59,6 +59,26 @@ function Tree({
   const isEmpty = items.length === 0;
 
   useEffect(() => {
+    // When we detect only one database, we automatically select and expand it.
+    const databases = tree.children.filter((node) => node.type === "database");
+
+    if (databases.length !== 1) {
+      return;
+    }
+
+    const [database] = databases;
+
+    if (
+      databases.length === 1 &&
+      !isExpanded({ databaseId: database.value.databaseId }) &&
+      database.value.databaseId !== databaseId
+    ) {
+      toggle(database.key, true);
+      onChange(database.value);
+    }
+  }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
+
+  useEffect(() => {
     // When we detect a database with just one schema, we automatically
     // select and expand that schema.
     const database = tree.children.find(
