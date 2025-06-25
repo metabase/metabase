@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
 import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
-import { Box, Flex, Text } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
@@ -23,11 +23,6 @@ interface NumberValueInputProps {
   rightInclusive?: boolean;
   onInclusiveChange?: (side: "left" | "right", value: boolean) => void;
 }
-
-const GREATER_THAN_OR_EQUAL_TO = "≥";
-const GREATER_THAN = ">";
-const LESS_THAN_OR_EQUAL_TO = "≤";
-const LESS_THAN = "<";
 
 function NumberValueInput({
   query,
@@ -86,7 +81,11 @@ function NumberValueInput({
               aria-label="toggle greater inclusiveness"
               onChange={() => onInclusiveChange?.("left", !leftInclusive)}
             >
-              {leftInclusive ? GREATER_THAN_OR_EQUAL_TO : GREATER_THAN}
+              {leftInclusive ? (
+                <Icon name="greater_than_or_equal" />
+              ) : (
+                <Icon name="greater_than" />
+              )}
             </ToggleButton>
           }
           classNames={{
@@ -103,7 +102,11 @@ function NumberValueInput({
               aria-label="toggle less inclusiveness"
               onChange={() => onInclusiveChange?.("right", !rightInclusive)}
             >
-              {rightInclusive ? LESS_THAN_OR_EQUAL_TO : LESS_THAN}
+              {rightInclusive ? (
+                <Icon name="less_than_or_equal" />
+              ) : (
+                <Icon name="less_than" />
+              )}
             </ToggleButton>
           }
           classNames={{

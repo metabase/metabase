@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
@@ -579,23 +579,23 @@ describe("NumberFilterPicker", () => {
       expect(greaterButton).toBeInTheDocument();
       expect(lessButton).toBeInTheDocument();
 
-      expect(greaterButton).toHaveTextContent("≥");
+      expect(getIcon("greater_than_or_equal")).toBeInTheDocument();
 
       await userEvent.click(greaterButton);
 
-      expect(greaterButton).toHaveTextContent(">");
+      expect(getIcon("greater_than")).toBeInTheDocument();
 
-      expect(lessButton).toHaveTextContent("≤");
+      expect(getIcon("less_than_or_equal")).toBeInTheDocument();
 
       await userEvent.click(lessButton);
 
-      expect(lessButton).toHaveTextContent("<");
+      expect(getIcon("less_than")).toBeInTheDocument();
 
       await userEvent.click(lessButton);
       await userEvent.click(greaterButton);
 
-      expect(greaterButton).toHaveTextContent("≥");
-      expect(lessButton).toHaveTextContent("≤");
+      expect(getIcon("greater_than_or_equal")).toBeInTheDocument();
+      expect(getIcon("less_than_or_equal")).toBeInTheDocument();
     });
   });
 });
