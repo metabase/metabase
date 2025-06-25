@@ -732,3 +732,43 @@
         (.await take-latch)
 
         (is (= {:id 42 :payload_type :notification/testing :test-value "X"} @result))))))
+
+(deftest notification-dispatcher-graceful-shutdown-test
+  (testing "dispatcher gracefully processes all notifications in queue before shutting down"
+    (let [processed-notifications (atom [])
+          processing-latch        (java.util.concurrent.CountDownLatch. 1)
+          queue                   (#'notification.send/create-dedup-priority-queue)
+          dispatcher              (#'notification.send/create-notification-dispatcher 2 queue)
+          dispatch-fn             (:dispatch-fn dispatcher)
+          shutdown-fn             (:shutdown-fn dispatcher)]
+      (with-redefs [notification.send/send-notification-sync!
+                    (fn [notification]
+                      ;; Wait for the latch to be released before processing
+                      (.await processing-latch)
+                      (swap! processed-notifications conj notification))]
+
+        (testing "notifications are queued and processed during shutdown"
+          (dispatch-fn {:id 1 :payload_type :notification/testing :test-value "A"})
+          (dispatch-fn {:id 2 :payload_type :notification/testing :test-value "B"})
+          (dispatch-fn {:id 3 :payload_type :notification/testing :test-value "C"})
+          (dispatch-fn {:id 4 :payload_type :notification/testing :test-value "D"})
+
+          (testing "there are 2 notifications waiting in the queue"
+            (is (= 2 (notification.send/queue-size queue))))
+          (testing "sanity check that notifications were not processed"
+            (is (= 0 (count @processed-notifications))
+                "No notifications should be processed before latch is released"))
+
+          (let [shutdown-fut (future (shutdown-fn 1000))]
+            (.countDown processing-latch)
+            @shutdown-fut
+            (testing "all notifications were processed during shutdown"
+              (is (= 0 (notification.send/queue-size queue)))
+              (is (= 4 (count @processed-notifications)))
+              (is (= #{"A" "B" "C" "D"}
+                     (into #{} (map :test-value @processed-notifications)))))
+
+            (testing "shutdown dispatcher won't accept new items"
+              (is (= ::notification.send/shutdown
+                     (dispatch-fn {:id 5 :payload_type :notification/testing :test-value "E"})))
+              (is (= 0 (notification.send/queue-size queue))))))))))
