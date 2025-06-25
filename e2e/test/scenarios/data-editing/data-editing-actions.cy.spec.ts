@@ -183,8 +183,8 @@ describe(
           cy.findByText("Save").click();
         });
 
-      // eslint-disable-next-line no-unsafe-element-filtering
       H.modal()
+        .should("have.length", 3)
         .last()
         .within(() => {
           cy.findByPlaceholderText("My new fantastic action")

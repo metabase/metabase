@@ -125,11 +125,16 @@ export const ConfigureTableActions = ({
   );
 
   return (
-    <Stack gap="sm" data-testid="editable-table-connected-actions-list">
-      <Text fw={700}>{t`Connected actions`}</Text>
-      <Stack gap="sm" mb="lg">
-        {tableActions?.length ? (
-          tableActions?.map((action) => {
+    <Stack gap="xl" data-testid="editable-table-connected-actions-list">
+      <Button
+        variant="active"
+        onClick={openEditingModal}
+      >{t`Add new connected action`}</Button>
+
+      {tableActions && tableActions.length > 0 && (
+        <Stack gap="sm">
+          <Text fw={700} size="lg">{t`Connected actions`}</Text>
+          {tableActions?.map((action) => {
             return (
               <RowActionItem
                 key={action.id}
@@ -139,16 +144,9 @@ export const ConfigureTableActions = ({
                 onEnable={updateAction}
               />
             );
-          })
-        ) : (
-          <Text>{t`Create, connect, pass data around`}</Text>
-        )}
-      </Stack>
-
-      <Button
-        variant="active"
-        onClick={openEditingModal}
-      >{t`Add new connected action`}</Button>
+          })}
+        </Stack>
+      )}
 
       {isEditingModalOpen && (
         <Modal.Root

@@ -425,7 +425,9 @@
         driver      (:engine database)
         {:keys [from]} (mbql-query->raw-hsql driver query)
         create-hsql (-> {:insert-into (first from)
-                         :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
+                         :values      (if-not (seq create-row)
+                                        :default
+                                        [(cast-values driver create-row db-id (get-in query [:query :source-table]))])}
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
     (log/tracef ":model.row/create HoneySQL:\n\n%s" (u/pprint-to-str create-hsql))
@@ -668,15 +670,15 @@
   (driver-api/cached-value
    [::table-fk-relationship table-id]
    (fn []
-     (let [table-fields   (t2/select [:model/Field :id :name :semantic_type] :table_id table-id)
+     (let [table-fields   (t2/select [:model/Field :id :name :semantic_type] :table_id table-id :active true)
            table-pks      (filter #(isa? (:semantic_type %) :type/PK) table-fields)
            pk-names       (map :name table-pks)
            fk-fields      (when-let [pk-ids (seq (map :id table-pks))]
-                            (t2/select :model/Field :fk_target_field_id [:in pk-ids]))
+                            (t2/select :model/Field :fk_target_field_id [:in pk-ids] :active true))
            ;; Pre-fetch table names to avoid repeated queries
            table-ids      (distinct (map :table_id fk-fields))
            table-id->ref  (when (seq table-ids)
-                            (t2/select-pk->fn table->ref :model/Table :id [:in table-ids]))
+                            (t2/select-pk->fn table->ref :model/Table :id [:in table-ids] :active true))
            field-id->name (u/index-by :id table-fields)]
        (for [{:keys [name table_id fk_target_field_id]} fk-fields]
          {:table-id   table_id

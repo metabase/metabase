@@ -7,11 +7,8 @@ import { uuid } from "metabase/lib/uuid";
 import { PLUGIN_TABLE_ACTIONS } from "metabase/plugins";
 import { Checkbox, Stack, Text } from "metabase/ui";
 import type {
-  Dashboard,
   DashboardCard,
   EditableTableBuiltInActionDisplaySettings,
-  TableActionDisplaySettings,
-  TableRowActionDisplaySettings,
 } from "metabase-types/api";
 
 const DEFAULT_ACTIONS = [
@@ -35,18 +32,14 @@ const DEFAULT_ACTIONS = [
   },
 ];
 
-export const ConfigureDashcardEditableTableActions = ({
-  dashboard,
+export const ConfigureDashcardBuiltInTableActions = ({
   dashcard,
 }: {
-  dashboard: Dashboard;
   dashcard: DashboardCard;
 }) => {
   const dispatch = useDispatch();
 
-  const databaseId = dashcard.card?.database_id;
-
-  const { enabledActions, tableActions, builtInActionsMap } = useMemo(() => {
+  const { enabledActions, builtInActionsMap } = useMemo(() => {
     const enabledActions =
       dashcard.visualization_settings?.["editableTable.enabledActions"] ?? [];
 
@@ -54,8 +47,6 @@ export const ConfigureDashcardEditableTableActions = ({
       EditableTableBuiltInActionDisplaySettings["actionId"],
       EditableTableBuiltInActionDisplaySettings
     >();
-
-    const tableActions: TableRowActionDisplaySettings[] = [];
 
     enabledActions.forEach((tableActionSettings) => {
       if (
@@ -65,12 +56,10 @@ export const ConfigureDashcardEditableTableActions = ({
           tableActionSettings.actionId,
           tableActionSettings,
         );
-      } else {
-        tableActions.push(tableActionSettings as TableRowActionDisplaySettings);
       }
     });
 
-    return { enabledActions, tableActions, builtInActionsMap };
+    return { enabledActions, builtInActionsMap };
   }, [dashcard.visualization_settings]);
 
   const tableColumns = useMemo(() => {
@@ -137,58 +126,34 @@ export const ConfigureDashcardEditableTableActions = ({
     [enabledActions, dispatch, dashcard.id, tableColumns],
   );
 
-  const handleUpdateRowActions = useCallback(
-    (newActions: TableActionDisplaySettings[]) => {
-      const builtIns = enabledActions.filter(
-        PLUGIN_TABLE_ACTIONS.isBuiltInEditableTableAction,
-      );
-
-      dispatch(
-        onUpdateDashCardVisualizationSettings(dashcard.id, {
-          "editableTable.enabledActions": [...builtIns, ...newActions],
-        }),
-      );
-    },
-    [dashcard.id, dispatch, enabledActions],
-  );
-
-  const ConfigureTableActions = PLUGIN_TABLE_ACTIONS.ConfigureTableActions;
-
   return (
-    <Stack gap="lg">
-      <Stack gap="sm">
-        <Text fw={700}>{t`Default actions`}</Text>
-        <Stack gap="sm">
-          {DEFAULT_ACTIONS.map(({ actionId, label }) => {
-            const isEnabled = builtInActionsMap.get(actionId)?.enabled || false;
-            const isIndeterminate =
-              actionId === "data-grid.row/update" &&
-              !isEnabled &&
-              editableColumns.length > 0;
+    <Stack gap="sm">
+      <Text size="lg" fw={700}>{t`Permissions`}</Text>
+      <Text
+        c="text-secondary"
+        lh={1.4}
+      >{t`Configure what default actions end users will be able to do when viewing this dashcard.`}</Text>
+      <Stack gap="sm" mt="sm">
+        {DEFAULT_ACTIONS.map(({ actionId, label }) => {
+          const isEnabled = builtInActionsMap.get(actionId)?.enabled || false;
+          const isIndeterminate =
+            actionId === "data-grid.row/update" &&
+            !isEnabled &&
+            editableColumns.length > 0;
 
-            return (
-              <Checkbox
-                key={actionId}
-                label={label}
-                indeterminate={isIndeterminate}
-                checked={isIndeterminate || isEnabled}
-                onChange={() =>
-                  handleToggleBuiltInAction({ actionId, enabled: !isEnabled })
-                }
-              />
-            );
-          })}
-        </Stack>
+          return (
+            <Checkbox
+              key={actionId}
+              label={label}
+              indeterminate={isIndeterminate}
+              checked={isIndeterminate || isEnabled}
+              onChange={() =>
+                handleToggleBuiltInAction({ actionId, enabled: !isEnabled })
+              }
+            />
+          );
+        })}
       </Stack>
-
-      {dashboard && (
-        <ConfigureTableActions
-          value={tableActions}
-          onChange={handleUpdateRowActions}
-          databaseId={databaseId}
-          cols={tableColumns}
-        />
-      )}
     </Stack>
   );
 };

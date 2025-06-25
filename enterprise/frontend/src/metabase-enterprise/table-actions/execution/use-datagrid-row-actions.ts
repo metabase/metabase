@@ -2,12 +2,14 @@ import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
 import type { DataGridRowAction } from "metabase/data-grid/types";
-import { getRowPkValues } from "metabase-enterprise/data_editing/tables/edit/utils";
 import type { RowCellsWithPkValue } from "metabase-enterprise/data_editing/tables/types";
 import type {
+  DatasetColumn,
   DatasetData,
   EditableTableActionsDisplaySettings,
+  RowValue,
   RowValues,
+  TableRowActionDisplaySettings,
 } from "metabase-types/api";
 
 import { isBuiltInEditableTableAction } from "../settings/AddOrEditActionSettingsContent/utils";
@@ -15,6 +17,10 @@ import { isBuiltInEditableTableAction } from "../settings/AddOrEditActionSetting
 type UseDataGridRowActionsProps = {
   actionSettings?: EditableTableActionsDisplaySettings[];
   datasetData: DatasetData | null | undefined;
+  getActionInputFromRow?: (
+    cols: DatasetColumn[],
+    rowData: RowValues,
+  ) => RowCellsWithPkValue;
 };
 
 export type SelectedRowAction = {
@@ -25,6 +31,7 @@ export type SelectedRowAction = {
 export function useDataGridRowActions({
   actionSettings,
   datasetData,
+  getActionInputFromRow = rowValuesToRecord,
 }: UseDataGridRowActionsProps) {
   const [selectedRowAction, setSelectedRowAction] =
     useState<SelectedRowAction | null>(null);
@@ -38,14 +45,14 @@ export function useDataGridRowActions({
 
       const rowIndex = row.index;
       const rowData = datasetData.rows[rowIndex];
-      const input = getRowPkValues(datasetData.cols, rowData);
+      const input = getActionInputFromRow(datasetData.cols, rowData);
 
       setSelectedRowAction({
         action,
         input,
       });
     },
-    [datasetData],
+    [datasetData, getActionInputFromRow],
   );
 
   const handleRowActionFormClose = useCallback(() => {
@@ -54,7 +61,8 @@ export function useDataGridRowActions({
 
   const rowActions = useMemo<DataGridRowAction[] | undefined>(() => {
     return actionSettings?.filter(
-      (actionSettings) => !isBuiltInEditableTableAction(actionSettings),
+      (actionSettings): actionSettings is TableRowActionDisplaySettings =>
+        !isBuiltInEditableTableAction(actionSettings),
     );
   }, [actionSettings]);
 
@@ -64,4 +72,16 @@ export function useDataGridRowActions({
     onRowActionButtonClick: handleRowActionButtonClick,
     onRowActionFormClose: handleRowActionFormClose,
   };
+}
+
+function rowValuesToRecord(cols: DatasetColumn[], rowData: RowValues) {
+  return cols.reduce(
+    (acc, col, index) => {
+      return {
+        ...acc,
+        [col.name]: rowData[index],
+      };
+    },
+    {} as Record<string, RowValue>,
+  );
 }
