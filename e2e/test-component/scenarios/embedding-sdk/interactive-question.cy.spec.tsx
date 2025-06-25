@@ -498,4 +498,40 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       });
     });
   });
+
+  it("should show the editor when switching from existing question to new question (metabase#60075)", () => {
+    const TestComponent = () => {
+      const [questionId, setQuestionId] = useState<string | number>(1);
+
+      return (
+        <Box>
+          <InteractiveQuestion questionId={questionId} />
+          <Button onClick={() => setQuestionId("new")}>New Question</Button>
+        </Box>
+      );
+    };
+
+    cy.get<number>("@questionId").then(() => {
+      mountSdkContent(<TestComponent />);
+
+      cy.log("shows an existing question initially");
+      getSdkRoot().within(() => {
+        cy.findByText("Product ID").should("be.visible");
+        cy.findByText("Max of Quantity").should("be.visible");
+      });
+
+      cy.log("switch to questionId=new");
+      cy.findByText("New Question").click();
+
+      getSdkRoot().within(() => {
+        cy.log("should show the query builder");
+        cy.findByText("Pick your starting data").should("be.visible");
+
+        cy.log("should not show an empty visualization state (metabase#60075)");
+        cy.findByText(/To run your code, click on the Run button/).should(
+          "not.exist",
+        );
+      });
+    });
+  });
 });
