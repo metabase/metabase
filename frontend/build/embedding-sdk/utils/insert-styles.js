@@ -4,6 +4,7 @@
 export default function insertIntoTarget(element) {
   document.addEventListener("rootElementSet", (event) => {
     const rootElement = event.detail.rootElement;
+    // eslint-disable-next-line no-direct-document-references
     const isShadowRoot = rootElement !== document.body;
 
     const parent = rootElement.querySelector(

@@ -27,6 +27,7 @@ export const getTooltipPositionFn =
     _rect: unknown,
     size: { contentSize: [number, number] },
   ) => {
+    // eslint-disable-next-line no-direct-document-references
     const { clientWidth, clientHeight } = document.documentElement;
     const containerRect = containerRef.current?.getBoundingClientRect();
     const containerX = containerRect?.x ?? 0;

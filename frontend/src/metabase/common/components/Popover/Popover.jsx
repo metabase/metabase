@@ -334,6 +334,7 @@ class PopoverInner extends Component {
       const elementRect = Tether.Utils.getBounds(tetherOptions.element);
 
       // get bounds within *window*
+      // eslint-disable-next-line no-direct-document-references
       const doc = document.documentElement;
       const left =
         (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);

@@ -56,8 +56,10 @@ export const getScrollBarSize = _.memoize(() => {
   innerElem.style.width = "30px";
   innerElem.style.height = "60px";
   scrollableElem.appendChild(innerElem);
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(scrollableElem); // Elements only have width if they're in the layout
   const diff = scrollableElem.offsetWidth - scrollableElem.clientWidth;
+  // eslint-disable-next-line no-direct-document-references
   document.body.removeChild(scrollableElem);
   return diff;
 });
@@ -339,6 +341,7 @@ export function openInBlankWindow(url) {
 function clickLink(url, blank = false) {
   const a = document.createElement("a");
   a.style.display = "none";
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(a);
   try {
     a.href = url;
@@ -562,6 +565,7 @@ export function openSaveDialog(fileName, fileContent) {
   const link = document.createElement("a");
   link.href = url;
   link.setAttribute("download", fileName);
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(link);
   link.click();
 
