@@ -27,7 +27,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     cy.visit("/embed/new");
     cy.wait("@dashboard");
 
-    cy.findByRole("aside").findByText("Chart").click();
+    getEmbedSidebar().findByText("Chart").click();
 
     const iframe = H.getIframeBody();
     iframe.within(() => {
@@ -40,7 +40,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     cy.visit("/embed/new");
     cy.wait("@dashboard");
 
-    cy.findByRole("aside").findByText("Exploration").click();
+    getEmbedSidebar().findByText("Exploration").click();
 
     const iframe = H.getIframeBody();
     iframe.within(() => {
@@ -49,3 +49,5 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     });
   });
 });
+
+const getEmbedSidebar = () => cy.findByRole("complementary");
