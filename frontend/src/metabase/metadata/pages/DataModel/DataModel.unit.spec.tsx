@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import { IndexRedirect, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -8,28 +8,55 @@ import { renderWithProviders, screen } from "__support__/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { SAMPLE_DATABASE } from "metabase-lib/test-helpers";
 import type { Database } from "metabase-types/api";
-import { createMockLocation } from "metabase-types/store/mocks";
 
 import { DataModel } from "./DataModel";
-import type { RouteParams } from "./types";
+import type { ParsedRouteParams } from "./types";
+import { getUrl } from "./utils";
 
 registerVisualizations();
 
+const DEFAULT_ROUTE_PARAMS: ParsedRouteParams = {
+  databaseId: undefined,
+  schemaName: undefined,
+  tableId: undefined,
+  fieldId: undefined,
+};
+
 interface SetupOpts {
   databases?: Database[];
-  location?: Location;
-  params?: RouteParams;
+  params?: ParsedRouteParams;
 }
 
 function setup({
   databases = [SAMPLE_DATABASE],
-  location = createMockLocation({ pathname: "/admin/datamodel" }),
-  params = {},
+  params = DEFAULT_ROUTE_PARAMS,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases);
   setupCardDataset();
 
-  renderWithProviders(<DataModel location={location} params={params} />);
+  renderWithProviders(
+    <Route path="admin/datamodel">
+      <IndexRedirect to="database" />
+      <Route path="database" component={DataModel} />
+      <Route path="database/:databaseId" component={DataModel} />
+      <Route
+        path="database/:databaseId/schema/:schemaId"
+        component={DataModel}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId"
+        component={DataModel}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+        component={DataModel}
+      />
+    </Route>,
+    {
+      withRouter: true,
+      initialRoute: getUrl(params),
+    },
+  );
 }
 
 describe("DataModel", () => {

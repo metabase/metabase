@@ -88,7 +88,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
-          <IndexRedirect to="database" component={DataModel} />
+          <IndexRedirect to="database" />
           <Route path="database" component={DataModel} />
           <Route path="database/:databaseId" component={DataModel} />
           <Route
