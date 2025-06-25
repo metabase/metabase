@@ -234,7 +234,7 @@ export function sectionScore<
 function searchPredicate<TItem>(item: TItem, searchText: string, prop: string) {
   const path = prop.split(".");
   const itemText = String(getIn(item, path) || "");
-  return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
+  return itemText.toLowerCase().includes(searchText.toLowerCase());
 }
 
 /**
