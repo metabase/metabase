@@ -312,4 +312,9 @@
                                 [:field %products.category {:source-field %product-id}]]}))]
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
-        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))))
+        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))
+    (testing "result metadata should still contain fk_field_id"
+      (is (=? [{:fk_field_id (meta/id :orders :product-id)}
+               {:fk_field_id (meta/id :orders :product-id)}
+               {}]
+              (qp.preprocess/query->expected-cols query))))))
