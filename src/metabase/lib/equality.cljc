@@ -18,8 +18,8 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -157,7 +157,7 @@
                                     (matching-join? a-ref col))))
                          columns)))]
         (some matches-for-name
-              [ ;; TODO (Cam 6/12/25) -- if these columns came from the previous stage or a join
+              [;; TODO (Cam 6/12/25) -- if these columns came from the previous stage or a join
                ;; then we should look at `:lib/desired-column-alias`, or if they came from the
                ;; current stage we should look at `:lib/source-column-alias`. It's not
                ;; well-defined where these columns come from.
