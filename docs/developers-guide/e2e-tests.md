@@ -190,9 +190,7 @@ Cypress._.times(N, () => {
 
 ### Embedding SDK tests
 
-Tests located in `e2e/test-component/scenarios/embedding-sdk/` are used to run automated checks for the Embedding SDK.
-
-In order to run the tests locally, see [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md)
+See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md)
 
 ## DB Snapshots
 

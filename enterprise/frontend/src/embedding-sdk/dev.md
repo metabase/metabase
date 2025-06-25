@@ -43,7 +43,8 @@ Storybook will use the source files and not the built package.
 
 ### Component e2e tests
 
-E2e tests for the sdk are currently done with cypress component tests.
+E2e tests for the sdk are currently done with cypress component tests, and located in `e2e/test-component/scenarios/embedding-sdk/`.
+
 
 You'll need to have the following ENVs for running EE E2E tests:
 

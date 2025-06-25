@@ -191,6 +191,7 @@ jobs:
           name: embedding-sdk-${{ github.event.pull_request.head.sha || github.sha }}
           path: resources/embedding-sdk
 
+  # See `Sample Apps compatibility with Embedding SDK tests` in `enterprise/frontend/src/embedding-sdk/dev.md`
   e2e-sample-apps-tests:
     needs: [get-build-requirements, get-sample-apps-data, build]
     strategy:
@@ -308,6 +309,7 @@ jobs:
         run: |
           exit 1
 
+  # See `Embedding SDK integration tests with Host Apps` in `enterprise/frontend/src/embedding-sdk/dev.md`
   e2e-host-apps-tests:
     needs: [ get-build-requirements, build ]
     strategy:
