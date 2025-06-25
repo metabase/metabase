@@ -9,10 +9,10 @@ import {
   USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
+  activateToken,
   createQuestion,
   createQuestionAndDashboard,
   restore,
-  setTokenFeatures,
   snapshot,
   updateSetting,
   withSampleDatabase,
@@ -37,6 +37,8 @@ const {
   NOSQL_GROUP,
 } = USER_GROUPS;
 const { admin } = USERS;
+
+const { IS_ENTERPRISE } = Cypress.env();
 
 describe("snapshots", () => {
   describe("default", () => {
@@ -367,11 +369,13 @@ describe("snapshots", () => {
 });
 
 function getDefaultInstanceData() {
-  setTokenFeatures("all");
+  if (IS_ENTERPRISE) {
+    activateToken("bleeding-edge");
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": true,
+    });
+  }
 
-  cy.request("PUT", "/api/setting", {
-    "use-tenants": true,
-  });
   const instanceData = {};
 
   instanceData.loginCache = loginCache;
@@ -411,9 +415,11 @@ function getDefaultInstanceData() {
     }
   });
 
-  cy.request("PUT", "/api/setting", {
-    "use-tenants": false,
-  });
+  if (IS_ENTERPRISE) {
+    cy.request("PUT", "/api/setting", {
+      "use-tenants": false,
+    });
+  }
 
   return instanceData;
 }
