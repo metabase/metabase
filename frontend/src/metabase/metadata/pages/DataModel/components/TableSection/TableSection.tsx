@@ -94,7 +94,13 @@ const TableSectionBase = ({ params, table }: Props) => {
               )}
             </Group>
 
-            <Group flex="1" gap="md" justify="flex-end" wrap="nowrap">
+            <Group
+              className={S.buttons}
+              flex="1"
+              gap="md"
+              justify="flex-end"
+              wrap="nowrap"
+            >
               {!isSorting && (
                 <Button
                   h={32}
