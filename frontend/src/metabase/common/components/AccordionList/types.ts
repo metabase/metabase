@@ -5,6 +5,7 @@ import type { IconName } from "metabase/ui";
 export type Item = object | string;
 
 export type Section<TItem extends Item = Item> = {
+  key?: string;
   name?: ReactNode;
   type?:
     | "action"
