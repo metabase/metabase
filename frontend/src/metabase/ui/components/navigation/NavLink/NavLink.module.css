@@ -45,6 +45,33 @@
       background-color: var(--mb-color-bg-medium);
     }
   }
+
+  &[data-variant="admin-nav"] {
+    &:hover {
+      background-color: var(--mb-color-brand-lighter);
+    }
+
+    .NavLinkLabel {
+      color: var(--mb-color-text-primary);
+    }
+
+    &[data-active] {
+      color: var(--mb-color-text-brand);
+
+      &,
+      &:hover {
+        background-color: var(--mb-color-brand-light);
+      }
+
+      .NavLinkLabel {
+        color: var(--mb-color-text-brand);
+      }
+
+      .NavLinkChevron {
+        color: var(--mb-color-text-brand);
+      }
+    }
+  }
 }
 
 .NavLinkLabel {

@@ -59,7 +59,7 @@
                   (lib/breakout (meta/field-metadata :venues :category-id))
                   (lib/limit 100)
                   (lib/append-stage))
-        card-id (:id ((lib.tu/mock-cards) :orders))]
+        card-id (:id (:orders (lib.tu/mock-cards)))]
     (is (= [{:lib/type :mbql.stage/mbql :source-table (meta/id :orders)}]
            (:stages (lib/with-different-table query (meta/id :orders)))))
     (is (= [{:lib/type :mbql.stage/mbql :source-card card-id}]
@@ -195,6 +195,22 @@
            (lib.query/query meta/metadata-provider
                             {:database 74001, :type :query, :query {:source-table 74040}})))))
 
+(deftest ^:parallel handle-null-collection-test
+  (testing "collection: null doesn't cause errors #59675"
+    (is (= {:database               (meta/id)
+            :lib/type               :mbql/query
+            :lib/metadata           meta/metadata-provider
+            :stages                 [{:lib/type :mbql.stage/native
+                                      :template-tags {}
+                                      :native "select * from products limit 3;"}]
+            :lib.convert/converted? true}
+           (lib.query/query meta/metadata-provider
+                            {:database 1703
+                             :type :native
+                             :native {:template-tags {}
+                                      :query "select * from products limit 3;"
+                                      :collection nil}})))))
+
 (deftest ^:parallel can-run-test
   (mu/disable-enforcement
     #_{:clj-kondo/ignore [:equals-true]}
@@ -203,7 +219,7 @@
            (= can-run? (lib.query/can-run query card-type) (lib.query/can-preview query))
            (= can-run? (lib.query/can-run query card-type)))
       true  :question (lib.tu/venues-query)
-      false :question (assoc (lib.tu/venues-query) :database nil)           ; database unknown - no permissions
+      false :question (assoc (lib.tu/venues-query) :database nil) ; database unknown - no permissions
       true  :question (lib/native-query meta/metadata-provider "SELECT")
       false :question (lib/native-query meta/metadata-provider "")
       false :metric   (lib.tu/venues-query)

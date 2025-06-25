@@ -1,9 +1,9 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Card from "metabase/components/Card";
-import { Grid, GridItem } from "metabase/components/Grid";
-import Link from "metabase/core/components/Link";
+import Card from "metabase/common/components/Card";
+import { Grid, GridItem } from "metabase/common/components/Grid";
+import Link from "metabase/common/components/Link";
 import { space } from "metabase/styled-components/theme";
 
 export const TableGrid = styled(Grid)`

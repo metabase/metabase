@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
@@ -75,7 +75,8 @@
                               :expressions/text         true
                               :expressions/integer      true
                               :expressions/float        true
-                              :expressions/date         true}]
+                              :expressions/date         true
+                              :database-routing         true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -261,24 +262,29 @@
   (sql-jdbc.execute/reducible-query database (get-tables-sql schemas tables)))
 
 (defn- describe-syncable-tables
-  [driver database]
+  [{driver :engine :as database}]
   (reify clojure.lang.IReduceInit
     (reduce [_ rf init]
-      (reduce
-       rf
-       init
-       (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-         (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver database)]
-           (eduction
-            (comp (filter have-select-privilege?)
-                  (map #(dissoc % :type)))
-            (get-tables database syncable-schemas nil))))))))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver
+       database
+       nil
+       (fn [^Connection conn]
+         (reduce
+          rf
+          init
+          (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
+            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+              (eduction
+               (comp (filter have-select-privilege?)
+                     (map #(dissoc % :type)))
+               (get-tables database syncable-schemas nil))))))))))
 
 (defmethod driver/describe-database :postgres
-  [driver database]
+  [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
-  {:tables (into #{} (describe-syncable-tables driver database))})
+  {:tables (into #{} (describe-syncable-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fields-sql :postgres
   ;; The implementation is based on `getColumns` in https://github.com/pgjdbc/pgjdbc/blob/fcc13e70e6b6bb64b848df4b4ba6b3566b5e95a3/pgjdbc/src/main/java/org/postgresql/jdbc/PgDatabaseMetaData.java
@@ -1001,6 +1007,19 @@
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
+
+(defmethod sql-jdbc.execute/execute-prepared-statement! :postgres
+  [driver stmt]
+  (let [orig-method (get-method sql-jdbc.execute/execute-prepared-statement! :sql-jdbc)]
+    (try
+      (orig-method driver stmt)
+      (catch Throwable e
+        (if (re-find #"No value specified for parameter" (ex-message e))
+          (throw (ex-info (tru "It looks like you have a ''?'' in your code which Postgres''s JDBC driver interprets as a parameter. You might need to escape it like ''??''.")
+                          {:driver driver
+                           :sql    (str stmt)
+                           :type   driver-api/qp.error-type.invalid-query}))
+          (throw e))))))
 
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]

@@ -27,6 +27,7 @@
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
+    :model/ContentTranslation                metabase.content-translation.models
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
     :model/DashboardCard                     metabase.dashboards.models.dashboard-card
@@ -37,6 +38,7 @@
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Field                             metabase.warehouse-schema.models.field
+    :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
     :model/GroupTableAccessPolicy            metabase-enterprise.sandbox.models.group-table-access-policy
     :model/HTTPAction                        metabase.actions.models
@@ -66,7 +68,6 @@
     :model/PulseChannelRecipient             metabase.pulse.models.pulse-channel-recipient
     :model/Query                             metabase.queries.models.query
     :model/QueryAction                       metabase.actions.models
-    :model/QueryAnalysis                     metabase.query-analysis.models.query-analysis
     :model/QueryCache                        metabase.cache.models.query-cache
     :model/QueryExecution                    metabase.queries.models.query-execution
     :model/QueryField                        metabase.queries.models.query-field

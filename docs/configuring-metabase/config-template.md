@@ -197,7 +197,6 @@ config:
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
     premium-embedding-token: null
-    query-analysis-enabled: false
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
@@ -247,7 +246,6 @@ config:
     slack-bug-report-channel: metabase-bugs
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
-    sql-parsing-enabled: true
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
     subscription-allowed-domains: null

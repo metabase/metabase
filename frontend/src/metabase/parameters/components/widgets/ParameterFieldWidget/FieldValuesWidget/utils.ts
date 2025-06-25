@@ -38,10 +38,6 @@ export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
   return dashboard?.id;
 }
 
-export function showRemapping(fields: Field[]) {
-  return fields.length === 1;
-}
-
 export function shouldList({
   parameter,
   fields,

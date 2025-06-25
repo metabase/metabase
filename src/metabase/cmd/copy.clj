@@ -60,6 +60,7 @@
     :model/Table
     :model/Field
     :model/FieldValues
+    :model/FieldUserSettings
     :model/Segment
     :model/ModerationReview
     :model/Revision
@@ -135,7 +136,7 @@
 (def ^:private chunk-size 100)
 
 (defn- insert-chunk!
-  "Insert of `chunkk` of rows into the target database table with `table-name`."
+  "Insert of `chunk` of rows into the target database table with `table-name`."
   [target-db-type target-db-conn-spec table-name chunkk]
   (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
@@ -345,6 +346,7 @@
     :model/Session
     :model/ImplicitAction
     :model/HTTPAction
+    :model/FieldUserSettings
     :model/QueryAction
     :model/ModelIndexValue})
 

@@ -1,7 +1,11 @@
 import dayjs from "dayjs";
 
 const { H } = cy;
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -1158,7 +1162,7 @@ describe("issue 21528", () => {
         "Select any table to see its schema and add or edit metadata.",
       )
       .should("be.visible");
-    cy.findByRole("navigation").findByText("Exit admin").click();
+    cy.findByTestId("admin-navbar").findByText("Exit admin").click();
 
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Our analytics").click();
@@ -4667,6 +4671,161 @@ describe("issue 44090", () => {
     H.filterWidget().then(($el) => {
       const { width } = $el[0].getBoundingClientRect();
       cy.wrap(width).should("be.lt", 300);
+    });
+  });
+});
+
+describe.skip("issue 47951", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.setTokenFeatures("all");
+  });
+
+  it("should do X (metabase#47951)", () => {
+    cy.log("set up permissions");
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+      [USER_GROUPS.DATA_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "no",
+        },
+      },
+    });
+
+    cy.log("set up remapping");
+    cy.request("PUT", `/api/field/${ORDERS.PRODUCT_ID}`, {
+      has_field_values: "list",
+    });
+    cy.request("PUT", `/api/field/${REVIEWS.PRODUCT_ID}`, {
+      has_field_values: "list",
+    });
+    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
+      name: "Product ID",
+      type: "external",
+      human_readable_field_id: PRODUCTS.TITLE,
+    });
+    cy.request("POST", `/api/field/${REVIEWS.PRODUCT_ID}/dimension`, {
+      name: "Product ID",
+      type: "external",
+      human_readable_field_id: PRODUCTS.TITLE,
+    });
+
+    cy.log("create a dashboard");
+    const parameter = createMockParameter({
+      id: "p1",
+      slug: "p1",
+      type: "id",
+      sectionId: "id",
+      default: 1,
+    });
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [parameter],
+      },
+      questions: [
+        { name: "q1", query: { "source-table": ORDERS_ID } },
+        { name: "q2", query: { "source-table": REVIEWS_ID } },
+      ],
+    }).then(({ dashboard: dashboard, questions: [card1, card2] }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card1.id,
+            parameter_mappings: [
+              {
+                card_id: card1.id,
+                parameter_id: parameter.id,
+                target: ["dimension", ["field", ORDERS.PRODUCT_ID, null]],
+              },
+            ],
+          },
+          {
+            card_id: card2.id,
+            parameter_mappings: [
+              {
+                card_id: card2.id,
+                parameter_id: parameter.id,
+                target: ["dimension", ["field", REVIEWS.PRODUCT_ID, null]],
+              },
+            ],
+          },
+        ],
+      });
+      cy.wrap(dashboard.id).as("dashboardId");
+    });
+
+    cy.log("log in as a normal user and open the dashboard");
+    cy.signInAsNormalUser();
+    H.visitDashboard("@dashboardId");
+
+    cy.log("check remapping for default values");
+    H.filterWidget().findByText("Rustic Paper Wallet").should("be.visible");
+
+    cy.log("check remapping for dropdown values");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Rustic Paper Wallet").should("be.visible");
+      cy.findByText("Aerodynamic Bronze Hat").should("be.visible");
+    });
+  });
+});
+
+describe("issue 59306", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const parameter = createMockParameter({
+      id: "p1",
+      slug: "p1",
+      type: "string/=",
+      sectionId: "string",
+      default: undefined,
+      values_query_type: "none",
+    });
+
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [parameter],
+      },
+      questions: [{ name: "q1", query: { "source-table": PRODUCTS_ID } }],
+    }).then(({ dashboard, questions: [card] }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card.id,
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameter.id,
+                target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                has_field_values: "input",
+              },
+            ],
+          },
+        ],
+      }).then(() => {
+        H.visitDashboard(dashboard.id);
+      });
+    });
+  });
+
+  it("should not overflow the filter box (metabase#59306)", () => {
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter some text")
+        .type("asdf".repeat(20))
+        .invoke("outerWidth")
+        .should("be.lt", 400);
     });
   });
 });
