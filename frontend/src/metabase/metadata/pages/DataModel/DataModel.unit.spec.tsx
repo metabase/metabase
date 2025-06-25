@@ -90,7 +90,7 @@ interface SetupOpts {
   params?: ParsedRouteParams;
 }
 
-function setup({
+async function setup({
   databases = [SAMPLE_DB],
   params = DEFAULT_ROUTE_PARAMS,
 }: SetupOpts = {}) {
@@ -121,6 +121,10 @@ function setup({
       initialRoute: getUrl(params),
     },
   );
+
+  await waitFor(() => {
+    expect(getTablePickerDatabase(databases[0].name)).toBeInTheDocument();
+  });
 }
 
 describe("DataModel", () => {
@@ -130,11 +134,7 @@ describe("DataModel", () => {
   });
 
   it("should show empty state by default", async () => {
-    setup();
-
-    await waitFor(() => {
-      expect(getTablePickerDatabase(SAMPLE_DB.name)).toBeInTheDocument();
-    });
+    await setup();
 
     expect(screen.getByRole("link", { name: /Segments/ })).toBeInTheDocument();
     expect(
@@ -160,11 +160,7 @@ describe("DataModel", () => {
 
   describe("single schema database", () => {
     it("should select the first database and the only schema by default", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(getTablePickerDatabase(SAMPLE_DB.name)).toBeInTheDocument();
-      });
+      await setup();
 
       expect(
         getTablePickerTable(ORDERS_TABLE.display_name),
@@ -173,7 +169,7 @@ describe("DataModel", () => {
     });
 
     it("should allow to search for a table", async () => {
-      setup();
+      await setup();
       setupSearchEndpoints(
         [
           createMockSearchResult({
@@ -200,13 +196,7 @@ describe("DataModel", () => {
     });
 
     it("should not allow to enter an empty table name", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(ORDERS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -217,13 +207,7 @@ describe("DataModel", () => {
     });
 
     it("should not allow to enter an empty field name in table section", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(ORDERS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -239,13 +223,7 @@ describe("DataModel", () => {
     });
 
     it("should not allow to enter an empty field name in field section", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(ORDERS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -259,13 +237,7 @@ describe("DataModel", () => {
     });
 
     it("should display visible tables", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(PRODUCTS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(PRODUCTS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -276,13 +248,7 @@ describe("DataModel", () => {
     });
 
     it("should display hidden tables", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(ORDERS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -293,13 +259,7 @@ describe("DataModel", () => {
     });
 
     it("clicking on tables with initial_sync_status='incomplete' should not navigate to the table", async () => {
-      setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
-
-      await waitFor(() => {
-        expect(
-          getTablePickerDatabase(SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE.name),
-        ).toBeInTheDocument();
-      });
+      await setup({ databases: [SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE] });
 
       expect(
         screen.getByText("Start by selecting data to model"),
@@ -330,13 +290,7 @@ describe("DataModel", () => {
     });
 
     it("should display sort options", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(ORDERS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -349,13 +303,7 @@ describe("DataModel", () => {
     });
 
     it("should display field visibility options", async () => {
-      setup();
-
-      await waitFor(() => {
-        expect(
-          getTablePickerTable(ORDERS_TABLE.display_name),
-        ).toBeInTheDocument();
-      });
+      await setup();
 
       await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
       await waitForLoaderToBeRemoved();
@@ -367,6 +315,47 @@ describe("DataModel", () => {
       expect(popover.getByText("Everywhere")).toBeInTheDocument();
       expect(popover.getByText("Only in detail views")).toBeInTheDocument();
       expect(popover.getByText("Do not include")).toBeInTheDocument();
+    });
+
+    it("should allow to search for field semantic types", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
+
+      const input = getFieldSemanticTypeInput();
+      await userEvent.click(input);
+
+      const popover = within(await screen.findByRole("listbox"));
+      expect(popover.getByText("Currency")).toBeInTheDocument();
+
+      await userEvent.clear(input);
+      await userEvent.type(input, "In");
+
+      expect(popover.getByText("Income")).toBeInTheDocument();
+      expect(popover.queryByText("Currency")).not.toBeInTheDocument();
+    });
+
+    it.only("should show the foreign key target for foreign keys", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
+
+      const input = getFieldSemanticTypeFkTargetInput();
+      expect(input).toHaveValue("Products → ID");
+
+      await userEvent.click(input);
+      const popover = within(await screen.findByRole("listbox"));
+
+      expect(popover.getByText("Products → ID")).toBeInTheDocument();
+      expect(popover.getByText("Orders → ID")).toBeInTheDocument();
+
+      await userEvent.clear(input);
+      await userEvent.type(input, "Products");
+      expect(popover.getByText("Products → ID")).toBeInTheDocument();
     });
   });
 });
@@ -513,7 +502,9 @@ function getFieldCoercionInput() {
 }
 
 function getFieldSemanticTypeInput() {
-  return getFieldSection().getByPlaceholderText("Select a semantic type");
+  return within(getFieldSection()).getByPlaceholderText(
+    "Select a semantic type",
+  );
 }
 
 function getFieldSemanticTypeCurrenscreenInput() {
@@ -521,7 +512,7 @@ function getFieldSemanticTypeCurrenscreenInput() {
 }
 
 function getFieldSemanticTypeFkTargetInput() {
-  return getFieldSection().getByLabelText("Foreign key target");
+  return within(getFieldSection()).getByLabelText("Foreign key target");
 }
 
 function getFieldVisibilityInput() {

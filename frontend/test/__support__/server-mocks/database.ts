@@ -2,7 +2,7 @@ import fetchMock from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
-import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
+import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -89,7 +89,7 @@ export const setupSchemaEndpoints = (db: Database) => {
 export function setupDatabaseIdFieldsEndpoints({ id, tables = [] }: Database) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
-      .filter((field) => isTypeFK(field.semantic_type))
+      .filter((field) => isTypePK(field.semantic_type))
       .map((field) => ({ ...field, table })),
   );
 
