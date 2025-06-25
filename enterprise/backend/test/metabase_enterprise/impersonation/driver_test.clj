@@ -685,18 +685,19 @@
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                 (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
                       futures (doall
-                               (for [i (range max-pool-size)]
+                               (for [_i (range max-pool-size)]
                                  (future
                                    (sql-jdbc.execute/do-with-connection-with-options
                                     driver/*driver* (mt/id) {}
                                     (fn [^Connection conn]
                                       (driver/set-role! driver/*driver* conn role-a))))))]
                   (doseq [f futures] @f)
-                  (is (= [1 "African"]
+                  (is (= [[1000]]
                          (sql-jdbc.execute/do-with-connection-with-options
                           driver/*driver* (mt/id) {}
-                          (fn [^Connection conn]
-                            (first (mt/rows (qp/process-query (mt/mbql-query categories))))))))
+                          (fn [^Connection _conn]
+                            (mt/formatted-rows [int]
+                                               (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))
                   #_(impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                    :attributes     {"impersonation_attr" role-a}}
                       (is (= [[100]]

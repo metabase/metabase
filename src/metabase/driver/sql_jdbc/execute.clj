@@ -325,7 +325,11 @@
   []
   (pos? *connection-recursion-depth*))
 
-(def ^:dynamic *db-conn* nil)
+(def ^:dynamic *db-conn*
+  "When recursive/nested calls to [[do-with-connection-with-options]] are made with a db or id (not a spec),
+   we want to continue using the same connection to ensure that the correct options have been set.
+   To ensure we are using the same connection we bind the connection from the top-level call to this var."
+  nil)
 
 (mu/defn do-with-resolved-connection
   "Execute
