@@ -42,7 +42,12 @@
 (mr/def ::stage.native
   [:and
    [:map
-    {:decode/normalize common/normalize-map}
+    {:decode/normalize #(->> %
+                             common/normalize-map
+                             ;; filter out null :collection keys -- see #59675
+                             (m/filter-kv (fn [k v]
+                                            (not (and (= k :collection)
+                                                      (nil? v))))))}
     [:lib/type [:= {:decode/normalize common/normalize-keyword} :mbql.stage/native]]
     ;; the actual native query, depends on the underlying database. Could be a raw SQL string or something like that.
     ;; Only restriction is that, if present, it is non-nil.
