@@ -257,21 +257,21 @@
                                     (data-editing.tu/table-url source-table)
                                     {:rows [{:text "a very important string"}]})
 
-            (testing "default table action on a data-grid"
-              (is (=? {:status 400}
-                      (req {:action_id "dashcard:unknown:built-in-update"
-                            :scope     {:dashcard-id (:id dashcard)}}))))
+              (testing "default table action on a data-grid"
+                (is (=? {:status 400}
+                        (req {:action_id "dashcard:unknown:built-in-update"
+                              :scope     {:dashcard-id (:id dashcard)}}))))
 
-            (testing "custom table action on a data-grid"
-              (is (=? {:status 200
-                       :body   {:parameters
-                                [{:id "id",   :sourceType "ask-user"}
-                                 {:id "int",  :sourceType "constant", :value 42}
-                                 {:id "text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
-                                 {:id "timestamp", :visibility "hidden"}
-                                 {:id "date",      :sourceType "ask-user"}]}}
-                      (req {:action_id "dashcard:unknown:update"
-                            :scope     {:dashcard-id (:id dashcard)}})))))))))))
+              (testing "custom table action on a data-grid"
+                (is (=? {:status 200
+                         :body   {:parameters
+                                  [{:id "id",   :sourceType "ask-user"}
+                                   {:id "int",  :sourceType "constant", :value 42}
+                                   {:id "text", :sourceType "row-data", :sourceValueTarget "text", :visibility "readonly"}
+                                   {:id "timestamp", :visibility "hidden"}
+                                   {:id "date",      :sourceType "ask-user"}]}}
+                        (req {:action_id "dashcard:unknown:update"
+                              :scope     {:dashcard-id (:id dashcard)}})))))))))))
 
 (deftest configure-saved-action-on-editable-on-dashboard-test
   (mt/with-premium-features #{:table-data-editing}
