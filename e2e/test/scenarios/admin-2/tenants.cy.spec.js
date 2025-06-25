@@ -60,11 +60,11 @@ describe("Tenants - management", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("bleeding-edge");
   });
 
   it("should disable the feature if the token feature is not enabled", () => {
-    H.setTokenFeatures("none");
+    H.deleteToken();
 
     cy.visit("/admin/tenants");
     cy.location("pathname").should("eq", "/admin/people");
@@ -359,7 +359,7 @@ describe("tenant users", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("bleeding-edge");
 
     cy.request("PUT", "/api/setting", {
       "jwt-attribute-email": "email",

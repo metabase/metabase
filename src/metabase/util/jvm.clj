@@ -267,7 +267,7 @@
 
 ;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
 ;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
-(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
+(defonce ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended
   for use by various routines that load related namespaces, such as task and events
   initialization.
 
