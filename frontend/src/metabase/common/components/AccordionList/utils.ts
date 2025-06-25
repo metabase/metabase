@@ -152,7 +152,7 @@ type SearchStrategy<TItem extends Item> = (
 ) => ItemScores<TItem>;
 
 type ItemScores<TItem extends Item> = {
-  get(item: TItem): number | undefined;
+  score(item: TItem): number;
 };
 
 export function searchFilter<
@@ -206,7 +206,7 @@ function searchStrategy<TItem extends Item, TSection extends Section<TItem>>({
  */
 const alwaysMatch = function <TItem extends Item>(): ItemScores<TItem> {
   return {
-    get(_item: TItem) {
+    score(_item: TItem) {
       return 0;
     },
   };
@@ -227,7 +227,11 @@ const searchFuzzy = memoize(function <TItem extends Item>({
   for (const result of results) {
     scores.set(result.item, result.score ?? 1);
   }
-  return scores;
+  return {
+    score(item: TItem) {
+      return scores.get(item) ?? 1;
+    },
+  };
 });
 
 /**
@@ -240,13 +244,14 @@ const searchSubstring = memoize(function <TItem extends Item>({
 }: SearchOptions<TItem>): ItemScores<TItem> {
   const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
   return {
-    get(item: TItem) {
+    score(item: TItem) {
       for (const prop of searchProps) {
         const path = prop.split(".");
         const itemText = String(getIn(item, path) || "");
         const match = itemText.toLowerCase().includes(searchText.toLowerCase());
         return match ? 0 : 1;
       }
+      return 1;
     },
   };
 });
@@ -257,11 +262,12 @@ function sortAndFilterSections<
 >(sections: TSection[], scores: ItemScores<TItem>) {
   return sections
     .map((section, sectionIndex) => {
-      const items = sortAndFilterItems(section.items ?? [], scores);
-      const sectionScore = Math.min.apply(
-        null,
-        items.map(({ itemScore }) => itemScore),
+      const sectionScores = (section.items ?? []).map(
+        (item) => scores.get(item) ?? 1,
       );
+      const sectionScore = Math.min(1, ...sectionScores);
+
+      const items = sortAndFilterItems(section.items ?? [], scores);
 
       return {
         section,
