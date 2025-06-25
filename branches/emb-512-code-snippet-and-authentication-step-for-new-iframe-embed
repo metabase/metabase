@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-549-end-to-end-tests-for-selecting-resource-to-embed-for-new",
     "hash": "cf35a935d8993ca1d58feca37c1b36a1db322c03"
+  },
+  "upstream": {
+    "branch": "emb-512-code-snippet-and-authentication-step-for-new-iframe-embed"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60089,
+        "gqlID": "PR_kwDOAczgH86cHZUx"
+      }
+    }
   }
 }
