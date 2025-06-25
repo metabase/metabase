@@ -20,6 +20,8 @@ declare global {
     "collection-browser": WebComponentAttributes<CollectionBrowserWebComponentAttributes>;
 
     "create-dashboard-modal": WebComponentAttributes<CreateDashboardModalWebComponentAttributes>;
+
+    "metabot-question": WebComponentAttributes;
   }
 
   namespace React {
@@ -35,6 +37,8 @@ declare global {
         "collection-browser": WebComponentAttributes<CollectionBrowserWebComponentAttributes>;
 
         "create-dashboard-modal": WebComponentAttributes<CreateDashboardModalWebComponentAttributes>;
+
+        "metabot-question": WebComponentAttributes;
       }
     }
   }

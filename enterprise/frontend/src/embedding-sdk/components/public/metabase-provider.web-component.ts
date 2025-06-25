@@ -17,6 +17,7 @@ const MetabaseProviderWebComponent =
       "editable-dashboard",
       "collection-browser",
       "create-dashboard-modal",
+      "metabot-question",
     ],
     propertyNames: ["authConfig", "theme"],
     propMappings: [
