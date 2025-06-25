@@ -43,10 +43,13 @@ export const SdkIframeEmbedSetupProvider = ({
   );
 
   const updateSettings = (nextSettings: Partial<SdkIframeEmbedSettings>) =>
-    setSettings({
-      ...settings,
-      ...nextSettings,
-    } as SdkIframeEmbedSettings);
+    setSettings(
+      (prevSettings) =>
+        ({
+          ...prevSettings,
+          ...nextSettings,
+        }) as SdkIframeEmbedSettings,
+    );
 
   const value: SdkIframeEmbedSetupContextType = {
     currentStep,
