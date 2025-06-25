@@ -14,7 +14,6 @@ import { connect } from "metabase/lib/redux";
 export type MockDashboardContextProps = Partial<
   PropsWithChildren<ContextReturned>
 >;
-
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
   props: PropsWithChildren<ContextReturned>,
@@ -48,26 +47,16 @@ const ConnectedDashboardContextWithReduxProps = connect(
  * */
 export const MockDashboardContext = ({
   children,
-  dashboardId,
+  dashboardId = 1,
   parameterQueryParams,
   onLoad,
   onError,
   navigateToNewCardFromDashboard = null,
-  // url params
-  isFullscreen = false,
-  onFullscreenChange = noop,
-  hasNightModeToggle = false,
-  onNightModeChange = noop,
-  isNightMode = false,
-  refreshPeriod = null,
-  setRefreshElapsedHook = noop,
-  onRefreshPeriodChange = noop,
   background = true,
   bordered = true,
   titled = true,
   font = null,
   theme = "light",
-  setTheme = noop,
   hideParameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
@@ -75,6 +64,8 @@ export const MockDashboardContext = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
+  isNightMode = false,
+  isFullscreen = false,
   ...reduxProps
 }: PropsWithChildren<MockDashboardContextProps>) => {
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
@@ -86,22 +77,15 @@ export const MockDashboardContext = ({
       parameterQueryParams={parameterQueryParams}
       onLoad={onLoad}
       onError={onError}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      isFullscreen={isFullscreen}
-      onFullscreenChange={onFullscreenChange}
-      hasNightModeToggle={hasNightModeToggle}
-      onNightModeChange={onNightModeChange}
       isNightMode={isNightMode}
+      isFullscreen={isFullscreen}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       shouldRenderAsNightMode={shouldRenderAsNightMode}
-      refreshPeriod={refreshPeriod}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      onRefreshPeriodChange={onRefreshPeriodChange}
       background={background}
       bordered={bordered}
       titled={titled}
       font={font}
       theme={theme}
-      setTheme={setTheme}
       hideParameters={hideParameters}
       downloadsEnabled={downloadsEnabled}
       autoScrollToDashcardId={autoScrollToDashcardId}

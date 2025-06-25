@@ -7,7 +7,7 @@ import {
   trackExportDashboardToPDF,
 } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
-import { useDashboardContext } from "metabase/dashboard/context";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";

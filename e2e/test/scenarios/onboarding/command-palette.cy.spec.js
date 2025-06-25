@@ -257,7 +257,7 @@ describe("command palette", () => {
         // setup
         cy.log("setup permissions");
 
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         cy.visit("/admin/permissions/application");
 
         const SETTINGS_INDEX = 0;

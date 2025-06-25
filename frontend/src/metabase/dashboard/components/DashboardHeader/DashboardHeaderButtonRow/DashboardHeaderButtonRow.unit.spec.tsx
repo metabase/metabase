@@ -5,6 +5,7 @@ import { setupBookmarksEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
+import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import type { IconName } from "metabase/ui";
 import {
   createMockDashboard,
@@ -157,20 +158,22 @@ const setup = ({
     <Route
       path="*"
       component={() => (
-        <DashboardHeaderButtonRow
-          canResetFilters
-          onResetFilters={jest.fn()}
-          refreshPeriod={null}
-          onRefreshPeriodChange={jest.fn()}
-          setRefreshElapsedHook={jest.fn()}
-          isFullscreen={isFullscreen}
-          onFullscreenChange={jest.fn()}
-          hasNightModeToggle={hasNightModeToggle}
-          onNightModeChange={jest.fn()}
-          isNightMode={isNightMode}
-          isPublic={isPublic}
-          isAnalyticsDashboard={isAnalyticsDashboard}
-        />
+        <MockDashboardContext>
+          <DashboardHeaderButtonRow
+            canResetFilters
+            onResetFilters={jest.fn()}
+            refreshPeriod={null}
+            onRefreshPeriodChange={jest.fn()}
+            setRefreshElapsedHook={jest.fn()}
+            isFullscreen={isFullscreen}
+            onFullscreenChange={jest.fn()}
+            hasNightModeToggle={hasNightModeToggle}
+            onNightModeChange={jest.fn()}
+            isNightMode={isNightMode}
+            isPublic={isPublic}
+            isAnalyticsDashboard={isAnalyticsDashboard}
+          />
+        </MockDashboardContext>
       )}
     ></Route>,
     {

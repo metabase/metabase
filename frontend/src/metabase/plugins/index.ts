@@ -618,6 +618,9 @@ export const PLUGIN_RESOURCE_DOWNLOADS = {
 };
 
 const defaultMetabotContextValue: MetabotContext = {
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
   getChatContext: () => ({}) as any,
   registerChatContextProvider: () => () => {},
 };
