@@ -60,13 +60,16 @@ const CATEGORY_OPTIONS = [{ type: "category", name: t`Category` }];
 
 export function getParameterSections(): ParameterSection[] {
   const parameterOptions = getParameterOptions();
-
+  const dateOperators =
+  typeof PARAMETER_OPERATOR_TYPES["date"] === "function"
+    ? PARAMETER_OPERATOR_TYPES["date"]()
+    : PARAMETER_OPERATOR_TYPES["date"];
   return [
     {
       id: "date",
       name: t`Time`,
       description: t`Date range, relative date, time of day, etc.`,
-      options: PARAMETER_OPERATOR_TYPES["date"].map(option => {
+      options: dateOperators?.map(option => {
         return {
           ...option,
           sectionId: "date",

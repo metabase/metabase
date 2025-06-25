@@ -30,6 +30,7 @@ import {
   NUMBER,
   PRIMARY_KEY,
 } from "metabase/lib/schema_metadata";
+import { isDateRestrictedVersionEnabled } from "metabase/query_builder/components/filters/pickers/Utils"; // adjust path
 
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
@@ -107,45 +108,7 @@ export const PARAMETER_OPERATOR_TYPES = {
       description: t`Match values that end with the entered text.`,
     },
   ],
-  date: [
-    {
-      type: "date/month-year",
-      operator: "month-year",
-      name: t`Month and Year`,
-      description: t`Like January, 2016`,
-    },
-    {
-      type: "date/quarter-year",
-      operator: "quarter-year",
-      name: t`Quarter and Year`,
-      description: t`Like Q1, 2016`,
-    },
-    {
-      type: "date/single",
-      operator: "single",
-      name: t`Single Date`,
-      description: t`Like January 31, 2016`,
-    },
-    {
-      type: "date/range",
-      operator: "range",
-      name: t`Date Range`,
-      description: t`Like December 25, 2015 - February 14, 2016`,
-    },
-    {
-      type: "date/relative",
-      operator: "relative",
-      name: t`Relative Date`,
-      description: t`Like "the last 7 days" or "this month"`,
-    },
-    {
-      type: "date/all-options",
-      operator: "all-options",
-      name: t`Date Filter`,
-      menuName: t`All Options`,
-      description: t`Contains all of the above`,
-    },
-  ],
+  date: ()=> getDateOperators()
 };
 
 const OPTIONS_WITH_OPERATOR_SUBTYPES = [
@@ -163,7 +126,70 @@ const OPTIONS_WITH_OPERATOR_SUBTYPES = [
   },
 ];
 
+const  OPTIONS_WITH_OPERATOR_DATE_SUBTYPES = [
+  {
+    type: "date/month-year",
+    operator: "month-year",
+    name: t`Month and Year`,
+    description: t`Like January, 2016`,
+  },
+  {
+    type: "date/quarter-year",
+    operator: "quarter-year",
+    name: t`Quarter and Year`,
+    description: t`Like Q1, 2016`,
+  },
+  {
+    type: "date/single",
+    operator: "single",
+    name: t`Single Date`,
+    description: t`Like January 31, 2016`,
+  },
+  {
+    type: "date/range",
+    operator: "range",
+    name: t`Date Range`,
+    description: t`Like December 25, 2015 - February 14, 2016`,
+  },
+  {
+    type: "date/relative",
+    operator: "relative",
+    name: t`Relative Date`,
+    description: t`Like "the last 7 days" or "this month"`,
+  },
+  {
+    type: "date/all-options",
+    operator: "all-options",
+    name: t`Date Filter`,
+    menuName: t`All Options`,
+    description: t`Contains all of the above`,
+  },
+];
+
+const getDateOperators = () => {
+  try {
+  return isDateRestrictedVersionEnabled()
+    ? [
+        {
+          type: "date/range",
+          operator: "range",
+          name: t`Date Range`,
+          description: t`Like December 25, 2015 - February 14, 2016`,
+        },
+      ]
+    : OPTIONS_WITH_OPERATOR_DATE_SUBTYPES;
+    }catch(e){
+      console.warn("Failed to evaluate isDateRestrictedVersionEnabled:", e);
+      return OPTIONS_WITH_OPERATOR_DATE_SUBTYPES;
+    }
+}
+
 export function getParameterOptions(): ParameterOption[] {
+  const dateOperators =
+    typeof PARAMETER_OPERATOR_TYPES["date"] === "function"
+      ? PARAMETER_OPERATOR_TYPES["date"]()
+      : PARAMETER_OPERATOR_TYPES["date"];
+
   return [
     {
       type: "id",
@@ -191,13 +217,18 @@ export function getParameterOptions(): ParameterOption[] {
             type: "location/country",
             name: t`Country`,
           },
-          ...PARAMETER_OPERATOR_TYPES["date"],
+          ...dateOperators,
         ]),
   ].flat();
 }
 
 function buildOperatorSubtypeOptions({ type, typeName }) {
-  return PARAMETER_OPERATOR_TYPES[type].map(option => ({
+  const operators =
+    typeof PARAMETER_OPERATOR_TYPES[type] === "function"
+      ? PARAMETER_OPERATOR_TYPES[type]() // safely evaluate if function
+      : PARAMETER_OPERATOR_TYPES[type];  // use as-is
+
+  return operators.map(option => ({
     ...option,
     combinedName: getOperatorDisplayName(option, type, typeName),
   }));
