@@ -436,7 +436,7 @@ describe("scenarios > admin > permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {

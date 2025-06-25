@@ -89,6 +89,11 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     goalLine: {
       label: { fontSize: FONT_SIZES.goalLabel.px },
     },
+    splitLine: {
+      lineStyle: {
+        color: "var(--mb-color-border)",
+      },
+    },
   },
   popover: {
     zIndex: OVERLAY_Z_INDEX,
