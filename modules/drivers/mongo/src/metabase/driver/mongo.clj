@@ -182,9 +182,9 @@
                                  ;; !!!
                                  {"$ifNull" ["$kvs.k" "$path"]}]}
                 "val" #_{"$ifNull" ["$kvs.v" "$val"]}
-                {"$expr" {"$cond" [{"$and" ["$kvs.k"]}
-                                   "$kvs.v"
-                                   "$val"]}}
+                {"$cond" [{"$and" ["$kvs.k"]}
+                          "$kvs.v"
+                          "$val"]}
                 ;; this is super unfortunate
                 "indices" {"$cond" [{"$ne" ["$index" nil]}
                                     {"$concatArrays" ["$indices" ["$index"]]}
