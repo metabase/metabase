@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
-import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";

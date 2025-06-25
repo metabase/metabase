@@ -1,7 +1,7 @@
 import type * as React from "react";
 
+import DisclosureTriangle from "metabase/common/components/DisclosureTriangle";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import CS from "metabase/css/core/index.css";
 
 import { CollapsibleSectionContent } from "./FormSection.styled";

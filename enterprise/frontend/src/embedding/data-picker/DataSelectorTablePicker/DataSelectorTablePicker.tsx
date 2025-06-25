@@ -4,11 +4,11 @@ import { t } from "ttag";
 
 import AccordionList from "metabase/common/components/AccordionList";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useDocsUrl } from "metabase/common/hooks";
 import {
   HoverParent,
   TableInfoIcon,
-} from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+} from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
+import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";

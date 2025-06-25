@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { usePrevious } from "react-use";
 import _ from "underscore";
 
+import TippyPopover from "metabase/common/components/Popover/TippyPopover";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { getParameterValues } from "metabase/dashboard/selectors";
 import Search from "metabase/entities/search";
 import { getUrlTarget } from "metabase/lib/dom";

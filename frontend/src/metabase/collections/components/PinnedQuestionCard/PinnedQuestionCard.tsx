@@ -10,7 +10,7 @@ import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/components/EventSandbox";
+import EventSandbox from "metabase/common/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Box, Flex, Group, Icon, type IconName, Text } from "metabase/ui";

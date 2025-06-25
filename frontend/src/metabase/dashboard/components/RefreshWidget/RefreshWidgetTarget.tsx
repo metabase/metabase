@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
+import { ToolbarButton } from "metabase/common/components/ToolbarButton/ToolbarButton";
+import { CountdownIcon } from "metabase/common/components/icons/CountdownIcon";
 import { isNotNull } from "metabase/lib/types";
-
-import { ToolbarButton } from "../../../components/ToolbarButton/ToolbarButton";
 
 type RefreshWidgetTargetProps = {
   period: number | null;

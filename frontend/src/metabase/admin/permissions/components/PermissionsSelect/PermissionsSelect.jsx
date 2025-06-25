@@ -1,8 +1,8 @@
 import PropTypes from "prop-types";
 import { Fragment, memo, useState } from "react";
 
+import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import Toggle from "metabase/common/components/Toggle";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { lighten } from "metabase/lib/colors";
 import { Icon, Tooltip } from "metabase/ui";
 

@@ -1,8 +1,8 @@
 import type React from "react";
 import { memo, useMemo } from "react";
 
+import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
 import { useMousePressed } from "metabase/common/hooks/use-mouse-pressed";
-import { QueryColumnInfoPopover } from "metabase/components/MetadataInfo/ColumnInfoPopover";
 import {
   HeaderCellPill,
   type HeaderCellProps,

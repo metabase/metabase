@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
+import { ViewFooterButton } from "metabase/common/components/ViewFooterButton";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   onCloseTimelines,
