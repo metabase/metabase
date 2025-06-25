@@ -487,6 +487,7 @@
            metabase.embedding.init
            metabase.embedding.jwt
            metabase.embedding.settings
+           metabase.embedding.util
            metabase.embedding.validation}
    :uses #{analytics
            api
@@ -606,6 +607,7 @@
           metabase.lib.util.match
           metabase.lib.walk}
    :uses #{config
+           formatter
            legacy-mbql
            types
            util}}
@@ -1305,13 +1307,15 @@
            util
            enterprise/advanced-permissions}}
 
+  ;; `util` is a fundamental "lego brick" module that almost everything else depends on -- ideally it should use no
+  ;; other modules at all! PLEASE do not add any new `:uses` dependencies to `util`. If you need to use another module
+  ;; to make you a new util, consider putting that util in that module instead of in app-wide general utils.
   util
   {:team "DevEx"
    :api  :any
    :uses #{classloader
            config
-           settings
-           system}}
+           settings}}
 
   version
   {:team "Admin Webapp"
