@@ -1,6 +1,4 @@
-import { useDisclosure } from "@mantine/hooks";
 import { c, t } from "ttag";
-import { debounce } from "underscore";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
@@ -16,8 +14,8 @@ import {
   Button,
   Divider,
   Flex,
+  HoverCard,
   Icon,
-  Popover,
   Stack,
   Text,
   UnstyledButton,
@@ -31,26 +29,13 @@ type LicenseTokenFormProps = {
   initialValue?: string;
 };
 
-const MOUSE_HOVER_DELAY = 200;
-const POPOVER_WIDTH = 300;
+const CARD_WIDTH = 300;
 
 export const LicenseTokenForm = ({
   onSubmit,
   onSkip,
   initialValue = "",
 }: LicenseTokenFormProps) => {
-  const [opened, { close, open }] = useDisclosure(false);
-
-  function handleMouseMove(isEntering: boolean) {
-    if (isEntering) {
-      open();
-    } else {
-      close();
-    }
-  }
-
-  const debouncedMouseMove = debounce(handleMouseMove, MOUSE_HOVER_DELAY);
-
   const storeLink = (
     <ExternalLink
       href={getStoreUrl("checkout")}
@@ -80,45 +65,26 @@ export const LicenseTokenForm = ({
               }}
               rightSection={
                 <Box>
-                  <Popover
-                    opened={opened}
-                    withArrow
-                    position="bottom-end"
-                    offset={{ mainAxis: 5 }}
-                  >
-                    <Popover.Target>
+                  <HoverCard position="bottom-end" initiallyOpened={true}>
+                    <HoverCard.Target>
                       <UnstyledButton
                         component={Icon}
                         size="1rem"
                         name="info_filled"
                         aria-label={t`Token details information`}
-                        aria-expanded={opened}
                         c="brand"
-                        onMouseEnter={() => debouncedMouseMove(true)}
-                        onMouseLeave={() => debouncedMouseMove(false)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            debouncedMouseMove(!opened);
-                          }
-                        }}
                       />
-                    </Popover.Target>
-                    <Popover.Dropdown
-                      onMouseEnter={() => debouncedMouseMove(true)}
-                      onMouseLeave={() => debouncedMouseMove(false)}
-                    >
-                      <Stack gap="md" p="md" w={POPOVER_WIDTH}>
+                    </HoverCard.Target>
+                    <HoverCard.Dropdown>
+                      <Stack gap="md" p="md" w={CARD_WIDTH}>
                         <Text lh="lg">{t`Find your license token in the subscription confirmation email from Metabase`}</Text>
                         <Text lh="lg">{c(
                           "When users have no token, they can visit the link ${0} pointing to the store, where they can purchase a license for Metabase.",
                         )
                           .jt`Don't have one? ${storeLink}. During checkout, select the self-hosted version of the Pro plan.`}</Text>
                       </Stack>
-                    </Popover.Dropdown>
-                  </Popover>
+                    </HoverCard.Dropdown>
+                  </HoverCard>
                 </Box>
               }
               rightSectionWidth="1rem"

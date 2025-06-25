@@ -81,7 +81,7 @@ describe("LicenseTokenForm", () => {
     expect(onSkip).toHaveBeenCalled();
   });
 
-  it("shows info popover on hover", async () => {
+  it("shows info hover card on hover", async () => {
     setup();
 
     const infoIcon = screen.getByLabelText("Token details information");
