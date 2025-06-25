@@ -1,31 +1,24 @@
-import {
-  setEditingParameter,
-  setParameterIndex,
-  setParameterValue,
-  setParameterValueToDefault,
-} from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import {
-  getEditingParameter,
-  getValuePopulatedParameters,
-} from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getValuePopulatedParameters } from "metabase/dashboard/selectors";
+import { useSelector } from "metabase/lib/redux";
 
 import { ParametersList } from "../../../parameters/components/ParametersList";
 
-interface DashboardParameterListProps {
-  isFullscreen: boolean;
-}
-
-export function DashboardParameterList({
-  isFullscreen,
-}: DashboardParameterListProps) {
+export function DashboardParameterList() {
   const parameters = useSelector(getValuePopulatedParameters);
-  const editingParameter = useSelector(getEditingParameter);
-  const dispatch = useDispatch();
 
-  const { hideParameters, isEditing, shouldRenderAsNightMode, dashboard } =
-    useDashboardContext();
+  const {
+    hideParameters,
+    isEditing,
+    shouldRenderAsNightMode,
+    editingParameter,
+    dashboard,
+    setParameterValue,
+    setParameterIndex,
+    setParameterValueToDefault,
+    setEditingParameter,
+    isFullscreen,
+  } = useDashboardContext();
 
   return (
     <ParametersList
@@ -36,12 +29,10 @@ export function DashboardParameterList({
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
-      setParameterValue={(id, value) => dispatch(setParameterValue(id, value))}
-      setParameterIndex={(id, index) => dispatch(setParameterIndex(id, index))}
-      setEditingParameter={(id) => dispatch(setEditingParameter(id))}
-      setParameterValueToDefault={(id) =>
-        dispatch(setParameterValueToDefault(id))
-      }
+      setParameterValue={setParameterValue}
+      setParameterIndex={setParameterIndex}
+      setEditingParameter={setEditingParameter}
+      setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
     />
   );
