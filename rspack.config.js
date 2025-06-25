@@ -328,9 +328,17 @@ if (shouldEnableHotRefresh) {
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
-    `http://localhost:${PORT}/` + config.output.publicPath;
+    `https://metabase.local:${PORT}/` + config.output.publicPath;
 
   config.devServer = {
+    host: "metabase.local",
+    allowedHosts: [
+      "metabase.local",
+      "localhost",
+      "localhost:4567",
+      "metabase.local:3001",
+    ],
+    server: "https",
     port: PORT, // make the port explicit so it errors if it's already in use
     hot: true,
     client: {
@@ -352,7 +360,6 @@ if (shouldEnableHotRefresh) {
       // if you want to reduce stats noise
       // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
-    host: "0.0.0.0",
   };
 
   config.watchOptions = {

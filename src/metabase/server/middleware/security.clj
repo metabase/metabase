@@ -122,6 +122,7 @@
                                  ["'self'"
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
+                                  "https://metabase.local:8080"
                                   (when (analytics/anon-tracking-enabled)
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
@@ -149,6 +150,7 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
+                                 "https://metabase.local:8080"
                                  "https://accounts.google.com"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
