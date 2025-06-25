@@ -54,9 +54,9 @@
                   :errors  {}}
 
                  (:table.row/update :model.row/update)
-                 {:message (tru "Unable to update the record.")
-                  :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
-      (when-let [[_match _table _constraint column _value _ref-table]
+                 {:message (tru "Other tables rely on this row so it cannot be changed.")
+                  :errors  {}})))
+      (when-let [[_match _table _constraint column _value ref-table]
                  (re-find #"insert or update on table \"([^\"]+)\" violates foreign key constraint \"([^\"]+)\"\n  Detail: Key \((.*?)\)=\((.*?)\) is not present in table \"([^\"]+)\"" error-message)]
         {:type    error-type
          :message (case action-type
@@ -65,7 +65,7 @@
 
                     (:table.row/update :model.row/update)
                     (tru "Unable to update the record."))
-         :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))
+         :errors  {column (tru "This value does not exist in table \"{0}\"." ref-table)}})))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:postgres driver-api/incorrect-value-type]
   [_driver error-type _database _action-type error-message]
