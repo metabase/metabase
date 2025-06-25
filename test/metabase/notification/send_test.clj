@@ -24,6 +24,10 @@
 
 (use-fixtures :once (fixtures/initialize :web-server))
 
+(defn- take-notification!
+  [queue]
+  (#'notification.send/take-notification-with-timeout! queue 1000))
+
 (deftest send-notification!*-test
   (testing "sending a notification will call render on all of its handlers"
     (notification.tu/with-notification-testing-setup!
@@ -549,7 +553,7 @@
 
       (is (= [high-priority middle-priority low-priority]
              (for [_ (range 3)]
-               (#'notification.send/take-notification-with-timeout! queue 1000)))))))
+               (take-notification! queue)))))))
 
 (deftest notification-queue-preserves-deadline-on-replacement-test
   (testing "notifications with same ID are replaced in queue while preserving original deadline"
@@ -575,7 +579,7 @@
              ;; If deadline is preserved, high-priority should come first since it was added after notification-v1
              ;; If deadline was recalculated, notification-v2 would come first due to its minutely schedule
              (for [_ (range 2)]
-               (#'notification.send/take-notification-with-timeout! queue 1000)))))))
+               (take-notification! queue)))))))
 
 (deftest notification-dedup-priority-test
   (let [queue (#'notification.send/create-dedup-priority-queue)]
@@ -583,14 +587,14 @@
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification-with-timeout! queue 1000))))
+             (take-notification! queue))))
 
     (testing "notifications with same ID are replaced in queue"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
         (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "B"})
         (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
-               (#'notification.send/take-notification-with-timeout! queue 1000)))))
+               (take-notification! queue)))))
 
     (testing "multiple notifications are processed in order"
       (let [queue (#'notification.send/create-dedup-priority-queue)]
@@ -599,11 +603,11 @@
         (#'notification.send/put-notification! queue {:id 3 :payload_type :notification/testing :test-value "C"})
 
         (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-               (#'notification.send/take-notification-with-timeout! queue 1000)))
+               (take-notification! queue)))
         (is (= {:id 2 :payload_type :notification/testing :test-value "B"}
-               (#'notification.send/take-notification-with-timeout! queue 1000)))
+               (take-notification! queue)))
         (is (= {:id 3 :payload_type :notification/testing :test-value "C"}
-               (#'notification.send/take-notification-with-timeout! queue 1000)))))
+               (take-notification! queue)))))
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
@@ -611,7 +615,7 @@
             take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
                               (.countDown ready-latch) ; signal thread is ready to take
-                              (reset! result (#'notification.send/take-notification-with-timeout! queue 1000))
+                              (reset! result (take-notification! queue))
                               (.countDown take-latch)))] ; signal take is complete
         (.start thread)
         (.await ready-latch) ; wait for thread to be ready to take
@@ -643,7 +647,7 @@
           consumer-fn            (fn [consumer-id]
                                    (try
                                      (while (pos? (.getCount consumer-latch))
-                                       (let [item (#'notification.send/take-notification-with-timeout! queue 1000)]
+                                       (let [item (take-notification! queue)]
                                          (swap! received-items conj [(:id item) item {:consumer consumer-id}])
                                          (.countDown consumer-latch)))
                                      (catch Exception e
@@ -700,7 +704,7 @@
     (testing "put and take operations work correctly"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification-with-timeout! queue 1000))))
+             (take-notification! queue))))
 
     (testing "multiple notifications are processed in order, no dedup"
       (#'notification.send/put-notification! queue {:id 1 :payload_type :notification/testing :test-value "A"})
@@ -708,11 +712,11 @@
       (#'notification.send/put-notification! queue {:id 2 :payload_type :notification/testing :test-value "C"})
 
       (is (= {:id 1 :payload_type :notification/testing :test-value "A"}
-             (#'notification.send/take-notification-with-timeout! queue 1000)))
+             (take-notification! queue)))
       (is (= {:id 1 :payload_type :notification/testing :test-value "B"}
-             (#'notification.send/take-notification-with-timeout! queue 1000)))
+             (take-notification! queue)))
       (is (= {:id 2 :payload_type :notification/testing :test-value "C"}
-             (#'notification.send/take-notification-with-timeout! queue 1000))))
+             (take-notification! queue))))
 
     (testing "take blocks until notification is available"
       (let [result (atom nil)
@@ -720,7 +724,7 @@
             take-latch (java.util.concurrent.CountDownLatch. 1)
             thread (Thread. (fn []
                               (.countDown ready-latch) ; signal thread is ready to take
-                              (reset! result (#'notification.send/take-notification-with-timeout! queue 1000))
+                              (reset! result (take-notification! queue))
                               (.countDown take-latch)))] ; signal take is complete
         (.start thread)
         (.await ready-latch) ; wait for thread to be ready to take

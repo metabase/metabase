@@ -193,8 +193,8 @@
 (defn- cron->next-execution-times
   "Returns the next n fired times for a given cron schedule.
 
-   If the cron schedule doesn't have n future executions (e.g., one-off schedules),
-   returns as many execution times as available."
+  If the cron schedule doesn't have n future executions (e.g., one-off schedules),
+  returns as many execution times as available."
   [cron-schedule n]
   (let [cron-expression (CronExpression. ^String cron-schedule)
         now             (t/java-date)]
@@ -213,11 +213,11 @@
 (defn- avg-interval-seconds
   "Returns the average seconds between executions for a given cron schedule by sampling future execution times.
 
-   Using the average across multiple executions (rather than mean interval) helps handle
-   irregular schedules (like workday-only alerts) consistently, ensuring that the priority doesn't
-   fluctuate based on seasonality (e.g., different priority on Friday vs. Monday).
+  Using the average across multiple executions (rather than mean interval) helps handle
+  irregular schedules (like workday-only alerts) consistently, ensuring that the priority doesn't
+  fluctuate based on seasonality (e.g., different priority on Friday vs. Monday).
 
-   For one-off schedules that don't repeat, returns 10 seconds to give them reasonable priority."
+  For one-off schedules that don't repeat, returns 10 seconds to give them reasonable priority."
   [cron-schedule n]
   (assert (pos? n) "Need at least 1 execution time to calculate average")
   (let [times (cron->next-execution-times cron-schedule n)]
@@ -348,8 +348,8 @@
   "Create a thread pool for sending notifications.
   There can only be one notification with the same id in the queue.
   - if a notification of the same id is already in the queue, then replace it
-    (we keep the latest version because it likely contains the most up-to-date information
-     such as: creator_id, active status, handlers info etc.)
+  (we keep the latest version because it likely contains the most up-to-date information
+  such as: creator_id, active status, handlers info etc.)
   - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)
 
   Returns a map with :dispatch-fn and :shutdown-fn."
@@ -368,9 +368,8 @@
                                                              ;; Continue processing if shutdown flag is set but queue is not empty
                                                              (pos? (queue-size queue))))
                                                (try
-                                                 (let [notification (take-notification-with-timeout! queue 1000)]
-                                                   (when notification
-                                                     (send-notification-sync! notification)))
+                                                 (when-let [notification (take-notification-with-timeout! queue 1000)]
+                                                   (send-notification-sync! notification))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -416,11 +415,11 @@
 
 (defn- dispatch!
   [notification]
-  (let [dispatch-fn (:dispatch-fn (case (:payload_type notification)
-                                    :notification/system-event
-                                    @simple-blocking-dispatcher
-                                    ;; notification/card, notification/dashboard
-                                    @dedup-priority-dispatcher))]
+  (let [{:keys [dispatch-fn]} (case (:payload_type notification)
+                                :notification/system-event
+                                @simple-blocking-dispatcher
+                                 ;; notification/card, notification/dashboard
+                                @dedup-priority-dispatcher)]
     (dispatch-fn notification)))
 
 (mu/defn ^:private send-notification-async!
@@ -453,10 +452,11 @@
   "Shutdown all notification workers with wait up to [[timeout-ms]] milliseconds for each workers."
   []
   (let [workers [dedup-priority-dispatcher simple-blocking-dispatcher]]
-    (log/infof "Shutting down %d notification dispatchers..." (count workers))
-    (try
-      (doseq [worker workers]
-        ((:shutdown-fn @worker) default-shutdown-timeout-ms))
-      (log/info "All notification workers shut down successfully")
-      (catch Exception e
-        (log/error e "Error shutting down notification workers")))))
+    (log/with-context {:dispatcher-count (count workers)}
+      (log/info "Shutting down notification dispatchers...")
+      (try
+        (doseq [worker workers]
+          ((:shutdown-fn @worker) default-shutdown-timeout-ms))
+        (log/info "All notification workers shut down successfully")
+        (catch Exception e
+          (log/error e "Error shutting down notification workers"))))))
