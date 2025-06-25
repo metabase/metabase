@@ -93,7 +93,12 @@ export function useTableLoader(path: TreePath) {
         return [];
       }
       const res = await fetchTables(
-        { id: databaseId, schema: schemaId, include_hidden: true },
+        {
+          id: databaseId,
+          schema: schemaId,
+          include_hidden: true,
+          include_editable_data_model: true,
+        },
         true,
       );
       return (
@@ -116,7 +121,11 @@ export function useTableLoader(path: TreePath) {
         return [];
       }
       const res = await fetchSchemas(
-        { id: databaseId, include_hidden: true },
+        {
+          id: databaseId,
+          include_hidden: true,
+          include_editable_data_model: true,
+        },
         true,
       );
       return Promise.all(
@@ -296,30 +305,25 @@ export function useExpandedState(path: TreePath) {
 }
 
 // Returns a new state object with all the nodes along the path expanded.
-function expandPath(state: ExpandedState, path: TreePath) {
-  const res = { ...state };
-
-  [
-    toKey({
+function expandPath(state: ExpandedState, path: TreePath): ExpandedState {
+  return {
+    ...state,
+    [toKey({
       ...path,
       tableId: undefined,
-    }),
-    toKey({
+    })]: true,
+    [toKey({
       ...path,
       tableId: undefined,
       schemaId: undefined,
-    }),
-    toKey({
+    })]: true,
+    [toKey({
       ...path,
       tableId: undefined,
       schemaId: undefined,
       databaseId: undefined,
-    }),
-  ].forEach((key) => {
-    res[key] = true;
-  });
-
-  return res;
+    })]: true,
+  };
 }
 
 /**
