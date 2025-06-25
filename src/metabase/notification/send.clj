@@ -147,7 +147,6 @@
         (prometheus/observe! :metabase-notification/wait-duration-ms {:payload-type payload_type} wait-time))
       (try
         (log/info "Sending")
-        (Thread/sleep 5000)
         (prometheus/inc! :metabase-notification/concurrent-tasks)
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]

@@ -484,7 +484,7 @@
                                                                 (Thread/sleep 20)
                                                                 (swap! sent-notifications conj notification))]
         (let [queue           (#'notification.send/create-dedup-priority-queue)
-              test-dispatcher (#'notification.send/create-notification-dispatcher 2 queue)]
+              test-dispatcher (:dispatch-fn (#'notification.send/create-notification-dispatcher 2 queue))]
           (testing "basic processing"
             (reset! sent-notifications [])
             (let [notification {:id 1 :test-value "A"}]
