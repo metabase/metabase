@@ -5,7 +5,7 @@ import { useGetVersionInfoQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { newVersionAvailable } from "metabase/lib/utils";
-import { Badge } from "metabase/ui";
+import { Indicator } from "metabase/ui";
 
 import { SettingsNavItem } from "./SettingsNav";
 
@@ -21,23 +21,21 @@ export function UpdatesNavItem() {
   return (
     <SettingsNavItem
       path="updates"
-      label={<div>{t`Updates`}</div>}
-      icon="sparkles"
-      rightSection={
-        isNewVersionAvailable ? (
-          <Badge
-            data-testid="updates-nav-badge"
-            styles={{
-              root: {
-                color: "var(--mb-color-text-white)",
-                backgroundColor: "var(--mb-color-error)",
-              },
-            }}
-          >
-            1
-          </Badge>
-        ) : null
+      label={
+        <Indicator
+          data-testid="testing"
+          disabled={!isNewVersionAvailable}
+          styles={{
+            indicator: {
+              transform: "translateX(0.5rem)",
+            },
+          }}
+          color="error"
+          size={6}
+          w="fit-content"
+        >{t`Updates`}</Indicator>
       }
+      icon="sparkles"
     />
   );
 }
