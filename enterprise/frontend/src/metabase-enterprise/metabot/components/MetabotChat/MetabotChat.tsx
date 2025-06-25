@@ -1,21 +1,15 @@
-import { useClipboard, useTimeout } from "@mantine/hooks";
 import cx from "classnames";
-import { useMemo, useRef, useState } from "react";
-import { match } from "ts-pattern";
+import { useMemo, useRef } from "react";
 import { c, jt, t } from "ttag";
-import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
-  Alert,
   Box,
-  type BoxProps,
   Button,
   Flex,
   Icon,
-  Loader,
   Paper,
   Stack,
   Text,
@@ -23,14 +17,13 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
-import type { MetabotChatMessage } from "metabase-enterprise/metabot/state";
 
 import { useMetabotAgent } from "../../hooks";
-import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import Styles from "./MetabotChat.module.css";
+import { AgentErrorMessage, Message } from "./MetabotChatMessage";
+import { MetabotThinking } from "./MetabotThinking";
 import { useAutoscrollMessages } from "./hooks";
-import { isLastAgentReply } from "./utils";
 
 export const MetabotChat = () => {
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -40,7 +33,8 @@ export const MetabotChat = () => {
 
   useAutoscrollMessages(headerRef, messagesRef, metabot.messages);
 
-  const hasMessages = metabot.messages.length > 0;
+  const hasMessages =
+    metabot.messages.length > 0 || metabot.errorMessages.length > 0;
 
   const suggestedPromptsReq = useGetSuggestedMetabotPromptsQuery({
     metabot_id: metabot.metabotId,
@@ -168,11 +162,12 @@ export const MetabotChat = () => {
               {metabot.messages.map((message, index) => {
                 const canRetry =
                   metabot.useStreaming &&
-                  isLastAgentReply(message, metabot.messages[index + 1]);
+                  message.role === "agent" &&
+                  metabot.messages[index + 1]?.role !== "agent";
 
                 return (
                   <Message
-                    key={index}
+                    key={"msg-" + index}
                     data-testid="metabot-chat-message"
                     message={message}
                     onRetry={canRetry ? handleRetryMessage : undefined}
@@ -180,10 +175,19 @@ export const MetabotChat = () => {
                 );
               })}
 
+              {/* error messages */}
+              {metabot.errorMessages.map((message, index) => (
+                <AgentErrorMessage
+                  key={"err-" + index}
+                  data-testid="metabot-chat-message"
+                  message={message}
+                />
+              ))}
+
               {/* loading */}
               {metabot.isDoingScience && (
-                <Thinking
-                  activeToolCallName={metabot.activeToolCall?.name}
+                <MetabotThinking
+                  toolCalls={metabot.toolCalls}
                   useStreaming={metabot.useStreaming}
                 />
               )}
@@ -258,121 +262,5 @@ export const MetabotChat = () => {
         </Box>
       </Box>
     </Sidebar>
-  );
-};
-
-const Message = ({
-  message,
-  className,
-  onRetry,
-  ...props
-}: BoxProps & {
-  message: MetabotChatMessage;
-  onRetry?: (messageId: string) => void;
-}) => {
-  const clipboard = useClipboard();
-
-  return (
-    <Flex
-      className={cx(
-        Styles.messageContainer,
-        message.role === "user"
-          ? Styles.messageContainerUser
-          : Styles.messageContainerAgent,
-        className,
-      )}
-      data-message-role={message.role}
-      direction="column"
-      {...props}
-    >
-      {match(message)
-        .with({ role: "user" }, () => (
-          <Text
-            className={cx(
-              Styles.message,
-              message.role === "user" && Styles.messageUser,
-            )}
-          >
-            {message.message}
-          </Text>
-        ))
-        .with({ role: "agent", type: "error" }, () => (
-          <Alert color="error" icon={<Icon name="warning" />} mt="sm">
-            <AIMarkdown className={Styles.message}>
-              {message.message}
-            </AIMarkdown>
-          </Alert>
-        ))
-        .with({ role: "agent", type: "reply" }, () => (
-          <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
-        ))
-        .exhaustive()}
-      <Flex className={Styles.messageActions}>
-        {!(message.role === "agent" && message.type === "error") && (
-          <ActionIcon
-            onClick={() => clipboard.copy(message.message)}
-            h="sm"
-            data-testid="metabot-chat-message-copy"
-          >
-            <Icon name="copy" size="1rem" />
-          </ActionIcon>
-        )}
-        {onRetry && (
-          <ActionIcon
-            onClick={() => onRetry(message.id)}
-            h="sm"
-            data-testid="metabot-chat-message-retry"
-          >
-            <Icon name="revert" size="1rem" />
-          </ActionIcon>
-        )}
-      </Flex>
-    </Flex>
-  );
-};
-
-const Thinking = ({
-  activeToolCallName,
-  useStreaming,
-}: {
-  activeToolCallName: string | undefined;
-  useStreaming: boolean;
-}) => {
-  const [defaultMessageKey, setDefaultMessageKey] = useState<string>("");
-  useTimeout(() => setDefaultMessageKey("__SLOW_RESPONSE__"), 3000, {
-    autoInvoke: true,
-  });
-  useTimeout(() => setDefaultMessageKey("__VERY_SLOW_RESPONSE__"), 10000, {
-    autoInvoke: true,
-  });
-
-  const messagesKey = activeToolCallName ?? defaultMessageKey;
-
-  const messages = {
-    __SLOW_RESPONSE__: [t`Thinking...`, t`Working on your request`],
-    __VERY_SLOW_RESPONSE__: [
-      t`Lot's to consider`,
-      t`Working through the details...`,
-    ],
-    construct_notebook_query: [t`Creating a query`, t`Contructing a question`],
-    analyze_data: [t`Analyzing the data`, t`Exploring your data`],
-    analyze_chart: [t`Inspecting the visualization`, t`Looking at the data`],
-    list_available_fields: undefined, // tool executes near instantly
-  } as Record<string, string[] | undefined>;
-
-  const message = _.sample(
-    messages[messagesKey] ?? messages[defaultMessageKey] ?? [],
-  );
-
-  return (
-    <Flex gap="md" align="center">
-      <Loader
-        color="brand"
-        type="dots"
-        size="lg"
-        data-testid="metabot-response-loader"
-      />
-      {useStreaming && message && <Text c="text-light">{message}</Text>}
-    </Flex>
   );
 };
