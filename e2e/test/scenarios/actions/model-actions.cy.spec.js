@@ -160,7 +160,7 @@ describe(
       // to test database picker behavior in the action editor
       H.setActionsEnabledForDB(SAMPLE_DB_ID);
 
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
           [WRITABLE_DB_ID]: {
@@ -715,7 +715,7 @@ describe(
           role,
           `GRANT SELECT ON ${WRITABLE_TEST_TABLE} TO ${role};`,
         );
-        H.setTokenFeatures("all");
+        H.activateToken("pro-self-hosted");
         H.queryWritableDB(sql);
 
         cy.request("PUT", `/api/user/${IMPERSONATED_USER_ID}`, {

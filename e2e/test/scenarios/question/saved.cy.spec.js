@@ -588,7 +588,7 @@ describe("scenarios > question > saved", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("/api/session/properties", (req) => {
         req.continue((res) => {
