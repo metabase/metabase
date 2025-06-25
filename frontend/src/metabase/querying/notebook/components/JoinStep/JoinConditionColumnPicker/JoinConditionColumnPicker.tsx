@@ -1,14 +1,19 @@
 import cx from "classnames";
 import type { Ref } from "react";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
   type ColumnListItem,
   QueryColumnPicker,
+  type QueryColumnPickerSection,
 } from "metabase/common/components/QueryColumnPicker";
+import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
+import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { getJoinStrategyIcon } from "../utils";
 
 import S from "./JoinConditionColumnPicker.module.css";
 
@@ -16,6 +21,7 @@ interface JoinConditionColumnPickerProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
+  strategy: Lib.JoinStrategy;
   tableName: string | undefined;
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
@@ -33,6 +39,7 @@ export function JoinConditionColumnPicker({
   query,
   stageIndex,
   joinable,
+  strategy,
   tableName,
   lhsExpression,
   rhsExpression,
@@ -62,6 +69,7 @@ export function JoinConditionColumnPicker({
           query={query}
           stageIndex={stageIndex}
           joinable={joinable}
+          strategy={strategy}
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
           isLhsExpression={isLhsExpression}
@@ -143,10 +151,13 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
   );
 });
 
+const CUSTOM_EXPRESSION_SECTION_KEY = "custom-expression";
+
 interface JoinColumnDropdownProps {
   query: Lib.Query;
   stageIndex: number;
   joinable: Lib.JoinOrJoinable;
+  strategy: Lib.JoinStrategy;
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
   isLhsExpression: boolean;
@@ -161,24 +172,24 @@ function JoinColumnDropdown({
   query,
   stageIndex,
   joinable,
+  strategy,
   lhsExpression,
   rhsExpression,
   isLhsExpression,
   onChange,
   onClose,
 }: JoinColumnDropdownProps) {
-  const columnGroups = useMemo(() => {
+  const columns = useMemo(() => {
     const getColumns = isLhsExpression
       ? Lib.joinConditionLHSColumns
       : Lib.joinConditionRHSColumns;
-    const columns = getColumns(
+    return getColumns(
       query,
       stageIndex,
       joinable,
       lhsExpression,
       rhsExpression,
     );
-    return Lib.groupColumns(columns);
   }, [
     query,
     stageIndex,
@@ -188,23 +199,102 @@ function JoinColumnDropdown({
     isLhsExpression,
   ]);
 
+  const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
+  const extraSections = useMemo(
+    () => getExtraSections(query, stageIndex, strategy),
+    [query, stageIndex, strategy],
+  );
+
+  const expression = isLhsExpression ? lhsExpression : rhsExpression;
+  const [isEditingExpression, setIsEditingExpression] = useState(() =>
+    isExpressionEditorInitiallyOpen(query, stageIndex, columns, expression),
+  );
+
   const handleColumnSelect = (newColumn: Lib.ColumnMetadata) => {
     onChange(Lib.expressionClause(newColumn), Lib.temporalBucket(newColumn));
   };
+
+  const handleSectionSelect = (newSection: QueryColumnPickerSection) => {
+    if (newSection.key === CUSTOM_EXPRESSION_SECTION_KEY) {
+      setIsEditingExpression(true);
+    }
+  };
+
+  const handleExpressionSelect = (
+    _newName: string,
+    newExpression: Lib.ExpressionClause,
+  ) => {
+    onChange(newExpression, null);
+    onClose();
+  };
+
+  const handleExpressionEditorClose = () => {
+    setIsEditingExpression(false);
+  };
+
+  if (isEditingExpression) {
+    return (
+      <ExpressionWidget
+        query={query}
+        stageIndex={stageIndex}
+        clause={expression}
+        expressionMode="expression"
+        header={<ExpressionWidgetHeader onBack={handleExpressionEditorClose} />}
+        onChangeClause={handleExpressionSelect}
+        onClose={handleExpressionEditorClose}
+      />
+    );
+  }
 
   return (
     <QueryColumnPicker
       className={S.JoinColumnPicker}
       query={query}
-      columnGroups={columnGroups}
       stageIndex={stageIndex}
+      columnGroups={columnGroups}
+      extraSections={extraSections}
       hasTemporalBucketing
       checkIsColumnSelected={checkIsColumnSelected}
       onSelect={handleColumnSelect}
+      onSelectSection={handleSectionSelect}
       onClose={onClose}
       data-testid={isLhsExpression ? "lhs-column-picker" : "rhs-column-picker"}
     />
   );
+}
+
+function getExtraSections(
+  query: Lib.Query,
+  stageIndex: number,
+  strategy: Lib.JoinStrategy,
+): QueryColumnPickerSection[] {
+  const strategyInfo = Lib.displayInfo(query, stageIndex, strategy);
+
+  return [
+    {
+      key: CUSTOM_EXPRESSION_SECTION_KEY,
+      type: "action",
+      name: t`Custom Expression`,
+      items: [],
+      icon: getJoinStrategyIcon(strategyInfo),
+    },
+  ];
+}
+
+function isExpressionEditorInitiallyOpen(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  expression: Lib.ExpressionClause | undefined,
+) {
+  if (!expression) {
+    return false;
+  }
+
+  const isSomeColumnSelected = columns.some(
+    (column) => Lib.displayInfo(query, stageIndex, column).selected,
+  );
+  return !isSomeColumnSelected;
 }
 
 function checkIsColumnSelected(item: ColumnListItem) {

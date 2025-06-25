@@ -151,6 +151,7 @@ export function JoinDraft({
               query={query}
               stageIndex={stageIndex}
               joinable={rhsTable}
+              strategy={strategy}
               lhsTableName={lhsTableName}
               rhsTable={rhsTable}
               rhsTableName={rhsTableName}
