@@ -22,7 +22,6 @@ import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
   computeTimeseriesDataInterval,
   minTimeseriesUnit,
@@ -576,20 +575,10 @@ export const getZoomRow = createSelector(
   },
 );
 
-const isZoomingRow = createSelector(
-  [getZoomedObjectId],
-  (index) => index != null,
-);
-
-export const getMode = createSelector(
-  [getLastRunQuestion],
-  (question) => question && getQuestionMode(question),
-);
-
-export const getIsObjectDetail = createSelector(
-  [getMode, isZoomingRow],
-  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
-);
+// const isZoomingRow = createSelector(
+//   [getZoomedObjectId],
+//   (index) => index != null,
+// );
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
