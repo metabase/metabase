@@ -13,7 +13,7 @@ type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   stageIndex: number;
-  expressionIndex?: number;
+  availableColumns: Lib.ColumnMetadata[];
   metadata?: Metadata;
 };
 

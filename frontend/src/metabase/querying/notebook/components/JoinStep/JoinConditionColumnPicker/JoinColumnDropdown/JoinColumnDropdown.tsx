@@ -100,6 +100,7 @@ export function JoinColumnDropdown({
       <ExpressionWidget
         query={query}
         stageIndex={stageIndex}
+        availableColumns={columns}
         clause={expression}
         expressionMode="expression"
         header={<ExpressionWidgetHeader onBack={handleExpressionEditorClose} />}
