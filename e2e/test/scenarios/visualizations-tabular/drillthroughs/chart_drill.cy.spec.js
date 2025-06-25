@@ -48,7 +48,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     //       It is enough that we assert that the filter exists.
     cy.findByTestId("qb-filters-panel").should(
       "contain",
-      "Product → Created At is",
+      "Product → Created At: Month is",
     );
 
     H.queryBuilderMain().within(() => {
