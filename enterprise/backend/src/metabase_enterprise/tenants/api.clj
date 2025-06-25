@@ -18,8 +18,9 @@
   [_route-params
    _query-params
    tenant :- [:map {:closed true}
-              [:name ms/NonBlankString]
-              [:slug Slug]]]
+              [:name       ms/NonBlankString]
+              [:attributes {:optional true} [:maybe tenant/Attributes]]
+              [:slug       Slug]]]
   (api/check-400 (not (tenant/tenant-exists? tenant))
                  "This tenant name or slug is already taken.")
   (t2/insert! :model/Tenant tenant))
@@ -50,8 +51,9 @@
   [{id :id} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    tenant :- [:map {:closed true}
-              [:name {:optional true} [:maybe ms/NonBlankString]]
-              [:is_active {:optional true} [:maybe ms/BooleanValue]]]]
+              [:name       {:optional true} [:maybe ms/NonBlankString]]
+              [:attributes {:optional true} [:maybe tenant/Attributes]]
+              [:is_active  {:optional true} [:maybe ms/BooleanValue]]]]
   (when (:name tenant)
     (api/check-400 (not (t2/exists? :model/Tenant :name (:name tenant)))
                    "This name is already taken."))
