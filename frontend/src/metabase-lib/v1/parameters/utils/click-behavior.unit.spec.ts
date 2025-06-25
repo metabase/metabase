@@ -37,6 +37,11 @@ import {
   getTargetsForQuestion,
 } from "./click-behavior";
 
+jest.mock("metabase/lib/formatting/date", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/formatting/date"),
+}));
+
 const FLOAT_CATEGORY_FIELD = createMockField({
   id: 100,
   table_id: PRODUCTS_ID,

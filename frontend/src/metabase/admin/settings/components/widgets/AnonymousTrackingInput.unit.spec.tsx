@@ -17,6 +17,11 @@ import * as analytics from "../../analytics";
 
 import { AnonymousTrackingInput } from "./AnonymousTrackingInput";
 
+jest.mock("../../analytics", () => ({
+  __esModule: true,
+  ...jest.requireActual("../../analytics"),
+}));
+
 const trackingFN = jest.spyOn(analytics, "trackTrackingPermissionChanged");
 
 const setup = ({ value }: { value: boolean }) => {

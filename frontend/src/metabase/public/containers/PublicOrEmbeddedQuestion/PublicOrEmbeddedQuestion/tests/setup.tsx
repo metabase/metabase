@@ -27,37 +27,40 @@ import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
 
 registerStaticVisualizations();
 
-const VisualizationMock = ({
-  onUpdateVisualizationSettings,
-  rawSeries,
-}: VisualizationProps) => {
-  const [
-    {
-      card,
-      data: { rows },
-    },
-  ] = rawSeries;
+function getVisualizationMock() {
+  const VisualizationMock = ({
+    onUpdateVisualizationSettings,
+    rawSeries,
+  }: VisualizationProps) => {
+    const [
+      {
+        card,
+        data: { rows },
+      },
+    ] = rawSeries;
 
-  return (
-    <div>
+    return (
       <div>
-        {rows[0].map((value, i) => (
-          <span key={i}>{value}</span>
-        ))}
+        <div>
+          {rows[0].map((value, i) => (
+            <span key={i}>{value}</span>
+          ))}
+        </div>
+        <div data-testid="settings">
+          {JSON.stringify(card.visualization_settings)}
+        </div>
+        <button onClick={() => onUpdateVisualizationSettings({ foo: "bar" })}>
+          update settings
+        </button>
       </div>
-      <div data-testid="settings">
-        {JSON.stringify(card.visualization_settings)}
-      </div>
-      <button onClick={() => onUpdateVisualizationSettings({ foo: "bar" })}>
-        update settings
-      </button>
-    </div>
-  );
-};
+    );
+  };
 
-jest.mock(
-  "metabase/visualizations/components/Visualization",
-  () => VisualizationMock,
+  return VisualizationMock;
+}
+
+jest.mock("metabase/visualizations/components/Visualization", () =>
+  getVisualizationMock(),
 );
 
 export type SetupOpts = {

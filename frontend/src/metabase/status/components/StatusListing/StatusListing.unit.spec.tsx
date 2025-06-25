@@ -12,9 +12,13 @@ import type { FileUploadState } from "metabase-types/store/upload";
 
 import StatusListing from "./StatusListing";
 
-const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
+function getDatabaseStatusMock() {
+  const DatabaseStatusMock = () => <div>DatabaseStatus</div>;
 
-jest.mock("../../containers/DatabaseStatus", () => DatabaseStatusMock);
+  return DatabaseStatusMock;
+}
+
+jest.mock("../../containers/DatabaseStatus", () => getDatabaseStatusMock());
 
 interface setupProps {
   isAdmin?: boolean;

@@ -5,6 +5,11 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseNavSection } from "./BrowseNavSection";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 describe("BrowseNavSection", () => {
   afterEach(() => {
     jest.restoreAllMocks();

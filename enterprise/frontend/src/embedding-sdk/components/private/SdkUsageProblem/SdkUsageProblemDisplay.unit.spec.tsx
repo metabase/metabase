@@ -25,6 +25,11 @@ const TEST_USER = createMockUser();
 
 jest.mock("metabase/visualizations/register", () => jest.fn(() => {}));
 
+jest.mock("embedding-sdk/lib/is-localhost", () => ({
+  __esModule: true,
+  ...jest.requireActual("embedding-sdk/lib/is-localhost"),
+}));
+
 interface Options {
   authConfig: MetabaseAuthConfig;
   hasEmbeddingFeature?: boolean;

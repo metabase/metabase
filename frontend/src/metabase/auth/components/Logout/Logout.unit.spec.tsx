@@ -6,6 +6,11 @@ import * as domUtils from "metabase/lib/dom";
 
 import { Logout } from "./Logout";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 const setup = () => {
   setupLogoutEndpoint();
   renderWithProviders(<Logout />);

@@ -21,6 +21,11 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { WhatsNewNotification } from "./WhatsNewNotification";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 const LAST_ACK_SETTINGS_URL = `path:/api/setting/last-acknowledged-version`;
 
 // Helper functions for querying notification link

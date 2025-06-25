@@ -10,6 +10,11 @@ import {
 
 import { NativeQueryClickFallback } from "./NativeQueryClickFallback";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 function getQuestion() {
   const metadata = createMockMetadata({
     databases: [createSampleDatabase()],

@@ -56,6 +56,23 @@ import * as ui from "../ui";
 
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
+jest.mock("../querying", () => ({
+  __esModule: true,
+  ...jest.requireActual("../querying"),
+}));
+jest.mock("../native", () => ({
+  __esModule: true,
+  ...jest.requireActual("../native"),
+}));
+jest.mock("../navigation", () => ({
+  __esModule: true,
+  ...jest.requireActual("../navigation"),
+}));
+jest.mock("../ui", () => ({
+  __esModule: true,
+  ...jest.requireActual("../ui"),
+}));
+
 registerVisualizations();
 
 type TestCard = Card | UnsavedCard;

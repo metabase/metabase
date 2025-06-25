@@ -21,28 +21,31 @@ import { createMockState } from "metabase-types/store/mocks";
 import type { StaticEmbedSetupPaneProps } from "../StaticEmbedSetupPane";
 import { StaticEmbedSetupPane } from "../StaticEmbedSetupPane";
 
-const TextEditorMock = ({
-  highlightRanges,
-  value,
-}: {
-  highlightRanges?: { start: number; end: number }[];
-  value: string;
-}) => {
-  const highlightedTexts = highlightRanges?.map((range) =>
-    value.slice(range.start, range.end),
-  );
-  return (
-    <>
-      <div data-testid="text-editor-mock">{value}</div>
-      <div data-testid="text-editor-mock-highlighted-code">
-        {highlightedTexts}
-      </div>
-    </>
-  );
-};
+function getTextEditorMock() {
+  const TextEditorMock = ({
+    highlightRanges,
+    value,
+  }: {
+    highlightRanges?: { start: number; end: number }[];
+    value: string;
+  }) => {
+    const highlightedTexts = highlightRanges?.map((range) =>
+      value.slice(range.start, range.end),
+    );
+    return (
+      <>
+        <div data-testid="text-editor-mock">{value}</div>
+        <div data-testid="text-editor-mock-highlighted-code">
+          {highlightedTexts}
+        </div>
+      </>
+    );
+  };
+  return TextEditorMock;
+}
 
 jest.mock("metabase/common/components/CodeEditor", () => ({
-  CodeEditor: TextEditorMock,
+  CodeEditor: getTextEditorMock(),
 }));
 
 export const FONTS_MOCK_VALUES = [

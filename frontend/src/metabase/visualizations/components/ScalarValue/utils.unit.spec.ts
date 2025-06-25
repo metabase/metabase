@@ -3,7 +3,9 @@ import type { FontStyle } from "metabase/visualizations/shared/types/measure-tex
 
 import { findSize } from "./utils";
 
-jest.doMock("metabase/lib/measure-text", () => ({
+jest.mock("metabase/lib/measure-text", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/measure-text"),
   measureText: jest.fn(),
 }));
 

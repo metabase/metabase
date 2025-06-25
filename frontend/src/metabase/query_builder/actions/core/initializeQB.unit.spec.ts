@@ -42,6 +42,27 @@ import * as cardActions from "./card";
 import * as core from "./core";
 import { initializeQB } from "./initializeQB";
 
+jest.mock("metabase/questions/actions", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/questions/actions"),
+}));
+jest.mock("./card", () => ({
+  __esModule: true,
+  ...jest.requireActual("./card"),
+}));
+jest.mock("./core", () => ({
+  __esModule: true,
+  ...jest.requireActual("./core"),
+}));
+jest.mock("../querying", () => ({
+  __esModule: true,
+  ...jest.requireActual("../querying"),
+}));
+jest.mock("metabase/lib/card", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/card"),
+}));
+
 type DisplayLock = { displayIsLocked?: boolean };
 type TestCard = (Card & DisplayLock) | (UnsavedCard & DisplayLock);
 

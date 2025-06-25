@@ -36,6 +36,11 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 import Navbar from "./Navbar";
 
 type SetupOpts = {

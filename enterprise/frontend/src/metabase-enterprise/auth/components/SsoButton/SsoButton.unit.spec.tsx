@@ -7,6 +7,11 @@ import {
 
 import { SsoButton } from "./SsoButton";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 const SITE_URL = "http://metabase.test";
 
 const setup = () => {
@@ -16,7 +21,7 @@ const setup = () => {
     }),
   });
 
-  // simulate ebmedding
+  // simulate embedding
   jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
 
   renderWithProviders(<SsoButton />, { storeInitialState: state });

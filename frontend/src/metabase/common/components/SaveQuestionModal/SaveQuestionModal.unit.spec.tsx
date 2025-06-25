@@ -45,6 +45,11 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
+jest.mock("metabase/query_builder/selectors", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/query_builder/selectors"),
+}));
+
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });

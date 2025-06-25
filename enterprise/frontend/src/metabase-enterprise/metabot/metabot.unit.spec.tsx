@@ -31,6 +31,11 @@ import {
   setVisible,
 } from "./state";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 function setup(
   options: {
     ui?: React.ReactElement;

@@ -13,6 +13,11 @@ import type { ValuesSourceType } from "metabase-types/api/parameters";
 
 import { ParameterLinkedFilters } from "./ParameterLinkedFilters";
 
+jest.mock("metabase/dashboard/actions/parameters", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/dashboard/actions/parameters"),
+}));
+
 interface SetupOpts {
   parameter: UiParameter;
   otherParameters: UiParameter[];

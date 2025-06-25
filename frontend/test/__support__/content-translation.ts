@@ -1,5 +1,10 @@
 import * as EnterpriseContentTranslationUtilsModule from "metabase-enterprise/content_translation/utils";
 
+jest.mock("metabase-enterprise/content_translation/utils", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase-enterprise/content_translation/utils"),
+}));
+
 /**
  * One of the utility functions that makes the content translation feature tick
  * is translateContentString. It takes a msgid and returns a msgstr.

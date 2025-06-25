@@ -36,6 +36,11 @@ import { createMockDashboardState } from "metabase-types/store/mocks";
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
 
+jest.mock("metabase/lib/dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/lib/dom"),
+}));
+
 registerVisualizations();
 
 type LinkCardVizSettings = VirtualDashboardCard["visualization_settings"] & {

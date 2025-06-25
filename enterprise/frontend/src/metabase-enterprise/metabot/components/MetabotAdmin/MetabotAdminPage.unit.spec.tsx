@@ -28,6 +28,11 @@ import { createMockCollection } from "metabase-types/api/mocks";
 import { MetabotAdminPage } from "./MetabotAdminPage";
 import * as hooks from "./utils";
 
+jest.mock("./utils", () => ({
+  __esModule: true,
+  ...jest.requireActual("./utils"),
+}));
+
 const mockPathParam = (id: MetabotId) => {
   jest.spyOn(hooks, "useMetabotIdPath").mockReturnValue(id);
 };

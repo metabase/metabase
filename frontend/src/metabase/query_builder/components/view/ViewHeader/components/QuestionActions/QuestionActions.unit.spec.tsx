@@ -26,6 +26,11 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
+jest.mock("metabase/query_builder/actions/models", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/query_builder/actions/models"),
+}));
+
 import { QuestionActions } from "./QuestionActions";
 
 const ICON_CASES_CARDS = [
