@@ -65,89 +65,59 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     });
   });
 
-  describe("Code Snippet Generation", () => {
-    it("should display code snippet with syntax highlighting", () => {
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should display code snippet with syntax highlighting", () => {
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.findByText("Embed Code").should("be.visible");
-        cy.get("[data-testid=code-editor]").should("be.visible");
-        cy.get("[data-testid=code-editor]").should("contain", "MetabaseEmbed");
-      });
+    getEmbedSidebar().within(() => {
+      cy.findByText("Embed Code").should("be.visible");
+      codeBlock().should("be.visible");
+      codeBlock().should("contain", "MetabaseEmbed");
     });
+  });
 
-    it("should include useExistingUserSession when user session is selected", () => {
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should include useExistingUserSession when user session is selected", () => {
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("User Session").should("be.checked");
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          "useExistingUserSession: true",
-        );
-      });
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("User Session").should("be.checked");
+      codeBlock().should("contain", '"useExistingUserSession": true');
     });
+  });
 
-    it("should not include useExistingUserSession when SSO is selected", () => {
-      enableJwtAuth();
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should not include useExistingUserSession when SSO is selected", () => {
+    enableJwtAuth();
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.findByLabelText("SSO Authentication").click();
-        cy.get("[data-testid=code-editor]").should(
-          "not.contain",
-          "useExistingUserSession",
-        );
-      });
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("SSO Authentication").click();
+      codeBlock().should("not.contain", "useExistingUserSession");
     });
+  });
 
-    it("should reflect dashboard settings in code snippet", () => {
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should set dashboardId for dashboard experience", () => {
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          '"type": "dashboard"',
-        );
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          `"resourceId": ${ORDERS_DASHBOARD_ID}`,
-        );
-      });
+    getEmbedSidebar().within(() => {
+      codeBlock().should("contain", `"dashboardId": ${ORDERS_DASHBOARD_ID}`);
     });
+  });
 
-    it("should reflect question settings in code snippet", () => {
-      navigateToGetCodeStep({ experience: "chart" });
+  it("should set questionId for chart experience", () => {
+    navigateToGetCodeStep({ experience: "chart" });
 
-      getEmbedSidebar().within(() => {
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          '"type": "question"',
-        );
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          `"resourceId": ${ORDERS_COUNT_QUESTION_ID}`,
-        );
-      });
+    getEmbedSidebar().within(() => {
+      codeBlock().should(
+        "contain",
+        `"questionId": ${ORDERS_COUNT_QUESTION_ID}`,
+      );
     });
+  });
 
-    it("should handle exploration experience correctly", () => {
-      visitNewEmbedPage();
+  it("should set template=exploration for exploration experience", () => {
+    navigateToGetCodeStep({ experience: "exploration" });
 
-      getEmbedSidebar().within(() => {
-        cy.findByText("Exploration").click();
-
-        navigateToGetCodeStep({ experience: "exploration" });
-
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          '"type": "question"',
-        );
-        cy.get("[data-testid=code-editor]").should(
-          "contain",
-          '"resourceId": "new"',
-        );
-      });
+    getEmbedSidebar().within(() => {
+      codeBlock().should("contain", '"template": "exploration"');
     });
   });
 });
@@ -158,6 +128,7 @@ const navigateToGetCodeStep = ({
   experience: "dashboard" | "chart" | "exploration";
 }) => {
   cy.log("visit a resource to populate the activity log");
+
   if (experience === "dashboard") {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@dashboard");
@@ -169,6 +140,7 @@ const navigateToGetCodeStep = ({
   visitNewEmbedPage();
 
   cy.log("select an experience");
+
   if (experience === "chart") {
     cy.findByText("Chart").click();
   } else if (experience === "exploration") {
@@ -176,13 +148,15 @@ const navigateToGetCodeStep = ({
   }
 
   cy.log("navigate to the get code step");
+
   getEmbedSidebar().within(() => {
-    // Skip entity selection for exploration
     if (experience !== "exploration") {
-      cy.findByText("Next").click();
+      cy.findByText("Next").click(); // Entity selection step
     }
 
     cy.findByText("Next").click(); // Configure embed options step
     cy.findByText("Get Code").click(); // Get code step
   });
 };
+
+const codeBlock = () => cy.get(".cm-content");
