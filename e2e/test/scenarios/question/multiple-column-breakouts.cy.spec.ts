@@ -1292,8 +1292,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Total: 10 bins", "Total: 50 bins", "Count"],
           firstRows: [
-            ["20", "20", "214"],
-            ["20", "25", "396"],
+            ["20  –  40", "20  –  25", "214"],
+            ["20  –  40", "25  –  30", "396"],
           ],
         });
         H.assertQueryBuilderRowCount(7);
@@ -1311,8 +1311,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
           firstRows: [
-            ["20.00000000° N", "20.00000000° N", "87"],
-            ["20.00000000° N", "30.00000000° N", "1,176"],
+            ["20° N  –  40° N", "20° N  –  30° N", "87"],
+            ["20° N  –  40° N", "30° N  –  40° N", "1,176"],
           ],
         });
         H.assertQueryBuilderRowCount(4);
