@@ -28,8 +28,8 @@ const SdkIframeEmbedSetupContent = () => {
   return (
     <Box className={S.Container}>
       <SidebarResizer>
-        <Box className={S.Sidebar}>
-          <Box className={S.SidebarContent} data-testid="embed-sidebar-content">
+        <Box className={S.Sidebar} component="aside">
+          <Box className={S.SidebarContent}>
             <StepContent />
           </Box>
 
