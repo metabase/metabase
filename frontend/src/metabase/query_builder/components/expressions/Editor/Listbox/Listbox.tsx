@@ -8,7 +8,7 @@ import cx from "classnames";
 import { type MouseEvent, useCallback, useEffect, useRef } from "react";
 import { c } from "ttag";
 
-import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { QueryColumnInfoIcon } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { Box, DelayGroup, Icon, type IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { Completion } from "metabase-lib/v1/expressions/complete";

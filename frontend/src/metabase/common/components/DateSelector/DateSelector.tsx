@@ -4,8 +4,8 @@ import type { CSSProperties, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import Calendar from "metabase/common/components/Calendar";
 import TimeInput from "metabase/common/components/TimeInput";
-import Calendar from "metabase/components/Calendar";
 
 import {
   SelectorFooter,
