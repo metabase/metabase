@@ -12,7 +12,7 @@ import {
   SkeletonCaptionDescription,
   SkeletonCaptionRoot,
   SkeletonCaptionTitle,
-  SkeletonPlaceholder,
+  // SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
 import type { SkeletonCaptionSize } from "./types";
 
@@ -32,9 +32,9 @@ const SkeletonCaption = ({
     <SkeletonCaptionRoot className={className}>
       {name ? (
         <SkeletonCaptionTitle size={size}>{name}</SkeletonCaptionTitle>
-      ) : (
-        <SkeletonPlaceholder />
-      )}
+      ) : // TODO: Can this be removed?
+      // <SkeletonPlaceholder />
+      null}
       <LegendRightContent>
         {description && (
           <Tooltip
