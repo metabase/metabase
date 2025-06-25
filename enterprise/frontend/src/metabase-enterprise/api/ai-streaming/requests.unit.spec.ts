@@ -63,7 +63,7 @@ describe("ai requests", () => {
       fetchMock.post(`path:${ENDPOINT}`, 500);
       await expect(
         aiStreamingQuery({ url: ENDPOINT, body: {} }),
-      ).rejects.toThrow(/Internal Server Error/);
+      ).rejects.toThrow(/Response status: 500/);
     });
 
     it("throw error if no response", async () => {
