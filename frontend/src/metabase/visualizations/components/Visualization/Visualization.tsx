@@ -177,6 +177,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  forceLoading?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -646,7 +647,7 @@ class Visualization extends PureComponent<
     let error = this.props.error || this.state.error;
     let noResults = false;
     let isPlaceholder = false;
-    const loading = isLoading(series);
+    const loading = this.props.forceLoading || isLoading(series);
 
     // don't try to load settings unless data is loaded
     const settings = this.props.settings || this.state.computedSettings;

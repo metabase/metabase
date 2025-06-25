@@ -1,9 +1,10 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DebugContext } from "metabase/common/components/DebugMenu/DebugContext";
 import CS from "metabase/css/core/index.css";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
@@ -458,8 +459,21 @@ export function DashCardVisualization({
     };
   }, [display]);
 
+  const { lastLoad } = useContext(DebugContext);
+  const [forceLoading, setForceLoading] = useState(false);
+  useEffect(() => {
+    if (!lastLoad) {
+      return;
+    }
+    setForceLoading(true);
+    const durationMs = _.random(lastLoad.min, lastLoad.max);
+    const timeoutId = setTimeout(() => setForceLoading(false), durationMs);
+    return () => clearTimeout(timeoutId);
+  }, [lastLoad]);
+
   return (
     <Visualization
+      forceLoading={forceLoading}
       className={cx(CS.flexFull, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
         [CS.overflowAuto]: visualizationOverlay,

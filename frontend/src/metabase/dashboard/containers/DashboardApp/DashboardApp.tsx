@@ -8,6 +8,8 @@ import { useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DebugProvider } from "metabase/common/components/DebugMenu/DebugContext";
+import { DebugMenu } from "metabase/common/components/DebugMenu/DebugMenu";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -329,78 +331,81 @@ const DashboardApp = (props: DashboardAppProps) => {
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <DashboardLeaveConfirmationModal route={route} />
-      <Dashboard
-        dashboardId={dashboardId}
-        editingOnLoad={editingOnLoad}
-        addCardOnLoad={addCardOnLoad}
-        autoScrollToDashcardId={autoScrollToDashcardId}
-        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
-        isFullscreen={isFullscreen}
-        refreshPeriod={refreshPeriod}
-        isNightMode={isNightMode}
-        hasNightModeToggle={hasNightModeToggle}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onNightModeChange={onNightModeChange}
-        onFullscreenChange={onFullscreenChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        parameterQueryParams={parameterQueryParams}
-        canManageSubscriptions={canManageSubscriptions}
-        isAdmin={isAdmin}
-        isNavbarOpen={isNavbarOpen}
-        isEditing={isEditing}
-        isSharing={isSharing}
-        dashboardBeforeEditing={dashboardBeforeEditing}
-        isEditingParameter={isEditingParameter}
-        isDirty={isDirty}
-        dashboard={dashboard}
-        slowCards={slowCards}
-        parameterValues={parameterValues}
-        loadingStartTime={loadingStartTime}
-        clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-        isAddParameterPopoverOpen={isAddParameterPopoverOpen}
-        sidebar={sidebar}
-        isHeaderVisible={isHeaderVisible}
-        isAdditionalInfoVisible={isAdditionalInfoVisible}
-        selectedTabId={selectedTabId}
-        isNavigatingBackToDashboard={isNavigatingBackToDashboard}
-        initialize={initialize}
-        cancelFetchDashboardCardData={cancelFetchDashboardCardData}
-        addCardToDashboard={addCardToDashboard}
-        addHeadingDashCardToDashboard={addHeadingDashCardToDashboard}
-        addMarkdownDashCardToDashboard={addMarkdownDashCardToDashboard}
-        addLinkDashCardToDashboard={addLinkDashCardToDashboard}
-        setEditingDashboard={setEditingDashboard}
-        setDashboardAttributes={setDashboardAttributes}
-        setSharing={setSharing}
-        toggleSidebar={toggleSidebar}
-        closeSidebar={closeSidebar}
-        closeNavbar={closeNavbar}
-        setErrorPage={setErrorPage}
-        setParameterName={setParameterName}
-        setParameterType={setParameterType}
-        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-        setParameterDefaultValue={setParameterDefaultValue}
-        setParameterRequired={setParameterRequired}
-        setParameterTemporalUnits={setParameterTemporalUnits}
-        setParameterIsMultiSelect={setParameterIsMultiSelect}
-        setParameterQueryType={setParameterQueryType}
-        setParameterSourceType={setParameterSourceType}
-        setParameterSourceConfig={setParameterSourceConfig}
-        setParameterFilteringParameters={setParameterFilteringParameters}
-        removeParameter={removeParameter}
-        onReplaceAllDashCardVisualizationSettings={
-          onReplaceAllDashCardVisualizationSettings
-        }
-        onUpdateDashCardVisualizationSettings={
-          onUpdateDashCardVisualizationSettings
-        }
-        onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-        updateDashboardAndCards={updateDashboardAndCards}
-        setSidebar={setSidebar}
-        hideAddParameterPopover={hideAddParameterPopover}
-        fetchDashboard={fetchDashboard}
-        fetchDashboardCardData={fetchDashboardCardData}
-      />
+      <DebugProvider>
+        <DebugMenu />
+        <Dashboard
+          dashboardId={dashboardId}
+          editingOnLoad={editingOnLoad}
+          addCardOnLoad={addCardOnLoad}
+          autoScrollToDashcardId={autoScrollToDashcardId}
+          reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
+          isFullscreen={isFullscreen}
+          refreshPeriod={refreshPeriod}
+          isNightMode={isNightMode}
+          hasNightModeToggle={hasNightModeToggle}
+          setRefreshElapsedHook={setRefreshElapsedHook}
+          onNightModeChange={onNightModeChange}
+          onFullscreenChange={onFullscreenChange}
+          onRefreshPeriodChange={onRefreshPeriodChange}
+          parameterQueryParams={parameterQueryParams}
+          canManageSubscriptions={canManageSubscriptions}
+          isAdmin={isAdmin}
+          isNavbarOpen={isNavbarOpen}
+          isEditing={isEditing}
+          isSharing={isSharing}
+          dashboardBeforeEditing={dashboardBeforeEditing}
+          isEditingParameter={isEditingParameter}
+          isDirty={isDirty}
+          dashboard={dashboard}
+          slowCards={slowCards}
+          parameterValues={parameterValues}
+          loadingStartTime={loadingStartTime}
+          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+          isAddParameterPopoverOpen={isAddParameterPopoverOpen}
+          sidebar={sidebar}
+          isHeaderVisible={isHeaderVisible}
+          isAdditionalInfoVisible={isAdditionalInfoVisible}
+          selectedTabId={selectedTabId}
+          isNavigatingBackToDashboard={isNavigatingBackToDashboard}
+          initialize={initialize}
+          cancelFetchDashboardCardData={cancelFetchDashboardCardData}
+          addCardToDashboard={addCardToDashboard}
+          addHeadingDashCardToDashboard={addHeadingDashCardToDashboard}
+          addMarkdownDashCardToDashboard={addMarkdownDashCardToDashboard}
+          addLinkDashCardToDashboard={addLinkDashCardToDashboard}
+          setEditingDashboard={setEditingDashboard}
+          setDashboardAttributes={setDashboardAttributes}
+          setSharing={setSharing}
+          toggleSidebar={toggleSidebar}
+          closeSidebar={closeSidebar}
+          closeNavbar={closeNavbar}
+          setErrorPage={setErrorPage}
+          setParameterName={setParameterName}
+          setParameterType={setParameterType}
+          navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+          setParameterDefaultValue={setParameterDefaultValue}
+          setParameterRequired={setParameterRequired}
+          setParameterTemporalUnits={setParameterTemporalUnits}
+          setParameterIsMultiSelect={setParameterIsMultiSelect}
+          setParameterQueryType={setParameterQueryType}
+          setParameterSourceType={setParameterSourceType}
+          setParameterSourceConfig={setParameterSourceConfig}
+          setParameterFilteringParameters={setParameterFilteringParameters}
+          removeParameter={removeParameter}
+          onReplaceAllDashCardVisualizationSettings={
+            onReplaceAllDashCardVisualizationSettings
+          }
+          onUpdateDashCardVisualizationSettings={
+            onUpdateDashCardVisualizationSettings
+          }
+          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
+          updateDashboardAndCards={updateDashboardAndCards}
+          setSidebar={setSidebar}
+          hideAddParameterPopover={hideAddParameterPopover}
+          fetchDashboard={fetchDashboard}
+          fetchDashboardCardData={fetchDashboardCardData}
+        />
+      </DebugProvider>
       {/* For rendering modal urls */}
       {props.children}
     </div>
