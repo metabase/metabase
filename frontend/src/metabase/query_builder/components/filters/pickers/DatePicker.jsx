@@ -22,6 +22,7 @@ import type {
   ForeignFieldReference,
   ExpressionReference,
 } from "metabase-types/types/Query";
+import { isDateRestrictedVersionEnabled } from "metabase/query_builder/components/filters/pickers/Utils"; 
 
 const singleDatePickerPropTypes = {
   className: PropTypes.string,

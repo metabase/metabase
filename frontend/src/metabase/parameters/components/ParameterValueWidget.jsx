@@ -28,13 +28,14 @@ import {
   deriveFieldOperatorFromParameter,
 } from "metabase/meta/Parameter";
 import { isDashboardParameterWithoutMapping } from "metabase/meta/Dashboard";
+import { isDateRestrictedVersionEnabled } from "metabase/query_builder/components/filters/pickers/Utils"
 
 import S from "./ParameterWidget.css";
 
 import cx from "classnames";
 import _ from "underscore";
 
-const DATE_WIDGETS = isDateRestrictedVersionEnabled()
+const DATE_WIDGETS = isDateRestrictedVersionEnabled?.()
   ? { "date/range": DateRangeWidget }
   : {
       "date/single": DateSingleWidget,
