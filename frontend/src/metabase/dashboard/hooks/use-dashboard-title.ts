@@ -9,11 +9,11 @@ export const useDashboardTitle = (): [
 ] => {
   const { dashboard, isEditing, updateDashboard } = useDashboardContext();
 
-  const dashboardName = dashboard?.transient_name ?? dashboard?.name;
+  const title = dashboard?.transient_name ?? dashboard?.name;
 
   const setDashboardAttribute = useSetDashboardAttributeHandler();
 
-  const handleUpdateCaption = useCallback(
+  const setTitle = useCallback(
     async (name: string) => {
       await setDashboardAttribute("name", name);
       if (!isEditing) {
@@ -23,5 +23,5 @@ export const useDashboardTitle = (): [
     [setDashboardAttribute, isEditing, updateDashboard],
   );
 
-  return [dashboardName, handleUpdateCaption];
+  return [title, setTitle];
 };
