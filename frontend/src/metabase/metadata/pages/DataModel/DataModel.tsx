@@ -62,34 +62,23 @@ export const DataModel = ({ children, location, params }: Props) => {
   return (
     <Flex h="100%">
       <Stack
+        bg="accent-gray-light"
+        className={S.column}
         flex={COLUMN_CONFIG.nav.flex}
-        style={
-          {
-            /* overflow: "hidden", */
-            /* flexBasis: 'auto' */
-          }
-        }
+        gap={0}
         h="100%"
-        miw={COLUMN_CONFIG.nav.min}
         maw={COLUMN_CONFIG.nav.max}
+        miw={COLUMN_CONFIG.nav.min}
       >
-        <Stack
-          bg="accent-gray-light"
-          className={S.column}
-          gap={0}
-          h="100%"
-          w="100%"
-        >
-          <RouterTablePicker
-            databaseId={databaseId}
-            schemaName={schemaName}
-            tableId={tableId}
-          />
+        <RouterTablePicker
+          databaseId={databaseId}
+          schemaName={schemaName}
+          tableId={tableId}
+        />
 
-          <Box className={S.footer} mx="xl" py="sm">
-            <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
-          </Box>
-        </Stack>
+        <Box className={S.footer} mx="xl" py="sm">
+          <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
+        </Box>
       </Stack>
 
       {isSegments && children}
@@ -97,100 +86,80 @@ export const DataModel = ({ children, location, params }: Props) => {
       {!isSegments && (
         <>
           {tableId && (
-            <Stack
+            <Box
+              bg="bg-white"
+              className={S.column}
               flex={COLUMN_CONFIG.table.flex}
-              style={
-                {
-                  /* overflow: "hidden", */
-                  /* flexBasis: 'auto' */
-                }
-              }
               h="100%"
-              miw={COLUMN_CONFIG.table.min}
               maw={COLUMN_CONFIG.table.max}
+              miw={COLUMN_CONFIG.table.min}
             >
-              <Box bg="bg-white" className={S.column} h="100%" w="100%">
-                <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                  {table && (
-                    <TableSection
-                      /**
-                       * Make sure internal component state is reset when changing tables.
-                       * This is to avoid state mix-up with optimistic updates.
-                       */
-                      key={table.id}
-                      params={params}
-                      table={table}
-                    />
-                  )}
-                </LoadingAndErrorWrapper>
-              </Box>
-            </Stack>
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                {table && (
+                  <TableSection
+                    /**
+                     * Make sure internal component state is reset when changing tables.
+                     * This is to avoid state mix-up with optimistic updates.
+                     */
+                    key={table.id}
+                    params={params}
+                    table={table}
+                  />
+                )}
+              </LoadingAndErrorWrapper>
+            </Box>
           )}
 
           {!isEmptyStateShown && (
-            <Stack
+            <Box
+              bg="bg-white"
+              className={S.column}
               flex={COLUMN_CONFIG.field.flex}
-              style={
-                {
-                  /* overflow: "hidden", */
-                  /* flexBasis: 'auto' */
-                }
-              }
               h="100%"
-              miw={COLUMN_CONFIG.field.min}
               maw={COLUMN_CONFIG.field.max}
+              miw={COLUMN_CONFIG.field.min}
             >
-              <Box bg="bg-white" className={S.column} h="100%" w="100%">
-                <LoadingAndErrorWrapper error={error} loading={isLoading}>
-                  <Flex justify="space-between" w="100%">
-                    {field && (
-                      <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
-                        <FieldSection
-                          databaseId={databaseId}
-                          field={field}
-                          isPreviewOpen={isPreviewOpen}
-                          /**
-                           * Make sure internal component state is reset when changing fields.
-                           * This is to avoid state mix-up with optimistic updates.
-                           */
-                          key={getRawTableFieldId(field)}
-                          onPreviewClick={handlePreviewClick}
-                        />
-                      </Box>
-                    )}
-                  </Flex>
-                </LoadingAndErrorWrapper>
-              </Box>
-            </Stack>
+              <LoadingAndErrorWrapper error={error} loading={isLoading}>
+                <Flex justify="space-between" w="100%">
+                  {field && (
+                    <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max}>
+                      <FieldSection
+                        databaseId={databaseId}
+                        field={field}
+                        isPreviewOpen={isPreviewOpen}
+                        /**
+                         * Make sure internal component state is reset when changing fields.
+                         * This is to avoid state mix-up with optimistic updates.
+                         */
+                        key={getRawTableFieldId(field)}
+                        onPreviewClick={handlePreviewClick}
+                      />
+                    </Box>
+                  )}
+                </Flex>
+              </LoadingAndErrorWrapper>
+            </Box>
           )}
 
           {!isEmptyStateShown && field && table && isPreviewOpen && (
             <Box
               flex={COLUMN_CONFIG.preview.flex}
-              style={
-                {
-                  /* overflow: "hidden", */
-                  /* flexBasis: 'auto' */
-                }
-              }
               h="100%"
-              miw={COLUMN_CONFIG.preview.min}
-              maw={COLUMN_CONFIG.preview.max}
               p="xl"
+              maw={COLUMN_CONFIG.preview.max}
+              miw={COLUMN_CONFIG.preview.min}
             >
-              <Box h="100%" w="100%">
-                <PreviewSection
-                  className={S.preview}
-                  databaseId={databaseId}
-                  field={field}
-                  fieldId={fieldId}
-                  previewType={previewType}
-                  table={table}
-                  tableId={tableId}
-                  onClose={() => setIsPreviewOpen(false)}
-                  onPreviewTypeChange={setPreviewType}
-                />
-              </Box>
+              <PreviewSection
+                className={S.preview}
+                databaseId={databaseId}
+                field={field}
+                fieldId={fieldId}
+                previewType={previewType}
+                table={table}
+                tableId={tableId}
+                onClose={() => setIsPreviewOpen(false)}
+                onPreviewTypeChange={setPreviewType}
+              />
             </Box>
           )}
 
