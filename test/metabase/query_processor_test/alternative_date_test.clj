@@ -436,6 +436,11 @@
     [_driver _feature _database]
     true))
 
+(doseq [driver [:vertica :databricks :bigquery-cloud-sdk :snowflake :clickhouse :sparksql :sqlserver :athena]]
+  (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
+    [_driver _feature _database]
+    false))
+
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
   {:arglists '([driver])}

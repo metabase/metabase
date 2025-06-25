@@ -12,7 +12,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]])
   (:import
    [java.net Inet4Address Inet6Address]
    [java.sql ResultSet ResultSetMetaData Types]
@@ -24,7 +25,6 @@
     OffsetTime
     ZonedDateTime]
    [java.util Arrays UUID]))
-
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
@@ -606,3 +606,8 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
   [_driver this]
   {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
+
+(defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver coercion-strategy _expr]
+  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
+                  {:type driver-api/qp.error-type.unsupported-feature})))

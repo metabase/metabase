@@ -23,6 +23,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql
@@ -431,9 +432,9 @@
     [:convert [:raw "datetime2"] formatted 20]))
 
 (defmethod sql.qp/cast-temporal-byte [:sqlserver :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver _coercion-strategy expr]
-  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               [:convert (h2x/literal "NVARCHAR(14)")  expr (h2x/literal 0)]))
+  [driver coercion-strategy _expr]
+  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
+                  {:type driver-api/qp.error-type.unsupported-feature})))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_driver _top-level-clause honeysql-form {value :limit}]

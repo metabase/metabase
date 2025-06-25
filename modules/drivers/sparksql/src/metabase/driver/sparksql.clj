@@ -16,7 +16,8 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]])
   (:import
    (java.sql Connection ResultSet)))
 
@@ -260,3 +261,8 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sparksql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod sql.qp/cast-temporal-byte [:sparksql :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
+  [driver coercion-strategy _expr]
+  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
+                  {:type driver-api/qp.error-type.unsupported-feature})))

@@ -19,6 +19,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql ResultSet ResultSetMetaData Types)))
@@ -88,9 +89,9 @@
   [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
 
 (defmethod sql.qp/cast-temporal-byte [:vertica :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver _coercion-strategy expr]
-  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               (h2x/cast "VARCHAR" expr)))
+  [driver coercion-strategy _expr]
+  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
+                  {:type driver-api/qp.error-type.unsupported-feature})))
 
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
