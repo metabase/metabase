@@ -71,7 +71,7 @@ header=false&additional_info=false
 
 ## `breadcrumbs`
 
-Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). To hide the breadcrumbs:
+Shown by default in the top nav bar. Collection breadcrumbs show the path to the item (i.e., the collection(s) the item is in). This does not effect Data breadcrumbs if the user has Query Builder permissions. To hide the breadcrumbs:
 
 ```
 breadcrumbs=false
