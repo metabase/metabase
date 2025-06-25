@@ -30,7 +30,6 @@ export const SdkIframeEmbedSetupProvider = ({
   const [settings, setSettings] = useState<SdkIframeEmbedSettings>({
     ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
     instanceUrl,
-    apiKey: "",
   });
 
   // Which embed experience are we setting up?
