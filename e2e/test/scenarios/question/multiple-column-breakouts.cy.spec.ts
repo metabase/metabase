@@ -802,7 +802,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["-60", "-50", "1", "40", "140"]],
+          firstRows: [["-60  –  -40", "-50  –  -45", "1", "40", "140"]],
         });
 
         cy.log("'max-bins' breakouts");
@@ -819,7 +819,9 @@ describe("scenarios > question > multiple column breakouts", () => {
             "Expression1",
             "Expression2",
           ],
-          firstRows: [["20.00000000° N", "20.00000000° N", "87", "120", "220"]],
+          firstRows: [
+            ["20° N  –  40° N", "20° N  –  30° N", "87", "120", "220"],
+          ],
         });
       });
 
