@@ -345,22 +345,22 @@
    options          :- ConnectionOptions
    f                :- fn?]
   (binding [*connection-recursion-depth* (inc *connection-recursion-depth*)]
-    (if-not
-     (u/id db-or-id-or-spec)
+    (cond
+      (:connection db-or-id-or-spec)
+      (let [conn (:connection db-or-id-or-spec)]
+        (f conn))
+
+      (not (u/id db-or-id-or-spec))
       (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
         (f conn))
-      (cond
-        *db-conn*
-        (f *db-conn*)
 
-        (:connection db-or-id-or-spec)
-        (let [conn (:connection db-or-id-or-spec)]
-          (f conn))
+      *db-conn*
+      (f *db-conn*)
 
-        :else
-        (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
-          (binding [*db-conn* conn]
-            (f conn)))))))
+      :else
+      (with-open [conn (.getConnection (do-with-resolved-connection-data-source driver db-or-id-or-spec options))]
+        (binding [*db-conn* conn]
+          (f conn))))))
 
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
