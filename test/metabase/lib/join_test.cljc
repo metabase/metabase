@@ -855,32 +855,10 @@
     (doseq [lhs [nil (lib/ref (lib.metadata/field query (meta/id :categories :id)))]
             rhs [nil (lib/ref (lib.metadata/field query (meta/id :venues :category-id)))]]
       (testing (pr-str (list `lib/join-condition-operators `(lib.tu/venues-query) lhs rhs))
-        (is (=? [{:short :=, :default true}
-                 {:short :>}
-                 {:short :<}
-                 {:short :>=}
-                 {:short :<=}
-                 {:short :!=}]
+        (is (=? [:= :> :< :>= :<= :!=]
                 (lib/join-condition-operators query lhs rhs)))
-        (is (=? [{:short-name "=", :display-name "=", :long-display-name "Is"}
-                 {:short-name ">", :display-name ">", :long-display-name "Greater than"}
-                 {:short-name "<", :display-name "<", :long-display-name "Less than"}
-                 {:short-name ">=", :display-name "≥", :long-display-name "Greater than or equal to"}
-                 {:short-name "<=", :display-name "≤", :long-display-name "Less than or equal to"}
-                 {:short-name "!=", :display-name "≠", :long-display-name "Is not"}]
-                (map (partial lib/display-info query)
-                     (lib/join-condition-operators query lhs rhs))))
         (is (= (lib/join-condition-operators query lhs rhs)
-               (lib/join-condition-operators query -1 lhs rhs))))
-      (testing `lib/display-info
-        (is (=? [{:short-name "=", :default true}
-                 {:short-name ">"}
-                 {:short-name "<"}
-                 {:short-name ">="}
-                 {:short-name "<="}
-                 {:short-name "!="}]
-                (map (partial lib/display-info query)
-                     (lib/join-condition-operators query lhs rhs))))))))
+               (lib/join-condition-operators query -1 lhs rhs)))))))
 
 (deftest ^:parallel join-alias-single-table-multiple-times-test
   (testing "joining the same table twice results in different join aliases"
