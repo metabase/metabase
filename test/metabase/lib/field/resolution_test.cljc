@@ -21,7 +21,8 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.humanization :as u.humanization]))
+   [metabase.util.humanization :as u.humanization]
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -767,3 +768,13 @@
         (testing `lib.field.resolution/resolve-field-ref
           (is (=? {:name "NAME", :description "user description", :display-name "user display name"}
                   (lib.field.resolution/resolve-field-ref query -1 field-ref))))))))
+
+(deftest ^:parallel use-unknown-name-for-display-name-for-fields-that-cant-be-resolved-test
+  (let [query     (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        field-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 123456789]]
+    (mu/disable-enforcement
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid "00000000-0000-0000-0000-000000000000"
+               :name            "Unknown Field"
+               :display-name    "Unknown Field"}
+              (lib.field.resolution/resolve-field-ref query -1 field-ref))))))

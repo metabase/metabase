@@ -449,7 +449,10 @@
                              (:id resolved-for-name))]
      (-> (merge-metadata
           {:lib/type         :metadata/column
-           :name             (str id-or-name)}
+           :name             (if (integer? id-or-name)
+                               ;; ultimately ends up as the display name if we aren't able to resolve anything better.
+                               "Unknown Field"
+                               id-or-name)}
           ;; metadata about the field from the metadata provider
           (field-metadata query field-id)
           ;; metadata resolved when we have a field literal (name) ref

@@ -2020,3 +2020,10 @@
                 :semantic-type     :type/Name}]
               (map #(lib/display-info agg-query %)
                    (lib/returned-columns agg-query)))))))
+
+(deftest ^:parallel use-unknown-name-for-display-name-for-fields-that-cant-be-resolved-test
+  (let [field-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000000"} 123456789]
+        query     (lib/query meta/metadata-provider (meta/table-metadata :venues))]
+    (mu/disable-enforcement
+      (is (= "Unknown Field"
+             (lib/display-name query field-ref))))))

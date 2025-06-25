@@ -217,10 +217,8 @@
 
 (defmethod lib.metadata.calculation/display-name-method :field
   [query stage-number field-ref style]
-  (if-let [field-metadata (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
-    (lib.metadata.calculation/display-name query stage-number field-metadata style)
-    ;; mostly for the benefit of JS, which does not enforce the Malli schemas.
-    (i18n/tru "[Unknown Field]")))
+  (let [field-metadata (lib.field.resolution/resolve-field-ref query stage-number field-ref)]
+    (lib.metadata.calculation/display-name query stage-number field-metadata style)))
 
 ;;; TODO (Cam 6/12/25) -- not sure what the correct name to be using here is but it's probably not `:name`. Either
 ;;; `:lib/source-column-alias` or `:lib/original-name` is probably the right one to use here?
