@@ -6,6 +6,7 @@
    [metabase.actions.core :as actions]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -44,14 +45,17 @@
                                    input+row (map vector inputs coerced)]
                          input+row)]
     (for [input inputs]
-      (assoc input :row (input->coerced input)))))
+
+      (u/prog1 (assoc input :row (input->coerced input))
+        (log/tracef "coerce row %s => %s" (:row input) (:row <>))))))
 
 (defn- perform-data-grid-action! [action-kw context inputs]
-  (let [next-inputs  (coerce-inputs inputs)]
-    (perform-table-row-action! action-kw context next-inputs
-                               (if (= :table.row/delete action-kw)
-                                 identity
-                                 post-process))))
+  (log/with-context {:action action-kw}
+    (let [next-inputs (coerce-inputs inputs)]
+      (perform-table-row-action! action-kw context next-inputs
+                                 (if (= :table.row/delete action-kw)
+                                   identity
+                                   post-process)))))
 
 (mu/defmethod actions/perform-action!* [:sql-jdbc :data-grid.row/create]
   [_action context inputs]
