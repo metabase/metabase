@@ -247,11 +247,7 @@ export function DashboardHeaderView({
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >
-            <DashboardTabs
-              dashboardId={dashboard.id}
-              isEditing={isEditing}
-              isNightMode={isNightMode}
-            />
+            <DashboardTabs />
           </FixedWidthContainer>
         </FullWidthContainer>
       </div>

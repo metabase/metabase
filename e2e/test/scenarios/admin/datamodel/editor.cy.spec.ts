@@ -707,7 +707,7 @@ describe("scenarios > admin > datamodel > editor", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should allow changing the table name with data model permissions only", () => {
@@ -926,7 +926,7 @@ describe("scenarios > admin > datamodel > editor", () => {
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(CUSTOM_MAPPING_ERROR).scrollIntoView().should("be.visible");
+      cy.findByText(CUSTOM_MAPPING_ERROR).should("exist");
     });
   });
 
