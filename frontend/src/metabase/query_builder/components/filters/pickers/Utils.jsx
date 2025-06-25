@@ -41,21 +41,26 @@ export function decodeJWTPayload(token) {
  */
 
 export function getMaxRangeDaysFromToken() {
-  const token = getTokenFromURL();
-  console.log('token', token)
-  if (!token) return undefined;
+  try {
+    const token = getTokenFromURL();
+    console.log('token', token)
+    if (!token) return undefined;
 
-  const payload = decodeJWTPayload(token);
+    const payload = decodeJWTPayload(token);
 
-  const isRestricted = Boolean(payload?.userInfo?.dateRestrictedVersion);
-  if (!isRestricted) return undefined;
-  
-  console.log('payload', payload)
-  const accessLevel = payload?.userInfo?.reportAccessLevel;
-  console.log('accessLevel', accessLevel)
-  console.log('accessLevel', accessLevelToMaxDaysMap[accessLevel] ?? undefined)
+    const isRestricted = Boolean(payload?.userInfo?.dateRestrictedVersion);
+    if (!isRestricted) return undefined;
+    
+    console.log('payload', payload)
+    const accessLevel = payload?.userInfo?.reportAccessLevel;
+    console.log('accessLevel', accessLevel)
+    console.log('accessLevel', accessLevelToMaxDaysMap[accessLevel] ?? undefined)
 
-  return accessLevelToMaxDaysMap[accessLevel] ?? undefined;
+    return accessLevelToMaxDaysMap[accessLevel] ?? undefined;
+  } catch (e) {
+    console.warn("Failed to get max range days from token:", e);
+    return undefined;
+  }
 }
 
 /**
@@ -63,10 +68,18 @@ export function getMaxRangeDaysFromToken() {
  */
 
 export function isDateRestrictedVersionEnabled() {
-  const token = getTokenFromURL();
-  if (!token) return false;
+  try {
+    const token = getTokenFromURL();
+    if (!token) return false;
 
-  const payload = decodeJWTPayload(token);
-  console.log('Boolean(payload?.userInfo?.dateRestrictedVersion)', Boolean(payload?.userInfo?.dateRestrictedVersion))
-  return Boolean(payload?.userInfo?.dateRestrictedVersion);
+    const payload = decodeJWTPayload(token);
+    console.log(
+      "Boolean(payload?.userInfo?.dateRestrictedVersion)",
+      Boolean(payload?.userInfo?.dateRestrictedVersion)
+    );
+    return Boolean(payload?.userInfo?.dateRestrictedVersion);
+  } catch (e) {
+    console.warn("Failed to evaluate date restriction flag from token:", e);
+    return false;
+  }
 }
