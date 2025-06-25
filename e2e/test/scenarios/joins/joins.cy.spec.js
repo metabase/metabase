@@ -201,7 +201,7 @@ describe("scenarios > question > joined questions", () => {
       lhsTable: "Q1",
       rhsTable: "Q2",
       lhsSampleColumn: "Product ID",
-      rhsSampleColumn: "Q2 - Product → Sum of Total",
+      rhsSampleColumn: "Q2 - Product → Sum of Rating",
     });
     H.queryBuilderMain().findByText("Q2 → ID").should("not.exist");
 

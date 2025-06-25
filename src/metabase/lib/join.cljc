@@ -462,7 +462,8 @@
         (first home-cols))))
 
 (defn- strip-id [s]
-  (when (string? s)
+  (when (and (string? s)
+             (not (re-find #"(?i) → id$" s)))
     (str/trim (str/replace s #"(?i) id$" ""))))
 
 (defn- similar-names?
@@ -551,8 +552,8 @@
    (let [home-cols   home-cols
          cond-fields (lib.util.match/match (:conditions a-join) :field)
          home-col    (select-home-column home-cols cond-fields)]
-     (as-> (calculate-join-alias query a-join home-col) s
-       (generate-unique-name s (keep :alias (:joins stage)))))))
+     (-> (calculate-join-alias query a-join home-col)
+         (generate-unique-name (keep :alias (:joins stage)))))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a

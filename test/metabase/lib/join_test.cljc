@@ -14,6 +14,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]))
 
@@ -1725,3 +1726,18 @@
                (map (juxt :name :lib/desired-column-alias :lib/source-column-alias :display-name)
                     (lib.join/join-fields-to-add-to-parent-stage
                      query -1 join {:unique-name-fn (lib.util/unique-name-generator), :include-remaps? true}))))))))
+
+(deftest ^:parallel calculate-sane-join-aliases-test
+  (testing "Don't strip ID for names like 'X → ID'"
+    (is (nil? (#'lib.join/strip-id "Products → ID"))))
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (meta/table-metadata :products))
+                  (lib/aggregate (lib/count))
+                  (lib.tu.notebook/add-breakout "Products" "ID" {})
+                  lib/append-stage)]
+    (is (= "Reviews"
+           (#'lib.join/calculate-join-alias
+            query
+            (meta/table-metadata :reviews)
+            (m/find-first #(= (:name %) "ID")
+                          (lib/returned-columns query)))))))
