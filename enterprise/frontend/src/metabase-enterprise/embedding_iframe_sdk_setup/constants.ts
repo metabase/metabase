@@ -1,3 +1,4 @@
+import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import { SelectEmbedResourceStep } from "./components/SelectEmbedResourceStep";
 import type {
@@ -48,7 +49,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   },
   {
     id: "get-code",
-    component: () => "get code placeholder",
+    component: GetCodeStep,
   },
 ];
 
