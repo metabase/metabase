@@ -262,7 +262,7 @@ function Dashboard() {
           data-element-id="dashboard-parameters-and-cards"
           data-testid="dashboard-parameters-and-cards"
         >
-          <DashboardParameterPanel isFullscreen={isFullscreen} />
+          <DashboardParameterPanel />
           {isEmpty ? (
             renderEmptyStates()
           ) : (
