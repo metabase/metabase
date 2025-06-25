@@ -56,6 +56,23 @@
      (lib/join query join-clause))))
 
 (defn add-breakout
-  [query group-spec column-spec {:keys [col-fn], :or {col-fn identity}}]
-  (let [col (col-fn (find-col-with-spec query (lib/breakoutable-columns query) group-spec column-spec))]
-    (lib/breakout query col)))
+  ([query column-spec]
+   (add-breakout query {} column-spec))
+
+  ([query group-spec column-spec]
+   (add-breakout query group-spec column-spec {}))
+
+  ([query group-spec column-spec {:keys [col-fn], :or {col-fn identity}}]
+   (let [col (col-fn (find-col-with-spec query (lib/breakoutable-columns query) group-spec column-spec))]
+     (lib/breakout query col))))
+
+(defn add-order-by
+  ([query column-spec]
+   (add-order-by query {} column-spec))
+
+  ([query group-spec column-spec]
+   (add-order-by query group-spec column-spec {}))
+
+  ([query group-spec column-spec {:keys [col-fn direction], :or {col-fn identity, direction :asc}}]
+   (let [col (col-fn (find-col-with-spec query (lib/orderable-columns query) group-spec column-spec))]
+     (lib/order-by query -1 col direction))))

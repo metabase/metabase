@@ -18,6 +18,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
@@ -778,3 +779,33 @@
                :name            "Unknown Field"
                :display-name    "Unknown Field"}
               (lib.field.resolution/resolve-field-ref query -1 field-ref))))))
+
+(deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
+  (testing "Columns coming from a source card should not propagate :lib/expression-name"
+    (let [q1      (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                      (lib/with-fields [(meta/field-metadata :venues :price)])
+                      (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))
+          q1-cols (lib/returned-columns q1)
+          _       (is (=? [{:name "PRICE"}
+                           {:name "double-price", :lib/expression-name "double-price"}]
+                          q1-cols)
+                      "Sanity check: Card metadata is allowed to include :lib/expression-name")
+          mp      (lib.tu/mock-metadata-provider
+                   meta/metadata-provider
+                   ;; note the missing `dataset-query`!! This means we fall back to `:fields` (this is the key
+                   ;; used by the FE)
+                   {:cards [{:id          1
+                             :database-id (meta/id)
+                             :fields      q1-cols}]})
+          q2      (lib/query mp (lib.metadata/card mp 1))
+          q3      (-> q2
+                      (lib/aggregate (lib/count))
+                      (lib.tu.notebook/add-breakout {:display-name "double-price"}))]
+      (is (=? {:name                         "double-price"
+               :lib/expression-name          (symbol "nil #_\"key is not present.\"")
+               ;; `:lib/expression-name` should get saved as `:lib/original-expression-name` in case we need it later.
+               :lib/original-expression-name "double-price"}
+              (lib.field.resolution/resolve-field-ref
+               q3
+               -1
+               [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "double-price"]))))))

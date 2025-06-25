@@ -12,6 +12,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]))
 
@@ -646,3 +647,39 @@
                {:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
                {:name "count"}]
               (lib/returned-columns query -1))))))
+
+(deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
+  (testing "Columns coming from a source card should not propagate :lib/expression-name"
+    (let [q1           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                           (lib/with-fields [(meta/field-metadata :venues :price)])
+                           (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))
+          q1-cols      (lib/returned-columns q1)
+          _            (is (=? [{:name "PRICE"}
+                                {:name "double-price", :lib/expression-name "double-price"}]
+                               q1-cols)
+                           "Sanity check: Card metadata is allowed to include :lib/expression-name")
+          mp           (lib.tu/mock-metadata-provider
+                        meta/metadata-provider
+                        ;; note the missing `dataset-query`!! This means we fall back to `:fields` (this is the key
+                        ;; used by the FE)
+                        {:cards [{:id          1
+                                  :database-id (meta/id)
+                                  :fields      q1-cols}]})
+          q2           (lib/query mp (lib.metadata/card mp 1))
+          q3           (-> q2
+                           (lib/aggregate (lib/count))
+                           (lib.tu.notebook/add-breakout {:display-name "double-price"}))]
+      (doseq [f [#'lib/returned-columns
+                 #'lib/visible-columns]
+              :let [double-price (lib.tu.notebook/find-col-with-spec q3 (f q3) {} {:display-name "double-price"})]]
+        (testing f
+          (testing "metadata should not include :lib/expression-name"
+            (is (=? {:lib/expression-name (symbol "nil #_\"key is not present.\"")}
+                    double-price)))
+          (testing "should generate a :field ref for double-price"
+            (is (=? [:field {} "double-price"]
+                    (lib/ref double-price))))
+          (testing "Should be able to order by this column"
+            (is (=? {:stages [{:source-card 1
+                               :order-by [[:asc {} [:field {} "double-price"]]]}]}
+                    (lib/order-by q3 double-price)))))))))

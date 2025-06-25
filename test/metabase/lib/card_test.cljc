@@ -16,6 +16,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -488,3 +489,30 @@
                    :effective-type         :type/Text}
                   (m/find-first #(= (:name %) "CATEGORY")
                                 (lib/returned-columns query)))))))))
+
+(deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
+  (testing "Columns coming from a source card should not propagate :lib/expression-name"
+    (let [q1           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                           (lib/with-fields [(meta/field-metadata :venues :price)])
+                           (lib/expression "double-price" (lib/* (meta/field-metadata :venues :price) 2)))
+          q1-cols      (lib/returned-columns q1)
+          _            (is (=? [{:name "PRICE"}
+                                {:name "double-price", :lib/expression-name "double-price"}]
+                               q1-cols)
+                           "Sanity check: Card metadata is allowed to include :lib/expression-name")
+          mp           (lib.tu/mock-metadata-provider
+                        meta/metadata-provider
+                        ;; note the missing `dataset-query`!! This means we fall back to `:fields` (this is the key
+                        ;; used by the FE)
+                        {:cards [{:id          1
+                                  :database-id (meta/id)
+                                  :fields      q1-cols}]})
+          card         (lib.metadata/card mp 1)
+          q2           (lib/query mp card)]
+      (doseq [f [#'lib/returned-columns
+                 #'lib/visible-columns]
+              :let [double-price (lib.tu.notebook/find-col-with-spec q2 (f q2 card) {} {:display-name "double-price"})]]
+        (testing f
+          (testing "metadata should not include :lib/expression-name"
+            (is (=? {:lib/expression-name (symbol "nil #_\"key is not present.\"")}
+                    double-price))))))))

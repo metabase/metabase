@@ -244,7 +244,12 @@
   [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
           (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
-            (assoc col :lib/desired-column-alias (unique-name-fn desired-alias))))
+            (-> col
+                (assoc :lib/desired-column-alias (unique-name-fn desired-alias))
+                ;; do not propagate `:lib/expression-name`, since this Card is effectively its own previous stage(s)
+                ;; and passing this key to subsequent stages will incorrectly cause them to generate `:expression`
+                ;; refs when the expression exists in a prior stage
+                (dissoc :lib/expression-name))))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]

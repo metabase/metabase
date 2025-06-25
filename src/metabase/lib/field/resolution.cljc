@@ -2,6 +2,7 @@
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -162,7 +163,15 @@
                :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias) col))
         ;; TODO (Cam 6/19/25) -- are we supposed to be setting 'inherited temporal unit' here?
         (dissoc :metabase.lib.field/binning
-                :metabase.lib.field/temporal-unit))))
+                :metabase.lib.field/temporal-unit)
+        ;; remove `:lib/expression-name`, as it will incorrectly cause ref generation code to generate an
+        ;; `:expression` ref when the expression doesn't exist at this stage of the query. Keep it around as
+        ;; `:lib/original-expression-name` in case maybe we need it later (not currently used yet)
+        ;;
+        ;; TODO (Cam 6/25/25) -- shouldn't we also set `:lib/original-binning` and the original temporal
+        ;; unit (`:inherited-temporal-unit`) here too? They are set elsewhere but it would be good to do this all in
+        ;; one place.
+        (set/rename-keys {:lib/expression-name :lib/original-expression-name}))))
 
 (mu/defn- resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
@@ -318,7 +327,6 @@
     :description
     :display-name
     :fingerprint
-    #_:fk-target-field-id
     :id
     :semantic-type
     :table-id
