@@ -167,6 +167,7 @@ export function UndoListing() {
 }
 
 const target = document.createElement("div");
+// eslint-disable-next-line no-direct-document-references
 document.body.appendChild(target);
 
 // The react transition group state transitions are flaky in cypress

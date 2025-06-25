@@ -153,7 +153,7 @@ const ChartSettingFieldsPicker = ({
               );
               if (remaining.length === 1) {
                 // if there's only one unused option, use it
-                handleChange(sortableFields.concat([remaining[0].value]));
+                onChange(sortableFields.concat([remaining[0].value]));
               } else {
                 // otherwise leave add a new blank item
                 onChange(fields.concat([undefined]));

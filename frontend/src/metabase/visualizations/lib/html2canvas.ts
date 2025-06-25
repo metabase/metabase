@@ -7,6 +7,7 @@ export function getHtml2CanvasWrapper(rootElement: HTMLElement) {
   wrapper.appendChild(rootElement.cloneNode(true));
 
   // We must append it to document.body even when SDK is rendered as inside a shadow root
+  // eslint-disable-next-line no-direct-document-references
   document.body.appendChild(wrapper);
 
   const cleanupWrapper = () => {
