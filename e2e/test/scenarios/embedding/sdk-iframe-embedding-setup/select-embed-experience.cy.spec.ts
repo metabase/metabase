@@ -13,7 +13,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
     cy.visit("/embed/new");
     cy.wait("@dashboard");
 
-    const iframe = getPreviewIframe();
+    const iframe = H.getIframeBody();
     iframe.within(() => {
       cy.log("dashboard title is visible");
       cy.findByText("Person overview").should("be.visible");
@@ -29,7 +29,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
 
     getEmbedSidebar().findByText("Chart").click();
 
-    const iframe = getPreviewIframe();
+    const iframe = H.getIframeBody();
     iframe.within(() => {
       cy.log("question title is visible");
       cy.findByText("Query log").should("be.visible");
@@ -42,21 +42,12 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
 
     getEmbedSidebar().findByText("Exploration").click();
 
-    const iframe = getPreviewIframe();
+    const iframe = H.getIframeBody();
     iframe.within(() => {
       cy.log("data picker is visible");
       cy.findByText("Pick your starting data").should("be.visible");
     });
   });
 });
-
-const getPreviewIframe = () =>
-  cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty");
 
 const getEmbedSidebar = () => cy.findByTestId("embed-sidebar-content");
