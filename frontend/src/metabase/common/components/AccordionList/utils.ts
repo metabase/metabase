@@ -152,6 +152,7 @@ type SearchStrategy<TItem extends Item> = (
 ) => ItemScores<TItem>;
 
 type ItemScores<TItem extends Item> = {
+  threshold: number;
   score(item: TItem): number;
 };
 
@@ -206,6 +207,7 @@ function searchStrategy<TItem extends Item, TSection extends Section<TItem>>({
  */
 const alwaysMatch = function <TItem extends Item>(): ItemScores<TItem> {
   return {
+    threshold: Infinity,
     score(_item: TItem) {
       return 0;
     },
@@ -228,6 +230,7 @@ const searchFuzzy = memoize(function <TItem extends Item>({
     scores.set(result.item, result.score ?? 1);
   }
   return {
+    threshold: SEARCH_SCORE_THRESHOLD,
     score(item: TItem) {
       return scores.get(item) ?? 1;
     },
@@ -244,6 +247,7 @@ const searchSubstring = memoize(function <TItem extends Item>({
 }: SearchOptions<TItem>): ItemScores<TItem> {
   const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
   return {
+    threshold: SEARCH_SCORE_THRESHOLD,
     score(item: TItem) {
       for (const prop of searchProps) {
         const path = prop.split(".");
@@ -262,9 +266,7 @@ function sortAndFilterSections<
 >(sections: TSection[], scores: ItemScores<TItem>) {
   return sections
     .map((section, sectionIndex) => {
-      const sectionScores = (section.items ?? []).map(
-        (item) => scores.get(item) ?? 1,
-      );
+      const sectionScores = (section.items ?? []).map(scores.score);
       const sectionScore = Math.min(1, ...sectionScores);
 
       const items = sortAndFilterItems(section.items ?? [], scores);
@@ -278,7 +280,7 @@ function sortAndFilterSections<
     })
     .filter(
       ({ sectionScore, section }) =>
-        section.type || sectionScore < SEARCH_SCORE_THRESHOLD,
+        section.type || sectionScore < scores.threshold,
     )
     .sort((a, b) => a.sectionScore - b.sectionScore);
 }
@@ -291,9 +293,9 @@ function sortAndFilterItems<TItem extends Item>(
     .map((item, itemIndex) => ({
       item,
       itemIndex,
-      itemScore: scores.get(item) ?? 1,
+      itemScore: scores.score(item),
     }))
-    .filter(({ itemScore }) => itemScore < SEARCH_SCORE_THRESHOLD)
+    .filter(({ itemScore }) => itemScore < scores.threshold)
     .sort((a, b) => a.itemScore - b.itemScore);
 }
 
