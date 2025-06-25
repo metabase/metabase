@@ -660,6 +660,39 @@ describe("scenarios > admin > settings > email settings", () => {
       });
     });
   });
+
+  describe("Pro-cloud instance", () => {
+    beforeEach(() => {
+      cy.intercept("PUT", "api/email/cloud", "204").as("smtpSaved");
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-cloud");
+    });
+
+    it("should be able to save and clear email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByTestId("self-hosted-smtp-connection-card").should("not.exist");
+      cy.findByTestId("cloud-smtp-connection-card")
+        .button("Set up a custom SMTP server")
+        .click();
+
+      H.modal().within(() => {
+        // SMTP connection setup
+        cy.findByLabelText(/SMTP Host/i)
+          .type("localhost")
+          .blur();
+        cy.findByText(/465/i).click();
+        cy.findByText(/SSL/i).click();
+        cy.findByLabelText(/SMTP Username/i)
+          .type("admin")
+          .blur();
+        cy.findByLabelText(/SMTP Password/i)
+          .type("admin")
+          .blur();
+        cy.button("Save changes").click();
+      });
+    });
+  });
 });
 
 describe("scenarios > admin > license and billing", () => {
