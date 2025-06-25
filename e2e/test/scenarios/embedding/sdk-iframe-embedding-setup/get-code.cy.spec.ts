@@ -20,52 +20,51 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  describe("Authentication Selection", () => {
-    it("should render authentication radio buttons with user session selected by default", () => {
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should select user session auth method by default", () => {
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.findByText("Authentication").should("be.visible");
-        cy.findByText("Choose the authentication method for embedding:").should(
-          "be.visible",
-        );
+    getEmbedSidebar().within(() => {
+      cy.findByText("Authentication").should("be.visible");
+      cy.findByText("Choose the authentication method for embedding:").should(
+        "be.visible",
+      );
 
-        cy.findByLabelText("User Session")
-          .should("be.visible")
-          .should("be.checked");
-        cy.findByLabelText("SSO Authentication")
-          .should("be.visible")
-          .should("not.be.checked");
-      });
+      cy.findByLabelText("User Session")
+        .should("be.visible")
+        .should("be.checked");
+
+      cy.findByLabelText("SSO Authentication")
+        .should("be.visible")
+        .should("not.be.checked");
     });
+  });
 
-    it("should disable SSO radio button when JWT and SAML are not configured", () => {
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should disable SSO radio button when JWT and SAML are not configured", () => {
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
-        cy.findByLabelText("SSO Authentication").should("be.disabled");
-      });
+    getEmbedSidebar().within(() => {
+      cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
+      cy.findByLabelText("SSO Authentication").should("be.disabled");
     });
+  });
 
-    it("should enable SSO radio button when JWT is configured", () => {
-      enableJwtAuth();
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should enable SSO radio button when JWT is configured", () => {
+    enableJwtAuth();
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
-        cy.findByLabelText("SSO Authentication").should("not.be.disabled");
-      });
+    getEmbedSidebar().within(() => {
+      cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
+      cy.findByLabelText("SSO Authentication").should("not.be.disabled");
     });
+  });
 
-    it("should enable SSO radio button when SAML is configured", () => {
-      enableSamlAuth();
-      navigateToGetCodeStep({ experience: "dashboard" });
+  it("should enable SSO radio button when SAML is configured", () => {
+    enableSamlAuth();
+    navigateToGetCodeStep({ experience: "dashboard" });
 
-      getEmbedSidebar().within(() => {
-        cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
-        cy.findByLabelText("SSO Authentication").should("not.be.disabled");
-      });
+    getEmbedSidebar().within(() => {
+      cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
+      cy.findByLabelText("SSO Authentication").should("not.be.disabled");
     });
   });
 
@@ -187,7 +186,7 @@ const navigateToGetCodeStep = ({
       cy.findByText("Next").click();
     }
 
-    cy.findByText("Next").click(); // Configure step
-    cy.findByText("Next").click(); // Get code step
+    cy.findByText("Next").click(); // Configure embed options step
+    cy.findByText("Get Code").click(); // Get code step
   });
 };
