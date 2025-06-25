@@ -17,11 +17,11 @@ export type WebComponentElementConstructor = (new () => WebComponentElement) & {
   observedAttributes?: string[];
 };
 
-export type WebComponentAttributes<Attributes> = DetailedHTMLProps<
-  HTMLAttributes<HTMLElement>,
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type WebComponentAttributes<Attributes = {}> = DetailedHTMLProps<
+  HTMLAttributes<HTMLElement> & Attributes,
   HTMLElement
-> &
-  Attributes;
+>;
 
 export type MetabaseProviderInternalProps = {
   authConfig: Partial<MetabaseAuthConfig>;
