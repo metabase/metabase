@@ -1,6 +1,7 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -240,8 +241,14 @@
     (into []
           (if metric-based?
             identity
-            (map #(dissoc % ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning :fk-field-id
-                          :fk-field-name :fk-join-alias)))
+            (map (fn [col]
+                   (-> col
+                       (dissoc ::lib.join/join-alias ::lib.field/temporal-unit ::lib.field/binning)
+                       ;; these keys get propagated so we can use them for display-name purposes. TODO (Cam 6/24/25)
+                       ;; -- add to schema and document them.
+                       (set/rename-keys {:fk-field-id   :lib/previous-stage-fk-field-id
+                                         :fk-field-name :lib/previous-stage-fk-field-name
+                                         :fk-join-alias :lib/previous-stage-fk-join-alias})))))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)

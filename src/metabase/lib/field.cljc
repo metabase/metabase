@@ -77,21 +77,22 @@
 (defn- field-display-name-initial-display-name
   [query
    stage-number
-   {field-display-name      :display-name
-    field-name              :name
-    join-alias              :metabase.lib.join/join-alias
+   {field-display-name    :display-name
+    field-name            :name
+    join-alias            :metabase.lib.join/join-alias
     ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
     ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
-    fk-field-id             :fk-field-id
-    parent-id               :parent-id
+    fk-field-id           :fk-field-id
+    previous-fk-field-id  :lib/previous-stage-fk-field-id
+    parent-id             :parent-id
     ;; TODO (Cam 6/19/25) -- not sure why we need both. QUE-1408
-    simple-display-name     ::simple-display-name
-    original-display-name   :lib/original-display-name
-    ref-display-name        :lib/ref-display-name
-    model-display-name      :lib/model-display-name
-    source                  :lib/source
-    source-uuid             :lib/source-uuid
-    :as                     col}
+    simple-display-name   ::simple-display-name
+    original-display-name :lib/original-display-name
+    ref-display-name      :lib/ref-display-name
+    model-display-name    :lib/model-display-name
+    source                :lib/source
+    source-uuid           :lib/source-uuid
+    :as                   col}
    style]
   (let [humanized-name     (u.humanization/name->human-readable-name :simple field-name)
         field-display-name (or ref-display-name
@@ -99,7 +100,8 @@
                                           (not (str/includes? model-display-name " → ")))
                                  model-display-name)
                                original-display-name
-                               field-display-name)]
+                               field-display-name)
+        fk-field-id        (or fk-field-id previous-fk-field-id)]
     (or simple-display-name
         (when (and parent-id
                    ;; check that we haven't nested yet
@@ -129,19 +131,21 @@
 (defn- field-display-name-add-join-alias
   [query
    stage-number
-   {join-alias          :metabase.lib.join/join-alias
-    original-join-alias :lib/original-join-alias
+   {join-alias           :metabase.lib.join/join-alias
+    original-join-alias  :lib/original-join-alias
     ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
     ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
-    source-alias        :source-alias
-    fk-field-id         :fk-field-id
-    table-id            :table-id
-    :as                 _col}
+    source-alias         :source-alias
+    fk-field-id          :fk-field-id
+    previous-fk-field-id :lib/previous-stage-fk-field-id
+    table-id             :table-id
+    :as                  _col}
    style
    display-name]
   (let [join-alias        (or join-alias
                               original-join-alias
                               source-alias)
+        fk-field-id       (or fk-field-id previous-fk-field-id)
         join-display-name (when (and (= style :long)
                                      ;; don't prepend a join display name if `:display-name` already contains one! Legacy
                                      ;; result metadata might include it for joined Fields, don't want to add it twice.
@@ -201,7 +205,7 @@
   ;; > "When we cross the stage, everything is “long”" -- Alex P
   ;;
   ;; See https://metaboat.slack.com/archives/C0645JP1W81/p1750805177651009
-  (let [style (if (lib.field.util/inherited-column? col)
+  (let [style (if (lib.field.util/FIXED-inherited-column? query stage-number col)
                 :long
                 style)]
     (->> (field-display-name-initial-display-name query stage-number col style)

@@ -310,6 +310,7 @@
   [_driver _feature _database]
   false)
 
+;;; see also [[metabase.lib.field-test/remapped-columns-in-joined-source-queries-display-names-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join ::remapped-columns-in-joined-source-queries-test)
     (testing "Remapped columns in joined source queries should work (#15578)"

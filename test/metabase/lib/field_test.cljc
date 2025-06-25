@@ -10,6 +10,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
@@ -483,6 +484,26 @@
                                    (lib/display-name query' -1 aggregation style))
             :long    "Distinct values of Category → Name"
             :default "Distinct values of Name"))))))
+
+(deftest ^:parallel implicitly-joinable-field-display-name-test-2
+  (testing "fields implicitly joined in a previous stage"
+    (let [query (-> (lib/query
+                     meta/metadata-provider
+                     (lib.tu.macros/mbql-query venues
+                       {:fields   [$category-id->categories.name]
+                        :order-by [[:asc $id]]}))
+                    lib/append-stage)
+          col (m/find-first #(= (lib/display-name query %) "Category → Name")
+                            (lib/returned-columns query))]
+      (assert (some? col))
+      (let [query' (lib/breakout query col)
+            col'   (first (lib/breakouts-metadata query'))]
+        (assert (some? col'))
+        (is (=? {:lib/previous-stage-fk-field-id pos-int?}
+                col')
+            ":fk-field-id needs to get propagated as :lib/previous-stage-fk-field-id this to work correctly")
+        (is (= "Category → Name"
+               (lib/display-name query' col')))))))
 
 (deftest ^:parallel with-fields-test
   (let [query           (-> (lib.tu/venues-query)
@@ -1865,3 +1886,28 @@
       (is (-> (lib/query mp (lib.metadata/card mp 1))
               (lib/aggregate (lib/count))
               (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
+
+;;; adapted from [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+(deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test
+  (testing "Remapped columns in joined source queries should work (#15578)"
+    (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get title since product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title $category]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [["TITLE"    "Title"]                         ; products.title
+              ["CATEGORY" "Category"]                      ; products.category
+              ["TITLE_2"  "Orders → Title"]                ; orders.title
+              ["sum"      "Orders → Sum of Quantity"]]     ; sum(orders.quantity)
+             (map (juxt :lib/deduplicated-name :display-name)
+                  (lib.metadata.result-metadata/returned-columns query)))))))

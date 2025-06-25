@@ -311,10 +311,14 @@
     :lib/model-display-name
     :lib/original-join-alias
     :lib/original-name
+    :lib/previous-stage-fk-field-id
+    :lib/previous-stage-fk-field-name
+    :lib/previous-stage-fk-join-alias
     :converted-timezone
     :description
     :display-name
     :fingerprint
+    #_:fk-target-field-id
     :id
     :semantic-type
     :table-id
