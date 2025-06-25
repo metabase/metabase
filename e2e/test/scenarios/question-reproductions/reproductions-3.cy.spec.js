@@ -820,8 +820,8 @@ describe.skip("issue 10493", () => {
     H.modal().within(() => {
       cy.findByText("Summaries").click();
       cy.findByTestId("filter-column-Count").within(() => {
-        cy.findByPlaceholderText("Min").type("0");
-        cy.findByPlaceholderText("Max").type("30000");
+        cy.findByPlaceholderText("Start of range").type("0");
+        cy.findByPlaceholderText("End of range").type("30000");
       });
       cy.button("Apply filters").click();
     });

@@ -375,8 +375,8 @@ export const triggerVisualizationQueryChange = async () => {
 
   const popover = screen.getByRole("dialog");
   await userEvent.click(within(popover).getByText("Total"));
-  const maxInput = within(popover).getByPlaceholderText("Max");
-  await userEvent.type(maxInput, "1000");
+  const endInput = within(popover).getByPlaceholderText("End of range");
+  await userEvent.type(endInput, "1000");
   await userEvent.click(await screen.findByText("Apply filter"));
 };
 

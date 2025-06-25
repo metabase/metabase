@@ -123,7 +123,7 @@ describe("scenarios > filters > bulk filtering", () => {
     H.popover().within(() => {
       cy.findByText("Summaries").click();
       cy.findByText("Count").click();
-      cy.findByPlaceholderText("Min").type("500");
+      cy.findByPlaceholderText("Start of range").type("500");
       cy.button("Apply filter").click();
     });
     cy.wait("@dataset");
@@ -537,8 +537,8 @@ describe("scenarios > filters > bulk filtering", () => {
     it("applies a between filter", () => {
       H.popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByPlaceholderText("Min").type("50");
-        cy.findByPlaceholderText("Max").type("80");
+        cy.findByPlaceholderText("Start of range").type("50");
+        cy.findByPlaceholderText("End of range").type("80");
         cy.button("Apply filter").click();
       });
       cy.wait("@dataset");
@@ -565,7 +565,7 @@ describe("scenarios > filters > bulk filtering", () => {
     it("infers a <= filter from an invalid between filter", () => {
       H.popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByPlaceholderText("Max").type("50");
+        cy.findByPlaceholderText("End of range").type("50");
         cy.button("Apply filter").click();
       });
       cy.wait("@dataset");
