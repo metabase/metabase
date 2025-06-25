@@ -508,7 +508,9 @@ describe("scenarios > admin > settings > email settings", () => {
 
   it("should be able to save and clear email settings", () => {
     cy.visit("/admin/settings/email");
-    cy.findByTestId("smtp-connection-card").button("Configure").click();
+    cy.findByTestId("self-hosted-smtp-connection-card")
+      .button("Configure")
+      .click();
 
     H.modal().within(() => {
       // SMTP connection setup
@@ -529,12 +531,12 @@ describe("scenarios > admin > settings > email settings", () => {
 
     cy.wait("@smtpSaved");
     // should show as active now
-    cy.findByTestId("smtp-connection-card")
+    cy.findByTestId("self-hosted-smtp-connection-card")
       .findByText("Active")
       .should("be.visible");
 
     // button should be different
-    cy.findByTestId("smtp-connection-card")
+    cy.findByTestId("self-hosted-smtp-connection-card")
       .button("Edit configuration")
       .should("be.visible");
 
@@ -558,7 +560,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByDisplayValue("reply-to@metabase.test");
 
     // validate SMTP connection settings
-    cy.findByTestId("smtp-connection-card")
+    cy.findByTestId("self-hosted-smtp-connection-card")
       .findByText("Edit configuration")
       .click();
     cy.findByDisplayValue("localhost");
@@ -573,7 +575,9 @@ describe("scenarios > admin > settings > email settings", () => {
 
     cy.reload();
 
-    cy.findByTestId("smtp-connection-card").findByText("Configure").click();
+    cy.findByTestId("self-hosted-smtp-connection-card")
+      .findByText("Configure")
+      .click();
 
     H.modal().within(() => {
       cy.findByLabelText("SMTP Host").should("have.value", "");
@@ -596,13 +600,13 @@ describe("scenarios > admin > settings > email settings", () => {
       "email-smtp-username": null,
     });
     cy.visit("/admin/settings/email");
-    cy.findByTestId("smtp-connection-card")
-      .findByText("Edit configuration")
-      .click();
-    H.modal().findByText("Send test email").click();
-    H.modal().findByText(
-      "Couldn't connect to host, port: localhost, 1234; timeout -1",
-    );
+
+    cy.findByTestId("admin-layout-content").within(() => {
+      cy.button("Send test email").click();
+      cy.findByText(
+        "Couldn't connect to host, port: localhost, 1234; timeout -1",
+      );
+    });
   });
 
   it(
@@ -611,13 +615,8 @@ describe("scenarios > admin > settings > email settings", () => {
     () => {
       H.setupSMTP();
       cy.visit("/admin/settings/email");
-
-      cy.findByTestId("smtp-connection-card")
-        .findByText("Edit configuration")
-        .click();
-      H.modal().findByText("Send test email").click();
+      cy.button("Send test email").click();
       H.undoToast().findByText("Email sent!").should("be.visible");
-
       cy.request("GET", `http://localhost:${WEB_PORT}/email`).then(
         ({ body }) => {
           const emailBody = body[0].text;
