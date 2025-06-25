@@ -394,7 +394,10 @@ export class AccordionList<
         sectionScore: isSearching ? sectionScore(section, searchOptions) : 0,
         sectionIndex: index,
       }))
-      .filter(({ sectionScore }) => sectionScore < searchThreshold)
+      .filter(
+        ({ sectionScore, section }) =>
+          section.type || sectionScore < searchThreshold,
+      )
       .sort((a, b) => a.sectionScore - b.sectionScore);
 
     for (const { section, sectionIndex } of sortedSections) {
