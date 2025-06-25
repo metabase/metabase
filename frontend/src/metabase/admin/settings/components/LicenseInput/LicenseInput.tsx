@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import type { InputProps } from "metabase/core/components/Input";
+import Button from "metabase/common/components/Button";
+import type { InputProps } from "metabase/common/components/Input";
 import CS from "metabase/css/core/index.css";
 
 import {

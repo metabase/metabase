@@ -3,10 +3,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import Link from "metabase/common/components/Link";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { AdminContentTable } from "metabase/components/AdminContentTable";
 import { PaginationControls } from "metabase/components/PaginationControls";
-import Link from "metabase/core/components/Link";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";

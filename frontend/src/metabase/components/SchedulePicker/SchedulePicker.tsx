@@ -2,9 +2,9 @@ import cx from "classnames";
 import { type CSSProperties, Component } from "react";
 import { t } from "ttag";
 
+import type { SelectChangeEvent } from "metabase/common/components/Select";
+import Select from "metabase/common/components/Select";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
-import type { SelectChangeEvent } from "metabase/core/components/Select";
-import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import {
   AM_PM_OPTIONS,

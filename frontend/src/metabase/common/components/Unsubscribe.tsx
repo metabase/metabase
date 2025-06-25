@@ -3,11 +3,11 @@ import { useMemo, useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { NotFound } from "metabase/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper";
 import LogoIcon from "metabase/components/LogoIcon";
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";

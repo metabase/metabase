@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 

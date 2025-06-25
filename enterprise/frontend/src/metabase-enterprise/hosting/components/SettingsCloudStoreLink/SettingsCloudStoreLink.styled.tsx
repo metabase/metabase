@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import ExternalLink from "metabase/core/components/ExternalLink";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { Icon } from "metabase/ui";
 
 export const Description = styled.p`

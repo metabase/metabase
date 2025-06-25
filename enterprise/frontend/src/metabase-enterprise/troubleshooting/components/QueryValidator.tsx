@@ -11,11 +11,11 @@ import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
 } from "metabase/common/components/CollectionPicker";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
 import { Table } from "metabase/common/components/Table";
 import { useSetting } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";
-import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import * as Urls from "metabase/lib/urls";

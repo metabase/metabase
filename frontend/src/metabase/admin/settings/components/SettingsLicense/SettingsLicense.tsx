@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
-import ExternalLink from "metabase/core/components/ExternalLink";
+import Button from "metabase/common/components/Button";
+import ExternalLink from "metabase/common/components/ExternalLink";
 import { connect } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";

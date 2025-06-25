@@ -18,13 +18,13 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
+import ExternalLink from "metabase/common/components/ExternalLink";
 import {
   memoize,
   useMemoizedCallback,
 } from "metabase/common/hooks/use-memoized-callback";
 import { ErrorMessage } from "metabase/components/ErrorMessage";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DataGrid, type DataGridStylesProps } from "metabase/data-grid";
 import {
