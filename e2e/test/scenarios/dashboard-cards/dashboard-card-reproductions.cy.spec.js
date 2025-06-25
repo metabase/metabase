@@ -963,7 +963,9 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
+        scalarContainer.should(($element) =>
+          H.assertIsEllipsified($element[0]),
+        );
         //TODO: Need to hover on the actual text, not just the container. This is a weird one
         scalarContainer.realHover({ position: "bottom" });
 
@@ -1000,7 +1002,7 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then(($element) =>
+        scalarContainer.should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
         scalarContainer.realHover();
@@ -1017,7 +1019,7 @@ describe("issue 31628", () => {
          */
         const scalarTitle = cy.findByTestId("scalar-title");
 
-        scalarTitle.then(($element) => H.assertIsEllipsified($element[0]));
+        scalarTitle.should(($element) => H.assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip")
@@ -1050,7 +1052,7 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then(($element) =>
+        scalarContainer.should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
         scalarContainer.realHover();
@@ -1067,7 +1069,7 @@ describe("issue 31628", () => {
          */
         const scalarTitle = cy.findByTestId("scalar-title");
 
-        scalarTitle.then(($element) => H.assertIsNotEllipsified($element[0]));
+        scalarTitle.should(($element) => H.assertIsNotEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip").should("not.exist");
@@ -1127,7 +1129,7 @@ describe("issue 31628", () => {
          */
         const scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then(($element) =>
+        scalarContainer.should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
         scalarContainer.realHover();
@@ -1144,7 +1146,7 @@ describe("issue 31628", () => {
          */
         const scalarTitle = cy.findByTestId("legend-caption-title");
 
-        scalarTitle.then(($element) => H.assertIsEllipsified($element[0]));
+        scalarTitle.should(($element) => H.assertIsEllipsified($element[0]));
         scalarTitle.realHover();
 
         cy.findByRole("tooltip")
@@ -1169,7 +1171,7 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("35%").should("exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
+          previousValue.should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1184,7 +1186,7 @@ describe("issue 31628", () => {
           cy.contains("35%").should("exist");
           cy.contains("34.72%").should("not.exist");
           cy.contains("• vs. previous month: 527").should("not.exist");
-          previousValue.then(($element) =>
+          previousValue.should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1197,7 +1199,7 @@ describe("issue 31628", () => {
 
         previousValue
           .findByText("35%")
-          .then(($element) => H.assertIsEllipsified($element[0]));
+          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
@@ -1216,7 +1218,7 @@ describe("issue 31628", () => {
          */
         let scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then(($element) =>
+        scalarContainer.should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
         scalarContainer.realHover();
@@ -1233,7 +1235,9 @@ describe("issue 31628", () => {
          */
         scalarContainer = cy.findByTestId("legend-caption-title");
 
-        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
+        scalarContainer.should(($element) =>
+          H.assertIsEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip")
@@ -1257,7 +1261,7 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.then(($element) =>
+          previousValue.should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
@@ -1286,7 +1290,7 @@ describe("issue 31628", () => {
          */
         let scalarContainer = cy.findByTestId("scalar-container");
 
-        scalarContainer.then(($element) =>
+        scalarContainer.should(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
         scalarContainer.realHover();
@@ -1303,7 +1307,9 @@ describe("issue 31628", () => {
          */
         scalarContainer = cy.findByTestId("legend-caption-title");
 
-        scalarContainer.then(($element) => H.assertIsEllipsified($element[0]));
+        scalarContainer.should(($element) =>
+          H.assertIsEllipsified($element[0]),
+        );
         scalarContainer.realHover();
 
         cy.findByRole("tooltip")
@@ -1327,7 +1333,7 @@ describe("issue 31628", () => {
         previousValue.within(() => {
           cy.contains("34.72%").should("exist");
           cy.contains("• vs. previous month: 527").should("exist");
-          previousValue.then(($element) =>
+          previousValue.should(($element) =>
             H.assertIsNotEllipsified($element[0]),
           );
         });
