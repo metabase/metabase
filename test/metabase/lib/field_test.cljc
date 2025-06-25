@@ -1506,8 +1506,8 @@
       (binding [lib.metadata.ident/*enforce-idents-present* false]
         (is (=? {:lib/type        :metadata/column
                  :lib/source-uuid string?
-                 :name            "12345"
-                 :display-name    "12345"}
+                 :name            "Unknown Field"
+                 :display-name    "Unknown Field"}
                 (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
                                                    [:field {:lib/uuid (str (random-uuid))} 12345])))))))
 

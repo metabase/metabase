@@ -325,12 +325,18 @@
                                 "to-07-to-09" [:convert-timezone [:expression "to-07"] "Asia/Seoul" "America/Los_Angeles"]}
                   :fields      [$last-login
                                 [:expression "to-07"]
-                                [:expression "to-07-to-09"]]})])]
+                                [:expression "to-07-to-09"]]})])
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (testing "lib/returned columns must propagate :lib/original-expression-name in order for :converted-timezone to work correctly"
+        (is (=? [{}
+                 {:lib/original-expression-name "to-07"}
+                 {:lib/original-expression-name "to-07-to-09"}]
+                (lib/returned-columns query))))
       (is (=? [{:name "LAST_LOGIN"}
                {:name "to-07", :converted-timezone "Asia/Saigon"}
                {:name "to-07-to-09", :converted-timezone "Asia/Seoul"}]
               (map #(select-keys % [:name :converted-timezone])
-                   (result-metadata/returned-columns (lib/query mp (lib.metadata/card mp 1)))))))))
+                   (result-metadata/returned-columns query)))))))
 
 (defn- col-info-for-aggregation-clause
   ([ag-clause]

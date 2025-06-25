@@ -147,12 +147,11 @@
                  :name (:name col)
                  :display-name (:display-name col)}
                 (lib/expression-parts query stage-number (lib.ref/ref col))))))
-
     (testing "unknown column reference"
       (let [unknown-ref [:field {:lib/uuid (str (random-uuid))} 12345678]]
         (mu/disable-enforcement
           (is (=? {:lib/type :metadata/column
-                   :display-name "12345678"}
+                   :display-name "Unknown Field"}
                   (lib/expression-parts query stage-number unknown-ref))))))))
 
 (deftest ^:parallel expression-parts-segment-reference-test
@@ -174,7 +173,6 @@
                  :name segment-name
                  :description segment-description}
                 (lib/expression-parts query stage-number (lib.ref/ref segment))))))
-
     (testing "unknown segment reference"
       (let [unknown-ref [:segment {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement
@@ -201,7 +199,6 @@
                  :name metric-name
                  :description metric-description}
                 (lib/expression-parts query stage-number (lib.ref/ref metric))))))
-
     (testing "unknown metric reference"
       (let [unknown-ref [:metric {:lib/uuid (str (random-uuid))} 101]]
         (mu/disable-enforcement

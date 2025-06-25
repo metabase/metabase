@@ -316,13 +316,14 @@
 
 (def ^:private previous-stage-propagated-keys
   #{::debug.origin
-    :lib/original-display-name
     :lib/model-display-name
-    :lib/original-join-alias
-    :lib/original-name
+    :lib/original-display-name
+    :lib/original-expression-name
     :lib/original-fk-field-id
     :lib/original-fk-field-name
     :lib/original-fk-join-alias
+    :lib/original-join-alias
+    :lib/original-name
     :converted-timezone
     :description
     :display-name

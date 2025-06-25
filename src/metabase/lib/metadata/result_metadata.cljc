@@ -147,7 +147,7 @@
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
   (mapv (fn [col]
-          (let [converted-timezone (when-let [expression-name (:lib/expression-name col)]
+          (let [converted-timezone (when-let [expression-name ((some-fn :lib/expression-name :lib/original-expression-name) col)]
                                      (when-let [expr (try
                                                        (lib.expression/resolve-expression query expression-name)
                                                        (catch #?(:clj Throwable :cljs :default) e

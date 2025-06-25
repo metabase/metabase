@@ -77,9 +77,9 @@
     (let [query      (lib.tu/venues-query)
           field-id   (inc (apply max (map :id (lib/visible-columns query))))]
       (mu/disable-enforcement
-        (is (=? {:name              (str field-id)
-                 :display-name      (str field-id)
-                 :long-display-name (str "join → " field-id)}
+        (is (=? {:name              "Unknown Field"
+                 :display-name      "Unknown Field"
+                 :long-display-name "join → Unknown Field"}
                 (lib/display-info query [:field {:join-alias "join"} field-id])))))))
 
 (deftest ^:parallel visible-columns-test

@@ -159,10 +159,13 @@
            ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
            ;; of problem at this point in time.
            ;;
+           ;; TODO (Cam 6/25/25) -- should we also be renaming this to `:inherited-temporal-unit` here?
+           (dissoc ::lib.field/temporal-unit)
            ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
            ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
-           ;; to generate `:expression` or `:field` refs.
-           (dissoc ::lib.field/temporal-unit :lib/expression-name))))))
+           ;; to generate `:expression` or `:field` refs. Rename it to `:lib/original-expression-name` if we need it
+           ;; for something else later.
+           (set/rename-keys {:lib/expression-name :lib/original-expression-name}))))))
 
 (mu/defn- saved-question-visible-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"

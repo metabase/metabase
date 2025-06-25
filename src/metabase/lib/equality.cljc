@@ -2,7 +2,6 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
-   #?@(:clj ([metabase.util.log :as log]))
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
