@@ -831,7 +831,7 @@ describe("scenarios > visualizations > table column settings", () => {
         openSettings();
 
         const mathColumn = {
-          column: "Math",
+          column: `Question ${card.id} → Math`,
           columnName: `Question ${card.id} → Math`,
           table: "test question",
           needsScroll: false,
