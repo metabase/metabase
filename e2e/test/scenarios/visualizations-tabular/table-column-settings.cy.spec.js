@@ -624,7 +624,7 @@ describe("scenarios > visualizations > table column settings", () => {
       };
 
       const productIdColumn = {
-        column: "ID",
+        column: "Product → ID",
         columnName: "Product → ID",
         table: "summaries",
         sanityCheck: "Count",
