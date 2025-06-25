@@ -19,6 +19,7 @@ import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
+import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
@@ -43,6 +44,8 @@ export type DashboardContextErrorState = {
   error: unknown | null;
 };
 
+type DashboardActionButtonList = DashboardActionKey[] | null;
+
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: ParameterValues;
@@ -54,6 +57,15 @@ export type DashboardContextOwnProps = {
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
   dashcardMenu?: DashboardCardMenu | null;
+  dashboardActions?:
+    | DashboardActionButtonList
+    | (({
+        isEditing,
+        downloadsEnabled,
+      }: Pick<
+        DashboardContextReturned,
+        "isEditing" | "downloadsEnabled"
+      >) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
 };
 
@@ -61,6 +73,7 @@ export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
   dashboardIdProp: DashboardContextOwnProps["dashboardId"];
   dashboardId: DashboardId | null;
+  dashboardActions?: DashboardActionButtonList;
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
@@ -92,6 +105,7 @@ const DashboardContextProviderInner = ({
   onLoadWithoutCards,
   onError,
   dashcardMenu,
+  dashboardActions: initDashboardActions,
   isDashcardVisible,
 
   children,
@@ -164,7 +178,7 @@ const DashboardContextProviderInner = ({
     setTheme,
   } = useEmbedTheme();
 
-  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
+  const shouldRenderAsNightMode = Boolean(isNightMode);
 
   const handleError = useCallback(
     (error: unknown) => {
@@ -339,6 +353,11 @@ const DashboardContextProviderInner = ({
     return dashboard;
   }, [dashboard, isDashcardVisible]);
 
+  const dashboardActions =
+    typeof initDashboardActions === "function"
+      ? initDashboardActions({ isEditing, downloadsEnabled })
+      : (initDashboardActions ?? null);
+
   return (
     <DashboardContext.Provider
       value={{
@@ -349,6 +368,7 @@ const DashboardContextProviderInner = ({
         onLoad,
         onError,
         dashcardMenu,
+        dashboardActions,
 
         navigateToNewCardFromDashboard,
         isLoading,

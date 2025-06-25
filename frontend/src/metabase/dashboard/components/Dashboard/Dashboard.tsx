@@ -9,8 +9,11 @@ import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
+import { isEmbeddingSdk } from "metabase/env";
 import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { useGlobalTheme } from "metabase/public/components/EmbedFrame/useGlobalTheme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -63,7 +66,10 @@ function Dashboard() {
     setParameterTemporalUnits,
     sidebar,
     closeSidebar,
+    theme,
   } = useDashboardContext();
+  useGlobalTheme(theme);
+  console.log(theme);
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
@@ -102,13 +108,18 @@ function Dashboard() {
 
   return (
     <Flex
-      className={cx(DashboardS.Dashboard, S.DashboardLoadingAndErrorWrapper, {
-        [DashboardS.DashboardFullscreen]: isFullscreen,
-        [DashboardS.DashboardNight]: shouldRenderAsNightMode,
-        [ParametersS.DashboardNight]: shouldRenderAsNightMode,
-        [ColorS.DashboardNight]: shouldRenderAsNightMode,
-        [S.isFullHeight]: isFullHeight,
-      })}
+      className={cx(
+        DashboardS.Dashboard,
+        S.DashboardLoadingAndErrorWrapper,
+        EmbedFrameS.EmbedFrame,
+        {
+          [DashboardS.DashboardFullscreen]: isFullscreen,
+          [DashboardS.DashboardNight]: shouldRenderAsNightMode,
+          [ParametersS.DashboardNight]: shouldRenderAsNightMode,
+          [ColorS.DashboardNight]: shouldRenderAsNightMode,
+          [S.isFullHeight]: isFullHeight,
+        },
+      )}
       direction="column"
       mih="100%"
       w="100%"
@@ -136,10 +147,15 @@ function Dashboard() {
 
       <Box
         component="header"
-        className={cx(S.DashboardHeaderContainer, {
-          [S.isFullscreen]: isFullscreen,
-          [S.isNightMode]: shouldRenderAsNightMode,
-        })}
+        className={cx(
+          S.DashboardHeaderContainer,
+          EmbedFrameS.EmbedFrameHeader,
+          {
+            [S.isFullscreen]: isFullscreen,
+            [S.isEmbeddingSdk]: isEmbeddingSdk,
+            [S.isNightMode]: shouldRenderAsNightMode,
+          },
+        )}
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >

@@ -70,26 +70,11 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
-    component: ({
-      refreshPeriod,
-      setRefreshElapsedHook,
-      onRefreshPeriodChange,
-    }) => (
-      <RefreshWidget
-        period={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onChangePeriod={onRefreshPeriodChange}
-      />
-    ),
+    component: () => <RefreshWidget />,
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    component: ({ isNightMode, onNightModeChange }) => (
-      <NightModeToggleButton
-        isNightMode={isNightMode}
-        onNightModeChange={onNightModeChange}
-      />
-    ),
+    component: NightModeToggleButton,
     enabled: ({
       isEditing,
       isFullscreen,

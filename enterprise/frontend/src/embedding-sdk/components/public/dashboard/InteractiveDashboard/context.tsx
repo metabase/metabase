@@ -10,12 +10,10 @@ import { addDefaultDashboardPluginValues } from "embedding-sdk/lib/plugins/dashb
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
-import type { DashboardActionKey } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/types";
 import type Question from "metabase-lib/v1/Question";
 
 export type InteractiveDashboardContextType = Partial<{
   plugins: MetabasePluginsConfig;
-  dashboardActions: DashboardActionKey[];
   onEditQuestion: (question: Question) => void;
 }>;
 const InteractiveDashboardContext =
@@ -24,7 +22,6 @@ const InteractiveDashboardContext =
 export const InteractiveDashboardProvider = ({
   children,
   plugins,
-  dashboardActions,
   onEditQuestion: initOnEditQuestion,
 }: PropsWithChildren<InteractiveDashboardContextType>) => {
   const globalPlugins = useSdkSelector(getPlugins);
@@ -43,10 +40,9 @@ export const InteractiveDashboardProvider = ({
   const value = useMemo(
     () => ({
       plugins: initializedPlugins,
-      dashboardActions,
       onEditQuestion,
     }),
-    [dashboardActions, initializedPlugins, onEditQuestion],
+    [initializedPlugins, onEditQuestion],
   );
   return (
     <InteractiveDashboardContext.Provider value={value}>

@@ -40,7 +40,7 @@ const DashboardActionMenuInner = ({
 
   const { refreshDashboard } = useRefreshDashboard({
     dashboardId: dashboard?.id ?? null,
-    parameterQueryParams: location.query,
+    parameterQueryParams: location?.query,
     refetchData: false,
   });
 
@@ -48,6 +48,9 @@ const DashboardActionMenuInner = ({
     dashboard ?? undefined,
     refreshDashboard,
   );
+
+  // solely for the dependency list below, so we don't ever have an undefined
+  const pathname = location?.pathname ?? "";
   useRegisterShortcut(
     [
       {
@@ -55,7 +58,7 @@ const DashboardActionMenuInner = ({
         perform: () => onChangeLocation(`${location?.pathname}/archive`),
       },
     ],
-    [location.pathname],
+    [pathname],
   );
 
   if (!dashboard) {
