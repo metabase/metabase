@@ -16,6 +16,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
   DashboardContextProvider,
@@ -133,11 +134,9 @@ const AutomaticDashboardAppInner = () => {
                     isFixedWidth={dashboard?.width === "fixed"}
                   >
                     <XrayIcon />
-                    <div>
-                      <h2 className={cx(CS.textWrap, CS.mr2)}>
-                        {dashboard && <TransientTitle dashboard={dashboard} />}
-                      </h2>
-                    </div>
+                    <DashboardTitle
+                      className={cx(CS.textWrap, CS.mr2, CS.h2)}
+                    />
                   </FixedWidthContainer>
                   <div
                     className={cx(CS.flex, CS.flexGrow1)}
@@ -264,10 +263,3 @@ export const AutomaticDashboardApp = ({
     </DashboardContextProvider>
   );
 };
-
-const TransientTitle = ({ dashboard }: { dashboard: Dashboard }) =>
-  dashboard.transient_name ? (
-    <span>{dashboard.transient_name}</span>
-  ) : dashboard.name ? (
-    <span>{dashboard.name}</span>
-  ) : null;
