@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
@@ -1962,3 +1963,43 @@
               (lib/aggregate (lib/count))
               (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 10 bins"} {})
               (lib.tu.notebook/add-breakout {:name "Q1"} {:display-name "Total: 50 bins"} {}))))))
+
+(deftest ^:parallel display-info-propagate-join-aliases-test
+  (let [mp         (lib.tu/mock-metadata-provider
+                    meta/metadata-provider
+                    {:cards [{:id            1
+                              :dataset-query (lib.tu.macros/mbql-query venues
+                                               {:joins
+                                                [{:source-table $$categories
+                                                  :condition    [:= $category-id &c.categories.id]
+                                                  :fields       :all
+                                                  :alias        "c"}]})}]})
+        query      {:database (meta/id)
+                    :type     :query
+                    :query    {:source-table "card__1"}}
+        mlv2-query (lib/query mp query)
+        breakouts  (lib/breakoutable-columns mlv2-query)
+        agg-query  (-> mlv2-query
+                       (lib/breakout (second breakouts))
+                       (lib/breakout (last breakouts)))]
+    (testing "display name should be correct; inherited column status has to be detected correctly for this to work"
+      (is (= [["Name"     true]         ; they're both inherited!
+              ["c → Name" true]]
+             (map (juxt :display-name #(boolean (lib.field.util/FIXED-inherited-column? agg-query -1 %)))
+                  (lib/returned-columns agg-query)))))
+    (testing "recalculating display names should work correctly"
+      (is (= ["Name"
+              "c → Name"]
+             (map #(lib/display-name agg-query %)
+                  (lib/returned-columns agg-query)))))
+    (testing `lib/display-info
+      (is (=? [{:display-name      "Name"
+                :long-display-name "Name"
+                :effective-type    :type/Text
+                :semantic-type     :type/Name}
+               {:display-name      "c → Name"
+                :long-display-name "c → Name"
+                :effective-type    :type/Text
+                :semantic-type     :type/Name}]
+              (map #(lib/display-info agg-query %)
+                   (lib/returned-columns agg-query)))))))

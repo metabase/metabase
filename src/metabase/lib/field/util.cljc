@@ -21,19 +21,23 @@
    ;; if a column's source is `:source/fields` or `:source/breakouts`, that means it either came from the previous
    ;; stage, or the source table or a join in this stage. So we can determine if it was from the previous stage if
    ;;
-   ;; 1. there is a previous stage, and
+   ;; 1. there is a previous stage (or source card), and
    ;;
-   ;; 2. if it (incorrectly) has a join alias, that join is in a previous stage
-   (when (#{:source/fields :source/breakouts} (:lib/source column))
-     (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-       (let [join-alias (:metabase.lib.join/join-alias column)]
-         (or (not join-alias)
-             (loop [previous-stage-number previous-stage-number]
-               (or (some (fn [join]
-                           (= (:alias join) join-alias))
-                         (:joins (lib.util/query-stage query previous-stage-number)))
-                   (when-let [previous-stage-number' (lib.util/previous-stage-number query previous-stage-number)]
-                     (recur previous-stage-number'))))))))))
+   ;; 2a. it DOES NOT have a join alias, OR
+   ;;
+   ;; 2b. it HAS a join alias, but that alias is not for a join in the current stage
+   (and
+    (#{:source/fields :source/breakouts} (:lib/source column))
+    ;; 1. there is a previous stage (or source card)
+    (or (not (lib.util/first-stage? query stage-number))
+        (lib.util/source-card-id query))
+    (let [join-alias ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias) column)]
+      (or
+       ;; 2a. it DOES NOT have a join alias
+       (not join-alias)
+       ;; 2b. it HAS a join alias, but that alias is not for a join in the current stage
+       (every? #(not= (:alias %) join-alias)
+               (:joins (lib.util/query-stage query stage-number))))))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
   "If the field ref for this `column` should be name-based, returns the name used in the field ref."
