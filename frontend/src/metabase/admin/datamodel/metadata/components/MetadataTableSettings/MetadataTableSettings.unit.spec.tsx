@@ -71,7 +71,6 @@ const setup = async ({ databases = [SAMPLE_DB] }: SetupOpts = {}) => {
   await waitForLoaderToBeRemoved();
 };
 
-// To be ported in https://linear.app/metabase/issue/SEM-448
 // Will be removed soon in https://linear.app/metabase/issue/SEM-247
 // eslint-disable-next-line jest/no-disabled-tests
 describe.skip("MetadataTableSettings", () => {
