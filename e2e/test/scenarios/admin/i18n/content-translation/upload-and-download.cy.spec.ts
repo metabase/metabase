@@ -35,7 +35,7 @@ describe("scenarios > admin > localization > content translation", () => {
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("bleeding-edge");
       H.snapshot("snapshot-for-upload-and-download");
     });
 

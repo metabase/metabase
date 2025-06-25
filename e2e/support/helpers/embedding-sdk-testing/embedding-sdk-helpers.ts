@@ -6,8 +6,8 @@ import {
   AUTH_PROVIDER_URL,
   JWT_SHARED_SECRET,
   METABASE_INSTANCE_URL,
+  activateToken,
   restore,
-  setTokenFeatures,
 } from "e2e/support/helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 
@@ -56,7 +56,7 @@ export function signInAsAdminAndEnableEmbeddingSdk() {
   restore();
 
   cy.signInAsAdmin();
-  setTokenFeatures("all");
+  activateToken("bleeding-edge");
   enableJwtAuth();
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,
