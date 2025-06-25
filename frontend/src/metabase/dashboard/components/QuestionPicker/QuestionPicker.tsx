@@ -84,7 +84,7 @@ function QuestionPickerInner({
         onChange={handleSearchTextChange}
       />
 
-      {(hasDataAccess || hasNativeWrite) && !isEmbeddingSdk && (
+      {(hasDataAccess || hasNativeWrite) && (
         <Flex gap="sm" mb="md" data-testid="new-button-bar">
           {hasDataAccess && (
             <Button
@@ -96,7 +96,7 @@ function QuestionPickerInner({
               {t`New Question`}
             </Button>
           )}
-          {hasNativeWrite && (
+          {hasNativeWrite && !isEmbeddingSdk && (
             <Button
               variant="outline"
               className={S.newButton}
