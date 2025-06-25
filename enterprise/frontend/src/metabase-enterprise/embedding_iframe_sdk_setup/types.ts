@@ -15,3 +15,5 @@ export type SdkIframeEmbedSetupRecentItem = Pick<
   BaseRecentItem,
   "name" | "description"
 > & { id: string | number };
+
+export type SdkIframeEmbedSetupAuthType = "user-session" | "sso";
