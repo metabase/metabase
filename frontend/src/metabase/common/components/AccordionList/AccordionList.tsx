@@ -30,6 +30,11 @@ import {
   sectionScore,
 } from "./utils";
 
+// The threshold for the score of search results
+// when fuzzy searching. 0 is a perfect match, 1 is the
+// worst possible match.
+const SEARCH_SCORE_THRESHOLD = 0.4;
+
 type Props<
   TItem extends Item,
   TSection extends Section<TItem> = Section<TItem>,
@@ -380,7 +385,6 @@ export class AccordionList<
 
     const rows: Row<TItem, TSection>[] = [];
 
-    const searchThreshold = 0.4;
     const searchOptions = {
       searchText,
       sections,
@@ -396,7 +400,7 @@ export class AccordionList<
       }))
       .filter(
         ({ sectionScore, section }) =>
-          section.type || sectionScore < searchThreshold,
+          section.type || sectionScore < SEARCH_SCORE_THRESHOLD,
       )
       .sort((a, b) => a.sectionScore - b.sectionScore);
 
@@ -409,7 +413,7 @@ export class AccordionList<
           itemScore: isSearching ? itemScore(item, searchOptions) : 0,
           itemIndex: index,
         }))
-        .filter(({ itemScore }) => itemScore < searchThreshold)
+        .filter(({ itemScore }) => itemScore < SEARCH_SCORE_THRESHOLD)
         .sort((a, b) => a.itemScore - b.itemScore);
 
       if (
