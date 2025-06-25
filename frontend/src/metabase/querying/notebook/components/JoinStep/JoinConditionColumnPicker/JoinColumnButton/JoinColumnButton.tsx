@@ -33,18 +33,20 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   }: JoinColumnButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const column = isLhsExpression ? lhsExpression : rhsExpression;
-  const columnInfo = useMemo(
-    () => (column ? Lib.displayInfo(query, stageIndex, column) : undefined),
-    [query, stageIndex, column],
+  const expression = isLhsExpression ? lhsExpression : rhsExpression;
+  const expressionInfo = useMemo(
+    () =>
+      expression ? Lib.displayInfo(query, stageIndex, expression) : undefined,
+    [query, stageIndex, expression],
   );
+  const isEmpty = expression == null;
 
   return (
     <button
       className={cx(S.JoinCellItem, {
         [S.isReadOnly]: isReadOnly,
-        [S.hasColumnStyle]: column != null,
-        [S.noColumnStyle]: column == null,
+        [S.hasColumnStyle]: !isEmpty,
+        [S.noColumnStyle]: isEmpty,
         [S.isOpen]: isOpened,
       })}
       ref={ref}
@@ -57,7 +59,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
           display="block"
           fz={11}
           lh={1}
-          color={columnInfo ? "text-white" : "brand"}
+          color={isEmpty ? "brand" : "text-white"}
           ta="left"
           fw={400}
         >
@@ -66,12 +68,12 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       )}
       <Text
         display="block"
-        color={columnInfo ? "text-white" : "brand"}
+        color={isEmpty ? "brand" : "text-white"}
         ta="left"
         fw={700}
         lh={1}
       >
-        {columnInfo?.displayName ?? t`Pick a column…`}
+        {expressionInfo?.displayName ?? t`Pick a column…`}
       </Text>
     </button>
   );
