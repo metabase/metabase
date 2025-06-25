@@ -10,13 +10,13 @@ import type { SdkIframeEmbedSetupExperience } from "../types";
 
 export const getDefaultSdkIframeEmbedSettings = (
   type: SdkIframeEmbedSetupExperience,
-  defaultEntityId: string | number,
+  defaultResourceId: string | number,
 ) =>
   match(type)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
-        dashboardId: defaultEntityId,
+        dashboardId: defaultResourceId,
         isDrillThroughEnabled: true,
         withDownloads: false,
         withTitle: true,
@@ -25,7 +25,7 @@ export const getDefaultSdkIframeEmbedSettings = (
     .with(
       "chart",
       (): QuestionEmbedOptions => ({
-        questionId: defaultEntityId,
+        questionId: defaultResourceId,
         isDrillThroughEnabled: true,
         withDownloads: false,
         withTitle: true,
