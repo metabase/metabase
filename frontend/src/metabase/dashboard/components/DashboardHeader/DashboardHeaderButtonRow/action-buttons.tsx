@@ -80,9 +80,7 @@ export const dashboardActionButtons: Record<
 
   // VIEW ACTIONS
   [DASHBOARD_ACTION.EDIT_DASHBOARD]: {
-    component: ({ onRefreshPeriodChange }) => (
-      <EditDashboardButton onRefreshPeriodChange={onRefreshPeriodChange} />
-    ),
+    component: EditDashboardButton,
     enabled: ({ isFullscreen, isEditing, canEdit }) =>
       !isFullscreen && !isEditing && canEdit,
   },
@@ -127,12 +125,7 @@ export const dashboardActionButtons: Record<
       ),
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
-    component: ({ isFullscreen, onFullscreenChange }) => (
-      <FullscreenToggle
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-      />
-    ),
+    component: FullscreenToggle,
     enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
       isPublic || isFullscreen || isEmbeddingSdk,
   },
@@ -172,12 +165,7 @@ export const dashboardActionButtons: Record<
     },
   },
   [DASHBOARD_ACTION.FULLSCREEN_ANALYTICS_DASHBOARD]: {
-    component: ({ isFullscreen, onFullscreenChange }) => (
-      <FullscreenAnalyticsDashboard
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-      />
-    ),
+    component: FullscreenAnalyticsDashboard,
     enabled: ({ isAnalyticsDashboard = false }) => isAnalyticsDashboard,
   },
 
