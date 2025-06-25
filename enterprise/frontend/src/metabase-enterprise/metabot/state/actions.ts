@@ -27,8 +27,10 @@ import { notifyUnknownReaction, reactionHandlers } from "../reactions";
 
 import { type MetabotErrorMessage, metabot } from "./reducer";
 import {
+  getAgentErrorMessages,
   getAgentRequestMetadata,
   getIsProcessing,
+  getLastMessage,
   getMetabotConversationId,
   getUseStreaming,
   getUserPromptForMessageId,
@@ -117,12 +119,18 @@ export const submitInput = createAsyncThunk<
         return { prompt: data.message, success: false, shouldRetry: false };
       }
 
+      // if there were from the last prompt, remove the last prompt from the history
+      const errors = getAgentErrorMessages(state);
+      const lastMessageId = getLastMessage(state)?.id;
+      if (errors.length > 0 && lastMessageId) {
+        dispatch(rewindConversation(lastMessageId));
+      }
+
       // it's important that we get the current metadata containing the history before
       // altering it by adding the current message the user is wanting to send
       const agentMetadata = getAgentRequestMetadata(getState() as any);
       const messageId = createMessageId();
       dispatch(addUserMessage({ id: messageId, message: data.message }));
-
       const useStreaming = getUseStreaming(getState() as any);
       const sendRequestAction = useStreaming
         ? sendStreamedAgentRequest
@@ -140,9 +148,7 @@ export const submitInput = createAsyncThunk<
       const result = await sendMessageRequestPromise;
 
       if (isRejected(result)) {
-        dispatch(rewindConversation(messageId));
         dispatch(stopProcessingAndNotify(result.payload?.errorMessage));
-
         return {
           prompt: data.message,
           success: false,
@@ -292,6 +298,7 @@ const rewindConversation = createAsyncThunk(
   "metabase-enterprise/metabot/rewindConversation",
   (messageId: string, { dispatch, getState }) => {
     dispatch(cancelInflightAgentRequests());
+
     const promptMessage = getUserPromptForMessageId(getState(), messageId);
     if (!promptMessage) {
       throw new Error("Unable to rewind conversation to prompt for pro");

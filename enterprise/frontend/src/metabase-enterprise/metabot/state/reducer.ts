@@ -117,14 +117,15 @@ export const metabot = createSlice({
     // so if / when this becomes expected, we'll need to do some extra work here
     // NOTE: this doesn't work in non-streaming contexts right now
     rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
-      if (state.useStreaming) {
-        const messageIndex = state.messages.findLastIndex((m) => id === m.id);
-        const historyIndex = state.history.findLastIndex((h) => id === h.id);
-        if (historyIndex > -1 && messageIndex > -1) {
-          state.isProcessing = false;
-          state.messages = state.messages.slice(0, messageIndex);
-          state.history = state.history.slice(0, historyIndex);
-        }
+      state.isProcessing = false;
+      const messageIndex = state.messages.findLastIndex((m) => id === m.id);
+      if (messageIndex > -1) {
+        state.messages = state.messages.slice(0, messageIndex);
+      }
+
+      const historyIndex = state.history.findLastIndex((h) => id === h.id);
+      if (state.useStreaming && historyIndex > -1) {
+        state.history = state.history.slice(0, historyIndex);
       }
     },
     resetConversation: (state) => {
@@ -179,7 +180,6 @@ export const metabot = createSlice({
       })
       .addCase(sendAgentRequest.rejected, (state) => {
         state.isProcessing = false;
-        state.messages.pop(); // remove last user message
       });
   },
 });
