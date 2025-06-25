@@ -7,6 +7,7 @@
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -177,6 +178,26 @@
        {:source-alias join-alias})
      col)))
 
+(defn- implicit-join-aliases [query stage-number]
+  (let [aliases (into #{}
+                      (keep (fn [join]
+                              (when (:qp/is-implicit-join join)
+                                (:alias join))))
+                      (:joins (lib.util/query-stage query stage-number)))]
+    (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+      (set/union aliases (implicit-join-aliases query previous-stage-number))
+      aliases)))
+
+(mu/defn- remove-implicit-join-aliases
+  [query cols]
+  (let [implicit-aliases (implicit-join-aliases query -1)]
+    (map (fn [col]
+           (cond-> col
+             (when-let [join-alias ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) col)]
+               (contains? implicit-aliases join-alias))
+             (dissoc :metabase.lib.join/join-alias :lib/original-join-alias :source-alias)))
+         cols)))
+
 (mu/defn- add-legacy-source :- [:sequential
                                 [:merge
                                  ::kebab-cased-map
@@ -309,6 +330,7 @@
               (cond-> cols
                 (seq lib-cols) (merge-cols lib-cols))))
            (add-converted-timezone query)
+           (remove-implicit-join-aliases query)
            add-source-alias
            add-legacy-source
            deduplicate-names

@@ -302,3 +302,14 @@
                    {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                    {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                   (qp.preprocess/query->expected-cols (lib/query mp query)))))))))
+
+(deftest ^:parallel do-not-return-join-alias-for-implicit-joins-test
+  (let [query (lib/query
+               meta/metadata-provider
+               (lib.tu.macros/mbql-query orders
+                 {:aggregation [[:count]]
+                  :breakout    [[:field %products.created-at {:source-field %product-id, :temporal-unit :month}]
+                                [:field %products.category {:source-field %product-id}]]}))]
+    (doseq [col (qp.preprocess/query->expected-cols query)]
+      (testing (pr-str (:name col))
+        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))))
