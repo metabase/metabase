@@ -8,6 +8,7 @@ import type {
 export const DataModel = {
   visit,
   TablePicker: {
+    getDatabase: getTablePickerDatabase,
     getTable: getTablePickerTable,
     getTables: getTablePickerTables,
   },
@@ -126,8 +127,18 @@ function visit({
 
 /** table picker helpers */
 
+function getTablePickerDatabase(name: string) {
+  return cy
+    .findAllByTestId("tree-item")
+    .filter('[data-type="database"]')
+    .filter(`:contains("${name}")`);
+}
+
 function getTablePickerTable(name: string) {
-  return cy.findAllByTestId("tree-item").filter(`:contains("${name}")`);
+  return cy
+    .findAllByTestId("tree-item")
+    .filter('[data-type="table"]')
+    .filter(`:contains("${name}")`);
 }
 
 function getTablePickerTables() {
