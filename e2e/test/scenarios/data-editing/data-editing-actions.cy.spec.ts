@@ -90,6 +90,9 @@ describe(
       H.setTokenFeatures("all");
 
       cy.intercept("PUT", "/api/dashboard/*").as("saveDashboard");
+      cy.intercept("GET", `/api/action/v2/database/${SAMPLE_DB_ID}/table`).as(
+        "getSampleDbTables",
+      );
       cy.intercept("GET", `/api/action/v2/database/${WRITABLE_DB_ID}/table`).as(
         "getPostgresTables",
       );
@@ -148,9 +151,11 @@ describe(
           .should("have.attr", "data-active");
 
         cy.log("should allow to pick an action");
-        cy.findByText("QA Postgres12").click();
-        cy.wait("@getPostgresTables");
 
+        cy.wait("@getSampleDbTables");
+        cy.findByText("QA Postgres12").click();
+
+        cy.wait("@getPostgresTables");
         cy.findByText("Newtable").click();
         cy.findByText("Create or Update").click();
 
