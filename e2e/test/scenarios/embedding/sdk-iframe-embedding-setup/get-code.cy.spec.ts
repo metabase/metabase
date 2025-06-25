@@ -43,7 +43,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
       cy.findByLabelText("SSO Authentication").should("be.disabled");
     });
   });
@@ -53,7 +52,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
       cy.findByLabelText("SSO Authentication").should("not.be.disabled");
     });
   });
@@ -63,7 +61,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
       cy.findByLabelText("SSO Authentication").should("not.be.disabled");
     });
   });
@@ -96,7 +93,6 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
       navigateToGetCodeStep({ experience: "dashboard" });
 
       getEmbedSidebar().within(() => {
-        cy.wait(["@getJwtConfigured", "@getSamlConfigured"]);
         cy.findByLabelText("SSO Authentication").click();
         cy.get("[data-testid=code-editor]").should(
           "not.contain",
