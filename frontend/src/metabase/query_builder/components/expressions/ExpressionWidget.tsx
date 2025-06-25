@@ -154,6 +154,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onCancel={handleCancel}
           onSubmit={handleCombineColumnsSubmit}
           withTitle
@@ -168,6 +169,7 @@ export const ExpressionWidget = (props: ExpressionWidgetProps) => {
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
+          availableColumns={availableColumns}
           onCancel={handleCancel}
           onSubmit={handleExtractColumnSubmit}
         />

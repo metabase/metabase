@@ -66,6 +66,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
+          availableColumns={Lib.expressionableColumns(query, stageIndex)}
           onSubmit={handleSubmit}
           onCancel={onClose}
         />

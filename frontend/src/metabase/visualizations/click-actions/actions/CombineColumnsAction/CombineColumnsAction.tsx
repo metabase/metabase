@@ -54,6 +54,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
       <CombineColumns
         query={query}
         stageIndex={stageIndex}
+        availableColumns={Lib.expressionableColumns(query, stageIndex)}
         onSubmit={handleSubmit}
         width={474}
       />

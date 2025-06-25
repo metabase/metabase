@@ -37,9 +37,10 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
           >{t`Combine “${columnInfo.displayName}” with other columns`}</Title>
         </Box>
         <CombineColumns
-          column={column}
           query={query}
           stageIndex={stageIndex}
+          availableColumns={Lib.expressionableColumns(query, stageIndex)}
+          column={column}
           width={474}
           onSubmit={(name, expressionClause) => {
             const newQuery = Lib.expression(
