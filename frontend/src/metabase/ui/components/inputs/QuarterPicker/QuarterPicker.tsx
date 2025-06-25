@@ -82,7 +82,7 @@ export const QuarterPicker = forwardRef(function QuarterPicker(
             <PickerControl
               key={index}
               selected={value != null && isSelected(value, quarter)}
-              onClick={() => setValue(dayjs(quarter).toString())}
+              onClick={() => setValue(dayjs(quarter).toISOString())}
             >
               {dayjs(quarter).format(quarterListFormat)}
             </PickerControl>
