@@ -380,7 +380,7 @@ export class AccordionList<
 
     const rows: Row<TItem, TSection>[] = [];
 
-    const searchThreshold = 0.6;
+    const searchThreshold = 0.4;
     const searchOptions = {
       searchText,
       sections,
