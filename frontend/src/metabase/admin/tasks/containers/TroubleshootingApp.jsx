@@ -3,8 +3,11 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import { AdminLayout } from "metabase/components/AdminLayout";
-import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
+import { AdminLayout } from "metabase/common/components/AdminLayout";
+import {
+  LeftNavPane,
+  LeftNavPaneItem,
+} from "metabase/common/components/LeftNavPane";
 import { PLUGIN_ADMIN_TROUBLESHOOTING } from "metabase/plugins";
 
 export default class TroubleshootingApp extends Component {

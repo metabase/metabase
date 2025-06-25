@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import ConfirmContent from "metabase/components/ConfirmContent";
+import ConfirmContent from "metabase/common/components/ConfirmContent";
 
 interface Props {
   onAction?: () => void;

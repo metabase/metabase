@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import Input from "metabase/common/components/Input";
-import InputBlurChange from "metabase/components/InputBlurChange";
+import InputBlurChange from "metabase/common/components/InputBlurChange";
 
 export const SelectPrefixInput = styled(InputBlurChange)`
   width: auto;
