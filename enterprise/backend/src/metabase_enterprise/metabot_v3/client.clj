@@ -68,7 +68,7 @@
   (str (metabot-v3.settings/ai-service-base-url) "/v2/agent"))
 
 (defn- agent-v2-streaming-endpoint-url []
-  (str (metabot-v3.settings/ai-proxy-base-url) "/v2/agent/stream"))
+  (str (metabot-v3.settings/ai-service-base-url) "/v2/agent/stream"))
 
 (defn- metric-selection-endpoint-url []
   (str (metabot-v3.settings/ai-service-base-url) "/v1/select-metric"))
