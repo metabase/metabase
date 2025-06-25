@@ -20,6 +20,7 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  DatabaseId,
   Dashboard as IDashboard,
   ParameterId,
   TableId,
@@ -135,12 +136,13 @@ export function DashboardSidebars({
   );
 
   const handleAddEditableTable = useCallback(
-    (tableId: TableId) => {
+    ({ tableId, databaseId }: { tableId: TableId; databaseId: DatabaseId }) => {
       dispatch(
         addEditableTableDashCardToDashboard({
           dashId: dashboard.id,
           tabId: selectedTabId,
           tableId,
+          databaseId,
         }),
       );
     },

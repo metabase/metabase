@@ -43,10 +43,6 @@ import {
 
 import { TableOrModelActionPicker } from "./TableOrModelActionPicker";
 
-// const mockSearchItem = createMockCollectionItem({
-//   collection: createMockCollection(),
-//   model: "dataset",
-// });
 const sampleDb = createMockDatabase({ id: 101, name: "SampleDB" });
 const postgresDb = createMockDatabase({
   id: 102,

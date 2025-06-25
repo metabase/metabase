@@ -60,17 +60,23 @@ export function AddOrEditActionSettingsContent({
   const showNewActionStep = !!newActionInitialParentItem;
 
   // TODO: replace this block with action describe api.
-  const { data: allActions } = useGetActionsQuery(
+  const { data: allActions, refetch: refetchActionsList } = useGetActionsQuery(
     selectedPickerAction ? undefined : skipToken,
   );
 
   const action = useMemo(() => {
     if (selectedPickerAction) {
-      return allActions?.find(
+      const resultAction = allActions?.find(
         (action) => action.id === selectedPickerAction.id,
       );
+
+      if (allActions && !resultAction) {
+        refetchActionsList();
+      }
+
+      return resultAction;
     }
-  }, [allActions, selectedPickerAction]);
+  }, [allActions, selectedPickerAction, refetchActionsList]);
 
   const setAction = (newActionItem: ActionItem | undefined) => {
     setSelectedPickerAction(newActionItem);

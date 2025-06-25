@@ -264,6 +264,7 @@ export const ModelActionPicker = ({
         <Modal wide data-testid="action-creator-modal" onClose={close}>
           <ActionCreator
             modelId={modelId}
+            databaseId={models?.find(({ id }) => id === modelId)?.database_id}
             onSubmit={handleActionCreate}
             onClose={close}
           />

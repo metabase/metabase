@@ -103,7 +103,11 @@ export function DataGridActionExecuteModal({
   }, []);
 
   return (
-    <Modal.Root opened={!!action} onClose={onClose}>
+    <Modal.Root
+      opened={!!action}
+      data-testid="data-grid-action-execute-modal"
+      onClose={onClose}
+    >
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header
