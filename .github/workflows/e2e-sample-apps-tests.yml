@@ -220,6 +220,9 @@ jobs:
       CYPRESS_CI: true
       SAMPLE_APP_BRANCH_NAME: ${{ needs.get-sample-apps-data.outputs.branch_name }}
       SAMPLE_APP_ENVIRONMENT: ${{ matrix.environment }}
+      # One-off adaptation for embedding workflows
+      CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
     permissions:
       id-token: write
 
