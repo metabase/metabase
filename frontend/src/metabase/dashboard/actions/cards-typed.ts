@@ -25,6 +25,7 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  DatabaseId,
   TableId,
   VirtualCard,
   VirtualCardDisplay,
@@ -210,10 +211,16 @@ export const addMarkdownDashCardToDashboard =
 
 export type AddEditableTableDashCardToDashboardOpts = NewDashCardOpts & {
   tableId: TableId;
+  databaseId: DatabaseId;
 };
 
 export const addEditableTableDashCardToDashboard =
-  ({ dashId, tabId, tableId }: AddEditableTableDashCardToDashboardOpts) =>
+  ({
+    dashId,
+    tabId,
+    tableId,
+    databaseId,
+  }: AddEditableTableDashCardToDashboardOpts) =>
   async (dispatch: Dispatch, getState: GetState) => {
     const tempId = generateTemporaryDashcardId();
 
@@ -226,7 +233,12 @@ export const addEditableTableDashCardToDashboard =
         tabId,
         dashcardOverrides: {
           id: tempId,
-          card: { ...card, table_id: tableId, id: tempId } as VirtualCard,
+          card: {
+            ...card,
+            table_id: tableId,
+            database_id: databaseId,
+            id: tempId,
+          } as VirtualCard,
           visualization_settings: {
             table_id: tableId,
             "editableTable.enabledActions": [
@@ -283,6 +295,7 @@ export const addEditableTableDashCardToDashboard =
               query: { "source-table": tableId },
               database: db_id,
             },
+            database_id: db_id,
             result_metadata: fields,
           } as Card,
         }),

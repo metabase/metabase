@@ -14,6 +14,7 @@ import type { BasicTableViewColumn } from "metabase/visualizations/types/table-a
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
   DataGridWritebackAction,
+  DatabaseId,
   RowActionFieldSettings,
   TableActionDisplaySettings,
 } from "metabase-types/api";
@@ -23,6 +24,7 @@ import { ActionParameterMappingForm } from "./ActionParameterMappingForm";
 interface Props {
   actionSettings: TableActionDisplaySettings | null | undefined;
   tableColumns: BasicTableViewColumn[];
+  databaseId: DatabaseId | undefined;
   onClose: () => void;
   onSubmit: (actionParams: {
     id?: string;
@@ -30,12 +32,12 @@ interface Props {
     name: string | undefined;
     parameterMappings: RowActionFieldSettings[];
   }) => void;
-  actions?: DataGridWritebackAction[];
 }
 
 export function AddOrEditActionSettingsContent({
   actionSettings,
   tableColumns,
+  databaseId,
   onClose,
   onSubmit,
 }: Props) {
@@ -58,17 +60,23 @@ export function AddOrEditActionSettingsContent({
   const showNewActionStep = !!newActionInitialParentItem;
 
   // TODO: replace this block with action describe api.
-  const { data: allActions } = useGetActionsQuery(
+  const { data: allActions, refetch: refetchActionsList } = useGetActionsQuery(
     selectedPickerAction ? undefined : skipToken,
   );
 
   const action = useMemo(() => {
     if (selectedPickerAction) {
-      return allActions?.find(
+      const resultAction = allActions?.find(
         (action) => action.id === selectedPickerAction.id,
       );
+
+      if (allActions && !resultAction) {
+        refetchActionsList();
+      }
+
+      return resultAction;
     }
-  }, [allActions, selectedPickerAction]);
+  }, [allActions, selectedPickerAction, refetchActionsList]);
 
   const setAction = (newActionItem: ActionItem | undefined) => {
     setSelectedPickerAction(newActionItem);
@@ -117,6 +125,7 @@ export function AddOrEditActionSettingsContent({
     return (
       <TableOrModelActionPicker
         value={newActionInitialParentItem}
+        initialDbId={databaseId}
         onChange={setAction}
         onClose={onClose}
       />

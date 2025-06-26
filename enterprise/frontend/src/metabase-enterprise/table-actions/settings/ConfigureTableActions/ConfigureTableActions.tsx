@@ -5,6 +5,7 @@ import { uuid } from "metabase/lib/uuid";
 import { Button, Modal, Stack, Text } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type {
+  DatabaseId,
   RowActionFieldSettings,
   TableAction,
   TableActionDisplaySettings,
@@ -19,12 +20,14 @@ import { useTableActionsEditingModal } from "./use-table-actions-editing-modal";
 type ConfigureTableActionsProps = {
   value: TableActionDisplaySettings[] | undefined;
   cols: BasicTableViewColumn[];
+  databaseId: DatabaseId | undefined;
   onChange: (newValue: TableActionDisplaySettings[]) => void;
 };
 
 export const ConfigureTableActions = ({
   value: tableActions,
   cols: columns,
+  databaseId,
   onChange,
 }: ConfigureTableActionsProps) => {
   const {
@@ -159,6 +162,7 @@ export const ConfigureTableActions = ({
           <AddOrEditActionSettingsContent
             actionSettings={editingAction}
             tableColumns={columns}
+            databaseId={databaseId}
             onSubmit={editingAction ? handleEditAction : handleAddAction}
             onClose={cancelEditAction}
           />
