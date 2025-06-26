@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import type { getMessages } from "metabase-enterprise/metabot/state";
 
-const USER_MSG_SELECTOR = '[data-message-actor="user"]';
+const USER_MSG_SELECTOR = '[data-message-role="user"]';
 const DEFAULT_HEADER_HEIGHT = 81;
 
 export function useAutoscrollMessages(
@@ -32,9 +32,9 @@ export function useAutoscrollMessages(
       // - user submits a message
       // - metabot responds for the first time (it can add multiple messages, we only care about the first)
       const [prevMessage, lastMessage] = messages.slice(-2);
-      const isLastMessageUser = lastMessage?.actor === "user";
+      const isLastMessageUser = lastMessage?.role === "user";
       const isLastMessageFirstMetabotReply =
-        prevMessage?.actor !== "agent" && lastMessage?.actor === "agent";
+        prevMessage?.role !== "agent" && lastMessage?.role === "agent";
 
       const shouldAutoScroll =
         isLastMessageUser || isLastMessageFirstMetabotReply;

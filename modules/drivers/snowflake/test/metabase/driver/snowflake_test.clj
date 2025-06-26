@@ -70,11 +70,14 @@
                         (thunk))))
 
 (deftest sanity-check-test
-  (mt/test-driver :snowflake
-    (is (= [100]
-           (mt/first-row
-            (mt/run-mbql-query venues
-              {:aggregation [[:count]]}))))))
+  (mt/test-driver
+    :snowflake
+    (mt/dataset
+      attempted-murders
+      (is (= [20]
+             (mt/first-row
+              (mt/run-mbql-query attempts
+                {:aggregation [[:count]]})))))))
 
 (deftest ^:parallel describe-fields-test
   (mt/test-driver
@@ -174,13 +177,12 @@
         false "snowflake.example.com/" "//ls10467.us-east-2.aws.snowflakecomputing.com/"
         false "snowflake.example.com" "//ls10467.us-east-2.aws.snowflakecomputing.com/"))))
 
-(deftest ^:parallel ddl-statements-test
+(deftest ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
-    (binding [test.data.snowflake/*database-prefix-fn* (constantly "v4_")]
+    (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
         (is (= "DROP DATABASE IF EXISTS \"v4_test-data\"; CREATE DATABASE \"v4_test-data\";"
                (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
-
       (testing "Create Table DDL statements"
         (is (= (map
                 #(str/replace % #"\s+" " ")
@@ -259,6 +261,34 @@
           (is (= [{:s schema}] (jdbc/query spec ["select CURRENT_SCHEMA() s"])))
           (is (= 1 (count (jdbc/query spec ["select * from \"TABLES\" limit 1"])))))))))
 
+(deftest additional-options-test
+  (mt/test-driver
+    :snowflake
+    (let [existing-details (dissoc (:details (mt/db)) :password)]
+      (testing "By default no subname"
+        (is (=? {:subname complement :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec :snowflake existing-details))))
+      (testing "add additional-options to subname"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details :additional-options "foo=bar")))))
+      (testing "role has no affect if private-key is missing"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri complement}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details
+                        :role "test-role"
+                        :additional-options "foo=bar")))))
+      (testing "private-key-value sets connection-uri and so make sure it doesn't clobber additional-options or role"
+        (is (=? {:subname #".*foo=bar.*" :connection-uri #".*foo=bar.*role=test-role"}
+                (sql-jdbc.conn/connection-details->spec
+                 :snowflake
+                 (assoc existing-details
+                        :role "test-role"
+                        :private-key-value "pk"
+                        :additional-options "foo=bar"))))))))
+
 (deftest describe-database-test
   (mt/test-driver :snowflake
     (testing "describe-database"
@@ -287,7 +317,7 @@
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
     (mt/test-driver :snowflake
-      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db {:database-name "Default-Schema-Test"})
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name "Default-Schema-Test"}))
                                ;; simulate a DB default schema or session schema by including it in the connection
                                ;; details... see
                                ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
@@ -319,7 +349,7 @@
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
-      (let [details (mt/dbdef->connection-details :snowflake :db {:database-name "views_test"})
+      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name "views_test"}))
             db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
@@ -757,8 +787,10 @@
       (let [query {:database   (mt/id)
                    :type       :native
                    :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
-                                                    (format "FROM \"%stest-data\".\"PUBLIC\".\"users\" "
-                                                            (test.data.snowflake/*database-prefix-fn*))
+                                                    (format "FROM \"%s\".\"PUBLIC\".\"users\" "
+                                                            (test.data.snowflake/qualified-db-name
+                                                             (tx/get-dataset-definition
+                                                              (data.impl/resolve-dataset-definition *ns* 'test-data))))
                                                     "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
                                                     "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
                                 :template-tags {:filter_date {:name         "filter_date"

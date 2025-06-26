@@ -104,7 +104,7 @@
                                                                         :stages
                                                                         :parameters
                                                                         :constraints
-                                                                        :mirror-database/id
+                                                                        :destination-database/id
                                                                         :impersonation/role])]
     (cond-> query
       (empty? constraints) (dissoc :constraints)

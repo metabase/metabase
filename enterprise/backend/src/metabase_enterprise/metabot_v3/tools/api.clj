@@ -66,6 +66,12 @@
                                    :content assistant-message})
             (throw ex)))))))
 
+(defn streaming-handle-envelope
+  "Executes the AI loop in the context of a new session. Returns the response of the AI service."
+  [{:keys [metabot-id] :as e}]
+  (let [session-id (get-ai-service-token api/*current-user-id* metabot-id)]
+    (metabot-v3.client/streaming-request (assoc e :session-id session-id))))
+
 (mr/def ::bucket
   (into [:enum {:error/message "Valid bucket"
                 :encode/tool-api-request keyword}]
@@ -592,11 +598,11 @@
                                                     ::tool-request]
    {:keys [metabot-v3/metabot-id]}]
   (metabot-v3.context/log (assoc body :api :answer-sources) :llm.log/llm->be)
-  (if-let [collection-name (get-in metabot-v3.config/metabot-config [metabot-id :collection-name])]
+  (if-let [normalized-metabot-id (metabot-v3.config/normalize-metabot-id metabot-id)]
     (let [options (mc/encode ::answer-sources-arguments
                              arguments (mtx/transformer {:name :tool-api-request}))]
       (doto (-> (mc/decode ::answer-sources-result
-                           (metabot-v3.dummy-tools/answer-sources collection-name options)
+                           (metabot-v3.dummy-tools/answer-sources normalized-metabot-id options)
                            (mtx/transformer {:name :tool-api-response}))
                 (assoc :conversation_id conversation_id))
         (metabot-v3.context/log :llm.log/be->llm)))

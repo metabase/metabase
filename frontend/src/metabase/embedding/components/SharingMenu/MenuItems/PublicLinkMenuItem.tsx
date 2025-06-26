@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import Link from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
-import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Icon, Menu, Stack, Text, Title } from "metabase/ui";

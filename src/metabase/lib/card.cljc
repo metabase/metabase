@@ -32,7 +32,8 @@
   (cond-> ((get-method lib.metadata.calculation/display-info-method :default) query stage-number card-metadata)
     (= (:type card-metadata) :question) (assoc :question? true)
     (= (:type card-metadata) :model) (assoc :model? true)
-    (= (:type card-metadata) :metric) (assoc :metric? true)))
+    (= (:type card-metadata) :metric) (assoc :metric? true)
+    (= (lib.util/source-card-id query) (:id card-metadata)) (assoc :is-source-card true)))
 
 (defmethod lib.metadata.calculation/visible-columns-method :metadata/card
   [query
@@ -94,7 +95,7 @@
                    (assoc :lib/card-id card-id)
 
                    (:metabase.lib.field/temporal-unit col)
-                   (assoc :inherited-temporal-unit (:metabase.lib.field/temporal-unit col))
+                   (assoc :inherited-temporal-unit (keyword (:metabase.lib.field/temporal-unit col)))
 
                    ;; If the incoming col doesn't have `:semantic-type :type/FK`, drop `:fk-target-field-id`.
                    ;; This comes up with metadata on SQL cards, which might be linked to their original DB field but should not be

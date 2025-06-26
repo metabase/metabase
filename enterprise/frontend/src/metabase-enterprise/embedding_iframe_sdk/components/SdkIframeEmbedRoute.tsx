@@ -4,11 +4,12 @@ import { P, match } from "ts-pattern";
 import {
   InteractiveDashboard,
   InteractiveQuestion,
+  MetabaseProvider,
   StaticDashboard,
   StaticQuestion,
   defineMetabaseAuthConfig,
 } from "embedding-sdk";
-import { MetabaseProvider } from "embedding-sdk/components/public/MetabaseProvider";
+import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
@@ -17,29 +18,43 @@ import type { SdkIframeEmbedSettings } from "../types/embed";
 
 import {
   SdkIframeApiKeyInProductionError,
+  SdkIframeExistingUserSessionInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
 
+const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
+  // Tell the SDK whether to use the existing user session or not.
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession =
+    settings?.useExistingUserSession || false;
+};
+
 export const SdkIframeEmbedRoute = () => {
-  const { embedSettings } = useSdkIframeEmbedEventBus();
+  const { embedSettings } = useSdkIframeEmbedEventBus({ onSettingsChanged });
 
   // The embed settings won't be available until the parent sends it via postMessage.
   // The SDK will show its own loading indicator, so we don't need to show it twice.
-  if (!embedSettings || !embedSettings.instanceUrl || !embedSettings.apiKey) {
+  if (!embedSettings || !embedSettings.instanceUrl) {
     return null;
   }
 
   const hasEmbedTokenFeature = PLUGIN_EMBEDDING_IFRAME_SDK.hasValidLicense();
 
+  const isProduction = !embedSettings._isLocalhost;
+
   // If the parent page is not running on localhost and
   // the token feature is not present, we show an error message
-  if (!embedSettings._isLocalhost && !hasEmbedTokenFeature) {
+  if (isProduction && !hasEmbedTokenFeature) {
     return <SdkIframeInvalidLicenseError />;
   }
 
   // Using API keys in production is not allowed. SSO is required.
-  if (!embedSettings._isLocalhost && embedSettings.apiKey) {
+  if (isProduction && embedSettings.apiKey) {
     return <SdkIframeApiKeyInProductionError />;
+  }
+
+  // Using the existing user's session in production is not allowed. SSO is required.
+  if (isProduction && embedSettings.useExistingUserSession) {
+    return <SdkIframeExistingUserSessionInProductionError />;
   }
 
   const { theme, locale } = embedSettings;

@@ -2,10 +2,6 @@
 title: Funnel charts
 redirect_from:
   - /docs/latest/questions/sharing/visualizations/funnel
-  - /learn/visualization/funnel
-  - /docs/latest/questions/visualizations/funnel
-  - /learn/metabase-basics/querying-and-dashboards/visualization/funnel
-
 description: Funnel charts visualize how a value is broken out by a series of steps, and the percent change between steps. To build a funnel chart in Metabase, you need a table with the name and value for each step.
 ---
 

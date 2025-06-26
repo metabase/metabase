@@ -23,7 +23,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [trs tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -61,13 +61,15 @@
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
 
-(def ^{:arglists '([])} trash-collection
-  "Memoized copy of the Trash collection from the DB."
-  (mdb/memoize-for-application-db
-   (fn []
-     (u/prog1 (trash-collection*)
-       (when-not <>
-         (throw (ex-info "Fatal error: Trash collection is missing" {})))))))
+(let [get-trash (mdb/memoize-for-application-db
+                 (fn []
+                   (u/prog1 (trash-collection*)
+                     (when-not <>
+                       (throw (ex-info "Fatal error: Trash collection is missing" {}))))))]
+  (defn trash-collection
+    "Get the (memoized) trash collection"
+    []
+    (assoc (get-trash) :name (deferred-tru "Trash"))))
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -562,12 +564,7 @@
     (not= :only (:include-archived-items visibility-config))
 
     ;; we're not looking for a particular `archive_operation_id`
-    (not (:archive-operation-id visibility-config))
-
-    ;; we're not looking for the children of a collection (root definitely isn't a child!)
-    (not (:effective-child-of visibility-config)))))
-
-(declare visible-collection-filter-clause)
+    (not (:archive-operation-id visibility-config)))))
 
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
@@ -601,22 +598,15 @@
                                            :from   [[:collection :c]]
                                            :where [:exists {:select [1]
                                                             :from [[:permissions :p]]
+                                                            :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
                                                             :where [:and
+                                                                    [:= :pgm.user_id [:inline current-user-id]]
                                                                     [:= :c.id :p.collection_id]
                                                                     [:= :p.perm_type (h2x/literal "perms/collection-access")]
                                                                     [:or
                                                                      [:= :p.perm_value (h2x/literal "read-and-write")]
                                                                      (when (= :read (:permission-level visibility-config))
-                                                                       [:= :p.perm_value (h2x/literal "read")])]
-                                                                    [:exists {:select [1]
-                                                                              :from [[:permissions_group :pg]]
-                                                                              :where [:and
-                                                                                      [:= :pg.id :p.group_id]
-                                                                                      [:exists {:select [1]
-                                                                                                :from [[:permissions_group_membership :pgm]]
-                                                                                                :where [:and
-                                                                                                        [:= :pgm.group_id :pg.id]
-                                                                                                        [:= :pgm.user_id [:inline current-user-id]]]}]]}]]}]}
+                                                                       [:= :p.perm_value (h2x/literal "read")])]]}]}
                                           {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
                                            :from   [[:collection :c]]
                                            :where  [:= :type (h2x/literal "trash")]}
@@ -648,23 +638,7 @@
               [:or
                [:= :c.archive_operation_id [:inline op-id]]
                ;; the trash collection is part of every `archive_operation`
-               [:= :id (trash-collection-id)]])
-
-            ;; or finally, restricting the result set to effective children of the parent you passed in.
-            (when-let [parent-coll (:effective-child-of visibility-config)]
-              (if (is-trash? parent-coll)
-                [:= :c.archived_directly true]
-                [:and
-                 ;; an effective child is a descendant of the parent collection
-                 [:like :c.location (str (children-location parent-coll) "%")]
-                 ;; but NOT a child of any OTHER visible collection.
-                 [:not [:exists {:select 1
-                                 :from [[:collection :c2]]
-                                 :where [:and
-                                         (visible-collection-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
-                                         [:= :c.location [:concat :c2.location :c2.id (h2x/literal "/")]]
-                                         (when-not (collection.root/is-root-collection? parent-coll)
-                                           [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]]))]}))
+               [:= :id (trash-collection-id)]])]}))
 
 (mu/defn visible-collection-filter-clause
   "Given a `CollectionVisibilityConfig`, return a HoneySQL filter clause ready for use in queries. Takes an optional
@@ -693,6 +667,29 @@
        (if cte-name
          {:select :id :from cte-name}
          (visible-collection-query visibility-config user-scope))]])))
+
+(defn- effective-child-of-filter-clause
+  [parent-coll collection-table-alias visibility-config]
+  (let [->col (fn [col-name]
+                (keyword (str (name collection-table-alias)
+                              "."
+                              col-name)))]
+    [:and
+     (visible-collection-filter-clause (->col "id") visibility-config)
+     (if (is-trash? parent-coll)
+       [:= (->col "archived_directly") true]
+       [:and
+        ;; an effective child is a descendant of the parent collection
+        [:like (->col "location") (str (children-location parent-coll) "%")]
+
+        ;; but NOT a child of any OTHER visible collection.
+        [:not [:exists {:select 1
+                        :from [[:collection :c2]]
+                        :where [:and
+                                (visible-collection-filter-clause :c2.id visibility-config)
+                                [:= (->col "location") [:concat :c2.location :c2.id (h2x/literal "/")]]
+                                (when-not (collection.root/is-root-collection? parent-coll)
+                                  [:not= :c2.id [:inline (u/the-id parent-coll)]])]}]]])]))
 
 (def ^{:arglists '([visibility-config])} visible-collection-ids*
   "Impl for `visible-collection-ids`, caches for the lifetime of the request, maximum 10 seconds."
@@ -902,22 +899,10 @@
 (mu/defn- effective-children-where-clause
   "Given a collection, return the `WHERE` clause appropriate to return all the collections we want to show as its
   effective children."
-  [collection & additional-honeysql-where-clauses]
+  [collection collection-table-alias visibility-config & additional-honeysql-where-clauses]
   (into
    [:and
-    ;; it is a visible effective child of the collection.
-    (visible-collection-filter-clause :id
-                                      {:include-archived-items    (if (or (:archived collection)
-                                                                          (is-trash? collection))
-                                                                    :only
-                                                                    :exclude)
-                                       :include-trash-collection? true
-                                       :effective-child-of        collection
-                                       :archive-operation-id      (:archive_operation_id collection)
-                                       :permission-level          (if (or (:archived collection)
-                                                                          (is-trash? collection))
-                                                                    :write
-                                                                    :read)})
+    (effective-child-of-filter-clause collection collection-table-alias visibility-config)
     ;; don't want personal collections in collection items. Only on the sidebar
     [:= :personal_owner_id nil]]
    ;; (any additional conditions)
@@ -950,15 +935,21 @@
    You can think of this process as 'collapsing' the Collection hierarchy and removing nodes that aren't visible to
    the current User. This needs to be done so we can give a User a way to navigate to nodes that they are allowed to
    access, but that are children of Collections they cannot access; in the example above, E and F are such nodes."
-  [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
+  [collection :- CollectionWithLocationAndIDOrRoot
+   visibility-config :- CollectionVisibilityConfig
+   & additional-honeysql-where-clauses]
   {:select [:id :name :description]
    :from   [[:collection :col]]
-   :where  (apply effective-children-where-clause collection additional-honeysql-where-clauses)})
+   :where  (apply effective-children-where-clause collection :col visibility-config additional-honeysql-where-clauses)})
 
 (mu/defn- effective-children* :- [:set (ms/InstanceOf :model/Collection)]
   [collection :- CollectionWithLocationAndIDOrRoot & additional-honeysql-where-clauses]
   (set (t2/select [:model/Collection :id :name :description]
-                  {:where (apply effective-children-where-clause collection additional-honeysql-where-clauses)})))
+                  {:where (apply effective-children-where-clause
+                                 collection
+                                 (t2/table-name :model/Collection)
+                                 default-visibility-config
+                                 additional-honeysql-where-clauses)})))
 
 (mi/define-simple-hydration-method effective-children
   :effective_children
