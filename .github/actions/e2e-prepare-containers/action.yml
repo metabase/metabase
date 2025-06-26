@@ -58,7 +58,7 @@ runs:
           $([ ${{ inputs.mysql }} = true ] && echo "mysql-sample") \
           $([ ${{ inputs.mongo }} = true ] && echo "mongo-sample") \
           $([ ${{ inputs.maildev }} = true ] && echo "maildev") \
-          $([ ${{ inputs.openldap }} = true ] && echo "openldap") \
+          $([ ${{ inputs.openldap }} = true ] && echo "ldap") \
           $([ ${{ inputs.webhook }} = true ] && echo "webhook-tester") \
           $([ ${{ inputs.snowplow }} = true ] && echo "snowplow-micro") \
           -d
