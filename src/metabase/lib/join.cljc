@@ -417,13 +417,7 @@
     ;; first choice: the leftmost FK or PK in the condition referring to a home column
     (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
         ;; otherwise the leftmost home column in the condition
-        (first cond-home-cols)
-        ;; otherwise the first FK home column
-        (m/find-first lib.types.isa/foreign-key? home-cols)
-        ;; otherwise the first PK home column
-        (m/find-first lib.types.isa/primary-key? home-cols)
-        ;; otherwise the first home column
-        (first home-cols))))
+        (first cond-home-cols))))
 
 (defn- strip-id [s]
   (when (string? s)
@@ -516,7 +510,7 @@
      (default-alias query stage-number a-join stage home-cols)))
   ([query _stage-number a-join stage home-cols]
    (let [home-cols   home-cols
-         cond-fields (lib.util.match/match (mapv standard-join-condition-lhs (:conditions a-join)) :field)
+         cond-fields (lib.util.match/match (:conditions a-join) :field)
          home-col    (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
        (generate-unique-name s (keep :alias (:joins stage)))))))
