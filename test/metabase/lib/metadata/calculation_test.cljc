@@ -614,8 +614,7 @@
          {:name "QUANTITY",   :lib/source :source/card, :table-id orders-id}
          {:name "CREATED_AT", :lib/source :source/card, :table-id orders-id}
          {:name "PRODUCT_ID", :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :products :id)}
-         {:name "USER_ID",    :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}
-         {:name "TITLE",      :lib/source :source/card, :table-id products-id}]
+         {:name "USER_ID",    :lib/source :source/card, :table-id orders-id, :fk-target-field-id (meta/id :people :id)}]
         ;; card1 has the same fields as card2, except EAN, which is not added by the join
         card1-fields
         (into [] (remove (comp #{"EAN"} :name)) card2-fields)
