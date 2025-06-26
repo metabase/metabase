@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { PLUGIN_AI_ENTITY_ANALYSIS, PLUGIN_METABOT } from "metabase/plugins";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -215,6 +215,9 @@ export const registerQueryBuilderMetabotContextFn = async ({
   timelines: Timeline[];
   queryResult: any;
 }) => {
+  if (!PLUGIN_METABOT.isEnabled()) {
+    return {};
+  }
   if (!question) {
     return {};
   }
@@ -250,7 +253,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  useRegisterMetabotContextProvider((state) => {
+  useRegisterMetabotContextProvider(async (state) => {
     const question = getQuestion(state);
     const series = getTransformedSeries(state);
     const visualizationSettings = getVisualizationSettings(state);
