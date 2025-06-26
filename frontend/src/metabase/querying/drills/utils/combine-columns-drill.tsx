@@ -17,7 +17,8 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   drill,
 }) => {
   const { query, stageIndex, column } = Lib.combineColumnDrillDetails(drill);
-  if (!hasCombinations(query, stageIndex)) {
+  const availableColumns = Lib.expressionableColumns(query, stageIndex);
+  if (!hasCombinations(availableColumns)) {
     return [];
   }
 
@@ -39,7 +40,7 @@ export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
         <CombineColumns
           query={query}
           stageIndex={stageIndex}
-          availableColumns={Lib.expressionableColumns(query, stageIndex)}
+          availableColumns={availableColumns}
           column={column}
           width={474}
           onSubmit={(name, expressionClause) => {

@@ -20,13 +20,14 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
     question.id(),
   );
   const { isEditable } = Lib.queryDisplayInfo(query);
+  const availableColumns = Lib.expressionableColumns(query, stageIndex);
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    !hasCombinations(query, stageIndex)
+    !hasCombinations(availableColumns)
   ) {
     return [];
   }
@@ -54,7 +55,7 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
       <CombineColumns
         query={query}
         stageIndex={stageIndex}
-        availableColumns={Lib.expressionableColumns(query, stageIndex)}
+        availableColumns={availableColumns}
         onSubmit={handleSubmit}
         width={474}
       />

@@ -125,6 +125,7 @@ function ExpressionPopover({
     <ExpressionWidget
       query={query}
       stageIndex={stageIndex}
+      expressionIndex={expressionIndex}
       availableColumns={availableColumns}
       name={expressionInfo?.displayName}
       clause={expression}

@@ -44,6 +44,7 @@ type EditorProps = {
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
+  expressionIndex?: number;
   availableColumns: Lib.ColumnMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
@@ -232,6 +233,7 @@ function useExpression({
   clause,
   expressionMode,
   stageIndex,
+  expressionIndex,
   query,
   availableColumns,
   metadata,
@@ -302,6 +304,7 @@ function useExpression({
         expressionMode,
         query,
         stageIndex,
+        expressionIndex,
         metadata,
         availableColumns,
       });
@@ -316,6 +319,7 @@ function useExpression({
       query,
       stageIndex,
       expressionMode,
+      expressionIndex,
       metadata,
       handleChange,
       debouncedOnChange,
