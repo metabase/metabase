@@ -35,6 +35,20 @@ services:
       - "1080:1080"
       - "1025:1025"
 
+  maildev-ssl:
+    image: maildev/maildev:latest
+    ports:
+      - "1081:1081"
+      - "456:456"
+    environment:
+      MAILDEV_WEB_PORT: 1081
+      MAILDEV_SMTP_PORT: 465
+      MAILDEV_INCOMING_SECURE: true
+      MAILDEV_INCOMING_CERT: /keys/cert.pem
+      MAILDEV_INCOMING_KEY: /keys/key.pem
+    volumes:
+      - ./maildev-keys:/keys
+
   ldap:
     image: bitnami/openldap:2.6.4
     ports:

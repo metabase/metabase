@@ -73,6 +73,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
+          maildev-ssl: true
           openldap: ${{ env.openldap }}
           postgres: ${{ env.postgres }}
           mysql: ${{ env.mysql }}
@@ -96,6 +97,15 @@ jobs:
         with:
           java-version: 21
           distribution: "temurin"
+
+      - name: Add root CA certificate to Java
+        shell: bash
+        run: |
+          keytool -import -noprompt -trustcacerts \
+            -alias maildev-root \
+            -file e2e/test/scenarios/maildev-keys/root.pem \
+            -keystore ${{ steps.java.outputs.path }}/lib/security/cacerts \
+            -storepass changeit
 
       - name: Prepare Cypress environment
         id: cypress-prep
