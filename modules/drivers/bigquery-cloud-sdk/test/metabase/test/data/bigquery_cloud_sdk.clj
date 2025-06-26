@@ -7,6 +7,7 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
@@ -22,6 +23,7 @@
     BigQuery$DatasetOption
     BigQuery$TableListOption
     BigQuery$TableOption
+    BigQueryException
     Dataset
     DatasetId
     DatasetInfo
@@ -65,13 +67,12 @@
     #"^[\w_]+$"]])
 
 (mu/defn test-dataset-id :- ::dataset-id
-  "All databases created during test runs by this JVM instance get a suffix based on the timestamp from when this
-  namespace was loaded. This dataset will not be deleted after this test run finishes, since there is no reasonable
-  hook to do so (from this test extension namespace), so instead we will rely on each run cleaning up outdated,
-  transient datasets via the [[transient-dataset-outdated?]] mechanism."
-  ^String [database-name :- :string]
-  (let [s (normalize-name database-name)]
-    (str "v4_" s "__transient_" (dataset-timestamp))))
+  "Prepend `database-name` with the hash of the db-def so we don't stomp on any other jobs running at the same
+  time."
+  [{:keys [database-name] :as db-def}]
+  (if (str/starts-with? database-name "sha_")
+    database-name
+    (str "sha_" (tx/hash-dataset db-def) "_" (normalize-name database-name))))
 
 (defn- test-db-details []
   (reduce
@@ -98,43 +99,41 @@
     (or (:project-id details) (.. bq getOptions getProjectId))))
 
 (defmethod tx/dbdef->connection-details :bigquery-cloud-sdk
-  [_driver _context {:keys [database-name]}]
+  [_driver _context db-def]
   (assoc (test-db-details)
          :dataset-filters-type "inclusion"
-         :dataset-filters-patterns (test-dataset-id database-name)
+         :dataset-filters-patterns (test-dataset-id db-def)
          :include-user-id-and-hash true))
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
 (mu/defmethod sql.tx/qualified-name-components :bigquery-cloud-sdk
-  ([_driver db-name]
-   [(test-dataset-id db-name)])
-
-  ([_driver
+  ([driver db-name]
+   (if (some-> db-name (str/starts-with? "sha_"))
+     [db-name]
+     [(test-dataset-id (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db* (tx/default-dataset driver))))]))
+  ([driver
     db-name    :- :string
     table-name :- :string]
-   [(test-dataset-id db-name) table-name])
-
-  ([_driver
+   (into (sql.tx/qualified-name-components driver db-name) [table-name]))
+  ([driver
     db-name    :- :string
     table-name :- :string
     field-name :- :string]
-   [(test-dataset-id db-name) table-name field-name]))
+   (into (sql.tx/qualified-name-components driver db-name table-name) [field-name])))
 
 (defmethod ddl.i/format-name :bigquery-cloud-sdk
   [_driver table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
 (mu/defn- create-dataset! [^String dataset-id :- ::dataset-id]
-  (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
-  (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
-
-(defn- destroy-dataset! [^String dataset-id]
-  {:pre [(seq dataset-id)]}
-  (.delete (bigquery) dataset-id (u/varargs
-                                   BigQuery$DatasetDeleteOption
-                                   [(BigQuery$DatasetDeleteOption/deleteContents)]))
-  (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
+  (try
+    (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
+    (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id))
+    (catch BigQueryException e
+      ;; Already exists, ignore
+      (when-not (= (.getCode e) 409)
+        (throw e)))))
 
 (defn execute!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
@@ -146,11 +145,19 @@
       (flush)
       (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
 
-(mu/defn- delete-table!
-  [dataset-id :- ::lib.schema.common/non-blank-string
-   table-id   :- ::lib.schema.common/non-blank-string]
-  (.delete (bigquery) (TableId/of dataset-id table-id))
-  (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
+(defn- destroy-dataset! [^String dataset-id]
+  {:pre [(seq dataset-id)]}
+  (.delete (bigquery) dataset-id (u/varargs
+                                   BigQuery$DatasetDeleteOption
+                                   [(BigQuery$DatasetDeleteOption/deleteContents)]))
+  (u/ignore-exceptions
+    (execute!
+     "DELETE FROM `%s.%s.%s` WHERE `name` = '%s'"
+     (project-id)
+     "metabase_test_tracking"
+     "datasets"
+     dataset-id))
+  (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
 
 (defn base-type->bigquery-type [base-type]
   (let [types {:type/BigInteger     :INTEGER
@@ -194,18 +201,25 @@
               :always (.build)))))
    field-definitions))
 
-(mu/defn- create-table!
-  [^String dataset-id :- ::lib.schema.common/non-blank-string
-   ^String table-id :- ::lib.schema.common/non-blank-string
-   field-definitions]
-  (u/ignore-exceptions
-    (delete-table! dataset-id table-id))
+(defn- create-table*!
+  [dataset-id table-id field-definitions]
   (let [tbl-id (TableId/of dataset-id table-id)
         schema (Schema/of (u/varargs Field (field-definitions->Fields (cons {:field-name "id"
                                                                              :base-type :type/Integer}
                                                                             field-definitions))))
         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
-    (.create (bigquery) tbl (u/varargs BigQuery$TableOption)))
+    (try
+      (.create (bigquery) tbl (u/varargs BigQuery$TableOption))
+      (catch BigQueryException e
+        ;; Already exists, ignore
+        (when-not (= (.getCode e) 409)
+          (throw e))))))
+
+(mu/defn- create-table!
+  [^String dataset-id :- ::lib.schema.common/non-blank-string
+   ^String table-id :- ::lib.schema.common/non-blank-string
+   field-definitions]
+  (create-table*! dataset-id table-id field-definitions)
   ;; now verify that the Table was created
   (.listTables (bigquery) dataset-id (u/varargs BigQuery$TableListOption))
   (log/info (u/format-color 'blue "Created BigQuery table `%s.%s.%s`." (project-id) dataset-id table-id)))
@@ -348,34 +362,122 @@
     (t/before? (t/instant (parse-long ds-timestamp-str))
                (t/minus (t/instant) (t/hours 2)))))
 
-(defmethod tx/create-db! :bigquery-cloud-sdk [_ {:keys [database-name table-definitions]} & _]
-  {:pre [(seq database-name) (sequential? table-definitions)]}
-  ;; clean up outdated datasets
+(defn delete-old-datasets!
+  []
+  (let [all-outdated (execute!
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 day))"
+                           " UNION ALL "
+                           "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
+                             where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
+                             and d.schema_name like 'sha_%%'
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 minute))")
+                      (project-id)
+                      (project-id)
+                      (project-id))]
+    (doseq [outdated all-outdated]
+      (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
+      (u/ignore-exceptions
+        (destroy-dataset! outdated))))
+
+;; clean up outdated datasets
   (doseq [outdated (filter transient-dataset-outdated? (get-all-datasets))]
     (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
     (u/ignore-exceptions
-      (destroy-dataset! outdated)))
-  (let [dataset-id (test-dataset-id database-name)]
-    (u/auto-retry 2
-      (try
-        (log/infof "Creating dataset %s..." (pr-str dataset-id))
-       ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
-       ;; again from a blank slate
-        (u/ignore-exceptions
-          (destroy-dataset! dataset-id))
-        (create-dataset! dataset-id)
-       ;; now create tables and load data.
-        (doseq [tabledef table-definitions]
-          (load-tabledef! dataset-id tabledef))
-        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-        (catch Throwable e
-          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-          (log/error (u/pprint-to-str 'red (Throwable->map e)))
+      (destroy-dataset! outdated))))
+
+(defonce ^:private deleted-old-datasets?
+  (atom false))
+
+(defn- delete-old-datasets-if-needed!
+  "Call [[delete-old-datasets!]], only if we haven't done so already."
+  []
+  (when (compare-and-set! deleted-old-datasets? false true)
+    (delete-old-datasets!)))
+
+(defn- setup-tracking-dataset!
+  "Idempotently create test tracking database"
+  []
+  (let [dataset-id "metabase_test_tracking"]
+    (try
+      (create-dataset! dataset-id)
+      (catch BigQueryException e
+        ;; Already exists, ignore
+        (when-not (= (.getCode e) 409)
+          (throw e))))
+    (try
+      (create-table*! dataset-id "datasets" [{:field-name "hash"
+                                              :base-type  :type/Text}
+                                             {:field-name "name"
+                                              :base-type  :type/Text}
+                                             {:field-name "accessed_at"
+                                              :base-type  :type/DateTimeWithTZ}
+                                             {:field-name "access_note"
+                                              :base-type  :type/Text}])
+      (catch BigQueryException e
+       ;; Already exists, ignore
+        (when-not (= (.getCode e) 409)
           (throw e))))))
 
+(defn- dataset-tracked?!
+  [db-def]
+  (->
+   (execute!
+    "SELECT true FROM `%s.%s.%s` WHERE `hash` = '%s' and `name` = '%s'"
+    (project-id)
+    "metabase_test_tracking"
+    "datasets"
+    (tx/hash-dataset db-def)
+    (test-dataset-id db-def))
+   ffirst))
+
+(defn database-exists?!
+  [db-def]
+  (->>
+   (execute!
+    "select true from `%s`.INFORMATION_SCHEMA.SCHEMATA where schema_name = '%s'"
+    (project-id)
+    (test-dataset-id db-def))
+   ffirst))
+
+(defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
+  [_driver db-def]
+  (setup-tracking-dataset!)
+  (and
+   (dataset-tracked?! db-def)
+   (database-exists?! db-def)))
+
+(defmethod tx/track-dataset :bigquery-cloud-sdk
+  [_driver db-def]
+  (execute!
+   (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+        "  USING (select '%s' as `hash`, '%s' as `name`, current_timestamp() as accessed_at, '%s' as access_note) as n on d.`hash` = n.`hash`"
+        "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+        "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)")
+   (project-id)
+   (tx/hash-dataset db-def)
+   (test-dataset-id db-def)
+   (tx/tracking-access-note)))
+
+(defmethod tx/create-db! :bigquery-cloud-sdk
+  [_ {:keys [database-name table-definitions] :as db-def} & _]
+  {:pre [(seq database-name) (sequential? table-definitions)]}
+  (delete-old-datasets-if-needed!)
+  (let [dataset-id (test-dataset-id db-def)]
+    (try
+      (log/infof "Creating dataset %s..." (pr-str dataset-id))
+      (create-dataset! dataset-id)
+      ;; now create tables and load data.
+      (doseq [tabledef table-definitions]
+        (load-tabledef! dataset-id tabledef))
+      (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
+      (catch Throwable e
+        (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
+        (log/error (u/pprint-to-str 'red (Throwable->map e)))
+        (throw e)))))
+
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
-  [_ {:keys [database-name]}]
-  (destroy-dataset! (test-dataset-id database-name)))
+  [_ db-def]
+  (destroy-dataset! (test-dataset-id db-def)))
 
 (defmethod tx/aggregate-column-info :bigquery-cloud-sdk
   ([driver aggregation-type]
@@ -401,3 +503,10 @@
 (defmethod tx/drop-view! :bigquery-cloud-sdk
   [driver database view-name options]
   (apply execute! (sql.tx/drop-view-sql driver database view-name options)))
+
+(comment
+  "REPL utilities for static datasets"
+  (setup-tracking-dataset!)
+  (destroy-dataset! "metabase_test_tracking")
+  (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
+  (dataset-tracked?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders))))

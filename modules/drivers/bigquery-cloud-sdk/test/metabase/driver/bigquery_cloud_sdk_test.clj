@@ -16,6 +16,7 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -28,11 +29,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private test-db-name (bigquery.tx/test-dataset-id "test_data"))
+(defn ^:private get-test-data-name
+  []
+  (bigquery.tx/test-dataset-id
+   (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
 
 (defn- fmt-table-name
   [table-name]
-  (format "%s.%s" test-db-name table-name))
+  (format "%s.%s" (get-test-data-name) table-name))
 
 (defn- drop-table-if-exists!
   [table-name]
@@ -41,6 +45,14 @@
 (defn- drop-mv-if-exists!
   [table-name]
   (bigquery.tx/execute! (format "DROP MATERIALIZED VIEW IF EXISTS `%s`;" (fmt-table-name table-name))))
+
+(deftest sanity-check-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset
+      attempted-murders
+      (is (some? (mt/rows
+                  (mt/run-mbql-query attempts)))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -201,13 +213,13 @@
                                           "ON v.category_id = c.id "
                                           "ORDER BY v.id ASC "
                                           "LIMIT 3")
-                                     ~test-db-name
+                                     ~(get-test-data-name)
                                      view-nm#
                                      (bigquery.tx/project-id)
-                                     ~test-db-name
+                                     ~(get-test-data-name)
                                      (bigquery.tx/project-id)
-                                     ~test-db-name])
-                     (fn [view-nm#] ["DROP VIEW IF EXISTS `%s.%s`" ~test-db-name view-nm#])
+                                     ~(get-test-data-name)])
+                     (fn [view-nm#] ["DROP VIEW IF EXISTS `%s.%s`" ~(get-test-data-name) view-nm#])
                      (fn [~(or view-name-binding '_)] ~@body)))
 
 (def ^:private numeric-val "-1.2E20")
@@ -235,7 +247,7 @@
                                          " bigdecimal76_col BIGDECIMAL(76,38))"
                                          "AS SELECT NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s', 'hello', "
                                          "  B'mybytes', NUMERIC '%s', DECIMAL '%s', BIGNUMERIC '%s', BIGDECIMAL '%s'")
-                                    ~test-db-name
+                                    ~(get-test-data-name)
                                     tbl-nm#
                                     ~numeric-val
                                     ~decimal-val
@@ -245,25 +257,25 @@
                                     ~decimal-val
                                     ~bignumeric-val
                                     ~bigdecimal-val])
-                     (fn [tbl-nm#] ["DROP TABLE IF EXISTS `%s.%s`" ~test-db-name tbl-nm#])
+                     (fn [tbl-nm#] ["DROP TABLE IF EXISTS `%s.%s`" ~(get-test-data-name) tbl-nm#])
                      (fn [~(or table-name-binding '_)] ~@body)))
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
     (with-view [#_:clj-kondo/ignore view-name]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema test-db-name :name view-name :database_require_filter false})
+                     {:schema (get-test-data-name) :name view-name :database_require_filter false})
           "`describe-database` should see the view")
-      (is (= [{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name view-name :table-schema test-db-name}
-              {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :table-name view-name :table-schema test-db-name}
-              {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema test-db-name}]
-             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [test-db-name]}))
+      (is (= [{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}
+              {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}
+              {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}]
+             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [(get-test-data-name)]}))
           "`describe-fields` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})
 
       (testing "describe-database"
         (qp.store/with-metadata-provider (mt/id)
-          (is (= #{{:schema test-db-name
+          (is (= #{{:schema (get-test-data-name)
                     :name view-name
                     :database_require_filter false}}
                  (into #{}
@@ -292,7 +304,7 @@
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "describe-database"
             (qp.store/with-metadata-provider (mt/id)
-              (is (= #{{:schema test-db-name
+              (is (= #{{:schema (get-test-data-name)
                         :name view-name
                         :database_require_filter false}}
                      (into #{}
@@ -417,12 +429,12 @@
 
             (testing "describe-database"
               (qp.store/with-metadata-provider (mt/id)
-                (is (= #{{:schema test-db-name
+                (is (= #{{:schema (get-test-data-name)
                           :name "partition_by_ingestion_time",
                           :database_require_filter true}
-                         {:schema test-db-name, :name "partition_by_time", :database_require_filter true}
-                         {:schema test-db-name, :name "partition_by_range", :database_require_filter true}
-                         {:schema test-db-name,
+                         {:schema (get-test-data-name), :name "partition_by_time", :database_require_filter true}
+                         {:schema (get-test-data-name), :name "partition_by_range", :database_require_filter true}
+                         {:schema (get-test-data-name),
                           :name "partition_by_range_not_required",
                           :database_require_filter false}}
                        (into #{}
@@ -734,79 +746,79 @@
   (testing "Table with decimal types"
     (with-bigquery-types-table [#_:clj-kondo/ignore tbl-nm]
       (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
-                     {:schema test-db-name :name tbl-nm :database_require_filter false})
+                     {:schema (get-test-data-name) :name tbl-nm :database_require_filter false})
           "`describe-database` should see the table")
       (is (= [{:base-type :type/Decimal
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-partitioned false
                :database-position 0
                :database-type "NUMERIC"
                :name "numeric_col"}
               {:base-type :type/Decimal
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-partitioned false
                :database-position 1
                :database-type "NUMERIC"
                :name "decimal_col"}
               {:base-type :type/Decimal
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-partitioned false
                :database-position 2
                :database-type "BIGNUMERIC"
                :name "bignumeric_col"}
               {:base-type :type/Decimal
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-partitioned false
                :database-position 3
                :database-type "BIGNUMERIC"
                :name "bigdecimal_col"}
               {:name "string255_col",
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-type "STRING",
                :base-type :type/Text,
                :database-partitioned false,
                :database-position 4}
               {:name "bytes32_col",
                :table-name tbl-nm,
-               :table-schema test-db-name,
+               :table-schema (get-test-data-name),
                :database-type "BYTES",
                :base-type :type/*,
                :database-partitioned false,
                :database-position 5}
               {:name "numeric29_col",
                :table-name tbl-nm,
-               :table-schema test-db-name,
+               :table-schema (get-test-data-name),
                :database-type "NUMERIC",
                :base-type :type/Decimal,
                :database-partitioned false,
                :database-position 6}
               {:name "decimal29_col",
                :table-name tbl-nm,
-               :table-schema test-db-name,
+               :table-schema (get-test-data-name),
                :database-type "NUMERIC",
                :base-type :type/Decimal,
                :database-partitioned false,
                :database-position 7}
               {:name "bignumeric32_col",
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-type "BIGNUMERIC",
                :base-type :type/Decimal,
                :database-partitioned false,
                :database-position 8}
               {:name "bigdecimal76_col",
                :table-name tbl-nm
-               :table-schema test-db-name
+               :table-schema (get-test-data-name)
                :database-type "BIGNUMERIC",
                :base-type :type/Decimal,
                :database-partitioned false,
                :database-position 9}]
-             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+             (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]}))
           "`describe-fields` should see the fields in the table")
       (sync/sync-database! (mt/db) {:scan :schema})
       (testing "We should be able to run queries against the table"
@@ -833,15 +845,15 @@
                                      GENERATE_ARRAY(1,10) AS array_col,
                                      STRUCT('Sam' AS name) AS primary,
                                      [STRUCT('Rudisha' AS name)] AS participants"
-                                    test-db-name
+                                    (get-test-data-name)
                                     tbl-nm])
-                      (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" test-db-name tbl-nm])
+                      (fn [tbl-nm] ["DROP TABLE IF EXISTS `%s.%s`" (get-test-data-name) tbl-nm])
                       (fn [tbl-nm]
-                        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
-                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema test-db-name}
+                        (is (= [{:name "int_col" :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :table-name tbl-nm :table-schema (get-test-data-name)}
+                                {:name "array_col" :database-type "ARRAY" :base-type :type/Array :database-position 1 :database-partitioned false :table-name tbl-nm :table-schema (get-test-data-name)}
                                 {:name "primary",
                                  :table-name tbl-nm
-                                 :table-schema test-db-name
+                                 :table-schema (get-test-data-name)
                                  :database-type "RECORD",
                                  :base-type :type/Dictionary,
                                  :database-partitioned false,
@@ -849,7 +861,7 @@
                                  :nested-fields
                                  #{{:name "name",
                                     :table-name tbl-nm
-                                    :table-schema test-db-name
+                                    :table-schema (get-test-data-name)
                                     :database-type "STRING",
                                     :base-type :type/Text,
                                     :nfc-path ["primary"],
@@ -857,12 +869,12 @@
                                  :visibility-type :details-only}
                                 {:name "participants",
                                  :table-name tbl-nm
-                                 :table-schema test-db-name
+                                 :table-schema (get-test-data-name)
                                  :database-type "ARRAY",
                                  :base-type :type/Array,
                                  :database-partitioned false,
                                  :database-position 3}]
-                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [test-db-name]}))
+                               (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [tbl-nm] :schema-names [(get-test-data-name)]}))
                             "`describe-fields` should detect the correct base-type for array type columns")))))
 
 (deftest sync-inactivates-old-duplicate-tables
@@ -1169,7 +1181,7 @@
       (is (= (->> ["SELECT"
                    "  COUNT(*) AS `count`"
                    "FROM"
-                   (format "  `%s.venues`" test-db-name)]
+                   (format "  `%s.venues`" (get-test-data-name))]
                   ;; re-format the SQL in case formatting has changed once we have the correct test db name in place.
                   str/join
                   pretty-sql-lines)
@@ -1221,7 +1233,7 @@
                     bigquery/*page-size* 10]
             (let [query  {:database (mt/id)
                           :type "native"
-                          :native {:query (format "select * from `%s.orders` limit 100" test-db-name)}}
+                          :native {:query (format "select * from `%s.orders` limit 100" (get-test-data-name))}}
                   result (mt/user-http-request :crowberto :post 202 "dataset" query)]
               (is (= "failed" (:status result)))
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")

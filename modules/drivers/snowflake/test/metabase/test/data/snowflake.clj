@@ -141,7 +141,7 @@
 (defonce ^:private deleted-old-datasets?
   (atom false))
 
-(defn- delete-old-datsets-if-needed!
+(defn- delete-old-datasets-if-needed!
   "Call [[delete-old-datasets!]], only if we haven't done so already."
   []
   (when (compare-and-set! deleted-old-datasets? false true)
@@ -162,7 +162,7 @@
   ;; qualify the DB name with the unique prefix
   (let [db-def (assoc db-def :database-name (qualified-db-name db-def))]
     ;; clean up any old datasets that should be deleted
-    (delete-old-datsets-if-needed!)
+    (delete-old-datasets-if-needed!)
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
@@ -211,17 +211,6 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
-
-(defn- tracking-access-note
-  []
-  (if (:ci env/env)
-    (format "CI: %s %s %s"
-            (str t/*testing-vars*)
-            (get env/env :github-actor)
-            (get env/env :github-head-ref))
-    (format "DEV: %s %s"
-            (str t/*testing-vars*)
-            (:user env/env))))
 
 (defn- setup-tracking-db!
   "Idempotently create test tracking database"
@@ -292,7 +281,7 @@
                                                "  WHEN NOT MATCHED THEN INSERT (hash,name, accessed_at, access_note) VALUES (n.hash, n.name, n.accessed_at, n.access_note)")
                                           [(tx/hash-dataset db-def)
                                            (qualified-db-name db-def)
-                                           (tracking-access-note)])
+                                           (tx/tracking-access-note)])
                  ^ResultSet rs (sql-jdbc.execute/execute-prepared-statement! driver stmt)]
        (some-> rs resultset-seq doall)))))
 
