@@ -73,14 +73,13 @@
                                   :card-id     source-card-id}
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
-      (binding [qp.perms/*card-id* source-card-id]
-        (qp.streaming/streaming-response [rff export-format]
-          (if was-pivot
-            (qp.pivot/run-pivot-query (-> query
-                                          (assoc :constraints (qp.constraints/default-query-constraints))
-                                          (update :info merge info))
-                                      rff)
-            (qp/process-query (update query :info merge info) rff)))))))
+      (qp.streaming/streaming-response [rff export-format]
+        (if was-pivot
+          (qp.pivot/run-pivot-query (-> query
+                                        (assoc :constraints (qp.constraints/default-query-constraints))
+                                        (update :info merge info))
+                                    rff)
+          (qp/process-query (update query :info merge info) rff))))))
 
 (api.macros/defendpoint :post "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
