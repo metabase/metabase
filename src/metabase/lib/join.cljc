@@ -412,12 +412,19 @@
     (u/assoc-dissoc joinable :fields fields)))
 
 (defn- select-home-column
-  [home-cols cond-fields]
-  (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
-    ;; first choice: the leftmost FK or PK in the condition referring to a home column
-    (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
-        ;; otherwise the leftmost home column in the condition
-        (first cond-home-cols))))
+  [home-cols lhs-fields]
+  (when (seq lhs-fields)
+    (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) lhs-fields)]
+          ;; first choice: the leftmost FK or PK in the condition referring to a home column
+      (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
+              ;; otherwise the leftmost home column in the condition
+          (first cond-home-cols)
+              ;; otherwise the first FK home column
+          (m/find-first lib.types.isa/foreign-key? home-cols)
+              ;; otherwise the first PK home column
+          (m/find-first lib.types.isa/primary-key? home-cols)
+              ;; otherwise the first home column
+          (first home-cols)))))
 
 (defn- strip-id [s]
   (when (string? s)
@@ -509,9 +516,14 @@
          home-cols (lib.metadata.calculation/visible-columns query stage-number stage)]
      (default-alias query stage-number a-join stage home-cols)))
   ([query _stage-number a-join stage home-cols]
-   (let [home-cols   home-cols
-         cond-fields (lib.util.match/match (:conditions a-join) :field)
-         home-col    (select-home-column home-cols cond-fields)]
+   (let [home-cols  home-cols
+         lhs-fields (into []
+                          (keep (fn [condition]
+                                  (when-let [lhs (standard-join-condition-lhs condition)]
+                                    (when (lib.util/field-clause? lhs)
+                                      lhs))))
+                          (:conditions a-join))
+         home-col   (select-home-column home-cols lhs-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
        (generate-unique-name s (keep :alias (:joins stage)))))))
 
