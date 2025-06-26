@@ -60,6 +60,9 @@
    {[:field 2 {"temporal-unit" "day"}]
     [:field 2 {:temporal-unit :day}]
 
+    [:field 2 {"inherited-temporal-unit" "day"}]
+    [:field 2 {:inherited-temporal-unit :day}]
+
     [:field 2 {"binning" {"strategy" "default"}}]
     [:field 2 {:binning {:strategy :default}}]}
 

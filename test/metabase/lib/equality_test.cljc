@@ -735,3 +735,109 @@
                 {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000002"}
                 "Products__ID"]
                (lib/visible-columns query)))))))
+
+(deftest ^:parallel find-match-with-inherited-temporal-unit-test
+  (let [field-ref [:field {:lib/uuid                "86e6d41c-d693-4f08-ae30-7ad411da8ec7"
+                           :effective-type          :type/DateTime
+                           :base-type               :type/DateTime
+                           :inherited-temporal-unit :month} 39]
+        cols      [{:base-type                 :type/DateTime
+                    :created-at                "2025-06-24T20:58:39.593446-07:00"
+                    :description               "The date and time an order was submitted."
+                    :display-name              "Created At: Year"
+                    :effective-type            :type/DateTime
+                    :id                        39
+                    :inherited-temporal-unit   :year
+                    :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
+                    :lib/deduplicated-name     "CREATED_AT"
+                    :lib/desired-column-alias  "CREATED_AT"
+                    :lib/hack-original-name    "CREATED_AT"
+                    :lib/original-display-name "Created At"
+                    :lib/original-name         "CREATED_AT"
+                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af", :effective-type :type/DateTime} 39]
+                    :lib/source                :source/previous-stage
+                    :lib/source-column-alias   "CREATED_AT"
+                    :lib/source-uuid           "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af"
+                    :lib/type                  :metadata/column
+                    :name                      "CREATED_AT"
+                    :semantic-type             :type/CreationTimestamp
+                    :table-id                  5
+                    :updated-at                "2025-06-24T20:58:41.088313-07:00"}
+                   {:base-type                 :type/DateTime
+                    :created-at                "2025-06-24T20:58:39.593446-07:00"
+                    :description               "The date and time an order was submitted."
+                    :display-name              "Created At: Month"
+                    :effective-type            :type/DateTime
+                    :id                        39
+                    :inherited-temporal-unit   :month
+                    :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
+                    :lib/deduplicated-name     "CREATED_AT_2"
+                    :lib/desired-column-alias  "CREATED_AT_2"
+                    :lib/hack-original-name    "CREATED_AT"
+                    :lib/original-display-name "Created At"
+                    :lib/original-name         "CREATED_AT"
+                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "1f16a57a-2afd-4c92-8d6c-b41062235a49", :effective-type :type/DateTime} 39]
+                    :lib/source                :source/previous-stage
+                    :lib/source-column-alias   "CREATED_AT_2"
+                    :lib/source-uuid           "1f16a57a-2afd-4c92-8d6c-b41062235a49"
+                    :lib/type                  :metadata/column
+                    :name                      "CREATED_AT"
+                    :semantic-type             :type/CreationTimestamp
+                    :table-id                  5
+                    :updated-at                "2025-06-24T20:58:41.088313-07:00"}]]
+    (is (=? {:display-name "Created At: Month"}
+            (lib.equality/find-matching-column field-ref cols)))))
+
+(deftest ^:parallel mark-selected-columns-works-for-js-use-cases-test
+  (testing "Does mark-selected-columns actually work for the uses cases in [[metabase.lib.js/visible-columns*]] now?"
+    (let [query {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :database     (meta/id)
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :source-table (meta/id :orders)
+                                 :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                                 :breakout     [[:field {:base-type      :type/DateTime
+                                                         :temporal-unit  :year
+                                                         :lib/uuid       "00000000-0000-0000-0000-000000000001"
+                                                         :effective-type :type/DateTime}
+                                                 (meta/id :orders :created-at)]
+                                                [:field {:base-type      :type/DateTime
+                                                         :temporal-unit  :month
+                                                         :lib/uuid       "00000000-0000-0000-0000-000000000002"
+                                                         :effective-type :type/DateTime}
+                                                 (meta/id :orders :created-at)]]}
+                                {:lib/type :mbql.stage/mbql
+                                 :fields   [[:field
+                                             {:base-type               :type/DateTime
+                                              :inherited-temporal-unit :month
+                                              :lib/uuid                "00000000-0000-0000-0000-000000000003"}
+                                             "CREATED_AT_2"]
+                                            [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000004"}
+                                             "count"]]
+                                 :filters  [[:> {:lib/uuid "00000000-0000-0000-0000-000000000005"}
+                                             [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000007"}
+                                             "count"] 0]]}]}]
+      (is (=? [{:display-name "Created At: Month"}
+               {:display-name "Count"}]
+              (lib/returned-columns query)))
+      (is (=? [{:display-name "Created At: Year"}
+               {:display-name "Created At: Month"}
+               {:display-name "Count"}]
+              (lib/visible-columns query)))
+      (testing `lib.equality/mark-selected-columns
+        (testing "2-arity"
+          (is (=? [{:display-name "Created At: Year"}
+                   {:display-name "Created At: Month"}
+                   {:display-name "Count"}]
+                  (lib.equality/mark-selected-columns
+                   (lib/visible-columns query)
+                   (lib/returned-columns query)))))
+        (testing "4-arity"
+          (is (=? [{:display-name "Created At: Year"}
+                   {:display-name "Created At: Month"}
+                   {:display-name "Count"}]
+                  (lib.equality/mark-selected-columns
+                   query
+                   -1
+                   (lib/visible-columns query)
+                   (lib/returned-columns query)))))))))

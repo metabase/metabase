@@ -17,6 +17,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -227,6 +228,12 @@
                                      columns)]
         (when (= (count matching-columns) 1)
           (first matching-columns)))
+      (when-let [inherited-bucket (:inherited-temporal-unit (lib.options/options a-ref))]
+        (let [matching-columns (filter (fn [col]
+                                         (= (:inherited-temporal-unit col) inherited-bucket))
+                                       columns)]
+          (when (= (count matching-columns) 1)
+            (first matching-columns))))
       (disambiguate-matches-find-match-with-same-binning a-ref columns)))
 
 (mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
@@ -434,6 +441,9 @@
    (mark-selected-columns nil -1 cols selected-columns-or-refs))
 
   ([query stage-number cols selected-columns-or-refs]
+   (when (> (count selected-columns-or-refs) (count cols))
+     (log/errorf "[mark-selected-columns] There are more selected columns (%d) than there are total columns (%d)"
+                 (count selected-columns-or-refs) (count cols)))
    (when (seq cols)
      (let [selected-refs          (mapv lib.ref/ref selected-columns-or-refs)
            matching-selected-cols (into #{}
