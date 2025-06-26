@@ -22,7 +22,7 @@ import {
   getSnippetCollectionId,
 } from "../selectors";
 
-import { updateQuestion } from "./core";
+import { updateQuestion } from "./core/updateQuestion";
 import { SET_UI_CONTROLS } from "./ui";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
