@@ -136,7 +136,10 @@ export const FinalStep = ({ nextStep }: StepProps) => {
         <Button
           variant="subtle"
           color="text-primary"
-          onClick={() => (window.location.href = "/")}
+          onClick={() => {
+            // TODO: EMB-548 add analytics event
+            nextStep();
+          }}
         >
           {t`I'll do this later`}
         </Button>
