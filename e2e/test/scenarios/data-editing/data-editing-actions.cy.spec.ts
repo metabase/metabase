@@ -153,10 +153,13 @@ describe(
         cy.log("should allow to pick an action");
 
         cy.wait("@getSampleDbTables");
-        cy.findByText("QA Postgres12").click();
 
+        cy.findByText("Accounts").should("be.visible");
+
+        cy.findByText("QA Postgres12").click();
         cy.wait("@getPostgresTables");
-        cy.findByText("Newtable").click();
+
+        cy.findByText("Newtable").should("be.visible").click();
         cy.findByText("Create or Update").click();
 
         cy.findByText(
