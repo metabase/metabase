@@ -266,6 +266,13 @@ function(bin) {
                           :format     "%Y%m%d%H%M%S"
                           :onError    field-name}}
 
+      (isa? coercion :Coercion/ISO8601Bytes->Temporal)
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [field-name]
+                                        :lang "js"}}
+                          :onError    field-name}}
+
       ;; mongo only supports datetime
       (isa? coercion :Coercion/ISO8601->DateTime)
       {"$dateFromString" {:dateString field-name
