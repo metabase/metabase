@@ -18,15 +18,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("should display behavior and appearance sections", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Behavior").should("be.visible");
-      cy.findByText("Appearance").should("be.visible");
-    });
-  });
-
   it("should toggle drill-through option for dashboard", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 

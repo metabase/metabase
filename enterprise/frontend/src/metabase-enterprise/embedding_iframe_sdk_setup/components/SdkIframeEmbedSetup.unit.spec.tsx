@@ -42,6 +42,7 @@ describe("Embed flow > forward and backward navigation", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Get Code" }),
     ).toBeInTheDocument();
@@ -65,6 +66,7 @@ describe("Embed flow > forward and backward navigation", () => {
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
 
     // Back to select resource
     await userEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -86,6 +88,7 @@ describe("Embed flow > forward and backward navigation", () => {
     // Clicking next skips "select resource" and go directly to "select embed options"
     await userEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByText("Behavior")).toBeInTheDocument();
+    expect(screen.getByText("Appearance")).toBeInTheDocument();
 
     expect(
       screen.queryByText("Select a dashboard to embed"),
