@@ -75,7 +75,7 @@ export const useCellSelection = ({
 
       const target = e.target as HTMLElement;
       const isInsideSelectableCell = target.closest("[data-selectable-cell]");
-      if (isInsideSelectableCell) {
+      if (isInsideSelectableCell || selectedCells.length === 0) {
         return;
       }
 
@@ -84,7 +84,7 @@ export const useCellSelection = ({
       setSelectedStartCell(null);
       onChangeSelection?.([]);
     },
-    [isEnabled, onChangeSelection],
+    [isEnabled, onChangeSelection, selectedCells.length],
   );
 
   useEffect(() => {

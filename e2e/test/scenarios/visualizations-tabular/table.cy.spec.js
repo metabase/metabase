@@ -313,7 +313,7 @@ describe("scenarios > visualizations > table", () => {
           // semantic type
           cy.contains("City");
           // description
-          cy.contains("The city of the account's billing address");
+          cy.findByText("The city of the account’s billing address");
           // fingerprint
           cy.findByText("1,966 distinct values");
         },
