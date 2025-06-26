@@ -59,7 +59,7 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
-(mu/defn- join-condition-lhs-or-rhs-column? :- :boolean
+(mu/defn join-condition-lhs-or-rhs-column? :- :boolean
   "Whether this LHS or RHS expression is a `:field` reference."
   [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
   (lib.util/field-clause? lhs-or-rhs))
@@ -391,12 +391,10 @@
   (if-not join-alias
     conditions
     (mapv (fn [condition]
-            (or (when-let [rhs (standard-join-condition-rhs condition)]
-                  (standard-join-condition-update-rhs condition (fn [rhs]
-                                                                  (lib.util.match/replace rhs
-                                                                    (field :guard #(and (lib.util/field-clause? %) (not (lib.join.util/current-join-alias %))))
-                                                                    (with-join-alias field join-alias)))))
-                condition))
+            (standard-join-condition-update-rhs condition (fn [rhs]
+                                                            (lib.util.match/replace rhs
+                                                              (field :guard #(and (lib.util/field-clause? %) (not (lib.join.util/current-join-alias %))))
+                                                              (with-join-alias field join-alias)))))
           conditions)))
 
 (mu/defn with-join-conditions :- lib.join.util/PartialJoin
