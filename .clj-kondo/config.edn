@@ -745,6 +745,7 @@
    metabase.models.user-test/with-groups                                         macros.metabase.models.user-test/with-groups
    metabase.query-analysis.task.test-setup/with-test-setup!                      macros.metabase.query-analysis.task.test-setup/with-test-setup!
    metabase.query-processor.streaming/streaming-response                         macros.metabase.query-processor.streaming/streaming-response
+   metabase.server.statistics-handler-test/with-server                                  macros.metabase.server.statistics-handler-test/with-server
    metabase.test.data.users/with-group-for-user                                  macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                   macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                          macros.metabase.test.util/with-temporary-raw-setting-values
