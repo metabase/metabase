@@ -73,6 +73,40 @@
       {:before-sync f-before
        :after-sync  (f (mt/db))})))
 
+(deftest sync-field-metrics-test
+  (testing "metrics should be incremented during sync-field operations"
+    (with-test-db
+      (mt/with-prometheus-system! [_ system]
+        (let [exec-then-sync-and-are
+              (fn [statement & {:keys [retire create reactivate update]
+                                :or {retire 0 create 0 reactivate 0 update 0}}]
+                (jdbc/execute! one-off-dbs/*conn* [statement])
+                (sync/sync-database! (mt/db) {:sync :schema})
+                (is (== retire (mt/metric-value system :metabase-sync/field-sync {:op :retire})))
+                (is (== create (mt/metric-value system :metabase-sync/field-sync {:op :create})))
+                (is (== reactivate (mt/metric-value system :metabase-sync/field-sync {:op :reactivate})))
+                (is (== update (mt/metric-value system :metabase-sync/field-sync {:op :update}))))]
+
+          (testing "initially, we have 2 fields"
+            (sync/sync-database! (mt/db) {:sync :schema})
+            (is (== 2 (mt/metric-value system :metabase-sync/field-sync {:op :create}))))
+
+          (exec-then-sync-and-are
+           "ALTER TABLE \"birds\" ADD COLUMN \"FIELD\" INTEGER;"
+           :create 3)
+
+          (exec-then-sync-and-are
+           "ALTER TABLE \"birds\" DROP COLUMN \"FIELD\";"
+           :create 3
+           :retire 1)
+
+          (exec-then-sync-and-are
+           "ALTER TABLE \"birds\" ADD COLUMN \"FIELD\" VARCHAR;"
+           :create 3
+           :retire 1
+           :update 1
+           :reactivate 1))))))
+
 (deftest renaming-fields-test
   (testing "make sure we can identify case changes on a field (#7923)"
     (let [db-state (with-test-db-before-and-after-altering
@@ -331,6 +365,18 @@
                   :semantic-type     :type/Name
                   :fk-target-exists? false}
                  (state))))))))
+
+(deftest sync-table-fks-metrics-test
+  (testing "metrics should be incremented during sync-fks operations"
+    (with-test-db
+      (mt/with-prometheus-system! [_ system]
+        (sync/sync-database! (mt/db) {:sync :schema})
+        (is (== 0 (mt/metric-value system :metabase-sync/fk-sync {:op :update})))
+
+        (jdbc/execute! one-off-dbs/*conn* ["CREATE TABLE \"foo\" (\"id\" VARCHAR PRIMARY KEY, \"bar\" VARCHAR REFERENCES \"birds\"(\"species\"));"])
+
+        (sync/sync-database! (mt/db) {:sync :schema})
+        (is (== 1 (mt/metric-value system :metabase-sync/fk-sync {:op :update})))))))
 
 (deftest case-sensitive-conflict-test
   (testing "Two columns with same lower-case name can be synced (#17387)"
