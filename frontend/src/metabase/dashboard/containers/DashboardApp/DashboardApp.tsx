@@ -19,7 +19,7 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { useAutoScrollToDashcard } from "metabase/dashboard/hooks/use-auto-scroll-to-dashcard";
-import { parseHashOptions } from "metabase/lib/browser";
+import { parseHashOptions, stringifyHashOptions } from "metabase/lib/browser";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
@@ -93,7 +93,10 @@ export const DashboardApp = ({
     try {
       if (editingOnLoad) {
         dispatch(setEditingDashboard(dashboard));
-        dispatch(push({ ...location, hash: "" }));
+
+        const { edit, ...restHashOptions } = options;
+        const hash = stringifyHashOptions(restHashOptions);
+        dispatch(push({ ...location, hash: hash ? "#" + hash : "" }));
       }
       if (addCardOnLoad != null) {
         const searchParams = new URLSearchParams(window.location.search);

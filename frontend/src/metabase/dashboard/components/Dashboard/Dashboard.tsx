@@ -11,6 +11,7 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -108,6 +109,7 @@ function Dashboard({ className }: { className?: string }) {
       mih="100%"
       w="100%"
       flex="1 0 auto"
+      data-testid="dashboard"
     >
       {dashboard.archived && (
         <ArchivedEntityBanner
@@ -131,10 +133,15 @@ function Dashboard({ className }: { className?: string }) {
 
       <Box
         component="header"
-        className={cx(S.DashboardHeaderContainer, {
-          [S.isFullscreen]: isFullscreen,
-          [S.isNightMode]: shouldRenderAsNightMode,
-        })}
+        className={cx(
+          S.DashboardHeaderContainer,
+          "testing123",
+          EmbedFrameS.EmbedFrameHeader,
+          {
+            [S.isFullscreen]: isFullscreen,
+            [S.isNightMode]: shouldRenderAsNightMode,
+          },
+        )}
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >

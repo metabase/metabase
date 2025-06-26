@@ -147,6 +147,6 @@ export const dashboardActionButtons: Record<
   },
   DOWNLOAD_PDF: {
     component: () => <ExportAsPdfButton />,
-    enabled: ({ isEmbeddingSdk }) => isEmbeddingSdk,
+    enabled: () => true,
   },
 };

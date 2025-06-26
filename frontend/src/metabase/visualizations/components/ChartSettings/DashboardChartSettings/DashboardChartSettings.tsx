@@ -82,16 +82,18 @@ export const DashboardChartSettings = ({
         transformedSeries={transformedSeries}
       />
       <Divider orientation="vertical"></Divider>
-      <ChartSettingsVisualization
-        flex="2 0 0"
-        rawSeries={chartSettingsRawSeries}
-        dashboard={dashboard}
-        dashcard={dashcard}
-        onUpdateVisualizationSettings={handleChangeSettings}
-        onDone={handleDone}
-        onCancel={() => onClose?.()}
-        onReset={onResetToDefault}
-      />
+      {dashboard && (
+        <ChartSettingsVisualization
+          flex="2 0 0"
+          rawSeries={chartSettingsRawSeries}
+          dashboard={dashboard}
+          dashcard={dashcard}
+          onUpdateVisualizationSettings={handleChangeSettings}
+          onDone={handleDone}
+          onCancel={() => onClose?.()}
+          onReset={onResetToDefault}
+        />
+      )}
     </Flex>
   );
 };

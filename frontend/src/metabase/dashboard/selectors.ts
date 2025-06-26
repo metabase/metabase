@@ -19,6 +19,7 @@ import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
+  getIsEmbeddingSdk,
 } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -473,14 +474,16 @@ export function getEmbeddedParameterVisibility(
 }
 
 export const getIsHeaderVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) =>
-    !isEmbeddingIframe || !!embedOptions.header,
+  [getIsEmbeddingIframe, getIsEmbeddingSdk, getEmbedOptions],
+  (isEmbeddingIframe, isEmbeddingSdk, embedOptions) =>
+    (isEmbeddingSdk && isEmbeddingIframe) ||
+    !isEmbeddingIframe ||
+    !!embedOptions.header,
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getEmbedOptions],
-  (isEmbeddingIframe, embedOptions) =>
+  [getIsEmbeddingIframe, getIsEmbeddingSdk, getEmbedOptions],
+  (isEmbeddingIframe, isEmbeddingSdk, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );
 
