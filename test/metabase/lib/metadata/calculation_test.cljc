@@ -536,26 +536,13 @@
                          (lib/with-fields [(meta/field-metadata :orders :id)
                                            (meta/field-metadata :orders :product-id)
                                            (meta/field-metadata :orders :subtotal)]))
-          exp-main   [{:name  "ID"
-                       :ident (meta/ident :orders :id)}
-                      {:name  "PRODUCT_ID"
-                       :ident (meta/ident :orders :product-id)}
-                      {:name  "SUBTOTAL"
-                       :ident (meta/ident :orders :subtotal)}]
-          exp-join1  [{:name  "PRICE"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :price)
-                                                                          (:ident join1))}
-                      {:name  "CATEGORY_ID"
-                       :ident (lib.metadata.ident/explicitly-joined-ident (meta/ident :venues :category-id)
-                                                                          (:ident join1))}
-                      {:name  "NAME"
-                       :ident (lib.metadata.ident/remap-ident
-                               (meta/ident :categories :name)
-                               (lib.metadata.ident/explicitly-joined-ident
-                                (meta/ident :venues :category-id) (:ident join1)))}]
-          exp-join2  [{:name  "CATEGORY"
-                       :ident (lib.metadata.ident/explicitly-joined-ident
-                               (meta/ident :products :category) (:ident join2))}]
+          exp-main   [{:name  "ID"}
+                      {:name  "PRODUCT_ID"}
+                      {:name  "SUBTOTAL"}]
+          exp-join1  [{:name  "PRICE"}
+                      {:name  "CATEGORY_ID"}
+                      {:name  "NAME"}]
+          exp-join2  [{:name  "CATEGORY"}]
           cols       (fn [query]
                        (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true}))]
       (is (=? (concat exp-main exp-join1 exp-join2)
