@@ -7,7 +7,7 @@ import {
   useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
   useTranslateSeries,
-} from "../utils";
+} from "../hooks";
 
 describe("Content translation hooks (other than useTranslateContent)", () => {
   it("useTranslateSeries translates a series", async () => {

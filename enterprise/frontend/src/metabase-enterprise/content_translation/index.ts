@@ -3,13 +3,13 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ContentTranslationConfiguration } from "./components";
 import { contentTranslationEndpoints } from "./constants";
-import { useTranslateContent } from "./use-translate-content";
 import {
-  translateDisplayNames,
   useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
   useTranslateSeries,
-} from "./utils";
+} from "./hooks";
+import { useTranslateContent } from "./use-translate-content";
+import { translateDisplayNames } from "./utils";
 
 if (hasPremiumFeature("content_translation")) {
   Object.assign(PLUGIN_CONTENT_TRANSLATION, {

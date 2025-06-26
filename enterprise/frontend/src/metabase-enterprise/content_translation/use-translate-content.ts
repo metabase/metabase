@@ -6,17 +6,7 @@ import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { useListContentTranslationsQuery } from "metabase-enterprise/api";
 
 import { contentTranslationEndpoints } from "./constants";
-import { translateContentString } from "./utils";
-
-/** When there are no translations, the content-translation function simply
- * returns the provided string, untranslated */
-export const leaveUntranslated: ContentTranslationFunction = (msgid) => msgid;
-
-/** Returns true if the content-translation function is doing more than just
- * returning the provided string, untranslated */
-export const hasTranslations = (
-  tc?: ContentTranslationFunction,
-): tc is ContentTranslationFunction => !!tc && tc !== leaveUntranslated;
+import { leaveUntranslated, translateContentString } from "./utils";
 
 export const useTranslateContent = (): ContentTranslationFunction => {
   const { locale } = useLocale();

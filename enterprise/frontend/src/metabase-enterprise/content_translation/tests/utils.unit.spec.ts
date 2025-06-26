@@ -3,11 +3,13 @@ import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
 import {
+  translateFieldValuesInHoveredObject,
+  translateFieldValuesInSeries,
+} from "../hooks";
+import {
   translateCardNames,
   translateContentString,
   translateDisplayNames,
-  translateFieldValuesInHoveredObject,
-  translateFieldValuesInSeries,
 } from "../utils";
 
 describe("content translation utils", () => {
