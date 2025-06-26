@@ -4,11 +4,7 @@ import { t } from "ttag";
 import { useDocsUrl } from "metabase/common/hooks";
 import { Anchor, Box, Button, Icon, Stack, Text, Title } from "metabase/ui";
 
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
-
 export const DoneStep = () => {
-  useForceLocaleRefresh();
-
   const { url: authUrl } = useDocsUrl(
     "embedding/interactive-embedding-quick-start-guide",
   );

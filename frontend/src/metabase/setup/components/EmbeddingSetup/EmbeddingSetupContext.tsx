@@ -7,6 +7,8 @@ import {
 } from "react";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
+import { useSelector } from "metabase/lib/redux";
+import { getLocale } from "metabase/setup/selectors";
 import type { DashboardId, DatabaseData, Table } from "metabase-types/api";
 
 import { DataConnectionStep } from "./steps/DataConnectionStep";
@@ -21,7 +23,6 @@ import type {
   StepDefinition,
 } from "./steps/embeddingSetupSteps";
 import { STEPS, getStepIndexByKey } from "./steps/embeddingSetupSteps";
-import { useForceLocaleRefresh } from "./useForceLocaleRefresh";
 
 export const STEP_COMPONENTS = [
   WelcomeStep,
@@ -58,7 +59,10 @@ const EmbeddingSetupContext = createContext<EmbeddingSetupContextType | null>(
 );
 
 export const useEmbeddingSetup = () => {
-  useForceLocaleRefresh();
+  // This forces the components where it's used to re-render, making `t` use the new locale
+  // This is needed because we allow changing the locale from the sidebar, without this trick
+  // the components on the page wouldn't re-render with the new locale
+  useSelector(getLocale);
 
   const context = useContext(EmbeddingSetupContext);
 
