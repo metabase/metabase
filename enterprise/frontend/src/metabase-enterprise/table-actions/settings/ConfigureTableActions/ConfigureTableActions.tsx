@@ -54,7 +54,6 @@ export const ConfigureTableActions = ({
         actionId: action.id,
         actionType: "data-grid/custom-action",
         parameterMappings,
-        enabled: true,
       };
 
       if (name && name !== action.name) {
@@ -62,21 +61,6 @@ export const ConfigureTableActions = ({
       }
 
       const newArray = tableActions ? [...tableActions, newItem] : [newItem];
-
-      onChange(newArray);
-    },
-    [onChange, tableActions],
-  );
-
-  const updateAction = useCallback(
-    (action: TableActionDisplaySettings) => {
-      if (!tableActions) {
-        return;
-      }
-
-      const newArray = tableActions.map((tableAction) => {
-        return tableAction.id !== action.id ? tableAction : action;
-      });
 
       onChange(newArray);
     },
@@ -101,16 +85,19 @@ export const ConfigureTableActions = ({
         actionId: action.id,
         actionType: "data-grid/custom-action",
         parameterMappings,
-        enabled: editingAction?.enabled ?? true,
       };
 
       if (name && name !== action.name) {
         newItem.name = name;
       }
 
-      updateAction(newItem);
+      const newArray = (tableActions || []).map((tableAction) => {
+        return tableAction.id !== newItem.id ? tableAction : newItem;
+      });
+
+      onChange(newArray);
     },
-    [updateAction, editingAction],
+    [onChange, tableActions],
   );
 
   const handleRemoveAction = useCallback(
@@ -141,7 +128,6 @@ export const ConfigureTableActions = ({
                 action={action}
                 onRemove={handleRemoveAction}
                 onEdit={setEditingAction}
-                onEnable={updateAction}
               />
             );
           })}

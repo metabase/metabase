@@ -8,8 +8,9 @@ import type {
   ModelItem,
   TableItem,
 } from "metabase/common/components/DataPicker";
+import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { TableOrModelActionPicker } from "metabase/common/components/TableOrModelActionPicker";
-import { Button, Icon, Modal } from "metabase/ui";
+import { Button, Center, Icon, Modal } from "metabase/ui";
 import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import { useGetActionsQuery } from "metabase-enterprise/api";
 import type {
@@ -60,9 +61,11 @@ export function AddOrEditActionSettingsContent({
   const showNewActionStep = !!newActionInitialParentItem;
 
   // TODO: replace this block with action describe api.
-  const { data: allActions, refetch: refetchActionsList } = useGetActionsQuery(
-    selectedPickerAction ? undefined : skipToken,
-  );
+  const {
+    data: allActions,
+    isLoading,
+    refetch: refetchActionsList,
+  } = useGetActionsQuery(selectedPickerAction ? undefined : skipToken);
 
   const action = useMemo(() => {
     if (selectedPickerAction) {
@@ -120,6 +123,16 @@ export function AddOrEditActionSettingsContent({
       setNewActionInitialParentItem(parentItem);
     }
   }, [action]);
+
+  if (isLoading) {
+    return (
+      <Modal.Content>
+        <Center h="10rem">
+          <DelayedLoadingSpinner delay={300} />
+        </Center>
+      </Modal.Content>
+    );
+  }
 
   if (!selectedPickerAction || !action || showNewActionStep) {
     return (

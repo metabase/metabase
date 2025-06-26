@@ -179,7 +179,6 @@ export type TableRowActionDisplaySettings = {
   name: string;
   actionType: "data-grid/custom-action";
   parameterMappings?: RowActionFieldSettings[];
-  enabled: boolean;
 };
 
 export type EditableTableBuiltInActionDisplaySettings = {
