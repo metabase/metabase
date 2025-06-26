@@ -568,3 +568,74 @@
               (mt/rows (qp/process-query
                         (assoc (mt/mbql-query times)
                                :middleware {:format-rows? false})))))))))
+
+(mt/defdataset iso-binary-coercion
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}
+              :effective-type :type/DateTime
+              :coercion-strategy :Coercion/ISO8601Bytes->Temporal}]
+    [["foo" (.getBytes "2019-04-21 16:43:00")]
+     ["bar" (.getBytes "2020-04-21T16:43:00")]
+     ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
+
+(defmulti binary-dates-expected-rows-iso
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-iso :default
+  [_driver]
+  [])
+
+(doseq [driver [:h2 :databricks]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-iso :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-iso :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-iso :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+(deftest ^:parallel yyyymmddhhmmss-binary-dates-iso
+  (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-binary-timestamps)
+    (mt/dataset iso-binary-coercion
+      (is (= (binary-dates-expected-rows-iso driver/*driver*)
+             (sort-by
+              first
+              (mt/rows
+               (qp/process-query
+                (assoc (mt/mbql-query times)
+                       :middleware {:format-rows? false})))))))))

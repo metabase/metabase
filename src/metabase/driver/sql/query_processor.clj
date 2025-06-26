@@ -776,7 +776,7 @@
                             :iso              :Coercion/ISO8601->DateTime
                             :simple           :Coercion/YYYYMMDDHHMMSSString->Temporal
                             ;; Binary
-                            :bytes-iso        :barf
+                            :bytes-iso        :Coercion/ISO8601Bytes->Temporal
                             :bytes-simple     :Coercion/YYYYMMDDHHMMSSBytes->Temporal
                             ;; Number
                             :unixmilliseconds :Coercion/UNIXMilliSeconds->DateTime

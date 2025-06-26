@@ -874,43 +874,85 @@
      ["bar" (.getBytes "2020-04-21T16:43:00")]
      ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
 
-(defmulti binary-dates-expected-rows
+(defmulti binary-dates-expected-rows-simple
   "Expected rows for the [[datetime-binary-cast]] test below."
   {:arglists '([driver])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod binary-dates-expected-rows :default
+(defmethod binary-dates-expected-rows-simple :default
   [_driver]
   [])
 
 (doseq [driver [:h2 :postgres :databricks]]
-  (defmethod binary-dates-expected-rows driver
+  (defmethod binary-dates-expected-rows-simple driver
     [_driver]
     [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
      [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
      [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
 
 (doseq [driver [:mysql :sqlserver :presto-jdbc]]
-  (defmethod binary-dates-expected-rows driver
+  (defmethod binary-dates-expected-rows-simple driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
      [2 "bar" #t "2020-04-21T16:43"]
      [3 "baz" #t "2021-04-21T16:43"]]))
 
-(defmethod binary-dates-expected-rows :sqlite
+(defmethod binary-dates-expected-rows-simple :sqlite
   [_driver]
   [[1 "foo" "2019-04-21 16:43:00"]
    [2 "bar" "2020-04-21 16:43:00"]
    [3 "baz" "2021-04-21 16:43:00"]])
 
-(defmethod binary-dates-expected-rows :mongo
+(defmethod binary-dates-expected-rows-simple :mongo
   [_driver]
   [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
    [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
    [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
 
-(defmethod binary-dates-expected-rows :oracle
+(defmethod binary-dates-expected-rows-simple :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+(defmulti binary-dates-expected-rows-iso
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows-iso :default
+  [_driver]
+  [])
+
+(doseq [driver [:databricks]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc :postgres :h2]]
+  (defmethod binary-dates-expected-rows-iso driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows-iso :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows-iso :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows-iso :oracle
   [_driver]
   [[1M "foo" #t "2019-04-21T16:43"]
    [2M "bar" #t "2020-04-21T16:43"]
@@ -921,13 +963,19 @@
 (deftest ^:parallel datetime-binary-cast
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/datetime)
                                      (mt/normal-drivers-with-feature ::adt/yyyymmddhhss-binary-timestamps))
-    (doseq [[dataset mode] [[yyyymmddhhss-binary-simple-cast :bytes-simple]
-                            #_[iso-binary-cast :bytes-iso]]]
+    (doseq [{:keys [dataset mode expected]}
+            [{:dataset yyyymmddhhss-binary-simple-cast
+              :mode :bytes-simple
+              :expected binary-dates-expected-rows-simple}
+             {:dataset iso-binary-cast
+              :mode :bytes-iso
+              :expected binary-dates-expected-rows-iso}]]
       (mt/dataset dataset
         (let [mp (mt/metadata-provider)]
           (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
             (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :times)))
-                            (lib/with-fields [])
+                            (lib/with-fields [(lib.metadata/field mp (mt/id :times :id))
+                                              (lib.metadata/field mp (mt/id :times :name))])
                             (as-> q
                                   (let [column (->> q lib/visible-columns (filter #(= "as_bytes" (u/lower-case-en (:name %)))) first)]
                                     (lib/expression q "FCALL" (if (nil? mode)
@@ -936,7 +984,5 @@
                             (assoc :middleware {:format-rows? false}))
                   result (-> query qp/process-query)
                   rows (mt/rows result)]
-              (is (= (binary-dates-expected-rows driver/*driver*)
-                     (->> rows
-                          (sort-by first)
-                          (map #(concat (take 2 %) (drop 3 %)))))))))))))
+              (is (= (expected driver/*driver*)
+                     rows)))))))))
