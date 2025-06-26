@@ -1,0 +1,202 @@
+import { t } from "ttag";
+
+import { isNotNull } from "metabase/lib/types";
+import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-coordinate-filter";
+import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
+import type * as Lib from "metabase-lib";
+
+import { NumberFilterValuePicker } from "../../FilterValuePicker";
+import { NumberFilterInput } from "../../NumberFilterInput";
+import { COMBOBOX_PROPS } from "../constants";
+
+import S from "./CoordinateFilterPicker.module.css";
+
+interface CoordinateValueInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  values: NumberOrEmptyValue[];
+  valueCount: number;
+  hasMultipleValues?: boolean;
+  onChange: (values: NumberOrEmptyValue[]) => void;
+  leftInclusive?: boolean;
+  rightInclusive?: boolean;
+  onInclusiveChange?: (side: "left" | "right", value: boolean) => void;
+}
+
+function CoordinateValueInput({
+  query,
+  stageIndex,
+  column,
+  values,
+  valueCount,
+  hasMultipleValues,
+  onChange,
+  leftInclusive = true,
+  rightInclusive = true,
+  onInclusiveChange,
+}: CoordinateValueInputProps) {
+  if (hasMultipleValues) {
+    return (
+      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
+        <NumberFilterValuePicker
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          values={values.filter(isNotNull)}
+          autoFocus
+          comboboxProps={COMBOBOX_PROPS}
+          onChange={onChange}
+        />
+      </Box>
+    );
+  }
+
+  if (valueCount === 1) {
+    return (
+      <Flex p="md">
+        <NumberFilterInput
+          value={values[0]}
+          placeholder={t`Enter a number`}
+          autoFocus
+          w="100%"
+          aria-label={t`Filter value`}
+          onChange={(newValue) => onChange([newValue])}
+        />
+      </Flex>
+    );
+  }
+
+  if (valueCount === 2) {
+    return (
+      <Flex direction="column" p="md" gap="md">
+        <NumberFilterInput
+          value={values[0]}
+          w="100%"
+          placeholder={t`Start of range`}
+          autoFocus
+          onChange={(newValue) => onChange([newValue, values[1]])}
+          leftSection={
+            <ToggleButton
+              aria-label="toggle greater inclusiveness"
+              onChange={() => onInclusiveChange?.("left", !leftInclusive)}
+            >
+              {leftInclusive ? (
+                <Icon name="greater_than_or_equal" />
+              ) : (
+                <Icon name="greater_than" />
+              )}
+            </ToggleButton>
+          }
+          classNames={{
+            root: S.root,
+            input: S.input,
+          }}
+        />
+        <NumberFilterInput
+          value={values[1]}
+          placeholder={t`End of range`}
+          onChange={(newValue) => onChange([values[0], newValue])}
+          leftSection={
+            <ToggleButton
+              aria-label="toggle less inclusiveness"
+              onChange={() => onInclusiveChange?.("right", !rightInclusive)}
+            >
+              {rightInclusive ? (
+                <Icon name="less_than_or_equal" />
+              ) : (
+                <Icon name="less_than" />
+              )}
+            </ToggleButton>
+          }
+          classNames={{
+            root: S.root,
+            input: S.input,
+          }}
+        />
+        <Text size="sm" c="text-secondary">
+          {t`You can leave one of these fields blank`}
+        </Text>
+      </Flex>
+    );
+  }
+
+  if (valueCount === 4) {
+    return (
+      <Stack align="center" justify="center" gap="sm" p="md">
+        <NumberFilterInput
+          label={t`Upper latitude`}
+          value={values[0]}
+          placeholder="90"
+          autoFocus
+          onChange={(newValue) =>
+            onChange([newValue, values[1], values[2], values[3]])
+          }
+        />
+        <Flex align="center" justify="center" gap="sm">
+          <NumberFilterInput
+            label={t`Left longitude`}
+            value={values[1]}
+            placeholder="-180"
+            onChange={(newValue) =>
+              onChange([values[0], newValue, values[2], values[3]])
+            }
+          />
+          <NumberFilterInput
+            label={t`Right longitude`}
+            value={values[3]}
+            placeholder="180"
+            onChange={(newValue) =>
+              onChange([values[0], values[1], values[2], newValue])
+            }
+          />
+        </Flex>
+        <NumberFilterInput
+          label={t`Lower latitude`}
+          value={values[2]}
+          placeholder="-90"
+          onChange={(newValue) =>
+            onChange([values[0], values[1], newValue, values[3]])
+          }
+        />
+      </Stack>
+    );
+  }
+
+  return null;
+}
+
+function ToggleButton({
+  children,
+  onChange,
+  ...rest
+}: React.HTMLAttributes<HTMLDivElement> & {
+  children: React.ReactNode;
+  onChange: () => void;
+}) {
+  return (
+    <Flex
+      className={S.toggleButton}
+      component="span"
+      align="center"
+      justify="center"
+      h="100%"
+      miw="40px"
+      c="text-primary"
+      fz="18px"
+      tabIndex={0}
+      role="button"
+      onClick={onChange}
+      onKeyDown={(event) => {
+        if (event.key === " ") {
+          onChange();
+        }
+      }}
+      {...rest}
+    >
+      {children}
+    </Flex>
+  );
+}
+
+export { CoordinateValueInput };
