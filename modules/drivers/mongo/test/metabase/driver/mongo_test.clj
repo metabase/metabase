@@ -3,12 +3,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.api.downloads-exports-test :as downloads-test]
    [metabase.driver :as driver]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.util :as driver.u]
@@ -1059,3 +1061,148 @@
                     (qp.compile/compile-with-inline-parameters)
                     :query
                     (driver/prettify-native-form driver/*driver*))))))))
+
+(defn- do-with-describe-table-for-sample
+  [documents thunk]
+  (mt/with-temp [:model/Database db {:engine "mongo"
+                                     :details {:host "localhost"
+                                               :port 27017
+                                               :dbname "admin"}}
+                 :model/Table t {:db_id (:id db)}]
+    (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
+                                          (mongo.execute/aggregate-database db session stages timeout-ms))
+              mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
+      (let [dbfields (delay (@#'mongo/fetch-dbfields db t))
+            ftree (delay (@#'mongo/dbfields->ftree @dbfields))
+            nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
+        (thunk dbfields ftree nested-fields)))))
+
+(defmacro with-describe-table-for-sample
+  [documents & body]
+  `(do-with-describe-table-for-sample ~documents (fn [~'dbfields ~'ftree ~'nested-fields] ~@body)))
+
+(deftest id-field-is-present-test
+  (mt/test-driver
+    :mongo
+    (testing "Ensure _id is present in results"
+   ;; Gist: Limit is set to 2 and there, other fields' names precede the _id when sorted
+      (binding [mongo/*leaf-fields-limit* 2]
+        (with-describe-table-for-sample
+          [(ordered-map/ordered-map
+            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "__a" 1
+            "__b" 2)
+           (ordered-map/ordered-map
+            "__b" 3
+            "__a" 1000)]
+          (is (= [{:path "_id", :type "objectId", :indices [0]}
+                  {:path "__a", :type "int", :indices [1]}]
+                 @dbfields))
+          (is (= {:children
+                  {"_id"
+                   {:database-type "objectId" :index 0 :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}
+                   "__a" {:database-type "int" :index 1 :database-position 1 :base-type :type/Integer, :name "__a"}}}
+                 @ftree))
+          (is (= #{{:database-type "int", :database-position 1, :base-type :type/Integer, :name "__a"}
+                   {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
+                 @nested-fields)))))))
+
+(deftest objects-take-precedence-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      [(ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 10})
+       (ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 20})
+       (ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" {"c" 30}})]
+      (is (= #{{:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}
+               {:database-type "object",
+                :visibility-type :details-only,
+                :database-position 1,
+                :base-type :type/Dictionary,
+                :name "a",
+                :nested-fields
+                #{{:database-type "object",
+                   :visibility-type :details-only,
+                   :database-position 2,
+                   :base-type :type/Dictionary,
+                   :name "b",
+                   :nested-fields #{{:database-type "int", :database-position 3, :base-type :type/Integer, :name "c"}}}}}}
+             @nested-fields)))))
+
+(deftest nulls-are-last-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      [(ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" nil})
+       (ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" nil})
+       (ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" "hello"})]
+      (is (= #{{:database-type "object",
+                :visibility-type :details-only,
+                :database-position 1,
+                :base-type :type/Dictionary,
+                :name "a",
+                :nested-fields #{{:database-type "string", :database-position 2, :base-type :type/Text, :name "b"}}}
+               {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
+             @nested-fields)))))
+
+(deftest most-prevalent-type-used-test
+  (mt/test-driver
+    :mongo
+    (with-describe-table-for-sample
+      [(ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 1})
+       (ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" 1})
+       (ordered-map/ordered-map
+        "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+        "a" {"b" "hello"})]
+      (is (= #{{:database-type "object",
+                :visibility-type :details-only,
+                :database-position 1,
+                :base-type :type/Dictionary,
+                :name "a",
+                :nested-fields #{{:database-type "int", :database-position 2, :base-type :type/Integer, :name "b"}}}
+               {:database-type "objectId", :database-position 0, :base-type :type/MongoBSONID, :name "_id", :pk? true}}
+             @nested-fields)))))
+
+(deftest deeply-nested-objects-test
+  (mt/test-driver
+    :mongo
+    (doseq [[limit expected] [[3 [{:path "_id", :type "objectId", :indices [0]}
+                                  {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
+                                  {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}]]
+                              [4 [{:path "_id", :type "objectId", :indices [0]}
+                                  {:path "a.b.c.d.e.f.g", :type "array", :indices [1 0 0 0 0 0 0]}
+                                  {:path "a.b.c.d.e.f.i", :type "int", :indices [1 0 0 0 0 0 1]}
+                                  {:path "a.b.c.d.e.f.h", :type "null", :indices [1 0 0 0 0 0 0]}]]]]
+      (binding [mongo/*leaf-fields-limit* limit]
+        (with-describe-table-for-sample
+          [(ordered-map/ordered-map
+            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"g" [3 2 1]}}}}}})
+           (ordered-map/ordered-map
+            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"g" [1 2 3]}}}}}})
+           (ordered-map/ordered-map
+            "_id" {"$toObjectId" (org.bson.types.ObjectId.)}
+            "a" {"b" {"c" {"d" {"e" {"f" {"h" nil
+                                          "i" 10}}}}}})]
+          (is (=? expected @dbfields)))))))
+;; _id is always present
+;; 
+;; object takes precedence
+;;
