@@ -511,7 +511,7 @@
 
 ;;; TODO -- it would be better if we just made this feature `true` by default and opted out for the drivers that DO NOT
 ;;; support this feature. That way new drivers get the test automatically without having to opt in.
-(doseq [driver #{:athena}]
+(doseq [driver #{}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
     [_driver _feature _database]
     false))
@@ -528,7 +528,7 @@
    [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
    [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
 
-(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc :starburst]]
+(doseq [driver [:mysql :sqlserver :bigquery-cloud-sdk :snowflake :vertica :presto-jdbc :starburst :athena]]
   (defmethod yyyymmddhhmmss-dates-expected-rows driver
     [_driver]
     [[1 "foo" #t "2019-04-21T16:43"]
