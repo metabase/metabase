@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import {
   AccordionList,
-  type Section,
+  type Section as BaseSection,
 } from "metabase/common/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -33,6 +33,10 @@ type Item = {
   name: string;
 };
 
+type Section = BaseSection<Item> & {
+  active: boolean;
+};
+
 const DataSelectorDatabaseSchemaPicker = ({
   databases,
   selectedDatabase,
@@ -49,7 +53,7 @@ const DataSelectorDatabaseSchemaPicker = ({
     return <DataSelectorLoading />;
   }
 
-  const sections: Section<Item>[] = databases.map((database) => ({
+  const sections: Section[] = databases.map((database) => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
       !database.is_saved_questions && database.getSchemas().length > 1
@@ -58,7 +62,7 @@ const DataSelectorDatabaseSchemaPicker = ({
             name: schema.displayName() ?? "",
           }))
         : [],
-    className: database.is_saved_questions ? CS.bgLight : null,
+    className: database.is_saved_questions ? CS.bgLight : undefined,
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
@@ -110,7 +114,7 @@ const DataSelectorDatabaseSchemaPicker = ({
   }
 
   return (
-    <AccordionList<Item>
+    <AccordionList<Item, Section>
       id="DatabaseSchemaPicker"
       key="databaseSchemaPicker"
       className={CS.textBrand}

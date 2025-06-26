@@ -292,6 +292,7 @@ export function AggregationPicker({
         maxHeight={Infinity}
         withBorders
         globalSearch
+        fuzzySearch
       />
     </Box>
   );

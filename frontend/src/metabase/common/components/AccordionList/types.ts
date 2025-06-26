@@ -5,6 +5,7 @@ import type { IconName } from "metabase/ui";
 export type Item = object | string;
 
 export type Section<TItem extends Item = Item> = {
+  key?: string;
   name?: ReactNode;
   type?:
     | "action"
@@ -50,3 +51,11 @@ export type Row<TItem extends Item, TSection extends Section<TItem>> = {
       isLastItem: boolean;
     }
 );
+
+export type SearchProp<TItem extends Item> = TItem extends object
+  ? keyof TItem
+  : string;
+
+export type SearchProps<TItem extends Item> =
+  | Readonly<SearchProp<TItem>[]>
+  | SearchProp<TItem>;

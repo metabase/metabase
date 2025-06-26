@@ -1,5 +1,4 @@
 import cx from "classnames";
-import { getIn } from "icepick";
 import {
   type CSSProperties,
   Component,
@@ -22,8 +21,13 @@ import {
   AccordionListCell,
   type SharedAccordionProps,
 } from "./AccordionListCell";
-import type { Item, Row, Section } from "./types";
-import { type Cursor, getNextCursor, getPrevCursor } from "./utils";
+import type { Item, Row, SearchProps, Section } from "./types";
+import {
+  type Cursor,
+  getNextCursor,
+  getPrevCursor,
+  searchFilter,
+} from "./utils";
 
 type Props<
   TItem extends Item,
@@ -41,8 +45,9 @@ type Props<
   onChangeSection?: (section: TSection, sectionIndex: number) => boolean | void;
   openSection?: number;
   role?: string;
-  searchProp?: string | string[];
+  searchProp?: SearchProps<TItem>;
   searchable?: boolean | ((section: Section) => boolean | undefined);
+  fuzzySearch?: boolean;
   sections: TSection[];
   style?: CSSProperties;
 
@@ -247,22 +252,6 @@ export class AccordionList<
     this.setState({ searchText, cursor: null });
   };
 
-  searchPredicate = (item: TItem, searchPropMember: string) => {
-    const path = searchPropMember.split(".");
-
-    const { searchText } = this.state;
-    const itemText = String(getIn(item, path) || "");
-
-    return itemText.toLowerCase().indexOf(searchText.toLowerCase()) >= 0;
-  };
-
-  checkSectionHasItemsMatchingSearch = (
-    section: TSection,
-    searchFilter: (item: TItem) => boolean,
-  ) => {
-    return (section.items?.filter(searchFilter).length ?? 0) > 0;
-  };
-
   getFirstSelectedItemCursor = () => {
     const { sections, itemIsSelected = () => false } = this.props;
 
@@ -286,24 +275,23 @@ export class AccordionList<
   };
 
   getInitialCursor = () => {
-    const { cursor, searchText } = this.state;
+    const { searchText } = this.state;
+    if (searchText.length === 0) {
+      return this.getFirstSelectedItemCursor();
+    }
 
-    return (
-      cursor ??
-      (searchText.length === 0 ? this.getFirstSelectedItemCursor() : null)
-    );
+    return null;
   };
 
   handleKeyDown = (event: KeyboardEvent) => {
+    const { cursor } = this.state;
     if (event.key === "ArrowUp") {
       event.preventDefault();
 
       const prevCursor = getPrevCursor(
-        this.getInitialCursor(),
-        this.props.sections,
-        this.isSectionExpanded,
+        cursor ?? this.getInitialCursor(),
+        this.getRows(),
         this.canSelectSection,
-        this.searchFilter,
       );
 
       return this.setState({
@@ -316,11 +304,9 @@ export class AccordionList<
       event.preventDefault();
 
       const nextCursor = getNextCursor(
-        this.getInitialCursor(),
-        this.props.sections,
-        this.isSectionExpanded,
+        cursor ?? this.getInitialCursor(),
+        this.getRows(),
         this.canSelectSection,
-        this.searchFilter,
       );
 
       return this.setState({
@@ -361,44 +347,30 @@ export class AccordionList<
     }
   };
 
-  searchFilter = (item: TItem) => {
-    const { searchProp = ["name", "displayName"] } = this.props;
+  getRows = (): Row<TItem, TSection>[] => {
+    const {
+      alwaysTogglable = false,
+      alwaysExpanded = false,
+      hideSingleSectionTitle = false,
+      itemIsSelected = () => false,
+      searchable = (section: TSection) =>
+        section?.items && section.items.length > 10,
+      sections,
+      searchProp,
+      fuzzySearch,
+    } = this.props;
     const { searchText } = this.state;
 
-    if (!searchText || searchText.length === 0) {
-      return true;
-    }
+    const openSection = this.getOpenSection();
+    const isSearching = searchText.length > 0;
 
-    const searchProps = Array.isArray(searchProp) ? searchProp : [searchProp];
-
-    const searchResults = searchProps.map((member) =>
-      this.searchPredicate(item, member),
-    );
-    return searchResults.reduce((acc, curr) => acc || curr);
-  };
-
-  getRowsCached = (
-    searchFilter: (item: TItem) => boolean,
-    searchable:
-      | boolean
-      | ((section: TSection) => boolean | undefined)
-      | undefined,
-    sections: TSection[],
-    alwaysTogglable: boolean,
-    alwaysExpanded: boolean,
-    hideSingleSectionTitle: boolean,
-    itemIsSelected: (item: TItem, index: number) => boolean | undefined,
-    openSection: number | null,
-    _globalSearch: boolean,
-    searchText: string,
-  ): Row<TItem, TSection>[] => {
     // if any section is searchable just enable a global search
-    let globalSearch = _globalSearch;
+    let globalSearch = this.props.globalSearch ?? false;
 
     const sectionIsExpanded = (sectionIndex: number) =>
       alwaysExpanded ||
       openSection === sectionIndex ||
-      (globalSearch && searchText.length > 0);
+      (globalSearch && isSearching);
 
     const sectionIsSearchable = (sectionIndex: number) =>
       typeof searchable === "function"
@@ -406,8 +378,17 @@ export class AccordionList<
         : searchable;
 
     const rows: Row<TItem, TSection>[] = [];
-    for (const [sectionIndex, section] of sections.entries()) {
+
+    const sortedSections = searchFilter({
+      sections,
+      searchText,
+      fuzzySearch,
+      searchProp,
+    });
+
+    for (const { section, sectionIndex, items } of sortedSections) {
       const isLastSection = sectionIndex === sections.length - 1;
+
       if (
         section.name &&
         (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
@@ -415,7 +396,7 @@ export class AccordionList<
         if (
           !searchable ||
           !globalSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, searchFilter) ||
+          items?.length > 0 ||
           section.type === "action"
         ) {
           if (section.type === "action") {
@@ -460,22 +441,20 @@ export class AccordionList<
         section.items.length > 0 &&
         !section.loading
       ) {
-        for (const [itemIndex, item] of section.items.entries()) {
-          if (searchFilter(item)) {
-            const isLastItem = itemIndex === section.items.length - 1;
-            if (itemIsSelected(item, itemIndex)) {
-              this._initialSelectedRowIndex = rows.length;
-            }
-            rows.push({
-              type: "item",
-              section,
-              sectionIndex,
-              isLastSection,
-              item,
-              itemIndex,
-              isLastItem,
-            });
+        for (const { itemIndex, item } of items) {
+          const isLastItem = itemIndex === section.items.length - 1;
+          if (itemIsSelected(item, itemIndex)) {
+            this._initialSelectedRowIndex = rows.length;
           }
+          rows.push({
+            type: "item",
+            section,
+            sectionIndex,
+            isLastSection,
+            item,
+            itemIndex,
+            isLastItem,
+          });
         }
       }
       if (sectionIsExpanded(sectionIndex) && section.loading) {
@@ -489,7 +468,6 @@ export class AccordionList<
     }
 
     if (globalSearch) {
-      const isSearching = searchText.length > 0;
       const isEmpty = rows.filter((row) => row.type === "item").length === 0;
 
       if (isSearching && isEmpty) {
@@ -511,36 +489,6 @@ export class AccordionList<
 
     return rows;
   };
-
-  getRows(): Row<TItem, TSection>[] {
-    const {
-      sections,
-      searchable = (section: TSection) =>
-        section?.items && section.items.length > 10,
-      alwaysTogglable = false,
-      alwaysExpanded = false,
-      hideSingleSectionTitle = false,
-      itemIsSelected = () => false,
-      globalSearch = false,
-    } = this.props;
-
-    const { searchText } = this.state;
-
-    const openSection = this.getOpenSection();
-
-    return this.getRowsCached(
-      this.searchFilter,
-      searchable,
-      sections,
-      alwaysTogglable,
-      alwaysExpanded,
-      hideSingleSectionTitle,
-      itemIsSelected,
-      openSection,
-      globalSearch,
-      searchText,
-    );
-  }
 
   isVirtualized = () => this.props.maxHeight !== Infinity;
 
@@ -704,8 +652,9 @@ export class AccordionList<
             rowIndex={index}
             parent={parent}
           >
-            {() => (
+            {({ registerChild }) => (
               <AccordionListCell<TItem, TSection>
+                ref={registerChild}
                 hasCursor={this.isRowSelected(rows[index])}
                 {...this.props}
                 style={style}

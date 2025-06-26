@@ -206,7 +206,7 @@ export function QueryColumnPicker({
         }}
         maxHeight={Infinity}
         data-testid={dataTestId}
-        searchProp={["name", "displayName"]}
+        searchProp={["name", "displayName", "longDisplayName"]}
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
@@ -215,6 +215,7 @@ export function QueryColumnPicker({
         width={width}
         globalSearch={!disableSearch}
         searchable={!disableSearch}
+        fuzzySearch
       />
     </DelayGroup>
   );

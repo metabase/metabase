@@ -20,7 +20,13 @@ import type { ColumnListItem, SegmentListItem } from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
-type Item = ColumnListItem | SegmentListItem;
+type Item =
+  | ColumnListItem
+  | (SegmentListItem & {
+      combinedDisplayName?: string;
+    });
+
+const SEARCH_PROP = ["name", "displayName", "combinedDisplayName"] as const;
 
 export interface FilterColumnPickerProps {
   className?: string;
@@ -114,8 +120,9 @@ export function FilterColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        searchProp={["name", "displayName"]}
+        searchProp={SEARCH_PROP}
         globalSearch
+        fuzzySearch
         withBorders
       />
     </DelayGroup>
@@ -144,6 +151,8 @@ function getSections(
           column,
           query,
           stageIndex,
+          combinedName: `${columnInfo.table?.name ?? ""} ${columnInfo.name}`,
+          combinedDisplayName: `${columnInfo.table?.displayName ?? ""} ${columnInfo.displayName}`,
         };
       });
       const segments = groupInfo.isSourceTable
