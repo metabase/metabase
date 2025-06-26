@@ -12,13 +12,11 @@ You can use a single Metabase to manage permissions for all of your customers. W
 
 ## Block the All users group
 
-Before you apply more specific permissions, you'll want to make sure that no one can see any data.
-
-Everyone's automatically in the All Users group. For your permissions to apply, you'll want to block the group from seeing any data.
+Before you apply more specific permissions, you'll want to make sure that no one can see any data. Since everyone's automatically in the All Users group, you'll want to block this group from seeing any data.
 
 In the **Admin settings** > **Permissions** > **Data**, block the All Users group's access to the database.
 
-From here, you can selectively grant privileges to different groups.
+From there, you can selectively grant privileges to different groups.
 
 ## One database for all customers (commingled setups)
 
@@ -33,7 +31,7 @@ If all your customer data is in the same schema and on the same tables (often re
 You could use:
 
 - [Data sandboxing](./data-sandboxes.md) to restrict rows and columns.
-- [Connection impersonation](./impersonation.md) to mimic roles set by your database. A good choice if you want to grant native SQL access to your data.
+- [Connection impersonation](./impersonation.md) to mimic roles set by your database. Impersonation is a good choice if you want to grant native SQL access to your data.
 
 ### Restricting rows based on tenant ID
 
@@ -81,6 +79,12 @@ To keep A and C from viewing the `Insights` column, you can create a [custom san
 6. [Create a custom sandbox](./data-sandboxes.md#types-of-data-sandboxes) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
 
 When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metrics` columns, and only the rows where `Tenant_ID = A`.
+
+### Impersonation lets you manage access with database roles
+
+Impersonation lets you map user attributes to database roles, which lets you do row-level security based on the privileges you give eachd role.
+
+Check out this [article on impersonation](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
 
 ## One database per customer (single-tenant setups)
 
