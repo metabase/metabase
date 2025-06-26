@@ -371,7 +371,8 @@
      (mapcat #(describe-dataset-rows nested-column-lookup dataset-id %))
      named-rows)))
 
-(def ^:private ^:const num-table-partitions
+;; we redef this in a test, don't make `^:const`!
+(def ^:private num-table-partitions
   "Number of tables to batch for describe-fields. Too low and we'll do too many queries, which is slow.
    Too high and we'll hold too many fields of a dataset in memory, which risks causing OOMs."
   1024)

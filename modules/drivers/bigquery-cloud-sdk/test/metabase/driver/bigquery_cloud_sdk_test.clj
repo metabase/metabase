@@ -248,6 +248,26 @@
                      (fn [tbl-nm#] ["DROP TABLE IF EXISTS `%s.%s`" ~test-db-name tbl-nm#])
                      (fn [~(or table-name-binding '_)] ~@body)))
 
+(deftest reducible-describe-fields-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/with-temp [:model/Database db
+                   {:engine  :bigquery-cloud-sdk
+                    :details (-> (:details (mt/db))
+                                 (assoc :project-id "bigquery-public-data"
+                                        :dataset-filters-type "inclusion"
+                                        :dataset-filters-patterns "bls_qcew"))}]
+      (mt/with-db db
+        (testing "describe-fields correctly partitions tables for a reducible result"
+          (let [orig-describe-dataset-fields-reducible @#'bigquery/describe-dataset-fields-reducible
+                invokation-count (atom 0)]
+            (with-redefs [bigquery/num-table-partitions 4
+                          bigquery/describe-dataset-fields-reducible
+                          (fn [& args]
+                            (swap! invokation-count inc)
+                            (apply orig-describe-dataset-fields-reducible args))]
+              (is (>= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
+              (is (>= 20 @invokation-count)))))))))
+
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
     (with-view [#_:clj-kondo/ignore view-name]
