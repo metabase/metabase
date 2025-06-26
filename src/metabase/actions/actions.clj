@@ -19,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [methodical.core :as methodical]
    [nano-id.core :as nano-id]
    [toucan2.core :as t2])
   (:import
@@ -38,7 +39,7 @@
   (when (= :table (:type scope))
     (assoc (select-keys scope [:table-id]) :row :metabase-enterprise.data-editing.api/root)))
 
-(defmulti perform-action!*
+(methodical/defmulti perform-action!*
   "Multimethod for doing an Action. The specific `action` is a keyword like `:model.row/create` or `:table.row/create`; the shape
   of each input depends on the action being performed. [[action-arg-map-schema]] returns the appropriate spec to use to
   validate the inputs for a given action. When implementing a new action type, be sure to implement both this method
@@ -55,6 +56,12 @@
      (keyword action)])
   :hierarchy #'driver/hierarchy)
 
+(methodical/defmethod perform-action!* :around :default
+  [action context inputs]
+  (log/tracef "In action %s\nScope: %s\nInvocation stack:%s\nInputs: %s" action (:scope context) (:invocation-stack context) (pr-str inputs))
+  (u/prog1 (next-method action context inputs)
+    (log/tracef "Out action %s: %s" action (pr-str <>))))
+
 (defn- known-implicit-actions
   "Set of all known legacy actions."
   []
@@ -63,7 +70,7 @@
               (map second))
         (keys (methods perform-action!*))))
 
-(defmethod perform-action!* :default
+(methodical/defmethod perform-action!* :default
   [action context _inputs]
   (let [action        (keyword action)
         driver        (:engine context)
