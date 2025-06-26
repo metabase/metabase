@@ -150,5 +150,5 @@ function isColumnSelected(item: ColumnListItem) {
 function isEditingExpressionInitially(
   expression: Lib.ExpressionClause | undefined,
 ) {
-  return expression != null && !Lib.isStandardJoinConditionLHSorRHS(expression);
+  return expression != null && !Lib.isJoinConditionLHSorRHSColumn(expression);
 }

@@ -61,8 +61,8 @@ export function joinConditionParts(
   return parts;
 }
 
-export function isStandardJoinConditionLHSorRHS(expression: ExpressionClause) {
-  return ML.standard_join_condition_lhs_or_rhs_QMARK_(expression);
+export function isJoinConditionLHSorRHSColumn(expression: ExpressionClause) {
+  return ML.join_condition_lhs_or_rhs_column_QMARK_(expression);
 }
 
 export function join(query: Query, stageIndex: number, join: Join): Query {

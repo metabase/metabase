@@ -59,10 +59,15 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
+(mu/defn- join-condition-lhs-or-rhs-column? :- :boolean
+  "Whether this LHS or RHS expression is a `:field` reference."
+  [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
+  (lib.util/field-clause? lhs-or-rhs))
+
 (mu/defn- standard-join-condition? :- :boolean
-  "Whether this join condition is a binary condition with two expressions (a LHS and a RHS), as you'd produce
-  in the frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]],
-  and [[join-condition-rhs-columns]]."
+  "Whether this join condition is a binary condition with two expressions (LHS and RHS), as you'd produce in the
+  frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]], and
+  [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
     (lib.util.match/match-one condition
@@ -390,7 +395,7 @@
                   (standard-join-condition-update-rhs condition (fn [rhs]
                                                                   (lib.util.match/replace rhs
                                                                     (field :guard #(and (lib.util/field-clause? %) (not (lib.join.util/current-join-alias %))))
-                                                                    (with-join-alias field new-alias)))))
+                                                                    (with-join-alias field join-alias)))))
                 condition))
           conditions)))
 
@@ -1052,8 +1057,8 @@
 
 (mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
   "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
-   Must be called on a standard join condition with columns used for both LHS and RHS expressions, otherwise the join
-   condition will NOT be updated.
+   Must be called on a standard join condition with just columns used for both LHS and RHS expressions, otherwise the
+   join condition will NOT be updated.
    This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
    Fields that do not support the provided option will be ignored."
   ([query :- ::lib.schema/query

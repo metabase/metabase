@@ -85,7 +85,7 @@ function getButtonLabel(
 ) {
   if (expression == null) {
     return t`Pick a column…`;
-  } else if (Lib.isStandardJoinConditionLHSorRHS(expression)) {
+  } else if (Lib.isJoinConditionLHSorRHSColumn(expression)) {
     return Lib.displayInfo(query, stageIndex, expression).displayName;
   } else {
     return t`Custom expression`;

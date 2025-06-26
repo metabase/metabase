@@ -1251,12 +1251,12 @@
            :lhsExpression lhs-expression
            :rhsExpression rhs-expression})))
 
-(defn ^:export standard-join-condition-lhs-or-rhs?
+(defn ^:export join-condition-lhs-or-rhs-column?
   "Whether this LHS or RHS expression is a column and not a custom expression.
 
   > **Code health:** Single use. This is used in the notebook editor."
   [lhs-or-rhs-expression]
-  (lib.core/standard-join-condition-lhs-or-rhs? lhs-or-rhs-expression))
+  (lib.core/join-condition-lhs-or-rhs-column? lhs-or-rhs-expression))
 
 (defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.
