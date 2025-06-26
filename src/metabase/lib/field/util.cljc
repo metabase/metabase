@@ -77,9 +77,7 @@
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
   `:metabase.lib.join/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
-  `:lib/original-expression-name` respectively.
-
-  You need to recalculate the desired column aliases for the stage as a whole "
+  `:lib/original-expression-name` respectively."
   [col]
   (-> col
       (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id

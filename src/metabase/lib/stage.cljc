@@ -1,7 +1,6 @@
 (ns metabase.lib.stage
   "Method implementations for a stage of a query."
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -9,7 +8,6 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.field :as lib.field]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
