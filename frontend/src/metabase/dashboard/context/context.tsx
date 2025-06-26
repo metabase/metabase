@@ -23,7 +23,7 @@ import type { DashboardActionKey } from "../components/DashboardHeader/Dashboard
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-  useEmbedTheme,
+  useDashboardTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
@@ -177,7 +177,7 @@ const DashboardContextProviderInner = ({
     onNightModeChange,
     theme,
     setTheme,
-  } = useEmbedTheme(initTheme);
+  } = useDashboardTheme(initTheme);
 
   const shouldRenderAsNightMode = Boolean(isNightMode);
 

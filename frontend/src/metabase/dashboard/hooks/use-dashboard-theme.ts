@@ -7,7 +7,9 @@ import type { DisplayTheme } from "metabase/public/lib/types";
 
 import type { EmbedThemeControls } from "../types";
 
-export const useEmbedTheme = (initTheme: DisplayTheme): EmbedThemeControls => {
+export const useDashboardTheme = (
+  initTheme: DisplayTheme,
+): EmbedThemeControls => {
   const dispatch = useDispatch();
 
   const theme = useSelector(getDisplayTheme);
