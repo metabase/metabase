@@ -19,6 +19,7 @@ export type Section<TItem extends Item = Item> = {
   loading?: boolean;
   className?: string;
   items?: TItem[];
+  alwaysSortLast?: boolean;
 };
 
 export type Row<TItem extends Item, TSection extends Section<TItem>> = {

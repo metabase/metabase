@@ -223,22 +223,22 @@ function getSections({
       clause: clause.name,
       displayName: clause.displayName,
     })),
+    alwaysSortLast: true,
+  };
+  const expressionClauseAction = {
+    key: "custom-expression",
+    type: "action" as const,
+    name: t`Custom Expression`,
+    items: [],
+    icon: "filter" as const,
+    alwaysSortLast: true,
   };
 
-  const expressionSections = withCustomExpression
-    ? [
-        isSearching ? expressionClausesSection : null,
-        {
-          key: "custom-expression",
-          type: "action" as const,
-          name: t`Custom Expression`,
-          items: [],
-          icon: "filter" as const,
-        },
-      ]
-    : [];
-
-  return [...columnSections, ...expressionSections].filter(isNotNull);
+  return [
+    ...columnSections,
+    withCustomExpression && isSearching ? expressionClausesSection : null,
+    withCustomExpression ? expressionClauseAction : null,
+  ].filter(isNotNull);
 }
 
 function renderItemName(item: Item) {
