@@ -1269,7 +1269,7 @@
              (-> (qp.compile/compile query)
                  :query
                  (->> (driver/prettify-native-form :bigquery-cloud-sdk))
-                 (str/replace #"v4_test_data__transient_\d+" "test_data")
+                 (str/replace #"sha_[a-z0-9]+_test_data" "test_data")
                  str/split-lines))))))
 
 (deftest ^:parallel case-expression-with-default-Date-case-DateTime-test
