@@ -1,9 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useSelector } from "metabase/lib/redux";
-import { getDatabases } from "metabase/reference/selectors";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -33,7 +32,6 @@ export const Grid = ({
     isEditingParameter,
     isFullscreen,
     isNightMode,
-    cardTitled,
     getClickActionMode,
     autoScrollToDashcardId,
     reportAutoScrolledToDashcard,
@@ -58,14 +56,17 @@ export const Grid = ({
   const tabHasCards = currentTabDashcards.length > 0;
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
-  const databaseObj = useSelector(getDatabases);
-  const databases = Object.values(databaseObj);
+  const { data: databasesResponse, isError } = useListDatabasesQuery();
+  const databases = useMemo(
+    () => databasesResponse?.data ?? [],
+    [databasesResponse],
+  );
   const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
   const hasNativeWrite = useMemo(
     () => getHasNativeWrite(databases),
     [databases],
   );
-  const canCreateQuestions = hasDataAccess || hasNativeWrite;
+  const canCreateQuestions = !isError && (hasDataAccess || hasNativeWrite);
 
   const handleSetEditing = useCallback(() => {
     if (!isEditing) {
@@ -137,7 +138,6 @@ export const Grid = ({
       isEditingParameter={isEditingParameter}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}
-      withCardTitle={cardTitled}
       getClickActionMode={getClickActionMode}
       autoScrollToDashcardId={autoScrollToDashcardId}
       reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
