@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { ComponentProps } from "react";
 
 import {
@@ -24,12 +25,14 @@ interface DashboardParameterListProps
     ComponentProps<typeof ParametersList>,
     "widgetsVariant" | "widgetsWithinPortal" | "vertical"
   > {
+  className?: string;
   parameters: Array<Parameter & { value: unknown }>;
   isSortable?: boolean;
   isFullscreen: boolean;
 }
 
 export function DashboardParameterList({
+  className,
   parameters,
   isSortable = true,
   isFullscreen,
@@ -47,7 +50,7 @@ export function DashboardParameterList({
 
   return (
     <ParametersList
-      className={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME}
+      className={cx(DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME, className)}
       parameters={parameters}
       editingParameter={editingParameter}
       hideParameters={hiddenParameterSlugs}
