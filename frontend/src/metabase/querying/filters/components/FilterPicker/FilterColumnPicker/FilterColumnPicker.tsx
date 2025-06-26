@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -11,6 +11,7 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { isNotNull } from "metabase/lib/types";
 import { getGroupName } from "metabase/querying/filters/utils/groups";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -77,15 +78,25 @@ export function FilterColumnPicker({
   withColumnGroupIcon = true,
   withColumnItemIcon = true,
 }: FilterColumnPickerProps) {
+  const [searchText, setSearchText] = useState("");
+  const isSearching = searchText !== "";
+
   const sections = useMemo(
     () =>
-      getSections(
+      getSections({
         query,
         stageIndexes,
         withColumnGroupIcon,
         withCustomExpression,
-      ),
-    [query, stageIndexes, withColumnGroupIcon, withCustomExpression],
+        isSearching,
+      }),
+    [
+      query,
+      stageIndexes,
+      withColumnGroupIcon,
+      withCustomExpression,
+      isSearching,
+    ],
   );
 
   const handleSectionChange = (section: Section) => {
@@ -105,6 +116,7 @@ export function FilterColumnPicker({
   };
 
   const handleSearchTextChange = (searchText: string) => {
+    setSearchText(searchText);
     if (searchText.trim().endsWith("(")) {
       const name = searchText.trim().slice(0, -1);
       const clause = getClauseDefinition(name);
@@ -147,12 +159,19 @@ export function FilterColumnPicker({
   );
 }
 
-function getSections(
-  query: Lib.Query,
-  stageIndexes: number[],
-  withColumnGroupIcon: boolean,
-  withCustomExpression: boolean,
-): Section[] {
+function getSections({
+  query,
+  stageIndexes,
+  withColumnGroupIcon,
+  withCustomExpression,
+  isSearching,
+}: {
+  query: Lib.Query;
+  stageIndexes: number[];
+  withColumnGroupIcon: boolean;
+  withCustomExpression: boolean;
+  isSearching: boolean;
+}): Section[] {
   const withMultipleStages = stageIndexes.length > 1;
   const columnSections = stageIndexes.flatMap((stageIndex) => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -208,7 +227,7 @@ function getSections(
 
   const expressionSections = withCustomExpression
     ? [
-        expressionClausesSection,
+        isSearching ? expressionClausesSection : null,
         {
           key: "custom-expression",
           type: "action" as const,
@@ -219,7 +238,7 @@ function getSections(
       ]
     : [];
 
-  return [...columnSections, ...expressionSections];
+  return [...columnSections, ...expressionSections].filter(isNotNull);
 }
 
 function renderItemName(item: Item) {
