@@ -2,8 +2,8 @@ import type { ComponentType, PropsWithChildren } from "react";
 import { noop } from "underscore";
 
 import {
-  type ContextReturned,
   DashboardContext,
+  type DashboardContextReturned,
 } from "metabase/dashboard/context";
 import {
   mapDispatchToProps,
@@ -12,12 +12,12 @@ import {
 import { connect } from "metabase/lib/redux";
 
 export type MockDashboardContextProps = Partial<
-  PropsWithChildren<ContextReturned>
+  PropsWithChildren<DashboardContextReturned>
 >;
 
 // Create a component that accepts all redux props and passes them into DashboardContext
 const DashboardContextWithReduxProps = (
-  props: PropsWithChildren<ContextReturned>,
+  props: PropsWithChildren<DashboardContextReturned>,
 ) => (
   <DashboardContext.Provider value={props}>
     {props.children}
@@ -34,7 +34,7 @@ const ConnectedDashboardContextWithReduxProps = connect(
       ...stateProps,
       ...dispatchProps,
       ...ownProps,
-    }) as unknown as ContextReturned,
+    }) as unknown as DashboardContextReturned,
 )(DashboardContextWithReduxProps) as ComponentType<MockDashboardContextProps>;
 
 /*

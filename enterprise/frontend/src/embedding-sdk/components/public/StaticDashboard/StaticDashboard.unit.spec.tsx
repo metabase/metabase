@@ -2,10 +2,17 @@ import fetchMock from "fetch-mock";
 import { indexBy } from "underscore";
 
 import {
+  setupAlertsEndpoints,
+  setupCardEndpoints,
+  setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
+  setupDatabasesEndpoints,
+  setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { screen, waitFor } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
@@ -15,11 +22,16 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import { Box } from "metabase/ui";
 import {
   createMockCard,
+  createMockCardQueryMetadata,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
+  createMockDashboardTab,
+  createMockDatabase,
   createMockDataset,
+  createMockParameter,
   createMockStructuredDatasetQuery,
+  createMockTextDashboardCard,
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
@@ -37,48 +49,85 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
 const useLocaleMock = useLocale as jest.Mock;
 
 const TEST_DASHBOARD_ID = 1;
+const TEST_DB = createMockDatabase({ id: 1 });
 
-interface SetupOptions {
-  isLocaleLoading?: boolean;
-  props?: Partial<StaticDashboardProps>;
-  providerProps?: Partial<MetabaseProviderProps>;
-}
+const dataset_query = createMockStructuredDatasetQuery({
+  query: { "source-table": ORDERS_ID },
+});
 
+const dashboardTabs = [
+  createMockDashboardTab({ id: 1, name: "Foo Tab 1" }),
+  createMockDashboardTab({ id: 2, name: "Foo Tab 2" }),
+];
+
+const tableCard = createMockCard({
+  id: 1,
+  dataset_query,
+  name: "Here is a card title",
+});
+
+const parameter = createMockParameter({
+  id: "1",
+  type: "string/contains",
+  slug: "title",
+  name: "Title",
+});
+
+const tableDashcard = createMockDashboardCard({
+  id: 1,
+  card_id: tableCard.id,
+  card: tableCard,
+  dashboard_tab_id: dashboardTabs[0].id,
+  parameter_mappings: [
+    {
+      card_id: tableCard.id,
+      parameter_id: parameter.id,
+      target: [
+        "dimension",
+        ["field", parameter.slug, { "base-type": "type/Text" }],
+      ],
+    },
+  ],
+});
+
+const textDashcard = createMockTextDashboardCard({
+  id: 2,
+  text: "Some card text",
+  dashboard_tab_id: dashboardTabs[0].id,
+});
+
+const textDashcard2 = createMockTextDashboardCard({
+  id: 3,
+  text: "Some card text",
+  dashboard_tab_id: dashboardTabs[1].id,
+});
+
+const dashcards = [tableDashcard, textDashcard, textDashcard2];
 const setup = async (
-  options: SetupOptions = {
-    isLocaleLoading: false,
+  {
+    props,
+    providerProps,
+    isLocaleLoading,
+  }: {
+    props?: Partial<StaticDashboardProps>;
+    providerProps?: Partial<MetabaseProviderProps>;
+    isLocaleLoading?: boolean;
+  } = {
     props: {},
     providerProps: {},
+    isLocaleLoading: false,
   },
 ) => {
-  const { isLocaleLoading, props, providerProps } = options;
-
   useLocaleMock.mockReturnValue({ isLocaleLoading });
 
   const database = createSampleDatabase();
-
-  const dataset_query = createMockStructuredDatasetQuery({
-    query: { "source-table": ORDERS_ID },
-  });
-
-  const tableCard = createMockCard({
-    id: 1,
-    dataset_query,
-    name: "Here is a card title",
-  });
-
-  const tableDashcard = createMockDashboardCard({
-    id: 1,
-    card_id: tableCard.id,
-    card: tableCard,
-  });
-
-  const dashcards = [tableDashcard];
 
   const dashboardId = props?.dashboardId || TEST_DASHBOARD_ID;
   const dashboard = createMockDashboard({
     id: dashboardId,
     dashcards,
+    tabs: dashboardTabs,
+    parameters: [parameter],
   });
 
   setupDashboardEndpoints(dashboard);
@@ -90,7 +139,24 @@ const setup = async (
     }),
   );
 
+  setupCardEndpoints(tableCard);
+  setupCardQueryEndpoints(tableCard, createMockDataset());
+  setupCardQueryMetadataEndpoint(
+    tableCard,
+    createMockCardQueryMetadata({
+      databases: [TEST_DB],
+    }),
+  );
+
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
+
+  setupAlertsEndpoints(tableCard, []);
+
+  setupNotificationChannelsEndpoints({});
+
+  setupDatabasesEndpoints([createMockDatabase()]);
+
+  setupLastDownloadFormatEndpoints();
 
   const user = createMockUser();
 
@@ -114,8 +180,8 @@ const setup = async (
     </Box>,
     {
       sdkProviderProps: {
-        authConfig: createMockSdkConfig(),
         ...providerProps,
+        authConfig: createMockSdkConfig(),
       },
       storeInitialState: state,
     },
