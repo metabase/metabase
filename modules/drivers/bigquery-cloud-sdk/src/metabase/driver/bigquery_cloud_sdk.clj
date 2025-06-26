@@ -361,14 +361,15 @@
                                    [[:= :is_partitioning_column "YES"] :partitioned]]
                           :from [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                           :where [:in :table_name table-names]
-                          :order-by [:table_name :ordinal_position :column_name]}
+                          :order-by [:table_name]}
         named-rows (try (query-honeysql driver database named-rows-query)
                         (catch Throwable e
                           (log/warnf e "error in describe-fields for dataset: %s" dataset-id)))
         nested-column-lookup (get-nested-columns-for-tables driver database project-id dataset-id table-names)]
     (eduction
      (x/by-key :table_name (x/into []))
-     (mapcat #(describe-dataset-rows nested-column-lookup dataset-id %))
+     (mapcat #(->> (describe-dataset-rows nested-column-lookup dataset-id %)
+                   (sort-by (juxt :table-name :database-position :name))))
      named-rows)))
 
 ;; we redef this in a test, don't make `^:const`!
@@ -382,7 +383,8 @@
     (eduction (map :table_name)
               (query-honeysql driver database
                               {:select [:table_name]
-                               :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
+                               :from [[(information-schema-table project-id dataset-id "TABLES") :t]]
+                               :order-by [:table_name]}))
     (catch Throwable e
       (log/warnf e "error in list-table-names for dataset: %s" dataset-id))))
 
@@ -390,14 +392,15 @@
   [driver database & {:keys [schema-names table-names]}]
   (let [project-id (get-project-id (:details database))
         dataset-ids (or schema-names (list-datasets (:details database)))]
+
     (eduction
      (mapcat (fn [dataset-id]
-               (let [table-names (or table-names (list-table-names driver database project-id dataset-id))]
+               (let [table-names (or (seq (sort table-names)) (list-table-names driver database project-id dataset-id))]
                  (eduction
                   (x/partition num-table-partitions num-table-partitions [])
                   (mapcat #(describe-dataset-fields-reducible driver database project-id dataset-id %))
                   table-names))))
-     dataset-ids)))
+     (sort dataset-ids))))
 
 (defn- get-field-parsers [^Schema schema]
   (let [default-parser (get-method bigquery.qp/parse-result-of-type :default)]
