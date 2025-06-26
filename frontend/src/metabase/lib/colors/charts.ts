@@ -81,7 +81,7 @@ const getOrderBasedMapping = (
  * Generates a mapping of keys to colors based on a hash of the keys.
  *
  * @param keys the keys to assign colors to
- * @param values the availabls colors to assign
+ * @param values the available colors to assign
  * @param existingMapping possibly existing mapping of keys to colors
  * @param getPreferredValue a function that returns a preferred color for a key
  * @param seriesVizSettingsDefaultKeys possible keys to use for hashing
