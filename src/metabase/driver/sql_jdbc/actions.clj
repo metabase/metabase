@@ -433,7 +433,9 @@
         driver      (:engine database)
         {:keys [from]} (mbql-query->raw-hsql driver query)
         create-hsql (-> {:insert-into (first from)
-                         :values      [(cast-values driver create-row db-id (get-in query [:query :source-table]))]}
+                         :values      (if-not (seq create-row)
+                                        :default
+                                        [(cast-values driver create-row db-id (get-in query [:query :source-table]))])}
                         (prepare-query driver action))
         sql-args    (sql.qp/format-honeysql driver create-hsql)]
     (log/tracef "hsql: %s" (u/pprint-to-str create-hsql))
