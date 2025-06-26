@@ -8,15 +8,6 @@ type DashboardIntercept = {
   response: Cypress.Response<Dashboard>;
 };
 
-export const getPreviewIframe = () =>
-  cy
-    .get("iframe")
-    .should("be.visible")
-    .its("0.contentDocument")
-    .should("exist")
-    .its("body")
-    .should("not.be.empty");
-
 export const getEmbedSidebar = () => cy.findByRole("complementary");
 
 export const getRecentItemCards = () =>

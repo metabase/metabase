@@ -7,7 +7,6 @@ import { entityPickerModal } from "e2e/support/helpers";
 
 import {
   getEmbedSidebar,
-  getPreviewIframe,
   getRecentItemCards,
   visitNewEmbedPage,
 } from "./helpers";
@@ -65,7 +64,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
     cy.log("selected dashboard should be shown in the preview");
     cy.wait("@dashboard");
-    getPreviewIframe().within(() => {
+    H.getIframeBody().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
   });
@@ -101,7 +100,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
 
     cy.log("selected question should be shown in the preview");
     cy.wait("@cardQuery");
-    getPreviewIframe().within(() => {
+    H.getIframeBody().within(() => {
       cy.findByText(SECOND_QUESTION_NAME).should("be.visible");
     });
   });
@@ -130,7 +129,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     });
 
     cy.wait("@dashboard");
-    getPreviewIframe().within(() => {
+    H.getIframeBody().within(() => {
       cy.findByText(SECOND_DASHBOARD_NAME).should("be.visible");
     });
   });
@@ -160,7 +159,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
     });
 
     cy.wait("@cardQuery");
-    getPreviewIframe().within(() => {
+    H.getIframeBody().within(() => {
       cy.findByText(FIRST_QUESTION_NAME).should("be.visible");
     });
   });
