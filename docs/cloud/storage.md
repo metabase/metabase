@@ -83,4 +83,4 @@ To remove Metabase Cloud Storage (which will _permanently_ erase all its data):
 
 ## Syncing Google Sheets with Metabase
 
-If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](./google-sheets).
+If you set up Metabase Cloud Storage, you can [sync Google Sheets with your Metabase](./google-sheets.md).

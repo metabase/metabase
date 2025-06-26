@@ -17,6 +17,7 @@ import { useMetabotAgent } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 if (hasPremiumFeature("metabot_v3")) {
+  PLUGIN_METABOT.isEnabled = () => true;
   PLUGIN_METABOT.Metabot = Metabot;
 
   PLUGIN_METABOT.adminNavItem = [

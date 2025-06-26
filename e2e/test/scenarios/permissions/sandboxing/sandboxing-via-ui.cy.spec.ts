@@ -46,7 +46,7 @@ describe(
       H.restore("postgres-12");
 
       cy.signInAsAdmin();
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       preparePermissions();
       createSandboxingDashboardAndQuestions().then((result) => {
         const { data } = result.body;

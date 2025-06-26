@@ -1,12 +1,15 @@
-import { useClipboard } from "@mantine/hooks";
+import { useClipboard, useTimeout } from "@mantine/hooks";
 import cx from "classnames";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { match } from "ts-pattern";
 import { c, jt, t } from "ttag";
+import _ from "underscore";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import {
   ActionIcon,
+  Alert,
   Box,
   type BoxProps,
   Button,
@@ -20,19 +23,18 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
+import type { MetabotChatMessage } from "metabase-enterprise/metabot/state";
 
 import { useMetabotAgent } from "../../hooks";
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
 import Styles from "./MetabotChat.module.css";
 import { useAutoscrollMessages } from "./hooks";
+import { isLastAgentReply } from "./utils";
 
 export const MetabotChat = () => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-
-  const [input, setMessage] = useState("");
 
   const metabot = useMetabotAgent();
 
@@ -58,19 +60,24 @@ export const MetabotChat = () => {
     if (!trimmedInput.length || metabot.isDoingScience) {
       return;
     }
-    setMessage("");
-    textareaRef.current?.focus();
+    metabot.setPrompt("");
+    metabot.promptInputRef?.current?.focus();
     metabot.submitInput(trimmedInput).catch((err) => console.error(err));
   };
 
-  const { setVisible } = metabot;
-  const handleClose = useCallback(() => {
-    setMessage("");
-    setVisible(false);
-  }, [setVisible]);
+  const handleRetryMessage = (messageId: string) => {
+    if (metabot.isDoingScience) {
+      return;
+    }
 
-  const handleInputChange = (value: string) => {
-    setMessage(value);
+    metabot.setPrompt("");
+    metabot.promptInputRef?.current?.focus();
+    metabot.retryMessage(messageId).catch((err) => console.error(err));
+  };
+
+  const handleClose = () => {
+    metabot.setPrompt("");
+    metabot.setVisible(false);
   };
 
   return (
@@ -145,6 +152,7 @@ export const MetabotChat = () => {
                       fz="sm"
                       size="xs"
                       onClick={() => handleSubmitInput(prompt)}
+                      className={Styles.promptSuggestionButton}
                     >
                       {prompt}
                     </Button>
@@ -157,22 +165,26 @@ export const MetabotChat = () => {
           {(hasMessages || metabot.isDoingScience) && (
             <Box className={Styles.messages}>
               {/* conversation messages */}
-              {metabot.messages.map(({ actor, message }, index) => (
-                <Message
-                  key={index}
-                  data-testid="metabot-chat-message"
-                  actor={actor}
-                  message={message}
-                />
-              ))}
+              {metabot.messages.map((message, index) => {
+                const canRetry =
+                  metabot.useStreaming &&
+                  isLastAgentReply(message, metabot.messages[index + 1]);
+
+                return (
+                  <Message
+                    key={index}
+                    data-testid="metabot-chat-message"
+                    message={message}
+                    onRetry={canRetry ? handleRetryMessage : undefined}
+                  />
+                );
+              })}
 
               {/* loading */}
               {metabot.isDoingScience && (
-                <Loader
-                  color="brand"
-                  type="dots"
-                  size="lg"
-                  data-testid="metabot-response-loader"
+                <Thinking
+                  activeToolCallName={metabot.activeToolCall?.name}
+                  useStreaming={metabot.useStreaming}
                 />
               )}
 
@@ -204,25 +216,33 @@ export const MetabotChat = () => {
             )}
           >
             <Textarea
+              id="metabot-chat-input"
               data-testid="metabot-chat-input"
               w="100%"
               leftSection={
-                <Box h="100%" pt="11px">
-                  <Icon name="metabot" c="brand" />
+                <Box
+                  h="100%"
+                  pt="11px"
+                  onDoubleClick={() => metabot.toggleStreaming()}
+                >
+                  <Icon
+                    name="metabot"
+                    c={metabot.useStreaming ? "warning" : "brand"}
+                  />
                 </Box>
               }
               autosize
               minRows={1}
               maxRows={10}
-              ref={textareaRef}
+              ref={metabot.promptInputRef}
               autoFocus
-              value={input}
+              value={metabot.prompt}
               className={cx(
                 Styles.textarea,
                 metabot.isDoingScience && Styles.textareaLoading,
               )}
               placeholder={t`Tell me to do something, or ask a question`}
-              onChange={(e) => handleInputChange(e.target.value)}
+              onChange={(e) => metabot.setPrompt(e.target.value)}
               onKeyDown={(e) => {
                 const isModifiedKeyPress =
                   e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
@@ -230,7 +250,7 @@ export const MetabotChat = () => {
                   // prevent event from inserting new line + interacting with other content
                   e.preventDefault();
                   e.stopPropagation();
-                  handleSubmitInput(input);
+                  handleSubmitInput(metabot.prompt);
                 }
               }}
             />
@@ -242,13 +262,13 @@ export const MetabotChat = () => {
 };
 
 const Message = ({
-  actor,
   message,
   className,
+  onRetry,
   ...props
 }: BoxProps & {
-  actor: "agent" | "user";
-  message: string;
+  message: MetabotChatMessage;
+  onRetry?: (messageId: string) => void;
 }) => {
   const clipboard = useClipboard();
 
@@ -256,29 +276,103 @@ const Message = ({
     <Flex
       className={cx(
         Styles.messageContainer,
-        actor === "user"
+        message.role === "user"
           ? Styles.messageContainerUser
           : Styles.messageContainerAgent,
         className,
       )}
-      data-message-actor={actor}
+      data-message-role={message.role}
       direction="column"
       {...props}
     >
-      {actor === "user" ? (
-        <Text
-          className={cx(Styles.message, actor === "user" && Styles.messageUser)}
-        >
-          {message}
-        </Text>
-      ) : (
-        <AIMarkdown className={Styles.message}>{message}</AIMarkdown>
-      )}
+      {match(message)
+        .with({ role: "user" }, () => (
+          <Text
+            className={cx(
+              Styles.message,
+              message.role === "user" && Styles.messageUser,
+            )}
+          >
+            {message.message}
+          </Text>
+        ))
+        .with({ role: "agent", type: "error" }, () => (
+          <Alert color="error" icon={<Icon name="warning" />} mt="sm">
+            <AIMarkdown className={Styles.message}>
+              {message.message}
+            </AIMarkdown>
+          </Alert>
+        ))
+        .with({ role: "agent", type: "reply" }, () => (
+          <AIMarkdown className={Styles.message}>{message.message}</AIMarkdown>
+        ))
+        .exhaustive()}
       <Flex className={Styles.messageActions}>
-        <ActionIcon onClick={() => clipboard.copy(message)} h="sm">
-          <Icon name="copy" size="1rem" />
-        </ActionIcon>
+        {!(message.role === "agent" && message.type === "error") && (
+          <ActionIcon
+            onClick={() => clipboard.copy(message.message)}
+            h="sm"
+            data-testid="metabot-chat-message-copy"
+          >
+            <Icon name="copy" size="1rem" />
+          </ActionIcon>
+        )}
+        {onRetry && (
+          <ActionIcon
+            onClick={() => onRetry(message.id)}
+            h="sm"
+            data-testid="metabot-chat-message-retry"
+          >
+            <Icon name="revert" size="1rem" />
+          </ActionIcon>
+        )}
       </Flex>
+    </Flex>
+  );
+};
+
+const Thinking = ({
+  activeToolCallName,
+  useStreaming,
+}: {
+  activeToolCallName: string | undefined;
+  useStreaming: boolean;
+}) => {
+  const [defaultMessageKey, setDefaultMessageKey] = useState<string>("");
+  useTimeout(() => setDefaultMessageKey("__SLOW_RESPONSE__"), 3000, {
+    autoInvoke: true,
+  });
+  useTimeout(() => setDefaultMessageKey("__VERY_SLOW_RESPONSE__"), 10000, {
+    autoInvoke: true,
+  });
+
+  const messagesKey = activeToolCallName ?? defaultMessageKey;
+
+  const messages = {
+    __SLOW_RESPONSE__: [t`Thinking...`, t`Working on your request`],
+    __VERY_SLOW_RESPONSE__: [
+      t`Lot's to consider`,
+      t`Working through the details...`,
+    ],
+    construct_notebook_query: [t`Creating a query`, t`Contructing a question`],
+    analyze_data: [t`Analyzing the data`, t`Exploring your data`],
+    analyze_chart: [t`Inspecting the visualization`, t`Looking at the data`],
+    list_available_fields: undefined, // tool executes near instantly
+  } as Record<string, string[] | undefined>;
+
+  const message = _.sample(
+    messages[messagesKey] ?? messages[defaultMessageKey] ?? [],
+  );
+
+  return (
+    <Flex gap="md" align="center">
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
+      {useStreaming && message && <Text c="text-light">{message}</Text>}
     </Flex>
   );
 };
