@@ -139,6 +139,10 @@
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
+  #_{:clj-kondo/ignore [:discouraged-var]}
+  (println "Deleting dataset: " dataset-id)
+  (when (= dataset-id (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+    (.printStackTrace (Exception. "This should not happen")))
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
@@ -468,7 +472,8 @@
   "REPL utilities for static datasets"
   (setup-tracking-dataset!)
   (destroy-dataset! "metabase_test_tracking")
-  (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
+  (destroy-dataset! (test-dataset-id (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data))))
+  (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'test-data)))
   (dataset-tracked?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
 
   (execute! "select name from `%s`.metabase_test_tracking.datasets" (project-id)))
