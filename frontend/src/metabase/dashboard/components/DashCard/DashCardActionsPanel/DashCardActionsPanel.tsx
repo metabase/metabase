@@ -176,7 +176,7 @@ function DashCardActionsPanelInner({
           aria-label={t`Edit visualization`}
           onClick={onEditVisualization}
         >
-          <DashCardActionButton.Icon name="pencil" />
+          <DashCardActionButton.Icon name="lineandbar" />
         </DashCardActionButton>,
       );
     }
@@ -219,7 +219,7 @@ function DashCardActionsPanelInner({
             onEditVisualization();
           }}
         >
-          <DashCardActionButton.Icon name="add_data" />
+          <DashCardActionButton.Icon name="lineandbar" />
         </DashCardActionButton>,
       );
     }

@@ -1,4 +1,5 @@
 import {
+  EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
 } from "@metabase/embedding-sdk-react";
@@ -6,7 +7,11 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import * as H from "e2e/support/helpers";
-import { openVizSettingsSidebar } from "e2e/support/helpers";
+import {
+  editDashboard,
+  openVizSettingsSidebar,
+  showDashcardVisualizerModalSettings,
+} from "e2e/support/helpers";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -158,6 +163,27 @@ describe("scenarios > embedding-sdk > popovers", () => {
         cy.findByTestId("color-selector-popover").click(1, 1);
         cy.findByTestId("color-selector-popover").should("be.visible");
       });
+    });
+  });
+
+  it("should properly render the ColorPicker above the visualizer modal (metabase#60116)", () => {
+    cy.get<string>("@dashboardId").then((dashboardId) => {
+      mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      editDashboard();
+      showDashcardVisualizerModalSettings(0);
+
+      cy.findAllByTestId("color-selector-button").first().click();
+
+      // Clicking at the edge of the color picker popover to be sure that the click does not close it
+      cy.findByTestId("color-selector-popover").click(1, 1);
+      cy.findByTestId("color-selector-popover").should("be.visible");
+
+      // Clicking outside the color picker to be sure that the click closes it
+      cy.findByTestId("chartsettings-sidebar").click(1, 1);
+      cy.findByTestId("color-selector-popover").should("not.exist");
     });
   });
 });
