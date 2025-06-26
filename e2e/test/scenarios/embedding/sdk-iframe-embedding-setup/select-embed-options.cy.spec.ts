@@ -123,17 +123,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .should("be.visible");
   });
 
-  it("should toggle title option for chart when drill-through is enabled", () => {
+  it("should toggle chart title when drill-through is enabled", () => {
     navigateToEmbedOptionsStep({ experience: "chart" });
 
-    cy.log("enable drill-through first to show title option");
-    getEmbedSidebar()
-      .findByLabelText("Allow users to drill through on data points")
-      .click()
-      .should("be.checked");
-
+    cy.log("chart title should be visible by default");
     getEmbedSidebar().findByLabelText("Show chart title").should("be.checked");
-
     H.getIframeBody().findByText("Orders, Count").should("be.visible");
 
     cy.log("turn off title");
