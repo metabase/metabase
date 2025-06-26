@@ -119,7 +119,6 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     expressionIndex,
-    reportTimezone,
     metadata,
     extensions: [customTooltip],
   });

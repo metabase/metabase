@@ -20,7 +20,6 @@ export type Options = {
   query: Lib.Query;
   expressionMode: Lib.ExpressionMode;
   metadata: Metadata;
-  reportTimezone?: string;
 };
 
 export function suggestAggregations({

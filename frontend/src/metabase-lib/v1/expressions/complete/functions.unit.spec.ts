@@ -9,7 +9,6 @@ import { type Options, suggestFunctions } from "./functions";
 describe("suggestFunctions", () => {
   function setup({
     expressionMode = "expression",
-    reportTimezone = "America/New_York",
     features = undefined,
   }: Partial<Options> & {
     features?: DatabaseFeature[];
@@ -26,7 +25,6 @@ describe("suggestFunctions", () => {
       expressionMode,
       query,
       metadata,
-      reportTimezone,
     });
 
     return function (doc: string) {

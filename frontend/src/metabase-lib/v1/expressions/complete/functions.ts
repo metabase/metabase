@@ -26,7 +26,6 @@ export type Options = {
   expressionMode: Lib.ExpressionMode;
   query: Lib.Query;
   metadata: Metadata;
-  reportTimezone?: string;
 };
 
 export function suggestFunctions({ expressionMode, query, metadata }: Options) {

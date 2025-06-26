@@ -25,7 +25,6 @@ describe("suggestAggregations", () => {
       expressionMode,
       query,
       metadata,
-      reportTimezone: "America/New_York",
     });
 
     return function (doc: string) {
