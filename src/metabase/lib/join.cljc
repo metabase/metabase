@@ -68,8 +68,8 @@
     (lib.util.match/match-one condition
       [(_operator :guard lib.schema.join/condition-operators)
        _opts
-       (_lhs :guard some?)
-       (_rhs :guard some?)]
+       (_lhs :guard lib.util/clause?)
+       (_rhs :guard lib.util/clause?)]
       true
       _
       false)))
@@ -112,8 +112,8 @@
     ;; if we've specified `old-alias`, then update ANY `:field` clause using it to `new-alias` instead.
     old-alias
     (lib.util.match/replace-in join [:conditions]
-      [:field {:join-alias old-alias} _id-or-name]
-      (with-join-alias &match new-alias))
+      (field :guard #(and (lib.util/field-clause? %) (= (lib.join.util/current-join-alias %) old-alias)))
+      (with-join-alias field new-alias))
 
     ;; otherwise if `old-alias` is `nil`, then add (or remove!) `new-alias` to the RHS of any binary
     ;; filter clauses that don't already have a `:join-alias`.
@@ -417,13 +417,7 @@
     ;; first choice: the leftmost FK or PK in the condition referring to a home column
     (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
         ;; otherwise the leftmost home column in the condition
-        (first cond-home-cols)
-        ;; otherwise the first FK home column
-        (m/find-first lib.types.isa/foreign-key? home-cols)
-        ;; otherwise the first PK home column
-        (m/find-first lib.types.isa/primary-key? home-cols)
-        ;; otherwise the first home column
-        (first home-cols))))
+        (first cond-home-cols))))
 
 (defn- strip-id [s]
   (when (string? s)
@@ -498,7 +492,10 @@
               [op op-opts bare-lhs rhs]))
 
           ;; we leave alone the condition otherwise
-          :else &match)))))
+          :else &match))
+    ;; do not replace inner references as there can be a custom join expression
+      _
+      condition)))
 
 (defn- generate-unique-name [base-name taken-names]
   (let [generator (lib.util/unique-name-generator)]
@@ -958,9 +955,9 @@
   [query stage-number join-or-joinable condition-lhs-or-nil]
   (when-let [lhs-column-ref (or condition-lhs-or-nil
                                 (when (join? join-or-joinable)
-                                  (when-let [standard-join-condition-lhs (first (join-conditions join-or-joinable))]
-                                    (when (lib.util/field-clause? standard-join-condition-lhs)
-                                      standard-join-condition-lhs))))]
+                                  (when-let [lhs (standard-join-condition-lhs (first (join-conditions join-or-joinable)))]
+                                    (when (lib.util/field-clause? lhs)
+                                      lhs))))]
     (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
       (get-in display-info [:table :display-name]))))
 
