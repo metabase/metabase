@@ -135,7 +135,7 @@ describe("scenarios > question > joined questions", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("question b").click();
-      cy.findByText("CATEGORY").click();
+      cy.findByText("question b - PRODUCT_ID → CATEGORY").click();
     });
     H.selectFilterOperator("Is");
     H.popover().within(() => {
@@ -146,7 +146,7 @@ describe("scenarios > question > joined questions", () => {
     H.summarize({ mode: "notebook" });
     H.addSummaryGroupingField({
       table: "question b",
-      field: "CATEGORY",
+      field: "question b - PRODUCT_ID → CATEGORY",
     });
     H.visualize();
 
