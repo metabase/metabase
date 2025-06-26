@@ -400,14 +400,7 @@
                                     :redshift "VARBYTE"
                                     :presto-jdbc "VARBINARY"
                                     :oracle "BLOB"
-                                    :clickhouse "String"
-                                    :databricks "BINARY"
-                                    :sqlite "BLOB"
-                                    :sqlserver "BINARY(14)"
-                                    :vertica "BINARY(14)"
-                                    :sparksql "BINARY"
-                                    :bigquery-cloud-sdk "BYTES"
-                                    :snowflake "BINARY"}}
+                                    :sqlite "BLOB"}}
               :effective-type :type/DateTime
               :coercion-strategy :Coercion/YYYYMMDDHHMMSSBytes->Temporal}]
     [["foo" (.getBytes "20190421164300")]
@@ -439,14 +432,9 @@
 ;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
   [_driver _feature _database]
-  false)
+  true)
 
-(doseq [driver [:sql :mongo]]
-  (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
-    [_driver _feature _database]
-    true))
-
-(doseq [driver [:vertica :databricks :bigquery-cloud-sdk :snowflake :clickhouse :sparksql :sqlserver :athena]]
+(doseq [driver [:athena :bigquery-cloud-sdk :clickhouse :databricks :druid :snowflake :sparksql :sqlserver :vertica]]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
     [_driver _feature _database]
     false))
@@ -509,8 +497,6 @@
   [_driver _feature _database]
   true)
 
-;;; TODO -- it would be better if we just made this feature `true` by default and opted out for the drivers that DO NOT
-;;; support this feature. That way new drivers get the test automatically without having to opt in.
 (doseq [driver #{}]
   (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
     [_driver _feature _database]
