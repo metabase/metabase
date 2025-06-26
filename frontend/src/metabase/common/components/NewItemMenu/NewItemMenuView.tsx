@@ -92,12 +92,16 @@ const NewItemMenuView = ({
 
     // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
     if (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu()) {
-      items.push({
-        title: t`Embed`,
-        icon: "embed",
-        link: "/embed/new",
-        onClose: onCloseNavbar,
-      });
+      items.push(
+        <Menu.Item
+          key="embed"
+          component={ForwardRefLink}
+          to="/embed/new"
+          leftSection={<Icon name="embed" />}
+        >
+          {t`Embed`}
+        </Menu.Item>,
+      );
     }
 
     return items;
