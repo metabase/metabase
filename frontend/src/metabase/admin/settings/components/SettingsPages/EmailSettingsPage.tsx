@@ -4,10 +4,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
-import {
-  UpsellEmailWhitelabelBanner,
-  UpsellHostingBanner,
-} from "metabase/admin/upsells";
+import { UpsellHostingBanner } from "metabase/admin/upsells";
 import { useGetSettingsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -35,9 +32,6 @@ export function EmailSettingsPage() {
     <>
       <SettingsPageWrapper title={t`Email`}>
         <SMTPConnectionCard />
-        <Center>
-          <UpsellEmailWhitelabelBanner source="settings-email" />
-        </Center>
         {isEmailConfigured && (
           <SettingsSection>
             <AdminSettingInput

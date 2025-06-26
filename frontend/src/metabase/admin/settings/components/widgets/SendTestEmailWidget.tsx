@@ -10,6 +10,7 @@ export function SendTestEmailWidget() {
   const [sendToast] = useToast();
   const isHosted = useSetting("is-hosted?");
   const isEmailConfigured = useSetting("email-configured?");
+  const isLoading = sendTestEmailResult.isLoading;
   if (!isHosted && !isEmailConfigured) {
     return null;
   }
@@ -42,8 +43,8 @@ export function SendTestEmailWidget() {
           {getTestEmailErrorMessage(sendTestEmailResult.error)}
         </Text>
       )}
-      <Button onClick={handleSendTestEmail}>
-        {sendTestEmailResult.isLoading ? t`Sending...` : t`Send test email`}
+      <Button onClick={handleSendTestEmail} disabled={isLoading}>
+        {isLoading ? t`Sending...` : t`Send test email`}
       </Button>
     </>
   );

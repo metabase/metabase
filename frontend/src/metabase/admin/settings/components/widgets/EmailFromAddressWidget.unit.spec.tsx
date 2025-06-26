@@ -12,6 +12,7 @@ import {
   createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockSettingsState } from "metabase-types/store/mocks";
 
@@ -74,6 +75,7 @@ const setup = async (props: {
     {
       storeInitialState: {
         settings: createMockSettingsState(settings),
+        currentUser: createMockUser({ is_superuser: true }),
       },
     },
   );
@@ -94,6 +96,9 @@ describe("EmailFromAddressWidgets", () => {
         "Please set up a custom SMTP server to change this (Pro only)",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText("Whitelabel email notifications"),
+    ).toBeInTheDocument();
   });
 
   it("should be disabled for cloud users with feature flag who haven't configured smtp", async () => {
@@ -107,6 +112,9 @@ describe("EmailFromAddressWidgets", () => {
     expect(
       screen.getByText("Please set up a custom SMTP server to change this"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Whitelabel email notifications"),
+    ).not.toBeInTheDocument();
   });
 
   it("should be disabled for cloud users with feature flag who have configured smtp but not enabled it", async () => {
@@ -173,6 +181,10 @@ describe("EmailFromAddressWidgets", () => {
       hosted: false,
       selfHostedFromAddress: "selfhosted@test.com",
     });
+
+    expect(
+      screen.queryByText("Whitelabel email notifications"),
+    ).not.toBeInTheDocument();
 
     expect(
       screen.getByText("Email from address description"),

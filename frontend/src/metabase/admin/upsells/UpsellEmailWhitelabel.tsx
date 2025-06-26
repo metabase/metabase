@@ -4,10 +4,10 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 
-import { UpsellBanner } from "./components";
+import { UpsellPill } from "./components";
 import { UPGRADE_URL } from "./constants";
 
-export const UpsellEmailWhitelabelBanner = ({ source }: { source: string }) => {
+export const UpsellEmailWhitelabelPill = ({ source }: { source: string }) => {
   const isHosted = useSelector(getIsHosted);
   const hasCloudSMTPFeature = useHasTokenFeature("cloud-custom-smtp");
 
@@ -16,14 +16,12 @@ export const UpsellEmailWhitelabelBanner = ({ source }: { source: string }) => {
   }
 
   return (
-    <UpsellBanner
-      title={t`Whitelabel email notifications`}
+    <UpsellPill
       campaign="smtp-whitelabeling"
-      buttonText={t`Try for free`}
-      buttonLink={UPGRADE_URL}
+      link={UPGRADE_URL}
       source={source}
     >
-      {t`Change the 'from' address for subscriptions and alerts so people know they're coming from your org.`}
-    </UpsellBanner>
+      {t`Whitelabel email notifications`}
+    </UpsellPill>
   );
 };
