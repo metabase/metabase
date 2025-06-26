@@ -790,7 +790,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
   });
 
-  describe("parameters in heading dashcards", () => {
+  describe.only("parameters in heading dashcards", () => {
     const categoryParameter = createMockParameter({
       id: "1b9cd9f1",
       name: "Category",

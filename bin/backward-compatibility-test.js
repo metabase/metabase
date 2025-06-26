@@ -132,10 +132,10 @@ function start() {
 
   const dbFile = path.join(os.tmpdir(), `metabase-test-${process.pid}.db`);
 
-  const cypressToken = process.env.CYPRESS_ALL_FEATURES_TOKEN;
+  const cypressToken = process.env.CYPRESS_MB_ALL_FEATURES_TOKEN;
   if (typeof cypressToken === "undefined") {
     console.error(
-      "Error: CYPRESS_ALL_FEATURES_TOKEN environment variable is not set. This is required for the 'start' command.",
+      "Error: CYPRESS_MB_ALL_FEATURES_TOKEN environment variable is not set. This is required for the 'start' command.",
     );
     process.exit(1);
   }

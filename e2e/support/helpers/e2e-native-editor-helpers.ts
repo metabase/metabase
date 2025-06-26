@@ -159,6 +159,26 @@ export const NativeEditor = {
     clearNativeEditor();
     return NativeEditor;
   },
+  textbox() {
+    return NativeEditor.get().get("[role='textbox']");
+  },
+  value() {
+    // Get the multiline text content of the editor
+    return NativeEditor.textbox()
+      .get(".cm-line")
+      .then((lines) => {
+        const text: string[] = [];
+        lines.each((_, line) => {
+          text.push(line.textContent ?? "");
+        });
+        const value = text.join("\n");
+        const placeholder = "SELECT * FROM TABLE_NAME";
+        if (value === placeholder) {
+          return "";
+        }
+        return value;
+      });
+  },
   completions: nativeEditorCompletions,
   completion: nativeEditorCompletion,
 };

@@ -1,24 +1,30 @@
+import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
-import { METABOT_TAG, useMetabotAgentMutation } from "metabase-enterprise/api";
 
 import {
+  type MetabotPromptSubmissionResult,
+  getActiveToolCall,
   getIsLongMetabotConversation,
   getIsProcessing,
   getLastAgentMessagesByType,
   getMessages,
   getMetabotId,
   getMetabotVisible,
+  getUseStreaming,
   resetConversation as resetConversationAction,
+  retryPrompt,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
+  toggleStreaming,
 } from "./state";
 
 export const useMetabotAgent = () => {
   const dispatch = useDispatch();
-  const { getChatContext } = useMetabotContext();
+  const { prompt, setPrompt, promptInputRef, getChatContext } =
+    useMetabotContext();
 
   // TODO: create an enterprise useSelector
   const messages = useSelector(getMessages as any) as ReturnType<
@@ -27,10 +33,6 @@ export const useMetabotAgent = () => {
   const isProcessing = useSelector(getIsProcessing as any) as ReturnType<
     typeof getIsProcessing
   >;
-
-  const [, sendMessageReq] = useMetabotAgentMutation({
-    fixedCacheKey: METABOT_TAG,
-  });
 
   const setVisible = useCallback(
     (isVisible: boolean) => dispatch(setVisibleAction(isVisible)),
@@ -42,39 +44,69 @@ export const useMetabotAgent = () => {
     [dispatch],
   );
 
-  const submitInput = useCallback(
-    async (message: string, metabotId?: string) => {
-      const context = await getChatContext();
+  const prepareRetryIfUnsuccesful = useCallback(
+    (result: MetabotPromptSubmissionResult) => {
+      if (!result.success && result.shouldRetry) {
+        promptInputRef?.current?.focus();
+        setPrompt(result.prompt);
+      }
+    },
+    [promptInputRef, setPrompt],
+  );
 
-      return dispatch(
+  const submitInput = useCallback(
+    async (prompt: string, metabotId?: string) => {
+      const context = await getChatContext();
+      const action = await dispatch(
         submitInputAction({
-          message,
+          message: prompt,
           context,
           metabot_id: metabotId,
         }),
       );
+
+      if (isFulfilled(action)) {
+        prepareRetryIfUnsuccesful(action.payload);
+      }
+
+      return action;
     },
-    [dispatch, getChatContext],
+    [dispatch, getChatContext, prepareRetryIfUnsuccesful],
+  );
+
+  const retryMessage = useCallback(
+    async (messageId: string, metabotId?: string) => {
+      const context = await getChatContext();
+      const action = await dispatch(
+        retryPrompt({
+          messageId,
+          context,
+          metabot_id: metabotId,
+        }),
+      );
+      if (isFulfilled(action)) {
+        prepareRetryIfUnsuccesful(action.payload);
+      }
+    },
+    [dispatch, getChatContext, prepareRetryIfUnsuccesful],
   );
 
   const startNewConversation = useCallback(
-    (message: string, metabotId?: string) => {
-      resetConversation();
+    async (message: string, metabotId?: string) => {
+      await resetConversation();
       setVisible(true);
       if (message) {
         submitInput(message, metabotId);
       }
-
-      // HACK: if the user opens the command palette via the search button bar focus will be moved
-      // back to the search button bar if the metabot option is chosen, so a small delay is used
-      setTimeout(() => {
-        document.getElementById("metabot-chat-input")?.focus();
-      }, 100);
+      promptInputRef?.current?.focus();
     },
-    [submitInput, resetConversation, setVisible],
+    [submitInput, resetConversation, setVisible, promptInputRef],
   );
 
   return {
+    prompt,
+    setPrompt,
+    promptInputRef,
     metabotId: useSelector(getMetabotId as any) as ReturnType<
       typeof getMetabotId
     >,
@@ -92,6 +124,14 @@ export const useMetabotAgent = () => {
     setVisible,
     startNewConversation,
     submitInput,
-    isDoingScience: sendMessageReq.isLoading || isProcessing,
+    isDoingScience: isProcessing,
+    activeToolCall: useSelector(getActiveToolCall as any) as ReturnType<
+      typeof getActiveToolCall
+    >,
+    useStreaming: useSelector(getUseStreaming as any) as ReturnType<
+      typeof getUseStreaming
+    >,
+    toggleStreaming: () => dispatch(toggleStreaming()),
+    retryMessage,
   };
 };
