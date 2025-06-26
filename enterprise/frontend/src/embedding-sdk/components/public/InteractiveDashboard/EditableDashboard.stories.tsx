@@ -1,5 +1,8 @@
 import { MetabaseProvider, defineMetabaseTheme } from "embedding-sdk";
-import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
+import {
+  CommonSdkStoryWrapper,
+  storybookSdkAuthDefaultConfig,
+} from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
@@ -18,6 +21,7 @@ const darkTheme = storybookThemes.dark;
 export default {
   title: "EmbeddingSDK/EditableDashboard",
   component: EditableDashboard,
+  decorators: [CommonSdkStoryWrapper],
   parameters: {
     layout: "fullscreen",
   },
@@ -28,11 +32,7 @@ export default {
 
 export const Default = {
   render(args: EditableDashboardProps) {
-    return (
-      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-        <EditableDashboard {...args} />
-      </MetabaseProvider>
-    );
+    return <EditableDashboard {...args} />;
   },
 
   args: { dashboardId: DASHBOARD_ID },
