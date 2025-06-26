@@ -22,7 +22,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed entity",
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("bleeding-edge");
 
     H.createDashboard({ name: SECOND_DASHBOARD_NAME }).then(
       ({ body: { id: dashboardId } }) => {
