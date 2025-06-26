@@ -16,6 +16,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { navigateToNewCardFromDashboard } from "metabase/dashboard/actions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import {
   DashboardContextProvider,
@@ -36,6 +37,8 @@ import { XrayIcon } from "../XrayIcon";
 
 import S from "./AutomaticDashboardApp.module.css";
 import { SuggestionsSidebar } from "./SuggestionsSidebar";
+
+const SIDEBAR_W = 346;
 
 type AutomaticDashboardAppRouterProps = WithRouterProps<{ splat: string }>;
 
@@ -113,47 +116,61 @@ const AutomaticDashboardAppInner = () => {
       })}
     >
       {dashboard && <SetTitle title={dashboard.name} />}
-      <div style={{ marginRight: hasSidebar ? 346 : undefined }}>
-        {isHeaderVisible && (
-          <div
-            className={cx(CS.bgWhite, CS.borderBottom)}
-            data-testid="automatic-dashboard-header"
-          >
-            <div className={CS.wrapper}>
+
+      {isHeaderVisible && (
+        <div
+          className={cx(CS.bgWhite, CS.borderBottom)}
+          data-testid="automatic-dashboard-header"
+        >
+          <div className={CS.wrapper}>
+            <div className={cx(CS.pl1, { [CS.pr1]: !hasSidebar })}>
               <FixedWidthContainer
-                data-testid="fixed-width-dashboard-header"
-                isFixedWidth={dashboard?.width === "fixed"}
+                isFixedWidth={dashboard?.width === "fixed" && !hasSidebar}
               >
                 <div className={cx(CS.flex, CS.alignCenter, CS.py2)}>
-                  <XrayIcon />
-                  <div>
-                    <h2 className={cx(CS.textWrap, CS.mr2)}>
-                      {dashboard && <TransientTitle dashboard={dashboard} />}
-                    </h2>
+                  <FixedWidthContainer
+                    data-testid="fixed-width-dashboard-header"
+                    className={cx(CS.flex, CS.alignCenter)}
+                    isFixedWidth={dashboard?.width === "fixed"}
+                  >
+                    <XrayIcon />
+                    <DashboardTitle
+                      className={cx(CS.textWrap, CS.mr2, CS.h2)}
+                    />
+                  </FixedWidthContainer>
+                  <div
+                    className={cx(CS.flex, CS.flexGrow1)}
+                    style={{ maxWidth: SIDEBAR_W }}
+                  >
+                    {savedDashboardId != null ? (
+                      <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
+                    ) : (
+                      <ActionButton
+                        className={cx(CS.mlAuto, CS.textNoWrap)}
+                        success
+                        borderless
+                        actionFn={save}
+                      >
+                        {t`Save this`}
+                      </ActionButton>
+                    )}
                   </div>
-                  {savedDashboardId != null ? (
-                    <Button className={CS.mlAuto} disabled>{t`Saved`}</Button>
-                  ) : (
-                    <ActionButton
-                      className={cx(CS.mlAuto, CS.textNoWrap)}
-                      success
-                      borderless
-                      actionFn={save}
-                    >
-                      {t`Save this`}
-                    </ActionButton>
-                  )}
                 </div>
                 {dashboard && tabs.length > 1 && (
                   <div className={cx(CS.wrapper, CS.flex, CS.alignCenter)}>
-                    <DashboardTabs dashboardId={dashboard.id} />
+                    <DashboardTabs />
                   </div>
                 )}
               </FixedWidthContainer>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
+      <div
+        className={CS.relative}
+        style={{ paddingRight: hasSidebar ? SIDEBAR_W : undefined }}
+      >
         <div className={cx(CS.wrapper, CS.pb4)}>
           {parameters && parameters.length > 0 && (
             <div className={cx(CS.px1, CS.pt1)}>
@@ -204,21 +221,21 @@ const AutomaticDashboardAppInner = () => {
             </Link>
           </div>
         )}
-      </div>
 
-      {hasSidebar && (
-        <Box
-          className={cx(
-            CS.absolute,
-            CS.top,
-            CS.right,
-            CS.bottom,
-            S.SuggestionsSidebarWrapper,
-          )}
-        >
-          <SuggestionsSidebar related={related} />
-        </Box>
-      )}
+        {hasSidebar && (
+          <Box
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.right,
+              CS.bottom,
+              S.SuggestionsSidebarWrapper,
+            )}
+          >
+            <SuggestionsSidebar related={related} />
+          </Box>
+        )}
+      </div>
     </div>
   );
 };
@@ -246,10 +263,3 @@ export const AutomaticDashboardApp = ({
     </DashboardContextProvider>
   );
 };
-
-const TransientTitle = ({ dashboard }: { dashboard: Dashboard }) =>
-  dashboard.transient_name ? (
-    <span>{dashboard.transient_name}</span>
-  ) : dashboard.name ? (
-    <span>{dashboard.name}</span>
-  ) : null;

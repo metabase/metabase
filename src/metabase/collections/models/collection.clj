@@ -1191,7 +1191,11 @@
                  (for [dest     dest-collections-or-ids
                        :let     [readwrite-path (perms/collection-readwrite-path dest)]
                        group-id group-ids-with-write-perms]
-                   {:group_id group-id, :object readwrite-path})))))
+                   {:group_id group-id, :object readwrite-path})))
+    ;; update the perms graph revision number so that editors of the permissions graph are forced to be aware
+    ;; of the new permissions/collections.
+    (perms/increment-implicit-perms-revision! :model/CollectionPermissionGraphRevision
+                                              "Automatically updated permissions due to collection creation or move")))
 
 (defn- copy-parent-permissions!
   "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
