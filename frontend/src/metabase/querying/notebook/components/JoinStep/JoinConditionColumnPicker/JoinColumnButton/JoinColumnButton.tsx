@@ -13,7 +13,7 @@ type JoinColumnButtonProps = {
   tableName: string | undefined;
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
-  isLhsExpression: boolean;
+  isLhsPicker: boolean;
   isOpened: boolean;
   isReadOnly: boolean;
   onClick: () => void;
@@ -26,14 +26,14 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
     tableName,
     lhsExpression,
     rhsExpression,
-    isLhsExpression,
+    isLhsPicker,
     isOpened,
     isReadOnly,
     onClick,
   }: JoinColumnButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const expression = isLhsExpression ? lhsExpression : rhsExpression;
+  const expression = isLhsPicker ? lhsExpression : rhsExpression;
   const expressionInfo = useMemo(
     () =>
       expression ? Lib.displayInfo(query, stageIndex, expression) : undefined,
@@ -52,7 +52,7 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       ref={ref}
       disabled={isReadOnly}
       onClick={onClick}
-      aria-label={isLhsExpression ? t`Left column` : t`Right column`}
+      aria-label={isLhsPicker ? t`Left column` : t`Right column`}
     >
       {tableName != null && (
         <Text

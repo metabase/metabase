@@ -23,7 +23,7 @@ type JoinColumnDropdownProps = {
   strategy: Lib.JoinStrategy;
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
-  isLhsExpression: boolean;
+  isLhsPicker: boolean;
   onChange: (
     newExpression: Lib.ExpressionClause,
     newTemporalBucket: Lib.Bucket | null,
@@ -38,12 +38,12 @@ export function JoinColumnDropdown({
   strategy,
   lhsExpression,
   rhsExpression,
-  isLhsExpression,
+  isLhsPicker,
   onChange,
   onClose,
 }: JoinColumnDropdownProps) {
   const columns = useMemo(() => {
-    const getColumns = isLhsExpression
+    const getColumns = isLhsPicker
       ? Lib.joinConditionLHSColumns
       : Lib.joinConditionRHSColumns;
     return getColumns(
@@ -53,14 +53,7 @@ export function JoinColumnDropdown({
       lhsExpression,
       rhsExpression,
     );
-  }, [
-    query,
-    stageIndex,
-    joinable,
-    lhsExpression,
-    rhsExpression,
-    isLhsExpression,
-  ]);
+  }, [query, stageIndex, joinable, lhsExpression, rhsExpression, isLhsPicker]);
 
   const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
   const extraSections = useMemo(
@@ -68,7 +61,7 @@ export function JoinColumnDropdown({
     [query, stageIndex, strategy],
   );
 
-  const expression = isLhsExpression ? lhsExpression : rhsExpression;
+  const expression = isLhsPicker ? lhsExpression : rhsExpression;
   const [isExpressionEditorOpen, setIsExpressionEditorOpen] = useState(() =>
     isExpressionEditorInitiallyOpen(query, stageIndex, columns, expression),
   );
@@ -122,7 +115,7 @@ export function JoinColumnDropdown({
       onSelect={handleColumnSelect}
       onSelectSection={handleSectionSelect}
       onClose={onClose}
-      data-testid={isLhsExpression ? "lhs-column-picker" : "rhs-column-picker"}
+      data-testid={isLhsPicker ? "lhs-column-picker" : "rhs-column-picker"}
     />
   );
 }

@@ -13,7 +13,7 @@ interface JoinConditionColumnPickerProps {
   lhsExpression: Lib.ExpressionClause | undefined;
   rhsExpression: Lib.ExpressionClause | undefined;
   isOpened: boolean;
-  isLhsExpression: boolean;
+  isLhsPicker: boolean;
   isReadOnly: boolean;
   onChange: (
     newExpression: Lib.ExpressionClause,
@@ -31,7 +31,7 @@ export function JoinConditionColumnPicker({
   lhsExpression,
   rhsExpression,
   isOpened,
-  isLhsExpression,
+  isLhsPicker,
   isReadOnly,
   onChange,
   onOpenChange,
@@ -45,7 +45,7 @@ export function JoinConditionColumnPicker({
           tableName={tableName}
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
-          isLhsExpression={isLhsExpression}
+          isLhsPicker={isLhsPicker}
           isOpened={isOpened}
           isReadOnly={isReadOnly}
           onClick={() => onOpenChange(!isOpened)}
@@ -59,7 +59,7 @@ export function JoinConditionColumnPicker({
           strategy={strategy}
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
-          isLhsExpression={isLhsExpression}
+          isLhsPicker={isLhsPicker}
           onChange={onChange}
           onClose={() => onOpenChange(false)}
         />

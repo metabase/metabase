@@ -105,7 +105,7 @@ export function JoinCondition({
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
           isOpened={isLhsOpened}
-          isLhsExpression={true}
+          isLhsPicker={true}
           isReadOnly={isReadOnly}
           onChange={handleLhsExpressionChange}
           onOpenChange={setIsLhsOpened}
@@ -127,7 +127,7 @@ export function JoinCondition({
           lhsExpression={lhsExpression}
           rhsExpression={rhsExpression}
           isOpened={isRhsOpened}
-          isLhsExpression={false}
+          isLhsPicker={false}
           isReadOnly={isReadOnly}
           onChange={handleRhsExpressionChange}
           onOpenChange={setIsRhsOpened}
