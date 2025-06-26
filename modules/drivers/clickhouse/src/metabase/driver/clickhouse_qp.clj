@@ -607,7 +607,3 @@
   [_driver this]
   {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
 
-(defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver coercion-strategy _expr]
-  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/qp.error-type.unsupported-feature})))

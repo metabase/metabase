@@ -431,11 +431,6 @@
     ;; formats. Not great.
     [:convert [:raw "datetime2"] formatted 20]))
 
-(defmethod sql.qp/cast-temporal-byte [:sqlserver :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver coercion-strategy _expr]
-  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/qp.error-type.unsupported-feature})))
-
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_driver _top-level-clause honeysql-form {value :limit}]
   (-> honeysql-form

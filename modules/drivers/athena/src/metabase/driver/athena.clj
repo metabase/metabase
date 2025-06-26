@@ -315,11 +315,6 @@
   [_driver _coercion-strategy expr]
   [:date_parse expr (h2x/literal "%Y%m%d%H%i%S")])
 
-(defmethod sql.qp/cast-temporal-byte [:athena :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver coercion-strategy _expr]
-  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/qp.error-type.unsupported-feature})))
-
 (defmethod sql.qp/->honeysql [:athena :datetime-diff]
   [driver [_ x y unit]]
   (let [x (sql.qp/->honeysql driver x)

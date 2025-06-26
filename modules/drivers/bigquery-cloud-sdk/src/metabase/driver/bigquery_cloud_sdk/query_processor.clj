@@ -658,11 +658,6 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
-(defmethod sql.qp/cast-temporal-byte [:bigquery-cloud-sdk :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver coercion-strategy _expr]
-  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/qp.error-type.unsupported-feature})))
-
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
   [_driver [_ nfc-path]]
   nfc-path)

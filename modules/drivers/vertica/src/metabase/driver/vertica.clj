@@ -88,11 +88,6 @@
   [_driver _coercion-strategy expr]
   [:to_timestamp expr (h2x/literal "YYYYMMDDHH24MISS")])
 
-(defmethod sql.qp/cast-temporal-byte [:vertica :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver coercion-strategy _expr]
-  (throw (ex-info (tru "Driver {0} does not support {1}" driver coercion-strategy)
-                  {:type driver-api/qp.error-type.unsupported-feature})))
-
 ;; TODO - not sure if needed or not
 (defn- cast-timestamp
   "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps

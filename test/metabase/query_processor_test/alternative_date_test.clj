@@ -2,6 +2,7 @@
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
@@ -429,15 +430,12 @@
       (metabase.test/dataset yyyymmddhhss-times
         (metabase.test/db)))))
 
+(def drivers-without-binary-coercion-support #{:athena :bigquery-cloud-sdk :clickhouse :databricks :druid :snowflake :sparksql :sqlserver :vertica})
+
 ;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]
-  [_driver _feature _database]
-  true)
-
-(doseq [driver [:athena :bigquery-cloud-sdk :clickhouse :databricks :druid :snowflake :sparksql :sqlserver :vertica]]
-  (defmethod driver/database-supports? [driver ::yyyymmddhhss-binary-timestamps]
-    [_driver _feature _database]
-    false))
+  [driver _feature _database]
+  (not (contains? drivers-without-binary-coercion-support driver)))
 
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
@@ -496,11 +494,6 @@
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-string-timestamps]
   [_driver _feature _database]
   true)
-
-(doseq [driver #{}]
-  (defmethod driver/database-supports? [driver ::yyyymmddhhss-string-timestamps]
-    [_driver _feature _database]
-    false))
 
 (defmulti yyyymmddhhmmss-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-dates]] test below."
@@ -639,3 +632,10 @@
                (qp/process-query
                 (assoc (mt/mbql-query times)
                        :middleware {:format-rows? false})))))))))
+
+(deftest ^:parallel no-binary-drivers-throws-exception
+  (mt/test-drivers (set/intersection (mt/normal-drivers) drivers-without-binary-coercion-support)
+    (doseq [coercion-strategy [:Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                               :Coercion/ISO8601Bytes->Temporal]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not support"
+                            (sql.qp/cast-temporal-byte driver/*driver* coercion-strategy nil))))))
