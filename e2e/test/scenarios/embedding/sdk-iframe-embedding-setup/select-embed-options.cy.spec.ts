@@ -163,14 +163,30 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     H.getIframeBody().findByText("Save").should("not.exist");
   });
 
-  it("displays theme color pickers", () => {
+  it("can change brand color", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
+    cy.log("brand color should be visible");
     getEmbedSidebar().within(() => {
       cy.findByText("Brand Color").should("be.visible");
-      cy.findByText("Text Color").should("be.visible");
-      cy.findByText("Background Color").should("be.visible");
     });
+
+    cy.log("click on brand color picker");
+    cy.findByLabelText("#509EE3").click();
+
+    cy.log("change brand color to red");
+    H.popover().within(() => {
+      cy.findByDisplayValue("#509EE3")
+        .should("be.visible")
+        .clear()
+        .type("rgb(255, 0, 0)");
+    });
+
+    cy.log("table header cell should now be red");
+    H.getIframeBody()
+      .findAllByTestId("cell-data")
+      .first()
+      .should("have.css", "color", "rgb(255, 0, 0)");
   });
 });
 
