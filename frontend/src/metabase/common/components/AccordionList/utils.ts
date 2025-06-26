@@ -249,13 +249,14 @@ const searchSubstring = memoize(function <TItem extends Item>({
   return {
     threshold: SEARCH_SCORE_THRESHOLD,
     score(item: TItem) {
+      let score = 1;
       for (const prop of searchProps) {
         const path = prop.split(".");
         const itemText = String(getIn(item, path) || "");
         const match = itemText.toLowerCase().includes(searchText.toLowerCase());
-        return match ? 0 : 1;
+        score = Math.min(score, match ? 0 : 1);
       }
-      return 1;
+      return score;
     },
   };
 });
