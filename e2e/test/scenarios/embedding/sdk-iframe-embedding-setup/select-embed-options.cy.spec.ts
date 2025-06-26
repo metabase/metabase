@@ -16,12 +16,9 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   it("should be able to toggle drill-throughs", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    cy.log("drill-through should be enabled by default");
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Allow users to drill through on data points").should(
-        "be.checked",
-      );
-    });
+    getEmbedSidebar()
+      .findByLabelText("Allow users to drill through on data points")
+      .should("be.checked");
 
     cy.log("drill-through should be enabled in the preview");
     H.getIframeBody().within(() => {
@@ -29,15 +26,11 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       cy.findByText("Filter by this value").should("be.visible");
     });
 
-    getEmbedSidebar().within(() => {
-      const drillThroughCheckbox = cy.findByLabelText(
-        "Allow users to drill through on data points",
-      );
-
-      cy.log("turn off drill-through");
-      drillThroughCheckbox.click();
-      drillThroughCheckbox.should("not.be.checked");
-    });
+    cy.log("turn off drill-through");
+    getEmbedSidebar()
+      .findByLabelText("Allow users to drill through on data points")
+      .click()
+      .should("not.be.checked");
 
     cy.log("drill-through should be disabled in the preview");
     H.getIframeBody().within(() => {
@@ -49,13 +42,19 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
   it("should toggle downloads option for dashboard", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    getEmbedSidebar().within(() => {
-      const downloadsCheckbox = cy.findByLabelText("Allow downloads");
-      downloadsCheckbox.should("not.be.checked");
+    getEmbedSidebar()
+      .findByLabelText("Allow downloads")
+      .should("not.be.checked");
 
-      downloadsCheckbox.click();
-      downloadsCheckbox.should("be.checked");
-    });
+    H.getIframeBody().findByTestId("export-as-pdf-button").should("not.exist");
+
+    cy.log("turn on downloads");
+    getEmbedSidebar()
+      .findByLabelText("Allow downloads")
+      .click()
+      .should("be.checked");
+
+    H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
   });
 
   it("should show title option for dashboard", () => {
