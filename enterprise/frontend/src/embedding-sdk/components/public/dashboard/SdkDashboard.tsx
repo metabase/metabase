@@ -44,7 +44,10 @@ import { getErrorPage } from "metabase/selectors/app";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
 
-import { SdkDashboardStyledWrapper } from "./SdkDashboardStyleWrapper";
+import {
+  SdkDashboardStyledWrapper,
+  SdkDashboardStyledWrapperWithRef,
+} from "./SdkDashboardStyleWrapper";
 import { SdkDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
@@ -205,7 +208,7 @@ const SdkDashboardInner = ({
       dashboardActions={dashboardActions}
     >
       {adhocQuestionUrl ? (
-        <SdkDashboardStyledWrapper className={className} style={style}>
+        <SdkDashboardStyledWrapperWithRef className={className} style={style}>
           <InteractiveAdHocQuestion
             questionPath={adhocQuestionUrl}
             onNavigateBack={onNavigateBackToDashboard}
@@ -213,13 +216,16 @@ const SdkDashboardInner = ({
           >
             {AdHocQuestionView && <AdHocQuestionView />}
           </InteractiveAdHocQuestion>
-        </SdkDashboardStyledWrapper>
+        </SdkDashboardStyledWrapperWithRef>
       ) : (
         <SdkDashboardProvider plugins={plugins} onEditQuestion={onEditQuestion}>
           {children ?? (
-            <SdkDashboardStyledWrapper className={className} style={style}>
+            <SdkDashboardStyledWrapperWithRef
+              className={className}
+              style={style}
+            >
               <Dashboard className={EmbedFrameS.EmbedFrame} />
-            </SdkDashboardStyledWrapper>
+            </SdkDashboardStyledWrapperWithRef>
           )}
         </SdkDashboardProvider>
       )}

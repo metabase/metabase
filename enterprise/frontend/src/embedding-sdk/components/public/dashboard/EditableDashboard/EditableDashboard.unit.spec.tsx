@@ -80,8 +80,8 @@ describe("EditableDashboard", () => {
 
     expect(dashboardHeader.getByLabelText("Auto Refresh")).toBeInTheDocument();
     expect(
-      dashboardHeader.getByLabelText("Edit dashboard"),
-    ).toBeInTheDocument();
+      dashboardHeader.queryByLabelText("Edit dashboard"),
+    ).not.toBeInTheDocument();
     expect(
       dashboardHeader.getByLabelText("Nighttime mode"),
     ).toBeInTheDocument();

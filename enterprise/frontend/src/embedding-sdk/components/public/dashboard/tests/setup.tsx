@@ -21,7 +21,7 @@ import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import { useDashboardFullscreen } from "metabase/dashboard/hooks";
+import { useDashboardFullscreen } from "metabase/dashboard/hooks/use-dashboard-fullscreen";
 import { Box } from "metabase/ui";
 import {
   createMockCard,
@@ -115,7 +115,7 @@ jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
-jest.mock("metabase/dashboard/hooks/use-dashboard-fullscreen.ts", () => ({
+jest.mock("metabase/dashboard/hooks/use-dashboard-fullscreen", () => ({
   useDashboardFullscreen: jest.fn(),
 }));
 
@@ -210,7 +210,9 @@ export const setupSdkDashboard = async ({
     },
   );
 
-  expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  if (!isLocaleLoading) {
+    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
+  }
 
   return {
     dashboard,

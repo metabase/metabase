@@ -1,11 +1,11 @@
-import { ButtonHTMLAttributes, useEffect, useState } from "react";
+import { type ButtonHTMLAttributes, useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { ActionIconProps, Box, Popover } from "metabase/ui";
+import { useDashboardContext } from "metabase/dashboard/context";
+import { type ActionIconProps, Box, Popover } from "metabase/ui";
 
 import { RefreshOption } from "./RefreshOption";
 import { RefreshWidgetTarget } from "./RefreshWidgetTarget";
-import { useDashboardContext } from "metabase/dashboard/context";
 
 const toSeconds = (minutes: number) => minutes * 60;
 

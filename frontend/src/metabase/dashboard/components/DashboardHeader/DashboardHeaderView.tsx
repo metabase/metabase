@@ -73,6 +73,7 @@ export function DashboardHeaderView({
   const isSettingsSidebarOpen = useSelector(getIsShowDashboardSettingsSidebar);
 
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
+
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
   const handleResetFilters = useCallback(async () => {
