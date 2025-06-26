@@ -232,7 +232,9 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => {
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => {
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
 
