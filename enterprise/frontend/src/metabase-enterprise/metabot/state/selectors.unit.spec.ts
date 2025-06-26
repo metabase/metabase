@@ -1,33 +1,25 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import { uuid } from "metabase/lib/uuid";
 import { createMockState } from "metabase-types/store/mocks";
 
-import type { MetabotState } from "./reducer";
 import {
+  type MetabotState,
   getLastAgentMessagesByType,
+  getMetabotInitialState,
   getUserPromptForMessageId,
-} from "./selectors";
+} from "./index";
 
 function setup(metabotState: Partial<MetabotState>) {
   setupEnterprisePlugins();
 
-  // NOTE: importing default initial state from ./reducer
-  // breaks the tests for some reason
-  const metabotPlugin: MetabotState = Object.assign(
-    {
-      useStreaming: false,
-      isProcessing: false,
-      messages: [],
-      state: {},
-      history: [],
-      visible: true,
-      conversationId: uuid(),
-      activeToolCall: undefined,
+  return createMockState({
+    plugins: {
+      metabotPlugin: {
+        ...getMetabotInitialState(),
+        visible: true,
+        ...metabotState,
+      },
     },
-    metabotState,
-  );
-
-  return createMockState({ plugins: { metabotPlugin } } as any);
+  } as any);
 }
 
 describe("metabot selectors", () => {
