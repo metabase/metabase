@@ -364,7 +364,7 @@
                                                [:field %id {:add/source-table $$reviews}]]]
                                    :limit    1})
                   filter-clause (get-in query [:query :filter])]
-              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" test-db-name)
+              (is (= [(str (format "TIMESTAMP_MILLIS(%s.reviews.rating)" (get-test-data-name))
                            " = "
                            "TIMESTAMP_TRUNC(TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -30 day), day)")]
                      (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause))))
@@ -1137,7 +1137,7 @@
                                         "  `v4_sample_dataset.orders`"
                                         "LIMIT"
                                         "  10"]]
-                              (str/replace line #"\Qv4_sample_dataset\E" test-db-name))}
+                              (str/replace line #"\Qv4_sample_dataset\E" (get-test-data-name)))}
                (-> (mt/mbql-query orders
                      {:aggregation [[:aggregation-options
                                      [:percentile $orders.quantity 0.5]
