@@ -162,10 +162,21 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
-(def ^:private leaf-fields-limit
+(def ^:private ^:dynamic *leaf-fields-limit*
   "Consider at most 1K leaf fields. That combined with [[describe-table-query-depth]] (= 7) gives at most 7K app-db
   fields per collection."
   1000)
+
+(defn ^:dynamic *sample-stages*
+  [collection-name sample-size]
+  (let [start-n       (quot sample-size 2)
+        end-n         (- sample-size start-n)]
+    [{"$sort" {"_id" 1}}
+     {"$limit" start-n}
+     {"$unionWith"
+      {"coll" collection-name
+       "pipeline" [{"$sort" {"_id" -1}}
+                   {"$limit" end-n}]}}]))
 
 (def ^:private unwind-stages
   [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]} {"$objectToArray" "$val"} nil]}}}
@@ -174,44 +185,40 @@
                                  {"$concat" ["$path" "." "$kvs.k"]}
                                  {"$ifNull" ["$kvs.k" "$path"]}]}
                 "val" {"$cond" ["$kvs.k" "$kvs.v" "$val"]}
-                "indices" {"$cond" ["$index" {"$concatArrays" ["$indices" ["$index"]]} "$indices"]}}}])
+                "indices" {"$cond" [{"$or" ["$index" {"$eq" ["$index" 0]}]}
+                                    {"$concatArrays" ["$indices" ["$index"]]}
+                                    "$indices"]}}}])
 
 (defn- describe-table-pipeline
   [& {:keys [collection-name sample-size dive-depth leaf-limit]}]
-  (let [start-n       (quot sample-size 2)
-        end-n         (- sample-size start-n)]
-    (into []
-          cat
-          [;; Initialization phase
-           [{"$sort" {"_id" 1}}
-            {"$limit" start-n}
-            {"$unionWith"
-             {"coll" collection-name
-              "pipeline" [{"$sort" {"_id" -1}}
-                          {"$limit" end-n}]}}
-            {"$project" {"path"    {"$literal" nil}
-                         "indices" {"$literal" []}
-                         "val"     "$$ROOT"}}]
-           ;; Unwind phase: depth first document expansion
-           (apply concat (repeat dive-depth unwind-stages))
-           ;; Results phase
-           [{"$group" {"_id"     {"path"   "$path"
-                                  "type"   {"$type" "$val"}
-                                  "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
-                       "count"   {"$sum" {"$cond" [{"$eq" [{"$type" "$val"} "null"]} 0 1]}}
-                       "indices" {"$min" "$indices"}}}
-            {"$sort" {"count" -1}}
-            {"$group" {"_id" "$_id.path"
-                       "info" {"$first" {"count"   "$count"
-                                         "type"    "$_id.type"
-                                         "ensure"  "$_id.ensure"
-                                         "indices" "$indices"}}}}
-            {"$sort" {"info.ensure" 1 "info.count"  -1}}
-            {"$limit" leaf-limit}
-            {"$project" {"_id"     1
-                         "type"    "$info.type"
-                         "indices" "$info.indices"}}
-            {"$project" {"info" 0}}]])))
+  (into []
+        cat
+        [;; 1. Fetch.
+         (*sample-stages* collection-name sample-size)
+         [;; 2. Initialize.
+          {"$project" {"path"    {"$literal" nil}
+                       "indices" {"$literal" []}
+                       "val"     "$$ROOT"}}]
+         ;; 3. Search
+         (apply concat (repeat dive-depth unwind-stages))
+         ;; 4. Group results
+         [{"$group" {"_id"     {"path"   "$path"
+                                "type"   {"$type" "$val"}
+                                "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
+                     "count"   {"$sum" {"$cond" [{"$eq" [{"$type" "$val"} "null"]} 0 1]}}
+                     "indices" {"$min" "$indices"}}}
+          {"$sort" {"count" -1}}
+          {"$group" {"_id" "$_id.path"
+                     "info" {"$first" {"count"   "$count"
+                                       "type"    "$_id.type"
+                                       "ensure"  "$_id.ensure"
+                                       "indices" "$indices"}}}}
+          {"$sort" {"info.ensure" 1 "info.count"  -1 "_id" 1}}
+          {"$limit" leaf-limit}
+          {"$project" {"_id"     1
+                       "type"    "$info.type"
+                       "indices" "$info.indices"}}
+          {"$project" {"info" 0}}]]))
 
 ;;ok
 (defn- raw-path->ftree-paths

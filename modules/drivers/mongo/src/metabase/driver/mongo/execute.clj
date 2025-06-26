@@ -143,6 +143,16 @@
     (.batchSize 100)
     (.maxTime timeout-ms TimeUnit/MILLISECONDS)))
 
+#_:clj-kondo/ignore
+(defn aggregate-database
+  "In testing"
+  [^MongoDatabase db
+   ^ClientSession session
+   stages timeout-ms]
+  (let [pipe      (ArrayList. ^Collection (mongo.conversion/to-document stages))
+        aggregate (.aggregate db session pipe)]
+    (init-aggregate! aggregate timeout-ms)))
+
 (defn- ^:dynamic *aggregate*
   [^MongoDatabase db
    ^String coll
