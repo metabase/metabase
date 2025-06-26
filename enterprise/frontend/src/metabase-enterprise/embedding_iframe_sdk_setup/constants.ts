@@ -1,6 +1,7 @@
 import { GetCodeStep } from "./components/GetCodeStep";
 import { SelectEmbedEntityStep } from "./components/SelectEmbedEntityStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
+import { SelectEmbedOptionsStep } from "./components/SelectEmbedOptionsStep";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
@@ -45,7 +46,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   },
   {
     id: "select-embed-options",
-    component: () => "select embed options placeholder",
+    component: SelectEmbedOptionsStep,
   },
   {
     id: "get-code",
