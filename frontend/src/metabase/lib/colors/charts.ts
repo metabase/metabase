@@ -96,11 +96,13 @@ const getHashBasedMapping = (
 ) => {
   const newMapping: Record<string, string> = {};
   const sortedKeys = [...keys].sort();
+  // If seriesVizSettingsDefaultKeys is provided, we sort it in the same order as keys
+  // to ensure that the hash codes are consistent with the sorted keys.
+  const sortedDefaultKeys = seriesVizSettingsDefaultKeys
+    ? sortedKeys.map((k) => seriesVizSettingsDefaultKeys[keys.indexOf(k)])
+    : undefined;
   const keyHashes = Object.fromEntries(
-    keys.map((k, i) => [
-      k,
-      getHashCode(seriesVizSettingsDefaultKeys?.[i] ?? k),
-    ]),
+    keys.map((k, i) => [k, getHashCode(sortedDefaultKeys?.[i] ?? k)]),
   );
   const unsetKeys = new Set(keys);
   const usedValues = new Set<string>();
@@ -128,7 +130,7 @@ const getHashBasedMapping = (
   // see frontend/src/metabase/lib/colors/groups.ts, getPreferredColor()
   sortedKeys.forEach((key, i) => {
     if (!newMapping[key]) {
-      const value = getPreferredValue(seriesVizSettingsDefaultKeys?.[i] ?? key);
+      const value = getPreferredValue(sortedDefaultKeys?.[i] ?? key);
 
       if (value && !usedValues.has(value)) {
         setValue(key, value);
