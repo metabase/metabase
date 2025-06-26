@@ -18,7 +18,10 @@ import {
 } from "metabase/ui";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
-import { removeDataSource } from "metabase/visualizer/visualizer.slice";
+import {
+  addDataSource,
+  removeDataSource,
+} from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/api";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
@@ -41,6 +44,21 @@ export const DataImporter = ({ className }: { className?: string }) => {
       dispatch(removeDataSource({ source }));
     },
     [dataSources.length, handlers, dispatch],
+  );
+
+  const onResetDataSource = useCallback(
+    (source: VisualizerDataSource) => {
+      if (dataSources.length === 1) {
+        handlers.open();
+      }
+
+      const index = dataSources.findIndex((ds) => ds.id === source.id);
+
+      dispatch(removeDataSource({ source }));
+      dispatch(addDataSource({ id: source.id, index }));
+      handlers.close();
+    },
+    [dataSources, handlers, dispatch],
   );
 
   const {
@@ -135,6 +153,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
               collapsedDataSources={collapsedDataSources}
               toggleDataSource={toggleDataSource}
               onRemoveDataSource={onRemoveDataSource}
+              onResetDataSource={onResetDataSource}
             />
           ) : (
             <Center h="100%" w="100%" mx="auto">

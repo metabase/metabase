@@ -58,7 +58,7 @@ export function DatasetsList({
         event_data: source.id,
       });
 
-      dispatch(addDataSource(source.id));
+      dispatch(addDataSource({ id: source.id }));
       setDataSourceCollapsed(source.id, false);
     },
     [dispatch, setDataSourceCollapsed],
