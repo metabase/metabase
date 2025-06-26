@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { indexBy } from "underscore";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
@@ -12,7 +13,9 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupEmbeddingDataPickerDecisionEndpoints,
   setupLastDownloadFormatEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
@@ -22,6 +25,7 @@ import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Box } from "metabase/ui";
 import {
   createMockCard,
@@ -185,7 +189,8 @@ const setup = async (
       dashcards: indexBy(dashcards, "id"),
     }),
   });
-
+  // Used in simple data picker
+  setupEnterprisePlugins();
   renderWithSDKProviders(
     <Box h="500px">
       <EditableDashboard dashboardId={dashboardId} {...props} />
@@ -339,5 +344,34 @@ describe("EditableDashboard", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Cancel")).toBeInTheDocument();
     expect(screen.getByText("Save")).toBeInTheDocument();
+  });
+
+  it("should allow to create a new question", async () => {
+    await setup();
+    // These endpoints are used in the simple data picker
+    setupCollectionItemsEndpoint({
+      collection: createMockCollection(ROOT_COLLECTION),
+      collectionItems: [],
+    });
+    setupEmbeddingDataPickerDecisionEndpoints("flat");
+    setupSearchEndpoints([]);
+
+    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+
+    await userEvent.click(
+      within(screen.getByTestId("dashboard-header")).getByLabelText(
+        "Edit dashboard",
+      ),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add questions" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "New Question" }));
+
+    // We should render the simple data picker at this point
+    expect(screen.queryByTestId("dashboard-header")).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Pick your starting data" }),
+    ).toBeInTheDocument();
   });
 });
