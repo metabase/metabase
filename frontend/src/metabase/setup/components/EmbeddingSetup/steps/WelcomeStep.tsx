@@ -4,11 +4,8 @@ import { t } from "ttag";
 import { Box, Button, List, Space, Text, Title } from "metabase/ui";
 
 import type { StepProps } from "../steps/embeddingSetupSteps";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const WelcomeStep = ({ nextStep }: StepProps) => {
-  useForceLocaleRefresh();
-
   return (
     <Box p="2xl" style={{ borderRadius: 16 }} my="xxl" bg="white">
       <Title order={2} mb="lg">

@@ -20,13 +20,10 @@ import {
 import type { Dashboard } from "metabase-types/api";
 
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 import type { StepProps } from "./embeddingSetupSteps";
 
 export const FinalStep = ({ nextStep }: StepProps) => {
-  useForceLocaleRefresh();
-
   const { url: docsUrl } = useDocsUrl("embedding/interactive-embedding");
   const { createdDashboardIds } = useEmbeddingSetup();
 

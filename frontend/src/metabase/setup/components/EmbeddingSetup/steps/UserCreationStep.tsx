@@ -9,11 +9,8 @@ import { submitUser } from "../../../actions";
 import { getIsHosted, getUser } from "../../../selectors";
 import { UserForm } from "../../UserForm";
 import { useEmbeddingSetup } from "../EmbeddingSetupContext";
-import { useForceLocaleRefresh } from "../useForceLocaleRefresh";
 
 export const UserCreationStep = () => {
-  useForceLocaleRefresh();
-
   const { goToNextStep } = useEmbeddingSetup();
 
   const user = useSelector(getUser);
