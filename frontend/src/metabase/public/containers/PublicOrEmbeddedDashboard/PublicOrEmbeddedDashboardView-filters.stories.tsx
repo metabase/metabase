@@ -128,7 +128,6 @@ function ReduxDecorator(Story: StoryFn, context: StoryContext) {
         createProductsCategoryField(),
         createProductsCreatedAtField(),
         createProductsCreatedAtField(),
-        createProductsRatingField(),
       ],
     }),
   });
