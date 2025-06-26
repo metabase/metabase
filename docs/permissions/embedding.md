@@ -1,5 +1,6 @@
 ---
 title: Configuring permissions for embedding
+summary: Learn about which permissions tooling you should use depending on whether your customer data is in one database or split across multiple databases.
 ---
 
 # Configuring permissions for embedding
