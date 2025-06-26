@@ -265,8 +265,8 @@
                           (fn [& args]
                             (swap! invokation-count inc)
                             (apply orig-describe-dataset-fields-reducible args))]
-              (is (>= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
-              (is (>= 20 @invokation-count)))))))))
+              (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
+              (is (<= 20 @invokation-count)))))))))
 
 (deftest sync-views-test
   (mt/test-driver :bigquery-cloud-sdk
