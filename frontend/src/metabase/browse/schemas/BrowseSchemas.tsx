@@ -3,15 +3,14 @@ import { t } from "ttag";
 
 import TableBrowser from "metabase/browse/containers/TableBrowser";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import Card from "metabase/common/components/Card";
-import EntityItem from "metabase/common/components/EntityItem";
-import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
+import { SimpleGrid } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
+import { BrowseCard } from "../components/BrowseCard";
 import {
   BrowseContainer,
   BrowseMain,
@@ -19,8 +18,6 @@ import {
 } from "../components/BrowseContainer.styled";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
 import { BrowseHeaderContent } from "../components/BrowseHeader.styled";
-
-import { SchemaGridItem, SchemaLink } from "./BrowseSchemas.styled";
 
 const BrowseSchemasContainer = ({
   schemas,
@@ -61,27 +58,18 @@ const BrowseSchemasContainer = ({
                   className={cx(CS.full, CS.textCentered, CS.textMedium)}
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
-                <Grid>
+                <SimpleGrid cols={3} w="100%" pt="lg">
                   {schemas.map((schema) => (
-                    <SchemaGridItem key={schema.id}>
-                      <SchemaLink
-                        to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
-                          schema.name,
-                        )}`}
-                      >
-                        <Card hoverable className={CS.px1}>
-                          <EntityItem
-                            name={schema.name}
-                            iconName="folder"
-                            // TODO: Is it necessary to support this color?
-                            // iconColor={color("accent2")}
-                            item={schema}
-                          />
-                        </Card>
-                      </SchemaLink>
-                    </SchemaGridItem>
+                    <BrowseCard
+                      key={schema.id}
+                      title={schema.name}
+                      icon="folder"
+                      to={`/browse/databases/${dbId}/schema/${encodeURIComponent(
+                        schema.name,
+                      )}`}
+                    />
                   ))}
-                </Grid>
+                </SimpleGrid>
               )}
             </>
           )}
