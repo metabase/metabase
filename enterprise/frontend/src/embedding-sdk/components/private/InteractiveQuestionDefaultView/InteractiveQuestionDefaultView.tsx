@@ -88,6 +88,7 @@ export const InteractiveQuestionDefaultView = ({
       openEditor();
     } else if (!isNewQuestion) {
       // When no longer in a notebook editor, switch back to visualization.
+      // When a question is saved, also switch back to visualization.
       closeEditor();
     }
   }, [isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
