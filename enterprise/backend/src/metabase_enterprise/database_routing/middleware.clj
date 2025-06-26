@@ -4,7 +4,6 @@
   execution, and should be THE LAST middleware before we hit the database and query execution actually occurs."
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
-   [metabase.api.common :as api]
    [metabase.database-routing.core :refer [with-database-routing-on]]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]

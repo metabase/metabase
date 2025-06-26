@@ -1,7 +1,6 @@
 (ns metabase-enterprise.database-routing.model
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
-   [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
