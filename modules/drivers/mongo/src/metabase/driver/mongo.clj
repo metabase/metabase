@@ -168,33 +168,15 @@
   1000)
 
 (def ^:private unwind-stages
-  [;; Takes in dcouments of form {"path" ... "val"...}. If the val contains object, expands it to "kvs" array of form
-   ;; [[key value]...], else nil.
-   {"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]}
-                                  {"$objectToArray" "$val"}
-                                  nil]}}}
-   ;; Takes in documents of form {"path ... "val" ... "kvs" ...}. _Swaps_ the input document for set of documents
-   ;; each for every kvs element. If the kvs is empty, acts as idenity.
+  [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]} {"$objectToArray" "$val"} nil]}}}
    {"$unwind" {"path" "$kvs" "preserveNullAndEmptyArrays" true "includeArrayIndex" "index"}}
-   ;; Noteworthy: If kvs is empty, acts as identity.
    {"$project" {"path" {"$cond" [{"$and" ["$path" "$kvs.k"]}
                                  {"$concat" ["$path" "." "$kvs.k"]}
-                                 ;; !!!
                                  {"$ifNull" ["$kvs.k" "$path"]}]}
-                "val" #_{"$ifNull" ["$kvs.v" "$val"]}
-                {"$cond" [{"$and" ["$kvs.k"]}
-                          "$kvs.v"
-                          "$val"]}
-                ;; this is super unfortunate
-                "indices" {"$cond" [{"$ne" ["$index" nil]}
-                                    {"$concatArrays" ["$indices" ["$index"]]}
-                                    "$indices"]}}}
-   ;; Following must have separate stage because it is dependent on adjusted path -- this does not need to be here!!!!
-   ;; WIP trying ensure in the groupping
-   ])
+                "val" {"$cond" ["$kvs.k" "$kvs.v" "$val"]}
+                "indices" {"$cond" ["$index" {"$concatArrays" ["$indices" ["$index"]]} "$indices"]}}}])
 
 (defn- describe-table-pipeline
-  "id always present? as contained in every document, should sort also by name!!! TODO: ensure key!!!"
   [& {:keys [collection-name sample-size dive-depth leaf-limit]}]
   (let [start-n       (quot sample-size 2)
         end-n         (- sample-size start-n)]
@@ -207,34 +189,28 @@
              {"coll" collection-name
               "pipeline" [{"$sort" {"_id" -1}}
                           {"$limit" end-n}]}}
-            ;; TODO: path may be redundant
-            {"$project" {"path" {"$literal" nil}
+            {"$project" {"path"    {"$literal" nil}
                          "indices" {"$literal" []}
-                         "val" "$$ROOT"}}]
-           ;; Unwind phase: depth first document traversal
-           ;; TODO: add "must be included" into unwind-stages
+                         "val"     "$$ROOT"}}]
+           ;; Unwind phase: depth first document expansion
            (apply concat (repeat dive-depth unwind-stages))
            ;; Results phase
-           ;; TODO: Consider ignoring type with most occurrences. Instead machinery as with nested field columns
-           ;;       should be introduced.
-           [{"$group" {"_id" {"path"   "$path"
-                              "type"   {"$type" "$val"}
-                              "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
-                       "count" {"$count" {}}
+           [{"$group" {"_id"     {"path"   "$path"
+                                  "type"   {"$type" "$val"}
+                                  "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
+                       "count"   {"$sum" {"$cond" [{"$eq" [{"$type" "$val"} "null"]} 0 1]}}
                        "indices" {"$min" "$indices"}}}
-            ;; Precondition is that ensure 1 and ensure 0 fields are disctinct
-            ;; Output: leafs
             {"$group" {"_id"  "$_id.path"
                        "info" {"$top" {"sortBy" {"count" -1}
-                                       "output" {"count" "$count"
-                                                 "type" "$_id.type"
-                                                 "ensure" "$_id.ensure"
+                                       "output" {"count"   "$count"
+                                                 "type"    "$_id.type"
+                                                 "ensure"  "$_id.ensure"
                                                  "indices" "$indices"}}}}}
-            ;; I can project ensure here, not in the groupping
-            ;; Sorting by _id ensures _id is present: not 100%, eg. all other fields named __xix
-            {"$sort" {"info.ensure" 1 "info.count" -1 "_id" 1}}
+            {"$sort" {"info.ensure" 1 "info.count"  -1}}
             {"$limit" leaf-limit}
-            {"$project" {"_id" 1 "type" "$info.type" "indices" "$info.indices"}}
+            {"$project" {"_id"     1
+                         "type"    "$info.type"
+                         "indices" "$info.indices"}}
             {"$project" {"info" 0}}]])))
 
 ;;ok
