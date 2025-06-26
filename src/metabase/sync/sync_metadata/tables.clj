@@ -4,6 +4,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.analytics.core :as analytics]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -119,6 +120,7 @@
   "Creates a new table in the database, ready to be synced.
    Throws an exception if there is already a table with the same name, schema and database ID."
   [database table]
+  (analytics/inc! :metabase-sync/table-sync {:op :create})
   (t2/insert-returning-instance!
    :model/Table
    (merge (cruft-dependent-cols table database ::create)
@@ -141,6 +143,7 @@
                                          :active false)]
     (let [table (t2/select-one :model/Table existing-id)]
       ;; if the table already exists but is marked *inactive*, mark it as *active*
+      (analytics/inc! :metabase-sync/table-sync {:op :reactivate})
       (t2/update! :model/Table existing-id (cond-> (cruft-dependent-cols table database ::reactivate)
 
                                              ;; do not unhide tables w/ cruft settings
@@ -174,6 +177,7 @@
             (for [table old-tables]
               (sync-util/name-for-logging (mi/instance :model/Table table))))
   (doseq [{schema :schema table-name :name :as _table} old-tables]
+    (analytics/inc! :metabase-sync/table-sync {:op :retire})
     (t2/update! :model/Table {:db_id  (u/the-id database)
                               :schema schema
                               :name   table-name
@@ -215,6 +219,7 @@
                  (get metabase-table k)
                  v))
     (when (seq changes)
+      (analytics/inc! :metabase-sync/table-sync {:op :update})
       (t2/update! :model/Table (:id metabase-table) changes))))
 
 (mu/defn- update-tables-metadata-if-needed!
