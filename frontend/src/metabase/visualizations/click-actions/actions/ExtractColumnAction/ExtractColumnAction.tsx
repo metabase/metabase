@@ -22,13 +22,14 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
   );
 
   const { isEditable } = Lib.queryDisplayInfo(query);
+  const availableColumns = Lib.expressionableColumns(query, stageIndex);
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    !hasExtractions(query, stageIndex)
+    !hasExtractions(query, availableColumns)
   ) {
     return [];
   }
@@ -66,7 +67,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
         <ExtractColumn
           query={query}
           stageIndex={stageIndex}
-          availableColumns={Lib.expressionableColumns(query, stageIndex)}
+          availableColumns={availableColumns}
           onSubmit={handleSubmit}
           onCancel={onClose}
         />
