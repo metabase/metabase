@@ -261,6 +261,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     });
   }, [cols, settings, getCellClickedObject, tc]);
 
+  const datasetData = series[0]?.data || data;
   const {
     rowActions,
     selectedRowAction,
@@ -268,7 +269,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     onRowActionFormClose,
   } = PLUGIN_TABLE_ACTIONS.useDataGridRowActions({
     actionSettings: settings[TABLE_ACTIONS_SETTING],
-    datasetData: data,
+    datasetData,
   });
 
   const handleBodyCellClick = useCallback(
