@@ -41,8 +41,9 @@ services:
     image: maildev/maildev:latest
     ports:
       - "1081:1081"
-      - "456:456"
+      - "465:465"
     environment:
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
       MAILDEV_WEB_PORT: 1081
       MAILDEV_SMTP_PORT: 465
       MAILDEV_INCOMING_SECURE: true
