@@ -616,7 +616,7 @@
         lib.remove-replace/normalize-fields-clauses)))
 
 (defn- remove-matching-ref [column refs]
-  (let [match (or (lib.equality/find-matching-ref column refs)
+  (let [match (or (lib.equality/find-matching-ref column refs {:match-type ::lib.equality/match-type.same-stage})
                   (log/warnf "Failed to find match for column\n%s\nin refs:\n%s"
                              (u/pprint-to-str column)
                              (u/pprint-to-str refs)))]

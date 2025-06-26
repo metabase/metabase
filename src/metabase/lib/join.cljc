@@ -951,7 +951,7 @@
           ([result input]
            (as-> input col
              (with-join-alias col join-alias)
-             (assoc col :source-alias join-alias)
+             (assoc col :source-alias join-alias) ; TODO (Cam 6/25/25) -- remove `:source-alias` since it is busted
              (add-source-and-desired-aliases a-join unique-name-fn col)
              (xf result col))))))))
 

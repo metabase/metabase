@@ -8,11 +8,13 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
    [metabase.lib.field.util :as lib.field.util]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -2076,3 +2078,59 @@
               (comp (map #(lib/display-info query %))
                     (map (juxt :display-name :selected)))
               (lib/fieldable-columns query)))))))
+
+(deftest ^:parallel remove-field-from-join-against-saved-question-test
+  (let [a       {:type :native, :database (meta/id), :native {:query "select ID, PRODUCT_ID, TOTAL from orders"}}
+        a-cols  (for [col (lib/returned-columns (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                                    (lib/with-fields [(meta/field-metadata :orders :id)
+                                                                      (meta/field-metadata :orders :product-id)
+                                                                      (meta/field-metadata :orders :total)])))]
+                  (-> col
+                      (dissoc :id :table-id)
+                      (assoc :lib/source :source/native)))
+        b       {:type :native, :database (meta/id), :native {:query "select * from products"}}
+        b-cols  (for [col (lib/returned-columns (lib/query meta/metadata-provider (meta/table-metadata :products)))]
+                  (-> col
+                      (dissoc :id :table-id)
+                      (assoc :lib/source :source/native)))
+        mp      (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id 1, :name "question a", :dataset-query a, :result-metadata a-cols}
+                          {:id 2, :name "question b", :dataset-query b, :result-metadata b-cols}]})
+        query   (-> (lib/query mp (lib.metadata/card mp 1))
+                    (as-> query (lib/join query (let [joinable (lib.metadata/card mp 2)
+                                                      lhs      (lib.tu.notebook/find-col-with-spec
+                                                                query
+                                                                (lib.join/join-condition-lhs-columns query joinable nil nil)
+                                                                {:name "question a"}
+                                                                {:name "PRODUCT_ID"})
+                                                      rhs      (lib.tu.notebook/find-col-with-spec
+                                                                query
+                                                                (lib.join/join-condition-rhs-columns query joinable lhs nil)
+                                                                {:name "question b"}
+                                                                {:name "ID"})]
+                                                  (lib/join-clause joinable [(lib/= lhs rhs)])))))
+        join    (first (:joins (lib.util/query-stage query -1)))
+        b-title (lib.tu.notebook/find-col-with-spec
+                 query
+                 (lib.join/joinable-columns query -1 join)
+                 {}
+                 {:name "TITLE"})]
+    (is (=? {:metabase.lib.join/join-alias "question b - Product"
+             :name                         "TITLE"}
+            b-title))
+    (testing "Sanity check: lib.equality should be able to find match for column"
+      (let [refs (map lib.ref/ref (lib.join/joinable-columns query -1 join))]
+        (testing (lib.util/format "column = %s\nrefs =\n%s" (u/pprint-to-str b-title) (u/pprint-to-str refs))
+          (is (=? [:field {:join-alias "question b - Product"} "TITLE"]
+                  (m/find-first #(= (last %) "TITLE")
+                                refs))
+              "expected ref should be present")
+          (is (=? [:field {:join-alias "question b - Product"} "TITLE"]
+                  (lib.equality/find-matching-ref b-title refs {:match-type ::lib.equality/match-type.same-stage}))
+              "should find match"))))
+    (is (=? {:stages [{:joins [{:alias  "question b - Product"
+                                :fields (for [col   (map :name b-cols)
+                                              :when (not= col "TITLE")]
+                                          [:field {} col])}]}]}
+            (lib.field/remove-field query -1 b-title)))))

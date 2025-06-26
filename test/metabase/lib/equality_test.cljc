@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
+   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
@@ -816,7 +817,7 @@
                                              "count"]]
                                  :filters  [[:> {:lib/uuid "00000000-0000-0000-0000-000000000005"}
                                              [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000007"}
-                                             "count"] 0]]}]}]
+                                              "count"] 0]]}]}]
       (is (=? [{:display-name "Created At: Month"}
                {:display-name "Count"}]
               (lib/returned-columns query)))
@@ -841,3 +842,42 @@
                    -1
                    (lib/visible-columns query)
                    (lib/returned-columns query)))))))))
+
+(deftest ^:parallel find-matching-ref-join-test
+  (testing "Support same-stage matching for columns and refs from a join"
+    (let [col  {:base-type                    :type/Text
+                :display-name                 "Title"
+                :effective-type               :type/Text
+                :lib/deduplicated-name        "TITLE"
+                :lib/desired-column-alias     "question b - Product__TITLE"
+                :lib/original-name            "TITLE"
+                :lib/source                   :source/joins
+                :lib/source-column-alias      "TITLE"
+                :lib/type                     :metadata/column
+                :metabase.lib.join/join-alias "question b - Product"
+                :name                         "TITLE"}
+          refs [[:field
+                 {:lib/uuid       "435541d8-8c9e-4a95-ac12-0e4c246ca797"
+                  :effective-type :type/BigInteger
+                  :base-type      :type/BigInteger
+                  :join-alias     "question b - Product"}
+                 "ID"]
+                [:field
+                 {:lib/uuid       "e4503910-efdf-49b9-b49b-d0590bb54435"
+                  :effective-type :type/Text
+                  :base-type      :type/Text
+                  :join-alias     "question b - Product"}
+                 "EAN"]
+                [:field
+                 {:lib/uuid       "ad7a6309-c8b8-4213-bcab-ab9c8e40517b"
+                  :effective-type :type/Text
+                  :base-type      :type/Text
+                  :join-alias     "question b - Product"}
+                 "TITLE"]]]
+      (is (= [:field
+              {:lib/uuid       "ad7a6309-c8b8-4213-bcab-ab9c8e40517b"
+               :effective-type :type/Text
+               :base-type      :type/Text
+               :join-alias     "question b - Product"}
+              "TITLE"]
+             (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage}))))))
