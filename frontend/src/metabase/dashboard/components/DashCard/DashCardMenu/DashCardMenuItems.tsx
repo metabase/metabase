@@ -59,7 +59,7 @@ export const DashCardMenuItems = ({
     if (onEditVisualization) {
       items.push({
         key: "MB_EDIT_VISUALIZER_QUESTION",
-        iconName: "pencil",
+        iconName: "lineandbar",
         label: t`Edit visualization`,
         onClick: onEditVisualization,
       });

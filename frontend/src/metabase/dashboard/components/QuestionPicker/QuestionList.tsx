@@ -167,7 +167,7 @@ export function QuestionList({
                   setVisualizerModalCardId(Number(item.id));
                 }}
               >
-                <Icon name="add_data" />
+                <Icon name="lineandbar" />
               </ActionIcon>
             </Tooltip>
           </Flex>

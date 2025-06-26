@@ -8,6 +8,7 @@ import {
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
+import { utf8_to_b64 } from "metabase/lib/encoding";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
@@ -195,9 +196,7 @@ export const getVisualizationSvgDataUri = (
   }
 
   const svgString = new XMLSerializer().serializeToString(element);
-  const utf8Bytes = new TextEncoder().encode(svgString);
-  const binaryString = String.fromCharCode(...utf8Bytes);
-  return `data:image/svg+xml;base64,${window.btoa(binaryString)}`;
+  return `data:image/svg+xml;base64,${utf8_to_b64(svgString)}`;
 };
 
 export const getChartSelector = (
