@@ -2,5 +2,16 @@
   "base": {
     "name": "master",
     "hash": "3d9ec072e4785c5187d4663462c04cb8c8132a3f"
+  },
+  "upstream": {
+    "branch": "emb-567-sdk-changing-from-new-question-to-a-native-question-crashes"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60161,
+        "gqlID": "PR_kwDOAczgH86cSShR"
+      }
+    }
   }
 }
