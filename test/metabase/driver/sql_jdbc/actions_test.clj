@@ -76,6 +76,12 @@
      ["rasta"     2]
      ["lucky"     1]]]])
 
+(mt/defdataset action-nullable
+  [["thought"
+    [{:field-name "name" :base-type :type/Text :not-null? false}]
+    [["hungry"]
+     ["happy"]]]])
+
 (defn perform-action-ex-data
   "Calls [[actions/perform-action!]] and returns the `ex-data` of exception.
   Used to test error message when executing implicit action for SQL DBs."
@@ -376,6 +382,21 @@
                        {:database (mt/id)
                         :table-id (mt/id :group)
                         :row      {group-id-col created-group-id}}))))))))))
+
+(deftest create-all-nil-test
+  (testing "table.row/create with no optional fields provided"
+    (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+      (actions.tu/with-actions-temp-db action-nullable
+        (mt/with-actions-enabled
+          (testing "creates new row with no populated columns"
+            (let [result (actions/perform-action-with-single-input-and-output
+                          :table.row/create
+                          {:table-id (mt/id :thought)
+                           :row      {}})]
+              (is (=? {:op       :created
+                       :table-id (mt/id :thought)
+                       :row      {"name" nil}}
+                      result)))))))))
 
 (deftest create-or-update-action-test
   (testing "table.row/create-or-update action"
