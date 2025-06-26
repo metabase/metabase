@@ -57,9 +57,11 @@ export function getVisualizationTheme({
       },
       splitLine: {
         lineStyle: {
-          color: isNightMode
-            ? "var(--mb-color-border-alpha-30)"
-            : cartesian.splitLine.lineStyle.color,
+          color: isStaticViz
+            ? color("border")
+            : isNightMode
+              ? "var(--mb-color-border-alpha-30)"
+              : cartesian.splitLine.lineStyle.color,
         },
       },
     },
