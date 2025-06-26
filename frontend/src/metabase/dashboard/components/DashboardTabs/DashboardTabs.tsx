@@ -1,4 +1,3 @@
-import cx from "classnames";
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
@@ -15,7 +14,7 @@ import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";
 
 export function DashboardTabs() {
-  const { isEditing = false, isNightMode } = useDashboardContext();
+  const { isEditing = false } = useDashboardContext();
 
   const {
     tabs,
@@ -68,14 +67,7 @@ export function DashboardTabs() {
   }
 
   return (
-    <Flex
-      align="start"
-      gap="lg"
-      w="100%"
-      className={cx(S.dashboardTabs, {
-        [S.isNightMode]: isNightMode,
-      })}
-    >
+    <Flex align="start" gap="lg" w="100%" className={S.dashboardTabs}>
       <TabRow<SelectedTabId>
         value={selectedTabId}
         onChange={selectTab}

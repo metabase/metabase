@@ -20,15 +20,17 @@
   position: relative;
   z-index: 2;
   background-color: var(--mb-color-background);
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 2px solid var(--mb-color-border);
+  transition: var(--transition-theme-change);
 
   &.isFullscreen {
     background-color: transparent;
-    border: none;
   }
 
   &.isNightMode {
     color: var(--mb-color-text-white);
+
+    --mb-color-border: var(--mb-color-text-medium);
   }
 }
 
