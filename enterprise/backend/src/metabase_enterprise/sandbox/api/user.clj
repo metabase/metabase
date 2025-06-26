@@ -31,8 +31,8 @@
 (def ^:private max-login-attributes 5000)
 
 (api.macros/defendpoint :get "/attributes"
-  "Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
-  existing Users and returns those. "
+  "Fetch a list of possible keys for User `login_attributes`. This includes keys from tenant model
+  attributes and keys that have already been set for existing Users."
   []
   (into (tenants/login-attribute-keys)
         (comp
