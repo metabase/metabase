@@ -11,7 +11,11 @@ import {
   type FilterColumnPickerProps,
 } from "./FilterColumnPicker";
 import { FilterPickerBody } from "./FilterPickerBody";
-import type { ColumnListItem, SegmentListItem } from "./types";
+import type {
+  ColumnListItem,
+  ExpressionClauseItem,
+  SegmentListItem,
+} from "./types";
 
 export type FilterPickerProps = {
   className?: string;
@@ -85,9 +89,11 @@ export function FilterPicker({
   };
 
   const checkItemIsSelected = useCallback(
-    (item: ColumnListItem | SegmentListItem) => {
+    (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
       return Boolean(
-        filterIndex != null && item.filterPositions?.includes?.(filterIndex),
+        filterIndex != null &&
+          "filterPositions" in item &&
+          item.filterPositions?.includes?.(filterIndex),
       );
     },
     [filterIndex],

@@ -20,22 +20,15 @@ import {
 } from "metabase-lib/v1/expressions";
 
 import { WIDTH } from "../constants";
-import type { ColumnListItem, SegmentListItem } from "../types";
+import type {
+  ColumnListItem,
+  ExpressionClauseItem,
+  SegmentListItem,
+} from "../types";
 
 import S from "./FilterColumnPicker.module.css";
 
-type ExpressionClauseItem = {
-  type: "expression-clause";
-  clause: DefinedClauseName;
-  displayName: string;
-};
-
-type Item =
-  | ColumnListItem
-  | (SegmentListItem & {
-      combinedDisplayName?: string;
-    })
-  | ExpressionClauseItem;
+type Item = ColumnListItem | SegmentListItem | ExpressionClauseItem;
 
 type Section = BaseSection<Item> & {
   key?: string;
