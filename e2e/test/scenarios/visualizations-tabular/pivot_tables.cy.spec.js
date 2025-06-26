@@ -131,8 +131,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     assertOnPivotSettings();
 
     // Drag the second aggregate (Product category) from table columns to table rows
-    moveDnDKitElement(cy.findAllByTestId("drag-handle").eq(1), {
-      vertical: -100,
+    moveDnDKitElement("drag-handle", {
+      startIndex: 1,
+      dropIndex: 0,
     });
 
     // One field should now be empty

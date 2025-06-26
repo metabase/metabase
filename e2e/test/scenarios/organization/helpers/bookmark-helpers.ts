@@ -43,19 +43,16 @@ export const verifyBookmarksOrder = (expectedOrder: string[]) => {
     });
 };
 
-export const moveBookmark = (
-  name: string,
-  verticalDistance: number,
-  {
-    /** Alias for PUT request endpoint */
-    putAlias = "reorderBookmarks",
-  } = {},
-) => {
-  moveDnDKitElement(
-    navigationSidebar()
-      .findByLabelText(/Bookmarks/)
-      .findByText(name),
-    { vertical: verticalDistance },
-  );
+export const moveBookmark = ({
+  startIndex,
+  dropIndex,
+  /** Alias for PUT request endpoint */
+  putAlias = "reorderBookmarks",
+}: {
+  startIndex: number;
+  dropIndex: number;
+  putAlias?: string;
+}) => {
+  moveDnDKitElement("draggable-sidebar-link", { startIndex, dropIndex });
   cy.wait(`@${putAlias}`);
 };
