@@ -1,4 +1,3 @@
-import { strategies } from "metabase/admin/performance/constants/complex";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { getCollectionPathAsString } from "metabase/collections/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
@@ -10,8 +9,7 @@ import {
 } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import type { CacheableItem } from "../types";
-
+import type { CacheableItem } from "./types";
 import { formatValueForSorting } from "./utils";
 
 const hourlyScheduleStrategy: ScheduleStrategy = {
@@ -143,7 +141,7 @@ describe("StrategyEditorForQuestionsAndDashboards utilities", () => {
   describe("formatValueForSorting", () => {
     beforeAll(() => {
       PLUGIN_CACHING.strategies = {
-        ...strategies,
+        ...PLUGIN_CACHING.strategies,
         ...enterpriseOnlyCachingStrategies,
       };
     });

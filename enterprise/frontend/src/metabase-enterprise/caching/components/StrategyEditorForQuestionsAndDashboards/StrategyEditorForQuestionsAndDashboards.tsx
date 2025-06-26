@@ -20,16 +20,15 @@ import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
 
+import Styles from "./StrategyEditorForQuestionsAndDashboards.module.css";
+import { TableRowForCacheableItem } from "./TableRowForCacheableItem";
+import { getConstants } from "./constants";
 import type {
   CacheableItem,
   DashboardResult,
   QuestionResult,
   UpdateTarget,
-} from "../types";
-
-import Styles from "./StrategyEditorForQuestionsAndDashboards.module.css";
-import { TableRowForCacheableItem } from "./TableRowForCacheableItem";
-import { getConstants } from "./constants";
+} from "./types";
 import { formatValueForSorting } from "./utils";
 
 type CacheableItemResult = DashboardResult | QuestionResult;
@@ -241,7 +240,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
   return (
     <SettingsPageWrapper
       title={t`Caching for dashboards and questions`}
-      description={t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
+      description={t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you've set.`}
     >
       <Stack
         gap="xl"

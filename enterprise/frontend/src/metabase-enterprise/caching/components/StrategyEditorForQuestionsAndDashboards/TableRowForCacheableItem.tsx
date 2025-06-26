@@ -10,10 +10,10 @@ import * as Urls from "metabase/lib/urls";
 import { Box, Button, FixedSizeIcon, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 
-import type { CacheableItem, UpdateTarget } from "../types";
 import { getItemUrl } from "../utils";
 
 import StrategyEditorForQuestionsAndDashboardsS from "./StrategyEditorForQuestionsAndDashboards.module.css";
+import type { CacheableItem, UpdateTarget } from "./types";
 
 export const TableRowForCacheableItem = ({
   item,

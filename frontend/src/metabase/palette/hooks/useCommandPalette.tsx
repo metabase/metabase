@@ -5,7 +5,7 @@ import { useDebounce } from "react-use";
 import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
+import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/performanceTabMetadata";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";

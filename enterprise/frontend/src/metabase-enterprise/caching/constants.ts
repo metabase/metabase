@@ -1,10 +1,8 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import {
-  getPerformanceTabMetadata,
-  getPositiveIntegerSchema,
-} from "metabase/admin/performance/constants/complex";
+import { getPerformanceTabMetadata } from "metabase/admin/performance/constants/pluginExports";
+import { getPositiveIntegerSchema } from "metabase/admin/performance/constants/validationSchemas";
 import {
   PerformanceTabId,
   type StrategyData,

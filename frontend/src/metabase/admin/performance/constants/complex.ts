@@ -1,40 +1,8 @@
-import { t } from "ttag";
 import * as Yup from "yup";
 
-import type { CacheableModel } from "metabase-types/api";
-import type { AdminPath } from "metabase-types/store";
-
-import { PerformanceTabId, type StrategyData } from "../types";
 import { getStrategyValidationSchema, isValidStrategyName } from "../utils";
 
-import { defaultMinDurationMs } from "./simple";
-
-/** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
-export const getPositiveIntegerSchema = () =>
-  Yup.number()
-    .positive(t`Enter a positive number.`)
-    .integer(t`Enter an integer.`);
-
-export const inheritStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["inherit"]),
-});
-
-export const doNotCacheStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["nocache"]),
-});
-
-/** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
-export const getAdaptiveStrategyValidationSchema = () => {
-  const positiveInteger = getPositiveIntegerSchema();
-  return Yup.object({
-    type: Yup.string().equals(["ttl"]),
-    min_duration_ms: positiveInteger.default(defaultMinDurationMs),
-    min_duration_seconds: positiveInteger.default(
-      Math.ceil(defaultMinDurationMs / 1000),
-    ),
-    multiplier: positiveInteger.default(10),
-  });
-};
+import { strategies } from "./strategies";
 
 export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
@@ -69,52 +37,3 @@ export const strategyValidationSchema = Yup.object().test(
     }
   },
 ) as Yup.AnySchema;
-
-export const strategies = {
-  inherit: {
-    label: (model?: CacheableModel) => {
-      switch (model) {
-        case "dashboard":
-          return t`Use default: each question will use its own policy or the database policy`;
-        case "question":
-          return t`Use default: use the database or dashboard policy`;
-        default:
-          return t`Use default`;
-      }
-    },
-    // NOTE: We use functions for labels because otherwise t doesn't work properly
-    shortLabel: () => t`Use default`,
-    validationSchema: inheritStrategyValidationSchema,
-  },
-  // NOTE: The strategy is called 'ttl' in the BE, but we've renamed it 'Adaptive' in the FE
-  ttl: {
-    label: () =>
-      t`Adaptive: use a query’s average execution time to determine how long to cache its results`,
-    shortLabel: () => t`Adaptive`,
-    validationSchema: getAdaptiveStrategyValidationSchema,
-  },
-  nocache: {
-    label: () => t`Don’t cache results`,
-    shortLabel: () => t`No caching`,
-    validationSchema: doNotCacheStrategyValidationSchema,
-  },
-} as Record<string, StrategyData>;
-
-export const getPerformanceTabMetadata = () =>
-  [
-    {
-      name: t`Database caching`,
-      path: "/admin/performance/databases",
-      key: "performance-databases",
-      tabId: PerformanceTabId.Databases,
-    },
-    {
-      name: t`Model persistence`,
-      path: "/admin/performance/models",
-      key: "performance-models",
-      tabId: PerformanceTabId.Models,
-    },
-  ] as (AdminPath & { tabId: string })[];
-
-export const getPerformanceAdminPaths = (metadata: AdminPath[]) =>
-  metadata.map((tab) => ({ ...tab, name: `${t`Performance`} - ${tab.name}` }));

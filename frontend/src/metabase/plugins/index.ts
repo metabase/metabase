@@ -13,7 +13,7 @@ import noResultsSource from "assets/img/no_results.svg";
 import {
   getPerformanceTabMetadata,
   strategies,
-} from "metabase/admin/performance/constants/complex";
+} from "metabase/admin/performance/constants/pluginExports";
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {

@@ -4,7 +4,7 @@ import _ from "underscore";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { getCollectionPathAsString } from "metabase/collections/utils";
 
-import type { CacheableItem } from "../types";
+import type { CacheableItem } from "./types";
 
 export const formatValueForSorting = (
   row: CacheableItem,
