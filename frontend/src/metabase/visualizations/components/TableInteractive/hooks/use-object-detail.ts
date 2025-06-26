@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { zoomInRow } from "metabase/query_builder/actions";
+import { zoomInRow } from "metabase/query_builder/actions/zoom";
 import { getRowIndexToPKMap } from "metabase/query_builder/selectors";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";

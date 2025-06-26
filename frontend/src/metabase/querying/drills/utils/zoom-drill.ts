@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { zoomInRow } from "metabase/query_builder/actions";
+import { zoomInRow } from "metabase/query_builder/actions/zoom";
 import type { Drill } from "metabase/visualizations/types/click-actions";
 import type * as Lib from "metabase-lib";
 
