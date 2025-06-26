@@ -59,11 +59,6 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
-(mu/defn join-condition-lhs-or-rhs-column? :- :boolean
-  "Whether this LHS or RHS expression is a `:field` reference."
-  [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
-  (lib.util/field-clause? lhs-or-rhs))
-
 (mu/defn- standard-join-condition? :- :boolean
   "Whether this join condition is a binary condition with two expressions (LHS and RHS), as you'd produce in the
   frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]], and
