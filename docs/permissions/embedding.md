@@ -55,7 +55,7 @@ Here's how the basic sandbox will work:
 
 ### Restricting columns based on tenancy
 
-Let's say your **Insights** column is a premium feature, and Tenant B is the only customer paying to see these **Insights**. 
+Let's say your **Insights** column is a premium feature, and Tenant B is the only customer paying to see these **Insights**.
 
 | Tenant ID | Metrics | Insights                          |
 | --------- | ------- | --------------------------------- |
@@ -75,6 +75,7 @@ To keep A and C from viewing the `Insights` column, you can create a [custom san
    FROM data
    WHERE Tenant_ID = {%raw%} {{ tenant_user_attribute }} {%endraw%}
    ```
+
 5. Save the SQL question as "Customer Metrics".
 6. [Create a custom sandbox](./data-sandboxes.md#types-of-data-sandboxes) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
 
@@ -92,7 +93,7 @@ If each of your customers has their own database, you can use [database routing]
 
 For database routing to work, however, the schemas in each database must be identical.
 
-On top of database routing, you can also use all the other tools Metabase provides, like [data sandboxing](./data-sandboxes.md) and [connection impersonation](./impersonation.md), for more fine-grained control over what individuals can see, even within the same tenants.
+For more fine-grained control over what individuals can see, even within the same tenants, you can also use the other tools Metabase provides, like [data sandboxing](./data-sandboxes.md) and [connection impersonation](./impersonation.md), in combination with database routing.
 
 ## Multiple schemas (one schema per customer)
 
@@ -129,29 +130,28 @@ Say you have a single database with ten different tables, each corresponding to 
 
 2. **Grant table access** by going to **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
 
-   For employees who should only view data, create collections to house those specific questions and dashboards. See [collection permissions](./collections.md).
+   For employees who should only view data and create collections to house those specific questions and dashboards. See [collection permissions](./collections.md).
 
-   Don't grant native SQL editor access — it lets people query tables they shouldn't see.
-   
+   Avoid granting native SQL editor access — it lets people query tables they shouldn't see.
+
    If you scope each group's permissions to a single table, Metabase will hide any new tables you add to the database.
 
-3. **Invite your first user** and add them to the appropriate group. Skip this step if you're using [SSO](../people-and-groups/google-sign-in.md).
+3. **Invite your first user** and add them to the appropriate group. If you're using [SSO](../people-and-groups/google-sign-in.md), you can skip this step.
 
 4. **Repeat the process** for each customer by following steps 1–3.
 
 ### Granting customers native SQL access to their schema
 
-The SQL editor needs unrestricted database access, so the above method would let customers query tables they shouldn't see. If you need native SQL queries:
+If you need native SQL queries:
 
-1. Create a database-level user account for your first customer (not in Metabase). This user should only have access to their specific tables or schema. For Postgres, add a user via psql and grant them permissions only to their tables.
+1. Create a database-level user account for your first customer (in your database, not in Metabase). This db user should only have access to their specific tables or schema. For Postgres for example, you could add a user via psql and only grant them permissions to their tables.
 
 2. In Metabase, [add a connection to your database](../databases/connecting.md) using the database user account you just created.
 
 3. Create a new [group](../people-and-groups/managing.md#groups) in Metabase and grant it access to the new database connection. Since the database user role controls what's visible, you can grant the group **Can view** access to the database and **Query builder and native** access.
 
-   Group members will see all tables that the database user can access. To hide tables later, change permissions in the database itself, not Metabase.
+   Group members will see all tables that the database user can access. To hide tables later, you'll need to change permissions in the database itself, not Metabase.
 
-4. Invite your first user and add them to the appropriate group. Skip this if using [SSO](../people-and-groups/google-sign-in.md).
+4. Invite your first user and add them to the appropriate group. If you're using [SSO](../people-and-groups/google-sign-in.md), you can skip this step.
 
 5. Repeat steps 1–4 for each customer. You'll end up with as many database connections as customers.
-
