@@ -19,7 +19,14 @@ import { isUuid } from "metabase/lib/uuid";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import {
+  Flex,
+  Icon,
+  type IconName,
+  type IconProps,
+  Menu,
+  Title,
+} from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -453,7 +460,12 @@ export function DashCardVisualization({
             height: "100%",
           }}
         >
-          <ChartSkeleton display={display} />
+          <div className={CS.relative} style={{ height: "100%" }}>
+            <ChartSkeleton display={display} />
+            <div className={cx(CS.absolute, CS.bottom, CS.hourglass)}>
+              <Icon name="hourglass" className={CS.flex} />
+            </div>
+          </div>
         </div>
       );
     };
