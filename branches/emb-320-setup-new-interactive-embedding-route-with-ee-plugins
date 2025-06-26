@@ -2,5 +2,11 @@
   "base": {
     "name": "new-iframe-embedding",
     "hash": "5af0a1720b361e754dc2aceec2e66ef15740b905"
-  }
+  },
+  "merged": [
+    {
+      "number": 58390,
+      "gqlID": "PR_kwDOAczgH86XVxrM"
+    }
+  ]
 }

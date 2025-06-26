@@ -17,5 +17,11 @@
         "url": "https://github.com/metabase/metabase/pull/58699#issuecomment-2922279537"
       }
     }
-  }
+  },
+  "merged": [
+    {
+      "number": 58567,
+      "gqlID": "PR_kwDOAczgH86X-GBS"
+    }
+  ]
 }
