@@ -463,7 +463,7 @@
                     :semantic-type                    :type/Name
                     :table-id                         (meta/id :categories)
                     :visibility-type                  :normal
-                    :was-binned                       true
+                    :lib/original-binning             {:strategy :default}
                     :lib/card-id                      1
                     :lib/desired-column-alias         "C__NAME"
                     :lib/original-display-name        "Name"

@@ -229,13 +229,12 @@
                                            (conj :temporal-unit))]
         (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
           (keyword inherited-temporal-unit))))
-    :was-binned
+    :lib/original-binning
     (fn [opts]
-      (let [binning-keys (cond-> (list :was-binned)
+      (let [binning-keys (cond-> (list :lib/original-binning)
                            lib.metadata.calculation/*propagate-binning-and-bucketing*
                            (conj :binning))]
-        (when (some opts binning-keys)
-          true)))
+        (some opts binning-keys)))
     ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
     ;; middleware needs to add extra info to track things that it did (e.g. the
     ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds

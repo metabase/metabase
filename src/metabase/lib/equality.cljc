@@ -206,16 +206,20 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
+(defn- matching-col-with-fn [columns col-fn]
+  (let [matching-columns (filter col-fn columns)]
+    (when (= (count matching-columns) 1)
+      (first matching-columns))))
+
 (mu/defn- disambiguate-matches-find-match-with-same-binning :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a binning value, check if only one column has that same
   binning."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (or (when-let [binning (lib.binning/binning a-ref)]
-        (let [matching-columns (filter #(-> % lib.binning/binning (lib.binning/binning= binning))
-                                       columns)]
-          (when (= (count matching-columns) 1)
-            (first matching-columns))))
+  (or (let [binning (lib.binning/binning a-ref)]
+        (matching-col-with-fn columns #(lib.binning/binning= (lib.binning/binning %) binning)))
+      (when-let [original-binning (:lib/original-binning (lib.options/options a-ref))]
+        (matching-col-with-fn columns #(lib.binning/binning= (:lib/original-binning %) original-binning)))
       (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
 
 (mu/defn- disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
@@ -223,18 +227,10 @@
   unit."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
-  (or (let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)
-            matching-columns (filter (fn [col]
-                                       (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
-                                     columns)]
-        (when (= (count matching-columns) 1)
-          (first matching-columns)))
+  (or (let [bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
+        (matching-col-with-fn columns #(= (lib.temporal-bucket/raw-temporal-bucket %) bucket)))
       (when-let [inherited-bucket (:inherited-temporal-unit (lib.options/options a-ref))]
-        (let [matching-columns (filter (fn [col]
-                                         (= (:inherited-temporal-unit col) inherited-bucket))
-                                       columns)]
-          (when (= (count matching-columns) 1)
-            (first matching-columns))))
+        (matching-col-with-fn columns #(= (:inherited-temporal-unit %) inherited-bucket)))
       (disambiguate-matches-find-match-with-same-binning a-ref columns)))
 
 (mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]

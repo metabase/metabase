@@ -16,7 +16,6 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.expression :as lib.expression]
-   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
@@ -287,15 +286,6 @@
                  field-ref (assoc :field-ref field-ref))))
            cols))))
 
-(mu/defn- deduplicate-names :- [:sequential ::kebab-cased-map]
-  "Needed for legacy FE viz settings purposes for the time being. See
-  https://metaboat.slack.com/archives/C0645JP1W81/p1749070704566229?thread_ts=1748958872.704799&cid=C0645JP1W81
-
-  These should just get `_2` and what not appended to them as needed -- they should not get truncated."
-  [cols :- [:sequential ::kebab-cased-map]]
-  (for [col (lib.field.util/add-deduplicated-names cols)]
-    (assoc col :name (:lib/deduplicated-name col))))
-
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
 ;;; well as [[metabase.lib.field/previous-stage-metadata]] -- find a way to deduplicate these
 (mu/defn- merge-model-metadata :- [:sequential ::kebab-cased-map]
@@ -333,7 +323,6 @@
            (remove-implicit-join-aliases query)
            add-source-alias
            add-legacy-source
-           deduplicate-names
            (add-legacy-field-refs query)
            (merge-model-metadata query)))))
 

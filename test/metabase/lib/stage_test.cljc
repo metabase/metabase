@@ -1,7 +1,7 @@
 (ns metabase.lib.stage-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.join :as lib.join]
@@ -52,12 +52,16 @@
                       (lib/aggregate (lib/* 0.8 (lib/avg (meta/field-metadata :venues :price))))
                       (lib/aggregate (lib/* 0.8 (lib/avg (meta/field-metadata :venues :price)))))]
         (is (=? [{:base-type                :type/Float
+                  :lib/original-name        "expression"
+                  :lib/deduplicated-name    "expression"
                   :name                     "expression"
                   :display-name             "0.8 × Average of Price"
                   :lib/source-column-alias  "expression"
                   :lib/desired-column-alias "expression"}
                  {:base-type                :type/Float
-                  :name                     "expression"
+                  :lib/original-name        "expression"
+                  :lib/deduplicated-name    "expression_2"
+                  :name                     "expression_2"
                   :display-name             "0.8 × Average of Price"
                   :lib/source-column-alias  "expression"
                   :lib/desired-column-alias "expression_2"}]
@@ -177,14 +181,14 @@
                  {:name "ID + 1", :lib/source :source/expressions}
                  {:name "ID + 2", :lib/source :source/expressions}
                  {:id                       (meta/id :categories :id)
-                  :name                     "ID"
+                  :name                     "ID_2"
                   :lib/source               :source/joins
                   :source-alias             "Cat"
                   :display-name             "ID"
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "Cat__ID"}
                  {:id                       (meta/id :categories :name)
-                  :name                     "NAME"
+                  :name                     "NAME_2"
                   :lib/source               :source/joins
                   :source-alias             "Cat"
                   :display-name             "Name"
@@ -390,7 +394,7 @@
               {:name                     "count"
                :lib/source-column-alias  "count"
                :lib/desired-column-alias "count"}
-              {:name                     "CATEGORY"
+              {:name                     "CATEGORY_2"
                :lib/source-column-alias  "P2__CATEGORY"
                ::lib.join/join-alias     "Q2"
                :lib/desired-column-alias "Q2__P2__CATEGORY"}
@@ -644,7 +648,7 @@
                                                            [:field %total {:binning {:strategy :num-bins, :num-bins 50}}]]})}]})
           query (lib/query mp (lib.metadata/card mp 1))]
       (is (=? [{:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 10}}
-               {:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
+               {:name "TOTAL_2", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
                {:name "count"}]
               (lib/returned-columns query -1))))))
 
@@ -683,3 +687,39 @@
             (is (=? {:stages [{:source-card 1
                                :order-by [[:asc {} [:field {} "double-price"]]]}]}
                     (lib/order-by q3 double-price)))))))))
+
+(deftest ^:parallel returned-columns-deduplicate-names-test
+  (testing (str "Apparently the FE uses `:name` from the `display-info` for viz settings and requires this to match the"
+                " one returned by the query processor... make sure we deduplicated them correctly")
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/count))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
+                    (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                    lib/append-stage
+                    (as-> query (let [cols                 (lib/fieldable-columns query)
+                                      created-at-month-col (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Created At: Month"})
+                                      count-col            (lib.tu.notebook/find-col-with-spec query cols {} {:display-name "Count"})]
+                                  (lib/with-fields query [created-at-month-col count-col]))))]
+      (testing "lib/returned-columns should use deduplicated names (like the QP does) for `:name`"
+        (is (=? [{:lib/original-name "CREATED_AT"
+                  :name              "CREATED_AT_2"
+                  :display-name      "Created At: Month"}
+                 {:lib/original-name "count"
+                  :name              "count"
+                  :display-name      "Count"}]
+                (lib/returned-columns query))))
+      (testing "display-info should propagate the deduplicated names"
+        (is (=? [{:name         "CREATED_AT_2"
+                  :display-name "Created At: Month"}
+                 {:name         "count"
+                  :display-name "Count"}]
+                (map #(lib/display-info query %)
+                     (lib/returned-columns query)))))
+      (testing "only make :name == :lib/deduplicated-name for the LAST stage of the query, so we don't break more stuff"
+        (let [query' (lib/append-stage query)]
+          (are [stage-number expected] (= expected
+                                          (map :name (lib/returned-columns query' stage-number (lib.util/query-stage query' stage-number))))
+            -1 ["CREATED_AT_2" "count"]
+            -2 ["CREATED_AT" "count"]
+            ;; first stage, before we added :fields`
+            0  ["CREATED_AT" "CREATED_AT" "count"]))))))

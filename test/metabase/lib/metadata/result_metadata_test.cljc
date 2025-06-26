@@ -131,32 +131,36 @@
 
 (deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning-info`"
-    (is (=? [{:name         "price"
-              :base-type    :type/Number
-              :display-name "Price: 10 bins: Month"
-              :unit         :month
-              :source       :fields
-              :binning-info {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
-              :field-ref    [:field "price" {:base-type     :type/Number
-                                             :temporal-unit :month
-                                             :binning       {:strategy  :num-bins
-                                                             :num-bins  10
-                                                             :bin-width 5
-                                                             :min-value -100
-                                                             :max-value 100}}]
-              :was-binned true}]
+    (is (=? [{:name                 "price"
+              :base-type            :type/Number
+              :display-name         "Price: 10 bins: Month"
+              :unit                 :month
+              :source               :fields
+              :binning-info         {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
+              :field-ref            [:field "price" {:base-type     :type/Number
+                                                     :temporal-unit :month
+                                                     :binning       {:strategy  :num-bins
+                                                                     :num-bins  10
+                                                                     :bin-width 5
+                                                                     :min-value -100
+                                                                     :max-value 100}}]
+              :lib/original-binning {:strategy  :num-bins
+                                     :num-bins  10
+                                     :bin-width 5
+                                     :min-value -100
+                                     :max-value 100}}]
             (column-info
              (lib/query
               meta/metadata-provider
               {:type  :query
                :query {:source-table (meta/id :venues)
-                       :fields [[:field "price" {:base-type     :type/Number
-                                                 :temporal-unit :month
-                                                 :binning       {:strategy  :num-bins
-                                                                 :num-bins  10
-                                                                 :bin-width 5
-                                                                 :min-value -100
-                                                                 :max-value 100}}]]}})
+                       :fields       [[:field "price" {:base-type     :type/Number
+                                                       :temporal-unit :month
+                                                       :binning       {:strategy  :num-bins
+                                                                       :num-bins  10
+                                                                       :bin-width 5
+                                                                       :min-value -100
+                                                                       :max-value 100}}]]}})
              {:columns [:price]})))))
 
 (def child-parent-grandparent-metadata-provider
@@ -973,12 +977,12 @@
                                          {:aggregation [[:count]]
                                           :breakout    [[:field %total {:binning {:strategy :num-bins, :num-bins 10}}]
                                                         [:field %total {:binning {:strategy :num-bins, :num-bins 50}}]]})}]})]
-      (is (=? [{:display-name "Total: 10 bins"
-                :was-binned   true
-                :binning-info {:binning-strategy :num-bins, :strategy :num-bins, :num-bins 10}}
-               {:display-name "Total: 50 bins"
-                :was-binned   true
-                :binning-info {:binning-strategy :num-bins, :strategy :num-bins, :num-bins 50}}
+      (is (=? [{:display-name         "Total: 10 bins"
+                :lib/original-binning {:strategy :num-bins, :num-bins 10}
+                :binning-info         {:binning-strategy :num-bins, :strategy :num-bins, :num-bins 10}}
+               {:display-name         "Total: 50 bins"
+                :lib/original-binning {:strategy :num-bins, :num-bins 50}
+                :binning-info         {:binning-strategy :num-bins, :strategy :num-bins, :num-bins 50}}
                {:display-name "Count"}]
               (-> (lib/query mp (lib.metadata/card mp 1))
                   (lib/aggregate (lib/count))

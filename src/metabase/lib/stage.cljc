@@ -340,7 +340,7 @@
            ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
            ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
            ;; joins
-           (let [;; we don't want to include all visible joined columns, so calculate that separately
+           (let [ ;; we don't want to include all visible joined columns, so calculate that separately
                  source-cols (previous-stage-or-source-visible-columns
                               query stage-number
                               {:include-implicitly-joinable? false
@@ -351,8 +351,15 @@
               (expressions-metadata query stage-number unique-name-fn {:include-late-exprs? true})
               (lib.metadata.calculation/remapped-columns query stage-number source-cols options)
               (lib.join/all-joins-fields-to-add-to-parent-stage query stage-number options))))
-         #_(as-> cols (flow-previous-stage-metadata query stage-number cols options))
-         lib.field.util/add-deduplicated-names))))
+         lib.field.util/add-deduplicated-names
+         ;; we need to update `:name` to be the deduplicated name here, otherwise viz settings will break (see longer
+         ;; explanation in [[metabase.lib.stage-test/returned-columns-deduplicate-names-test]]). Only do this if this
+         ;; is the last stage of the query, just like the QP does! Otherwise we might accidentally break something
+         ;; else that incorrectly relies on the notoriously unreliable `:name` key.
+         (as-> cols (cond->> cols
+                      (lib.util/last-stage? query stage-number)
+                      (map (fn [col]
+                             (assoc col :name (:lib/deduplicated-name col))))))))))
 
 (defmethod lib.metadata.calculation/display-name-method :mbql.stage/native
   [_query _stage-number _stage _style]

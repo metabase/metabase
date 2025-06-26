@@ -842,6 +842,59 @@
                    (lib/visible-columns query)
                    (lib/returned-columns query)))))))))
 
+(deftest ^:parallel mark-selected-columns-works-for-js-use-cases-test-2
+  (testing "Does mark-selected-columns actually work for the uses cases in [[metabase.lib.js/visible-columns*]] now?"
+    (let [query {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :database     (meta/id)
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :source-table (meta/id :orders)
+                                 :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000000"}]]
+                                 :breakout     [[:field {:base-type      :type/Float
+                                                         :binning        {:strategy :num-bins, :num-bins 10}
+                                                         :lib/uuid       "00000000-0000-0000-0000-000000000001"
+                                                         :effective-type :type/Float}
+                                                 (meta/id :orders :total)]
+                                                [:field {:base-type      :type/Float
+                                                         :binning        {:strategy :num-bins, :num-bins 50}
+                                                         :lib/uuid       "00000000-0000-0000-0000-000000000002"
+                                                         :effective-type :type/Float}
+                                                 (meta/id :orders :total)]]}
+                                {:lib/type :mbql.stage/mbql
+                                 :fields   [[:field
+                                             {:base-type :type/Float
+                                              :lib/uuid  "00000000-0000-0000-0000-000000000003"}
+                                             "TOTAL_2"]
+                                            [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000004"}
+                                             "count"]]
+                                 :filters  [[:> {:lib/uuid "00000000-0000-0000-0000-000000000005"}
+                                             [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000007"}
+                                              "count"] 0]]}]}]
+      (is (=? [{:display-name "Total: 50 bins"}
+               {:display-name "Count"}]
+              (lib/returned-columns query)))
+      (is (=? [{:display-name "Total: 10 bins"}
+               {:display-name "Total: 50 bins"}
+               {:display-name "Count"}]
+              (lib/visible-columns query)))
+      (testing `lib.equality/mark-selected-columns
+        (testing "2-arity"
+          (is (=? [{:display-name "Total: 10 bins"}
+                   {:display-name "Total: 50 bins"}
+                   {:display-name "Count"}]
+                  (lib.equality/mark-selected-columns
+                   (lib/visible-columns query)
+                   (lib/returned-columns query)))))
+        (testing "4-arity"
+          (is (=? [{:display-name "Total: 10 bins"}
+                   {:display-name "Total: 50 bins"}
+                   {:display-name "Count"}]
+                  (lib.equality/mark-selected-columns
+                   query
+                   -1
+                   (lib/visible-columns query)
+                   (lib/returned-columns query)))))))))
+
 (deftest ^:parallel find-matching-ref-join-test
   (testing "Support same-stage matching for columns and refs from a join"
     (let [col  {:base-type                    :type/Text

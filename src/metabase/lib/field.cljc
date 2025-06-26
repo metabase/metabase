@@ -366,7 +366,7 @@
       ;; see [[metabase.warehouse-schema.api.table/assoc-field-dimension-options]].
       (for [strat strategies]
         (cond-> strat
-          (or (:was-binned field-metadata) existing) (dissoc :default)
+          (or (:lib/original-binning field-metadata) existing) (dissoc :default)
           (lib.binning/strategy= strat existing) (assoc :selected true))))
     []))
 
@@ -384,7 +384,7 @@
     identity
     [:base-type
      :inherited-temporal-unit
-     :was-binned
+     :lib/original-binning
      ::original-effective-type
      ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
