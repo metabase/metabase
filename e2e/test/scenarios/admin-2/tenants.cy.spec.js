@@ -305,19 +305,19 @@ describe("Tenants - management", () => {
 
     cy.findByPlaceholderText("Choose an attribute").click();
 
-    H.popover().findByText("@tenant.slug").should("not.be.visible");
+    H.popover().findByText("@tenant.slug").should("not.exist");
     cy.visit(
       `/admin/permissions/data/database/${WRITABLE_DB_ID}/impersonated/group/${COLLECTION_GROUP_ID}`,
     );
     cy.findByPlaceholderText("Pick a user attribute").click();
 
-    H.popover().findByText("@tenant.slug").should("not.be.visible");
+    H.popover().findByText("@tenant.slug").should("not.exist");
     cy.visit(
       `/admin/permissions/data/group/${COLLECTION_GROUP_ID}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${STATIC_ORDERS_ID}/segmented`,
     );
 
     cy.findByPlaceholderText("Pick a user attribute").click();
-    H.popover().findByText("@tenant.slug").should("not.be.visible");
+    H.popover().findByText("@tenant.slug").should("not.exist");
 
     cy.request("PUT", "/api/setting/use-tenants", { value: true });
 
