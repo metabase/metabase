@@ -133,6 +133,22 @@
                   :target [:dimension [:field (mt/id :users :last_login) nil]]
                   :value  value}))))))))
 
+(deftest ^:parallel single-date-parameters-test
+  (testing "absolute date parameters"
+    (doseq [[value expected-filter-clause]
+            {"2014-05-10"          [:= [:field (mt/id :users :last_login) {:temporal-unit :day}] "2014-05-10"]
+             "2014-05-10T09:30:00" [:= [:field (mt/id :users :last_login) {:temporal-unit :minute}]
+                                    "2014-05-10T09:30:00"]}]
+      (testing (format "value = %s" (pr-str value))
+        (is (= (expanded-query-with-filter expected-filter-clause)
+               (expand-parameters
+                (query-with-parameters
+                 {:hash   "abc123"
+                  :name   "foo"
+                  :type   :date/single
+                  :target [:dimension [:field (mt/id :users :last_login) nil]]
+                  :value  value}))))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
