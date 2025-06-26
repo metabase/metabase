@@ -7,7 +7,7 @@ import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
 import S from "./TablePicker.module.css";
-import type { TreePath } from "./types";
+import type { ChangeOptions, TreePath } from "./types";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 export function TablePicker({
@@ -15,7 +15,7 @@ export function TablePicker({
   onChange,
 }: {
   value: TreePath;
-  onChange: (path: TreePath) => void;
+  onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -45,7 +45,7 @@ function Tree({
   onChange,
 }: {
   value: TreePath;
-  onChange: (path: TreePath) => void;
+  onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const { databaseId, schemaName } = value;
   const { isExpanded, toggle } = useExpandedState(value);
@@ -74,7 +74,7 @@ function Tree({
       database.value.databaseId !== databaseId
     ) {
       toggle(database.key, true);
-      onChange(database.value);
+      onChange(database.value, { isAutomatic: true });
     }
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
@@ -93,7 +93,7 @@ function Tree({
       const schema = database.children[0];
       if (schema.type === "schema" && schemaName !== schema.value.schemaName) {
         toggle(schema.key, true);
-        onChange(schema.value);
+        onChange(schema.value, { isAutomatic: true });
       }
     }
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);

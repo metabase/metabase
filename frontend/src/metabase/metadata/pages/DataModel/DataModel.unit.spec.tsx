@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { IndexRedirect, Route } from "react-router";
+import { IndexRedirect, Link, Route } from "react-router";
 
 import {
   setupCardDataset,
@@ -17,9 +17,15 @@ import {
   within,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
+import { checkNotNull } from "metabase/lib/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Database } from "metabase-types/api";
-import { createMockSearchResult } from "metabase-types/api/mocks";
+import {
+  createMockDatabase,
+  createMockField,
+  createMockSearchResult,
+  createMockTable,
+} from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_FIELD_VALUES,
   createOrdersDiscountField,
@@ -29,13 +35,13 @@ import {
   createOrdersUserIdField,
   createPeopleTable,
   createProductsTable,
+  createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { DataModel } from "./DataModel";
 import type { ParsedRouteParams } from "./types";
 import { getUrl } from "./utils";
-import { checkNotNull } from "metabase/lib/types";
 
 registerVisualizations();
 
@@ -70,6 +76,21 @@ const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
 });
 
+const PEOPLE_TABLE_MULTI_SCHEMA = createPeopleTable({
+  db_id: 2,
+});
+
+const REVIEWS_TABLE_MULTI_SCHEMA = createReviewsTable({
+  db_id: 2,
+  schema: "PRIVATE",
+});
+
+const SAMPLE_DB_MULTI_SCHEMA = createSampleDatabase({
+  id: 2,
+  name: "Multi schema",
+  tables: [PEOPLE_TABLE_MULTI_SCHEMA, REVIEWS_TABLE_MULTI_SCHEMA],
+});
+
 const ORDERS_TABLE_NO_SCHEMA = createOrdersTable({
   schema: "",
 });
@@ -88,51 +109,96 @@ const SAMPLE_DB_WITH_INITIAL_SYNC_INCOMPLETE = createSampleDatabase({
   tables: [ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE],
 });
 
+const JSON_FIELD_ROOT = createMockField({
+  id: 1,
+  name: "JSON",
+  display_name: "Json",
+});
+
+const JSON_FIELD_NESTED = createMockField({
+  id: 2,
+  name: "version",
+  display_name: "Version",
+  nfc_path: ["JSON", "version"],
+});
+
+const JSON_TABLE = createMockTable({
+  fields: [JSON_FIELD_ROOT, JSON_FIELD_NESTED],
+});
+
+const JSON_DB = createMockDatabase({
+  tables: [JSON_TABLE],
+});
+
 interface SetupOpts {
   databases?: Database[];
+  initialRoute?: string;
   params?: ParsedRouteParams;
+  waitForDatabase?: boolean;
+  waitForTable?: boolean;
 }
+
+const OtherComponent = () => {
+  return (
+    <>
+      <span>Another route</span>
+      <Link to="admin/datamodel">Link to Data Model</Link>
+    </>
+  );
+};
 
 async function setup({
   databases = [SAMPLE_DB],
+  initialRoute,
   params = DEFAULT_ROUTE_PARAMS,
+  waitForDatabase = true,
+  waitForTable = true,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
   setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
 
-  renderWithProviders(
-    <Route path="admin/datamodel">
-      <IndexRedirect to="database" />
-      <Route path="database" component={DataModel} />
-      <Route path="database/:databaseId" component={DataModel} />
-      <Route
-        path="database/:databaseId/schema/:schemaId"
-        component={DataModel}
-      />
-      <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId"
-        component={DataModel}
-      />
-      <Route
-        path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-        component={DataModel}
-      />
-    </Route>,
+  const { history } = renderWithProviders(
+    <>
+      <Route path="notAdmin" component={OtherComponent} />
+      <Route path="admin/datamodel">
+        <IndexRedirect to="database" />
+        <Route path="database" component={DataModel} />
+        <Route path="database/:databaseId" component={DataModel} />
+        <Route
+          path="database/:databaseId/schema/:schemaId"
+          component={DataModel}
+        />
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId"
+          component={DataModel}
+        />
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
+          component={DataModel}
+        />
+      </Route>
+    </>,
     {
       withRouter: true,
-      initialRoute: getUrl(params),
+      initialRoute: initialRoute ?? getUrl(params),
     },
   );
 
-  await waitFor(() => {
-    expect(getTablePickerDatabase(databases[0].name)).toBeInTheDocument();
-  });
-  await waitFor(() => {
-    expect(
-      getTablePickerTable(checkNotNull(databases[0].tables)[0].display_name),
-    ).toBeInTheDocument();
-  });
+  if (waitForDatabase) {
+    await waitFor(() => {
+      expect(getTablePickerDatabase(databases[0].name)).toBeInTheDocument();
+    });
+  }
+
+  if (waitForTable) {
+    await waitFor(() => {
+      const tableName = checkNotNull(databases[0].tables)[0].display_name;
+      expect(getTablePickerTable(tableName)).toBeInTheDocument();
+    });
+  }
+
+  return { history };
 }
 
 describe("DataModel", () => {
@@ -430,6 +496,123 @@ describe("DataModel", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  describe("multi schema database", () => {
+    it("should not select the first schema if there are multiple schemas", async () => {
+      await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA], waitForTable: false });
+
+      expect(
+        getTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
+      ).toBeInTheDocument();
+      expect(
+        getTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        getTablePickerSchema(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("multiple databases", () => {
+    it("should be able to switch databases", async () => {
+      await setup({
+        databases: [SAMPLE_DB, SAMPLE_DB_MULTI_SCHEMA],
+        waitForTable: false,
+      });
+
+      expect(
+        screen.queryByText(ORDERS_TABLE.display_name),
+      ).not.toBeInTheDocument();
+      await userEvent.click(getTablePickerDatabase(SAMPLE_DB.name));
+      expect(
+        getTablePickerTable(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        getTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
+      );
+
+      expect(
+        getTablePickerTable(ORDERS_TABLE.display_name),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        getTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+      );
+      expect(
+        getTablePickerTable(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("no databases", () => {
+    // TODO: https://linear.app/metabase/issue/SEM-459/empty-state-when-there-are-no-databases
+    // eslint-disable-next-line jest/no-disabled-tests
+    it.skip("should display an empty state", async () => {
+      await setup({
+        databases: [],
+        waitForDatabase: false,
+        waitForTable: false,
+      });
+
+      expect(
+        screen.getByText("The page you asked for couldn't be found."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("databases with json fields", () => {
+    it("should display unfolded json fields", async () => {
+      await setup({ databases: [JSON_DB] });
+
+      await userEvent.click(getTablePickerTable(JSON_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+
+      expect(getTableNameInput()).toBeInTheDocument();
+      expect(getTableNameInput()).toHaveValue(JSON_TABLE.display_name);
+
+      expect(
+        getTableSectionFieldNameInput(JSON_FIELD_ROOT.display_name),
+      ).toBeInTheDocument();
+      expect(
+        getTableSectionFieldNameInput(JSON_FIELD_NESTED.display_name),
+      ).toBeInTheDocument();
+
+      // TODO: assert presence of prefix for JSON-unfolded column
+      // TODO: https://linear.app/metabase/issue/SEM-460/show-prefix-for-json-unfolded-columns
+      // const section = screen.getByLabelText(JSON_FIELD_NESTED.name);
+      // expect(within(section).getByText("JSON.version")).toBeInTheDocument();
+    });
+
+    describe("navigation", () => {
+      it("should replace locations in history stack when being routed automatically", async () => {
+        const { history } = await setup({
+          initialRoute: "notAdmin",
+          waitForDatabase: false,
+          waitForTable: false,
+        });
+
+        expect(screen.getByText("Link to Data Model")).toBeInTheDocument();
+        await userEvent.click(
+          screen.getByRole("link", { name: "Link to Data Model" }),
+        );
+
+        await waitForLoaderToBeRemoved();
+        expect(screen.getByText("Sample Database")).toBeInTheDocument();
+
+        history?.goBack();
+
+        await waitFor(() => {
+          expect(
+            screen.getByRole("link", { name: "Link to Data Model" }),
+          ).toBeInTheDocument();
+        });
+      });
+    });
+  });
 });
 
 function getTableSearchInput() {
@@ -443,39 +626,31 @@ function getTableNameInput() {
 /** table picker helpers */
 
 function getTablePickerDatabase(name: string) {
-  const items = screen
-    .getAllByTestId("tree-item")
-    .filter(
-      (element) =>
-        element.getAttribute("data-type") === "database" &&
-        element.textContent?.includes(name),
-    );
-
-  if (items.length !== 1) {
-    throw new Error("Cannot find database in table picker");
-  }
-
-  return items[0];
+  return getTablePickerItem("database", name);
 }
 
 function getTablePickerSchema(name: string) {
-  return screen
-    .getAllByTestId("tree-item")
-    .filter('[data-type="schema"]')
-    .filter(`:contains("${name}")`);
+  return getTablePickerItem("schema", name);
 }
 
 function getTablePickerTable(name: string) {
+  return getTablePickerItem("table", name);
+}
+
+function getTablePickerItem(
+  type: "table" | "schema" | "database",
+  name: string,
+) {
   const items = screen
     .getAllByTestId("tree-item")
     .filter(
       (element) =>
-        element.getAttribute("data-type") === "table" &&
+        element.getAttribute("data-type") === type &&
         element.textContent?.includes(name),
     );
 
   if (items.length !== 1) {
-    throw new Error("Cannot find table in table picker");
+    throw new Error(`Cannot find ${type} in table picker`);
   }
 
   return items[0];

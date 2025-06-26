@@ -80,3 +80,7 @@ type LoadingItem = {
 export type ExpandedState = {
   [key: NodeKey]: boolean;
 };
+
+export interface ChangeOptions {
+  isAutomatic?: boolean;
+}
