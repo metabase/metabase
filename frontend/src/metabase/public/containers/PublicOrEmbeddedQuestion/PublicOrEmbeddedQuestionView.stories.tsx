@@ -2,6 +2,7 @@
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
+import { HttpResponse, http } from "msw";
 import type { ComponentProps } from "react";
 
 import { getStore } from "__support__/entities-store";
@@ -55,6 +56,26 @@ export default {
   ],
   parameters: {
     layout: "fullscreen",
+    msw: {
+      handlers: [
+        http.get(
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+          () =>
+            HttpResponse.json({
+              last_download_format: "csv",
+              last_table_download_format: "csv",
+            }),
+        ),
+        http.put(
+          "/api/user-key-value/namespace/last_download_format/key/download_format_preference",
+          () =>
+            HttpResponse.json({
+              last_download_format: "csv",
+              last_table_download_format: "csv",
+            }),
+        ),
+      ],
+    },
   },
 };
 
