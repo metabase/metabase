@@ -13,7 +13,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("should be able to toggle drill-throughs", () => {
+  it("toggles drill-throughs for dashboards", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
     getEmbedSidebar()
@@ -39,7 +39,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     });
   });
 
-  it("should toggle downloads option for dashboard", () => {
+  it("toggles downloads for dashboard", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
     getEmbedSidebar()
@@ -57,7 +57,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
   });
 
-  it("should toggle title option for dashboards", () => {
+  it("toggles dashboard title for dashboards", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
     getEmbedSidebar()
@@ -75,7 +75,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
   });
 
-  it("should toggle drill-through option for chart", () => {
+  it("toggles drill-through for charts", () => {
     navigateToEmbedOptionsStep({ experience: "chart" });
 
     getEmbedSidebar()
@@ -101,7 +101,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     });
   });
 
-  it("should toggle downloads option for chart", () => {
+  it("toggles downloads for charts", () => {
     navigateToEmbedOptionsStep({ experience: "chart" });
 
     getEmbedSidebar()
@@ -123,7 +123,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       .should("be.visible");
   });
 
-  it("should toggle chart title when drill-through is enabled", () => {
+  it("toggles chart title for charts", () => {
     navigateToEmbedOptionsStep({ experience: "chart" });
 
     cy.log("chart title should be visible by default");
@@ -139,27 +139,31 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     H.getIframeBody().findByText("Orders, Count").should("not.exist");
   });
 
-  it("should toggle save option for exploration", () => {
+  it("toggles save button for exploration", () => {
     navigateToEmbedOptionsStep({ experience: "exploration" });
+
+    H.getIframeBody().within(() => {
+      cy.findByText("Orders").click();
+      cy.findByText("Visualize").click();
+    });
 
     getEmbedSidebar()
       .findByLabelText("Allow users to save new questions")
-      .should("not.be.checked");
+      .should("be.checked");
 
-    cy.log("save button should not be visible by default");
-    H.getIframeBody().findByText("Save").should("not.exist");
+    cy.log("save button should be visible by default");
+    H.getIframeBody().findByText("Save").should("be.visible");
 
-    cy.log("turn on save option");
+    cy.log("turn off save option");
     getEmbedSidebar()
       .findByLabelText("Allow users to save new questions")
       .click()
-      .should("be.checked");
+      .should("not.be.checked");
 
-    cy.log("save button should be visible in exploration preview");
-    H.getIframeBody().findByText("Save").should("be.visible");
+    H.getIframeBody().findByText("Save").should("not.exist");
   });
 
-  it("should display theme color pickers", () => {
+  it("displays theme color pickers", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
