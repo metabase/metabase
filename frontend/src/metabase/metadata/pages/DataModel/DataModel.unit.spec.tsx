@@ -4,10 +4,13 @@ import { IndexRedirect, Link, Route } from "react-router";
 
 import {
   setupCardDataset,
+  setupDatabaseIdFieldsEndpoints,
   setupDatabasesEndpoints,
   setupFieldsValuesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUnauthorizedFieldEndpoint,
+  setupUnauthorizedFieldValuesEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -19,11 +22,18 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
+import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import registerVisualizations from "metabase/visualizations/register";
-import type { Database } from "metabase-types/api";
+import type {
+  Database,
+  Field,
+  GetFieldValuesResponse,
+} from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
+  createMockFieldDimension,
+  createMockFieldValues,
   createMockSearchResult,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -32,9 +42,11 @@ import {
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
+  createOrdersQuantityField,
   createOrdersTable,
   createOrdersUserIdField,
   createPeopleTable,
+  createProductsIdField,
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
@@ -61,17 +73,35 @@ const ORDERS_USER_ID_FIELD = createOrdersUserIdField();
 
 const ORDERS_DISCOUNT_FIELD = createOrdersDiscountField();
 
+const ORDERS_QUANTITY_FIELD = createOrdersQuantityField({
+  dimensions: [
+    createMockFieldDimension({
+      type: "internal",
+      name: "Quantity",
+    }),
+  ],
+  remappings: [
+    [1, "1 remapped"],
+    [2, "2 remapped"],
+  ],
+});
+
 const ORDERS_TABLE = createOrdersTable({
   fields: [
     ORDERS_ID_FIELD,
     ORDERS_PRODUCT_ID_FIELD,
     ORDERS_USER_ID_FIELD,
     ORDERS_DISCOUNT_FIELD,
+    ORDERS_QUANTITY_FIELD,
   ],
   visibility_type: "technical",
 });
 
-const PRODUCTS_TABLE = createProductsTable();
+const PRODUCTS_ID_FIELD = createProductsIdField();
+
+const PRODUCTS_TABLE = createProductsTable({
+  fields: [PRODUCTS_ID_FIELD],
+});
 
 const SAMPLE_DB = createSampleDatabase({
   tables: [ORDERS_TABLE, PRODUCTS_TABLE],
@@ -114,6 +144,7 @@ const JSON_FIELD_ROOT = createMockField({
   id: 1,
   name: "JSON",
   display_name: "Json",
+  base_type: "type/JSON",
 });
 
 const JSON_FIELD_NESTED = createMockField({
@@ -129,12 +160,16 @@ const JSON_TABLE = createMockTable({
 
 const JSON_DB = createMockDatabase({
   tables: [JSON_TABLE],
+  features: ["nested-field-columns"],
 });
 
 interface SetupOpts {
   databases?: Database[];
+  fieldValues?: GetFieldValuesResponse[];
+  hasFieldValuesAccess?: boolean;
   initialRoute?: string;
   params?: ParsedRouteParams;
+  unauthorizedField?: Field;
   waitForDatabase?: boolean;
   waitForTable?: boolean;
 }
@@ -150,14 +185,30 @@ const OtherComponent = () => {
 
 async function setup({
   databases = [SAMPLE_DB],
+  fieldValues = SAMPLE_DB_FIELD_VALUES,
+  hasFieldValuesAccess = true,
   initialRoute,
   params = DEFAULT_ROUTE_PARAMS,
+  unauthorizedField,
   waitForDatabase = true,
   waitForTable = true,
 }: SetupOpts = {}) {
   setupDatabasesEndpoints(databases, { hasSavedQuestions: false });
   setupCardDataset();
-  setupFieldsValuesEndpoints(SAMPLE_DB_FIELD_VALUES);
+
+  if (hasFieldValuesAccess) {
+    setupFieldsValuesEndpoints(fieldValues);
+  }
+
+  if (unauthorizedField) {
+    setupUnauthorizedFieldEndpoint(unauthorizedField, {
+      overwriteRoutes: true,
+    });
+    setupUnauthorizedFieldValuesEndpoints(
+      getRawTableFieldId(unauthorizedField),
+      { overwriteRoutes: true },
+    );
+  }
 
   const { history } = renderWithProviders(
     <>
@@ -187,16 +238,20 @@ async function setup({
   );
 
   if (waitForDatabase) {
-    await waitFor(() => {
-      expect(getTablePickerDatabase(databases[0].name)).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(
+        await findTablePickerDatabase(databases[0].name),
+      ).toBeInTheDocument();
     });
   }
 
   if (waitForTable) {
-    await waitFor(() => {
+    await waitFor(async () => {
       const tableName = checkNotNull(databases[0].tables)[0].display_name;
-      expect(getTablePickerTable(tableName)).toBeInTheDocument();
+      expect(await findTablePickerTable(tableName)).toBeInTheDocument();
     });
+
+    await waitForLoaderToBeRemoved();
   }
 
   return { history };
@@ -221,14 +276,14 @@ describe("DataModel", () => {
     it("should select the first database and skip schema selection by default", async () => {
       setup({ databases: [SAMPLE_DB_NO_SCHEMA] });
 
-      await waitFor(() => {
+      await waitFor(async () => {
         expect(
-          getTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
+          await findTablePickerDatabase(SAMPLE_DB_NO_SCHEMA.name),
         ).toBeInTheDocument();
       });
 
       expect(
-        getTablePickerTable(ORDERS_TABLE_NO_SCHEMA.display_name),
+        await findTablePickerTable(ORDERS_TABLE_NO_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
   });
@@ -238,7 +293,7 @@ describe("DataModel", () => {
       await setup();
 
       expect(
-        getTablePickerTable(ORDERS_TABLE.display_name),
+        await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
       expect(screen.queryByText(ORDERS_TABLE.schema)).not.toBeInTheDocument();
     });
@@ -263,7 +318,7 @@ describe("DataModel", () => {
       await userEvent.type(getTableSearchInput(), searchValue);
 
       expect(
-        getTablePickerTable(ORDERS_TABLE.display_name),
+        await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
       expect(
         screen.queryByText(PRODUCTS_TABLE.display_name),
@@ -273,7 +328,9 @@ describe("DataModel", () => {
     it("should not allow to enter an empty table name", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await userEvent.clear(getTableNameInput());
       await userEvent.tab();
@@ -284,7 +341,9 @@ describe("DataModel", () => {
     it("should not allow to enter an empty field name in table section", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
       await userEvent.clear(
@@ -300,7 +359,9 @@ describe("DataModel", () => {
     it("should not allow to enter an empty field name in field section", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
       await userEvent.clear(getFieldNameInput());
@@ -314,22 +375,26 @@ describe("DataModel", () => {
     it("should display visible tables", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(PRODUCTS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(PRODUCTS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
 
       expect(
-        getHideTableButton(PRODUCTS_TABLE.display_name),
+        await getHideTableButton(PRODUCTS_TABLE.display_name),
       ).toBeInTheDocument();
     });
 
     it("should display hidden tables", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
 
       expect(
-        getUnhideTableButton(ORDERS_TABLE.display_name),
+        await getUnhideTableButton(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
     });
 
@@ -342,7 +407,7 @@ describe("DataModel", () => {
 
       expect(
         within(
-          getTablePickerTable(
+          await findTablePickerTable(
             ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
           ),
         ).queryByRole("button", {
@@ -353,7 +418,7 @@ describe("DataModel", () => {
       // This click should not cause a change, as the table should be disabled
       await expect(
         userEvent.click(
-          getTablePickerTable(
+          await findTablePickerTable(
             ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
           ),
         ),
@@ -367,7 +432,9 @@ describe("DataModel", () => {
     it("should display sort options", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await userEvent.click(screen.getByRole("button", { name: /Sorting/ }));
 
@@ -380,7 +447,9 @@ describe("DataModel", () => {
     it("should display field visibility options", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
@@ -395,7 +464,9 @@ describe("DataModel", () => {
     it("should allow to search for field semantic types", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
@@ -415,7 +486,9 @@ describe("DataModel", () => {
     it("should show the foreign key target for foreign keys", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_PRODUCT_ID_FIELD.display_name);
 
@@ -437,7 +510,9 @@ describe("DataModel", () => {
       await setup();
       setupTableEndpoints(createPeopleTable());
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_USER_ID_FIELD.display_name);
 
@@ -450,7 +525,9 @@ describe("DataModel", () => {
     it("should not show the foreign key target for non-foreign keys", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_ID_FIELD.display_name);
 
@@ -462,7 +539,9 @@ describe("DataModel", () => {
     it("should show currency settings for currency fields", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_DISCOUNT_FIELD.display_name);
 
@@ -486,7 +565,9 @@ describe("DataModel", () => {
     it("should not show currency settings for non-currency fields", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await clickTableSectionField(ORDERS_ID_FIELD.display_name);
 
@@ -503,13 +584,13 @@ describe("DataModel", () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA], waitForTable: false });
 
       expect(
-        getTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
+        await findTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
       ).toBeInTheDocument();
       expect(
-        getTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+        await findTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
       expect(
-        getTablePickerSchema(REVIEWS_TABLE_MULTI_SCHEMA.schema),
+        await findTablePickerSchema(REVIEWS_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
       expect(
         screen.queryByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
@@ -527,24 +608,24 @@ describe("DataModel", () => {
       expect(
         screen.queryByText(ORDERS_TABLE.display_name),
       ).not.toBeInTheDocument();
-      await userEvent.click(getTablePickerDatabase(SAMPLE_DB.name));
+      await userEvent.click(await findTablePickerDatabase(SAMPLE_DB.name));
       expect(
-        getTablePickerTable(ORDERS_TABLE.display_name),
+        await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
 
       await userEvent.click(
-        getTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
+        await findTablePickerDatabase(SAMPLE_DB_MULTI_SCHEMA.name),
       );
 
       expect(
-        getTablePickerTable(ORDERS_TABLE.display_name),
+        await findTablePickerTable(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
 
       await userEvent.click(
-        getTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
+        await findTablePickerSchema(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       );
       expect(
-        getTablePickerTable(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
+        await findTablePickerTable(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
     });
   });
@@ -569,7 +650,9 @@ describe("DataModel", () => {
     it("should display unfolded json fields", async () => {
       await setup({ databases: [JSON_DB] });
 
-      await userEvent.click(getTablePickerTable(JSON_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(JSON_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
 
       expect(getTableNameInput()).toBeInTheDocument();
@@ -619,7 +702,9 @@ describe("DataModel", () => {
     it("should allow to rescan field values", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
         screen.getByRole("button", { name: /Sync options/ }),
@@ -637,7 +722,9 @@ describe("DataModel", () => {
     it("should allow to discard field values", async () => {
       await setup();
 
-      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await userEvent.click(
+        await findTablePickerTable(ORDERS_TABLE.display_name),
+      );
       await waitForLoaderToBeRemoved();
       await userEvent.click(
         screen.getByRole("button", { name: /Sync options/ }),
@@ -654,6 +741,201 @@ describe("DataModel", () => {
       });
     });
   });
+
+  describe("field section", () => {
+    it("should display json unfolding settings for json fields", async () => {
+      await setup({
+        databases: [JSON_DB],
+        params: {
+          databaseId: JSON_DB.id,
+          schemaName: JSON_TABLE.schema,
+          tableId: JSON_TABLE.id,
+          fieldId: getRawTableFieldId(JSON_FIELD_ROOT),
+        },
+      });
+
+      expect(screen.getByText("Unfold JSON")).toBeInTheDocument();
+    });
+
+    it("should not display json unfolding settings for non-json fields", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+        },
+      });
+
+      expect(screen.queryByText("Unfold JSON")).not.toBeInTheDocument();
+    });
+
+    it("should display type casting settings for supported fields", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+        },
+      });
+
+      expect(getFieldCoercionToggle()).toBeInTheDocument();
+      await userEvent.click(getFieldCoercionToggle());
+
+      await userEvent.type(getFieldCoercionInput(), "Micro");
+      expect(
+        screen.getByText("UNIX microseconds → Datetime"),
+      ).toBeInTheDocument();
+    });
+
+    it("should display type casting settings for float fields", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_DISCOUNT_FIELD),
+        },
+      });
+
+      expect(getFieldCoercionToggle()).toBeInTheDocument();
+      await userEvent.click(getFieldCoercionToggle());
+
+      await userEvent.type(getFieldCoercionInput(), "Float");
+      expect(screen.getByText("Float → Integer")).toBeInTheDocument();
+    });
+
+    it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
+      const productsTable = createProductsTable({
+        fields: [
+          /* no PRODUCTS_ID_FIELD */
+        ],
+      });
+
+      const database = createSampleDatabase({
+        tables: [ORDERS_TABLE, productsTable],
+      });
+
+      await setup({
+        databases: [database],
+        params: {
+          databaseId: database.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_PRODUCT_ID_FIELD),
+        },
+        unauthorizedField: PRODUCTS_ID_FIELD,
+      });
+
+      const input = getFieldSemanticTypeFkTargetInput();
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveValue("");
+      expect(input).toHaveAttribute("placeholder", "Field access denied");
+    });
+
+    it("should show custom mapping if has data access", async () => {
+      await setup({
+        fieldValues: [
+          createMockFieldValues({
+            field_id: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+            values: [
+              [1, "1 remapped"],
+              [2, "2 remapped"],
+            ],
+          }),
+        ],
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+        },
+      });
+
+      expect(getFieldDisplayValuesInput()).toHaveValue("Custom mapping");
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Edit mapping" }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+
+      const modal = screen.getByRole("dialog");
+      expect(modal).toHaveTextContent("Custom mapping");
+      expect(within(modal).getByDisplayValue("1 remapped")).toBeInTheDocument();
+      expect(within(modal).getByDisplayValue("2 remapped")).toBeInTheDocument();
+    });
+
+    it("should show an access denied error if is custom mapping without data permissions", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_QUANTITY_FIELD),
+        },
+        hasFieldValuesAccess: false,
+        unauthorizedField: ORDERS_QUANTITY_FIELD,
+      });
+      setupDatabaseIdFieldsEndpoints(SAMPLE_DB, { overwriteRoutes: true });
+
+      expect(screen.getByText("Custom mapping")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "You need unrestricted data access on this table to map custom display values.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("should allow to rescan field values", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+        },
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /Field values/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Re-scan field" }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/field/${ORDERS_ID_FIELD.id}/rescan_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
+    });
+
+    it("should allow to discard field values", async () => {
+      await setup({
+        params: {
+          databaseId: SAMPLE_DB.id,
+          schemaName: ORDERS_TABLE.schema,
+          tableId: ORDERS_TABLE.id,
+          fieldId: getRawTableFieldId(ORDERS_ID_FIELD),
+        },
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /Field values/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Discard cached field values" }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/field/${ORDERS_ID_FIELD.id}/discard_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
+    });
+  });
 });
 
 function getTableSearchInput() {
@@ -666,29 +948,28 @@ function getTableNameInput() {
 
 /** table picker helpers */
 
-function getTablePickerDatabase(name: string) {
-  return getTablePickerItem("database", name);
+async function findTablePickerDatabase(name: string) {
+  return await findTablePickerItem("database", name);
 }
 
-function getTablePickerSchema(name: string) {
-  return getTablePickerItem("schema", name);
+async function findTablePickerSchema(name: string) {
+  return await findTablePickerItem("schema", name);
 }
 
-function getTablePickerTable(name: string) {
-  return getTablePickerItem("table", name);
+async function findTablePickerTable(name: string) {
+  return await findTablePickerItem("table", name);
 }
 
-function getTablePickerItem(
+async function findTablePickerItem(
   type: "table" | "schema" | "database",
   name: string,
 ) {
-  const items = screen
-    .getAllByTestId("tree-item")
-    .filter(
-      (element) =>
-        element.getAttribute("data-type") === type &&
-        element.textContent?.includes(name),
-    );
+  const allItems = await screen.findAllByTestId("tree-item");
+  const items = allItems.filter(
+    (element) =>
+      element.getAttribute("data-type") === type &&
+      element.textContent?.includes(name),
+  );
 
   if (items.length !== 1) {
     throw new Error(`Cannot find ${type} in table picker`);
@@ -697,18 +978,14 @@ function getTablePickerItem(
   return items[0];
 }
 
-function getTablePickerTables() {
-  return screen.getAllByTestId("tree-item").filter('[data-type="table"]');
-}
-
-function getHideTableButton(name: string) {
-  return within(getTablePickerTable(name)).getByRole("button", {
+async function getHideTableButton(name: string) {
+  return within(await findTablePickerTable(name)).getByRole("button", {
     name: "Hide table",
   });
 }
 
-function getUnhideTableButton(name: string) {
-  return within(getTablePickerTable(name)).getByRole("button", {
+async function getUnhideTableButton(name: string) {
+  return within(await findTablePickerTable(name)).getByRole("button", {
     name: "Unhide table",
   });
 }
@@ -719,40 +996,14 @@ function getTableSection() {
   return screen.getByTestId("table-section");
 }
 
-function getTableDescriptionInput() {
-  return getTableSection().getByPlaceholderText(
-    "Give this table a description",
-  );
-}
-
-function getTableSortButton() {
-  return getTableSection().button(/Sorting/);
-}
-
-function getTableSortOrderInput() {
-  return getTableSection().getByLabelText("Column order");
-}
-
 function getTableSectionField(name: string) {
   return within(getTableSection()).getByLabelText(name);
-}
-
-function getTableSectionSortableField(name: string) {
-  return getTableSection().getByLabelText(name);
-}
-
-function getTableSectionSortableFields() {
-  return getTableSection().getAllByRole("listitem");
 }
 
 function getTableSectionFieldNameInput(name: string) {
   return within(getTableSectionField(name)).getByPlaceholderText(
     "Give this field a name",
   );
-}
-
-function getTableSectionFieldDescriptionInput(name: string) {
-  return getTableSectionField(name).getByPlaceholderText("No description yet");
 }
 
 async function clickTableSectionField(name: string) {
@@ -771,32 +1022,20 @@ function getFieldNameInput() {
   );
 }
 
-function getFieldDescriptionInput() {
-  return getFieldSection().getByPlaceholderText(
-    "Give this field a description",
+function getFieldCoercionToggle() {
+  return within(getFieldSection()).getByLabelText(
+    "Cast to a specific data type",
   );
 }
 
-function getFieldDataTypeInput() {
-  return getFieldSection().getByLabelText("Data type");
-}
-
-function getFieldCoercionToggle() {
-  return getFieldSection().getByLabelText("Cast to a specific data type");
-}
-
 function getFieldCoercionInput() {
-  return getFieldSection().getByPlaceholderText("Select data type");
+  return within(getFieldSection()).getByPlaceholderText("Select data type");
 }
 
 function getFieldSemanticTypeInput() {
   return within(getFieldSection()).getByPlaceholderText(
     "Select a semantic type",
   );
-}
-
-function getFieldSemanticTypeCurrenscreenInput() {
-  return getFieldSection().getByPlaceholderText("Select a currenscreen type");
 }
 
 function getFieldSemanticTypeFkTargetInput() {
@@ -809,26 +1048,8 @@ function getFieldVisibilityInput() {
   );
 }
 
-function getFieldFilteringInput() {
-  return getFieldSection().getByPlaceholderText("Select field filtering");
-}
-
 function getFieldDisplayValuesInput() {
-  return getFieldSection().getByPlaceholderText("Select display values");
-}
-
-function getFieldDisplayValuesFkTargetInput() {
-  return getFieldSection().getByPlaceholderText("Choose a field");
-}
-
-function getFieldStyleInput() {
-  return getFieldSection().getByLabelText("Style");
-}
-
-function getFieldPrefixInput() {
-  return getFieldSection().getByTestId("prefix");
-}
-
-function getFieldSuffixInput() {
-  return getFieldSection().getByTestId("suffix");
+  return within(getFieldSection()).getByPlaceholderText(
+    "Select display values",
+  );
 }

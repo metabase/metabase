@@ -1,4 +1,4 @@
-import fetchMock from "fetch-mock";
+import fetchMock, { type MockOptionsMethodGet } from "fetch-mock";
 import _ from "underscore";
 
 import { SAVED_QUESTIONS_DATABASE } from "metabase/databases/constants";
@@ -86,14 +86,17 @@ export const setupSchemaEndpoints = (db: Database) => {
   });
 };
 
-export function setupDatabaseIdFieldsEndpoints({ id, tables = [] }: Database) {
+export function setupDatabaseIdFieldsEndpoints(
+  { id, tables = [] }: Database,
+  options?: MockOptionsMethodGet,
+) {
   const fields = tables.flatMap((table) =>
     (table.fields ?? [])
       .filter((field) => isTypePK(field.semantic_type))
       .map((field) => ({ ...field, table })),
   );
 
-  fetchMock.get(`path:/api/database/${id}/idfields`, fields);
+  fetchMock.get(`path:/api/database/${id}/idfields`, fields, options);
 }
 
 export const setupUnauthorizedSchemaEndpoints = (db: Database) => {
