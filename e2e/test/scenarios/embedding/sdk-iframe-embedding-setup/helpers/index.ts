@@ -50,10 +50,8 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 
 export const navigateToEntitySelectionStep = ({
   experience,
-  resourceName,
 }: {
   experience: "dashboard" | "chart" | "exploration";
-  resourceName?: string;
 }) => {
   visitNewEmbedPage();
 
