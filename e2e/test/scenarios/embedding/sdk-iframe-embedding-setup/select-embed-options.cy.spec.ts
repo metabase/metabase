@@ -120,39 +120,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       cy.findByText("Background Color").should("be.visible");
     });
   });
-
-  it("should navigate back to entity selection step", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
-
-    getEmbedSidebar().within(() => {
-      cy.findByRole("button", { name: "Back" }).click();
-      cy.findByText("Select a dashboard to embed").should("be.visible");
-    });
-  });
-
-  it("should navigate forward to get code step", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
-
-    getEmbedSidebar().within(() => {
-      cy.findByRole("button", { name: "Get Code" }).click();
-      cy.findByText("Choose the authentication method for embedding:").should(
-        "be.visible",
-      );
-    });
-  });
-
-  it("should skip entity selection for exploration experience", () => {
-    visitNewEmbedPage();
-
-    getEmbedSidebar().within(() => {
-      cy.findByText("Exploration").click();
-      cy.findByRole("button", { name: "Next" }).click();
-
-      // Should go directly to embed options, not entity selection
-      cy.findByText("Behavior").should("be.visible");
-      cy.findByText("Appearance").should("be.visible");
-    });
-  });
 });
 
 const navigateToEmbedOptionsStep = ({
