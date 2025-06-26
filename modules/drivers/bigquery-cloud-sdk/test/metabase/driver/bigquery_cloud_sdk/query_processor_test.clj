@@ -32,7 +32,8 @@
 (defn ^:private get-test-data-name
   []
   (bigquery.tx/test-dataset-id
-   (tx/get-dataset-definition data.impl/*dbdef-used-to-create-db*)))
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
 
 (defn- with-test-db-name
   "Replaces instances of v4_test_data with the full per-test-run DB name (aka dataset ID)"

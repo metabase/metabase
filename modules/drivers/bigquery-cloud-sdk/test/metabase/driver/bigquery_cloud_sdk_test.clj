@@ -33,7 +33,8 @@
 (defn ^:private get-test-data-name
   []
   (bigquery.tx/test-dataset-id
-   (tx/get-dataset-definition data.impl/*dbdef-used-to-create-db*)))
+   (tx/get-dataset-definition (or data.impl/*dbdef-used-to-create-db*
+                                  (tx/default-dataset :bigquery-cloud-sdk)))))
 
 (defn- fmt-table-name
   [table-name]
@@ -52,8 +53,8 @@
     :bigquery-cloud-sdk
     (mt/dataset
       test-data
-      (is (some? (mt/rows
-                  (mt/run-mbql-query orders)))))))
+      (is (seq (mt/rows
+                (mt/run-mbql-query orders)))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
