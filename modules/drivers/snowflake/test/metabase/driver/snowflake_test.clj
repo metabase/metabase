@@ -43,6 +43,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.log.capture :as log.capture]
+   [metabase.util.random :as u.random]
    [metabase.warehouses.models.database :as database]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -317,7 +318,7 @@
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
     (mt/test-driver :snowflake
-      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name "Default-Schema-Test"}))
+      (let [details     (assoc (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "Default-Schema-Test-" (u.random/random-name))}))
                                ;; simulate a DB default schema or session schema by including it in the connection
                                ;; details... see
                                ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706219065462619?thread_ts=1706156558.940489&cid=C04DN5VRQM6
@@ -349,7 +350,7 @@
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
-      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name "views_test"}))
+      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "views_test" (u.random/random-name))}))
             db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
