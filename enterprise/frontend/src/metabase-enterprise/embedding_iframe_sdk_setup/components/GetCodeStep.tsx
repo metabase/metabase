@@ -47,11 +47,15 @@ export const GetCodeStep = () => {
             }
           >
             <Stack gap="sm">
-              <Radio value="user-session" label={t`User Session`} />
+              <Radio
+                value="user-session"
+                // eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins.
+                label={t`Existing Metabase Session`}
+              />
 
               <Radio
                 value="sso"
-                label={t`SSO Authentication`}
+                label={t`Single sign-on (SSO)`}
                 disabled={!isAnySsoConfigured}
               />
             </Stack>
@@ -59,13 +63,14 @@ export const GetCodeStep = () => {
 
           {authType === "user-session" && (
             <Text size="sm" c="text-medium">
-              {t`This option uses your existing user session and is only suitable for local development. In production, use SSO authentication with sandboxing to prevent unwanted access.`}
+              {/* eslint-disable-next-line no-literal-metabase-strings -- this string is only shown for admins. */}
+              {t`This option lets you test iframe embedding locally using your existing Metabase session cookie. This only works for testing locally, using your admin account and on this browser.`}
             </Text>
           )}
 
           {authType === "sso" && (
             <Text size="sm" c="text-medium">
-              {t`SSO authentication is automatically configured. This is the recommended approach for production deployments.`}
+              {t`Select this option if you have already set up SSO. This option relies on SSO to sign in your application users into the embedded iframe, and groups and permissions to enforce limits on what users can access. `}
             </Text>
           )}
         </Stack>
