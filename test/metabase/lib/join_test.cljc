@@ -105,7 +105,25 @@
               (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
 
 (deftest ^:parallel join-clause-custom-expression-test
-  (testing "Should set join-alias for all field in a RHS expression"
+  (testing "Should not add a column name to the join alias if there is no column in the LHS expression"
+    (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          products       (meta/table-metadata :products)
+          rhs-columns    (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-id (m/find-first (comp #{"ID"} :name) rhs-columns)]
+      (is (=? {:stages [{:joins [{:alias      "Products"}]}]}
+              (lib/join query (lib/join-clause products [(lib/= (lib/+ 1 1)
+                                                                (lib/- rhs-product-id rhs-product-id))]))))))
+  (testing "Should not add a column name to the join alias if the LHS is a custom expression"
+    (let [query             (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          products          (meta/table-metadata :products)
+          lhs-columns       (lib/join-condition-lhs-columns query products nil nil)
+          lhs-order-tax     (m/find-first (comp #{"TAX"} :name) lhs-columns)
+          rhs-columns       (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-price (m/find-first (comp #{"PRICE"} :name) rhs-columns)]
+      (is (=? {:stages [{:joins [{:alias      "Products"}]}]}
+              (lib/join query (lib/join-clause products [(lib/= (lib/+ lhs-order-tax lhs-order-tax)
+                                                                (lib/- rhs-product-price rhs-product-price))]))))))
+  (testing "Should set join-alias for all fields in a RHS expression"
     (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
           products       (meta/table-metadata :products)
           lhs-columns    (lib/join-condition-lhs-columns query products nil nil)
@@ -124,14 +142,6 @@
                                                  [:field {:join-alias "Products"} (meta/id :products :id)]
                                                  [:field {:join-alias "Products"} (meta/id :products :id)]]]]}]}]}
               (lib/join query (lib/join-clause products [(lib/= (lib/+ lhs-order-id lhs-order-id)
-                                                                (lib/- rhs-product-id rhs-product-id))]))))))
-  (testing "Should not add a column name to the join alias if there is no column in the LHS expression"
-    (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
-          products       (meta/table-metadata :products)
-          rhs-columns    (lib/join-condition-rhs-columns query products nil nil)
-          rhs-product-id (m/find-first (comp #{"ID"} :name) rhs-columns)]
-      (is (=? {:stages [{:joins [{:alias      "Products"}]}]}
-              (lib/join query (lib/join-clause products [(lib/= (lib/+ 1 1)
                                                                 (lib/- rhs-product-id rhs-product-id))])))))))
 
 (deftest ^:parallel join-saved-question-test
