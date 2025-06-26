@@ -99,6 +99,7 @@ export const setup = ({
     setupGdrivePostFolderEndpoint();
     setupGdriveGetFolderEndpoint({
       status,
+      url: "https://docs.google.example/your-spredsheet",
     });
     setupGdriveServiceAccountEndpoint(
       "super-service-account@testing.metabase.com",

@@ -8,16 +8,11 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
   describe("Google Sheets", () => {
     it("should render a storage upsell for an admin", async () => {
       setupHostedInstance({ isAdmin: true });
-
-      await openTab("Google Sheets");
-      expect(
-        screen.getByRole("heading", { name: "Connect Google Sheets" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(
+      await assertSheetsOpened({
+        subtitle:
           "To work with spreadsheets, you can add storage to your instance.",
-        ),
-      ).toBeInTheDocument();
+      });
+
       expect(
         screen.getByRole("heading", { name: "Add Metabase Storage" }),
       ).toBeInTheDocument();
@@ -35,17 +30,10 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
     });
 
     it("should render a 'contact admin prompt' for non-admin", async () => {
-      setupHostedInstance({ isAdmin: false });
+      const isAdmin = false;
+      setupHostedInstance({ isAdmin });
+      await assertSheetsOpened({ isAdmin });
 
-      await openTab("Google Sheets");
-      expect(
-        screen.getByRole("heading", { name: "Connect Google Sheets" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-        ),
-      ).toBeInTheDocument();
       const alert = screen.getByRole("alert");
       expect(alert).toBeInTheDocument();
       expect(
@@ -59,17 +47,10 @@ describe("Add data modal (Starter: hosted instance without the attached DWH)", (
 
 describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
   it("should render a 'contact admin prompt' for non-admin", async () => {
-    setupProUpload({ isAdmin: false });
+    const isAdmin = false;
+    setupProUpload({ isAdmin });
+    await assertSheetsOpened({ isAdmin });
 
-    await openTab("Google Sheets");
-    expect(
-      screen.getByRole("heading", { name: "Connect Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-      ),
-    ).toBeInTheDocument();
     const alert = screen.getByRole("alert");
     expect(alert).toBeInTheDocument();
     expect(
@@ -81,16 +62,8 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
 
   it("should show the general error state to the admin when the connection status is missing", async () => {
     setupProUpload({ isAdmin: true, enableGoogleSheets: false });
+    await assertSheetsOpened();
 
-    await openTab("Google Sheets");
-    expect(
-      screen.getByRole("heading", { name: "Connect Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-      ),
-    ).toBeInTheDocument();
     const alert = screen.getByRole("alert");
     expect(alert).toBeInTheDocument();
     expect(
@@ -109,16 +82,8 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "not-connected",
     });
+    await assertSheetsOpened();
 
-    await openTab("Google Sheets");
-    expect(
-      await screen.findByRole("heading", { name: "Connect Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-      ),
-    ).toBeInTheDocument();
     const connectButton = await screen.findByRole("button", {
       name: "Connect",
     });
@@ -132,16 +97,8 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "syncing",
     });
+    await assertSheetsOpened();
 
-    await openTab("Google Sheets");
-    expect(
-      await screen.findByRole("heading", { name: "Connect Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-      ),
-    ).toBeInTheDocument();
     const connectButton = await screen.findByRole("button", {
       name: "Connecting...",
     });
@@ -155,16 +112,8 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "error",
     });
+    await assertSheetsOpened();
 
-    await openTab("Google Sheets");
-    expect(
-      await screen.findByRole("heading", { name: "Connect Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-      ),
-    ).toBeInTheDocument();
     const connectButton = await screen.findByRole("button", {
       name: "Something went wrong",
     });
@@ -181,26 +130,16 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
     ).toBeInTheDocument();
   });
 
-  it("should alert the user when the storage is full", async () => {
+  it("should alert admin when the storage is full", async () => {
     setupProUpload({
       isAdmin: true,
       enableGoogleSheets: true,
       status: "paused",
     });
-
-    await openTab("Google Sheets");
-    expect(
-      await screen.findByRole("heading", { name: "Connect Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
+    await assertSheetsOpened({
+      subtitle:
         "To work with spreadsheets, you can add storage to your instance.",
-      ),
-    ).toBeInTheDocument();
-
-    expect(
-      await screen.findByText("Google Drive connected"),
-    ).toBeInTheDocument();
+    });
 
     const alert = await screen.findByRole("alert");
     expect(
@@ -211,9 +150,19 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
         "Metabase Storage is full. Add more storage to continue syncing.",
       ),
     ).toBeInTheDocument();
+
     const upsellLink = within(alert).getByRole("link", { name: "Add storage" });
     expect(upsellLink).toBeInTheDocument();
     expect(upsellLink).toHaveAttribute("href", BUY_STORAGE_URL);
+
+    const driveLink = within(alert).getByRole("link", {
+      name: "Go to Google Drive",
+    });
+    expect(driveLink).toBeInTheDocument();
+    expect(driveLink).toHaveAttribute(
+      "href",
+      "https://docs.google.example/your-spredsheet",
+    );
   });
 
   it("should show the active state", async () => {
@@ -222,16 +171,7 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
       enableGoogleSheets: true,
       status: "active",
     });
-
-    await openTab("Google Sheets");
-    expect(
-      await screen.findByRole("heading", { name: "Import Google Sheets" }),
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Sync a spreadsheet or an entire Google Drive folder with your instance.",
-      ),
-    ).toBeInTheDocument();
+    await assertSheetsOpened({ title: "Import Google Sheets" });
 
     expect(
       await screen.findByText("Google Drive connected"),
@@ -242,3 +182,24 @@ describe("Add data modal (Pro: hosted instance with the attached DWH)", () => {
     ).toBeInTheDocument();
   });
 });
+
+async function assertSheetsOpened({
+  isAdmin = true,
+  title = "Connect Google Sheets",
+  subtitle = "Sync a spreadsheet or an entire Google Drive folder with your instance.",
+}: {
+  isAdmin?: boolean;
+  title?: string;
+  subtitle?: string;
+} = {}) {
+  await openTab("Google Sheets");
+
+  isAdmin
+    ? expect(await screen.findByText("Manage imports")).toBeInTheDocument()
+    : expect(screen.queryByText("Manage imports")).not.toBeInTheDocument();
+
+  expect(
+    await screen.findByRole("heading", { name: title }),
+  ).toBeInTheDocument();
+  expect(await screen.findByText(subtitle)).toBeInTheDocument();
+}
