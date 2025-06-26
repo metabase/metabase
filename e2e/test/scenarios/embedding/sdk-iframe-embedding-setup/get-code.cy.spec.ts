@@ -29,11 +29,11 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
         "be.visible",
       );
 
-      cy.findByLabelText("User Session")
+      cy.findByLabelText("Existing Metabase Session")
         .should("be.visible")
         .should("be.checked");
 
-      cy.findByLabelText("SSO Authentication")
+      cy.findByLabelText("Single sign-on (SSO)")
         .should("be.visible")
         .should("not.be.checked");
     });
@@ -43,7 +43,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("SSO Authentication").should("be.disabled");
+      cy.findByLabelText("Single sign-on (SSO)").should("be.disabled");
     });
   });
 
@@ -52,7 +52,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("SSO Authentication").should("not.be.disabled");
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
     });
   });
 
@@ -61,7 +61,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("SSO Authentication").should("not.be.disabled");
+      cy.findByLabelText("Single sign-on (SSO)").should("not.be.disabled");
     });
   });
 
@@ -79,7 +79,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("User Session").should("be.checked");
+      cy.findByLabelText("Existing Metabase Session").should("be.checked");
       codeBlock().should("contain", '"useExistingUserSession": true');
     });
   });
@@ -89,7 +89,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
     navigateToGetCodeStep({ experience: "dashboard" });
 
     getEmbedSidebar().within(() => {
-      cy.findByLabelText("SSO Authentication").click();
+      cy.findByLabelText("Single sign-on (SSO)").click();
       codeBlock().should("not.contain", "useExistingUserSession");
     });
   });
