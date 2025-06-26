@@ -19,13 +19,13 @@ export const SelectEmbedEntityMissingRecents = ({
       "dashboard",
       () =>
         c("{0} is a link button to search for dashboards")
-          .jt`You haven't visited any dashboards recently. You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for dashboards`}</Anchor>)} to embed.`,
+          .jt`You haven't visited any dashboards recently. ${(<br />)} You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for dashboards`}</Anchor>)} to embed.`,
     )
     .with(
       "chart",
       () =>
         c("{0} is a link button to search for charts")
-          .jt`You haven't visited any charts recently. You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for charts`}</Anchor>)} to embed.`,
+          .jt`You haven't visited any charts recently. ${(<br />)} You can ${(<Anchor size="sm" onClick={openPicker} inline>{t`search for charts`}</Anchor>)} to embed.`,
     )
     .otherwise(() => null);
 
@@ -43,7 +43,7 @@ export const SelectEmbedEntityMissingRecents = ({
           {getEmptyStateTitle(experience)}
         </Text>
 
-        <Text size="sm" c="text-medium" ta="center">
+        <Text size="sm" c="text-medium" ta="center" lh="lg">
           {emptyStateDescription}
         </Text>
       </Stack>
