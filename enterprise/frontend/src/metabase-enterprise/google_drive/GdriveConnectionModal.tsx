@@ -266,7 +266,11 @@ function GoogleSheetsDisconnectModal({
             {errorMessage}
           </Text>
           <Flex justify="flex-end" gap="md">
-            <Button variant="outline" onClick={onClose}>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isDeletingFolderLink}
+            >
               {t`Keep connected`}
             </Button>
             <Button
