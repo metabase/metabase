@@ -1,14 +1,24 @@
-import { splice } from "icepick";
-import { useMemo } from "react";
 import {
-  Draggable,
-  Droppable,
-  type OnDragEndResponder,
-} from "react-beautiful-dnd";
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  pointerWithin,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { splice } from "icepick";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { DragDropContext } from "metabase/common/components/DragDropContext";
+import { Sortable } from "metabase/common/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import { Box, Text } from "metabase/ui";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
@@ -27,13 +37,34 @@ const columnMove = (columns: string[], from: number, to: number) => {
   return columnCopy;
 };
 
-const columnRemove = (columns: string[], from: number) => {
-  return splice(columns, from, 1);
+const columnRemove = (columns: string[], from: number) =>
+  splice(columns, from, 1);
+
+const columnAdd = (columns: string[], to: number, column: string) =>
+  splice(columns, to, 0, column);
+
+const getPartitionType = (
+  partitionName: keyof ColumnNameColumnSplitSetting,
+) => {
+  switch (partitionName) {
+    case "rows":
+    case "columns":
+      return "dimension";
+    default:
+      return "metric";
+  }
 };
 
-const columnAdd = (columns: string[], to: number, column: string) => {
-  return splice(columns, to, 0, column);
-};
+const getSortableId = (
+  partitionName: keyof ColumnNameColumnSplitSetting,
+  columnName: string,
+) => `${partitionName}::${columnName}`;
+const destructSortableId = (sortableId: string | null | undefined) =>
+  (sortableId?.split("::") || [null, null]) as [
+    keyof ColumnNameColumnSplitSetting,
+    string,
+  ];
+const isSortableId = (id: string) => id.includes("::");
 
 export const ChartSettingFieldsPartition = ({
   value,
@@ -50,78 +81,30 @@ export const ChartSettingFieldsPartition = ({
     ref: HTMLElement | undefined,
   ) => void;
   getColumnTitle: (column: DatasetColumn) => string;
-  columns: RemappingHydratedDatasetColumn[];
   partitions: Partition[];
+  columns: RemappingHydratedDatasetColumn[];
 }) => {
-  const handleEditFormatting = (
-    column: RemappingHydratedDatasetColumn,
-    targetElement: HTMLElement,
-  ) => {
-    if (column) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const { sourcePartition, activeColumn } = useMemo(() => {
+    const [sourcePartition, activeColumnName] = destructSortableId(activeId);
+    const activeColumn = columns.find((col) => col.name === activeColumnName);
+
+    return {
+      sourcePartition,
+      activeColumn,
+    };
+  }, [activeId, columns]);
+
+  const handleEditFormatting = useCallback(
+    (column: RemappingHydratedDatasetColumn, targetElement: HTMLElement) => {
       onShowWidget(
-        {
-          id: "column_settings",
-          props: {
-            initialKey: getColumnKey(column),
-          },
-        },
+        { id: "column_settings", props: { initialKey: getColumnKey(column) } },
         targetElement,
       );
-    }
-  };
-
-  const getPartitionType = (
-    partitionName: keyof ColumnNameColumnSplitSetting,
-  ) => {
-    switch (partitionName) {
-      case "rows":
-      case "columns":
-        return "dimension";
-      default:
-        return "metric";
-    }
-  };
-
-  const handleDragEnd: OnDragEndResponder = ({ source, destination }) => {
-    if (!source || !destination) {
-      return;
-    }
-    const { droppableId: sourcePartition, index: sourceIndex } = source;
-    const { droppableId: destinationPartition, index: destinationIndex } =
-      destination;
-
-    if (
-      sourcePartition === destinationPartition &&
-      sourceIndex !== destinationIndex
-    ) {
-      onChange({
-        ...value,
-        [sourcePartition]: columnMove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
-          sourceIndex,
-          destinationIndex,
-        ),
-      });
-    } else if (sourcePartition !== destinationPartition) {
-      const column =
-        value[sourcePartition as keyof ColumnNameColumnSplitSetting][
-          sourceIndex
-        ];
-
-      onChange({
-        ...value,
-        [sourcePartition]: columnRemove(
-          value[sourcePartition as keyof ColumnNameColumnSplitSetting],
-          sourceIndex,
-        ),
-        [destinationPartition]: columnAdd(
-          value[destinationPartition as keyof ColumnNameColumnSplitSetting],
-          destinationIndex,
-          column,
-        ),
-      });
-    }
-  };
+    },
+    [onShowWidget],
+  );
 
   const updatedValue = useMemo(
     () =>
@@ -133,107 +116,189 @@ export const ChartSettingFieldsPartition = ({
     [columns, value],
   );
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 15 },
+    }),
+  );
+
+  const handleDragStart = useCallback(({ active }: DragStartEvent) => {
+    setActiveId(String(active.id));
+  }, []);
+
+  const handleDragEnd = useCallback(
+    ({ active, over }: DragEndEvent) => {
+      setActiveId(null);
+
+      if (!over) {
+        return;
+      }
+
+      const activeId = active.id.toString();
+      const overId = over.id.toString();
+
+      const [sourcePartition, sourceColumnName] = destructSortableId(activeId);
+
+      const [overPartition, overColumnName] = isSortableId(overId)
+        ? destructSortableId(overId)
+        : [overId, null];
+
+      const sourcePartitionColumns =
+        value[sourcePartition as keyof typeof value] || [];
+      const destinationPartitionColumns =
+        value[overPartition as keyof typeof value] || [];
+
+      const fromIndex = sourcePartitionColumns.indexOf(sourceColumnName);
+      const toIndex = overColumnName
+        ? destinationPartitionColumns.indexOf(overColumnName)
+        : destinationPartitionColumns.length;
+
+      if (sourcePartition === overPartition && fromIndex === toIndex) {
+        return;
+      }
+
+      onChange(
+        sourcePartition === overPartition
+          ? {
+              ...value,
+              [sourcePartition]: columnMove(
+                sourcePartitionColumns,
+                fromIndex,
+                toIndex,
+              ),
+            }
+          : {
+              ...value,
+              [sourcePartition]: columnRemove(
+                sourcePartitionColumns,
+                fromIndex,
+              ),
+              [overPartition]: columnAdd(
+                destinationPartitionColumns,
+                toIndex,
+                sourceColumnName,
+              ),
+            },
+      );
+    },
+    [onChange, value],
+  );
+
+  const handleDragCancel = useCallback(() => setActiveId(null), []);
+
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      {partitions.map(({ name: partitionName, title }, index) => {
-        const updatedColumns = updatedValue[partitionName] ?? [];
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      {partitions.map(({ name: partitionName, title }, idx) => {
+        const items =
+          value[partitionName]?.map((columnName) =>
+            getSortableId(partitionName, columnName),
+          ) || [];
+
+        const hydrated = updatedValue[partitionName] || [];
         const partitionType = getPartitionType(partitionName);
+
+        const sourcePartitionType = sourcePartition
+          ? getPartitionType(sourcePartition)
+          : null;
+        const droppableDisabled = partitionType !== sourcePartitionType;
+
         return (
           <Box
-            py="md"
-            className={index > 0 ? CS.borderTop : undefined}
             key={partitionName}
+            py="md"
+            className={idx > 0 ? CS.borderTop : undefined}
           >
             <Text c="text-medium">{title}</Text>
-            <Droppable
-              droppableId={partitionName}
-              type={partitionType}
-              renderClone={(provided, snapshot, rubric) => (
-                <Box
-                  ref={provided.innerRef}
-                  {...provided.draggableProps}
-                  {...provided.dragHandleProps}
-                  mb="0.5rem"
-                >
-                  <Column
-                    onEditFormatting={handleEditFormatting}
-                    column={updatedColumns[rubric.source.index]}
-                    title={getColumnTitle(updatedColumns[rubric.source.index])}
-                  />
-                </Box>
-              )}
+
+            <SortableContext
+              id={partitionType}
+              items={items}
+              strategy={verticalListSortingStrategy}
             >
-              {(provided, snapshot) => (
-                <Box
-                  {...provided.droppableProps}
-                  bg={snapshot.draggingFromThisWith ? "border" : "none"}
-                  ref={provided.innerRef}
-                  mih="2.5rem"
-                  pos="relative"
-                  mt={updatedColumns.length === 0 ? "sm" : undefined}
-                  className={CS.rounded}
-                >
-                  {updatedColumns.length === 0 ? (
-                    <Box
-                      pos="absolute"
-                      w="100%"
-                      p="0.75rem"
-                      bg="bg-light"
-                      c="text-medium"
-                      className={CS.rounded}
-                    >{t`Drag fields here`}</Box>
-                  ) : (
-                    updatedColumns.map((col, index) => (
-                      <Draggable
-                        key={`draggable-${col.name}`}
-                        draggableId={`draggable-${col.name}`}
-                        index={index}
+              <Droppable
+                id={partitionName}
+                disabled={droppableDisabled}
+                isDragging={!!activeId}
+              >
+                {hydrated.length === 0 ? (
+                  <Box
+                    w="100%"
+                    p="0.75rem"
+                    bg="border"
+                    c="text-medium"
+                    className={CS.rounded}
+                  >
+                    {t`Drag fields here`}
+                  </Box>
+                ) : (
+                  <Box mih="2.5rem" className={CS.rounded}>
+                    {hydrated.map((column) => (
+                      <Sortable
+                        key={getSortableId(partitionName, column.name)}
+                        id={getSortableId(partitionName, column.name)}
+                        draggingStyle={{ opacity: 0.5 }}
                       >
-                        {(provided) => (
-                          <Box
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={CS.mb1}
-                          >
-                            <Column
-                              key={`${partitionName}-${col.name}`}
-                              column={col}
-                              onEditFormatting={handleEditFormatting}
-                              title={getColumnTitle(col)}
-                            />
-                          </Box>
-                        )}
-                      </Draggable>
-                    ))
-                  )}
-                  {provided.placeholder}
-                </Box>
-              )}
-            </Droppable>
+                        <ColumnItem
+                          className={CS.m0}
+                          title={getColumnTitle(column)}
+                          draggable
+                          onEdit={(target) =>
+                            handleEditFormatting(column, target)
+                          }
+                        />
+                      </Sortable>
+                    ))}
+                  </Box>
+                )}
+              </Droppable>
+            </SortableContext>
           </Box>
         );
       })}
-    </DragDropContext>
+
+      <DragOverlay>
+        {activeId && activeColumn && (
+          <ColumnItem
+            title={getColumnTitle(activeColumn)}
+            draggable
+            onEdit={() => {}}
+          />
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 };
 
-const Column = ({
-  title,
-  column,
-  onEditFormatting,
+function Droppable({
+  children,
+  id,
+  disabled,
+  isDragging,
 }: {
-  title: string;
-  column: RemappingHydratedDatasetColumn;
-  onEditFormatting: (
-    column: RemappingHydratedDatasetColumn,
-    target: HTMLElement,
-  ) => void;
-}) => (
-  <ColumnItem
-    title={title}
-    onEdit={(target) => onEditFormatting?.(column, target)}
-    draggable
-    className={CS.m0}
-  />
-);
+  children: ReactNode;
+  id: string;
+  disabled: boolean;
+  isDragging: boolean;
+}) {
+  const { setNodeRef } = useDroppable({
+    id,
+    disabled,
+  });
+
+  return (
+    <Box
+      ref={setNodeRef}
+      mih="2.5rem"
+      className={CS.rounded}
+      {...(isDragging && !disabled && { bg: "border" })}
+    >
+      {children}
+    </Box>
+  );
+}
