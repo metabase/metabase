@@ -1,24 +1,17 @@
 import PropTypes from "prop-types";
-import { Fragment } from "react";
 import { t } from "ttag";
 
+import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import EntityItem from "metabase/common/components/EntityItem";
+import Link from "metabase/common/components/Link";
 import { color } from "metabase/lib/colors";
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { Icon } from "metabase/ui";
+import { Group, Icon, Loader, SimpleGrid } from "metabase/ui";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
 import { trackTableClick } from "../analytics";
 
-import {
-  TableActionLink,
-  TableCard,
-  TableGrid,
-  TableGridItem,
-  TableLink,
-} from "./TableBrowser.styled";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
@@ -55,27 +48,19 @@ export const TableBrowser = ({
           ]}
         />
       </BrowseHeaderContent>
-      <TableGrid>
+      <SimpleGrid cols={3} w="100%" pt="lg">
         {tables.map((table) => (
-          <TableGridItem key={table.id}>
-            <TableCard hoverable={!isSyncInProgress(table)}>
-              <TableLink
-                to={
-                  !isSyncInProgress(table) ? getTableUrl(table, metadata) : ""
-                }
-                onClick={() => trackTableClick(table.id)}
-              >
-                <TableBrowserItem
-                  database={database}
-                  table={table}
-                  dbId={dbId}
-                  xraysEnabled={xraysEnabled}
-                />
-              </TableLink>
-            </TableCard>
-          </TableGridItem>
+          <TableBrowserItem
+            key={table.id}
+            database={database}
+            table={table}
+            dbId={dbId}
+            getTableUrl={getTableUrl}
+            xraysEnabled={xraysEnabled}
+            metadata={metadata}
+          />
         ))}
-      </TableGrid>
+      </SimpleGrid>
     </>
   );
 };
@@ -87,31 +72,39 @@ const itemPropTypes = {
   table: PropTypes.object.isRequired,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
+  metadata: PropTypes.object,
+  getTableUrl: PropTypes.func.isRequired,
 };
 
-const TableBrowserItem = ({ database, table, dbId, xraysEnabled }) => {
+const TableBrowserItem = ({
+  database,
+  table,
+  dbId,
+  xraysEnabled,
+  metadata,
+  getTableUrl,
+}) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
 
   return (
-    <EntityItem
-      item={table}
-      name={table.display_name || table.name}
-      iconName="table"
-      iconColor={color("accent2")}
-      loading={isLoading}
-      disabled={isLoading}
-      buttons={
-        !isLoading &&
-        !isVirtual && (
+    <BrowseCard
+      to={!isSyncInProgress(table) ? getTableUrl(table, metadata) : ""}
+      icon="table"
+      title={table.display_name || table.name}
+      onClick={() => trackTableClick(table.id)}
+    >
+      <>
+        {isLoading && <Loader />}
+        {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
             tableId={table.id}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
           />
-        )
-      }
-    />
+        )}
+      </>
+    </BrowseCard>
   );
 };
 
@@ -125,24 +118,24 @@ const itemButtonsPropTypes = {
 
 const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
   return (
-    <Fragment>
+    <Group>
       {xraysEnabled && (
-        <TableActionLink to={`/auto/dashboard/table/${tableId}`}>
+        <Link to={`/auto/dashboard/table/${tableId}`}>
           <Icon
             name="bolt_filled"
             tooltip={t`X-ray this table`}
             color={color("warning")}
           />
-        </TableActionLink>
+        </Link>
       )}
-      <TableActionLink to={`/reference/databases/${dbId}/tables/${tableId}`}>
+      <Link to={`/reference/databases/${dbId}/tables/${tableId}`}>
         <Icon
           name="reference"
           tooltip={t`Learn about this table`}
           color={color("text-medium")}
         />
-      </TableActionLink>
-    </Fragment>
+      </Link>
+    </Group>
   );
 };
 
