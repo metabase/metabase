@@ -57,12 +57,22 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     H.getIframeBody().findByTestId("export-as-pdf-button").should("be.visible");
   });
 
-  it("should show title option for dashboard", () => {
+  it("should toggle title option for dashboards", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
-    getEmbedSidebar().within(() => {
-      cy.findByLabelText("Show dashboard title").should("be.visible");
-    });
+    getEmbedSidebar()
+      .findByLabelText("Show dashboard title")
+      .should("be.checked");
+
+    H.getIframeBody().findByText("Orders in a dashboard").should("be.visible");
+
+    cy.log("turn off title");
+    getEmbedSidebar()
+      .findByLabelText("Show dashboard title")
+      .click()
+      .should("not.be.checked");
+
+    H.getIframeBody().findByText("Orders in a dashboard").should("not.exist");
   });
 
   it("should toggle drill-through option for chart", () => {
