@@ -1007,3 +1007,43 @@
                   (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Month"} {})
                   (lib.tu.notebook/add-breakout {:display-name "Summaries"} {:display-name "Created At: Year"} {})
                   result-metadata/returned-columns))))))
+
+(deftest ^:parallel display-name-for-implicitly-joined-columns-test
+  (let [query (lib/query
+               meta/metadata-provider
+               {:lib/type :mbql/query
+                :database (meta/id)
+                :stages   [{:lib/type     :mbql.stage/mbql
+                            :source-table (meta/id :orders)
+                            :joins        [{:lib/type            :mbql/join
+                                            :qp/is-implicit-join true
+                                            :stages              [{:lib/type     :mbql.stage/mbql
+                                                                   :source-table (meta/id :products)}]
+                                            :alias               "PRODUCTS__via__PRODUCT_ID"
+                                            :strategy            :left-join
+                                            :conditions          [[:=
+                                                                   {}
+                                                                   [:field {}
+                                                                    (meta/id :orders :product-id)]
+                                                                   [:field {:join-alias "PRODUCTS__via__PRODUCT_ID"}
+                                                                    (meta/id :products :id)]]]
+                                            :lib/options         {:lib/uuid "14b26511-68b9-48d6-9968-b115a5089009"}
+                                            :fk-field-id         (meta/id :orders :product-id)}]
+                            :aggregation  [[:count {:lib/uuid "3a14967e-bd6c-4cdd-a837-b6d098ef513b", :name "count"}]
+                                           [:sum {:name "sum"}
+                                            [:field {}
+                                             (meta/id :orders :total)]]
+                                           [:avg {:name "avg"}
+                                            [:field {}
+                                             (meta/id :orders :quantity)]]]
+                            :breakout     [[:field {:source-field (meta/id :orders :product-id)
+                                                    :join-alias   "PRODUCTS__via__PRODUCT_ID"}
+                                            (meta/id :products :rating)]
+                                           [:field {:source-field (meta/id :orders :product-id)
+                                                    :join-alias   "PRODUCTS__via__PRODUCT_ID"}
+                                            (meta/id :products :category)]]}]})]
+    (is (= ["Product → Rating"
+            "Product → Category"
+            "Count"
+            "Sum of Total" "Average of Quantity"]
+           (map :display-name (result-metadata/returned-columns query))))))
