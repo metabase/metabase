@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { ExportSettingsWidget } from "metabase/common/components/ExportSettingsWidget";
 import Link from "metabase/common/components/Link";
 import { useDocsUrl, useUserSetting } from "metabase/common/hooks";
+import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import type {
   ExportFormat,
   TableExportFormat,
@@ -37,22 +38,35 @@ type QuestionDownloadWidgetProps = {
   }) => void;
   disabled?: boolean;
   formatPreference?: FormatPreference;
-  setFormatPreference?: (
-    preference: FormatPreference,
-  ) => Promise<{ data?: unknown; error?: unknown }>;
 } & StackProps;
 
+// Helper functions moved outside component
 const canPivotResults = (format: string, display: string) =>
   display === "pivot" && format !== "json";
 const canConfigureFormatting = (format: string) => format !== "png";
+
+const getInitialFormat = (
+  formatPreference: FormatPreference | undefined,
+  formats: ExportFormat[],
+  canDownloadPng: boolean,
+): ExportFormat => {
+  if (!formatPreference) {
+    return formats[0];
+  }
+
+  const preferredFormat = canDownloadPng
+    ? formatPreference.last_download_format
+    : formatPreference.last_table_download_format;
+
+  return formats.includes(preferredFormat) ? preferredFormat : formats[0];
+};
 
 export const QuestionDownloadWidget = ({
   question,
   result,
   onDownload,
   disabled = false,
-  formatPreference,
-  setFormatPreference,
+  formatPreference: formatPreferenceOverride,
   ...stackProps
 }: QuestionDownloadWidgetProps) => {
   const canDownloadPng = canSavePng(question.display());
@@ -60,28 +74,29 @@ export const QuestionDownloadWidget = ({
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
-  const determineInitialFormat = () => {
-    if (!formatPreference) {
-      return formats[0];
-    }
+  const { value: formatPreference, setValue: setFormatPreference } =
+    useUserKeyValue({
+      namespace: "last_download_format",
+      key: "download_format_preference",
+      defaultValue: formatPreferenceOverride ?? {
+        last_download_format: formats[0],
+        last_table_download_format: exportFormats[0],
+      },
+      skip: !!formatPreferenceOverride,
+    });
 
-    const { last_download_format, last_table_download_format } =
-      formatPreference;
+  const initialFormat = getInitialFormat(
+    formatPreference,
+    formats,
+    canDownloadPng,
+  );
 
-    if (canDownloadPng) {
-      return formats.includes(last_download_format)
-        ? last_download_format
-        : formats[0];
-    }
+  // Derive format instead of using useEffect
+  const [userSelectedFormat, setUserSelectedFormat] =
+    useState<ExportFormat | null>(null);
+  const format = userSelectedFormat ?? initialFormat;
 
-    return formats.includes(last_table_download_format)
-      ? last_table_download_format
-      : formats[0];
-  };
-
-  const [format, setFormat] = useState<ExportFormat>(determineInitialFormat());
   const canConfigurePivoting = canPivotResults(format, question.display());
-
   const [isPivoted, setIsPivoted] = useState(canConfigurePivoting);
   const [isFormatted, setIsFormatted] = useState(true);
 
@@ -92,19 +107,18 @@ export const QuestionDownloadWidget = ({
     t`The maximum download size is 1 million rows.`;
 
   const handleFormatChange = (newFormat: ExportFormat) => {
-    setFormat(newFormat);
+    setUserSelectedFormat(newFormat);
 
-    // If user is logged in, save their preference to the KV store
-    if (formatPreference !== undefined && setFormatPreference) {
-      const newPreference = {
+    // Save preference if user is logged in
+    if (newFormat && setFormatPreference) {
+      setFormatPreference({
         last_download_format: newFormat,
         last_table_download_format:
           newFormat !== "png"
             ? newFormat
-            : (formatPreference?.last_table_download_format as TableExportFormat) ||
+            : (formatPreference.last_table_download_format as TableExportFormat) ||
               "csv",
-      };
-      setFormatPreference(newPreference);
+      });
     }
   };
 
@@ -175,7 +189,7 @@ export const QuestionDownloadWidget = ({
             <Icon
               name="close"
               c="text-medium"
-              tooltip={t`Don’t show me this again.`}
+              tooltip={t`Don't show me this again.`}
               onClick={() => setDismissedExcelPivotExportsBanner(true)}
             />
           </Button>
