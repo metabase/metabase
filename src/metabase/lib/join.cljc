@@ -112,8 +112,8 @@
     ;; if we've specified `old-alias`, then update ANY `:field` clause using it to `new-alias` instead.
     old-alias
     (lib.util.match/replace-in join [:conditions]
-      [:field {:join-alias old-alias} _id-or-name]
-      (with-join-alias &match new-alias))
+      (field :guard #(and (lib.util/field-clause? %) (= (lib.join.util/current-join-alias %) old-alias)))
+      (with-join-alias field new-alias))
 
     ;; otherwise if `old-alias` is `nil`, then add (or remove!) `new-alias` to the RHS of any binary
     ;; filter clauses that don't already have a `:join-alias`.
