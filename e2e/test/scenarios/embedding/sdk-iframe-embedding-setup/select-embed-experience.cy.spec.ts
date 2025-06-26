@@ -4,7 +4,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed experien
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("bleeding-edge");
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
   });
