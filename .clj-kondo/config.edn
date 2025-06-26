@@ -755,7 +755,7 @@
    metabase.test/with-temporary-raw-setting-values                               macros.metabase.test.util/with-temporary-raw-setting-values
    metabase.util.namespaces/import-fn                                            macros.metabase.util.namespaces/import-fn
    metabase.xrays.domain-entities.malli/define-getters-and-setters               macros.metabase.xrays.domain-entities.malli/define-getters-and-setters
-   metabase.xrays.related-test/with-world                                        macros.metabase.xrays.related-test/with-world}}}
+   metabase.xrays.related-test/with-world                                        macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
