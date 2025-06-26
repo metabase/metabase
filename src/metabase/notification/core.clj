@@ -19,4 +19,5 @@
  [notification.seed
   seed-notification!]
  [notification.send
-  send-notification!])
+  send-notification!
+  shutdown!])
