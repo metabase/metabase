@@ -2,9 +2,18 @@
 import { t } from "ttag";
 
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
-import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import type { SearchFilterDropdown } from "metabase/search/types";
+import type {
+  SearchFilterComponent,
+  SearchFilterDropdown,
+  TypeFilterProps,
+} from "metabase/search/types";
+import {
+  filterEnabledSearchTypes,
+  isEnabledSearchModelType,
+} from "metabase/search/utils/enabled-search-type";
 import { Text } from "metabase/ui";
+
+import { TypeFilterContent } from "./TypeFilterContent";
 
 export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"] =
   ({ value }) => {
@@ -22,3 +31,20 @@ export const TypeFilterDisplay: SearchFilterDropdown<"type">["DisplayComponent"]
       </Text>
     );
   };
+
+export const TypeFilter: SearchFilterComponent<"type"> = {
+  iconName: "dashboard",
+  label: () => t`Content type`,
+  type: "dropdown",
+  DisplayComponent: TypeFilterDisplay,
+  ContentComponent: TypeFilterContent,
+  fromUrl: (value) => {
+    if (Array.isArray(value)) {
+      return filterEnabledSearchTypes(value);
+    }
+    return isEnabledSearchModelType(value) ? [value] : [];
+  },
+  toUrl: (value: TypeFilterProps | null) => {
+    return value && value.length > 0 ? value : null;
+  },
+};
