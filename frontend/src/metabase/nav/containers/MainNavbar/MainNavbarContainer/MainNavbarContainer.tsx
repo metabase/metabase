@@ -85,8 +85,9 @@ function MainNavbarContainer({
   logout,
   onChangeLocation,
   onReorderBookmarks,
+  sidebarWidth,
   ...props
-}: Props) {
+}: Props & { sidebarWidth?: number }) {
   const [modal, setModal] = useState<NavbarModal>(null);
 
   const {
@@ -194,6 +195,7 @@ function MainNavbarContainer({
         handleCreateNewCollection={onCreateNewCollection}
         handleCloseNavbar={closeNavbar}
         handleLogout={logout}
+        sidebarWidth={sidebarWidth}
       />
 
       {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}

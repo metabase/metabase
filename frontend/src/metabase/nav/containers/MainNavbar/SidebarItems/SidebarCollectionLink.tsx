@@ -26,6 +26,7 @@ type DroppableProps = {
 type Props = DroppableProps &
   Omit<TreeNodeProps, "item"> & {
     collection: Collection;
+    sidebarWidth?: number;
   };
 
 const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
@@ -41,6 +42,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       isSelected,
       hasChildren,
       onToggleExpand,
+      sidebarWidth,
     }: Props,
     ref,
   ) {
@@ -107,35 +109,39 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
           <TreeNode.IconContainer transparent={false}>
             <SidebarIcon {...icon} isSelected={isSelected} />
           </TreeNode.IconContainer>
-          <NameContainer>{collection.name}</NameContainer>
+          <NameContainer sidebarWidth={sidebarWidth}>
+            {collection.name}
+          </NameContainer>
         </FullWidthLink>
       </CollectionNodeRoot>
     );
   },
 );
 
-const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
-  function DroppableSidebarCollectionLink(
-    { item, ...props }: TreeNodeProps,
-    ref,
-  ) {
-    const collection = item as unknown as Collection;
-    return (
-      <div data-testid="sidebar-collection-link-root">
-        <CollectionDropTarget collection={collection}>
-          {(droppableProps: DroppableProps) => (
-            <SidebarCollectionLink
-              {...props}
-              {...droppableProps}
-              collection={collection}
-              ref={ref}
-            />
-          )}
-        </CollectionDropTarget>
-      </div>
-    );
-  },
-);
+const DroppableSidebarCollectionLink = forwardRef<
+  HTMLLIElement,
+  TreeNodeProps & { sidebarWidth?: number }
+>(function DroppableSidebarCollectionLink(
+  { item, sidebarWidth, ...props }: TreeNodeProps & { sidebarWidth?: number },
+  ref,
+) {
+  const collection = item as unknown as Collection;
+  return (
+    <div data-testid="sidebar-collection-link-root">
+      <CollectionDropTarget collection={collection}>
+        {(droppableProps: DroppableProps) => (
+          <SidebarCollectionLink
+            {...props}
+            {...droppableProps}
+            collection={collection}
+            sidebarWidth={sidebarWidth}
+            ref={ref}
+          />
+        )}
+      </CollectionDropTarget>
+    </div>
+  );
+});
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DroppableSidebarCollectionLink;

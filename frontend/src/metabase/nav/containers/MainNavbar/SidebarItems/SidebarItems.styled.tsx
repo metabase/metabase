@@ -112,24 +112,34 @@ export const FullWidthLink = styled(Link)`
 `;
 
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;
-const ITEM_NAME_LABEL_WIDTH = Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7);
 
-export const ItemName = styled(TreeNode.NameContainer)`
-  width: ${ITEM_NAME_LABEL_WIDTH}px;
+export const ItemName = styled(TreeNode.NameContainer)<{
+  sidebarWidth?: number;
+}>`
+  width: ${({ sidebarWidth }) =>
+    sidebarWidth
+      ? Math.round(sidebarWidth * 0.7) + "px"
+      : Math.round(parseInt(NAV_SIDEBAR_WIDTH, 10) * 0.7) + "px"};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
-export function NameContainer({ children: itemName }: { children: string }) {
+export function NameContainer({
+  children: itemName,
+  sidebarWidth,
+}: {
+  children: string;
+  sidebarWidth?: number;
+}) {
   if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
     return (
       <Tooltip label={itemName} withArrow maw="none">
-        <ItemName>{itemName}</ItemName>
+        <ItemName sidebarWidth={sidebarWidth}>{itemName}</ItemName>
       </Tooltip>
     );
   }
-  return <TreeNode.NameContainer>{itemName}</TreeNode.NameContainer>;
+  return <ItemName sidebarWidth={sidebarWidth}>{itemName}</ItemName>;
 }
 
 export const LeftElementContainer = styled.div``;

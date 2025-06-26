@@ -25,6 +25,7 @@ interface SidebarLinkProps {
   left?: ReactNode;
   right?: ReactNode;
   onClick?: (event: MouseEvent) => void;
+  sidebarWidth?: number;
 }
 
 type ContentProps = {
@@ -52,6 +53,7 @@ function SidebarLink({
   left = null,
   right = null,
   onClick,
+  sidebarWidth,
   ...props
 }: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
@@ -98,7 +100,7 @@ function SidebarLink({
       )}
       <Content>
         {icon && renderIcon()}
-        <NameContainer>{children}</NameContainer>
+        <NameContainer sidebarWidth={sidebarWidth}>{children}</NameContainer>
       </Content>
       {isValidElement(right) && (
         <RightElementContainer>{right}</RightElementContainer>

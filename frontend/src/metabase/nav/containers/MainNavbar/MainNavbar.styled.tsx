@@ -2,11 +2,7 @@
 import styled from "@emotion/styled";
 
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
-import {
-  breakpointMaxSmall,
-  breakpointMinSmall,
-  space,
-} from "metabase/styled-components/theme";
+import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import { Box, type BoxProps } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
@@ -26,6 +22,8 @@ export const Sidebar = styled.aside<{
   background-color: var(--mb-color-bg-white);
   z-index: 4;
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
+  min-width: 224px;
+  max-width: 384px;
   ${(props) =>
     props.side === "left"
       ? "border-inline-end: 1px solid var(--mb-color-border);"
@@ -49,10 +47,6 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   background-color: transparent;
   overflow-x: hidden;
   overflow-y: auto;
-
-  ${breakpointMinSmall} {
-    width: ${(props) => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
-  }
 
   ${breakpointMaxSmall} {
     width: ${(props) => (props.isOpen ? "90vw" : 0)};
