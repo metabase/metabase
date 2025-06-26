@@ -152,6 +152,7 @@ export const MetabotChat = () => {
                       fz="sm"
                       size="xs"
                       onClick={() => handleSubmitInput(prompt)}
+                      className={Styles.promptSuggestionButton}
                     >
                       {prompt}
                     </Button>
