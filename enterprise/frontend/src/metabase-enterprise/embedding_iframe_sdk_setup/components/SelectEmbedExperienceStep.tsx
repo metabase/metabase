@@ -4,13 +4,23 @@ import _ from "underscore";
 import { Card, Radio, Stack, Text } from "metabase/ui";
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
 
-import { EMBED_EXPERIENCES } from "../constants";
+import {
+  EMBED_EXPERIENCES,
+  EMBED_FALLBACK_DASHBOARD_ID,
+  EMBED_FALLBACK_QUESTION_ID,
+} from "../constants";
 import { useSdkIframeEmbedSetupContext } from "../context";
 import type { SdkIframeEmbedSetupExperience } from "../types";
 import { getDefaultSdkIframeEmbedSettings } from "../utils/default-embed-setting";
 
 export const SelectEmbedExperienceStep = () => {
-  const { experience, settings, setSettings } = useSdkIframeEmbedSetupContext();
+  const {
+    experience,
+    settings,
+    setSettings,
+    recentDashboards,
+    recentQuestions,
+  } = useSdkIframeEmbedSetupContext();
 
   const handleEmbedExperienceChange = (
     experience: SdkIframeEmbedSetupExperience,
@@ -21,8 +31,12 @@ export const SelectEmbedExperienceStep = () => {
       "apiKey",
     ]);
 
-    // TODO(EMB-508): use the most recent question or dashboard.
-    const defaultResourceId = 1;
+    // Use the most recent item for the selected type.
+    // If the activity log is completely empty, use the fallback.
+    const defaultResourceId =
+      experience === "chart"
+        ? (recentQuestions[0]?.id ?? EMBED_FALLBACK_QUESTION_ID)
+        : (recentDashboards[0]?.id ?? EMBED_FALLBACK_DASHBOARD_ID);
 
     setSettings({
       // these settings do not change when the embed type changes

@@ -1,8 +1,12 @@
+import { SelectEmbedEntityStep } from "./components/SelectEmbedEntityStep";
 import { SelectEmbedExperienceStep } from "./components/SelectEmbedExperienceStep";
 import type {
   SdkIframeEmbedSetupExperience,
   SdkIframeEmbedSetupStep,
 } from "./types";
+
+/** The maximum number of recent items to show in the entity selection step. */
+export const EMBED_ENTITY_LIST_MAX_RECENTS = 6;
 
 export const EMBED_EXPERIENCES = [
   {
@@ -35,7 +39,7 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
   },
   {
     id: "select-embed-entity",
-    component: () => "select entity placeholder",
+    component: SelectEmbedEntityStep,
     skipFor: ["exploration"],
   },
   {
@@ -47,3 +51,9 @@ export const EMBED_STEPS: EmbedStepConfig[] = [
     component: () => "get code placeholder",
   },
 ];
+
+/** If the activity log of the user is completely empty, we fallback to this dashboard. */
+export const EMBED_FALLBACK_DASHBOARD_ID = 1;
+
+/** If the activity log of the user is completely empty, we fallback to this question. */
+export const EMBED_FALLBACK_QUESTION_ID = 1;

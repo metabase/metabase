@@ -1,11 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { useSetting } from "metabase/common/hooks";
 import { Box } from "metabase/ui";
 import type { MetabaseEmbed } from "metabase-enterprise/embedding_iframe_sdk/embed";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
-import { DEFAULT_SDK_IFRAME_EMBED_SETTINGS } from "../utils/default-embed-setting";
 
 import S from "./SdkIframeEmbedSetup.module.css";
 
@@ -16,37 +14,51 @@ declare global {
 }
 
 export const SdkIframeEmbedPreview = () => {
-  const { settings } = useSdkIframeEmbedSetupContext();
-  const instanceUrl = useSetting("site-url");
+  const [isIframeLoaded, setIsIframeLoaded] = useState(false);
+
+  const { settings, isEmbedSettingsLoaded } = useSdkIframeEmbedSetupContext();
 
   const embedJsRef = useRef<MetabaseEmbed | null>(null);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
+
+  useEffect(
+    () => {
+      if (isEmbedSettingsLoaded) {
+        const script = document.createElement("script");
+
+        script.src = "/app/embed.js";
+        document.body.appendChild(script);
+
+        script.onload = () => {
+          const { MetabaseEmbed } = window["metabase.embed"];
+
+          embedJsRef.current = new MetabaseEmbed({
+            ...settings,
+            target: "#iframe-embed-container",
+            iframeClassName: S.EmbedPreviewIframe,
+            useExistingUserSession: true,
+          });
+
+          embedJsRef.current.addEventListener("ready", () =>
+            setIsIframeLoaded(true),
+          );
+        };
+
+        scriptRef.current = script;
+      }
+
+      return () => {
+        embedJsRef.current?.destroy();
+        scriptRef.current?.remove();
+      };
+    },
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- settings are synced via useEffect below
+    [isEmbedSettingsLoaded],
+  );
 
   useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "/app/embed.js";
-    document.body.appendChild(script);
-
-    script.onload = () => {
-      const { MetabaseEmbed } = window["metabase.embed"];
-
-      embedJsRef.current = new MetabaseEmbed({
-        ...DEFAULT_SDK_IFRAME_EMBED_SETTINGS,
-
-        instanceUrl,
-        target: "#iframe-embed-container",
-        iframeClassName: S.EmbedPreviewIframe,
-        useExistingUserSession: true,
-      });
-    };
-
-    return () => {
-      embedJsRef.current?.destroy();
-      script.remove();
-    };
-  }, [instanceUrl]);
-
-  useEffect(() => {
-    if (embedJsRef.current) {
+    if (embedJsRef.current && isIframeLoaded) {
       embedJsRef.current.updateSettings({
         // Clear the existing experiences.
         // This is necessary as `updateSettings` merges new settings with existing ones.
@@ -57,7 +69,7 @@ export const SdkIframeEmbedPreview = () => {
         ...settings,
       });
     }
-  }, [settings]);
+  }, [settings, isIframeLoaded]);
 
   return (
     <div>
