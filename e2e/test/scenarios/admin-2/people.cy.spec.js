@@ -276,7 +276,7 @@ describe("scenarios > admin > people", () => {
     });
 
     it("should not offer to reset passwords when password login is disabled", () => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
       cy.request("PUT", "/api/google/settings", {
         "google-auth-auto-create-accounts-domain": null,
         "google-auth-client-id": "example1.apps.googleusercontent.com",
@@ -541,7 +541,7 @@ describe("scenarios > admin > people", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
@@ -640,7 +640,7 @@ describe("scenarios > admin > people > group managers", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     cy.visit("/admin/people");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -822,7 +822,7 @@ describe("issue 23689", () => {
 
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
 
     visitGroupPermissionsPage(COLLECTION_GROUP);
 

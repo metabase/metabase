@@ -1,23 +1,21 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import {
-  addParameter,
-  hideAddParameterPopover,
-  showAddParameterPopover,
-} from "metabase/dashboard/actions/parameters";
 import { AddFilterParameterMenu } from "metabase/dashboard/components/AddFilterParameterMenu";
-import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDashboardContext } from "metabase/dashboard/context";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 
 export const AddFilterParameterButton = () => {
-  const isOpened = useSelector(getIsAddParameterPopoverOpen);
-  const dispatch = useDispatch();
+  const {
+    isAddParameterPopoverOpen,
+    addParameter,
+    hideAddParameterPopover,
+    showAddParameterPopover,
+  } = useDashboardContext();
 
   const handleAddParameter = (options: NewParameterOpts) => {
-    dispatch(addParameter({ options }));
+    addParameter({ options });
   };
 
   useRegisterShortcut(
@@ -25,27 +23,27 @@ export const AddFilterParameterButton = () => {
       {
         id: "dashboard-add-filter",
         perform: () =>
-          isOpened
-            ? dispatch(hideAddParameterPopover())
-            : dispatch(showAddParameterPopover()),
+          isAddParameterPopoverOpen
+            ? hideAddParameterPopover()
+            : showAddParameterPopover(),
       },
     ],
-    [isOpened],
+    [isAddParameterPopoverOpen],
   );
 
   return (
     <AddFilterParameterMenu
-      opened={isOpened}
+      opened={isAddParameterPopoverOpen}
       position="bottom-end"
       onAdd={handleAddParameter}
-      onClose={() => dispatch(hideAddParameterPopover())}
+      onClose={() => hideAddParameterPopover()}
     >
       <ToolbarButton
         icon="filter"
         onClick={() =>
-          isOpened
-            ? dispatch(hideAddParameterPopover())
-            : dispatch(showAddParameterPopover())
+          isAddParameterPopoverOpen
+            ? hideAddParameterPopover()
+            : showAddParameterPopover()
         }
         aria-label={t`Add a filter or parameter`}
         tooltipLabel={t`Add a filter or parameter`}

@@ -1,22 +1,22 @@
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { closeSidebar, setSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 
 export const DashboardInfoButton = () => {
-  const dispatch = useDispatch();
+  const { closeSidebar, setSidebar } = useDashboardContext();
   const isShowingDashboardInfoSidebar = useSelector(
     getIsShowDashboardInfoSidebar,
   );
 
   const handleClick = () => {
     isShowingDashboardInfoSidebar
-      ? dispatch(closeSidebar())
-      : dispatch(setSidebar({ name: SIDEBAR_NAME.info }));
+      ? closeSidebar()
+      : setSidebar({ name: SIDEBAR_NAME.info });
   };
 
   useRegisterShortcut(

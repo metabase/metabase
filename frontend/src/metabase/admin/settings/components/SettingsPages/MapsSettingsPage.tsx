@@ -1,6 +1,10 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper, SettingsSection } from "../SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
+
 import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import { CustomGeoJSONWidget } from "../widgets/CustomGeoJSONWidget";
 

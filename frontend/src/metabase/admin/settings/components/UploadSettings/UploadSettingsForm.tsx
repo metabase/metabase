@@ -7,7 +7,7 @@ import {
   useListDatabasesQuery,
   useListSyncableDatabaseSchemasQuery,
 } from "metabase/api";
-import { useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage, useAdminSetting } from "metabase/api/utils";
 import ActionButton from "metabase/common/components/ActionButton";
 import Alert from "metabase/common/components/Alert";
 import Link from "metabase/common/components/Link";
@@ -40,15 +40,6 @@ const FEEDBACK_TIMEOUT = 5000;
 const enableErrorMessage = t`There was a problem enabling uploads. Please try again shortly.`;
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const disableErrorMessage = t`There was a problem disabling uploads. Please try again shortly.`;
-
-const getErrorMessage = (
-  payload: { data?: string; message?: string; error?: string } | string,
-) => {
-  if (typeof payload === "string") {
-    return payload;
-  }
-  return String(payload?.message || payload?.error || t`Something went wrong`);
-};
 
 export function UploadSettingsFormView({
   databases,

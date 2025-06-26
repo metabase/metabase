@@ -7,7 +7,7 @@ import NoResults from "assets/img/no_results.svg";
 import {
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/settings/components/SettingsSection";
+} from "metabase/admin/components/SettingsSection";
 import { useListPersistedInfoQuery } from "metabase/api";
 import DateTime from "metabase/common/components/DateTime";
 import EmptyState from "metabase/common/components/EmptyState";
