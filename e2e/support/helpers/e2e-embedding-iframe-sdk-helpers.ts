@@ -1,9 +1,9 @@
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme/MetabaseTheme";
 
 import { createApiKey } from "./api";
-import { setTokenFeatures } from "./e2e-enterprise-helpers";
 import { enableJwtAuth } from "./e2e-jwt-helpers";
 import { restore } from "./e2e-setup-helpers";
+import { activateToken } from "./e2e-token-helpers";
 import {
   enableSamlAuth,
   mockAuthProviderAndJwtSignIn,
@@ -130,17 +130,19 @@ function getSdkIframeEmbedHtml({
 export function prepareSdkIframeEmbedTest({
   withTokenFeatures = true,
   enabledAuthMethods = ["jwt"],
+  signOut = false,
 }: {
   withTokenFeatures?: boolean;
   enabledAuthMethods?: EnabledAuthMethods[];
+  signOut?: boolean;
 } = {}) {
   restore();
   cy.signInAsAdmin();
 
   if (withTokenFeatures) {
-    setTokenFeatures("all");
+    activateToken("bleeding-edge");
   } else {
-    setTokenFeatures("none");
+    activateToken("starter");
   }
 
   cy.request("PUT", "/api/setting/enable-embedding-interactive", {
@@ -152,6 +154,10 @@ export function prepareSdkIframeEmbedTest({
   cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
 
   setupMockAuthProviders(enabledAuthMethods);
+
+  if (signOut) {
+    cy.signOut();
+  }
 }
 
 type EnabledAuthMethods = "jwt" | "saml" | "api-key";

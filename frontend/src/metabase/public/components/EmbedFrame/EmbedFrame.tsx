@@ -223,7 +223,6 @@ export const EmbedFrame = ({
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
                     <ExportAsPdfButton
-                      dashboard={dashboard}
                       hasTitle={titled}
                       hasVisibleParameters={hasVisibleParameters}
                     />

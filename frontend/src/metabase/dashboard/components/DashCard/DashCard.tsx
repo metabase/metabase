@@ -34,7 +34,6 @@ import {
   getInitialStateForMultipleSeries,
   getInitialStateForVisualizerCard,
   isVisualizerDashboardCard,
-  isVisualizerSupportedVisualization,
 } from "metabase/visualizer/utils";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -459,7 +458,7 @@ function DashCardInner({
           onTogglePreviewing={handlePreviewToggle}
           downloadsEnabled={downloadsEnabled}
           onEditVisualization={
-            isVisualizerSupportedVisualization(dashcard.card.display)
+            isVisualizerDashboardCard(dashcard)
               ? onEditVisualizationClick
               : undefined
           }

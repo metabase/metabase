@@ -42,6 +42,8 @@ export const initAuth = createAsyncThunk(
     if (isValidApiKeyConfig) {
       // API key setup
       api.apiKey = apiKey;
+    } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+      // Use existing user session. Do nothing.
     } else if (isValidInstanceUrl) {
       // SSO setup
       api.onBeforeRequest = async () => {

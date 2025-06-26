@@ -32,3 +32,6 @@ export const isDeprecationNoticeEnabled = (state: State): boolean => {
     state.settings?.values?.["deprecation-notice-version"]
   );
 };
+
+export const getCurrentVersion = (state: State) =>
+  state.settings?.values.version?.tag ?? "";
