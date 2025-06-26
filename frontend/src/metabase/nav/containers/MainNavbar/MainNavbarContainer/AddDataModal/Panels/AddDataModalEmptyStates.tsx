@@ -20,8 +20,8 @@ import {
 
 import IconCSV from "./illustrations/csv.svg?component";
 
-const CONTENT_MAX_WIDTH = "22.5rem";
-const INNER_WIDTH = "12.5rem";
+export const CONTENT_MAX_WIDTH = "22.5rem";
+export const INNER_WIDTH = "12.5rem";
 
 type ContactReason =
   | "add-database"

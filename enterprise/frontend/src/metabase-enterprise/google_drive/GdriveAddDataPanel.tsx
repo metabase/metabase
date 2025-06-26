@@ -9,7 +9,11 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
-import { ContactAdminAlert } from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
+import {
+  CONTENT_MAX_WIDTH,
+  ContactAdminAlert,
+  INNER_WIDTH,
+} from "metabase/nav/containers/MainNavbar/MainNavbarContainer/AddDataModal/Panels/AddDataModalEmptyStates";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,
@@ -52,7 +56,7 @@ const PanelWrapper = ({
     <>
       <Stack gap="md" align="center" justify="center" pt="3rem">
         <Center component="img" src={illustration} w="3rem" />
-        <Box component="header" ta="center" maw="22.5rem">
+        <Box component="header" ta="center" maw={CONTENT_MAX_WIDTH}>
           <Title order={2} size="h4" mb="xs">
             {title}
           </Title>
@@ -174,7 +178,7 @@ export const GdriveAddDataPanel = () => {
     >
       <Button
         variant="filled"
-        w="12.5rem"
+        w={INNER_WIDTH}
         disabled={status !== "not-connected"}
         onClick={() => {
           trackSheetConnectionClick({ from: "add-data-modal" });
