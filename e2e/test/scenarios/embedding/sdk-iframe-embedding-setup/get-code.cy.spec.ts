@@ -13,7 +13,7 @@ describe("scenarios > embedding > sdk iframe embed setup > get code step", () =>
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("bleeding-edge");
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
