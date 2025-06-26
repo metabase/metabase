@@ -1,6 +1,7 @@
 (ns metabase.lib.fe-util
   (:require
    [inflections.core :as inflections]
+   [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.card :as lib.card]
    [metabase.lib.common :as lib.common]
@@ -336,15 +337,20 @@
   [:map
    [:operator ::lib.schema.filter/number-filter-operator]
    [:column   ::lib.schema.metadata/column]
-   [:values   [:sequential NumberFilterValue]]])
+   [:values   [:sequential NumberFilterValue]]
+   [:options  ::lib.schema.filter/number-filter-options]])
 
 (mu/defn number-filter-clause :- ::lib.schema.expression/expression
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[number-filter-parts]]."
   [operator :- ::lib.schema.filter/number-filter-operator
    column   :- ::lib.schema.metadata/column
-   values   :- [:maybe [:sequential NumberFilterValue]]]
-  (expression-clause-with-in operator (into [column] (map number->expression-arg) values) {}))
+   values   :- [:maybe [:sequential NumberFilterValue]]
+   options  :- ::lib.schema.filter/number-filter-options]
+  (expression-clause-with-in operator (into [column] (map number->expression-arg) values)
+                             (->> (select-keys options [:min-inclusive :max-exclusive])
+                                  ;; True is the default, so omit them unless they're explicitly false.
+                                  (m/filter-vals false?))))
 
 (mu/defn number-filter-parts :- [:maybe NumberFilterParts]
   "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
@@ -377,8 +383,24 @@
       (result op col-ref args)
 
       ;; exactly 2 arguments
-      [(op :guard #{:between}) _ (col-ref :guard number-col?) & (args :len 2 :guard (every? number-arg? args))]
-      (result op col-ref args))))
+      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)]
+      {:operator op
+       :column   (ref->col col-ref)
+       :values   [(expression-arg->number start) (expression-arg->number end)]
+       :options  {}}
+
+      ;; exactly 3 arguments
+      [(op :guard #{:between}) _ (col-ref :guard number-col?) (start :guard number-arg?) (end :guard number-arg?)
+       (opts :guard map?)]
+      {:operator op
+       :column   (ref->col col-ref)
+       :values   [(expression-arg->number start) (expression-arg->number end)]
+       :options  {(get opts :min-inclusive true)
+                  (get opts :max-inclusive true)}}
+
+      ;; do not match inner clauses
+      _
+      nil)))
 
 (def ^:private CoordinateFilterParts
   [:map

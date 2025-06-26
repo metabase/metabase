@@ -1073,20 +1073,22 @@
 (defn ^:export number-filter-clause
   "Creates a numeric filter clause based on FE-friendly filter parts. It should be possible to destructure each created
   expression with [[number-filter-parts]]."
-  [operator column values]
+  [operator column values options]
   (lib.core/number-filter-clause (keyword operator)
                                  column
-                                 (js->clj values)))
+                                 (js->clj values)
+                                 (js-obj->cljs-map options)))
 
 (defn ^:export number-filter-parts
   "Destructures a numeric filter clause created by [[number-filter-clause]]. Returns `nil` if the clause does not match
   the expected shape."
   [a-query stage-number a-filter-clause]
   (when-let [filter-parts (lib.core/number-filter-parts a-query stage-number a-filter-clause)]
-    (let [{:keys [operator column values]} filter-parts]
+    (let [{:keys [operator column values options]} filter-parts]
       #js {:operator (name operator)
            :column   column
-           :values   (to-array (map clj->js values))})))
+           :values   (to-array (map clj->js values))
+           :options  (cljs-map->js-obj options)})))
 
 (defn ^:export coordinate-filter-clause
   "Creates a coordinate filter clause based on FE-friendly filter parts. It should be possible to destructure each
