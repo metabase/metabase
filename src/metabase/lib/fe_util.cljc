@@ -752,6 +752,11 @@
     _
     nil))
 
+(mu/defn join-condition-lhs-or-rhs-column? :- :boolean
+  "Whether this LHS or RHS expression is a `:field` reference."
+  [lhs-or-rhs :- [:maybe ::lib.schema.expression/expression]]
+  (lib.util/field-clause? lhs-or-rhs))
+
 (mu/defn filter-args-display-name :- :string
   "Provides a reasonable display name for the `filter-clause` excluding the column-name.
    Can be expanded as needed but only currently defined for a narrow set of date filters.
