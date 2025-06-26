@@ -958,9 +958,9 @@
   [query stage-number join-or-joinable condition-lhs-or-nil]
   (when-let [lhs-column-ref (or condition-lhs-or-nil
                                 (when (join? join-or-joinable)
-                                  (when-let [standard-join-condition-lhs (first (join-conditions join-or-joinable))]
-                                    (when (lib.util/field-clause? standard-join-condition-lhs)
-                                      standard-join-condition-lhs))))]
+                                  (when-let [lhs (standard-join-condition-lhs (first (join-conditions join-or-joinable)))]
+                                    (when (lib.util/field-clause? lhs)
+                                      lhs))))]
     (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
       (get-in display-info [:table :display-name]))))
 
