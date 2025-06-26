@@ -104,6 +104,8 @@ export type MetabotChartConfig = {
     description?: string;
     timestamp: string;
   }>;
+  query?: DatasetQuery;
+  display_type?: CardDisplayType;
 };
 
 export type MetabotCardInfo = {
