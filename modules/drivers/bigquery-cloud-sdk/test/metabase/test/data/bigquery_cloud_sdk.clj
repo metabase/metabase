@@ -411,14 +411,16 @@
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  (execute-params!
-   (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-                "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
-                "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-                "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
-   [(tx/hash-dataset db-def)
-    (test-dataset-id db-def)
-    (tx/tracking-access-note)]))
+  ; ignore exceptions because of https://cloud.google.com/bigquery/docs/troubleshoot-queries#could_not_serialize
+  (u/ignore-exceptions
+    (execute-params!
+     (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+                  "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
+                  "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                  "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
+     [(tx/hash-dataset db-def)
+      (test-dataset-id db-def)
+      (tx/tracking-access-note)])))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [_ {:keys [database-name table-definitions] :as db-def} & _]
