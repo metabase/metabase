@@ -34,9 +34,8 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
   ref: Ref<HTMLButtonElement>,
 ) {
   const expression = isLhsPicker ? lhsExpression : rhsExpression;
-  const expressionInfo = useMemo(
-    () =>
-      expression ? Lib.displayInfo(query, stageIndex, expression) : undefined,
+  const buttonLabel = useMemo(
+    () => getButtonLabel(query, stageIndex, expression),
     [query, stageIndex, expression],
   );
   const isEmpty = expression == null;
@@ -73,8 +72,22 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
         fw={700}
         lh={1}
       >
-        {expressionInfo?.displayName ?? t`Pick a column…`}
+        {buttonLabel}
       </Text>
     </button>
   );
 });
+
+function getButtonLabel(
+  query: Lib.Query,
+  stageIndex: number,
+  expression: Lib.ExpressionClause | undefined,
+) {
+  if (expression == null) {
+    return t`Pick a column…`;
+  } else if (Lib.isStandardJoinConditionLHSorRHS(expression)) {
+    return Lib.displayInfo(query, stageIndex, expression).displayName;
+  } else {
+    return t`Custom expression`;
+  }
+}

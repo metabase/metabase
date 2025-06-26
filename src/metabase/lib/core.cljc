@@ -280,6 +280,7 @@
   joinable-columns
   joins
   raw-join-strategy
+  standard-join-condition-lhs-or-rhs?
   suggested-join-conditions
   with-join-alias
   with-join-fields

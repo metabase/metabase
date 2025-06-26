@@ -1234,18 +1234,29 @@
            :column   column})))
 
 (defn ^:export join-condition-clause
-  "Creates a join condition from the operator, LHS and RHS expressions. Expressions are opaque objects."
+  "Creates a join condition from the operator, LHS and RHS expressions. Expressions are opaque objects.
+
+  > **Code health:** Healthy."
   [operator lhs-expression rhs-expression]
   (lib.fe-util/join-condition-clause (keyword operator) lhs-expression rhs-expression))
 
 (defn ^:export join-condition-parts
-  "Destructures a join condition created by [[join-condition-clause]]. Expressions are opaque objects."
+  "Destructures a join condition created by [[join-condition-clause]]. Expressions are opaque objects.
+
+  > **Code health:** Healthy."
   [condition]
   (when-let [parts (lib.fe-util/join-condition-parts condition)]
     (let [{:keys [operator lhs-expression rhs-expression]} parts]
       #js {:operator      (name operator)
            :lhsExpression lhs-expression
            :rhsExpression rhs-expression})))
+
+(defn ^:export standard-join-condition-lhs-or-rhs?
+  "Whether this LHS or RHS expression is a column and not a custom expression.
+
+  > **Code health:** Single use. This is used in the notebook editor."
+  [lhs-or-rhs-expression]
+  (lib.core/standard-join-condition-lhs-or-rhs? lhs-or-rhs-expression))
 
 (defn ^:export column-metadata?
   "Returns true if arg is an MLv2 column, ie. has `:lib/type :metadata/column`.

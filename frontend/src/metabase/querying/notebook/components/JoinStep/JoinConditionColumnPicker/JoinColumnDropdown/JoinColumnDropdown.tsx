@@ -42,29 +42,34 @@ export function JoinColumnDropdown({
   onChange,
   onClose,
 }: JoinColumnDropdownProps) {
-  const columns = useMemo(() => {
+  const expression = isLhsPicker ? lhsExpression : rhsExpression;
+  const [isEditingExpression, setIsEditingExpression] = useState(() =>
+    isEditingExpressionInitially(expression),
+  );
+
+  const { columns, columnGroups, extraSections } = useMemo(() => {
     const getColumns = isLhsPicker
       ? Lib.joinConditionLHSColumns
       : Lib.joinConditionRHSColumns;
-    return getColumns(
+    const columns = getColumns(
       query,
       stageIndex,
       joinable,
       lhsExpression,
       rhsExpression,
     );
-  }, [query, stageIndex, joinable, lhsExpression, rhsExpression, isLhsPicker]);
-
-  const columnGroups = useMemo(() => Lib.groupColumns(columns), [columns]);
-  const extraSections = useMemo(
-    () => getExtraSections(query, stageIndex, strategy),
-    [query, stageIndex, strategy],
-  );
-
-  const expression = isLhsPicker ? lhsExpression : rhsExpression;
-  const [isExpressionEditorOpen, setIsExpressionEditorOpen] = useState(() =>
-    isExpressionEditorInitiallyOpen(query, stageIndex, columns, expression),
-  );
+    const columnGroups = Lib.groupColumns(columns);
+    const extraSections = getExtraSections(query, stageIndex, strategy);
+    return { columns, columnGroups, extraSections };
+  }, [
+    query,
+    stageIndex,
+    joinable,
+    strategy,
+    lhsExpression,
+    rhsExpression,
+    isLhsPicker,
+  ]);
 
   const handleColumnSelect = (newColumn: Lib.ColumnMetadata) => {
     onChange(Lib.expressionClause(newColumn), Lib.temporalBucket(newColumn));
@@ -72,7 +77,7 @@ export function JoinColumnDropdown({
 
   const handleSectionSelect = (newSection: QueryColumnPickerSection) => {
     if (newSection.key === CUSTOM_EXPRESSION_SECTION_KEY) {
-      setIsExpressionEditorOpen(true);
+      setIsEditingExpression(true);
     }
   };
 
@@ -85,10 +90,10 @@ export function JoinColumnDropdown({
   };
 
   const handleExpressionEditorClose = () => {
-    setIsExpressionEditorOpen(false);
+    setIsEditingExpression(false);
   };
 
-  if (isExpressionEditorOpen) {
+  if (isEditingExpression) {
     return (
       <ExpressionWidget
         query={query}
@@ -111,7 +116,7 @@ export function JoinColumnDropdown({
       columnGroups={columnGroups}
       extraSections={extraSections}
       hasTemporalBucketing
-      checkIsColumnSelected={checkIsColumnSelected}
+      checkIsColumnSelected={isColumnSelected}
       onSelect={handleColumnSelect}
       onSelectSection={handleSectionSelect}
       onClose={onClose}
@@ -138,20 +143,12 @@ function getExtraSections(
   ];
 }
 
-function isExpressionEditorInitiallyOpen(
-  query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
-  expression: Lib.ExpressionClause | undefined,
-) {
-  return (
-    expression != null &&
-    columns.every(
-      (column) => !Lib.displayInfo(query, stageIndex, column).selected,
-    )
-  );
+function isColumnSelected(item: ColumnListItem) {
+  return Boolean(item.selected);
 }
 
-function checkIsColumnSelected(item: ColumnListItem) {
-  return Boolean(item.selected);
+function isEditingExpressionInitially(
+  expression: Lib.ExpressionClause | undefined,
+) {
+  return expression != null && !Lib.isStandardJoinConditionLHSorRHS(expression);
 }
