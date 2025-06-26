@@ -232,8 +232,9 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
   });
 }
 
-const Template: StoryFn<MockDashboardContextProps> = (args) => {
-  // @ts-expect-error -- custom prop to support non JSON-serializable value as args
+const Template: StoryFn<MockDashboardContextProps> = (
+  args: MockDashboardContextProps,
+) => {
   const parameterType: ParameterType = args.parameterType;
   const dashboard = args.dashboard;
 
