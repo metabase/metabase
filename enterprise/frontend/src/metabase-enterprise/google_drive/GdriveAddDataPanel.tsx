@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   Center,
+  Group,
   Icon,
   Stack,
   Text,
@@ -34,26 +35,39 @@ import { getStatus, useShowGdrive } from "./utils";
 const PanelWrapper = ({
   title = t`Connect Google Sheets`,
   subtitle = t`Sync a spreadsheet or an entire Google Drive folder with your instance.`,
+  isModalOpen,
+  onModalClose,
   children,
 }: PropsWithChildren<{
   title?: string;
   subtitle?: string;
+  isModalOpen?: boolean;
+  onModalClose?: () => void;
 }>) => {
   const illustration = getSubpathSafeUrl(
     "app/assets/img/empty-states/google-sheet.svg",
   );
 
   return (
-    <Stack gap="md" align="center" justify="center" pt="3rem">
-      <Center component="img" src={illustration} w="3rem" />
-      <Box component="header" ta="center" maw="22.5rem">
-        <Title order={2} size="h4" mb="xs">
-          {title}
-        </Title>
-        <Text c="text-medium">{subtitle}</Text>
-      </Box>
-      {children}
-    </Stack>
+    <>
+      <Stack gap="md" align="center" justify="center" pt="3rem">
+        <Center component="img" src={illustration} w="3rem" />
+        <Box component="header" ta="center" maw="22.5rem">
+          <Title order={2} size="h4" mb="xs">
+            {title}
+          </Title>
+          <Text c="text-medium">{subtitle}</Text>
+        </Box>
+        {children}
+      </Stack>
+      {onModalClose && (
+        <GdriveConnectionModal
+          isModalOpen={!!isModalOpen}
+          onClose={onModalClose}
+          reconnect={true}
+        />
+      )}
+    </>
   );
 };
 
@@ -71,6 +85,8 @@ export const GdriveAddDataPanel = () => {
     !showGdrive ? skipToken : undefined,
     { refetchOnMountOrArgChange: 5 },
   );
+
+  const folderUrl = folder?.url;
 
   const NO_STORAGE_SUBTITLE = t`To work with spreadsheets, you can add storage to your instance.`;
   // eslint-disable-next-line no-literal-metabase-strings -- admin only
@@ -102,42 +118,45 @@ export const GdriveAddDataPanel = () => {
     );
   }
 
-  <GdriveConnectionModal
-    isModalOpen={isConnectionModalOpen}
-    onClose={closeConnectionModal}
-    reconnect={true}
-  />;
-
   // Finally, all conditions have been met, and all screens below this line depend only
   // on the status of the attempted connection
   const status = getStatus({ status: folder?.status, error });
 
   if (status === "active") {
     return (
-      <PanelWrapper title={t`Import Google Sheets`}>
-        <DriveConnectionDisplay />
-        <Button
-          variant="subtle"
-          onClick={() => {
-            trackSheetConnectionClick({ from: "add-data-modal" });
-            openConnectionModal();
-          }}
+      <>
+        <PanelWrapper
+          title={t`Import Google Sheets`}
+          isModalOpen={isConnectionModalOpen}
+          onModalClose={closeConnectionModal}
         >
-          {t`Add new`}
-        </Button>
-      </PanelWrapper>
+          <DriveConnectionDisplay />
+          <Button
+            variant="subtle"
+            onClick={() => {
+              trackSheetConnectionClick({ from: "add-data-modal" });
+              openConnectionModal();
+            }}
+          >
+            {t`Add new`}
+          </Button>
+        </PanelWrapper>
+      </>
     );
   }
 
   if (status === "paused") {
     return (
       <PanelWrapper subtitle={NO_STORAGE_SUBTITLE}>
-        <DriveConnectionDisplay />
         <ErrorAlert
           // eslint-disable-next-line no-literal-metabase-strings -- admin only
           error={t`Metabase Storage is full. Add more storage to continue syncing.`}
-          upsell
-        />
+        >
+          <Group gap="sm" mt="sm" align="center">
+            <CTALink href={BUY_STORAGE_URL} text={t`Add storage`} />
+            <CTALink href={folderUrl} text={t`Go to Google Drive`} />
+          </Group>
+        </ErrorAlert>
       </PanelWrapper>
     );
   }
@@ -149,7 +168,10 @@ export const GdriveAddDataPanel = () => {
     .exhaustive();
 
   return (
-    <PanelWrapper>
+    <PanelWrapper
+      isModalOpen={isConnectionModalOpen}
+      onModalClose={closeConnectionModal}
+    >
       <Button
         variant="filled"
         w="12.5rem"
@@ -171,11 +193,8 @@ export const GdriveAddDataPanel = () => {
 
 const ErrorAlert = ({
   error,
-  upsell,
-}: {
-  error?: string;
-  upsell?: boolean;
-}) => {
+  children,
+}: PropsWithChildren<{ error?: string }>) => {
   if (!error) {
     return null;
   }
@@ -185,6 +204,7 @@ const ErrorAlert = ({
       icon={<Icon name="warning" c="danger" />}
       variant="outline"
       title={t`Couldn't sync Google Sheets`}
+      w="100%"
       styles={{
         root: {
           backgroundColor: "transparent",
@@ -202,19 +222,28 @@ const ErrorAlert = ({
       <Text fz="sm" lh="lg">
         {error}
       </Text>
-      {upsell && (
-        <Anchor
-          href={BUY_STORAGE_URL}
-          target="_blank"
-          underline="never"
-          variant="brand"
-          fw="bold"
-          fz="sm"
-          p={0}
-        >
-          {t`Add storage`}
-        </Anchor>
-      )}
+      {children}
     </Alert>
+  );
+};
+
+const CTALink = ({ href, text }: { href?: string; text: string }) => {
+  if (!href) {
+    return null;
+  }
+
+  return (
+    <Anchor
+      href={href}
+      target="_blank"
+      underline="never"
+      variant="brand"
+      fw="bold"
+      fz="sm"
+      p={0}
+      lh={1}
+    >
+      {text}
+    </Anchor>
   );
 };
