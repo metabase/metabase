@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 import { IndexRedirect, Link, Route } from "react-router";
 
 import {
@@ -610,6 +611,46 @@ describe("DataModel", () => {
             screen.getByRole("link", { name: "Link to Data Model" }),
           ).toBeInTheDocument();
         });
+      });
+    });
+  });
+
+  describe("table section", () => {
+    it("should allow to rescan field values", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(
+        screen.getByRole("button", { name: /Sync options/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", { name: "Re-scan table" }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/table/${ORDERS_TABLE.id}/rescan_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
+      });
+    });
+
+    it("should allow to discard field values", async () => {
+      await setup();
+
+      await userEvent.click(getTablePickerTable(ORDERS_TABLE.display_name));
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(
+        screen.getByRole("button", { name: /Sync options/ }),
+      );
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "Discard cached field values",
+        }),
+      );
+
+      await waitFor(() => {
+        const path = `path:/api/table/${ORDERS_TABLE.id}/discard_values`;
+        expect(fetchMock.called(path, { method: "POST" })).toBeTruthy();
       });
     });
   });
