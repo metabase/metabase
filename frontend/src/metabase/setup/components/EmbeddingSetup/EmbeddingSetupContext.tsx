@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { DatabaseData, Table } from "metabase-types/api";
+import type { DashboardId, DatabaseData, Table } from "metabase-types/api";
 
 import { DataConnectionStep } from "./steps/DataConnectionStep";
 import { DoneStep } from "./steps/DoneStep";
@@ -42,8 +42,8 @@ type EmbeddingSetupContextType = {
   setError: (error: string) => void;
   selectedTables: Table[];
   setSelectedTables: (tables: Table[]) => void;
-  createdDashboardIds: number[];
-  setCreatedDashboardIds: (ids: number[]) => void;
+  createdDashboardIds: DashboardId[];
+  setCreatedDashboardIds: (ids: DashboardId[]) => void;
   stepKey: EmbeddingSetupStepKey;
   goToStep: (key: EmbeddingSetupStepKey) => void;
   steps: StepDefinition[];
@@ -79,7 +79,9 @@ export const EmbeddingSetupProvider = ({
   const [processingStatus, setProcessingStatus] = useState("");
   const [error, setError] = useState("");
   const [selectedTables, setSelectedTables] = useState<Table[]>([]);
-  const [createdDashboardIds, setCreatedDashboardIds] = useState<number[]>([]);
+  const [createdDashboardIds, setCreatedDashboardIds] = useState<DashboardId[]>(
+    [],
+  );
   const [stepKey, goToStep] = useState<EmbeddingSetupStepKey>(STEPS[0].key);
 
   const stepIndex = getStepIndexByKey(stepKey);
