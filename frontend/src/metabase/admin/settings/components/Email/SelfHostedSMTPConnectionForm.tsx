@@ -242,7 +242,7 @@ export const SelfHostedSMTPConnectionForm = ({
                 <Flex mt="1rem" gap="md" justify="end">
                   <Button
                     onClick={handleClearEmailSettings}
-                    disabled={allSetByEnvVars}
+                    disabled={allSetByEnvVars || isSubmitting}
                   >
                     {t`Clear`}
                   </Button>
