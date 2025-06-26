@@ -152,14 +152,10 @@ describe(
 
         cy.log("should allow to pick an action");
 
-        cy.wait("@getSampleDbTables");
-
-        cy.findByText("Accounts").should("be.visible");
-
         cy.findByText("QA Postgres12").click();
         cy.wait("@getPostgresTables");
 
-        cy.findByText("Newtable").should("be.visible").click();
+        cy.findByText("Reviews").should("be.visible").click();
         cy.findByText("Create or Update").click();
 
         cy.findByText(
@@ -171,7 +167,10 @@ describe(
         );
         cy.findByText("Choose a new action").click();
 
-        cy.findByText("Newtable")
+        cy.findByText("Reviews")
+          .closest('[role="link"]')
+          .should("have.attr", "data-active");
+        cy.findByText("QA Postgres12")
           .closest('[role="link"]')
           .should("have.attr", "data-active");
 
