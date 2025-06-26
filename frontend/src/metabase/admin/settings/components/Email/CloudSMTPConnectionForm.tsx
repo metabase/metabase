@@ -51,11 +51,11 @@ const getFormValueSchema = (
   settingsDetails: SettingDefinitionMap | undefined,
 ) => {
   return Yup.object({
-    "cloud-email-smtp-host": settingsDetails?.["email-smtp-host"]
+    "cloud-email-smtp-host": settingsDetails?.["cloud-email-smtp-host"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().required(Errors.required).default(""),
-    "cloud-email-smtp-port": settingsDetails?.["email-smtp-port"]
+    "cloud-email-smtp-port": settingsDetails?.["cloud-email-smtp-port"]
       ?.is_env_setting
       ? anySchema
       : Yup.string()
@@ -63,7 +63,7 @@ const getFormValueSchema = (
           .nullable()
           // .required(Errors.required)
           .default("465"),
-    "cloud-email-smtp-security": settingsDetails?.["email-smtp-security"]
+    "cloud-email-smtp-security": settingsDetails?.["cloud-email-smtp-security"]
       ?.is_env_setting
       ? anySchema
       : Yup.string()
@@ -74,11 +74,11 @@ const getFormValueSchema = (
           .nullable()
           // .required(Errors.required)
           .default("ssl"),
-    "cloud-email-smtp-username": settingsDetails?.["email-smtp-username"]
+    "cloud-email-smtp-username": settingsDetails?.["cloud-email-smtp-username"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),
-    "cloud-email-smtp-password": settingsDetails?.["email-smtp-password"]
+    "cloud-email-smtp-password": settingsDetails?.["cloud-email-smtp-password"]
       ?.is_env_setting
       ? anySchema
       : Yup.string().default(""),

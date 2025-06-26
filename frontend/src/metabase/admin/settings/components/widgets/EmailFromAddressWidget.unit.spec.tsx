@@ -123,7 +123,7 @@ describe("EmailFromAddressWidgets", () => {
     ).toBeInTheDocument();
   });
 
-  it("should be editble for cloud users with feature flag who have configured and enabled smtp", async () => {
+  it("should be editable for cloud users with feature flag who have configured and enabled smtp", async () => {
     await setup({
       hosted: true,
       cloudCustomSMTPFF: true,

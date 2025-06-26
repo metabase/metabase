@@ -21,7 +21,7 @@ export function trackSMTPSetupSuccess({
   eventDetail: CustomSMTPSetupSuccessEvent["event_detail"];
 }) {
   trackSimpleEvent({
-    event: "custom_smtp_setup_clicked",
+    event: "custom_smtp_setup_success",
     event_detail: eventDetail,
   });
 }
