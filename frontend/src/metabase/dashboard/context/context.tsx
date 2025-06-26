@@ -179,7 +179,7 @@ const DashboardContextProviderInner = ({
     setTheme,
   } = useDashboardTheme(initTheme);
 
-  const shouldRenderAsNightMode = Boolean(isNightMode);
+  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
   const handleError = useCallback(
     (error: unknown) => {

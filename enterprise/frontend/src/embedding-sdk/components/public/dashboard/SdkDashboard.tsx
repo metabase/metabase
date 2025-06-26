@@ -37,6 +37,7 @@ import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
@@ -217,7 +218,7 @@ const SdkDashboardInner = ({
         <SdkDashboardProvider plugins={plugins} onEditQuestion={onEditQuestion}>
           {children ?? (
             <SdkDashboardStyledWrapper className={className} style={style}>
-              <Dashboard />
+              <Dashboard className={EmbedFrameS.EmbedFrame} />
             </SdkDashboardStyledWrapper>
           )}
         </SdkDashboardProvider>

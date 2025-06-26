@@ -11,8 +11,6 @@ import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
 import { useDispatch } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { useGlobalTheme } from "metabase/public/components/EmbedFrame/useGlobalTheme";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
@@ -55,9 +53,7 @@ function Dashboard({ className }: { className?: string }) {
     setParameterTemporalUnits,
     sidebar,
     closeSidebar,
-    theme,
   } = useDashboardContext();
-  useGlobalTheme(theme);
 
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
@@ -99,7 +95,6 @@ function Dashboard({ className }: { className?: string }) {
       className={cx(
         className,
         DashboardS.Dashboard,
-        EmbedFrameS.EmbedFrame,
         S.DashboardLoadingAndErrorWrapper,
         {
           [DashboardS.DashboardFullscreen]: isFullscreen,
@@ -136,13 +131,10 @@ function Dashboard({ className }: { className?: string }) {
 
       <Box
         component="header"
-        className={cx(
-          S.DashboardHeaderContainer,
-          EmbedFrameS.EmbedFrameHeader,
-          {
-            [S.isNightMode]: shouldRenderAsNightMode,
-          },
-        )}
+        className={cx(S.DashboardHeaderContainer, {
+          [S.isFullscreen]: isFullscreen,
+          [S.isNightMode]: shouldRenderAsNightMode,
+        })}
         data-element-id="dashboard-header-container"
         data-testid="dashboard-header-container"
       >
@@ -167,8 +159,6 @@ function Dashboard({ className }: { className?: string }) {
             [S.shouldMakeDashboardHeaderStickyAfterScrolling]:
               !isFullscreen && (isEditing || isSharing),
             [S.notEmpty]: !isEmpty,
-            [EmbedFrameS.ContentContainer]: true,
-            [EmbedFrameS.WithThemeBackground]: true,
           })}
           id={DASHBOARD_PDF_EXPORT_ROOT_ID}
           data-element-id="dashboard-parameters-and-cards"

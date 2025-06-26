@@ -19,6 +19,10 @@
       background-color: var(--mb-color-bg-black);
     }
 
+    &.isEmbeddingSdk {
+      background-color: var(--mb-color-bg-dashboard);
+    }
+
     border-bottom-color: var(--mb-color-border);
   }
 

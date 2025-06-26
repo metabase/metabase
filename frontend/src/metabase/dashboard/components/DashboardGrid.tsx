@@ -501,33 +501,22 @@ class DashboardGridInner extends Component<
       isMobile,
       gridItemWidth,
       totalNumGridCols,
-      downloadsEnabled,
       shouldAutoScrollTo,
-      reportAutoScrolledToDashcard,
     }: {
       isMobile: boolean;
       gridItemWidth: number;
       totalNumGridCols: number;
-      downloadsEnabled: EmbedResourceDownloadOptions;
       shouldAutoScrollTo: boolean;
-      reportAutoScrolledToDashcard?: () => void;
     },
   ) {
     return (
       <DashCard
         className={S.Card}
         dashcard={dashcard}
-        slowCards={this.props.slowCards}
         gridItemWidth={gridItemWidth}
         totalNumGridCols={totalNumGridCols}
         markNewCardSeen={this.props.markNewCardSeen}
-        isEditing={this.props.isEditing}
-        isEditingParameter={this.props.isEditingParameter}
-        isFullscreen={this.props.isFullscreen}
-        isNightMode={this.props.isNightMode}
         isMobile={isMobile}
-        isPublicOrEmbedded={this.props.isPublicOrEmbedded}
-        isXray={this.props.isXray}
         onRemove={this.onDashCardRemove}
         onReplaceCard={this.onReplaceCard}
         onUpdateVisualizationSettings={
@@ -536,19 +525,11 @@ class DashboardGridInner extends Component<
         onReplaceAllDashCardVisualizationSettings={
           this.props.onReplaceAllDashCardVisualizationSettings
         }
-        getClickActionMode={this.props.getClickActionMode}
-        navigateToNewCardFromDashboard={
-          this.props.navigateToNewCardFromDashboard
-        }
-        onChangeLocation={this.props.onChangeLocation}
-        dashboard={this.props.dashboard}
         showClickBehaviorSidebar={this.props.showClickBehaviorSidebar}
         clickBehaviorSidebarDashcard={this.props.clickBehaviorSidebarDashcard}
-        downloadsEnabled={downloadsEnabled}
-        autoScroll={shouldAutoScrollTo}
         isTrashedOnRemove={this.getIsLastDashboardQuestionDashcard(dashcard)}
-        reportAutoScrolledToDashcard={reportAutoScrolledToDashcard}
         onEditVisualization={this.onEditVisualization}
+        autoScroll={shouldAutoScrollTo}
       />
     );
   }
@@ -622,8 +603,7 @@ class DashboardGridInner extends Component<
     gridItemWidth: number;
     totalNumGridCols: number;
   }) => {
-    const { isEditing, autoScrollToDashcardId, reportAutoScrolledToDashcard } =
-      this.props;
+    const { isEditing, autoScrollToDashcardId } = this.props;
     const shouldAutoScrollTo = autoScrollToDashcardId === dc.id;
 
     const shouldChangeResizeHandle = isEditingTextOrHeadingCard(
@@ -650,9 +630,7 @@ class DashboardGridInner extends Component<
           isMobile: breakpoint === "mobile",
           gridItemWidth,
           totalNumGridCols,
-          downloadsEnabled: this.props.downloadsEnabled,
           shouldAutoScrollTo,
-          reportAutoScrolledToDashcard,
         })}
       </Box>
     );

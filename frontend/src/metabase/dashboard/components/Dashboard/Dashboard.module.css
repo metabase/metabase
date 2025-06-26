@@ -19,7 +19,13 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
+  background-color: var(--mb-color-background);
   border-bottom: 1px solid var(--mb-color-border);
+
+  &.isFullscreen {
+    background-color: transparent;
+    border: none;
+  }
 
   &.isNightMode {
     color: var(--mb-color-text-white);

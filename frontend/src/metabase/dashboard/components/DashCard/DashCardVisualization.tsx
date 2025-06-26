@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type { LocationDescriptor } from "history";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,17 +14,13 @@ import {
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type {
-  ClickActionModeGetter,
-  ComputedVisualizationSettings,
-} from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -39,7 +34,6 @@ import type {
   Card,
   CardId,
   DashCardId,
-  Dashboard,
   DashboardCard,
   Dataset,
   DatasetData,
@@ -62,10 +56,8 @@ import type {
 import { shouldShowParameterMapper } from "./utils";
 
 interface DashCardVisualizationProps {
-  dashboard: Dashboard;
   dashcard: DashboardCard;
   series: Series;
-  getClickActionMode?: ClickActionModeGetter;
   getHref?: () => string | undefined;
 
   gridSize: {
@@ -83,14 +75,7 @@ interface DashCardVisualizationProps {
   isClickBehaviorSidebarOpen: boolean;
   isEditingDashCardClickBehavior: boolean;
   isEditingDashboardLayout: boolean;
-  isEditing?: boolean;
-  isEditingParameter?: boolean;
-  isFullscreen?: boolean;
   isMobile?: boolean;
-  isNightMode?: boolean;
-  /** If public sharing or static/public embed */
-  isPublicOrEmbedded?: boolean;
-  isXray?: boolean;
 
   error?: { message?: string; icon?: IconName };
   headerIcon?: IconProps;
@@ -101,10 +86,7 @@ interface DashCardVisualizationProps {
   ) => void;
   onChangeCardAndRun: DashCardOnChangeCardAndRunHandler | null;
   showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
-  onChangeLocation: (location: LocationDescriptor) => void;
   onTogglePreviewing: () => void;
-
-  downloadsEnabled: EmbedResourceDownloadOptions;
 
   onEditVisualization?: () => void;
 }
@@ -115,7 +97,6 @@ interface DashCardVisualizationProps {
 export function DashCardVisualization({
   dashcard,
   series: untranslatedRawSeries,
-  getClickActionMode,
   getHref,
   gridSize,
   gridItemWidth,
@@ -129,19 +110,24 @@ export function DashCardVisualization({
   isEditingDashboardLayout,
   isClickBehaviorSidebarOpen,
   isEditingDashCardClickBehavior,
-  isEditing = false,
-  isNightMode = false,
-  isFullscreen = false,
   isMobile = false,
-  isEditingParameter,
   onChangeCardAndRun,
   onTogglePreviewing,
   showClickBehaviorSidebar,
-  onChangeLocation,
   onUpdateVisualizationSettings,
   onEditVisualization,
 }: DashCardVisualizationProps) {
-  const { cardTitled, dashboard, dashcardMenu } = useDashboardContext();
+  const {
+    cardTitled,
+    dashboard,
+    dashcardMenu,
+    getClickActionMode,
+    isEditing = false,
+    shouldRenderAsNightMode,
+    isFullscreen = false,
+    isEditingParameter,
+    onChangeLocation,
+  } = useDashboardContext();
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
@@ -434,7 +420,7 @@ export function DashCardVisualization({
       isDashboard
       isSlow={isSlow}
       isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
+      isNightMode={shouldRenderAsNightMode}
       isEditing={isEditing}
       isPreviewing={isPreviewing}
       isEditingParameter={isEditingParameter}

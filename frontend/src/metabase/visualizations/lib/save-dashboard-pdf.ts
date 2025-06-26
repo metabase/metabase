@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
-import { isEmbeddingSdk } from "metabase/env";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -206,8 +205,8 @@ export const saveDashboardPdf = async ({
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
   const backgroundColor = getComputedStyle(
-    (isEmbeddingSdk && document.querySelector("#metabase-sdk-root")) ||
-      document.documentElement,
+    // (isEmbeddingSdk && document.querySelector("#metabase-sdk-root")) ||
+    document.documentElement,
   )
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
