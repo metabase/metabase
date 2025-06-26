@@ -1165,7 +1165,8 @@
           metabase.sync.schedules
           metabase.sync.task.sync-databases
           metabase.sync.util}
-   :uses #{analyze
+   :uses #{analytics
+           analyze
            api
            app-db
            audit-app
