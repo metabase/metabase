@@ -19,12 +19,10 @@
    (com.google.cloud.bigquery
     BigQuery
     BigQuery$DatasetDeleteOption
-    BigQuery$DatasetListOption
     BigQuery$DatasetOption
     BigQuery$TableListOption
     BigQuery$TableOption
     BigQueryException
-    Dataset
     DatasetId
     DatasetInfo
     Field
@@ -41,16 +39,6 @@
 (set! *warn-on-reflection* true)
 
 (sql.tx/add-test-extensions! :bigquery-cloud-sdk)
-
-(defonce ^:private ^{:arglists '(^java.lang.Long [])} ^{:doc "Timestamp to use for unique dataset identifiers. Initially
-  this is the UNIX timestamp in milliseconds of when this namespace was loaded; it refreshes every two hours thereafter.
-  Datasets with a timestamp older than two hours will get automatically cleaned up."} dataset-timestamp
-  (let [timestamp* (atom (System/currentTimeMillis))]
-    (fn []
-      (when (t/before? (t/instant ^Long @timestamp*)
-                       (t/minus (t/instant) (t/hours 2)))
-        (reset! timestamp* (System/currentTimeMillis)))
-      @timestamp*)))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -127,13 +115,8 @@
   (str/replace table-or-field-name #"-" "_"))
 
 (mu/defn- create-dataset! [^String dataset-id :- ::dataset-id]
-  (try
-    (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
-    (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id))
-    (catch BigQueryException e
-      ;; Already exists, ignore
-      (when-not (= (.getCode e) 409)
-        (throw e)))))
+  (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
+  (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
 (defn execute!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
@@ -208,12 +191,7 @@
                                                                              :base-type :type/Integer}
                                                                             field-definitions))))
         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
-    (try
-      (.create (bigquery) tbl (u/varargs BigQuery$TableOption))
-      (catch BigQueryException e
-        ;; Already exists, ignore
-        (when-not (= (.getCode e) 409)
-          (throw e))))))
+    (.create (bigquery) tbl (u/varargs BigQuery$TableOption))))
 
 (mu/defn- create-table!
   [^String dataset-id :- ::lib.schema.common/non-blank-string
@@ -346,22 +324,6 @@
             (recur (dec num-retries))
             (throw e)))))))
 
-(defn- get-all-datasets
-  "Fetch a list of *all* dataset names that currently exist in the BQ test project."
-  []
-  (for [^Dataset dataset (.iterateAll (.listDatasets (bigquery) (into-array BigQuery$DatasetListOption [])))]
-    (.. dataset getDatasetId getDataset)))
-
-(defn- transient-dataset-outdated?
-  "Checks whether the given `dataset-id` is a transient dataset that is outdated, and should be deleted.  Note that
-  this doesn't need any domain specific knowledge about which transient datasets are
-  outdated. The fact that a *created* dataset (i.e. created on BigQuery) is transient has already been encoded by a
-  suffix, so we can just look for that here."
-  [dataset-id]
-  (when-let [[_ ^String ds-timestamp-str] (re-matches #".*__transient_(\d+)$" dataset-id)]
-    (t/before? (t/instant (parse-long ds-timestamp-str))
-               (t/minus (t/instant) (t/hours 2)))))
-
 (defn delete-old-datasets!
   []
   (let [all-outdated (execute!
@@ -370,20 +332,14 @@
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 minute))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 day))")
                       (project-id)
                       (project-id)
                       (project-id))]
     (doseq [outdated all-outdated]
       (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
       (u/ignore-exceptions
-        (destroy-dataset! outdated))))
-
-;; clean up outdated datasets
-  (doseq [outdated (filter transient-dataset-outdated? (get-all-datasets))]
-    (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
-    (u/ignore-exceptions
-      (destroy-dataset! outdated))))
+        (destroy-dataset! outdated)))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -463,17 +419,19 @@
   {:pre [(seq database-name) (sequential? table-definitions)]}
   (delete-old-datasets-if-needed!)
   (let [dataset-id (test-dataset-id db-def)]
-    (try
-      (log/infof "Creating dataset %s..." (pr-str dataset-id))
-      (create-dataset! dataset-id)
-      ;; now create tables and load data.
-      (doseq [tabledef table-definitions]
-        (load-tabledef! dataset-id tabledef))
-      (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-      (catch Throwable e
-        (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-        (log/error (u/pprint-to-str 'red (Throwable->map e)))
-        (throw e)))))
+    (if (database-exists?! db-def)
+      (log/info (u/format-color 'blue "Dataset already exists %s, not loading db" (pr-str dataset-id)))
+      (try
+        (log/infof "Creating dataset %s..." (pr-str dataset-id))
+        (create-dataset! dataset-id)
+        ;; now create tables and load data.
+        (doseq [tabledef table-definitions]
+          (load-tabledef! dataset-id tabledef))
+        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
+        (catch Throwable e
+          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
+          (log/error (u/pprint-to-str 'red (Throwable->map e)))
+          (throw e))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ db-def]
