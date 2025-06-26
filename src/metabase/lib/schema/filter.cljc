@@ -10,6 +10,16 @@
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util.malli.registry :as mr]))
 
+(defn- comparable-args-schema [compared-position-pairs]
+  [:fn
+   {:error/message "arguments should be comparable"}
+   (fn [[_tag _opts & args]]
+     (let [argv (vec args)]
+       (or expression/*suppress-expression-type-check?*
+           (every? true? (map (fn [[i j]]
+                                (expression/comparable-expressions? (get argv i) (get argv j)))
+                              compared-position-pairs)))))])
+
 (defn- tuple-clause-of-comparables-schema
   "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple` and ensure that
   the elements of `args` at positions specified by the pairs in `compared-position-pairs` can be compared."
@@ -18,14 +28,7 @@
     {:pre [(simple-keyword? tag)]}
     [:and
      (apply mbql-clause/tuple-clause-schema tag args)
-     [:fn
-      {:error/message "arguments should be comparable"}
-      (fn [[_tag _opts & args]]
-        (let [argv (vec args)]
-          (or expression/*suppress-expression-type-check?*
-              (every? true? (map (fn [[i j]]
-                                   (expression/comparable-expressions? (get argv i) (get argv j)))
-                                 compared-position-pairs)))))]]))
+     (comparable-args-schema compared-position-pairs)]))
 
 (mr/def ::default-filter-operator
   "Filter operators that should be supported by any column type. Note that the FE allows only `:is-empty` and
@@ -45,6 +48,14 @@
 (mr/def ::number-filter-operator
   "Numeric filter operators supported by the FE."
   [:enum :is-null :not-null := :!= :> :>= :< :<= :between])
+
+(mr/def ::number-filter-options
+  "Number filter operator options. Only set for `:between` operator currently."
+  [:map
+   ;; For :between. Defaults to true.
+   [:min-inclusive {:optional true} :boolean]
+   ;; For :between. Defaults to true.
+   [:max-inclusive {:optional true} :boolean]])
 
 (mr/def ::coordinate-filter-operator
   "Coordinate filter operators supported by the FE. Note that the FE does not support `:is-null` and `:not-null` for
@@ -92,12 +103,18 @@
     #_x [:ref ::expression/orderable]
     #_y [:ref ::expression/orderable]))
 
-(mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1] [0 2]})
-  :between :- :type/Boolean
+(mbql-clause/define-mbql-clause :between :- :type/Boolean
+  [:schema [:catn {:error/message (str "Valid :between clause")}
+            [:tag [:= {:decode/normalize common/normalize-keyword} :between]]
+            [:options [:merge ::common/options ::number-filter-options]]
+            [:args [:repeat {:min 3, :max 3} [:ref ::expression/orderable]]]]])
+
+#_(mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 1] [0 2]})
+    :between :- :type/Boolean
   ;; TODO -- should we enforce that min is <= max (for literal number values?)
-  #_expr [:ref ::expression/orderable]
-  #_min  [:ref ::expression/orderable]
-  #_max  [:ref ::expression/orderable])
+    #_expr [:ref ::expression/orderable]
+    #_min  [:ref ::expression/orderable]
+    #_max  [:ref ::expression/orderable])
 
 ;; sugar: a pair of `:between` clauses
 (mbql-clause/define-mbql-clause-with-schema-fn (tuple-clause-of-comparables-schema #{[0 2] [0 4] [1 3] [1 5]})
