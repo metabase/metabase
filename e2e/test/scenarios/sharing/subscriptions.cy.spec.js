@@ -112,13 +112,13 @@ describe("scenarios > dashboard > subscriptions", () => {
 
         H.sidebar().findByText("Email it").click();
 
-        const input = cy.findByPlaceholderText(
-          "Enter user names or email addresses",
-        );
-        input.click().type(`${admin.first_name}`);
-        input.type("{esc}");
+        cy.findByPlaceholderText("Enter user names or email addresses")
+          .as("input")
+          .click()
+          .type(`${admin.first_name}`);
+        cy.get("@input").type("{esc}");
 
-        input.should("have.value", `${admin.first_name}`);
+        cy.get("@input").should("have.value", `${admin.first_name}`);
 
         cy.findByTestId("token-field-popover").should("not.exist");
       });
@@ -791,14 +791,16 @@ function assignRecipient({
   openDashboardSubscriptions(dashboard_id);
   cy.findByText("Email it").click();
 
-  const input = cy.findByPlaceholderText("Enter user names or email addresses");
-  input.click().type(`${user.first_name} ${user.last_name}`);
+  cy.findByPlaceholderText("Enter user names or email addresses")
+    .as("input")
+    .click()
+    .type(`${user.first_name} ${user.last_name}`);
 
   cy.findByTestId("token-field-popover").within(() => {
     cy.findByText(`${user.first_name} ${user.last_name}`).click();
   });
 
-  input.blur(); // blur is needed to close the popover
+  cy.get("@input").blur(); // blur is needed to close the popover
 }
 
 function assignRecipients({
