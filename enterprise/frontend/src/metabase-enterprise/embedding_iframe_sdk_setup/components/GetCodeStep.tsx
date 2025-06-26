@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
@@ -13,18 +12,19 @@ import {
   Text,
 } from "metabase/ui";
 
+import { useSdkIframeEmbedSetupContext } from "../context";
 import { useSdkIframeEmbedSnippet } from "../hooks/use-sdk-iframe-embed-snippet";
-import type { SdkIframeEmbedSetupAuthType } from "../types";
 
 export const GetCodeStep = () => {
-  const [authType, setAuthType] =
-    useState<SdkIframeEmbedSetupAuthType>("user-session");
+  const { settings, updateSettings } = useSdkIframeEmbedSetupContext();
 
   const isJwtConfigured = useSetting("jwt-configured");
   const isSamlConfigured = useSetting("saml-configured");
   const isAnySsoConfigured = isJwtConfigured || isSamlConfigured;
 
-  const snippet = useSdkIframeEmbedSnippet({ authType });
+  const snippet = useSdkIframeEmbedSnippet();
+
+  const authType = settings.useExistingUserSession ? "user-session" : "sso";
 
   return (
     <Stack gap="md">
@@ -41,7 +41,9 @@ export const GetCodeStep = () => {
           <Radio.Group
             value={authType}
             onChange={(value) =>
-              setAuthType(value as SdkIframeEmbedSetupAuthType)
+              updateSettings({
+                useExistingUserSession: value === "user-session",
+              })
             }
           >
             <Stack gap="sm">
