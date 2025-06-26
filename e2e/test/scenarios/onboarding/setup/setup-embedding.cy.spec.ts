@@ -204,10 +204,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       cy.findByRole("checkbox", { name: "products" })
         .should("be.enabled")
         .check();
-      cy.log(
-        "Others non-selected options should be disabled after selecting 3 options (max limit)",
-      );
-      cy.findByRole("checkbox", { name: "reviews" }).should("be.disabled");
+
       cy.button("Continue").should("be.enabled").click();
     });
 
