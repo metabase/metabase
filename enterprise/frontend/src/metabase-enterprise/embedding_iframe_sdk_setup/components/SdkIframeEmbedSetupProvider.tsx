@@ -47,6 +47,10 @@ export const SdkIframeEmbedSetupProvider = ({
 
     // This will be overridden by the last selected dashboard in the activity log.
     dashboardId: EMBED_FALLBACK_DASHBOARD_ID,
+
+    // Default to using user sessions, as we do not know if
+    // SSO for SDK is implemented on the user's backend, even when it is configured.
+    useExistingUserSession: true,
   });
 
   // Which embed experience are we setting up?
