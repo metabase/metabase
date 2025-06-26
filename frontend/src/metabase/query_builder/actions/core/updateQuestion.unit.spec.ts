@@ -50,9 +50,14 @@ import {
 } from "metabase-types/store/mocks";
 
 import * as native from "../native";
-import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
+import * as url from "../url";
+
+jest.mock("metabase/questions/actions", () => ({
+  __esModule: true,
+  ...jest.requireActual("metabase/questions/actions"),
+}));
 
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
@@ -64,9 +69,9 @@ jest.mock("../native", () => ({
   __esModule: true,
   ...jest.requireActual("../native"),
 }));
-jest.mock("../navigation", () => ({
+jest.mock("../url", () => ({
   __esModule: true,
-  ...jest.requireActual("../navigation"),
+  ...jest.requireActual("../url"),
 }));
 jest.mock("../ui", () => ({
   __esModule: true,
@@ -357,13 +362,13 @@ describe("QB Actions > updateQuestion", () => {
         });
 
         it("updates URL if `shouldUpdateUrl: true` option provided", async () => {
-          const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
+          const updateUrlSpy = jest.spyOn(url, "updateUrl");
           await setup({ card: getCard(), shouldUpdateUrl: true });
           expect(updateUrlSpy).toHaveBeenCalledTimes(1);
         });
 
         it("doesn't update URL if `shouldUpdateUrl: false` option provided", async () => {
-          const updateUrlSpy = jest.spyOn(navigation, "updateUrl");
+          const updateUrlSpy = jest.spyOn(url, "updateUrl");
           await setup({ card: getCard(), shouldUpdateUrl: false });
           expect(updateUrlSpy).not.toHaveBeenCalled();
         });

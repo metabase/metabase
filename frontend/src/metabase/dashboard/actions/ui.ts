@@ -1,5 +1,5 @@
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { createAction, createThunkAction } from "metabase/lib/redux";
+import { createAction } from "metabase/lib/redux";
 import type { DashCardId } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -8,8 +8,6 @@ import type {
 } from "metabase-types/store";
 
 import { getSidebar } from "../selectors";
-
-import { closeAutoApplyFiltersToast } from "./parameters";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const setSidebar = createAction(SET_SIDEBAR);
@@ -49,10 +47,10 @@ export const openAddQuestionSidebar = () => (dispatch: Dispatch) => {
   );
 };
 
-export const CLOSE_DASHBOARD = "metabase/dashboard/CLOSE_DASHBOARD";
-export const closeDashboard = createThunkAction(
-  CLOSE_DASHBOARD,
-  () => (dispatch) => {
-    dispatch(closeAutoApplyFiltersToast());
-  },
-);
+// export const CLOSE_DASHBOARD = "metabase/dashboard/CLOSE_DASHBOARD";
+// export const closeDashboard = createThunkAction(
+//   CLOSE_DASHBOARD,
+//   () => (dispatch) => {
+//     dispatch(closeAutoApplyFiltersToast());
+//   },
+// );

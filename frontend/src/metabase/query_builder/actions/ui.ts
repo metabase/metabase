@@ -15,7 +15,7 @@ import type {
 
 import { trackFirstNonTableChartGenerated } from "../analytics";
 
-import { updateUrl } from "./navigation";
+import { updateUrl } from "./url";
 
 const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 

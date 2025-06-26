@@ -22,9 +22,9 @@ import {
   getRawSeries,
 } from "../../selectors";
 import { setIsShowingTemplateTagsEditor } from "../native";
-import { updateUrl } from "../navigation";
 import { runQuestionQuery } from "../querying";
 import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
+import { updateUrl } from "../url";
 
 import { computeQuestionPivotTable } from "./pivot-table";
 import { getAdHocQuestionWithVizSettings } from "./utils";

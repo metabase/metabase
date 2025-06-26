@@ -16,7 +16,7 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { addUndo } from "metabase/redux/undo";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
@@ -44,7 +44,6 @@ import {
   trackFilterRequired,
 } from "../analytics";
 import {
-  getAutoApplyFiltersToastId,
   getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
@@ -797,14 +796,14 @@ export const showAutoApplyFiltersToast = createThunkAction(
   },
 );
 
-export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
-  "metabase/dashboard/CLOSE_AUTO_APPLY_FILTERS_TOAST";
-export const closeAutoApplyFiltersToast = createThunkAction(
-  CLOSE_AUTO_APPLY_FILTERS_TOAST,
-  () => (dispatch, getState) => {
-    const toastId = getAutoApplyFiltersToastId(getState());
-    if (toastId) {
-      dispatch(dismissUndo({ undoId: toastId }));
-    }
-  },
-);
+// export const CLOSE_AUTO_APPLY_FILTERS_TOAST =
+//   "metabase/dashboard/CLOSE_AUTO_APPLY_FILTERS_TOAST";
+// export const closeAutoApplyFiltersToast = createThunkAction(
+//   CLOSE_AUTO_APPLY_FILTERS_TOAST,
+//   () => (dispatch, getState) => {
+//     const toastId = getAutoApplyFiltersToastId(getState());
+//     if (toastId) {
+//       dispatch(dismissUndo({ undoId: toastId }));
+//     }
+//   },
+// );

@@ -121,7 +121,7 @@ const DashboardContextProviderInner = ({
   setEditingDashboard,
   toggleSidebar,
   reset,
-  closeDashboard,
+  // closeDashboard,
   navigateToNewCardFromDashboard,
   ...reduxProps
 }: PropsWithChildren<ContextProps>) => {
@@ -280,7 +280,7 @@ const DashboardContextProviderInner = ({
   useUnmount(() => {
     cancelFetchDashboardCardData();
     reset();
-    closeDashboard();
+    // closeDashboard();
   });
 
   return (
@@ -336,7 +336,7 @@ const DashboardContextProviderInner = ({
         setEditingDashboard,
         toggleSidebar,
         reset,
-        closeDashboard,
+        // closeDashboard,
         ...reduxProps,
       }}
     >
