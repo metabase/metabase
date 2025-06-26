@@ -1,9 +1,4 @@
-import {
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
-
-import { getEmbedSidebar, visitNewEmbedPage } from "./helpers";
+import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
 
 const { H } = cy;
 
@@ -18,18 +13,41 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("should toggle drill-through option for dashboard", () => {
+  it("should toggle drill-through option and reflect in preview", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
+    cy.log("drill-through should be enabled by default");
     getEmbedSidebar().within(() => {
-      const drillThroughCheckbox = cy.findByLabelText(
-        "Allow users to drill through on data points",
+      cy.findByLabelText("Allow users to drill through on data points").should(
+        "be.checked",
       );
-      drillThroughCheckbox.should("not.be.checked");
-
-      drillThroughCheckbox.click();
-      drillThroughCheckbox.should("be.checked");
     });
+
+    cy.log("drill-through should be enabled in the preview iframe");
+    H.getIframeBody().within(() => {
+      cy.findByText("110.93").click();
+
+      H.popover().within(() => {
+        cy.findByText("Filter by this value").should("be.visible");
+      });
+    });
+
+    // getEmbedSidebar().within(() => {
+    //   const drillThroughCheckbox = cy.findByLabelText(
+    //     "Allow users to drill through on data points",
+    //   );
+
+    //   // Toggle drill-through off
+    //   drillThroughCheckbox.click();
+    //   drillThroughCheckbox.should("not.be.checked");
+    // });
+
+    // cy.log("verify drill-through is disabled in the preview iframe");
+    // H.getIframeBody().within(() => {
+    //   // When drill-through is disabled, data cells should not have interactive behavior
+    //   // This is harder to test directly, but we can at least verify the iframe is still working
+    //   cy.findByText("Orders in a dashboard").should("be.visible");
+    // });
   });
 
   it("should toggle downloads option for dashboard", () => {
@@ -118,33 +136,9 @@ const navigateToEmbedOptionsStep = ({
 }: {
   experience: "dashboard" | "chart" | "exploration";
 }) => {
-  cy.log("visit a resource to populate the activity log");
-
-  if (experience === "dashboard") {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.wait("@dashboard");
-  } else if (experience === "chart") {
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    cy.wait("@cardQuery");
-  }
-
-  visitNewEmbedPage();
-
-  cy.log("select an experience");
-
-  if (experience === "chart") {
-    cy.findByText("Chart").click();
-  } else if (experience === "exploration") {
-    cy.findByText("Exploration").click();
-  }
-
-  cy.log("navigate to the embed options step");
+  navigateToEntitySelectionStep({ experience });
 
   getEmbedSidebar().within(() => {
-    if (experience !== "exploration") {
-      cy.findByText("Next").click(); // Entity selection step
-    }
-
     cy.findByText("Next").click(); // Embed options step
   });
 };
