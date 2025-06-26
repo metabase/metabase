@@ -43,8 +43,6 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   const canUploadToDatabase = !!uploadDB?.can_upload;
   const canManageUploads = userCanAccessSettings;
 
-  const canManageDatabases = isAdmin;
-
   const handleTabChange = (tabValue: string | null) => {
     if (tabValue === activeTab || !isValidTab(tabValue)) {
       return;
@@ -98,8 +96,9 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
           </Box>
           <Box component="main" w="30rem" className={S.panelContainer}>
             <PanelsHeader
-              showDatabasesLink={activeTab === "db" && canManageDatabases}
+              showDatabasesLink={activeTab === "db" && isAdmin}
               showUploadsLink={activeTab === "csv" && canManageUploads}
+              showManageImports={activeTab === "gsheets" && isAdmin}
               onAddDataModalClose={onClose}
             />
             <Tabs.Panel value="db" className={S.panel}>
