@@ -17,6 +17,7 @@ import * as Lib from "metabase-lib";
 import {
   type DefinedClauseName,
   clausesForMode,
+  getClauseDefinition,
 } from "metabase-lib/v1/expressions";
 
 import { WIDTH } from "../constants";
@@ -103,6 +104,16 @@ export function FilterColumnPicker({
     }
   };
 
+  const handleSearchTextChange = (searchText: string) => {
+    if (searchText.trim().endsWith("(")) {
+      const name = searchText.trim().slice(0, -1);
+      const clause = getClauseDefinition(name);
+      if (clause) {
+        onExpressionSelect?.(clause.name);
+      }
+    }
+  };
+
   return (
     <DelayGroup>
       <AccordionList<Item, Section>
@@ -110,6 +121,7 @@ export function FilterColumnPicker({
         sections={sections}
         onChange={handleSelect}
         onChangeSection={handleSectionChange}
+        onChangeSearchText={handleSearchTextChange}
         itemIsSelected={checkItemIsSelected}
         renderItemWrapper={renderItemWrapper}
         renderItemName={renderItemName}
