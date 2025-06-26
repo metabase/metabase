@@ -567,9 +567,10 @@
    [2 "bar" "2020-04-21 16:43:00"]
    [3 "baz" "2021-04-21 16:43:00"]])
 
+;; It's better to fail then test than get an error. This way, we can see the actual vs expected value.
 (defmethod yyyymmddhhmmss-dates-expected-rows :default
   [_driver]
-  [])
+  :not-implemented)
 
 (deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers (mt/normal-drivers-with-feature ::yyyymmddhhss-string-timestamps)
