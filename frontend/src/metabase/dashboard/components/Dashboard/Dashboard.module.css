@@ -19,9 +19,8 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
-    /* background-color: var(--mb-color-bg-dashboard); */
+  /* background-color: var(--mb-color-bg-dashboard); */
   border-bottom: 1px solid var(--mb-color-border);
-
 
   &.isNightMode {
     color: var(--mb-color-text-white);
