@@ -114,6 +114,7 @@ const DashboardContextProviderInner = ({
   bordered = true,
   titled = true,
   font = null,
+  theme: initTheme = "light",
   hideParameters: hide_parameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
@@ -176,7 +177,7 @@ const DashboardContextProviderInner = ({
     onNightModeChange,
     theme,
     setTheme,
-  } = useEmbedTheme();
+  } = useEmbedTheme(initTheme);
 
   const shouldRenderAsNightMode = Boolean(isNightMode);
 

@@ -154,9 +154,11 @@ interface SavePdfProps {
   selector: string;
   dashboardName: string;
   includeBranding: boolean;
+  isEmbeddingSdk: boolean;
 }
 
 export const saveDashboardPdf = async ({
+  isEmbeddingSdk,
   selector,
   dashboardName,
   includeBranding,
@@ -204,7 +206,10 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const backgroundColor = getComputedStyle(
+    (isEmbeddingSdk && document.querySelector("#metabase-sdk-root")) ||
+      document.documentElement,
+  )
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
 

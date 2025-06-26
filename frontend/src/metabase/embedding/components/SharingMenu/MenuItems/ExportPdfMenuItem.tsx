@@ -1,6 +1,7 @@
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
 import { Icon, Menu } from "metabase/ui";
 import {
@@ -12,6 +13,7 @@ import type { Dashboard } from "metabase-types/api";
 const handleClick = async (dashboard: Dashboard, includeBranding: boolean) => {
   const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
   await saveDashboardPdf({
+    isEmbeddingSdk,
     selector: cardNodeSelector,
     dashboardName: dashboard.name,
     includeBranding,
