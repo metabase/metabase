@@ -295,6 +295,7 @@ describe("Tenants - management", () => {
 
   it("should show the tenant attribute in user attribute lists when multi tenancy is enabled", () => {
     H.restore("postgres-writable");
+    H.activateToken("bleeding-edge");
 
     cy.visit(`/admin/databases/${WRITABLE_DB_ID}`);
 
