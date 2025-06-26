@@ -249,6 +249,7 @@ export const SelfHostedSMTPConnectionForm = ({
                   <FormSubmitButton
                     label={t`Save changes`}
                     disabled={!dirty || !isValid || isSubmitting}
+                    loading={isSubmitting}
                     variant="filled"
                   />
                 </Flex>
