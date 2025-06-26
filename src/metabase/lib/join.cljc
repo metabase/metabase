@@ -86,13 +86,6 @@
     (let [[_operator _opts lhs _rhs] condition]
       lhs)))
 
-(defn- standard-join-condition-rhs
-  "If `condition` is a [[standard-join-condition?]], return the RHS."
-  [condition]
-  (when (standard-join-condition? condition)
-    (let [[_operator _opts _lhs rhs] condition]
-      rhs)))
-
 (defn- standard-join-condition-update-rhs
   "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like
 
@@ -968,10 +961,12 @@
 
 (defn- join-lhs-display-name-from-condition-lhs
   [query stage-number join-or-joinable condition-lhs-or-nil]
-  (when-let [condition-lhs (or condition-lhs-or-nil
-                               (when (join? join-or-joinable)
-                                 (standard-join-condition-lhs (first (join-conditions join-or-joinable)))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number condition-lhs)]
+  (when-let [lhs-column-ref (or condition-lhs-or-nil
+                                (when (join? join-or-joinable)
+                                  (when-let [standard-join-condition-lhs (first (join-conditions join-or-joinable))]
+                                    (when (lib.util/field-clause? standard-join-condition-lhs)
+                                      standard-join-condition-lhs))))]
+    (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
       (get-in display-info [:table :display-name]))))
 
 (defn- first-join?
