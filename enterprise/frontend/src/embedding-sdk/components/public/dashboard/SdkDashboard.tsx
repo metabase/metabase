@@ -13,7 +13,6 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { RenderOnlyInSdkProvider } from "embedding-sdk/components/private/SdkContext";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -44,14 +43,13 @@ import { getErrorPage } from "metabase/selectors/app";
 
 import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
 
-import { InteractiveDashboardProvider } from "./InteractiveDashboard/context";
 import { SdkDashboardStyledWrapper } from "./SdkDashboardStyleWrapper";
+import { SdkDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
- * @expand
- * @category InteractiveDashboard
+ * @category Dashboard
  */
 export type SdkDashboardProps = PropsWithChildren<
   {
@@ -87,6 +85,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
       DashboardContextProps,
       | "getClickActionMode"
       | "dashboardActions"
+      | "dashcardMenu"
       | "navigateToNewCardFromDashboard"
     >
   >;
@@ -95,7 +94,7 @@ export type SdkDashboardInnerProps = SdkDashboardProps &
  * A dashboard component with the features available in the `InteractiveDashboard` component, as well as the ability to add and update questions, layout, and content within your dashboard.
  *
  * @function
- * @category InteractiveDashboard
+ * @category Dashboard
  * @param props
  */
 const SdkDashboardInner = ({
@@ -116,6 +115,7 @@ const SdkDashboardInner = ({
   },
   renderDrillThroughQuestion: AdHocQuestionView,
   dashboardActions,
+  dashcardMenu = plugins?.dashboard?.dashboardCardMenu,
   getClickActionMode,
   navigateToNewCardFromDashboard = undefined,
   className,
@@ -200,7 +200,7 @@ const SdkDashboardInner = ({
       onLoadWithoutCards={handleLoadWithoutCards}
       onError={(error) => dispatch(setErrorPage(error))}
       getClickActionMode={getClickActionMode}
-      dashcardMenu={plugins?.dashboard?.dashboardCardMenu}
+      dashcardMenu={dashcardMenu}
       dashboardActions={dashboardActions}
     >
       {adhocQuestionUrl ? (
@@ -214,27 +214,22 @@ const SdkDashboardInner = ({
           </InteractiveAdHocQuestion>
         </SdkDashboardStyledWrapper>
       ) : (
-        <InteractiveDashboardProvider
-          plugins={plugins}
-          onEditQuestion={onEditQuestion}
-        >
+        <SdkDashboardProvider plugins={plugins} onEditQuestion={onEditQuestion}>
           {children ?? (
             <SdkDashboardStyledWrapper className={className} style={style}>
               <Dashboard />
             </SdkDashboardStyledWrapper>
           )}
-        </InteractiveDashboardProvider>
+        </SdkDashboardProvider>
       )}
     </DashboardContextProvider>
   );
 };
 
 export const SdkDashboard = ({ ...props }: SdkDashboardInnerProps) => (
-  <RenderOnlyInSdkProvider>
-    <PublicComponentWrapper>
-      <SdkDashboardInner {...props} />
-    </PublicComponentWrapper>
-  </RenderOnlyInSdkProvider>
+  <PublicComponentWrapper>
+    <SdkDashboardInner {...props} />
+  </PublicComponentWrapper>
 );
 
 SdkDashboard.Grid = Grid;

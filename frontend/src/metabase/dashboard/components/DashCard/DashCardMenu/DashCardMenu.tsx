@@ -65,7 +65,8 @@ export const DashCardMenu = ({
   }, [dashcard]);
   const uuid = useMemo(() => getDashcardUuid(dashcard), [dashcard]);
   const dashcardId = dashcard.id;
-  const { dashboard, dashboardId, dashcardMenu } = useDashboardContext();
+  const { dashboard, dashboardId, dashcardMenu, downloadsEnabled } =
+    useDashboardContext();
   const [{ loading: isDownloadingData }, handleDownload] = useDownloadData({
     question,
     result,
@@ -92,6 +93,7 @@ export const DashCardMenu = ({
       question: transformSdkQuestion(question),
       dashcard,
       result,
+      downloadsEnabled,
     });
   }
 

@@ -3,15 +3,11 @@ import fetchMock from "fetch-mock";
 
 import { screen, waitFor } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
-import { useLocale } from "metabase/common/hooks/use-locale";
 
 import type { SdkDashboardProps } from "../SdkDashboard";
 import { SdkDashboard } from "../SdkDashboard";
-import { setupSdkDashboard, TEST_DASHBOARD_ID } from "./setup";
 
-jest.mock("metabase/common/hooks/use-locale", () => ({
-  useLocale: jest.fn(),
-}));
+import { TEST_DASHBOARD_ID, setupSdkDashboard } from "./setup";
 
 const setup = async (
   options: {

@@ -1,4 +1,5 @@
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
+import { isEmbeddingSdk } from "metabase/env";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -92,7 +93,7 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,
-    enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
+    enabled: ({ isFullscreen, isPublic }) =>
       isPublic || isFullscreen || isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {

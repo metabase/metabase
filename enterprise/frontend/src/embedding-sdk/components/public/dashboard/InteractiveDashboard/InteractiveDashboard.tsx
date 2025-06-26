@@ -1,12 +1,14 @@
 import { useCallback } from "react";
 
+import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import { SdkDashboard, type SdkDashboardProps } from "..";
+import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 export type InteractiveDashboardProps = SdkDashboardProps;
 
@@ -14,7 +16,7 @@ export type InteractiveDashboardProps = SdkDashboardProps;
  * A dashboard component with drill downs, click behaviors, and the ability to view and click into questions.
  *
  * @function
- * @category InteractiveDashboard
+ * @category Dashboard
  */
 export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = useCallback(
@@ -32,6 +34,14 @@ export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
       {...props}
       getClickActionMode={getClickActionMode}
       dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+      dashcardMenu={({ dashcard, result }) =>
+        props.withDownloads &&
+        isQuestionCard(dashcard.card) &&
+        !!result?.data &&
+        !result?.error && (
+          <DashCardQuestionDownloadButton result={result} dashcard={dashcard} />
+        )
+      }
     />
   );
 };

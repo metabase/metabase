@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { isEmbeddingSdk } from "metabase/env";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -154,11 +155,9 @@ interface SavePdfProps {
   selector: string;
   dashboardName: string;
   includeBranding: boolean;
-  isEmbeddingSdk: boolean;
 }
 
 export const saveDashboardPdf = async ({
-  isEmbeddingSdk,
   selector,
   dashboardName,
   includeBranding,

@@ -385,7 +385,9 @@ export function DashCardVisualization({
         result={result}
         dashcard={dashcard}
         onEditVisualization={onEditVisualization}
-        openUnderlyingQuestionItems={title ? undefined : titleMenuItems}
+        openUnderlyingQuestionItems={
+          onChangeCardAndRun && (title ? undefined : titleMenuItems)
+        }
       />
     );
   }, [
@@ -393,6 +395,7 @@ export function DashCardVisualization({
     dashcard,
     dashcardMenu,
     isEditing,
+    onChangeCardAndRun,
     onEditVisualization,
     question,
     series,

@@ -3,7 +3,6 @@ import type { ComponentType } from "react";
 import type {
   DashboardFullscreenControls,
   DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -37,8 +36,7 @@ export type DashboardActionButton = {
   component: ComponentType<HeaderButtonProps>;
   enabled: (
     props: HeaderButtonProps &
-      DashboardRefreshPeriodControls &
       DashboardFullscreenControls &
-      DashboardNightModeControls,
+      Omit<DashboardNightModeControls, "isNightMode">,
   ) => boolean;
 };

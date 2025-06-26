@@ -11,11 +11,14 @@ import {
   SdkDashboard,
   type SdkDashboardInnerProps,
   type SdkDashboardProps,
-} from "..";
+} from "../SdkDashboard";
 
+/**
+ * @expand
+ */
 export type EditableDashboardProps = SdkDashboardProps;
 
-export const EditableDashboard = (props: SdkDashboardProps) => {
+export const EditableDashboard = (props: EditableDashboardProps) => {
   const dashboardActions: SdkDashboardInnerProps["dashboardActions"] = ({
     isEditing,
     downloadsEnabled,
@@ -39,8 +42,8 @@ export const EditableDashboard = (props: SdkDashboardProps) => {
   return (
     <SdkDashboard
       {...props}
-      dashboardActions={dashboardActions}
       getClickActionMode={getClickActionMode}
+      dashboardActions={dashboardActions}
     />
   );
 };

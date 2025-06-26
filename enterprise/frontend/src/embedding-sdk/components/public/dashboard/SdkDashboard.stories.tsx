@@ -1,16 +1,14 @@
-import { MetabaseProvider, defineMetabaseTheme } from "embedding-sdk";
 import {
-  CommonSdkStoryWrapper,
-  storybookSdkAuthDefaultConfig,
-} from "embedding-sdk/test/CommonSdkStoryWrapper";
+  InteractiveQuestion,
+  MetabaseProvider,
+  defineMetabaseTheme,
+} from "embedding-sdk";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
-import { Grid } from "metabase/dashboard/components/Dashboard/components/Grid";
-import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
-import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
 import {
   ActionIcon,
   Box,
@@ -18,6 +16,7 @@ import {
   Icon,
   Paper,
   Popover,
+  Stack,
   Title,
 } from "metabase/ui";
 
@@ -166,6 +165,27 @@ export const Default = {
     withDownloads: false,
     initialParameters: {},
     hiddenParameters: [],
+  },
+};
+
+export const WithCustomQuestionLayout = {
+  render(args: SdkDashboardProps) {
+    return (
+      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+        <SdkDashboard {...args} />
+      </MetabaseProvider>
+    );
+  },
+
+  args: {
+    dashboardId: DASHBOARD_ID,
+    renderDrillThroughQuestion: () => (
+      <Stack>
+        <InteractiveQuestion.Title />
+        <InteractiveQuestion.QuestionVisualization />
+        <div>This is a custom question layout.</div>
+      </Stack>
+    ),
   },
 };
 

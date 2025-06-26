@@ -1,9 +1,11 @@
+import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { isQuestionCard } from "metabase/dashboard/utils";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
-import { SdkDashboard, type SdkDashboardProps } from "..";
 import { StaticQuestionSdkMode } from "../../StaticQuestion/mode";
+import { SdkDashboard, type SdkDashboardProps } from "../SdkDashboard";
 
 export type StaticDashboardProps = SdkDashboardProps;
 
@@ -11,9 +13,9 @@ export type StaticDashboardProps = SdkDashboardProps;
  * A lightweight dashboard component.
  *
  * @function
- * @category StaticDashboard
+ * @category Dashboard
  */
-export const StaticDashboard = (props: SdkDashboardProps) => {
+export const StaticDashboard = (props: StaticDashboardProps) => {
   const getClickActionMode: ClickActionModeGetter = ({ question }) =>
     getEmbeddingMode({
       question,
@@ -26,6 +28,14 @@ export const StaticDashboard = (props: SdkDashboardProps) => {
       getClickActionMode={getClickActionMode}
       dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
       navigateToNewCardFromDashboard={null}
+      dashcardMenu={({ dashcard, result }) =>
+        props.withDownloads &&
+        isQuestionCard(dashcard.card) &&
+        !!result?.data &&
+        !result?.error && (
+          <DashCardQuestionDownloadButton result={result} dashcard={dashcard} />
+        )
+      }
     />
   );
 };

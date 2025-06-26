@@ -21,6 +21,7 @@ import { renderWithSDKProviders } from "embedding-sdk/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { useDashboardFullscreen } from "metabase/dashboard/hooks";
 import { Box } from "metabase/ui";
 import {
   createMockCard,
@@ -42,7 +43,8 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
-import { SdkDashboardProps } from "../SdkDashboard";
+
+import type { SdkDashboardProps } from "../SdkDashboard";
 
 export const TEST_DASHBOARD_ID = 1;
 export const TEST_DB = createMockDatabase({ id: 1 });
@@ -102,26 +104,36 @@ export const textDashcard2 = createMockTextDashboardCard({
 export const dashcards = [tableDashcard, textDashcard, textDashcard2];
 
 export interface SetupSdkDashboardOptions {
-  props?: Record<string, any>;
+  props?: Partial<SdkDashboardProps>;
   providerProps?: Partial<MetabaseProviderProps>;
   isLocaleLoading?: boolean;
-  component?: React.ComponentType<any>;
+  isFullscreen?: boolean;
+  component: React.ComponentType<SdkDashboardProps>;
 }
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
   useLocale: jest.fn(),
 }));
 
+jest.mock("metabase/dashboard/hooks/use-dashboard-fullscreen.ts", () => ({
+  useDashboardFullscreen: jest.fn(),
+}));
+
 export const setupSdkDashboard = async ({
   props = {},
   providerProps = {},
   isLocaleLoading = false,
+  isFullscreen = false,
   component: Component,
-}: SetupSdkDashboardOptions & {
-  component: React.ComponentType<any>;
-}) => {
+}: SetupSdkDashboardOptions) => {
   const useLocaleMock = useLocale as jest.Mock;
   useLocaleMock.mockReturnValue({ isLocaleLoading });
+
+  const useDashboardFullscreenMock = useDashboardFullscreen as jest.Mock;
+  useDashboardFullscreenMock.mockReturnValue({
+    isFullscreen,
+    onFullscreenChange: jest.fn(),
+  });
 
   const database = createSampleDatabase();
 
@@ -198,9 +210,7 @@ export const setupSdkDashboard = async ({
     },
   );
 
-  if (!isLocaleLoading) {
-    expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
-  }
+  expect(await screen.findByTestId("dashboard-grid")).toBeInTheDocument();
 
   return {
     dashboard,

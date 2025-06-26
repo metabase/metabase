@@ -3,7 +3,6 @@ import type { JSX } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 /* eslint-disable-next-line no-restricted-imports -- deprecated sdk import */
-import { useInteractiveDashboardContext } from "embedding-sdk/components/public/dashboard/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/common/components/EditBar";
 import LastEditInfoLabel from "metabase/common/components/LastEditInfoLabel";
@@ -23,11 +22,6 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import type {
-  DashboardFullscreenControls,
-  DashboardNightModeControls,
-  DashboardRefreshPeriodControls,
-} from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
@@ -53,9 +47,7 @@ type DashboardHeaderViewProps = {
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onLastEditInfoClick?: () => void;
-} & DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
-  DashboardNightModeControls;
+};
 
 export function DashboardHeaderView({
   editingTitle = "",
@@ -65,14 +57,6 @@ export function DashboardHeaderView({
   collection,
   isLastEditInfoVisible,
   onLastEditInfoClick,
-  refreshPeriod,
-  onRefreshPeriodChange,
-  setRefreshElapsedHook,
-  isFullscreen,
-  onFullscreenChange,
-  isNightMode,
-  onNightModeChange,
-  hasNightModeToggle,
 }: DashboardHeaderViewProps) {
   const { titled } = useDashboardContext();
 
@@ -109,14 +93,6 @@ export function DashboardHeaderView({
           canResetFilters={canResetFilters}
           onResetFilters={handleResetFilters}
           dashboardActionKeys={dashboardActions}
-          refreshPeriod={refreshPeriod}
-          onRefreshPeriodChange={onRefreshPeriodChange}
-          setRefreshElapsedHook={setRefreshElapsedHook}
-          isFullscreen={isFullscreen}
-          onFullscreenChange={onFullscreenChange}
-          isNightMode={isNightMode}
-          onNightModeChange={onNightModeChange}
-          hasNightModeToggle={hasNightModeToggle}
           isAnalyticsDashboard={isAnalyticsDashboard}
         />
       </Flex>
@@ -125,16 +101,8 @@ export function DashboardHeaderView({
       canResetFilters,
       handleResetFilters,
       dashboardActions,
-      hasNightModeToggle,
       isAnalyticsDashboard,
-      isFullscreen,
       isNavBarOpen,
-      isNightMode,
-      onFullscreenChange,
-      onNightModeChange,
-      onRefreshPeriodChange,
-      refreshPeriod,
-      setRefreshElapsedHook,
     ],
   );
 

@@ -41,14 +41,10 @@ export const DashboardHeaderButtonRow = ({
   const canEdit = Boolean(dashboard?.can_write && !dashboard?.archived);
 
   const {
-    refreshPeriod,
-    onRefreshPeriodChange,
-    setRefreshElapsedHook,
     isFullscreen,
     onFullscreenChange,
     hasNightModeToggle,
     onNightModeChange,
-    isNightMode,
   } = useDashboardContext();
 
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
@@ -91,14 +87,10 @@ export const DashboardHeaderButtonRow = ({
 
           if (
             config.enabled({
-              refreshPeriod,
-              onRefreshPeriodChange,
-              setRefreshElapsedHook,
               isFullscreen,
               onFullscreenChange,
               hasNightModeToggle,
               onNightModeChange,
-              isNightMode,
 
               ...buttonComponentProps,
             })

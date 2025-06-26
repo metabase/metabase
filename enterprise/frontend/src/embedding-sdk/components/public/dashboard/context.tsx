@@ -12,18 +12,17 @@ import { getPlugins } from "embedding-sdk/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk/types/plugins";
 import type Question from "metabase-lib/v1/Question";
 
-export type InteractiveDashboardContextType = Partial<{
+export type SdkDashboardContextType = Partial<{
   plugins: MetabasePluginsConfig;
   onEditQuestion: (question: Question) => void;
 }>;
-const InteractiveDashboardContext =
-  createContext<InteractiveDashboardContextType>({});
+const SdkDashboardContext = createContext<SdkDashboardContextType>({});
 
-export const InteractiveDashboardProvider = ({
+export const SdkDashboardProvider = ({
   children,
   plugins,
   onEditQuestion: initOnEditQuestion,
-}: PropsWithChildren<InteractiveDashboardContextType>) => {
+}: PropsWithChildren<SdkDashboardContextType>) => {
   const globalPlugins = useSdkSelector(getPlugins);
 
   const initializedPlugins = useMemo(() => {
@@ -45,12 +44,12 @@ export const InteractiveDashboardProvider = ({
     [initializedPlugins, onEditQuestion],
   );
   return (
-    <InteractiveDashboardContext.Provider value={value}>
+    <SdkDashboardContext.Provider value={value}>
       {children}
-    </InteractiveDashboardContext.Provider>
+    </SdkDashboardContext.Provider>
   );
 };
 
-export const useInteractiveDashboardContext = () => {
-  return useContext(InteractiveDashboardContext);
+export const useSdkDashboardContext = () => {
+  return useContext(SdkDashboardContext);
 };

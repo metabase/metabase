@@ -55,7 +55,11 @@ const DashboardActionMenuInner = ({
     [
       {
         id: "dashboard-send-to-trash",
-        perform: () => onChangeLocation(`${location?.pathname}/archive`),
+        perform: () => {
+          if (pathname) {
+            onChangeLocation(`${pathname}/archive`);
+          }
+        },
       },
     ],
     [pathname],

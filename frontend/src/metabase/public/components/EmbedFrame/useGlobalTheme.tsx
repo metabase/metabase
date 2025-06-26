@@ -1,12 +1,12 @@
+import { useEffect } from "react";
+
 import { useSelector } from "metabase/lib/redux";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
-import { useEffect } from "react";
 
 export function useGlobalTheme(theme: DisplayTheme | undefined) {
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   useEffect(() => {
-    console.log("useGlobalTheme", theme);
     // We don't want to modify user application DOM when using the SDK.
     if (theme == null) {
       return;

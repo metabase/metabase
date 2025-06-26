@@ -30,22 +30,12 @@ function Dashboard({ className }: { className?: string }) {
     isEditing,
     isFullscreen,
     isSharing,
-    onRefreshPeriodChange,
     selectedTabId,
     setSharing,
-    parameterQueryParams = {},
     shouldRenderAsNightMode,
     setArchivedDashboard,
     moveDashboardToCollection,
     deletePermanently,
-
-    dashboardBeforeEditing,
-    onFullscreenChange,
-    isAdditionalInfoVisible,
-    hasNightModeToggle,
-    onNightModeChange,
-    refreshPeriod,
-    setRefreshElapsedHook,
 
     removeParameter,
     addCardToDashboard,
@@ -109,6 +99,7 @@ function Dashboard({ className }: { className?: string }) {
       className={cx(
         className,
         DashboardS.Dashboard,
+        EmbedFrameS.EmbedFrame,
         S.DashboardLoadingAndErrorWrapper,
         {
           [DashboardS.DashboardFullscreen]: isFullscreen,
@@ -160,20 +151,7 @@ function Dashboard({ className }: { className?: string }) {
          * `useDashboardTabs` under the hood. This hook sets `selectedTabId`
          * in Redux state which kicks off a fetch for the dashboard cards.
          */}
-        <DashboardHeader
-          parameterQueryParams={parameterQueryParams}
-          dashboard={dashboard}
-          isNightMode={shouldRenderAsNightMode}
-          isFullscreen={isFullscreen}
-          onRefreshPeriodChange={onRefreshPeriodChange}
-          dashboardBeforeEditing={dashboardBeforeEditing}
-          onFullscreenChange={onFullscreenChange}
-          isAdditionalInfoVisible={isAdditionalInfoVisible}
-          hasNightModeToggle={hasNightModeToggle}
-          onNightModeChange={onNightModeChange}
-          refreshPeriod={refreshPeriod}
-          setRefreshElapsedHook={setRefreshElapsedHook}
-        />
+        <DashboardHeader />
       </Box>
 
       <Flex
