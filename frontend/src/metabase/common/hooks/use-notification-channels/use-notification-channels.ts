@@ -8,8 +8,11 @@ export const useHasAnyNotificationChannel = (): boolean => {
   );
 };
 
-export const useHasEmailSetup = (): boolean => {
+export const useHasEmailOrSlackSetup = (): boolean => {
   const { data: channelInfo } = useGetChannelInfoQuery();
 
-  return !!channelInfo?.channels?.email?.configured;
+  return (
+    !!channelInfo?.channels?.email?.configured ||
+    !!channelInfo?.channels?.slack?.configured
+  );
 };
