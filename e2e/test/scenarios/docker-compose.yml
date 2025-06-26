@@ -36,6 +36,8 @@ services:
       - "1025:1025"
 
   maildev-ssl:
+    ## NOTE: Using this requires a root CA certificate to be added to the Java keystore.
+    ## See maildev-keys/README.md for more info.
     image: maildev/maildev:latest
     ports:
       - "1081:1081"
