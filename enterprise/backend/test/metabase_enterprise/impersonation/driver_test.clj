@@ -698,13 +698,13 @@
                           (fn [^Connection _conn]
                             (mt/formatted-rows [int]
                                                (mt/run-mbql-query checkins {:aggregation [[:count]]}))))))
-                  #_(impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                                                                   :attributes     {"impersonation_attr" role-a}}
-                      (is (= [[100]]
-                             (mt/formatted-rows [int]
-                                                (mt/run-mbql-query venues
-                                                  {:aggregation [[:count]]}))))
-                      (is (thrown?
-                           java.lang.Exception
-                           (mt/run-mbql-query checkins
-                             {:aggregation [[:count]]})))))))))))))
+                  (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                 :attributes     {"impersonation_attr" role-a}}
+                    (is (= [[100]]
+                           (mt/formatted-rows [int]
+                                              (mt/run-mbql-query venues
+                                                {:aggregation [[:count]]}))))
+                    (is (thrown?
+                         java.lang.Exception
+                         (mt/run-mbql-query checkins
+                           {:aggregation [[:count]]})))))))))))))
