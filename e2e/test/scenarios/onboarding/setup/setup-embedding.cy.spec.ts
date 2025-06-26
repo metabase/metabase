@@ -293,6 +293,17 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
 
     cy.log("5: Metabase");
     cy.button("New").should("be.visible");
+
+    cy.log(
+      "Only one 'Automatically Generated Dashboards' collection should be created",
+    );
+    sidebar().within(() => {
+      cy.findByText("Automatically Generated Dashboards").should("be.visible");
+      cy.findByText("Automatically Generated Dashboards").should(
+        "have.length",
+        1,
+      );
+    });
   });
 });
 
