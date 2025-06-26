@@ -32,8 +32,10 @@ export const assertRecentItemName = (
 
 export const navigateToEntitySelectionStep = ({
   experience,
+  resourceName,
 }: {
   experience: "dashboard" | "chart" | "exploration";
+  resourceName?: string;
 }) => {
   visitNewEmbedPage();
 
