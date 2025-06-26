@@ -1610,10 +1610,10 @@
       (assert (some? join))
       ;; should contain IDs as well.
       ;;
-      ;; we always use LONG display names when the column comes from a previous stage.
+      ;; we always use LONG display names when the column comes from a previous stage (or Card)
       (is (= [{:id (meta/id :products :id),    :display-name "Card → ID"}
-              {:id (meta/id :orders :total),   :display-name "Total"}
-              {:id (meta/id :orders :tax),     :display-name "Tax"}
+              {:id (meta/id :orders :total),   :display-name "Card → Total" #_"Total"}
+              {:id (meta/id :orders :tax),     :display-name "Card → Tax" #_"Tax"}
               {:id (meta/id :products :vendor) :display-name "Card → Vendor"}]
              (map #(select-keys % [:id :display-name])
                   (lib.join/join-fields-to-add-to-parent-stage query -1 join {:unique-name-fn (lib.util/unique-name-generator)})))))))
@@ -1741,3 +1741,54 @@
             (meta/table-metadata :reviews)
             (m/find-first #(= (:name %) "ID")
                           (lib/returned-columns query)))))))
+
+(deftest ^:parallel joining-a-card-with-the-same-temporal-bucketing-test
+  (testing "LHS/RHS columns for joining a Card with the same temporal bucketing (#18512)"
+    (let [q1     (lib.tu.macros/mbql-query reviews
+                   {:joins       [{:source-table $$products
+                                   :condition    [:= $product-id &Products.products.id]
+                                   :alias        "Products"
+                                   :fields       :all}]
+                    :filter      [:= &Products.products.category "Doohickey"]
+                    :aggregation [[:distinct &Products.products.id]]
+                    :breakout    [&Products.!month.created-at]})
+          mp     (lib.tu/mock-metadata-provider
+                  meta/metadata-provider
+                  {:cards [{:id 1, :name "18512#1", :dataset-query q1}
+                           {:id 2, :name "18512#2", :dataset-query q1}]})
+          q2     (lib/query mp (lib.metadata/card mp 1))
+          card-2 (lib.metadata/card mp 2)
+          ;; the main important part of the tests are these calls to [[lib.tu.notebook/find-col-with-spec]], since they
+          ;; will throw if we can't find a matching column; thus we're basically testing that the expected columns are
+          ;; returned with the expected column names
+          lhs    (testing "LHS columns"
+                   (lib.tu.notebook/find-col-with-spec
+                    q2
+                    (lib.join/join-condition-lhs-columns q2 card-2 nil nil)
+                    {:display-name "18512#1"}
+                    {:display-name "Products → Created At: Month"}))]
+      (testing "RHS columns"
+        (let [cols (lib.join/join-condition-rhs-columns q2 card-2 lhs nil)]
+          (is (=? [{:name                         "CREATED_AT"
+                    :display-name                 "Created At: Month"
+                    :lib/card-id                  2
+                    :lib/source                   :source/joins ; not really sure if this makes sense or not
+                    :lib/original-join-alias      "Products"
+                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}
+                   {:name                         "count"
+                    :display-name                 "Distinct values of ID"
+                    :lib/card-id                  2
+                    :lib/source                   :source/joins
+                    :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
+                    :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
+                  cols))
+          (testing `lib/group-columns
+            (is (=? [{:display-name "18512#2"}]
+                    (map #(lib/display-info q2 %)
+                         (lib/group-columns cols)))))
+          (testing "should be able to find the column in the column group using expected display names"
+            (is (lib.tu.notebook/find-col-with-spec
+                 q2
+                 cols
+                 {:display-name "18512#2"}
+                 {:display-name "Products → Created At: Month"}))))))))

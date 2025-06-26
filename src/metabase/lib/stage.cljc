@@ -149,23 +149,11 @@
                                                            (dissoc options :unique-name-fn))
            :let [source-alias (or ((some-fn :lib/desired-column-alias :lib/source-column-alias) col)
                                   (lib.metadata.calculation/column-name query stage-number col))]]
-       (-> (merge
-            col
-            {:lib/source               :source/previous-stage
-             :lib/source-column-alias  source-alias
-             :lib/desired-column-alias (unique-name-fn source-alias)})
-           ;; do not retain `:temporal-unit`; it's not like we're doing a extract(month from <x>) twice, in both
-           ;; stages of a query. It's a little hacky that we're manipulating `::lib.field` keys directly here since
-           ;; they're presumably supposed to be private-ish, but I don't have a more elegant way of solving this sort
-           ;; of problem at this point in time.
-           ;;
-           ;; TODO (Cam 6/25/25) -- should we also be renaming this to `:inherited-temporal-unit` here?
-           (dissoc ::lib.field/temporal-unit)
-           ;; also don't retain `:lib/expression-name`, the fact that this column came from an expression in the
-           ;; previous stage should be totally irrelevant and we don't want it confusing our code that decides whether
-           ;; to generate `:expression` or `:field` refs. Rename it to `:lib/original-expression-name` if we need it
-           ;; for something else later.
-           (set/rename-keys {:lib/expression-name :lib/original-expression-name}))))))
+       (merge
+        col
+        {:lib/source               :source/previous-stage
+         :lib/source-column-alias  source-alias
+         :lib/desired-column-alias (unique-name-fn source-alias)})))))
 
 (mu/defn- saved-question-visible-columns :- [:maybe lib.metadata.calculation/ColumnsWithUniqueAliases]
   "Metadata associated with a Saved Question, e.g. if we have a `:source-card`"
@@ -239,20 +227,12 @@
    {:keys [unique-name-fn], :as options} :- lib.metadata.calculation/VisibleColumnsOptions]
   {:pre [(fn? unique-name-fn)]}
   (let [{:keys [source-table source-card], :as this-stage} (lib.util/query-stage query stage-number)
-        card (some->> source-card (lib.metadata/card query))
+        card          (some->> source-card (lib.metadata/card query))
         metric-based? (= (:type card) :metric)]
     (into []
           (if metric-based?
             identity
-            (map (fn [col]
-                   (-> col
-                       (dissoc ::lib.join/join-alias ::lib.field/temporal-unit)
-                       ;; these keys get propagated so we can use them for display-name purposes. TODO (Cam 6/24/25)
-                       ;; -- add to schema and document them.
-                       (set/rename-keys {:fk-field-id        :lib/original-fk-field-id
-                                         :fk-field-name      :lib/original-fk-field-name
-                                         :fk-join-alias      :lib/original-fk-join-alias
-                                         ::lib.field/binning :lib/original-binning})))))
+            (map lib.field.util/update-keys-for-col-from-previous-stage))
           (or
            ;; 1a. columns returned by previous stage
            (previous-stage-metadata query stage-number options)
@@ -268,13 +248,12 @@
            (when source-card
              (saved-question-visible-columns query stage-number source-card (assoc options :include-implicitly-joinable? false)))
            ;; 1d: `:lib/stage-metadata` for the (presumably native) query
-           (for [col (:columns (:lib/stage-metadata this-stage))]
+           (for [col  (get-in this-stage [:lib/stage-metadata :columns])
+                 :let [source-column-alias ((some-fn :lib/source-column-alias :name) col)]]
              (assoc col
-                    :lib/source :source/native
-                    :lib/source-column-alias  (:name col)
-                    ;; these should already be unique, but run them thru `unique-name-fn` anyway to make sure anything
-                    ;; that gets added later gets deduplicated from these.
-                    :lib/desired-column-alias (unique-name-fn (:name col))))))))
+                    :lib/source               :source/native
+                    :lib/source-column-alias  source-column-alias
+                    :lib/desired-column-alias (unique-name-fn source-column-alias)))))))
 
 (mu/defn- existing-visible-columns :- lib.metadata.calculation/ColumnsWithUniqueAliases
   [query        :- ::lib.schema/query

@@ -149,30 +149,6 @@
   "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
   false)
 
-(defn- update-keys-for-col-from-previous-stage
-  "If this column came from a previous stage update things such as its join aliases and remove things that should not be
-  propagated like binning and bucketing."
-  [col]
-  (let [join-alias (:metabase.lib.join/join-alias col)]
-    (-> col
-        (cond-> join-alias (-> (assoc :lib/original-join-alias join-alias)
-                               (dissoc :metabase.lib.join/join-alias)))
-        (assoc :lib/original-name ((some-fn :lib/original-name :name) col)
-               :lib/source        :source/previous-stage
-               ;; desired-column-alias is previous stage => source column alias in next stage
-               :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias) col))
-        ;; TODO (Cam 6/19/25) -- are we supposed to be setting 'inherited temporal unit' here?
-        (dissoc :metabase.lib.field/binning
-                :metabase.lib.field/temporal-unit)
-        ;; remove `:lib/expression-name`, as it will incorrectly cause ref generation code to generate an
-        ;; `:expression` ref when the expression doesn't exist at this stage of the query. Keep it around as
-        ;; `:lib/original-expression-name` in case maybe we need it later (not currently used yet)
-        ;;
-        ;; TODO (Cam 6/25/25) -- shouldn't we also set `:lib/original-binning` and the original temporal
-        ;; unit (`:inherited-temporal-unit`) here too? They are set elsewhere but it would be good to do this all in
-        ;; one place.
-        (set/rename-keys {:lib/expression-name :lib/original-expression-name}))))
-
 (mu/defn- resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
@@ -197,7 +173,8 @@
             (cond-> column
               *debug* (update ::debug.origin conj (list 'resolve-column-name stage-number field-ref :current-stage)))
             (-> column
-                update-keys-for-col-from-previous-stage
+                lib.field.util/update-keys-for-col-from-previous-stage
+                (assoc :lib/source :source/previous-stage)
                 (cond-> *debug* (update ::debug.origin conj (list 'resolve-column-name stage-number field-ref :previous-stage previous-stage-number))))))))))
 
 (def ^:private opts-propagated-keys
@@ -366,7 +343,7 @@
     (when-some [cols (saved-question-metadata query card-id)]
       (when-some [col (resolve-column-in-metadata query field-ref cols)]
         (-> col
-            update-keys-for-col-from-previous-stage
+            lib.field.util/update-keys-for-col-from-previous-stage
             (assoc :lib/source :source/card)
             (cond-> *debug* (update ::debug.origin conj (list 'current-stage-source-card-metadata stage-number field-ref :card-id card-id))))))))
 
@@ -375,7 +352,8 @@
     (when-some [col (resolve-column-in-metadata query field-ref cols)]
       (-> col
           (u/select-non-nil-keys previous-stage-propagated-keys)
-          update-keys-for-col-from-previous-stage
+          lib.field.util/update-keys-for-col-from-previous-stage
+          (assoc :lib/source :source/previous-stage)
           (cond-> *debug* (update ::debug.origin conj (list 'previous-stage-metadata stage-number field-ref)))))))
 
 (mu/defn- previous-stage-or-source-card-metadata

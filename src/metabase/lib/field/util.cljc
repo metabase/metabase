@@ -1,6 +1,7 @@
 (ns metabase.lib.field.util
   "Some small field-related helper functions which are used from a few different namespaces."
   (:require
+   [clojure.set :as set]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -71,3 +72,24 @@
                        :lib/original-name     original-name
                        :lib/deduplicated-name (deduplicated-name-fn (:name col))))))
           cols)))
+
+(defn update-keys-for-col-from-previous-stage
+  "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
+  stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
+  `:metabase.lib.join/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
+  `:lib/original-expression-name` respectively.
+
+  You need to recalculate the desired column aliases for the stage as a whole "
+  [col]
+  (-> col
+      (set/rename-keys {:fk-field-id                      :lib/original-fk-field-id
+                        :fk-field-name                    :lib/original-fk-field-name
+                        :fk-join-alias                    :lib/original-fk-join-alias
+                        :lib/expression-name              :lib/original-expression-name
+                        :metabase.lib.field/binning       :lib/original-binning
+                        :metabase.lib.field/temporal-unit :inherited-temporal-unit
+                        :metabase.lib.join/join-alias     :lib/original-join-alias})
+      ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
+      (assoc :lib/original-name ((some-fn :lib/original-name :name) col)
+             ;; desired-column-alias is previous stage => source column alias in next stage
+             :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col))))

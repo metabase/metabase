@@ -1,10 +1,10 @@
 (ns metabase.lib.card
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.ident :as lib.metadata.ident]
@@ -244,13 +244,10 @@
 (defmethod lib.metadata.calculation/returned-columns-method :metadata/card
   [query _stage-number card {:keys [unique-name-fn], :as options}]
   (mapv (fn [col]
-          (let [desired-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)]
-            (-> col
-                (assoc :lib/desired-column-alias (unique-name-fn desired-alias))
-                ;; do not propagate `:lib/expression-name`, since this Card is effectively its own previous stage(s)
-                ;; and passing this key to subsequent stages will incorrectly cause them to generate `:expression`
-                ;; refs when the expression exists in a prior stage
-                (set/rename-keys {:lib/expression-name :lib/original-expression-name}))))
+          (-> col
+              lib.field.util/update-keys-for-col-from-previous-stage
+              (as-> col (assoc col :lib/desired-column-alias (unique-name-fn (:lib/source-column-alias col))))
+              (assoc :lib/source :source/card)))
         (if (= (:type card) :metric)
           (let [metric-query (-> card :dataset-query mbql.normalize/normalize lib.convert/->pMBQL
                                  (lib.util/update-query-stage -1 dissoc :aggregation :breakout))]

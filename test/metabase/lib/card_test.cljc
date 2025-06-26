@@ -14,6 +14,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
@@ -154,9 +155,13 @@
           card              (lib.metadata/card metadata-provider 1)
           q                 (lib/query metadata-provider card)
           cols              (lib/returned-columns q)]
+      (testing ":lib/desired-column-alias in previous stage (or source Card) becomes :lib/source-column-alias in next stage (see below)"
+        (is (=? [{:lib/desired-column-alias "Products__CATEGORY"}
+                 {:lib/desired-column-alias "count"}]
+                (lib/returned-columns (lib/query metadata-provider (:dataset-query card))))))
       (is (=? [{:name                     "CATEGORY"
                 :lib/source               :source/card
-                :lib/source-column-alias  "CATEGORY"
+                :lib/source-column-alias  "Products__CATEGORY"
                 :lib/desired-column-alias "Products__CATEGORY"}
                {:name                     "count"
                 :lib/source               :source/card
@@ -241,7 +246,8 @@
                     (as-> $q (lib/breakout $q (m/find-first (comp #{"SOURCE"} :name)
                                                             (lib/breakoutable-columns $q)))))]
       ;; we always use LONG display names when the column came from a previous stage.
-      (is (= ["Source" "Distinct values of Mock people card → ID"]
+      (is (= ["Mock people card → Source"
+              "Distinct values of Mock people card → ID"]
              (map #(lib/display-name query %) (lib/returned-columns query))))
       (is (= ["Mock people card → ID is 1"]
              (map #(lib/display-name query %) (lib/filters query)))))))
@@ -516,3 +522,35 @@
           (testing "metadata should not include :lib/expression-name"
             (is (=? {:lib/expression-name (symbol "nil #_\"key is not present.\"")}
                     double-price))))))))
+
+(deftest ^:parallel card-with-join-visible-columns-test
+  (let [q1   (lib.tu.macros/mbql-query reviews
+               {:joins       [{:source-table $$products
+                               :condition    [:= $product-id &Products.products.id]
+                               :alias        "Products"
+                               :fields       :all}]
+                :aggregation [[:distinct &Products.products.id]]
+                :breakout    [&Products.!month.created-at]})
+        mp   (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1, :dataset-query q1}]})
+        q2   (lib/query mp (meta/table-metadata :reviews))
+        card (lib.metadata/card mp 1)]
+    (doseq [f [#'lib/returned-columns
+               #'lib/visible-columns]]
+      (testing (str f " for a card should NEVER return `:metabase.lib.join/join-alias`, because the join happened within the Card itself.")
+        (is (=? [{:name                             "CREATED_AT"
+                  :display-name                     "Created At: Month"
+                  :lib/card-id                      1
+                  :lib/source                       :source/card
+                  :lib/original-join-alias          "Products"
+                  :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")
+                  :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                  :inherited-temporal-unit          :month}
+                 {:name                         "count"
+                  :display-name                 "Distinct values of ID"
+                  :lib/card-id                  1
+                  :lib/source                   :source/card
+                  :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
+                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
+                (f q2 card)))))))

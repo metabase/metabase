@@ -6,7 +6,10 @@
        :cljs ([metabase.test-runner.assert-exprs.approximately-equal :refer [=?-diff]]))
    [medley.core :as m]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util.malli :as mu]))
 
 (defn match-display-info [query spec item]
   (let [spec (if (string? spec)
@@ -19,8 +22,14 @@
     (or (m/find-first #(match-display-info query table-spec %) tables)
         (throw (ex-info "Failed to find table" {:table-spec table-spec, :found (map #(lib/display-info query %) tables)})))))
 
-(defn find-col-with-spec [query columns group-spec column-spec]
-  (let [groups      (lib/group-columns columns)
+(mu/defn find-col-with-spec :- ::lib.schema.metadata/column
+  [query   :- ::lib.schema/query
+   columns :- [:sequential {:min 1} ::lib.schema.metadata/column]
+   group-spec
+   column-spec]
+  (let [groups      (or (not-empty (lib/group-columns columns))
+                        (throw (ex-info "lib/group-columns unexpectedly returned no groups"
+                                        {:columns columns})))
         group       (or (m/find-first #(match-display-info query group-spec %) groups)
                         (throw (ex-info "Failed to find column group"
                                         {:group-spec group-spec, :found (map #(lib/display-info query %) groups)})))]

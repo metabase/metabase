@@ -207,7 +207,13 @@
   ;; > "When we cross the stage, everything is “long”" -- Alex P
   ;;
   ;; See https://metaboat.slack.com/archives/C0645JP1W81/p1750805177651009
-  (let [style (if (lib.field.util/FIXED-inherited-column? query stage-number col)
+  (let [style (if (or
+                   (lib.field.util/FIXED-inherited-column? query stage-number col)
+                   ;; TODO (Cam 6/26/25) -- not really sure whether a column that comes from a join in the current
+                   ;; stage AGAINST ANOTHER CARD is 'inherited' or not... on the one hand it does come from another
+                   ;; Card but on the other hand it was introduced in this stage. Either way, we do always want to use
+                   ;; long display names in this case.
+                   (:lib/card-id col))
                 :long
                 style)]
     (->> (field-display-name-initial-display-name query stage-number col style)
