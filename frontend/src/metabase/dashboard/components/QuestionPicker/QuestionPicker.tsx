@@ -90,7 +90,7 @@ function QuestionPickerInner({
             <Button
               variant="outline"
               className={S.newButton}
-              leftSection={<Icon name="insight" />}
+              leftSection={<Icon aria-hidden name="insight" />}
               onClick={onNewQuestion}
             >
               {t`New Question`}
@@ -100,7 +100,7 @@ function QuestionPickerInner({
             <Button
               variant="outline"
               className={S.newButton}
-              leftSection={<Icon name="sql" />}
+              leftSection={<Icon aria-hidden name="sql" />}
               onClick={onNewNativeQuestion}
             >
               {t`New SQL query`}
