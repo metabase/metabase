@@ -109,10 +109,7 @@
 
 (defn- check-and-update-settings [settings mb-to-smtp-map current-smtp-password]
   (perms/check-has-application-permission :setting)
-  (let [env-var-settings (env-var-values-by-email-setting mb-to-smtp-map)
-        smtp-settings (-> settings
-                        ;; override `nil` values in the request with environment variables for testing the SMTP connection
-                          (merge env-var-settings)
+  (let [smtp-settings (-> settings
                           (select-keys (keys mb-to-smtp-map))
                           (set/rename-keys mb-to-smtp-map))
         ;; the frontend has access to an obfuscated version of the password. Watch for whether it sent us a new password or
@@ -124,14 +121,19 @@
                                 (assoc :pass current-smtp-password))
         smtp-settings         (cond-> smtp-settings
                                 (string? (:port smtp-settings))     (update :port #(Long/parseLong ^String %))
-                                (string? (:security smtp-settings)) (update :security keyword))
+                                (string? (:security smtp-settings)) (update :security keyword)
+                                ;; if keys were not provided, clear them out
+                                (nil? (:port smtp-settings)) (assoc :port nil)
+                                (nil? (:security smtp-settings)) (assoc :security nil)
+                                (nil? (:host smtp-settings)) (assoc :host nil)
+                                (nil? (:user smtp-settings)) (assoc :user nil)
+                                (nil? (:pass smtp-settings)) (assoc :pass nil))
         response         (email/test-smtp-connection smtp-settings)]
     (if-not (::email/error response)
       ;; test was good, save our settings
       (let [[_ corrections] (data/diff smtp-settings response)
             new-settings    (set/rename-keys response (set/map-invert mb-to-smtp-map))]
-        ;; don't update settings if they are set by environment variables
-        (setting/set-many! (apply dissoc new-settings (keys env-var-settings)))
+        (setting/set-many! new-settings)
         (cond-> (assoc new-settings :with-corrections (-> corrections
                                                           (set/rename-keys (set/map-invert mb-to-smtp-map))
                                                           (#(humanize-email-corrections % mb-to-smtp-map))))
@@ -153,7 +155,8 @@
   (check-and-update-settings settings mb-to-smtp-settings (channel.settings/email-smtp-password)))
 
 (api.macros/defendpoint :put "/cloud"
-  "Update multiple cloud email Settings. You must be a superuser or have `setting` permission to do this."
+  "Update multiple cloud email Settings. You must be a superuser or have `setting` permission to do this.
+  Calling this automatically sets `cloud-smtp-enabled` to true if the settings are valid."
   [_route-params
    _query-params
    settings :- [:map
@@ -172,7 +175,8 @@
     (throw (ex-info (tru "Invalid cloud-email-smtp-security value")
                     {:status-code 400})))
 
-  (check-and-update-settings settings cloud-mb-to-smtp-settings (channel.settings/cloud-email-smtp-password)))
+  (u/prog1 (check-and-update-settings settings cloud-mb-to-smtp-settings (channel.settings/cloud-email-smtp-password))
+    (when (nil? (:errors (:body <>))) (channel.settings/cloud-smtp-enabled! true))))
 
 (api.macros/defendpoint :delete "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."

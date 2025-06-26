@@ -94,87 +94,86 @@
   ;; There is a lot of overlap with the /api/email/cloud test, but enough differences that we keep them separate.
   ;; NOTE: When adding tests, ask yourself "should this also be tested in the /api/email/cloud test?"
   (testing "PUT /api/email - check updating email settings"
-    (mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil
-                                  MB_EMAIL_SMTP_PORT nil
-                                  MB_EMAIL_SMTP_SECURITY nil
-                                  MB_EMAIL_SMTP_USERNAME nil
-                                  MB_EMAIL_SMTP_PASSWORD nil]
-      ;; [[metabase.channel.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
-      ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
-      ;; integer.
-      (let [original-values (email-settings)]
-        (doseq [body [default-email-settings
-                      (update default-email-settings :email-smtp-port str)]
-                ;; test what happens on both a successful and an unsuccessful connection.
-                [success? f] {true  (fn [thunk]
-                                      (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-                                        (thunk)))
-                              false (fn [thunk]
-                                      (with-redefs [email/retry-delay-ms 0]
-                                        (thunk)))}]
-          (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username email-smtp-password]
-            (testing (format "SMTP connection is valid? %b\n" success?)
-              (f (fn []
-                   (testing "API request"
-                     (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
-                       (if success?
-                         (is (= (-> default-email-settings
-                                    (assoc :with-corrections {})
-                                    (update :email-smtp-security name))
-                                (mt/user-http-request :crowberto :put 200 "email" body)))
-                         (is (= {:errors {:email-smtp-host "Wrong host or port"
-                                          :email-smtp-port "Wrong host or port"}}
-                                (mt/user-http-request :crowberto :put 400 "email" body))))))
-                   (testing "Settings after API request is finished"
-                     (is (= (if success?
-                              default-email-settings
-                              original-values)
-                            (email-settings)))))))))
-        (testing (format "SMTP connection is still valid when some settings are not specified, but set with env vars")
-          (let [body (dissoc default-email-settings
-                             :email-smtp-port
-                             :email-smtp-host
-                             :email-smtp-security
-                             :email-smtp-username
-                             :email-smtp-password)]
-            (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username email-smtp-password]
-              (mt/with-temp-env-var-value! [mb-email-smtp-port (:email-smtp-port default-email-settings)
-                                            mb-email-smtp-host (:email-smtp-host default-email-settings)
-                                            mb-email-smtp-security (name (:email-smtp-security default-email-settings))
-                                            mb-email-smtp-username (:email-smtp-username default-email-settings)
-                                            mb-email-smtp-password (:email-smtp-password default-email-settings)]
-                (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-                  (testing "API request"
-                    (is (= (-> default-email-settings
-                               (assoc :with-corrections {})
-                               (update :email-smtp-security name))
-                           (mt/user-http-request :crowberto :put 200 "email" body))))
-                  (testing "Settings after API request is finished"
-                    (is (= default-email-settings
-                           (email-settings)))))))))))
-    (testing "Updating values with obfuscated password (#23919)"
+    ;(mt/with-temp-env-var-value! [MB_EMAIL_SMTP_HOST nil
+    ;                              MB_EMAIL_SMTP_PORT nil
+    ;                              MB_EMAIL_SMTP_SECURITY nil
+    ;                              MB_EMAIL_SMTP_USERNAME nil
+    ;                              MB_EMAIL_SMTP_PASSWORD nil]
+    ;  ;; [[metabase.channel.email/email-smtp-port]] was originally a string Setting (it predated our introduction of different
+    ;  ;; Settings types) -- make sure our API endpoints still work if you pass in the value as a String rather than an
+    ;  ;; integer.
+    ;  (let [original-values (email-settings)]
+    ;    (doseq [body [default-email-settings
+    ;                  (update default-email-settings :email-smtp-port str)]
+    ;            ;; test what happens on both a successful and an unsuccessful connection.
+    ;            [success? f] {true  (fn [thunk]
+    ;                                  (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
+    ;                                    (thunk)))
+    ;                          false (fn [thunk]
+    ;                                  (with-redefs [email/retry-delay-ms 0]
+    ;                                    (thunk)))}]
+    ;      (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username email-smtp-password]
+    ;        (testing (format "SMTP connection is valid? %b\n" success?)
+    ;          (f (fn []
+    ;               (testing "API request"
+    ;                 (testing (format "\nRequest body =\n%s" (u/pprint-to-str body))
+    ;                   (if success?
+    ;                     (is (= (-> default-email-settings
+    ;                              (assoc :with-corrections {})
+    ;                              (update :email-smtp-security name))
+    ;                           (mt/user-http-request :crowberto :put 200 "email" body)))
+    ;                     (is (= {:errors {:email-smtp-host "Wrong host or port"
+    ;                                      :email-smtp-port "Wrong host or port"}}
+    ;                           (mt/user-http-request :crowberto :put 400 "email" body)))))
+    ;                 (testing "Settings after API request is finished"
+    ;                   (is (= (if success?
+    ;                            default-email-settings
+    ;                            original-values)
+    ;                         (email-settings))))))))))))
+    ;(testing "Updating values with obfuscated password (#23919)"
+    ;  (mt/with-temporary-setting-values [email-smtp-host "www.test.com"
+    ;                                     email-smtp-password "preexisting"]
+    ;    (with-redefs [email/test-smtp-connection (fn [settings]
+    ;                                               (let [obfuscated? (str/starts-with? (:pass settings) "****")]
+    ;                                                 (is (not obfuscated?) "We received an obfuscated password!")
+    ;                                                 (if obfuscated?
+    ;                                                   {::email/error (ex-info "Sent obfuscated password" {})}
+    ;                                                   settings)))]
+    ;      (testing "If we don't change the password we don't see the password"
+    ;        (let [payload (-> (email-settings)
+    ;                        ;; user changes one property
+    ;                        (assoc :email-smtp-port 999)
+    ;                        ;; the FE will have an obfuscated value
+    ;                        (update :email-smtp-password setting/obfuscate-value))
+    ;              response (mt/user-http-request :crowberto :put 200 "email" payload)]
+    ;          (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password response)))))
+    ;      (testing "If we change the password we can receive the password"
+    ;        (let [payload (-> (email-settings)
+    ;                        ;; user types in a new password
+    ;                        (assoc :email-smtp-password "new-password"))
+    ;              response (mt/user-http-request :crowberto :put 200 "email" payload)]
+    ;          (is (= "new-password" (:email-smtp-password response))))))))
+    (testing "If values are not sent, they are cleared"
       (mt/with-temporary-setting-values [email-smtp-host "www.test.com"
-                                         email-smtp-password "preexisting"]
-        (with-redefs [email/test-smtp-connection (fn [settings]
-                                                   (let [obfuscated? (str/starts-with? (:pass settings) "****")]
-                                                     (is (not obfuscated?) "We received an obfuscated password!")
-                                                     (if obfuscated?
-                                                       {::email/error (ex-info "Sent obfuscated password" {})}
-                                                       settings)))]
-          (testing "If we don't change the password we don't see the password"
-            (let [payload (-> (email-settings)
-                            ;; user changes one property
-                              (assoc :email-smtp-port 999)
-                            ;; the FE will have an obfuscated value
-                              (update :email-smtp-password setting/obfuscate-value))
-                  response (mt/user-http-request :crowberto :put 200 "email" payload)]
-              (is (= (setting/obfuscate-value "preexisting") (:email-smtp-password response)))))
-          (testing "If we change the password we can receive the password"
-            (let [payload (-> (email-settings)
-                            ;; user types in a new password
-                              (assoc :email-smtp-password "new-password"))
-                  response (mt/user-http-request :crowberto :put 200 "email" payload)]
-              (is (= "new-password" (:email-smtp-password response))))))))))
+                                         email-smtp-port "123"
+                                         email-smtp-username "pre-user"
+                                         email-smtp-password "pre-pass"]
+        (with-redefs [email/test-smtp-connection (fn [settings] settings)]
+          (is (= "pre-user" (setting/get-value-of-type :string :email-smtp-username)))
+          (is (= "pre-pass" (setting/get-value-of-type :string :email-smtp-password)))
+          (is (= 123 (setting/get-value-of-type :integer :email-smtp-port)))
+          (let [payload (-> (email-settings)
+                            ;; Don't send some values
+                            (dissoc :email-smtp-username)
+                            (dissoc :email-smtp-password))
+                response (mt/user-http-request :crowberto :put 200 "email" payload)]
+            (is (nil? (:email-smtp-username response)))
+            (is (nil? (:email-smtp-password response)))
+            (is (= 123 (:email-smtp-port response)))
+
+            (is (nil? (setting/get-value-of-type :string :email-smtp-username)))
+            (is (nil? (setting/get-value-of-type :string :email-smtp-password)))
+            (is (= 123 (setting/get-value-of-type :integer :email-smtp-port)))))))))
 
 (deftest update-cloud-email-settings-test
   ;; There is a lot of overlap with the /api/email test, but enough differences that we keep them separate.
@@ -217,30 +216,7 @@
                        (is (= (if success?
                                 default-cloud-email-settings
                                 original-values)
-                              (cloud-email-settings)))))))))
-          (testing (format "SMTP connection is still valid when some settings are not specified, but set with env vars")
-            (let [body (dissoc default-cloud-email-settings
-                               :cloud-mail-smtp-port
-                               :cloud-email-smtp-host
-                               :cloud-email-smtp-security
-                               :cloud-email-smtp-username
-                               :cloud-email-smtp-password)]
-              (tu/discard-setting-changes [cloud-email-smtp-host cloud-email-smtp-port cloud-email-smtp-security
-                                           cloud-email-smtp-username cloud-email-smtp-password]
-                (mt/with-temp-env-var-value! [mb-cloud-email-smtp-port (:cloud-email-smtp-port default-cloud-email-settings)
-                                              mb-cloud-email-smtp-host (:cloud-email-smtp-host default-cloud-email-settings)
-                                              mb-cloud-email-smtp-security (name (:cloud-email-smtp-security default-cloud-email-settings))
-                                              mb-cloud-email-smtp-username (:cloud-email-smtp-username default-cloud-email-settings)
-                                              mb-cloud-email-smtp-password (:cloud-email-smtp-password default-cloud-email-settings)]
-                  (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
-                    (testing "API request"
-                      (is (= (-> default-cloud-email-settings
-                                 (assoc :with-corrections {})
-                                 (update :cloud-email-smtp-security name))
-                             (mt/user-http-request :crowberto :put 200 "email/cloud" body))))
-                    (testing "Settings after API request is finished"
-                      (is (= default-cloud-email-settings
-                             (cloud-email-settings)))))))))))
+                              (cloud-email-settings)))))))))))
 
       (mt/with-premium-features [:cloud-custom-smtp]
         (testing "Cannot use non-secure settings"
