@@ -59,22 +59,17 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
-(mu/defn standard-join-condition-lhs-or-rhs? :- :boolean
-  "Whether this LHS or RHS expression is a `:field` reference."
-  [lhs-or-rhs-expression :- [:maybe ::lib.schema.expression/expression]]
-  (lib.util/field-clause? lhs-or-rhs-expression))
-
 (mu/defn- standard-join-condition? :- :boolean
-  "Whether this join condition is a binary condition with two `:field` references (a LHS and a RHS), as you'd produce
+  "Whether this join condition is a binary condition with two expressions (a LHS and a RHS), as you'd produce
   in the frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]],
   and [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
     (lib.util.match/match-one condition
-      [(_operator :guard keyword?)
+      [(_operator :guard lib.schema.join/condition-operators)
        _opts
-       (_lhs :guard standard-join-condition-lhs-or-rhs?)
-       (_rhs :guard standard-join-condition-lhs-or-rhs?)]
+       (_lhs :guard some?)
+       (_rhs :guard some?)]
       true
       _
       false)))
@@ -132,7 +127,11 @@
     :else
     (update join :conditions (fn [conditions]
                                (mapv (fn [condition]
-                                       (standard-join-condition-update-rhs condition with-join-alias new-alias))
+                                       (standard-join-condition-update-rhs condition
+                                                                           (fn [rhs]
+                                                                             (lib.util.match/replace rhs
+                                                                               (field :guard lib.util/field-clause?)
+                                                                               (with-join-alias field new-alias)))))
                                      conditions)))))
 
 (defn- with-join-alias-update-join
@@ -388,8 +387,10 @@
     conditions
     (mapv (fn [condition]
             (or (when-let [rhs (standard-join-condition-rhs condition)]
-                  (when-not (lib.join.util/current-join-alias rhs)
-                    (standard-join-condition-update-rhs condition with-join-alias join-alias)))
+                  (standard-join-condition-update-rhs condition (fn [rhs]
+                                                                  (lib.util.match/replace rhs
+                                                                    (field :guard #(and (lib.util/field-clause? %) (not (lib.join.util/current-join-alias %))))
+                                                                    (with-join-alias field new-alias)))))
                 condition))
           conditions)))
 
@@ -1051,8 +1052,8 @@
 
 (mu/defn join-condition-update-temporal-bucketing :- ::lib.schema.expression/boolean
   "Updates the provided join-condition's fields' temporal-bucketing option, returns the updated join-condition.
-   Must be called on a standard join condition as per [[standard-join-condition?]], otherwise the join condition will be
-   ignored.
+   Must be called on a standard join condition with columns used for both LHS and RHS expressions, otherwise the join
+   condition will NOT be updated.
    This will sync both the lhs and rhs fields, and the fields that support the provided option will be updated.
    Fields that do not support the provided option will be ignored."
   ([query :- ::lib.schema/query
@@ -1069,17 +1070,19 @@
                                ::lib.schema.temporal-bucketing/unit]]]
    (if-not (standard-join-condition? join-condition)
      join-condition
-     (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)
-           unit (cond-> option-or-unit
-                  (not (keyword? option-or-unit)) :unit)
-           stage-number (lib.util/canonical-stage-index query stage-number)
-           available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
-           available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
-           sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
-           sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
-       (cond-> join-condition
-         sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
-         sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))
+     (let [[_ _ lhs rhs :as join-condition] (lib.common/->op-arg join-condition)]
+       (if-not (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
+         join-condition
+         (let [unit (cond-> option-or-unit
+                      (not (keyword? option-or-unit)) :unit)
+               stage-number (lib.util/canonical-stage-index query stage-number)
+               available-lhs (lib.temporal-bucket/available-temporal-buckets query stage-number lhs)
+               available-rhs (lib.temporal-bucket/available-temporal-buckets query stage-number rhs)
+               sync-lhs? (or (nil? unit) (contains? (set (map :unit available-lhs)) unit))
+               sync-rhs? (or (nil? unit) (contains? (set (map :unit available-rhs)) unit))]
+           (cond-> join-condition
+             sync-lhs? (update 2 lib.temporal-bucket/with-temporal-bucket unit)
+             sync-rhs? (update 3 lib.temporal-bucket/with-temporal-bucket unit))))))))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :joins
   [query stage-number _key]
