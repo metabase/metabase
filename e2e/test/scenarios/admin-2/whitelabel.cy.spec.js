@@ -19,7 +19,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.setTokenFeatures("all");
+    H.activateToken("pro-self-hosted");
   });
 
   it("smoke UI test", () => {
@@ -682,7 +682,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
 
     it("should link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
-      H.setTokenFeatures("none");
+      H.deleteToken();
 
       cy.signInAsNormalUser();
       cy.visit("/");
@@ -732,7 +732,7 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     });
 
     it("should not render the widget when users does not have a valid license", () => {
-      H.setTokenFeatures("none");
+      H.activateToken("starter");
       cy.reload();
       cy.findByLabelText("Landing page custom destination").should("not.exist");
     });

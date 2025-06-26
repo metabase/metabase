@@ -1,6 +1,7 @@
-import { setTokenFeatures } from "e2e/support/helpers/e2e-enterprise-helpers";
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import { restore } from "e2e/support/helpers/e2e-setup-helpers";
+
+import { activateToken } from "./e2e-token-helpers";
 
 export const EMBEDDING_SDK_STORY_HOST = "http://localhost:6006/iframe.html";
 
@@ -8,7 +9,7 @@ export function signInAsAdminAndEnableEmbeddingSdkForE2e() {
   restore();
 
   cy.signInAsAdmin();
-  setTokenFeatures("all");
+  activateToken("bleeding-edge");
   enableJwtAuth();
   cy.request("PUT", "/api/setting", {
     "enable-embedding-sdk": true,

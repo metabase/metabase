@@ -32,7 +32,7 @@ describe("admin > database > database routing", () => {
 
   describe("EE", () => {
     beforeEach(() => {
-      H.setTokenFeatures("all");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to configure db routing and manage destination databases", () => {
