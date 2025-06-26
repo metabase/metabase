@@ -45,14 +45,14 @@ Let's say you have a table called **Data** that looks like this:
 | B         | ...     | ...      |
 | C         | ...     | ...      |
 
-To display a filtered version of **Data** to different tenants based on a `Tenant_ID`. You can create a [basic sandbox](/docs/latest/permissions/data-sandboxes#types-of-data-sandboxes).
+To display a filtered version of **Data** to different tenants based on a `Tenant_ID`. You can create a [basic sandbox](./data-sandboxes.md#types-of-data-sandboxes).
 
 That means Tenant A will see the rows where `Tenant_ID = A`, and Tenant B will see the rows where `Tenant_ID = B`.
 
 Here's how the basic sandbox will work:
 
 1. **Create a group**, for example "Sandboxed Tenants", and add people's Metabase accounts to that group.
-2. **Add a user attribute**. For each person's account, [add a user attribute](/docs/latest/people-and-groups/managing#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A", "B", or "C".
+2. **Add a user attribute**. For each person's account, [add a user attribute](../people-and-groups/managing.md#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A", "B", or "C".
 3. **Sandbox the table** to apply the [row-level security based on user attributes](./data-sandboxes.md#types-of-data-sandboxes).
 
 ### Restricting columns based on tenancy
@@ -65,11 +65,11 @@ Let's say your **Insights** column is a premium feature, and Tenant B is the onl
 | B         | ...     | ...                               |
 | C         | ...     | {% include svg-icons/cross.svg %} |
 
-To keep A and C from viewing the `Insights` column, you can create a [custom sandbox](/docs/latest/permissions/data-sandboxes#types-of-data-sandboxes) to restrict both the rows and columns they see when they view the table.
+To keep A and C from viewing the `Insights` column, you can create a [custom sandbox](./data-sandboxes.md#types-of-data-sandboxes) to restrict both the rows and columns they see when they view the table.
 
 1. **Create a group** called "Metrics-Only Tenants".
 2. **Add Tenants A and C to the group**. Note that when you're sandboxing the **Data** table in different ways for different groups, make sure that each Metabase account only belongs to a single group.
-3. [Add a user attribute](/docs/latest/people-and-groups/managing#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A" or "C".
+3. [Add a user attribute](../people-and-groups/managing.md#adding-a-user-attribute) like `Tenant_ID`, with the user attribute value set to "A" or "C".
 4. Next, you'll create a SQL question using the **Data** table like this:
 
    ```sql
@@ -78,7 +78,7 @@ To keep A and C from viewing the `Insights` column, you can create a [custom san
    WHERE Tenant_ID = {%raw%} {{ tenant_user_attribute }} {%endraw%}
    ```
 5. Save the SQL question as "Customer Metrics".
-6. [Create a custom sandbox](/docs/latest/permissions/data-sandboxes#types-of-data-sandboxes) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
+6. [Create a custom sandbox](./data-sandboxes.md#types-of-data-sandboxes) using the "Metrics-Only Tenants" group and "Customer Metrics" SQL question.
 
 When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metrics` columns, and only the rows where `Tenant_ID = A`.
 
@@ -125,13 +125,13 @@ Say you have a single database with ten different tables, each corresponding to 
 
 2. **Grant table access** by going to **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
 
-   For employees who should only view data, create collections to house those specific questions and dashboards. See [collection permissions](./collection-permissions).
+   For employees who should only view data, create collections to house those specific questions and dashboards. See [collection permissions](./collections.md).
 
    Don't grant native SQL editor access — it lets people query tables they shouldn't see.
    
    If you scope each group's permissions to a single table, Metabase will hide any new tables you add to the database.
 
-3. **Invite your first user** and add them to the appropriate group. Skip this step if you're using [SSO](/docs/latest/people-and-groups/google-sign-in).
+3. **Invite your first user** and add them to the appropriate group. Skip this step if you're using [SSO](../people-and-groups/google-sign-in.md).
 
 4. **Repeat the process** for each customer by following steps 1–3.
 
@@ -141,13 +141,13 @@ The SQL editor needs unrestricted database access, so the above method would let
 
 1. Create a database-level user account for your first customer (not in Metabase). This user should only have access to their specific tables or schema. For Postgres, add a user via psql and grant them permissions only to their tables.
 
-2. In Metabase, [add a connection to your database](/docs/latest/databases/connecting) using the database user account you just created.
+2. In Metabase, [add a connection to your database](../databases/connecting.md) using the database user account you just created.
 
-3. Create a new [group](/docs/latest/people-and-groups/managing#groups) in Metabase and grant it access to the new database connection. Since the database user role controls what's visible, you can grant the group **Can view** access to the database and **Query builder and native** access.
+3. Create a new [group](../people-and-groups/managing.md#groups) in Metabase and grant it access to the new database connection. Since the database user role controls what's visible, you can grant the group **Can view** access to the database and **Query builder and native** access.
 
    Group members will see all tables that the database user can access. To hide tables later, change permissions in the database itself, not Metabase.
 
-4. Invite your first user and add them to the appropriate group. Skip this if using [SSO](/docs/latest/people-and-groups/google-sign-in).
+4. Invite your first user and add them to the appropriate group. Skip this if using [SSO](../people-and-groups/google-sign-in.md).
 
 5. Repeat steps 1–4 for each customer. You'll end up with as many database connections as customers.
 
