@@ -469,4 +469,6 @@
   (setup-tracking-dataset!)
   (destroy-dataset! "metabase_test_tracking")
   (tx/track-dataset :bigquery-cloud-sdk (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
-  (dataset-tracked?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders))))
+  (dataset-tracked?! (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* 'attempted-murders)))
+
+  (execute! "select name from `%s`.metabase_test_tracking.datasets" (project-id)))

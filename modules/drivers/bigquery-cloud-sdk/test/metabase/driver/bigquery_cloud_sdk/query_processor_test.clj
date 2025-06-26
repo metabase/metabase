@@ -30,15 +30,15 @@
    [metabase.util.honey-sql-2 :as h2x]))
 
 (defn ^:private get-test-data-name
-  [dataset-sym]
+  []
   (bigquery.tx/test-dataset-id
-   (tx/get-dataset-definition (data.impl/resolve-dataset-definition *ns* dataset-sym))))
+   (tx/get-dataset-definition data.impl/*dbdef-used-to-create-db*)))
 
 (defn- with-test-db-name
   "Replaces instances of v4_test_data with the full per-test-run DB name (aka dataset ID)"
   [x]
   (cond
-    (string? x) (str/replace x "v4_test_data" (get-test-data-name 'test-data))
+    (string? x) (str/replace x "v4_test_data" (get-test-data-name))
     (map? x)    (update-vals x with-test-db-name)
     (vector? x) (mapv with-test-db-name x)
     (list?   x) (map with-test-db-name x)
@@ -612,7 +612,7 @@
                            :type       :native
                            :native     {:query         (str "SELECT count(*)\n"
                                                             (format "FROM `%s.attempts`\n"
-                                                                    (get-test-data-name 'attempted-murders))
+                                                                    (get-test-data-name))
                                                             "WHERE {{d}}")
                                         :template-tags {"d" {:name         "d"
                                                              :display-name "Date"
@@ -696,7 +696,7 @@
                            :type :native
                            :native {:query (str "SELECT count(*)\n"
                                                 (format "FROM `%s.attempts`\n"
-                                                        (get-test-data-name 'attempted-murders))
+                                                        (get-test-data-name))
                                                 "WHERE {{d}}")
                                     :template-tags {"d" {:name         "d"
                                                          :display-name "Date"

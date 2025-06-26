@@ -51,9 +51,9 @@
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
-      attempted-murders
+      test-data
       (is (some? (mt/rows
-                  (mt/run-mbql-query attempts)))))))
+                  (mt/run-mbql-query orders)))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
