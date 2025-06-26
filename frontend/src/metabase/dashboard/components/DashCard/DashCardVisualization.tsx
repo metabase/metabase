@@ -1,9 +1,10 @@
 import cx from "classnames";
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { DebugContext } from "metabase/common/components/DebugMenu/DebugContext";
 import CS from "metabase/css/core/index.css";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
@@ -21,6 +22,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type {
@@ -441,8 +443,37 @@ export function DashCardVisualization({
     dashcardId: dashcard.id,
   });
 
+  const display = question?.display();
+  const renderLoadingView = useMemo(() => {
+    return function DashboardLoadingView() {
+      return (
+        <div
+          style={{
+            padding: "0 1rem 1rem",
+            height: "100%",
+          }}
+        >
+          <ChartSkeleton display={display} />
+        </div>
+      );
+    };
+  }, [display]);
+
+  const { lastLoad } = useContext(DebugContext);
+  const [forceLoading, setForceLoading] = useState(false);
+  useEffect(() => {
+    if (!lastLoad) {
+      return;
+    }
+    setForceLoading(true);
+    const durationMs = _.random(lastLoad.min, lastLoad.max);
+    const timeoutId = setTimeout(() => setForceLoading(false), durationMs);
+    return () => clearTimeout(timeoutId);
+  }, [lastLoad]);
+
   return (
     <Visualization
+      forceLoading={forceLoading}
       className={cx(CS.flexFull, {
         [CS.pointerEventsNone]: isEditingDashboardLayout,
         [CS.overflowAuto]: visualizationOverlay,
@@ -481,6 +512,7 @@ export function DashCardVisualization({
       onTogglePreviewing={onTogglePreviewing}
       onChangeCardAndRun={onChangeCardAndRun}
       onChangeLocation={onChangeLocation}
+      renderLoadingView={renderLoadingView}
       token={token}
       uuid={uuid}
       titleMenuItems={titleMenuItems}

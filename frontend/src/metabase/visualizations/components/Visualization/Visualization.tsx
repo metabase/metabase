@@ -83,7 +83,7 @@ import { EmptyVizState } from "../EmptyVizState";
 
 import ChartSettingsErrorButton from "./ChartSettingsErrorButton";
 import { ErrorView } from "./ErrorView";
-import LoadingView from "./LoadingView";
+import LoadingView, { type LoadingViewProps } from "./LoadingView";
 import NoResultsView from "./NoResultsView";
 import {
   VisualizationActionButtonsContainer,
@@ -144,6 +144,7 @@ type VisualizationOwnProps = {
   isShowingSummarySidebar?: boolean;
   isSlow?: CardSlownessStatus;
   isVisible?: boolean;
+  renderLoadingView?: (props: LoadingViewProps) => JSX.Element | null;
   metadata?: Metadata;
   mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
   onEditSummary?: () => void;
@@ -178,6 +179,7 @@ type VisualizationOwnProps = {
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
   onVisualizationRendered?: (series: Series) => void;
+  forceLoading?: boolean;
 } & VisualizationPassThroughProps;
 
 type VisualizationProps = StateDispatchProps &
@@ -605,6 +607,7 @@ class Visualization extends PureComponent<
       rawSeries = [],
       visualizerRawSeries,
       renderEmptyMessage,
+      renderLoadingView = LoadingView,
       renderTableHeader,
       replacementContent,
       scrollToColumn,
@@ -647,7 +650,7 @@ class Visualization extends PureComponent<
     let error = this.props.error || this.state.error;
     let noResults = false;
     let isPlaceholder = false;
-    const loading = isLoading(series);
+    const loading = this.props.forceLoading || isLoading(series);
 
     // don't try to load settings unless data is loaded
     const settings = this.props.settings || this.state.computedSettings;
@@ -794,10 +797,10 @@ class Visualization extends PureComponent<
           ) : genericError ? (
             <SmallGenericError bordered={false} />
           ) : loading ? (
-            <LoadingView
-              expectedDuration={expectedDuration}
-              isSlow={!!isSlow}
-            />
+            renderLoadingView({
+              expectedDuration: expectedDuration,
+              isSlow: !!isSlow,
+            })
           ) : isPlaceholder ? (
             <EmptyVizState
               chartType={visualization?.identifier}
