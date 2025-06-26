@@ -104,9 +104,9 @@
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
-(defn- resolve-heading-inline-parameters
-  "Resolves the full parameter definitions for inline parameters on a heading dashcard, and adds them to the
-  dashcard's visualization settings so that they can be rendered in a subscription."
+(defn- resolve-inline-parameters
+  "Resolves the full parameter definitions for inline parameters on a dashcard, and adds them to the dashcard's
+  visualization settings so that they can be rendered in a subscription."
   [dashcard parameters]
   (let [inline-parameters-ids (set (:inline_parameters dashcard))
         inline-parameters     (filter #(inline-parameters-ids (:id %)) parameters)]
@@ -221,7 +221,9 @@
         ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
         ;; memory
         ;; TODO: we need to store series result data rows to disk too
-        (m/update-existing (execute-dashboard-subscription-card dashcard parameters) :result data-rows-to-disk!)))
+        (-> (execute-dashboard-subscription-card dashcard parameters)
+            (m/update-existing :result data-rows-to-disk!)
+            (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
     nil
@@ -239,7 +241,7 @@
     (let [parameters (merge-default-values parameters)]
       (some-> dashcard
               (process-virtual-dashcard parameters)
-              (resolve-heading-inline-parameters parameters)
+              (resolve-inline-parameters parameters)
               escape-heading-markdown
               :visualization_settings
               (assoc :type :text)))
