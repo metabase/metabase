@@ -2,5 +2,16 @@
   "base": {
     "name": "emb-512-code-snippet-and-authentication-step-for-new-iframe-embed",
     "hash": "4d1046fc8e9cb93e9a4d9ec89d036d9e1d6292e2"
+  },
+  "upstream": {
+    "branch": "emb-509-embed-behavior-and-appearance-for-new-iframe-embed-flow"
+  },
+  "change": {
+    "github": {
+      "pr": {
+        "number": 60142,
+        "gqlID": "PR_kwDOAczgH86cQhtV"
+      }
+    }
   }
 }
