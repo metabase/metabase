@@ -58,16 +58,24 @@ const getDescription = (tokenStatus?: TokenStatus, hasToken?: boolean) => {
   return t`Your license is active until ${validUntil}! Hope you’re enjoying it.`;
 };
 
+const iframeOrigin = "https://store-metabase-figp7pwst-metaboat.vercel.app";
+const iframePath = "/test-for-iframe";
+
 function handleMessageToken(
   event: MessageEvent,
   onLicenseToken: (token: string) => void,
 ) {
-
-  if (event.origin !== "https://store-metabase-hex6thzxr-metaboat.vercel.app") {
+  if (event.origin !== iframeOrigin) {
     return;
   }
 
-  onLicenseToken(event.data);
+  if (event.data.source !== "store/some-checkout") {
+    return;
+  }
+
+  const { licenseToken } = event.data.payload;
+
+  onLicenseToken(licenseToken);
 }
 
 export const LicenseAndBillingSettings = () => {
@@ -86,7 +94,10 @@ export const LicenseAndBillingSettings = () => {
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
-      handleMessageToken(event, setLicenseToken);
+      handleMessageToken(event, (token) => {
+        setLicenseToken(token);
+        setIsModalOpen(false);
+      });
     }
 
     window.addEventListener("message", onMessage);
@@ -185,19 +196,20 @@ export const LicenseAndBillingSettings = () => {
         opened={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         size="100%"
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins.
         title={t`Upgrade to Metabase Pro`}
       >
         <Flex w="100%" h="100%">
           <iframe
-            src="https://store-metabase-hex6thzxr-metaboat.vercel.app/test-for-iframe"
+            src={`${iframeOrigin}${iframePath}`}
             height="600px"
             width="100%"
             ref={iframeRef}
             style={{
-              border: 'none',
-              outline: 'none',
-              boxShadow: 'none',
-              borderRadius: '0',
+              border: "none",
+              outline: "none",
+              boxShadow: "none",
+              borderRadius: "0",
             }}
           />
         </Flex>
