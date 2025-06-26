@@ -638,7 +638,10 @@
 
   Does not include columns that would be implicitly joinable via multiple hops."
   [query stage-number column-metadatas unique-name-fn]
-  (let [existing-table-ids (into #{} (map :table-id) column-metadatas)
+  (let [remap-target-ids (into #{} (keep (comp :field-id :lib/external-remap)) column-metadatas)
+        existing-table-ids (into #{} (comp (remove (comp remap-target-ids :id))
+                                           (map :table-id))
+                                 column-metadatas)
         fk-fields (into [] (filter (every-pred :fk-target-field-id (comp number? :id))) column-metadatas)
         id->target-fields (m/index-by :id (lib.metadata/bulk-metadata
                                            query :metadata/column (into #{} (map :fk-target-field-id) fk-fields)))
