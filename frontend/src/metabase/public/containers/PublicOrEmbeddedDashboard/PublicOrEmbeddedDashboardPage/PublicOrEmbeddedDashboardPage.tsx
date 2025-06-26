@@ -1,8 +1,10 @@
 import type { WithRouterProps } from "react-router";
 
+import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
+import { isActionDashCard, isQuestionCard } from "metabase/dashboard/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
@@ -65,6 +67,18 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         onError={(error) => {
           dispatch(setErrorPage(error));
         }}
+        isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
+        dashcardMenu={({ dashcard, result }) =>
+          downloadsEnabled?.results &&
+          isQuestionCard(dashcard.card) &&
+          !!result?.data &&
+          !result?.error && (
+            <DashCardQuestionDownloadButton
+              result={result}
+              dashcard={dashcard}
+            />
+          )
+        }
       >
         <PublicOrEmbeddedDashboardPageInner {...props} />
       </DashboardContextProvider>
