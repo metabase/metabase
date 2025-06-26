@@ -583,7 +583,6 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("User ID").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByPlaceholderText("Pick a user attribute").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("attr_uid").click();
