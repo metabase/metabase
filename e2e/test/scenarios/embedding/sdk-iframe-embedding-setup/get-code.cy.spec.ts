@@ -5,7 +5,7 @@ import {
 import { enableJwtAuth } from "e2e/support/helpers/e2e-jwt-helpers";
 import { enableSamlAuth } from "e2e/support/helpers/embedding-sdk-testing";
 
-import { getEmbedSidebar, visitNewEmbedPage } from "./helpers";
+import { getEmbedSidebar, navigateToEntitySelectionStep } from "./helpers";
 
 const { H } = cy;
 
@@ -127,33 +127,11 @@ const navigateToGetCodeStep = ({
 }: {
   experience: "dashboard" | "chart" | "exploration";
 }) => {
-  cy.log("visit a resource to populate the activity log");
+  navigateToEntitySelectionStep({ experience });
 
-  if (experience === "dashboard") {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.wait("@dashboard");
-  } else if (experience === "chart") {
-    H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-    cy.wait("@cardQuery");
-  }
-
-  visitNewEmbedPage();
-
-  cy.log("select an experience");
-
-  if (experience === "chart") {
-    cy.findByText("Chart").click();
-  } else if (experience === "exploration") {
-    cy.findByText("Exploration").click();
-  }
-
-  cy.log("navigate to the get code step");
+  cy.log("navigate to get code step");
 
   getEmbedSidebar().within(() => {
-    if (experience !== "exploration") {
-      cy.findByText("Next").click(); // Entity selection step
-    }
-
     cy.findByText("Next").click(); // Configure embed options step
     cy.findByText("Get Code").click(); // Get code step
   });
