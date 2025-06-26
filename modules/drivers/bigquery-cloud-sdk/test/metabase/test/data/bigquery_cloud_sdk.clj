@@ -128,18 +128,24 @@
       (flush)
       (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
 
+(defn execute-params!
+  "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
+  an Exception if it fails."
+  [sql params]
+  (driver/with-driver :bigquery-cloud-sdk
+    (log/infof "[BigQuery] %s\n" sql)
+    (flush)
+    (#'bigquery/execute-bigquery execute-respond (test-db-details) sql params nil)))
+
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
   (.delete (bigquery) dataset-id (u/varargs
                                    BigQuery$DatasetDeleteOption
                                    [(BigQuery$DatasetDeleteOption/deleteContents)]))
-  (u/ignore-exceptions
-    (execute!
-     "DELETE FROM `%s.%s.%s` WHERE `name` = '%s'"
-     (project-id)
-     "metabase_test_tracking"
-     "datasets"
-     dataset-id))
+  (execute-params!
+   (format "DELETE FROM `%s.metabase_test_tracking.datasets` WHERE `name` = ?"
+           (project-id))
+   [dataset-id])
   (log/infof "Deleted BigQuery dataset `%s.%s`." (project-id) dataset-id))
 
 (defn base-type->bigquery-type [base-type]
@@ -327,19 +333,18 @@
 (defn delete-old-datasets!
   []
   (let [all-outdated (execute!
-                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 day))"
+                      (str "(SELECT `name` FROM `%s.metabase_test_tracking.datasets` WHERE `accessed_at` < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 second))"
                            " UNION ALL "
                            "(select schema_name from `%s`.INFORMATION_SCHEMA.SCHEMATA d
                              where d.schema_name not in (select name from `%s.metabase_test_tracking.datasets`)
                              and d.schema_name like 'sha_%%'
-                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 day))")
+                             and creation_time < TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -2 second))")
                       (project-id)
                       (project-id)
                       (project-id))]
-    (doseq [outdated all-outdated]
+    (doseq [outdated (map first all-outdated)]
       (log/info (u/format-color 'blue "Deleting temporary dataset more than two days old: %s`." outdated))
-      (u/ignore-exceptions
-        (destroy-dataset! outdated)))))
+      (destroy-dataset! outdated))))
 
 (defonce ^:private deleted-old-datasets?
   (atom false))
@@ -377,22 +382,20 @@
 (defn- dataset-tracked?!
   [db-def]
   (->
-   (execute!
-    "SELECT true FROM `%s.%s.%s` WHERE `hash` = '%s' and `name` = '%s'"
-    (project-id)
-    "metabase_test_tracking"
-    "datasets"
-    (tx/hash-dataset db-def)
-    (test-dataset-id db-def))
+   (execute-params!
+    (format "SELECT true FROM `%s.metabase_test_tracking.datasets` WHERE `hash` = ? and `name` = ?"
+            (project-id))
+    [(tx/hash-dataset db-def)
+     (test-dataset-id db-def)])
    ffirst))
 
 (defn database-exists?!
   [db-def]
   (->>
-   (execute!
-    "select true from `%s`.INFORMATION_SCHEMA.SCHEMATA where schema_name = '%s'"
-    (project-id)
-    (test-dataset-id db-def))
+   (execute-params!
+    (format "select true from `%s`.INFORMATION_SCHEMA.SCHEMATA where schema_name = ?"
+            (project-id))
+    [(test-dataset-id db-def)])
    ffirst))
 
 (defmethod tx/dataset-already-loaded? :bigquery-cloud-sdk
@@ -404,15 +407,14 @@
 
 (defmethod tx/track-dataset :bigquery-cloud-sdk
   [_driver db-def]
-  (execute!
-   (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
-        "  USING (select '%s' as `hash`, '%s' as `name`, current_timestamp() as accessed_at, '%s' as access_note) as n on d.`hash` = n.`hash`"
-        "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
-        "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)")
-   (project-id)
-   (tx/hash-dataset db-def)
-   (test-dataset-id db-def)
-   (tx/tracking-access-note)))
+  (execute-params!
+   (format (str "MERGE INTO `%s.metabase_test_tracking.datasets` d"
+                "  USING (select ? as `hash`, ? as `name`, current_timestamp() as accessed_at, ? as access_note) as n on d.`hash` = n.`hash`"
+                "  WHEN MATCHED THEN UPDATE SET d.accessed_at = n.accessed_at, d.access_note = n.access_note"
+                "  WHEN NOT MATCHED THEN INSERT (`hash`,`name`, accessed_at, access_note) VALUES (n.`hash`, n.`name`, n.accessed_at, n.access_note)") (project-id))
+   [(tx/hash-dataset db-def)
+    (test-dataset-id db-def)
+    (tx/tracking-access-note)]))
 
 (defmethod tx/create-db! :bigquery-cloud-sdk
   [_ {:keys [database-name table-definitions] :as db-def} & _]
