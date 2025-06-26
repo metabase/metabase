@@ -345,7 +345,7 @@
                       (update :children (comp set (partial map ftree->nested-fields*) vals))
                       (set/rename-keys {:children :nested-fields})))
                 (dissoc :index)))]
-    @(def rrr2 (:nested-fields (ftree->nested-fields* ftree)))))
+    (:nested-fields (ftree->nested-fields* ftree))))
 
 (defn- fetch-dbfields-rff
   [_metadata]
@@ -360,18 +360,18 @@
   (let [pipeline (describe-table-pipeline {:collection-name  (:name table)
                                            :sample-size      (* table-rows-sample/nested-field-sample-limit 2)
                                            :dive-depth       describe-table-query-depth
-                                           :leaf-limit       leaf-fields-limit})
+                                           :leaf-limit       *leaf-fields-limit*})
         query {:database (:id database)
                :type     "native"
                :native   {:collection (:name table)
                           :query      (json/encode pipeline)}}]
-    @(def rrr (driver-api/process-query query fetch-dbfields-rff))))
+    (driver-api/process-query query fetch-dbfields-rff)))
 
 (defmethod driver/describe-table :mongo
   [_driver database table]
-  @(def rrrx {:schema nil
-              :name (:name table)
-              :fields (-> (fetch-dbfields database table) dbfields->ftree ftree->nested-fields)}))
+  {:schema nil
+   :name (:name table)
+   :fields (-> (fetch-dbfields database table) dbfields->ftree ftree->nested-fields)})
 
 ;; describe-table impl end
 
