@@ -504,7 +504,6 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.intercept("PUT", "api/email").as("smtpSaved");
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("pro-self-hosted");
     });
 
     it("should be able to save and clear email settings", () => {
@@ -651,9 +650,7 @@ describe("scenarios > admin > settings > email settings", () => {
       cy.button("Send test email").should("not.exist");
       cy.findByTestId("admin-layout-content").within(() => {
         cy.findByText("Whitelabel email notifications").should("be.visible");
-        cy.findByTestId("email-from-address-setting")
-          .find("input")
-          .should("be.disabled");
+        cy.findByLabelText("From Address").find("input").should("be.disabled");
         cy.findByText(
           "Please set up a custom SMTP server to change this (Pro only)",
         ).should("be.visible");
@@ -691,6 +688,67 @@ describe("scenarios > admin > settings > email settings", () => {
           .blur();
         cy.button("Save changes").click();
       });
+
+      // This can't be tested until we have a secure SMTP server to connect to
+      // the simple maildev one isn't sufficient
+      //
+      // cy.wait("@smtpSaved");
+      // // should show as active now
+      // cy.findByTestId("cloud-smtp-connection-card").within(() => {
+      //   cy.findByText("Custom SMTP Server").should(
+      //     "have.attr",
+      //     '[data-checked="true"]',
+      //   );
+      //   cy.contains('[data-checked="true"]', "Custom SMTP Server");
+      //   cy.button("Edit settings");
+      // });
+
+      // // Non SMTP-settings should save automatically
+      // cy.findByLabelText("From Address")
+      //   .clear()
+      //   .type("mailer@metabase.test")
+      //   .blur();
+
+      // cy.findByLabelText("From Name").type("Sender Name").blur();
+      // cy.findByLabelText("Reply-To Address")
+      //   .type("reply-to@metabase.test")
+      //   .blur();
+
+      // // Refresh page to confirm changes persist
+      // cy.reload();
+
+      // // validate additional settings
+      // cy.findByDisplayValue("mailer@metabase.test");
+      // cy.findByDisplayValue("Sender Name");
+      // cy.findByDisplayValue("reply-to@metabase.test");
+
+      // // validate SMTP connection settings
+      // cy.findByTestId("cloud-smtp-connection-card")
+      //   .findByText("Edit configuration")
+      //   .click();
+      // cy.findByDisplayValue("localhost");
+      // cy.findByDisplayValue(SMTP_PORT);
+      // cy.findAllByDisplayValue("admin");
+
+      // // should not offer to save email changes when there aren't any (metabase#14749)
+      // cy.button("Save changes").should("be.disabled");
+
+      // // should be able to clear email settings
+      // H.modal().button("Clear").click();
+
+      // cy.reload();
+
+      // cy.findByTestId("cloud-smtp-connection-card")
+      //   .findByText("Configure")
+      //   .click();
+
+      // H.modal().within(() => {
+      //   cy.findByLabelText("SMTP Host").should("have.value", "");
+      //   cy.findByText("456").should("have.attr", '[data-checked="true"]');
+      //   cy.findByText("SSL").should("have.attr", '[data-checked="true"]');
+      //   cy.findByLabelText("SMTP Username").should("have.value", "");
+      //   cy.findByLabelText("SMTP Password").should("have.value", "");
+      // });
     });
   });
 });
