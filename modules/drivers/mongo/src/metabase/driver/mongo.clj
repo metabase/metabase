@@ -200,12 +200,12 @@
                                   "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
                        "count"   {"$sum" {"$cond" [{"$eq" [{"$type" "$val"} "null"]} 0 1]}}
                        "indices" {"$min" "$indices"}}}
-            {"$group" {"_id"  "$_id.path"
-                       "info" {"$top" {"sortBy" {"count" -1}
-                                       "output" {"count"   "$count"
-                                                 "type"    "$_id.type"
-                                                 "ensure"  "$_id.ensure"
-                                                 "indices" "$indices"}}}}}
+            {"$sort" {"count" -1}}
+            {"$group" {"_id" "$_id.path"
+                       "info" {"$first" {"count"   "$count"
+                                         "type"    "$_id.type"
+                                         "ensure"  "$_id.ensure"
+                                         "indices" "$indices"}}}}
             {"$sort" {"info.ensure" 1 "info.count"  -1}}
             {"$limit" leaf-limit}
             {"$project" {"_id"     1
