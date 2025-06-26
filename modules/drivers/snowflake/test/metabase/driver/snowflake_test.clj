@@ -350,7 +350,7 @@
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
     (testing "describe-database views"
-      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "views_test" (u.random/random-name))}))
+      (let [details (mt/dbdef->connection-details :snowflake :db (tx/map->DatabaseDefinition {:database-name (str "views_test_" (u.random/random-name))}))
             db-name (:db details)
             spec    (sql-jdbc.conn/connection-details->spec :snowflake details)]
         ;; create the snowflake DB
