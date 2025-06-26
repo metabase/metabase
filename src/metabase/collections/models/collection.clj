@@ -964,20 +964,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn perms-for-collection-and-descendants :- [:set perms/PathSchema]
-  "Return the set of Permissions needed for a `collection` and its descendants, without requiring
-  permissions for the parent collection. This is useful for operations that need to modify the
-  collection and its descendants but don't need to modify the parent.
+  "Return the set of write permissions for this collection and all its descendants.
 
-  For example, suppose we have a Collection hierarchy like:
+  This is useful for operations that need to modify a collection *and* its descendants - for example, moving
+  or archiving a collection necessarily moves/archives all its descendants as well, so permissions on those
+  are required as well.
 
-    A > B > C
-
-  To get perms for B and its descendants, you need write permissions for B and C:
-
-  *  B, since it's the Collection we're operating on
-  *  C, since it will by definition be affected too
-
-  You do NOT need permissions for A (the parent)."
+  Note that technically these operations could be seen as modifying the parent as well (e.g., moving
+  a collection out of a parent collection modifies the parent's content) but it seems confusing if a
+  user can't archive a collection they have permissions on because of the parent permissions."
   [collection :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to operate on the Root Collection...
   (when (collection.root/is-root-collection? collection)
@@ -1199,12 +1194,12 @@
     ;; ...and insert corresponding rows for each destination Collection
     (t2/insert! :model/Permissions
                 (concat
-       ;; insert all the new read-perms records
+                 ;; insert all the new read-perms records
                  (for [dest     dest-collections-or-ids
                        :let     [read-path (perms/collection-read-path dest)]
                        group-id group-ids-with-read-perms]
                    {:group_id group-id, :object read-path})
-       ;; ...and all the new write-perms records
+                 ;; ...and all the new write-perms records
                  (for [dest     dest-collections-or-ids
                        :let     [readwrite-path (perms/collection-readwrite-path dest)]
                        group-id group-ids-with-write-perms]
