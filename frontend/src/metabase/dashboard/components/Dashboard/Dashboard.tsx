@@ -24,7 +24,7 @@ import { DashboardSidebars } from "../DashboardSidebars";
 import S from "./Dashboard.module.css";
 import { Grid } from "./components/Grid";
 
-function Dashboard() {
+function Dashboard({ className }: { className?: string }) {
   const {
     dashboard,
     isEditing,
@@ -107,9 +107,9 @@ function Dashboard() {
   return (
     <Flex
       className={cx(
+        className,
         DashboardS.Dashboard,
         S.DashboardLoadingAndErrorWrapper,
-        EmbedFrameS.EmbedFrame,
         {
           [DashboardS.DashboardFullscreen]: isFullscreen,
           [DashboardS.DashboardNight]: shouldRenderAsNightMode,

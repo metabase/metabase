@@ -33,11 +33,11 @@ import {
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import { DashboardTitle } from "metabase/dashboard/components/DashboardTitle";
+import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 import {
   type DashboardContextProps,
   DashboardContextProvider,
 } from "metabase/dashboard/context";
-import { useDashboardContext } from "metabase/dashboard/context";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
@@ -47,7 +47,6 @@ import type { DrillThroughQuestionProps } from "../InteractiveQuestion";
 import { InteractiveDashboardProvider } from "./InteractiveDashboard/context";
 import { SdkDashboardStyledWrapper } from "./SdkDashboardStyleWrapper";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
-import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
 
 /**
  * @interface

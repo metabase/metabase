@@ -74,7 +74,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    component: NightModeToggleButton,
+    component: () => <NightModeToggleButton />,
     enabled: ({
       isEditing,
       isFullscreen,
@@ -100,7 +100,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard.archived,
   },
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
-    component: DashboardInfoButton,
+    component: () => <DashboardInfoButton />,
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {

@@ -17,9 +17,7 @@ export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
-} & DashboardRefreshPeriodControls &
-  DashboardFullscreenControls &
-  DashboardNightModeControls;
+};
 
 export type HeaderButtonProps = {
   canResetFilters: boolean;
@@ -37,5 +35,10 @@ export type HeaderButtonProps = {
 
 export type DashboardActionButton = {
   component: ComponentType<HeaderButtonProps>;
-  enabled: (props: HeaderButtonProps) => boolean;
+  enabled: (
+    props: HeaderButtonProps &
+      DashboardRefreshPeriodControls &
+      DashboardFullscreenControls &
+      DashboardNightModeControls,
+  ) => boolean;
 };
