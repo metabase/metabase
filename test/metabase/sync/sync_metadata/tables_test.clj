@@ -11,6 +11,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.mock.toucanery :as toucanery]
    [metabase.util :as u]
@@ -40,31 +41,69 @@
              (set (for [table (t2/select [:model/Table :name :visibility_type :initial_sync_status] :db_id (mt/id))]
                     (into {} table))))))))
 
+(deftest sync-table-metrics-test
+  (testing "metrics should be incremented during sync-table operations"
+    (one-off-dbs/with-blank-db
+
+      (mt/with-prometheus-system! [_ system]
+        (let [exec-then-sync-and-are
+              (fn [statement & {:keys [retire create reactivate update]
+                                :or {retire 0 create 0 reactivate 0 update 0}}]
+                (jdbc/execute! one-off-dbs/*conn* [statement])
+                (sync/sync-database! (mt/db) {:sync :schema})
+                (is (== retire (mt/metric-value system :metabase-sync/table-sync {:op :retire})))
+                (is (== create (mt/metric-value system :metabase-sync/table-sync {:op :create})))
+                (is (== reactivate (mt/metric-value system :metabase-sync/table-sync {:op :reactivate})))
+                (is (== update (mt/metric-value system :metabase-sync/table-sync {:op :update}))))]
+
+          (exec-then-sync-and-are
+           "CREATE TABLE \"birds\" (\"species\" VARCHAR PRIMARY KEY, \"example_name\" VARCHAR);"
+           :create 1)
+          (exec-then-sync-and-are
+           "DROP TABLE \"birds\""
+           :create 1
+           :retire 1)
+          (exec-then-sync-and-are
+           "CREATE TABLE \"birds\" (\"species\" VARCHAR PRIMARY KEY, \"example_name\" VARCHAR);"
+           :reactivate 1
+           :create 1
+           :retire 1)
+          (exec-then-sync-and-are
+           "COMMENT ON TABLE \"birds\" IS 'description';;"
+           :update 1
+           :reactivate 1
+           :create 1
+           :retire 1))))))
+
 (deftest retire-tables-test
   (testing "`retire-tables!` should retire the Table(s) passed to it, not all Tables in the DB -- see #9593"
     (mt/with-temp [:model/Database db {}
                    :model/Table    table-1 {:name "Table 1" :db_id (u/the-id db)}
                    :model/Table    _       {:name "Table 2" :db_id (u/the-id db)}]
-      (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
-      (is (= {"Table 1" false "Table 2" true}
-             (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db)))))))
+      (mt/with-prometheus-system! [_ system]
+        (#'sync-tables/retire-tables! db #{{:name "Table 1" :schema (:schema table-1)}})
+        (is (== 1 (mt/metric-value system :metabase-sync/table-sync {:op :retire})))
+        (is (= {"Table 1" false "Table 2" true}
+               (t2/select-fn->fn :name :active :model/Table :db_id (u/the-id db))))))))
 
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"
     (let [dbdef (mt/dataset-definition "sync-retired-table"
                                        ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
-      (mt/dataset dbdef
-        (t2/update! :model/Table (mt/id :user) {:active false})
-        ;; table description is changed
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                       [(sql.tx/standalone-table-comment-sql
-                         (:engine (mt/db))
-                         dbdef
-                         (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
-        (sync/sync-database! (mt/db) {:sync :schema})
-        (is (=? {:active true
-                 :description "added comment"}
-                (t2/select-one :model/Table (mt/id :user))))))))
+      (mt/with-prometheus-system! [_ system]
+        (mt/dataset dbdef
+          (t2/update! :model/Table (mt/id :user) {:active false})
+         ;; table description is changed
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                         [(sql.tx/standalone-table-comment-sql
+                           (:engine (mt/db))
+                           dbdef
+                           (tx/map->TableDefinition {:table-name "user" :table-comment "added comment"}))])
+          (sync/sync-database! (mt/db) {:sync :schema})
+          (is (== 1 (mt/metric-value system :metabase-sync/table-sync {:op :reactivate})))
+          (is (=? {:active true
+                   :description "added comment"}
+                  (t2/select-one :model/Table (mt/id :user)))))))))
 
 (deftest sync-estimated-row-count-test
   (mt/test-driver :postgres
