@@ -264,9 +264,10 @@ export const moveColumnDown = (column, distance) => {
 
 export const moveDnDKitElement = (
   element,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd } = {},
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = null } = {},
 ) => {
-  const chainable = element
+  element
+    .as("dnd-kit-element")
     .trigger("pointerdown", 0, 0, {
       force: true,
       isPrimary: true,
@@ -290,7 +291,7 @@ export const moveDnDKitElement = (
 
   onBeforeDragEnd?.();
 
-  chainable
+  cy.get("@dnd-kit-element")
     .trigger("pointerup", horizontal, vertical, {
       force: true,
       isPrimary: true,
