@@ -10,7 +10,6 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
   it("toggles drill-throughs for dashboards", () => {
