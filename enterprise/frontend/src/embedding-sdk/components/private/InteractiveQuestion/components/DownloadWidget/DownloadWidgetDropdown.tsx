@@ -40,6 +40,7 @@ export const DownloadWidgetDropdown = ({
               <Icon c="inherit" size={16} name="download" />
             </Center>
           }
+          data-testid="question-download-widget-button"
         />
       </Popover.Target>
       <Popover.Dropdown>
