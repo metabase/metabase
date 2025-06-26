@@ -5,7 +5,11 @@
    [metabase.appearance.core :as appearance]
    [metabase.formatter.datetime :as datetime]
    [metabase.models.visualization-settings :as mb.viz]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util Locale)))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
@@ -288,3 +292,20 @@
                                       {{::mb.viz/column-name "created_at"} {::mb.viz/date-style "YYYY-MM-dd"}}}))]
       (doseq [the-date (mapcat dates (range 2008 3008))]
         (is (= the-date (fmt the-date)))))))
+
+(deftest site-locale-used-for-formatting-test
+  (testing "Datetime formatting uses site-locale and does not modify JVM locale"
+    (let [original-jvm-locale (Locale/getDefault)
+          test-datetime       "2020-07-16T18:04:00Z[UTC]"
+          col                 {:effective_type :type/DateTime}]
+      (mt/with-temporary-setting-values [site-locale "de"]
+        (let [german-result (format-temporal-str "UTC" test-datetime col)]
+          (is (re-find #"Juli" german-result))
+          (is (= original-jvm-locale (Locale/getDefault)))))
+
+      (mt/with-temporary-setting-values [site-locale "fr"]
+        (let [french-result (format-temporal-str "UTC" test-datetime col)]
+          (is (re-find #"juillet" french-result))
+          (is (= original-jvm-locale (Locale/getDefault)))))
+
+      (is (= original-jvm-locale (Locale/getDefault))))))

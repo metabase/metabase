@@ -7,6 +7,7 @@ import {
   addHeadingDashCardToDashboard,
   addLinkDashCardToDashboard,
   addMarkdownDashCardToDashboard,
+  addParameter,
   cancelFetchDashboardCardData,
   closeDashboard,
   closeSidebar,
@@ -39,6 +40,7 @@ import {
   setSidebar,
   showAddParameterPopover,
   toggleSidebar,
+  updateDashboard,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import {
@@ -123,6 +125,7 @@ export const mapDispatchToProps = {
   setSharing,
   toggleSidebar,
   closeSidebar,
+  addParameter,
   setParameterName,
   setParameterType,
   setParameterValue,
@@ -141,6 +144,7 @@ export const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   updateDashboardAndCards,
+  updateDashboard,
   setSidebar,
   hideAddParameterPopover,
   fetchDashboard,
