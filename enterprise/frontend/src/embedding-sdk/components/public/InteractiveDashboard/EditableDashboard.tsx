@@ -145,10 +145,6 @@ export const EditableDashboard = ({
     dashboardId,
   });
 
-  /**
-   * renderMode: dashboard | question | queryBuilder
-   */
-
   const [renderModeState, setRenderMode] =
     useState<Extract<RenderMode, "dashboard" | "queryBuilder">>("dashboard");
   const finalRenderMode: RenderMode = adhocQuestionUrl
