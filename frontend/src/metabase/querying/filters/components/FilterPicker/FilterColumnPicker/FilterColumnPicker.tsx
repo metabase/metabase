@@ -50,7 +50,7 @@ export interface FilterColumnPickerProps {
   checkItemIsSelected?: (item: Item) => boolean;
   onColumnSelect: (item: ColumnListItem) => void;
   onSegmentSelect: (item: SegmentListItem) => void;
-  onExpressionSelect?: () => void;
+  onExpressionSelect?: (clause?: DefinedClauseName) => void;
 
   withCustomExpression?: boolean;
   withColumnGroupIcon?: boolean;
@@ -104,8 +104,7 @@ export function FilterColumnPicker({
     if (isSegmentListItem(item)) {
       onSegmentSelect(item);
     } else if (isExpressionClauseItem(item)) {
-      // TODO
-      return;
+      onExpressionSelect?.(item.clause);
     } else {
       onColumnSelect(item);
     }

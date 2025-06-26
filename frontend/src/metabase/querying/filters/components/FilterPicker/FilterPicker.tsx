@@ -4,6 +4,7 @@ import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import * as Lib from "metabase-lib";
+import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 import {
   FilterColumnPicker,
@@ -45,6 +46,8 @@ export function FilterPicker({
     getInitialColumn(query, stageIndex, filter),
   );
   const stageIndexes = useMemo(() => [stageIndex], [stageIndex]);
+  const [initialExpressionClause, setInitialExpressionClause] =
+    useState<DefinedClauseName | null>(null);
 
   const [
     isEditingExpression,
@@ -76,6 +79,11 @@ export function FilterPicker({
     handleChange(item.segment);
   };
 
+  const handleExpressionSelect = (clause?: DefinedClauseName) => {
+    setInitialExpressionClause(clause ?? null);
+    openExpressionEditor();
+  };
+
   const checkItemIsSelected = useCallback(
     (item: ColumnListItem | SegmentListItem) => {
       return Boolean(
@@ -103,6 +111,7 @@ export function FilterPicker({
         header={<ExpressionWidgetHeader onBack={closeExpressionEditor} />}
         onChangeClause={handleClauseChange}
         onClose={closeExpressionEditor}
+        initialExpressionClause={initialExpressionClause}
       />
     );
   }
@@ -116,7 +125,7 @@ export function FilterPicker({
         checkItemIsSelected={checkItemIsSelected}
         onColumnSelect={handleColumnSelect}
         onSegmentSelect={handleSegmentSelect}
-        onExpressionSelect={openExpressionEditor}
+        onExpressionSelect={handleExpressionSelect}
         withColumnGroupIcon={withColumnGroupIcon}
         withColumnItemIcon={withColumnItemIcon}
         withCustomExpression={withCustomExpression}
