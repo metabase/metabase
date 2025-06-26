@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.query.permissions :as query-perms]
    [metabase.permissions.models.permissions :as perms]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -208,8 +209,7 @@
       (is (= {:card-ids             #{card-id}
               :perms/view-data      {(mt/id :users) :unrestricted
                                      (mt/id :checkins) :unrestricted}
-              :perms/create-queries {(mt/id :users) :query-builder
-                                     (mt/id :checkins) :query-builder}}
+              :perms/create-queries {(mt/id :users) :query-builder}}
              (query-perms/required-perms-for-query
               (mt/mbql-query users
                 {:joins [{:fields       :all
@@ -231,6 +231,31 @@
                           :source-table $$checkins
                           :condition    [:= $id &c.*USER_ID/Integer]}]})
               :throw-exceptions? true))))))
+
+(deftest ^:parallel query->source-ids-join-cards-test
+  (testing "query->source-ids should return both card IDs when joining one card to another"
+    (mt/with-temp [:model/Card {card-1-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                (mt/mbql-query venues
+                                                  {:aggregation [[:count]]
+                                                   :breakout    [$id]}))
+                   :model/Card {card-2-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                                (mt/mbql-query checkins
+                                                  {:aggregation [[:sum $id]]
+                                                   :breakout    [$venue_id]}))]
+      (let [query {:database (mt/id)
+                   :type     :query
+                   :query    {:source-table (str "card__" card-1-id)
+                              :joins        [{:fields       :all
+                                              :alias        "joined_card"
+                                              :source-table (str "card__" card-2-id)
+                                              :condition    [:=
+                                                             [:field "ID" {:base-type :type/Integer}]
+                                                             [:field "VENUE_ID" {:base-type :type/Integer, :join-alias "joined_card"}]]}]}}]
+        (is (= #{card-1-id card-2-id}
+               (:card-ids
+                (query-perms/query->source-ids
+                 (qp.preprocess/preprocess
+                  query)))))))))
 
 (deftest ^:parallel pmbql-query-test
   (testing "Should be able to calculate permissions for a pMBQL query (#39024)"
