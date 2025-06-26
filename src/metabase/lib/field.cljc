@@ -374,14 +374,13 @@
 
     key-in-col-metadata => key-in-opts"
   (merge
-   (into {}
-         (map (fn [k]
-                [k k]))
-         [:base-type
-          :inherited-temporal-unit
-          :was-binned
-          ::original-effective-type
-          ::original-temporal-unit])
+   (u/index-by
+    identity
+    [:base-type
+     :inherited-temporal-unit
+     :was-binned
+     ::original-effective-type
+     ::original-temporal-unit])
    {:metabase.lib.field/binning       :binning
     :metabase.lib.field/temporal-unit :temporal-unit}))
 

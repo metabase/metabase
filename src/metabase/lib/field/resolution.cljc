@@ -234,7 +234,7 @@
 
   If `f` returns a non-nil value, then it is included under `key-in-col-metadata`."
   (merge
-   (into {} (map (fn [k] [k k])) opts-propagated-keys)
+   (u/index-by identity opts-propagated-keys)
    (into {} (map (fn [[opts-k col-k]] [col-k opts-k]) opts-propagated-renamed-keys))
    {;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
     ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
