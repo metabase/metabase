@@ -7,7 +7,7 @@ import {
 import { ButtonLink } from "metabase/common/components/ExternalLink";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { getStoreUrl } from "metabase/selectors/settings";
-import { Icon } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 
 import { CloudPanel } from "../CloudPanel";
 import { SettingHeader } from "../SettingHeader";
@@ -32,10 +32,12 @@ export const SettingsCloudStoreLink = () => {
         title={t`Cloud settings`}
         description={t`Manage your Cloud account, including billing preferences and technical settings about this instance in your Metabase Store account.`}
       />
-      <ButtonLink href={url}>
-        {t`Go to the Metabase Store`}
-        <Icon name="external" opacity={0.6} ml="sm" />
-      </ButtonLink>
+      <Box>
+        <ButtonLink href={url}>
+          {t`Go to the Metabase Store`}
+          <Icon name="external" opacity={0.6} ml="sm" />
+        </ButtonLink>
+      </Box>
     </SettingsSection>
   );
 };
