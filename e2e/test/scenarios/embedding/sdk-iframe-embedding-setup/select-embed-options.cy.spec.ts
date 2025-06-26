@@ -13,7 +13,7 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
     cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
   });
 
-  it("should toggle drill-through option and reflect in preview", () => {
+  it("should be able to toggle drill-throughs", () => {
     navigateToEmbedOptionsStep({ experience: "dashboard" });
 
     cy.log("drill-through should be enabled by default");
@@ -23,31 +23,27 @@ describe("scenarios > embedding > sdk iframe embed setup > select embed options"
       );
     });
 
-    cy.log("drill-through should be enabled in the preview iframe");
+    cy.log("drill-through should be enabled in the preview");
     H.getIframeBody().within(() => {
       cy.findByText("110.93").click();
-
-      H.popover().within(() => {
-        cy.findByText("Filter by this value").should("be.visible");
-      });
+      cy.findByText("Filter by this value").should("be.visible");
     });
 
-    // getEmbedSidebar().within(() => {
-    //   const drillThroughCheckbox = cy.findByLabelText(
-    //     "Allow users to drill through on data points",
-    //   );
+    getEmbedSidebar().within(() => {
+      const drillThroughCheckbox = cy.findByLabelText(
+        "Allow users to drill through on data points",
+      );
 
-    //   // Toggle drill-through off
-    //   drillThroughCheckbox.click();
-    //   drillThroughCheckbox.should("not.be.checked");
-    // });
+      cy.log("turn off drill-through");
+      drillThroughCheckbox.click();
+      drillThroughCheckbox.should("not.be.checked");
+    });
 
-    // cy.log("verify drill-through is disabled in the preview iframe");
-    // H.getIframeBody().within(() => {
-    //   // When drill-through is disabled, data cells should not have interactive behavior
-    //   // This is harder to test directly, but we can at least verify the iframe is still working
-    //   cy.findByText("Orders in a dashboard").should("be.visible");
-    // });
+    cy.log("drill-through should be disabled in the preview");
+    H.getIframeBody().within(() => {
+      cy.findByText("110.93").click();
+      cy.findByText("Filter by this value").should("not.exist");
+    });
   });
 
   it("should toggle downloads option for dashboard", () => {
