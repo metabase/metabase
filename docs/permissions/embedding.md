@@ -8,7 +8,7 @@ summary: Learn about which permissions tooling you should use depending on wheth
 You can use a single Metabase to manage permissions for all of your customers. Which Metabase permissions tool you use depends on how you store your customer data.
 
 - [One database for all customers (commingled setups)](#one-database-for-all-customers-commingled-setups)
-- [One database per customer (single-tenant setups)](#one-database-per-customer-single-tenant-setups)
+- [One database per customer](#one-database-per-customer-single-tenant-setups)
 - [One schema per customer](#multiple-schemas-one-schema-per-customer)
 
 ## Block the All users group
@@ -88,7 +88,7 @@ Impersonation lets you map user attributes to database roles, which lets you do 
 
 Check out this [article on impersonation](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
 
-## One database per customer (single-tenant setups)
+## One database per customer
 
 If each of your customers has their own database, you can use [database routing](./database-routing.md) to swap out the data source for queries. With DB routing, you just need to build a dashboard once, and Metabase will switch the database it queries depending on who's logged in.
 
