@@ -1,15 +1,21 @@
 (ns ^:mb/driver-tests metabase.query-processor-test.cast-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.alternative-date-test :as adt]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.types.core :as types]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  (:import
+   (java.time OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -835,3 +841,102 @@
             (is (datetime-type? (last cols)))
             (doseq [[_id casted-value] rows]
               (is (contains? expected casted-value)))))))))
+
+(mt/defdataset yyyymmddhhss-binary-simple-cast
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}}]
+    [["foo" (.getBytes "20190421164300")]
+     ["bar" (.getBytes "20200421164300")]
+     ["baz" (.getBytes "20210421164300")]]]])
+
+(mt/defdataset iso-binary-cast
+  [["times" [{:field-name "name"
+              :effective-type :type/Text
+              :base-type :type/Text}
+             {:field-name "as_bytes"
+              :base-type {:natives {:postgres "BYTEA"
+                                    :h2       "BYTEA"
+                                    :mysql    "VARBINARY(100)"
+                                    :redshift "VARBYTE"
+                                    :presto-jdbc "VARBINARY"
+                                    :oracle "BLOB"
+                                    :sqlite "BLOB"}}}]
+    [["foo" (.getBytes "2019-04-21 16:43:00")]
+     ["bar" (.getBytes "2020-04-21T16:43:00")]
+     ["baz" (.getBytes "2021-04-21 16:43:00")]]]])
+
+(defmulti binary-dates-expected-rows
+  "Expected rows for the [[datetime-binary-cast]] test below."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod binary-dates-expected-rows :default
+  [_driver]
+  [])
+
+(doseq [driver [:h2 :postgres :databricks]]
+  (defmethod binary-dates-expected-rows driver
+    [_driver]
+    [[1 "foo" (OffsetDateTime/from #t "2019-04-21T16:43Z")]
+     [2 "bar" (OffsetDateTime/from #t "2020-04-21T16:43Z")]
+     [3 "baz" (OffsetDateTime/from #t "2021-04-21T16:43Z")]]))
+
+(doseq [driver [:mysql :sqlserver :presto-jdbc]]
+  (defmethod binary-dates-expected-rows driver
+    [_driver]
+    [[1 "foo" #t "2019-04-21T16:43"]
+     [2 "bar" #t "2020-04-21T16:43"]
+     [3 "baz" #t "2021-04-21T16:43"]]))
+
+(defmethod binary-dates-expected-rows :sqlite
+  [_driver]
+  [[1 "foo" "2019-04-21 16:43:00"]
+   [2 "bar" "2020-04-21 16:43:00"]
+   [3 "baz" "2021-04-21 16:43:00"]])
+
+(defmethod binary-dates-expected-rows :mongo
+  [_driver]
+  [[1 "foo" (.toInstant #t "2019-04-21T16:43:00Z")]
+   [2 "bar" (.toInstant #t "2020-04-21T16:43:00Z")]
+   [3 "baz" (.toInstant #t "2021-04-21T16:43:00Z")]])
+
+(defmethod binary-dates-expected-rows :oracle
+  [_driver]
+  [[1M "foo" #t "2019-04-21T16:43"]
+   [2M "bar" #t "2020-04-21T16:43"]
+   [3M "baz" #t "2021-04-21T16:43"]])
+
+;; TODO: Make a real feature for byte->temporal coercion strategies
+
+(deftest ^:parallel datetime-binary-cast
+  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :expressions/datetime)
+                                     (mt/normal-drivers-with-feature ::adt/yyyymmddhhss-binary-timestamps))
+    (doseq [[dataset mode] [[yyyymmddhhss-binary-simple-cast :bytes-simple]
+                            #_[iso-binary-cast :bytes-iso]]]
+      (mt/dataset dataset
+        (let [mp (mt/metadata-provider)]
+          (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
+            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :times)))
+                            (lib/with-fields [])
+                            (as-> q
+                                  (let [column (->> q lib/visible-columns (filter #(= "as_bytes" (u/lower-case-en (:name %)))) first)]
+                                    (lib/expression q "FCALL" (if (nil? mode)
+                                                                (lib/datetime column)
+                                                                (lib/datetime column mode)))))
+                            (assoc :middleware {:format-rows? false}))
+                  result (-> query qp/process-query)
+                  rows (mt/rows result)]
+              (is (= (binary-dates-expected-rows driver/*driver*)
+                     (->> rows
+                          (sort-by first)
+                          (map #(concat (take 2 %) (drop 3 %)))))))))))))

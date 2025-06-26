@@ -728,6 +728,8 @@
           :decode/normalize lib.schema.common/normalize-keyword-lower}
    :iso
    :simple
+   :bytes-iso
+   :bytes-simple
    :unixmilliseconds
    :unixseconds
    :unixmicroseconds
