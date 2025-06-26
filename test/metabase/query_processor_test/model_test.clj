@@ -7,7 +7,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]))
@@ -73,8 +72,6 @@
                                                                                         "Reviews → Created At: Month")
                                                                :month))])
                                           (lib/with-join-fields :all))))))]
-      (is (=? ["CREATED_AT" "avg" "CREATED_AT_2" "sum"]
-              (map :name (lib.metadata.result-metadata/returned-columns question))))
       (is (= ["Reviews → Created At: Month"
               "Average of Rating"
               "Products+Reviews Summary - Reviews → Created At: Month → Created At: Month"

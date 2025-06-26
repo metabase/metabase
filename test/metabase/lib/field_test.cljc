@@ -963,9 +963,11 @@
           (testing "does nothing if field not listed"
             (is (=? field-query
                     (lib/remove-field field-query -1 (nth table-columns 6)))))))
-
       (testing "with :fields :all"
-        (let [created-at (first (filter (comp #{"CREATED_AT"} :name) join-columns))]
+        (let [created-at (m/find-first #(and (= (:metabase.lib.join/join-alias %) "People - User")
+                                             (= (:lib/source-column-alias %) "CREATED_AT"))
+                                       join-columns)]
+          (assert (some? created-at) (str "Found:\n" (u/pprint-to-str join-columns)))
           (testing "fills in the :fields list and removes the field"
             (is (=? (->> (concat table-columns
                                  join-columns)
@@ -977,7 +979,6 @@
                          lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))))
-
       (testing "with :fields list"
         (let [join-fields-query (lib.util/update-query-stage
                                  query -1
@@ -995,8 +996,9 @@
                          sorted-fields))))
           (testing "does nothing if the join field is already selected"
             (is (=? join-fields-query
-                    (lib/remove-field join-fields-query -1 (nth join-columns 6)))))))))
+                    (lib/remove-field join-fields-query -1 (nth join-columns 6))))))))))
 
+(deftest ^:parallel remove-field-tests-2b
   (testing "removing implicit join fields"
     (let [query            (lib/query meta/metadata-provider (meta/table-metadata :orders))
           viz-columns      (lib/visible-columns query)
@@ -1010,18 +1012,15 @@
           implied2         (clean-ref (second implicit-columns))]
       (is (= (map #(dissoc % :selected?) table-columns)
              (lib/returned-columns query)))
-
       (testing "attaching implicitly joined fields should alter the query"
         (is (not= query implied-query))
         (is (nil? (lib.equality/find-matching-ref (first implicit-columns)
                                                   (map lib/ref (lib/returned-columns query))))))
-
       (testing "with no :fields set does nothing"
         (is (=? query
                 (lib/remove-field query -1 (first implicit-columns))))
         (is (=? query
                 (lib/remove-field query -1 (second implicit-columns)))))
-
       (testing "with explicit :fields list"
         (is (=? (sorted-fields (conj table-fields implied2))
                 (-> implied-query
@@ -1072,9 +1071,11 @@
           (testing "does nothing if field not listed"
             (is (=? field-query
                     (lib/remove-field field-query -1 (nth table-columns 6)))))))
-
       (testing "with :fields :all"
-        (let [created-at (first (filter (comp #{"CREATED_AT"} :name) join-columns))]
+        (let [created-at (m/find-first #(and (= (:metabase.lib.join/join-alias %) "People - User")
+                                             (= (:lib/source-column-alias %) "CREATED_AT"))
+                                       join-columns)]
+          (assert (some? created-at))
           (testing "fills in the :fields list and removes the field"
             (is (=? (->> (concat table-columns
                                  join-columns)
@@ -1086,7 +1087,6 @@
                          lib/returned-columns
                          (map lib/ref)
                          sorted-fields))))))
-
       (testing "with :fields list"
         (let [join-fields-query (lib.util/update-query-stage
                                  query -1
@@ -1289,51 +1289,51 @@
 
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"
-    (let [base     (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                       (lib/with-fields [(lib/ref (meta/field-metadata :orders :id))
-                                         (lib/ref (meta/field-metadata :orders :tax))]))
-          join     (-> (lib/join-clause (meta/table-metadata :orders)
-                                        [(lib/=
-                                          (lib/ref (meta/field-metadata :orders :user-id))
-                                          (-> (meta/field-metadata :orders :id)
-                                              lib/ref
-                                              (lib.options/update-options assoc :join-alias "Orders")))])
-                       (lib/with-join-alias "Orders")
-                       (lib/with-join-fields [(lib/ref (meta/field-metadata :orders :id))
-                                              (lib/ref (meta/field-metadata :orders :tax))]))
-          query    (lib/join base join)
-          exp-src-id   {:lib/type      :metadata/column
-                        :name          "ID"
-                        :semantic-type :type/PK
-                        :table-id      (meta/id :orders)
-                        :id            (meta/id :orders :id)
-                        :lib/source    :source/fields
+    (let [base         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                           (lib/with-fields [(lib/ref (meta/field-metadata :orders :id))
+                                             (lib/ref (meta/field-metadata :orders :tax))]))
+          join         (-> (lib/join-clause (meta/table-metadata :orders)
+                                            [(lib/=
+                                              (lib/ref (meta/field-metadata :orders :user-id))
+                                              (-> (meta/field-metadata :orders :id)
+                                                  lib/ref
+                                                  (lib.options/update-options assoc :join-alias "Orders")))])
+                           (lib/with-join-alias "Orders")
+                           (lib/with-join-fields [(lib/ref (meta/field-metadata :orders :id))
+                                                  (lib/ref (meta/field-metadata :orders :tax))]))
+          query        (lib/join base join)
+          exp-src-id   {:lib/type                 :metadata/column
+                        :lib/source-column-alias  "ID"
+                        :semantic-type            :type/PK
+                        :table-id                 (meta/id :orders)
+                        :id                       (meta/id :orders :id)
+                        :lib/source               :source/fields
                         :lib/desired-column-alias "ID"
-                        :display-name  "ID"}
-          exp-src-tax  {:lib/type      :metadata/column
-                        :name          "TAX"
-                        :table-id      (meta/id :orders)
-                        :id            (meta/id :orders :tax)
-                        :lib/source    :source/fields
+                        :display-name             "ID"}
+          exp-src-tax  {:lib/type                 :metadata/column
+                        :lib/source-column-alias  "TAX"
+                        :table-id                 (meta/id :orders)
+                        :id                       (meta/id :orders :tax)
+                        :lib/source               :source/fields
                         :lib/desired-column-alias "TAX"
-                        :display-name  "Tax"}
-          exp-join-id  {:lib/type      :metadata/column
-                        :name          "ID"
-                        :semantic-type :type/PK
-                        :table-id      (meta/id :orders)
-                        :id            (meta/id :orders :id)
-                        :lib/source    :source/joins
-                        :lib/desired-column-alias "Orders__ID"
+                        :display-name             "Tax"}
+          exp-join-id  {:lib/type                     :metadata/column
+                        :lib/source-column-alias      "ID"
+                        :semantic-type                :type/PK
+                        :table-id                     (meta/id :orders)
+                        :id                           (meta/id :orders :id)
+                        :lib/source                   :source/joins
+                        :lib/desired-column-alias     "Orders__ID"
                         :metabase.lib.join/join-alias "Orders"
-                        :display-name  "ID"}
-          exp-join-tax {:lib/type      :metadata/column
-                        :name          "TAX"
-                        :table-id      (meta/id :orders)
-                        :id            (meta/id :orders :tax)
-                        :lib/source    :source/joins
-                        :lib/desired-column-alias "Orders__TAX"
+                        :display-name                 "ID"}
+          exp-join-tax {:lib/type                     :metadata/column
+                        :lib/source-column-alias      "TAX"
+                        :table-id                     (meta/id :orders)
+                        :id                           (meta/id :orders :tax)
+                        :lib/source                   :source/joins
+                        :lib/desired-column-alias     "Orders__TAX"
                         :metabase.lib.join/join-alias "Orders"
-                        :display-name  "Tax"}
+                        :display-name                 "Tax"}
           columns      (lib.metadata.calculation/returned-columns query)]
       (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
               (lib.metadata.calculation/returned-columns query)))
@@ -1342,14 +1342,14 @@
                                     ["joined ID column"    "Orders__ID"]
                                     ["joined TAX column"   "Orders__TAX"]]]
         (testing (str "when hiding the " label)
-          (let [col-pred     #(= (:lib/desired-column-alias %) column-alias)
-                to-hide      (first (filter col-pred columns))
-                ;_ (prn "to hide" to-hide)
-                ;_ (prn "query" query)
-                hidden       (lib/remove-field query -1 to-hide)
-                ;_ (prn "hidden" hidden)
-                exp-shown    [exp-src-id exp-src-tax exp-join-id exp-join-tax]
-                exp-hidden   (remove col-pred exp-shown)]
+          (let [col-pred   #(= (:lib/desired-column-alias %) column-alias)
+                to-hide    (first (filter col-pred columns))
+                                        ;_ (prn "to hide" to-hide)
+                                        ;_ (prn "query" query)
+                hidden     (lib/remove-field query -1 to-hide)
+                                        ;_ (prn "hidden" hidden)
+                exp-shown  [exp-src-id exp-src-tax exp-join-id exp-join-tax]
+                exp-hidden (remove col-pred exp-shown)]
             (is (=? exp-hidden
                     (lib.metadata.calculation/returned-columns hidden)))
             (is (=? (map #(dissoc % :lib/source) exp-hidden)
@@ -1358,7 +1358,7 @@
                                         (lib.metadata.calculation/returned-columns hidden)))))
 
             (testing "and showing it again"
-              (let [shown     (lib/add-field query -1 to-hide)]
+              (let [shown (lib/add-field query -1 to-hide)]
                 (is (=? exp-shown
                         (lib.metadata.calculation/returned-columns shown)))
                 (is (=? (map #(dissoc % :lib/source) exp-shown)
@@ -1941,7 +1941,7 @@
           (assert (some? group))
           (testing "binning info needs to get propagated for this to work correctly"
             (is (=? [{:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 10}}
-                     {:name "TOTAL", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
+                     {:name "TOTAL_2", :lib/original-binning {:strategy :num-bins, :num-bins 50}}
                      {:name "count"}]
                     (lib/columns-group-columns group))))
           (is (= ["Total: 10 bins"

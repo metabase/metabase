@@ -287,7 +287,7 @@
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "ID"
               :lib/source               :source/fields}
-             {:name                     "ID"
+             {:name                     "ID_2"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "Cat__ID"
               ::lib.join/join-alias     "Cat"
@@ -333,7 +333,7 @@
                   :lib/source-column-alias  "ID"
                   :lib/desired-column-alias "ID"
                   :lib/source               :source/previous-stage}
-                 {:name                     "ID"
+                 {:name                     "ID_2"
                   :lib/source-column-alias  "Cat__ID"
                   :lib/desired-column-alias "Cat__ID"
                   :lib/source               :source/previous-stage}
@@ -377,7 +377,7 @@
               :display-name             "Name"
               :lib/source-column-alias  "NAME"
               :lib/desired-column-alias "NAME"}
-             {:name                     "ID"
+             {:name                     "ID_2"
               :display-name             "ID"
               :lib/source-column-alias  "ID"
               :lib/desired-column-alias "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXY_bfaf4e7b"}]
@@ -1557,7 +1557,7 @@
                     lib/returned-columns))))
       (testing "if all :fields are unknown, default to :all"
         (is (=? [{:name "ID"}    ; Orders.ID
-                 {:name "ID"}    ; And all the fields of Products.
+                 {:name "ID_2"}    ; And all the fields of Products.
                  {:name "EAN"}
                  {:name "TITLE"}
                  {:name "CATEGORY"}

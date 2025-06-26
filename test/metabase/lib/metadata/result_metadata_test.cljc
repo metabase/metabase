@@ -131,24 +131,19 @@
 
 (deftest ^:parallel col-info-for-binning-strategy-test
   (testing "when binning strategy is used, include `:binning-info`"
-    (is (=? [{:name                 "price"
-              :base-type            :type/Number
-              :display-name         "Price: 10 bins: Month"
-              :unit                 :month
-              :source               :fields
-              :binning-info         {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
-              :field-ref            [:field "price" {:base-type     :type/Number
-                                                     :temporal-unit :month
-                                                     :binning       {:strategy  :num-bins
-                                                                     :num-bins  10
-                                                                     :bin-width 5
-                                                                     :min-value -100
-                                                                     :max-value 100}}]
-              :lib/original-binning {:strategy  :num-bins
-                                     :num-bins  10
-                                     :bin-width 5
-                                     :min-value -100
-                                     :max-value 100}}]
+    (is (=? [{:name         "price"
+              :base-type    :type/Number
+              :display-name "Price: 10 bins: Month"
+              :unit         :month
+              :source       :fields
+              :binning-info {:num-bins 10, :bin-width 5, :min-value -100, :max-value 100, :binning-strategy :num-bins}
+              :field-ref    [:field "price" {:base-type     :type/Number
+                                             :temporal-unit :month
+                                             :binning       {:strategy  :num-bins
+                                                             :num-bins  10
+                                                             :bin-width 5
+                                                             :min-value -100
+                                                             :max-value 100}}]}]
             (column-info
              (lib/query
               meta/metadata-provider

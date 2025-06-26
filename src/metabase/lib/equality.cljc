@@ -7,6 +7,7 @@
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
@@ -126,7 +127,8 @@
 (mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
   ;; TODO (Cam 6/19/25) -- seems busted to be using joins that happened at ANY LEVEL previously for equality purposes
-  ;; so lightly but removing this breaks stuff.
+  ;; so lightly but removing this breaks stuff. We should just remove this and do smarter matching like we do
+  ;; in [[plausible-matches-for-name-with-join-alias]] below.
   ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) column))
 
 (mu/defn- matching-join? :- :boolean
@@ -140,32 +142,83 @@
          (clojure.core/= source-field-join-alias (:fk-join-alias column)))
     (clojure.core/= (column-join-alias column) join-alias)))
 
+(defn- plausible-matches-for-name-no-join-alias [ref-name columns]
+  (some (fn [k]
+          (not-empty
+           (filter #(= (k %) ref-name)
+                   columns)))
+        [;; We SHOULD be using the source column alias (aka the desired column alias from the previous stage) so try
+         ;; that first.
+         :lib/source-column-alias
+         ;; if that fails, maybe we're using the old QP results metadata deduplicated names, so look for matches with
+         ;; that.
+         :lib/deduplicated-name
+         ;; if that fails, fall back to looking for matches using the old broken ambiguous `:name` key.
+         :name]))
+
+(defn- plausible-matches-for-name-with-join-alias [join-alias ref-name columns]
+  ;; first, look for matches for a join that came from the current stage -- `:metabase.lib.join/join-alias`; if we
+  ;; don't see any columns a match for that key, assume the join was from a previous stage and look at
+  ;; `:lib/original-join-alias` instead.
+  (letfn [(plausible-matches [columns]
+            (or
+             ;; ideally, the ref would be using the column name exported by the join... assuming `columns` is the set
+             ;; of columns exported by the stage as a whole, then the `source-column-alias` for these columns is the
+             ;; name exported by their source (i.e., this join)
+             (not-empty
+              (filter #(= (:lib/source-column-alias %) ref-name)
+                      columns))
+             ;; If we fail to find a match using source column alias, then look for a match using a deduplicated name
+             ;; RELATIVE to the join, not the WHOLE STAGE!!!! We need to recalculate these. Consider this case. If we
+             ;; have a stage that returns these three columns:
+             ;;
+             ;;    | :id | :name | :join-alias | :deduplicated-name |
+             ;;    |-----+-------+-------------+--------------------|
+             ;;    |   1 |    ID |             |                 ID |
+             ;;    |   2 |    ID |           J |               ID_2 |
+             ;;    |   3 |    ID |           J |               ID_3 |
+             ;;
+             ;; which column does
+             ;;
+             ;;    [:field {:join-alias "J"}, "ID_2"]
+             ;;
+             ;; refer to? The correct answer (IMO) is column 3, because `ID_2` and `ID_3` are 'exported' as as `ID`
+             ;; and `ID_2` by the join itself!
+             (let [deduplicated-name->col (zipmap (map :lib/deduplicated-name (lib.field.util/add-deduplicated-names columns))
+                                                  columns)]
+               (not-empty
+                (keep (fn [[deduplicated-name col]]
+                        (when (clojure.core/= deduplicated-name ref-name)
+                          col))
+                      deduplicated-name->col)))
+             ;; if we failed to find a deduplicated name match then try to match on original name
+             (not-empty
+              (filter #(= (:lib/original-name %) ref-name)
+                      columns))
+             ;; and if THAT still fails fall back to broken `:name`.
+             (not-empty
+              (filter #(= (:name %) ref-name)
+                      columns))))]
+    (when-let [columns-from-join (some (fn [k]
+                                         (not-empty (filter #(= (k %) join-alias) columns)))
+                                       [:metabase.lib.join/join-alias
+                                        :lib/original-join-alias
+                                        ;; use the `:source-alias` key which was traditionally set by QP result
+                                        ;; metadata sometimes if neither one of the other keys had match(es)
+                                        :source-alias])]
+      (plausible-matches columns-from-join))))
+
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
-  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
-   columns                             :- [:sequential ::lib.schema.metadata/column]]
-  (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
-                               (matching-join? a-ref %))
-                         columns))
-      ;; first look for a match on `:name`, then look for a match on `:lib/deduplicated-name`
-      (letfn [(matches-for-name [k]
-                (not-empty
-                 (filter (fn [col]
-                           (and (clojure.core/= (k col) ref-name)
-                                ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
-                                ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
-                                (or (and (not (:join-alias opts))
-                                         (#{:source/fields :source/card :source/previous-stage} (:lib/source col)))
-                                    (matching-join? a-ref col))))
-                         columns)))]
-        (some matches-for-name
-              [;; TODO (Cam 6/12/25) -- if these columns came from the previous stage or a join
-               ;; then we should look at `:lib/desired-column-alias`, or if they came from the
-               ;; current stage we should look at `:lib/source-column-alias`. It's not
-               ;; well-defined where these columns come from.
-               :lib/desired-column-alias
-               #_:lib/source-column-alias
-               :lib/deduplicated-name
-               :name]))))
+  [[_ref-kind opts ref-name :as _a-ref] :- ::lib.schema.ref/ref
+   columns                              :- [:sequential ::lib.schema.metadata/column]]
+  (or (when-let [join-alias (:join-alias opts)]
+        (or (plausible-matches-for-name-with-join-alias join-alias ref-name columns)
+            ;; if there's no match for a join then fall back to trying to match by ignoring the join alias.
+            (do (log/warnf "Failed to find match for column %s with join alias %s, looking for match without join alias..."
+                           (pr-str ref-name)
+                           (pr-str join-alias))
+                nil)))
+      (plausible-matches-for-name-no-join-alias ref-name columns)))
 
 (mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
@@ -188,7 +241,7 @@
             :columns columns}))
 
 (mu/defn- expression-column? [column]
-  (or (= (:lib/source column) :source/expressions)
+  (or (clojure.core/= (:lib/source column) :source/expressions)
       (:lib/expression-name column)))
 
 (mu/defn- disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
@@ -197,7 +250,7 @@
   If we got a `:field` ref, prefer matches which are not `:lib/source :source/expressions`."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
-  (or (when (= (first a-ref) :field)
+  (or (when (clojure.core/= (first a-ref) :field)
         (when-let [non-exprs (not-empty (remove expression-column? columns))]
           (when-not (next non-exprs)
             (first non-exprs))))
@@ -208,7 +261,7 @@
 
 (defn- matching-col-with-fn [columns col-fn]
   (let [matching-columns (filter col-fn columns)]
-    (when (= (count matching-columns) 1)
+    (when (clojure.core/= (count matching-columns) 1)
       (first matching-columns))))
 
 (mu/defn- disambiguate-matches-find-match-with-same-binning :- [:maybe ::lib.schema.metadata/column]
@@ -228,9 +281,9 @@
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
   (or (let [bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
-        (matching-col-with-fn columns #(= (lib.temporal-bucket/raw-temporal-bucket %) bucket)))
+        (matching-col-with-fn columns #(clojure.core/= (lib.temporal-bucket/raw-temporal-bucket %) bucket)))
       (when-let [inherited-bucket (:inherited-temporal-unit (lib.options/options a-ref))]
-        (matching-col-with-fn columns #(= (:inherited-temporal-unit %) inherited-bucket)))
+        (matching-col-with-fn columns #(clojure.core/= (:inherited-temporal-unit %) inherited-bucket)))
       (disambiguate-matches-find-match-with-same-binning a-ref columns)))
 
 (mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
@@ -343,10 +396,10 @@
          ;; Aggregations are matched by `:source-uuid` but if we're comparing old columns to new refs or vice versa
          ;; the random UUIDs won't match up. This falls back to the `:lib/source-name` option on aggregation refs, if
          ;; present.
-         (when (and (= ref-kind :aggregation)
+         (when (and (clojure.core/= ref-kind :aggregation)
                     (:lib/source-name ref-opts))
-           (m/find-first #(and (= (:lib/source %) :source/aggregations)
-                               (= (:name %) (:lib/source-name ref-opts)))
+           (m/find-first #(and (clojure.core/= (:lib/source %) :source/aggregations)
+                               (clojure.core/= (:name %) (:lib/source-name ref-opts)))
                          columns))
          ;; We failed to match by ID, so try again with the column's name. Any columns with `:id` set are dropped.
          ;; Why? Suppose there are two CREATED_AT columns in play - if one has an :id and it failed to match above, then
@@ -402,8 +455,8 @@
                          (let [col-join-alias      (lib.join.util/current-join-alias column)
                                source-column-alias ((some-fn :lib/source-column-alias :name) column)]
                            (filter (fn [a-ref]
-                                     (and (= (lib.join.util/current-join-alias a-ref) col-join-alias)
-                                          (some #(= (ref-id-or-name a-ref) %)
+                                     (and (clojure.core/= (lib.join.util/current-join-alias a-ref) col-join-alias)
+                                          (some #(clojure.core/= (ref-id-or-name a-ref) %)
                                                 [(:id column) source-column-alias])))
                                    refs))
                          ;; otherwise they're not the same stage, maybe the column is from an earlier stage
@@ -483,7 +536,7 @@
                                                       (log/warnf "[mark-selected-columns] failed to find match for %s" (pr-str field-ref))
                                                       nil))))
                                         selected-refs)]
-       (when-not (= (count selected-refs) (count matching-selected-cols))
+       (when-not (clojure.core/= (count selected-refs) (count matching-selected-cols))
          (log/warnf "[mark-selected-columns] %d refs are selected, but we found %d matches"
                     (count selected-refs)
                     (count matching-selected-cols)))
@@ -503,8 +556,8 @@
   ;; - Each column was matched by exactly one ref
   ;; So we return true if nil is not a key in the matching, AND all vals in the matching have length 1,
   ;; AND the matching has as many elements as `columns` (usually the list of columns returned by default).
-  (and (= (count refs) (count columns))
+  (and (clojure.core/= (count refs) (count columns))
        (let [matching (group-by #(find-matching-column query stage-number % columns) refs)]
          (and (not (contains? matching nil))
-              (= (count matching) (count columns))
-              (every? #(= (count %) 1) (vals matching))))))
+              (clojure.core/= (count matching) (count columns))
+              (every? #(clojure.core/= (count %) 1) (vals matching))))))

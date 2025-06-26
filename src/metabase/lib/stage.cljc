@@ -340,7 +340,7 @@
            ;; there is no `:fields` or summary columns (aggregtions or breakouts) which means we return all the visible
            ;; columns from the source or previous stage plus all the expressions. We return only the `:fields` from any
            ;; joins
-           (let [ ;; we don't want to include all visible joined columns, so calculate that separately
+           (let [;; we don't want to include all visible joined columns, so calculate that separately
                  source-cols (previous-stage-or-source-visible-columns
                               query stage-number
                               {:include-implicitly-joinable? false

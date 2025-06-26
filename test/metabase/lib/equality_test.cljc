@@ -1,6 +1,7 @@
 (ns metabase.lib.equality-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
+   [clojure.pprint :as pprint]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
@@ -306,20 +307,9 @@
 
 (deftest ^:parallel find-matching-column-by-name-test
   (testing "find-matching-column should find columns based on matching name"
-    (let [query    (lib/append-stage (lib.tu/query-with-join))
-          cols     (lib/returned-columns query)
-          refs     (map lib.ref/ref cols)
-          cat-name [:field {:lib/uuid (str (random-uuid))
-                            :base-type :type/Text
-                            :join-alias "Cat"}
-                    "Cat__NAME"]
-          cat-raw  [:field {:lib/uuid (str (random-uuid))
-                            :base-type :type/Text
-                            :join-alias "Cat"}
-                    "NAME"]
-          ven-name [:field {:lib/uuid (str (random-uuid))
-                            :base-type :type/Text}
-                    "NAME"]]
+    (let [query (lib/append-stage (lib.tu/query-with-join))
+          cols  (lib/returned-columns query)
+          refs  (map lib.ref/ref cols)]
       (is (=? [[:field {} "ID"]          ; 0
                [:field {} "NAME"]        ; 1
                [:field {} "CATEGORY_ID"] ; 2
@@ -329,15 +319,36 @@
                [:field {} "Cat__ID"]     ; 6
                [:field {} "Cat__NAME"]]  ; 7
               refs))
-      (is (= (nth cols 7)
-             (lib.equality/find-matching-column cat-name cols)
-             (lib.equality/find-matching-column query -1 cat-name cols)))
-      (is (= (nth cols 7)
-             (lib.equality/find-matching-column cat-raw cols)
-             (lib.equality/find-matching-column query -1 cat-raw cols)))
-      (is (= (nth cols 1)
-             (lib.equality/find-matching-column ven-name cols)
-             (lib.equality/find-matching-column query -1 ven-name cols))))))
+      (testing (str "\n" (with-out-str
+                           (pprint/print-table
+                            [:name :lib/original-join-alias :lib/original-name :lib/deduplicated-name :lib/source-column-alias :lib/desired-column-alias]
+                            cols)))
+        (are [a-ref expected-index] (= (nth cols expected-index)
+                                       (lib.equality/find-matching-column a-ref cols)
+                                       (lib.equality/find-matching-column query -1 a-ref cols))
+          ;; Good ref.
+          [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text}
+           "Cat__NAME"]
+          7
+
+          ;; INCORRECT REF. We shouldn't be using the join alias here since the join happened in a previous stage, and
+          ;; we should definitely not be using it in combination with the desired column alias.
+          [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text, :join-alias "Cat"}
+           "Cat__NAME"]
+          7
+
+          ;; INCORRECT REF. This would be a correct ref in the stage the join happened.
+          [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text, :join-alias "Cat"}
+           "NAME"]
+          7
+
+          ;; Acceptable ref -- this is the historic ref that would have been returned by QP metadata results.
+          [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "NAME_2"]
+          7
+
+          ;; Good ref
+          [:field {:lib/uuid (str (random-uuid)), :base-type :type/Text} "NAME"]
+          1)))))
 
 (deftest ^:parallel find-matching-column-self-join-test
   (testing "find-matching-column with a self join"
@@ -355,7 +366,7 @@
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
                                    (map join-col  cols)))
-                   (map #(dissoc % :ident)))
+                   (map #(dissoc % :ident :name)))
               (sorted (lib/returned-columns query))))
       (testing "matches the defaults by ID"
         (doseq [col-key (meta/fields :orders)]
@@ -665,15 +676,16 @@
 
 (deftest ^:parallel find-matching-column-by-id-with-expression-aliasing-joined-column-test
   (testing "find-matching-column should be able to find columns based on ID even when a joined column is aliased as an expression (#44940)"
-    (let [a-ref [:field {:lib/uuid (str (random-uuid))
-                         :base-type :type/Text
+    (let [a-ref [:field {:lib/uuid   (str (random-uuid))
+                         :base-type  :type/Text
                          :join-alias "Cat"}
                  (meta/id :categories :name)]
           query (-> (lib.tu/query-with-join)
-                    (lib/expression "Joied Name" a-ref))
+                    (lib/expression "Joined Name" a-ref))
           cols  (lib/returned-columns query)]
-      (is (=? {:name "NAME"
-               :id (meta/id :categories :name)}
+      (is (=? {:name                     "NAME_2"
+               :lib/desired-column-alias "Cat__NAME"
+               :id                       (meta/id :categories :name)}
               (lib.equality/find-matching-column query -1 a-ref cols))))))
 
 (deftest ^:parallel find-matching-ref-multiple-breakouts-test
@@ -728,13 +740,14 @@
                                        "ID"]
                                       [:field
                                        {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000001"}
-                                       "Products__ID"]]))]
-      (is (=? {:name "ID", :lib/desired-column-alias "Products__ID"}
+                                       "Products__ID"]]))
+          cols  (lib/visible-columns query)]
+      (is (=? {:name "ID_2", :lib/desired-column-alias "Products__ID"}
               (lib.equality/find-matching-column
                [:field
                 {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000002"}
                 "Products__ID"]
-               (lib/visible-columns query)))))))
+               cols))))))
 
 (deftest ^:parallel find-match-with-inherited-temporal-unit-test
   (let [field-ref [:field {:lib/uuid                "86e6d41c-d693-4f08-ae30-7ad411da8ec7"

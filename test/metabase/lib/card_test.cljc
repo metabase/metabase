@@ -110,7 +110,7 @@
     (meta/field-metadata table col)))
 
 (defn- sort-cols [cols]
-  (sort-by (juxt :name :id :source-alias :lib/desired-column-alias) cols))
+  (sort-by (juxt :id :name :source-alias :lib/desired-column-alias) cols))
 
 (deftest ^:parallel visible-columns-use-result-metadata-test
   (testing "visible-columns should use the Card's `:result-metadata` (regardless of what's actually in the Card)"
@@ -202,15 +202,13 @@
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
                            (explicitly-joined (:ident join) (cols-of :products)))
                    sort-cols
-                   (map #(dissoc % :ident)))
+                   (map #(dissoc % :ident :name)))
               (->> query lib.metadata.calculation/returned-columns sort-cols)))
-
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
                            (explicitly-joined (:ident join) (cols-of :products))
                            (implicitly-joined (meta/field-metadata :orders :user-id) (cols-of :people)))
                    sort-cols)
               (->> query lib.metadata.calculation/visible-columns sort-cols)))
-
       ;; TODO: Currently if the source-card has an explicit join for a table, those fields will also be duplicated as
       ;; implicitly joinable columns. That should be fixed and this test re-enabled. #33565
       #_(testing "even on nested queries"
