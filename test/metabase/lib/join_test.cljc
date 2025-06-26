@@ -102,7 +102,27 @@
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-table nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-table (lib/ref orders-product-id) nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-table (:id product-table)}]}]}]}
-              (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)])))))))
+              (lib/join query (lib/join-clause product-table [(lib/= orders-product-id products-id)]))))))
+  (testing "Should set join-alias for all field in a RHS expression"
+    (let [query          (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          products       (meta/table-metadata :products)
+          lhs-columns    (lib/join-condition-lhs-columns query products nil nil)
+          lhs-order-id   (m/find-first (comp #{"ID"} :name) lhs-columns)
+          rhs-columns    (lib/join-condition-rhs-columns query products nil nil)
+          rhs-product-id (m/find-first (comp #{"ID"} :name) rhs-columns)]
+      (is (=? {:stages [{:joins [{:alias      "Products"
+                                  :conditions [[:=
+                                                {}
+                                                [:+
+                                                 {}
+                                                 [:field {:join-alias absent-key-marker} (meta/id :orders :id)]
+                                                 [:field {:join-alias absent-key-marker} (meta/id :orders :id)]]
+                                                [:-
+                                                 {}
+                                                 [:field {:join-alias "Products"} (meta/id :products :id)]
+                                                 [:field {:join-alias "Products"} (meta/id :products :id)]]]]}]}]}
+              (lib/join query (lib/join-clause products [(lib/= (lib/+ lhs-order-id lhs-order-id)
+                                                                (lib/- rhs-product-id rhs-product-id))])))))))
 
 (deftest ^:parallel join-saved-question-test
   (is (=? {:lib/type :mbql/query

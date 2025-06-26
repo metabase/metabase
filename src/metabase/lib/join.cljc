@@ -498,7 +498,10 @@
               [op op-opts bare-lhs rhs]))
 
           ;; we leave alone the condition otherwise
-          :else &match)))))
+          :else &match))
+    ;; do not replace inner references as there can be a custom join expression
+      _
+      condition)))
 
 (defn- generate-unique-name [base-name taken-names]
   (let [generator (lib.util/unique-name-generator)]
@@ -513,7 +516,7 @@
      (default-alias query stage-number a-join stage home-cols)))
   ([query _stage-number a-join stage home-cols]
    (let [home-cols   home-cols
-         cond-fields (lib.util.match/match (:conditions a-join) :field)
+         cond-fields (lib.util.match/match (mapv standard-join-condition-lhs (:conditions a-join)) :field)
          home-col    (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
        (generate-unique-name s (keep :alias (:joins stage)))))))
