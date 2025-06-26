@@ -17,7 +17,14 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, type IconName, type IconProps, Menu, Title } from "metabase/ui";
+import {
+  Flex,
+  Icon,
+  type IconName,
+  type IconProps,
+  Menu,
+  Title,
+} from "metabase/ui";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
@@ -435,9 +442,16 @@ export function DashCardVisualization({
   const renderLoadingView = () => (
     <div
       data-testid="loading-indicator"
-      className={cx(CS.px2, CS.pb2, CS.fullHeight)}
+      className={cx(CS.px2, CS.pb2, CS.fullHeight, CS.relative)}
     >
       <ChartSkeleton display={question?.display()} />
+      <div className={cx(CS.absolute, CS.bottom, CS.pb2)}>
+        <Icon
+          name="hourglass"
+          size={18}
+          className={cx(CS.hourglass, CS.flex)}
+        />
+      </div>
     </div>
   );
 
