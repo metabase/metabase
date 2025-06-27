@@ -299,6 +299,12 @@
                  "-XX:+IgnoreUnrecognizedVMOptions"
                  ;; include more details for debugging NPEs (Java 14+)
                  "-XX:+ShowCodeDetailsInExceptionMessages"
+                 ;; use the dev keystore for SSL connections
+                 "-Djavax.net.ssl.trustStore=dev.keystore.jks"
+                 "-Djavax.net.ssl.trustStore.password=changeit"
+                 ;"-Dmail.smtp.ssl.enable=true"
+                 ;"-Dmail.smtps.ssl.trust=*"
+                 ;"-Djavax.net.debug=all"
                  ;; Support Snowflake in Java 17+. See https://github.com/metabase/metabase/pull/47997 and
                  ;; https://community.snowflake.com/s/article/JDBC-Driver-Compatibility-Issue-With-JDK-16-and-Later
                  "--add-opens"
