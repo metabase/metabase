@@ -24,7 +24,6 @@ export const Grid = ({
   const {
     dashboard,
     selectedTabId,
-    navigateToNewCardFromDashboard,
     isEditing,
     onRefreshPeriodChange,
     shouldRenderAsNightMode,
@@ -32,10 +31,7 @@ export const Grid = ({
     onAddQuestion,
   } = useDashboardContext();
 
-  // if users can't navigate to new cards or drill down, then they shouldn't
-  // be able to use the `Add question` button. Used in static and public dashboards
-  const canWrite =
-    navigateToNewCardFromDashboard && Boolean(dashboard?.can_write);
+  const canWrite = Boolean(dashboard?.can_write);
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
       return [];
