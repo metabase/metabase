@@ -423,9 +423,9 @@
     (u/assoc-dissoc joinable :fields fields)))
 
 (defn- select-home-column
-  [home-cols lhs-fields]
-  (when (seq lhs-fields)
-    (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) lhs-fields)]
+  [home-cols cond-fields]
+  (when (seq cond-fields)
+    (let [cond-home-cols (keep #(lib.equality/find-matching-column % home-cols) cond-fields)]
           ;; first choice: the leftmost FK or PK in the condition referring to a home column
       (or (m/find-first (some-fn lib.types.isa/foreign-key? lib.types.isa/primary-key?) cond-home-cols)
               ;; otherwise the leftmost home column in the condition
@@ -527,14 +527,15 @@
          home-cols (lib.metadata.calculation/visible-columns query stage-number stage)]
      (default-alias query stage-number a-join stage home-cols)))
   ([query _stage-number a-join stage home-cols]
-   (let [home-cols  home-cols
-         lhs-fields (into []
-                          (comp (mapcat (fn [condition]
-                                          [(standard-join-condition-lhs condition)
-                                           (standard-join-condition-rhs condition)]))
-                                (filter lib.util/field-clause?))
-                          (:conditions a-join))
-         home-col   (select-home-column home-cols lhs-fields)]
+   (let [home-cols   home-cols
+         cond-fields (into []
+                           (mapcat (fn [condition]
+                                     (let [lhs (standard-join-condition-lhs condition)
+                                           rhs (standard-join-condition-rhs condition)]
+                                       (when (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
+                                         [lhs rhs]))))
+                           (:conditions a-join))
+         home-col   (select-home-column home-cols cond-fields)]
      (as-> (calculate-join-alias query a-join home-col) s
        (generate-unique-name s (keep :alias (:joins stage)))))))
 
