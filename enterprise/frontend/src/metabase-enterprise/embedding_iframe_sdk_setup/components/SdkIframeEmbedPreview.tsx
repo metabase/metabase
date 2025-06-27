@@ -38,6 +38,12 @@ export const SdkIframeEmbedPreview = () => {
         script.onload = () => {
           const { MetabaseEmbed } = window["metabase.embed"];
 
+          // If persisted user settings contains non-dashboard ids,
+          // remove the fallback dashboard from the initial state.
+          if (settings.questionId || settings.template) {
+            delete settings.dashboardId;
+          }
+
           embedJsRef.current = new MetabaseEmbed({
             ...settings,
             instanceUrl,
