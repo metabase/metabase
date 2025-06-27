@@ -52,6 +52,7 @@ type EditTableDataGridProps = {
   cellsWithFailedUpdatesMap?: Record<CellUniqKey, true>;
   rowActions?: DataGridRowAction[];
   onActionClick?: (action: DataGridRowAction, row: Row<RowValues>) => void;
+  hasRowSelection: boolean;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   onColumnSort?: (field: Field) => void;
@@ -67,6 +68,7 @@ export const EditTableDataGrid = ({
   cellsWithFailedUpdatesMap,
   rowActions,
   onActionClick,
+  hasRowSelection,
   rowSelection,
   onRowSelectionChange,
   onColumnSort,
@@ -175,7 +177,7 @@ export const EditTableDataGrid = ({
     [onRowExpandClick],
   );
 
-  const columnRowSelectOptions = useTableColumnRowSelect();
+  const columnRowSelectOptions = useTableColumnRowSelect(hasRowSelection);
 
   const tableProps = useDataGridInstance({
     data: rows,
@@ -185,7 +187,7 @@ export const EditTableDataGrid = ({
     columnsOptions,
     columnVisibility,
     columnPinning: { left: [ROW_SELECT_COLUMN_ID, ROW_ID_COLUMN_ID] },
-    enableRowSelection: true,
+    enableRowSelection: hasRowSelection,
     rowSelection,
     onRowSelectionChange,
     columnRowSelectOptions: columnRowSelectOptions,
