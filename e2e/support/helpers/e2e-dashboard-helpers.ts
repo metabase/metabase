@@ -296,8 +296,7 @@ export function resizeDashboardCard({
   y: number;
 }) {
   card.within(() => {
-    const resizeHandle = cy.get(".react-resizable-handle");
-    resizeHandle
+    cy.get(".react-resizable-handle")
       .trigger("mousedown", { button: 0 })
       .wait(200)
       .trigger("mousemove", {
