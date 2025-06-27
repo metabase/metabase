@@ -58,7 +58,12 @@ export const BrowseCard = ({
       h={sizeOptions[size].height}
       p="1.5rem"
       classNames={{
-        root: cx(Styles.HoverBrandLight, CS.hoverParent, CS.hoverDisplay),
+        root: cx(
+          Styles.HoverBrandLight,
+          CS.hoverParent,
+          CS.hoverDisplay,
+          CS.textBrandHover,
+        ),
       }}
     >
       <Flex
