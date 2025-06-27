@@ -364,6 +364,7 @@ export type FilterOperatorDisplayInfo = {
 export type FilterParts =
   | StringFilterParts
   | NumberFilterParts
+  | RangeFilterParts
   | CoordinateFilterParts
   | BooleanFilterParts
   | SpecificDateFilterParts
@@ -389,6 +390,14 @@ export type NumberFilterParts = {
   operator: NumberFilterOperator;
   column: ColumnMetadata;
   values: NumberFilterValue[];
+};
+
+export type RangeFilterParts = {
+  column: ColumnMetadata;
+  minValue: NumberFilterValue | null;
+  maxValue: NumberFilterValue | null;
+  isMinInclusive: boolean;
+  isMaxInclusive: boolean;
 };
 
 export type CoordinateFilterParts = {

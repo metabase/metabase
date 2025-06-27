@@ -19,6 +19,7 @@ import type {
   Filterable,
   NumberFilterParts,
   Query,
+  RangeFilterParts,
   RelativeDateFilterParts,
   SegmentMetadata,
   SpecificDateFilterParts,
@@ -97,6 +98,30 @@ export function numberFilterParts(
   filterClause: Filterable,
 ): NumberFilterParts | null {
   return ML.number_filter_parts(query, stageIndex, filterClause);
+}
+
+export function rangeFilterClause({
+  column,
+  minValue,
+  maxValue,
+  isMinInclusive,
+  isMaxInclusive,
+}: RangeFilterParts): ExpressionClause {
+  return ML.range_filter_clause(
+    column,
+    minValue,
+    maxValue,
+    isMinInclusive,
+    isMaxInclusive,
+  );
+}
+
+export function rangeFilterParts(
+  query: Query,
+  stageIndex: number,
+  filterClause: Filterable,
+): RangeFilterParts | null {
+  return ML.range_filter_parts(query, stageIndex, filterClause);
 }
 
 export function coordinateFilterClause({
@@ -260,6 +285,7 @@ export function filterParts(
   return (
     stringFilterParts(query, stageIndex, filterClause) ??
     numberFilterParts(query, stageIndex, filterClause) ??
+    rangeFilterParts(query, stageIndex, filterClause) ??
     coordinateFilterParts(query, stageIndex, filterClause) ??
     booleanFilterParts(query, stageIndex, filterClause) ??
     specificDateFilterParts(query, stageIndex, filterClause) ??
