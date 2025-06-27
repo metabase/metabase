@@ -691,6 +691,9 @@
     ;; Does this driver support "temporal-unit" template tags in native queries?
     :native-temporal-units
 
+    ;; Does this driver support "custom-filter" template tags in native queries?
+    :native-custom-filters
+
     ;; Whether the driver supports loading dynamic test datasets on each test run. Eg. datasets with names like
     ;; `checkins:4-per-minute` are created dynamically in each test run. This should be truthy for every driver we test
     ;; against except for Athena and Databricks which currently require test data to be loaded separately.

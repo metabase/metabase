@@ -38,6 +38,7 @@
 
 (def ^:private Date                   (lib.schema.common/instance-of-class metabase.driver.common.parameters.Date))
 (def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
+(def ^:private CustomFilter           (lib.schema.common/instance-of-class metabase.driver.common.parameters.CustomFilter))
 (def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
 (def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
 
@@ -278,6 +279,14 @@
                  (if required
                    (throw (missing-required-param-exception (:display-name tag)))
                    params/no-value))})))
+
+(mu/defmethod parse-tag :custom-filter :- [:maybe CustomFilter]
+  [{tag-name :name :keys [effective-type] :as tag} :- mbql.s/TemplateTag
+   params                                          :- [:maybe [:sequential mbql.s/Parameter]]]
+  (params/map->CustomFilter
+   {:name tag-name
+    :effective-type effective-type
+    :value (field-filter-value tag params)}))
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 

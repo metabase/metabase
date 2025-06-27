@@ -324,16 +324,19 @@
 
 (defmethod tx/count-with-field-filter-query :sql/test-extensions
   ([driver table field]
-   (tx/count-with-field-filter-query driver table field 1))
-  ([driver table field sample-value]
-   (driver/with-driver driver
-     (let [mbql-query      (data/mbql-query nil
-                             {:source-table (data/id table)
-                              :aggregation  [[:count]]
-                              :filter       [:= [:field-id (data/id table field)] sample-value]})
-           {:keys [query]} (qp.compile/compile mbql-query)
-           query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
-       {:query query}))))
+   (tx/count-with-field-filter-query driver table field {}))
+  ([driver table field options]
+   (let [{:keys [sample-value replacement]} (merge {:replacement (name field)
+                                                    :sample-value 1}
+                                                   options)]
+     (driver/with-driver driver
+       (let [mbql-query      (data/mbql-query nil
+                               {:source-table (data/id table)
+                                :aggregation  [[:count]]
+                                :filter       [:= [:field-id (data/id table field)] sample-value]})
+             {:keys [query]} (qp.compile/compile mbql-query)
+             query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" replacement))]
+         {:query query})))))
 
 (defmethod tx/arbitrary-select-query :sql/test-extensions
   ([driver table to-insert]
@@ -362,7 +365,8 @@
    (let [parent-method (get-method tx/field-reference :sql/test-extensions)
          full-reference (parent-method driver field-id)
          [_ _ field-name] (str/split full-reference #"\.")]
-     (format "`t1`.%s" field-name))))
+     #_(format "`t1`.%s" field-name)
+     field-name)))
 
 ;; With bigquery, ->honeysql returns `db`.`orders`.`created_at`, but for whatever reason, the query actually wants
 ;; `db.orders`.`created_at`.

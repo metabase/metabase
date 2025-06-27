@@ -21,7 +21,7 @@
 (mr/def ::type
   [:enum
    {:decode/normalize common/normalize-keyword}
-   :snippet :card :dimension :number :text :date :temporal-unit])
+   :snippet :card :dimension :number :text :date :temporal-unit :custom-filter])
 
 (mr/def ::name
   [:ref
@@ -60,6 +60,30 @@
    [:ref ::common]
    [:map
     [:type [:= :temporal-unit]]]])
+
+;; Example:
+;;
+;;    {:id           "c20851c7-8a80-0ffa-8a99-ae636f0e9539"
+;;     :name         "date"
+;;     :display-name "Date"
+;;     :type         :custom-filter,
+;;     :dimension    [:field 4 nil]
+;;     :widget-type  :date/all-options}
+(mr/def ::custom-filter
+  [:merge
+   [:ref ::value.common]
+   [:map
+    [:type        [:= :custom-filter]]
+    ;; custom filters do not need a dimension, since they sub in user-defined sql instead of a field reference.  They
+    ;; can have a dimension to provide field values, however.
+    [:dimension {:optional true} [:ref :mbql.clause/field]]
+    ;; needs an effective-type that tells the query processor what to do with the literal sql it will receive
+    [:effective-type [:ref ::common/base-type]]
+    ;; which type of widget the frontend should show for this Field Filter; this also affects which parameter types
+    ;; are allowed to be specified for it.
+    [:widget-type [:ref ::widget-type]]
+    ;; optional map to be appended to filter clause
+    [:options {:optional true} [:maybe :map]]]])
 
 ;; Example:
 ;;
@@ -157,6 +181,7 @@
     [:type [:ref ::type]]]
    [:multi {:dispatch #(keyword (:type %))}
     [:temporal-unit [:ref ::temporal-unit]]
+    [:custom-filter [:ref ::custom-filter]]
     [:dimension     [:ref ::field-filter]]
     [:snippet       [:ref ::snippet]]
     [:card          [:ref ::source-query]]

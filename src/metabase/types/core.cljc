@@ -341,6 +341,10 @@
 (derive :type/FK :Relation/*)
 (derive :type/PK :Relation/*)
 
+;; Raw sql type -- used to insert raw sql in place of a normal field reference
+
+(derive :type/Raw :type/*)
+
 ;;; Coercion strategies
 
 (derive :Coercion/String->Temporal :Coercion/*)
