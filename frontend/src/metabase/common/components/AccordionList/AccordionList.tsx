@@ -567,11 +567,14 @@ export class AccordionList<
       cursor != null ? rows.findIndex(this.isRowSelected) : undefined;
 
     const searchRowIndex = rows.findIndex((row) => row.type === "search");
+    const hasSearch = searchRowIndex >= 0;
 
     if (!this.isVirtualized()) {
       return (
         <Box
-          className={cx(S.accordionListRoot, className)}
+          className={cx(S.accordionListRoot, className, {
+            [S.hasSearch]: hasSearch,
+          })}
           ref={this.listRootRef}
           role="tree"
           onKeyDown={this.handleKeyDown}
@@ -621,7 +624,7 @@ export class AccordionList<
       <List
         id={id}
         ref={this.listRef}
-        className={className}
+        className={cx(className, { [S.hasSearch]: hasSearch })}
         style={{
           // HACK - Ensure the component can scroll
           // This is a temporary fix to handle cases where the parent component doesn’t pass in the correct `maxHeight`
