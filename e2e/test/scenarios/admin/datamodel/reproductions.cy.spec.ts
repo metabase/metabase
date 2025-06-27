@@ -137,7 +137,6 @@ describe("issue 15542", () => {
     H.popover().findByText("Admin settings").click();
 
     H.appBar().findByText("Table Metadata").click();
-    H.DataModel.TablePicker.getDatabase("Sample Database").click();
     H.DataModel.TablePicker.getTable("Orders").click();
     H.DataModel.TableSection.clickField("Product ID");
   }

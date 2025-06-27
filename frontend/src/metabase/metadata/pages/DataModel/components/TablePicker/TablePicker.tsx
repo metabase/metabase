@@ -7,7 +7,7 @@ import { Box, Flex, Icon, Input, Stack, rem } from "metabase/ui";
 
 import { Results } from "./Results";
 import S from "./TablePicker.module.css";
-import type { TreePath } from "./types";
+import type { ChangeOptions, TreePath } from "./types";
 import { flatten, useExpandedState, useSearch, useTableLoader } from "./utils";
 
 export function TablePicker({
@@ -15,7 +15,7 @@ export function TablePicker({
   onChange,
 }: {
   value: TreePath;
-  onChange: (path: TreePath) => void;
+  onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -45,7 +45,7 @@ function Tree({
   onChange,
 }: {
   value: TreePath;
-  onChange: (path: TreePath) => void;
+  onChange: (path: TreePath, options?: ChangeOptions) => void;
 }) {
   const { databaseId, schemaName } = value;
   const { isExpanded, toggle } = useExpandedState(value);
@@ -57,6 +57,25 @@ function Tree({
     canFlattenSingleSchema: true,
   });
   const isEmpty = items.length === 0;
+
+  useEffect(() => {
+    // When we detect only one database, we automatically select and expand it.
+    const databases = tree.children.filter((node) => node.type === "database");
+
+    if (databases.length !== 1) {
+      return;
+    }
+
+    const [database] = databases;
+
+    if (
+      !isExpanded({ databaseId: database.value.databaseId }) &&
+      database.value.databaseId !== databaseId
+    ) {
+      toggle(database.key, true);
+      onChange(database.value, { isAutomatic: true });
+    }
+  }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
   useEffect(() => {
     // When we detect a database with just one schema, we automatically
@@ -73,7 +92,7 @@ function Tree({
       const schema = database.children[0];
       if (schema.type === "schema" && schemaName !== schema.value.schemaName) {
         toggle(schema.key, true);
-        onChange(schema.value);
+        onChange(schema.value, { isAutomatic: true });
       }
     }
   }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);

@@ -1023,7 +1023,6 @@ describe("issue 19742", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Table Metadata").click();
-    H.DataModel.TablePicker.getDatabase("Sample Database").click();
     H.DataModel.TablePicker.getTable("Orders").button("Hide table").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exit admin").click();

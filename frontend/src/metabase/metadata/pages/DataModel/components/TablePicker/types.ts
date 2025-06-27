@@ -46,6 +46,7 @@ export type TableNode = {
   value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId };
   children: [];
   table?: Table;
+  disabled?: boolean;
 };
 
 export type DatabaseItem = Omit<DatabaseNode, "children">;
@@ -63,6 +64,7 @@ type ExpandedItem = Item & {
   isLoading?: false;
   parent?: NodeKey;
   level: number;
+  disabled?: boolean;
 };
 
 type LoadingItem = {
@@ -75,8 +77,13 @@ type LoadingItem = {
   label?: string;
   parent?: NodeKey;
   table?: undefined;
+  disabled?: never;
 };
 
 export type ExpandedState = {
   [key: NodeKey]: boolean;
 };
+
+export interface ChangeOptions {
+  isAutomatic?: boolean;
+}

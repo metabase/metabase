@@ -1,4 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
+import type { Location } from "history";
 import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
@@ -23,7 +24,7 @@ import type { RouteParams } from "./types";
 import { getTableMetadataQuery, parseRouteParams } from "./utils";
 
 interface Props {
-  children: ReactNode;
+  children?: ReactNode;
   location: Location;
   params: RouteParams;
 }

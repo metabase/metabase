@@ -93,6 +93,7 @@ export function Results({
             key,
             level,
             parent,
+            disabled,
           } = item;
           const isActive = type === "table" && _.isEqual(path, value);
 
@@ -102,6 +103,10 @@ export function Results({
           );
 
           const handleItemSelect = (open?: boolean) => {
+            if (disabled) {
+              return;
+            }
+
             toggle?.(key, open);
             if (value && (!isExpanded || type === "table")) {
               onItemClick?.(value);
@@ -155,7 +160,10 @@ export function Results({
               event.preventDefault();
             }
 
-            if (event.code === "Space" || event.code === "Enter") {
+            if (
+              !disabled &&
+              (event.code === "Space" || event.code === "Enter")
+            ) {
               // toggle the current item
               handleItemSelect();
               event.preventDefault();
@@ -186,13 +194,16 @@ export function Results({
                 data-index={index}
                 data-open={isExpanded}
                 tabIndex={
-                  selectedIndex === undefined || type === "table"
-                    ? 0
-                    : undefined
+                  disabled
+                    ? -1
+                    : selectedIndex === undefined || type === "table"
+                      ? 0
+                      : undefined
                 }
                 style={{
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
+                  pointerEvents: disabled ? "none" : undefined,
                 }}
                 data-testid="tree-item"
                 data-type={type}
@@ -226,7 +237,8 @@ export function Results({
                 </Flex>
                 {type === "table" &&
                   value?.tableId !== undefined &&
-                  item.table && (
+                  item.table &&
+                  !disabled && (
                     <TableVisibilityToggle
                       className={S.visibilityToggle}
                       table={item.table}
