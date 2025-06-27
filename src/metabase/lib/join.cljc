@@ -62,7 +62,10 @@
 (mu/defn- standard-join-condition? :- :boolean
   "Whether this join condition is a binary condition with two expressions (LHS and RHS), as you'd produce in the
   frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]], and
-  [[join-condition-rhs-columns]]."
+  [[join-condition-rhs-columns]].
+
+  LHS and RHS expressions can be aribtrary and not only `:field` references. The LHS expression will normally contain
+  columns from [[join-condition-lhs-columns]], and the RHS expression from [[join-condition-rhs-columns]]."
   [condition  :- [:maybe ::lib.schema.expression/boolean]]
   (when condition
     (lib.util.match/match-one condition
@@ -75,23 +78,24 @@
       false)))
 
 (defn- standard-join-condition-lhs
-  "If `condition` is a [[standard-join-condition?]], return the LHS."
+  "If `condition` is a [[standard-join-condition?]], return the LHS expression. The LHS expression can be arbitrary and
+  not only a `:field` reference. The frontend will only use columns from [[join-condition-lhs-columns]] here."
   [condition]
   (when (standard-join-condition? condition)
     (let [[_operator _opts lhs _rhs] condition]
       lhs)))
 
 (defn- standard-join-condition-rhs
-  "If `condition` is a [[standard-join-condition?]], return the RHS."
+  "If `condition` is a [[standard-join-condition?]], return the RHS.  The RHS expression can be arbitrary and
+  not only a `:field` reference. The frontend will only use columns from [[join-condition-rhs-columns]] here."
   [condition]
   (when (standard-join-condition? condition)
     (let [[_operator _opts _lhs rhs] condition]
       rhs)))
 
 (defn- standard-join-condition-update-rhs
-  "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like
-
-    (apply f rhs args)"
+  "If `condition` is a [[standard-join-condition?]], update the RHS with `f` like `(apply f rhs args)`. Note that the
+  RHS expression can be arbitrary and not only a `:field` reference."
   [condition f & args]
   (if-not (standard-join-condition? condition)
     condition
@@ -105,10 +109,10 @@
   If `old-alias` is specified, uses [[metabase.legacy-mbql.util.match]] to update all the `:field` references using the old
   alias.
 
-  If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with two `:field` refs as
-  args, e.g. the kind you'd get if you were using [[join-condition-operators]] and the like to create them). This
-  currently doesn't handle more complex filter clauses that were created without the 'normal' MLv2 functions used by
-  the frontend; we can add this in the future if we need it."
+  If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with the operator from
+  [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
+  with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
+  were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
   [join      :- lib.join.util/PartialJoin
    old-alias :- [:maybe ::lib.schema.common/non-blank-string]
    new-alias :- [:maybe ::lib.schema.common/non-blank-string]]
