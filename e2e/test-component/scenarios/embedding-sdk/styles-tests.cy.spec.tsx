@@ -467,9 +467,8 @@ describe("scenarios > embedding-sdk > styles", () => {
 
         openVizSettingsSidebar();
 
-        moveDnDKitElement("draggable-item-", {
-          startIndex: 0,
-          dropIndex: 1,
+        moveDnDKitElement(cy.findByTestId("draggable-item-ID"), {
+          vertical: -100,
           onBeforeDragEnd: () => {
             cy.get(".drag-overlay").within(() => {
               cy.findByTestId("draggable-item-ID").should(

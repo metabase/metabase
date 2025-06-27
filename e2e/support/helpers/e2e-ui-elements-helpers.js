@@ -263,59 +263,41 @@ export const moveColumnDown = (column, distance) => {
 };
 
 export const moveDnDKitElement = (
-  dataTestId,
-  { startIndex, dropIndex, onBeforeDragEnd = null } = {},
+  element,
+  { horizontal = 0, vertical = 0, onBeforeDragEnd = null } = {},
 ) => {
-  const selector = new RegExp(dataTestId);
-
-  const getCenter = ($el) => {
-    const { x, y, width, height } = $el.getBoundingClientRect();
-
-    return { clientX: x + width / 2, clientY: y + height / 2 };
-  };
-
-  cy.findAllByTestId(selector)
-    .then(($all) => {
-      const dragEl = $all.get(startIndex);
-      const dropEl = $all.get(dropIndex);
-      const dragPoint = getCenter(dragEl);
-      const dropPoint = getCenter(dropEl);
-
-      return { dragPoint, dropPoint, dragEl };
+  element
+    .as("dnd-kit-element")
+    .trigger("pointerdown", 0, 0, {
+      force: true,
+      isPrimary: true,
+      button: 0,
     })
-    .then(({ dragPoint, dropPoint, dragEl }) => {
-      cy.wrap(dragEl)
-        // press down at the drag start
-        .trigger("pointerdown", {
-          ...dragPoint,
-          force: true,
-          isPrimary: true,
-          button: 0,
-        })
-        .wait(200)
-        // initial small move to surpass activation constraint
-        .trigger("pointermove", {
-          clientX: dragPoint.clientX + 20,
-          clientY: dragPoint.clientY + 20,
-          force: true,
-          isPrimary: true,
-          button: 0,
-        })
-        .wait(200)
-        // move to the drop target
-        .trigger("pointermove", {
-          ...dropPoint,
-          force: true,
-          isPrimary: true,
-          button: 0,
-        })
-        .wait(200)
-        .then(() => {
-          onBeforeDragEnd?.();
-        });
+    .wait(200)
+    // This initial move needs to be greater than the activation constraint
+    // of the pointer sensor
+    .trigger("pointermove", 20, 20, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200)
+    .trigger("pointermove", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
 
-      cy.document().trigger("pointerup").wait(200);
-    });
+  onBeforeDragEnd?.();
+
+  cy.get("@dnd-kit-element")
+    .trigger("pointerup", horizontal, vertical, {
+      force: true,
+      isPrimary: true,
+      button: 0,
+    })
+    .wait(200);
 };
 
 export const moveDnDKitElementByAlias = (

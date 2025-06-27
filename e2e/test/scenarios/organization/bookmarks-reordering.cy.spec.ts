@@ -26,15 +26,9 @@ describe("scenarios > nav > bookmarks", () => {
     );
     H.openNavigationSidebar();
     verifyBookmarksOrder(["Question 3", "Question 2", "Question 1"]);
-    moveBookmark({
-      startIndex: 2,
-      dropIndex: 0,
-    });
+    moveBookmark("Question 1", -100);
     verifyBookmarksOrder(["Question 1", "Question 3", "Question 2"]);
-    moveBookmark({
-      startIndex: 1,
-      dropIndex: 2,
-    });
+    moveBookmark("Question 3", 100);
     verifyBookmarksOrder(["Question 1", "Question 2", "Question 3"]);
   });
 
@@ -51,9 +45,7 @@ describe("scenarios > nav > bookmarks", () => {
     H.openNavigationSidebar();
     const initialOrder = ["Orders, Count", "Orders"];
     verifyBookmarksOrder(initialOrder);
-    moveBookmark({
-      startIndex: 0,
-      dropIndex: 1,
+    moveBookmark("Orders, Count", 100, {
       putAlias: "failedToReorderBookmarks",
     });
     verifyBookmarksOrder(initialOrder);

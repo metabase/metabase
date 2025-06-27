@@ -555,9 +555,8 @@ describe("scenarios > visualizations > line chart", () => {
       cy.log("Drag and drop the first y-axis field to the last position");
       cy.findAllByTestId("chart-setting-select").then((initial) => {
         cy.findByTestId("chart-settings-widget-graph.metrics").within(() => {
-          moveDnDKitElement("drag-handle", {
-            startIndex: 0,
-            dropIndex: 1,
+          moveDnDKitElement(cy.findAllByTestId("drag-handle").first(), {
+            vertical: 50,
           });
         });
 

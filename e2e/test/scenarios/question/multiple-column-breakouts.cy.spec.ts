@@ -625,9 +625,8 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("move a column from rows to columns");
           H.openVizSettingsSidebar();
-          moveDnDKitElement("drag-handle", {
-            startIndex: 2,
-            dropIndex: 3,
+          moveDnDKitElement(cy.findAllByTestId("drag-handle").eq(2), {
+            vertical: 65,
           });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")
@@ -635,9 +634,8 @@ describe("scenarios > question > multiple column breakouts", () => {
             .should("have.length", 2);
 
           cy.log("move a column from columns to rows");
-          moveDnDKitElement("drag-handle", {
-            startIndex: 4,
-            dropIndex: 1,
+          moveDnDKitElement(cy.findAllByTestId("drag-handle").eq(4), {
+            vertical: -200,
           });
           cy.wait("@pivotDataset");
           cy.findByTestId("pivot-table")

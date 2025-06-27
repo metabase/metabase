@@ -6,11 +6,5 @@ interface Props extends Omit<SidebarLinkProps, "left"> {
 }
 
 export function DraggableSidebarLink(props: Props) {
-  return (
-    <StyledSidebarLink
-      {...props}
-      left={<DragIcon name="grabber" />}
-      data-testid="draggable-sidebar-link"
-    />
-  );
+  return <StyledSidebarLink {...props} left={<DragIcon name="grabber" />} />;
 }
