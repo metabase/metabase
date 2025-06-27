@@ -69,11 +69,10 @@ export const clausesForMode = _.memoize(
     return Object.keys(base)
       .map(getClauseDefinition)
       .filter(isNotNull)
-      .filter(function disableOffsetInFilterExpressions(clause) {
+      .filter(function excludeOffsetInFilterExpressions(clause) {
         const isOffset = clause.name === "offset";
         const isFilterExpression = expressionMode === "filter";
-        const isOffsetInFilterExpression = isOffset && isFilterExpression;
-        return !isOffsetInFilterExpression;
+        return !isOffset || !isFilterExpression;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   },
