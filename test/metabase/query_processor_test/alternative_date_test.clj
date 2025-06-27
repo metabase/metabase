@@ -430,7 +430,15 @@
       (metabase.test/dataset yyyymmddhhss-times
         (metabase.test/db)))))
 
-(def drivers-without-binary-coercion-support #{:athena :bigquery-cloud-sdk :clickhouse :databricks :druid :snowflake :sparksql :sqlserver :vertica})
+(def drivers-without-binary-coercion-support #{:athena
+                                               :bigquery-cloud-sdk
+                                               :clickhouse
+                                               :databricks
+                                               :druid
+                                               :snowflake
+                                               :sparksql
+                                               :sqlserver
+                                               :vertica})
 
 ;; we make a fake feature for the tests
 (defmethod driver/database-supports? [::driver/driver ::yyyymmddhhss-binary-timestamps]

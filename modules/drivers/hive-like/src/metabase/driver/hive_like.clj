@@ -228,16 +228,6 @@
   [_driver _coercion-strategy expr]
   [:to_timestamp expr (h2x/literal "yyyyMMddHHmmss")])
 
-(defmethod sql.qp/cast-temporal-byte [:hive-like :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
-  [driver _coercion-strategy expr]
-  (sql.qp/cast-temporal-string driver :Coercion/YYYYMMDDHHMMSSString->Temporal
-                               [:decode expr "UTF-8"]))
-
-(defmethod sql.qp/cast-temporal-byte [:hive-like :Coercion/ISO8601Bytes->Temporal]
-  [driver _coercion-strategy expr]
-  (sql.qp/cast-temporal-string driver :Coercion/ISO8601->DateTime
-                               [:decode expr "UTF-8"]))
-
 (def ^:dynamic *inline-param-style*
   "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
   best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
