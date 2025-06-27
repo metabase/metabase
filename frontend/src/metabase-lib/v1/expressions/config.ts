@@ -331,6 +331,8 @@ const CONVERSION = defineClauses(
           ![
             "iso",
             "simple",
+            "isobytes",
+            "simplebytes",
             "unixmilliseconds",
             "unixseconds",
             "unixmicroseconds",
@@ -344,15 +346,13 @@ const CONVERSION = defineClauses(
         {
           name: t`value`,
           type: "expression",
-          description: t`The string to convert to a datetime.`,
+          description: t`The string or bytes to convert to a datetime.`,
           example: "2025-03-20 12:45:04",
         },
         {
           name: t`mode`,
           type: "string",
-          description: t`the mode.`,
-          example:
-            "one of: simple, iso, unixmilliseconds, unixseconds, unixmicroseconds, unixnanoseconds",
+          description: t`The mode indicating the format. One of: "simple", "iso", "simplebytes", "simpleiso". Default is "iso".`,
           optional: true,
         },
       ],
