@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 
 import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
-import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import { isQuestionCard } from "metabase/dashboard/utils";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
@@ -41,9 +40,7 @@ export const InteractiveDashboard = (props: InteractiveDashboardProps) => {
       {...props}
       getClickActionMode={getClickActionMode}
       dashboardActions={({ downloadsEnabled }) =>
-        downloadsEnabled.pdf
-          ? [...DASHBOARD_DISPLAY_ACTIONS, DASHBOARD_ACTION.DOWNLOAD_PDF]
-          : DASHBOARD_DISPLAY_ACTIONS
+        downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : []
       }
       dashcardMenu={({ dashcard, result }) =>
         props.withDownloads &&
