@@ -21,7 +21,7 @@ const CHANNELS_CONFIG: {
       return t`Set up Slack`;
     },
     icon: "slack",
-    link: "/admin/settings/notifications/slack",
+    link: "/admin/settings/notifications",
   },
   {
     title: "Add a webhook",
