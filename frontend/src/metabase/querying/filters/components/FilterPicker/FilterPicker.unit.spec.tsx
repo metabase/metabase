@@ -390,7 +390,7 @@ describe("FilterPicker", () => {
       );
 
       await userEvent.click(screen.getByText("Total"));
-      await userEvent.click(screen.getByText("Between"));
+      await userEvent.click(screen.getByText("Range"));
       await userEvent.click(screen.getByText("Equal to"));
       const input = screen.getByPlaceholderText("Enter a number");
       await userEvent.type(input, "100");
