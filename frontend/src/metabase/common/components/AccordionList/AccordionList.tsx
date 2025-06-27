@@ -341,12 +341,6 @@ export class AccordionList<
 
       this.toggleSection(cursor.sectionIndex);
     }
-
-    const searchRow = this.getRows().findIndex((row) => row.type === "search");
-
-    if (searchRow >= 0 && this.isVirtualized()) {
-      this.listRef.current?.scrollToRow(searchRow);
-    }
   };
 
   getRows = (): Row<TItem, TSection>[] => {
