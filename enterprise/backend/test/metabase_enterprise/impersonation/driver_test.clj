@@ -20,7 +20,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.sql Connection)))
+   (java.sql Connection)
+   (java.util.concurrent CountDownLatch)))
 
 (deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
@@ -684,14 +685,20 @@
                 (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                   (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
                 (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
-                      futures (doall
-                               (for [_i (range max-pool-size)]
-                                 (future
-                                   (sql-jdbc.execute/do-with-connection-with-options
-                                    driver/*driver* (mt/id) {}
-                                    (fn [^Connection conn]
-                                      (driver/set-role! driver/*driver* conn role-a))))))]
-                  (doseq [f futures] @f)
+                      ^CountDownLatch start-latch (java.util.concurrent.CountDownLatch. max-pool-size)
+                      ^CountDownLatch finish-latch (java.util.concurrent.CountDownLatch. max-pool-size)]
+                  (doseq [_i (range max-pool-size)]
+                    (future
+                      (try
+                        (.countDown ^CountDownLatch start-latch)
+                        (.await ^CountDownLatch start-latch)
+                        (sql-jdbc.execute/do-with-connection-with-options
+                         driver/*driver* (mt/id) {}
+                         (fn [^Connection conn]
+                           (driver/set-role! driver/*driver* conn role-a)))
+                        (finally
+                          (.countDown ^CountDownLatch finish-latch)))))
+                  (.await ^CountDownLatch finish-latch)
                   (is (= [[1000]]
                          (sql-jdbc.execute/do-with-connection-with-options
                           driver/*driver* (mt/id) {}
@@ -704,7 +711,8 @@
                            (mt/formatted-rows [int]
                                               (mt/run-mbql-query venues
                                                 {:aggregation [[:count]]}))))
-                    (is (thrown?
+                    (is (thrown-with-msg?
                          java.lang.Exception
+                         #"ERROR"
                          (mt/run-mbql-query checkins
                            {:aggregation [[:count]]})))))))))))))
