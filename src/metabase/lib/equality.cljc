@@ -461,13 +461,20 @@
                          ::match-type.same-stage
                          ;; same stage match, use SOURCE COLUMN ALIAS!!!! IF YOU ARE NOT CLEAR ON WHY, TALK
                          ;; TO YOUR BOY CAM!!!!
-                         (let [col-join-alias      (lib.join.util/current-join-alias column)
-                               source-column-alias ((some-fn :lib/source-column-alias :name) column)]
-                           (filter (fn [a-ref]
-                                     (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
-                                          (some #(clojure.core/= (ref-id-or-name a-ref) %)
-                                                [(:id column) source-column-alias])))
-                                   refs))
+                         (let [matches (let [col-join-alias      (lib.join.util/current-join-alias column)
+                                             source-column-alias ((some-fn :lib/source-column-alias :name) column)]
+                                         (filter (fn [a-ref]
+                                                   (and (clojure.core/= (:join-alias (lib.options/options a-ref)) col-join-alias)
+                                                        (some #(clojure.core/= (ref-id-or-name a-ref) %)
+                                                              [(:id column) source-column-alias])))
+                                                 refs))]
+                           ;; if we fail to match with join alias then try to match by `:source-field`/`:fk-field-id`
+                           (if (= (count matches) 1)
+                             matches
+                             (when-let [fk-field-id (:fk-field-id column)]
+                               (filter (fn [a-ref]
+                                         (= (:source-field (lib.options/options a-ref)) fk-field-id))
+                                       refs))))
                          ;; otherwise they're not the same stage, maybe the column is from an earlier stage
                          ;; or maybe the refs are. WHO KNOWS!!!
                          ::match-type.unknown

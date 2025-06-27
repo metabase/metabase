@@ -1024,3 +1024,24 @@
                55603]]]
     (is (= (first refs)
            (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
+
+(deftest ^:parallel match-by-source-field-test
+  (let [col  {:base-type                :type/BigInteger
+              :display-name             "ID"
+              :effective-type           :type/BigInteger
+              :fk-field-id              35
+              :fk-field-name            "USER_ID"
+              :fk-target-field-id       nil
+              :has-field-values         :none
+              :id                       24
+              :lib/deduplicated-name    "ID"
+              :lib/desired-column-alias "PEOPLE__via__USER_ID__ID"
+              :lib/original-name        "ID"
+              :lib/source               :source/implicitly-joinable
+              :lib/source-column-alias  "ID"
+              :lib/type                 :metadata/column
+              :name                     "ID"}
+        refs [[:field {:base-type :type/BigInteger, :lib/uuid "b10907ef-d71b-4ddc-b3b9-ff0fda706b6d"} "ID"]
+              [:field {:base-type :type/BigInteger, :source-field 35, :source-field-name "USER_ID", :lib/uuid "1cb6708d-754d-48b9-b44f-660a7c91561d", :effective-type :type/BigInteger} 24]]]
+    (is (= (second refs)
+           (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
