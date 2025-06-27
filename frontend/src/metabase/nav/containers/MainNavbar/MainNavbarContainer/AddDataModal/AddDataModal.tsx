@@ -24,7 +24,7 @@ interface AddDataModalProps {
 export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
   const { data: databaseResponse } = useListDatabasesQuery();
 
-  const [activeTab, setActiveTab] = useState<string | null>("db");
+  const [activeTab, setActiveTab] = useState<string | null>("csv");
 
   const isHosted = useSetting("is-hosted?");
 
@@ -78,11 +78,11 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
               <Modal.Title fz="lg">{t`Add data`}</Modal.Title>
             </Box>
             <Tabs.List px="md" pb="lg">
-              <Tabs.Tab value="db" leftSection={<Icon name="database" />}>
-                {t`Database`}
-              </Tabs.Tab>
               <Tabs.Tab value="csv" leftSection={<Icon name="table2" />}>
                 {t`CSV`}
+              </Tabs.Tab>
+              <Tabs.Tab value="db" leftSection={<Icon name="database" />}>
+                {t`Database`}
               </Tabs.Tab>
               {isHosted && (
                 <Tabs.Tab
@@ -101,9 +101,6 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
               showManageImports={activeTab === "gsheets" && isAdmin}
               onAddDataModalClose={onClose}
             />
-            <Tabs.Panel value="db" className={S.panel}>
-              <DatabasesPanel canSeeContent={isAdmin} />
-            </Tabs.Panel>
             <Tabs.Panel value="csv" className={S.panel}>
               <CSVPanel
                 onCloseAddDataModal={onClose}
@@ -111,6 +108,9 @@ export const AddDataModal = ({ opened, onClose }: AddDataModalProps) => {
                 canUpload={canUploadToDatabase}
                 canManageUploads={canManageUploads}
               />
+            </Tabs.Panel>
+            <Tabs.Panel value="db" className={S.panel}>
+              <DatabasesPanel canSeeContent={isAdmin} />
             </Tabs.Panel>
             <Tabs.Panel value="gsheets" className={S.panel}>
               <PLUGIN_UPLOAD_MANAGEMENT.GdriveAddDataPanel />
