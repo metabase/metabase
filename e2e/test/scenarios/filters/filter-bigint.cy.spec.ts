@@ -181,9 +181,9 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         filteredRowCount: 3,
       });
 
-      cy.log("between operator - min value");
+      cy.log("range operator - min value");
       testFilter({
-        filterOperator: "Between",
+        filterOperator: "Range",
         setFilterValue: () => {
           cy.findByPlaceholderText("Start of range").type(minValue);
           cy.findByPlaceholderText("End of range").type("0");
@@ -192,9 +192,9 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         filteredRowCount: 2,
       });
 
-      cy.log("between operator - max value");
+      cy.log("range operator - max value");
       testFilter({
-        filterOperator: "Between",
+        filterOperator: "Range",
         setFilterValue: () => {
           cy.findByPlaceholderText("Start of range").type("0");
           cy.findByPlaceholderText("End of range").type(maxValue);
@@ -203,9 +203,9 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
         filteredRowCount: 2,
       });
 
-      cy.log("between operator - min and max values");
+      cy.log("range operator - min and max values");
       testFilter({
-        filterOperator: "Between",
+        filterOperator: "Range",
         setFilterValue: () => {
           cy.findByPlaceholderText("Start of range").type(minValue);
           cy.findByPlaceholderText("End of range").type(maxValue);

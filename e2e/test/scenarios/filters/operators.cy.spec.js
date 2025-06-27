@@ -29,7 +29,7 @@ describe("operators in questions", () => {
         "Not equal to",
         "Greater than",
         "Less than",
-        "Between",
+        "Range",
         "Greater than or equal to",
         "Less than or equal to",
         "Is empty",
@@ -86,7 +86,7 @@ describe("operators in questions", () => {
 
       H.popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByText("Between").click();
+        cy.findByText("Range").click();
       });
 
       cy.findByRole("menu").within(() => {
