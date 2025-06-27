@@ -722,10 +722,36 @@ function(bin) {
                 rvalue]}
       :day)))
 
-(defmethod ->rvalue :datetime [[_ expr]]
+(defmethod ->rvalue :datetime [[_ expr mode]]
   (let [rvalue (->rvalue expr)]
-    {"$dateFromString" {:dateString rvalue
-                        :onError    rvalue}}))
+    (case (or mode :iso)
+      :iso
+      {"$dateFromString" {:dateString rvalue
+                          :onError    rvalue}}
+
+      :simple
+      {"$dateFromString" {:dateString rvalue
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :simplebytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    rvalue}}
+
+      :isobytes
+      {"$dateFromString" {:dateString {"$function"
+                                       {:body base64-decoder
+                                        :args [rvalue]
+                                        :lang "js"}}
+                          :onError    rvalue}}
+
+      ;; else
+      (throw (ex-info (tru "Driver {0} does not support {1}" :mongo mode)
+                      {:type driver-api/qp.error-type.unsupported-feature})))))
 
 (defmethod ->rvalue :datetime-add [[_ inp amount unit]]
   (check-date-operations-supported)
