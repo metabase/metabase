@@ -63,20 +63,26 @@ export const useMetabotAgent = () => {
   );
 
   const submitInput = useCallback(
-    async (prompt: string, metabotId?: string) => {
+    async (
+      prompt: string,
+      options?: { metabotId?: string; onSubmitted?: () => void },
+    ) => {
       if (!visible) {
         setVisible(true);
       }
 
       const context = await getChatContext();
-      const action = await dispatch(
+      const promise = dispatch(
         submitInputAction({
           message: prompt,
           context,
-          metabot_id: metabotId,
+          metabot_id: options?.metabotId,
         }),
       );
 
+      options?.onSubmitted?.();
+
+      const action = await promise;
       if (isFulfilled(action)) {
         prepareRetryIfUnsuccesful(action.payload);
       }
@@ -108,7 +114,7 @@ export const useMetabotAgent = () => {
       await resetConversation();
       setVisible(true);
       if (message) {
-        submitInput(message, metabotId);
+        submitInput(message, { metabotId });
       }
       promptInputRef?.current?.focus();
     },

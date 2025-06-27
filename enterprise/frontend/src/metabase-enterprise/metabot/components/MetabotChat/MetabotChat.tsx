@@ -1,3 +1,4 @@
+import _ from "underscore";
 import cx from "classnames";
 import { useMemo } from "react";
 import { c, jt, t } from "ttag";
@@ -28,7 +29,7 @@ import { useScrollManager } from "./hooks";
 export const MetabotChat = () => {
   const metabot = useMetabotAgent();
 
-  const { headerRef, messagesRef, messagesHeight, scrollToLatestUserMessage } =
+  const { headerRef, messagesRef, fillerHeight, scrollToLatestUserMessage } =
     useScrollManager();
 
   const hasMessages =
@@ -54,8 +55,9 @@ export const MetabotChat = () => {
     }
     metabot.setPrompt("");
     metabot.promptInputRef?.current?.focus();
-    metabot.submitInput(trimmedInput).catch((err) => console.error(err));
-    scrollToLatestUserMessage();
+    metabot
+      .submitInput(trimmedInput, { onSubmitted: scrollToLatestUserMessage })
+      .catch((err) => console.error(err));
   };
 
   const handleRetryMessage = (messageId: string) => {
@@ -192,11 +194,18 @@ export const MetabotChat = () => {
               {metabot.isDoingScience && (
                 <MetabotThinking
                   toolCalls={metabot.useStreaming ? metabot.toolCalls : []}
+                  hideLoader={
+                    metabot.useStreaming &&
+                    _.last(metabot.messages)?.role === "agent"
+                  }
                 />
               )}
 
               {/* filler */}
-              <div style={{ height: messagesHeight }} />
+              <div
+                id="metabot-message-filler"
+                style={{ height: fillerHeight }}
+              />
 
               {/* long convo warning */}
               {metabot.isLongConversation && (

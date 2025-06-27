@@ -1,4 +1,4 @@
-import { RefObject, useCallback, useRef } from "react";
+import { RefObject, useCallback, useRef, useState } from "react";
 import { useMount } from "react-use";
 import _ from "underscore";
 
@@ -11,15 +11,37 @@ const getHeaderHeight = (headerRef: RefObject<HTMLDivElement>) => {
   return headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
 };
 
-const getPromptOffsetTop = (el: HTMLDivElement) => {
-  const userMessages = el.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
+const getPromptOffsetTop = (containerEl: HTMLDivElement) => {
+  const userMessages =
+    containerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
   const lastMessage = _.last(userMessages);
   return lastMessage?.offsetTop ?? 0;
+};
+
+const getPromptAndFollowUpNodesHeight = (containerEl: HTMLDivElement) => {
+  const userMessages =
+    containerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
+  const lastMessage = _.last(userMessages);
+
+  const nodes = [...containerEl.children[0].children];
+  const afterPromptNodesStart = nodes.findLastIndex(
+    (node) => node !== lastMessage,
+  );
+  const afterPromptNodes = nodes.slice(afterPromptNodesStart);
+  const afterPromptNodesHeight = afterPromptNodes.reduce((sum, node) => {
+    if (node.getAttribute("id") === "metabot-message-filler") {
+      return sum;
+    }
+    return node.clientHeight + sum;
+  }, 0);
+
+  return (lastMessage?.clientHeight ?? 0) + afterPromptNodesHeight;
 };
 
 export function useScrollManager() {
   const headerRef = useRef<HTMLDivElement>(null);
   const messagesEl = useElementSize<HTMLDivElement>();
+  const [fillerHeight, setFillerHeight] = useState(0);
 
   // scroll on mount - useful if there's existing conversation
   // history when the user opens the metabot sidebar
@@ -33,17 +55,18 @@ export function useScrollManager() {
   const scrollToLatestUserMessage = useCallback(() => {
     const scrollContainer = messagesEl.ref.current;
     if (scrollContainer) {
-      // TODO: remove and pass the scrollToLatestUserMessage
-      // fn as a callback to submitInput
-
       setTimeout(() => {
-        const promptOffsetTop = getPromptOffsetTop(scrollContainer);
-        const headerHeight = getHeaderHeight(headerRef);
+        const num = getPromptAndFollowUpNodesHeight(scrollContainer);
+        const fillerHeight = messagesEl.height - num;
+        console.log({ messageHeight: messagesEl.height, num, fillerHeight });
+        setFillerHeight(fillerHeight);
 
-        scrollContainer.scrollTo({
-          top: promptOffsetTop - headerHeight,
-          behavior: "smooth",
-        });
+        setTimeout(() => {
+          const promptOffsetTop = getPromptOffsetTop(scrollContainer);
+          const headerHeight = getHeaderHeight(headerRef);
+          const top = promptOffsetTop - headerHeight;
+          scrollContainer.scrollTo({ top, behavior: "smooth" });
+        }, 100);
       }, 100);
     }
   }, []);
@@ -51,31 +74,7 @@ export function useScrollManager() {
   return {
     headerRef,
     messagesRef: messagesEl.ref,
-    messagesHeight: messagesEl.height,
+    fillerHeight,
     scrollToLatestUserMessage,
   };
 }
-
-// // TODO: need to do a check for has scrolled for message id
-// // that way we only do it once if the last message is the currently scrolled to item
-
-// // auto-scroll to the latest user submitted message when
-// // - user submits a message
-// // - metabot responds for the first time (it can add multiple messages, we only care about the first)
-// const isLastMessageUser = lastMessage?.role === "user";
-
-// const shouldAutoScroll = isLastMessageUser;
-
-// if (shouldAutoScroll) {
-//   const userMessages =
-//     scrollContainerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
-//   const lastUserMessage = _.last(userMessages);
-
-//   const distanceFromTop = lastUserMessage?.offsetTop ?? 0;
-//   const headerHeight =
-//     headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
-
-//   scrollContainerEl.scrollTo({
-//     top: distanceFromTop - headerHeight,
-//     behavior: "smooth",
-//   });

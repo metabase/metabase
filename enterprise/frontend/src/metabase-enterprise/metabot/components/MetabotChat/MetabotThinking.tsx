@@ -48,18 +48,22 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
 
 export const MetabotThinking = ({
   toolCalls,
+  hideLoader = false,
 }: {
   toolCalls: MetabotToolCall[];
+  hideLoader: boolean;
 }) => {
   return (
     <Stack gap="xs">
       <ThoughtProcess toolCalls={toolCalls} />
-      <Loader
-        color="brand"
-        type="dots"
-        size="lg"
-        data-testid="metabot-response-loader"
-      />
+      {!hideLoader && (
+        <Loader
+          color="brand"
+          type="dots"
+          size="lg"
+          data-testid="metabot-response-loader"
+        />
+      )}
     </Stack>
   );
 };
