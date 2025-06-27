@@ -3,8 +3,8 @@ import _ from "underscore";
 import * as Pivot from "cljs/metabase.pivot.js";
 import { formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import * as Lib from "metabase-lib";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
-
 export function isPivotGroupColumn(col) {
   return col.name === "pivot-grouping";
 }
@@ -12,19 +12,44 @@ export function isPivotGroupColumn(col) {
 export const COLUMN_FORMATTING_SETTING = "table.column_formatting";
 export const COLLAPSED_ROWS_SETTING = "pivot_table.collapsed_rows";
 export const COLUMN_SPLIT_SETTING = "pivot_table.column_split";
+export const NATIVE_COLUMN_SPLIT_SETTING = "pivot_table.native_column_split";
 export const COLUMN_SHOW_TOTALS = "pivot_table.column_show_totals";
 export const COLUMN_SORT_ORDER = "pivot_table.column_sort_order";
 export const COLUMN_SORT_ORDER_ASC = "ascending";
 export const COLUMN_SORT_ORDER_DESC = "descending";
 
 export function multiLevelPivot(data, settings) {
-  if (!settings[COLUMN_SPLIT_SETTING]) {
+  if (
+    !(settings[COLUMN_SPLIT_SETTING] || settings[NATIVE_COLUMN_SPLIT_SETTING])
+  ) {
     return null;
   }
-  const columnSplit = migratePivotColumnSplitSetting(
-    settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
-    data.cols,
-  );
+
+  let columnSplit;
+  // TODO: refactor to unify with frontend/src/metabase/visualizations/components/settings/ChartSettingNativeFieldsPartition.tsx
+  if (settings[NATIVE_COLUMN_SPLIT_SETTING]) {
+    const flatEntries = [
+      ...settings[NATIVE_COLUMN_SPLIT_SETTING].values,
+      ...settings[NATIVE_COLUMN_SPLIT_SETTING].rows,
+      ...settings[NATIVE_COLUMN_SPLIT_SETTING].columns,
+    ];
+    const flatColumnNames = Lib.uniqueNames(flatEntries.map((c) => c.name));
+    columnSplit = _.mapObject(
+      settings[NATIVE_COLUMN_SPLIT_SETTING],
+      (entry) => {
+        const deduplicatedColumnNames = entry.map((col) => {
+          const entryIndex = flatEntries.indexOf(col);
+          return flatColumnNames[entryIndex];
+        });
+        return deduplicatedColumnNames;
+      },
+    );
+  } else {
+    columnSplit = migratePivotColumnSplitSetting(
+      settings[COLUMN_SPLIT_SETTING] ?? { rows: [], columns: [], values: [] },
+      data.cols,
+    );
+  }
 
   const columns = Pivot.columns_without_pivot_group(data.cols);
 

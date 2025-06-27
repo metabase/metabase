@@ -143,9 +143,9 @@
       (finish! [_ _]
         (when (and (contains? @pivot-data :data) enable-pivoted-exports?)
           (let [{:keys [data settings timezone format-rows? pivot-export-options]} @pivot-data
-                {:keys [pivot-rows pivot-cols pivot-measures]} pivot-export-options
                 columns (pivot/columns-without-pivot-group (:cols data))
-                formatters (make-formatters columns pivot-rows pivot-cols pivot-measures settings timezone format-rows?)
+                {:keys [row-indexes col-indexes val-indexes]} (qp.pivot.postprocess/build-indexes columns pivot-export-options)
+                formatters (make-formatters columns row-indexes col-indexes val-indexes settings timezone format-rows?)
                 output (qp.pivot.postprocess/build-pivot-output
                         (update-in @pivot-data [:data :rows] persistent!)
                         formatters)]

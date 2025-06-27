@@ -909,6 +909,16 @@
   [agg-operators agg-clause]
   (to-array (lib.core/selected-aggregation-operators (seq agg-operators) agg-clause)))
 
+(defn ^:export filter-pivot-aggregation-operators
+  "Given a list of `agg-operators` from [[available-aggregation-operators]],
+  goes through the operators filters any that are not supported for ad-hoc
+  pivot tables built from viz settings.
+  Specifically, this removes the cumulative sum/count operators which cause
+  confusing results for pivot table totals & subtotals.
+  > **Code health:** Healthy"
+  [agg-operators]
+  (to-array (lib.core/filter-pivot-aggregation-operators (seq agg-operators))))
+
 ;; # Filtering
 ;; Filters work in a similar way to aggregations and order-by, but are more complex since they can have several
 ;; parameters, which can be columns, several types of literal value, etc.
@@ -2580,3 +2590,17 @@
   > **Code health:** Healthy, Single use. Only called when creating a new card/query."
   []
   (lib.core/random-ident))
+
+(defn ^:export wrap-adhoc-native-query
+  "Wraps an unsaved native query in an MBQL query, given its result metadata."
+  [a-query the-metadata]
+  (let [cljs-metadata (into [] (map #(legacy-column->metadata a-query -1 %) the-metadata))]
+    (lib.stage/wrap-adhoc-native-query a-query cljs-metadata)))
+
+(defn ^:export unique-names
+  "Takes a sequence of string identifiers and passes it through `lib.util/unique-name-generator`
+  to ensure there are no duplicates, using the same method used to deduplicate column names
+  (adding suffixes like _2, _3, etc)."
+  [names]
+  (let [unique-name-generator (lib.util/unique-name-generator)]
+    (to-array (map display-info->js (map unique-name-generator names)))))
