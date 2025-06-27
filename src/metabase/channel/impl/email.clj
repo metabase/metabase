@@ -269,8 +269,8 @@
                                                     :filters            (some-> (seq parameters)
                                                                                 (impl.util/remove-inline-parameters dashboard_parts)
                                                                                 (impl.util/render-filters))})
-                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))]
-    (construct-emails template message-context-fn attachments recipients)))
+                                  (m/update-existing-in [:payload :dashboard :description] #(markdown/process-markdown % :html))))
+        (construct-emails template message-context-fn attachments recipients)]))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         System Events                                           ;;
