@@ -11,14 +11,6 @@ You can use a single Metabase to manage permissions for all of your customers. W
 - [One database per customer](#one-database-per-customer-single-tenant-setups)
 - [One schema per customer](#multiple-schemas-one-schema-per-customer)
 
-## Block the All users group
-
-Before you apply more specific permissions, you'll want to make sure that no one can see any data. Since everyone's automatically in the All Users group, you'll want to block this group from seeing any data.
-
-In the **Admin settings** > **Permissions** > **Data**, block the All Users group's access to the database.
-
-From there, you can selectively grant privileges to different groups.
-
 ## One database for all customers (commingled setups)
 
 If all your customer data is in the same schema and on the same tables (often referred to as "data commingling"):
