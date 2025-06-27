@@ -137,14 +137,14 @@ Say you have a single database with ten different tables, each corresponding to 
 
 If you need native SQL queries:
 
-1. Create a database-level user account for your first customer (in your database, not in Metabase). This db user should only have access to their specific tables or schema. For Postgres for example, you could add a user via psql and only grant them permissions to their tables.
+1. **Create a database-level user account** for your first customer (in your database, not in Metabase). This db user should only have access to their specific tables or schema. For Postgres for example, you could add a user via psql and only grant them permissions to their tables.
 
-2. In Metabase, [add a connection to your database](../databases/connecting.md) using the database user account you just created.
+2. **Connect Metabase to your database** using the database user account you just created. See [databases](../databases/connecting.md).
 
-3. Create a new [group](../people-and-groups/managing.md#groups) in Metabase and grant it access to the new database connection. Since the database user role controls what's visible, you can grant the group **Can view** access to the database and **Query builder and native** access.
+3. **Create a new group** in Metabase and grant it access to the new database connection. Since the database user role controls what's visible, you can grant the group **Can view** access to the database and **Query builder and native** access. See [groups](../people-and-groups/managing.md#groups).
 
    Group members will see all tables that the database user can access. To hide tables later, you'll need to change permissions in the database itself, not Metabase.
 
-4. Invite your first user and add them to the appropriate group. If you're using [SSO](../people-and-groups/google-sign-in.md), you can skip this step.
+4. **Invite your first user** and add them to the appropriate group. If you're using [SSO](../people-and-groups/google-sign-in.md), you can skip this step.
 
-5. Repeat steps 1–4 for each customer. You'll end up with as many database connections as customers.
+5. **Repeat the process** for each customer by following steps 1-4. You'll end up with as many database connections as customers.
