@@ -8,7 +8,7 @@ describe("getDataLabel", () => {
   const mockXScale = scaleLinear().domain([0, 100]).range([0, 500]);
   const seriesKey = "test-series";
 
-  const createBarData = (overrides: Partial<BarData<any>> = {}): BarData<any> =>
+  const createBarData = <T>(overrides: Partial<BarData<T>> = {}): BarData<T> =>
     ({
       xStartValue: 10,
       xEndValue: 50,
