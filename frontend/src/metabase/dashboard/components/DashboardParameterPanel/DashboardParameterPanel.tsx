@@ -22,13 +22,8 @@ import S from "./DashboardParameterPanel.module.css";
 export function DashboardParameterPanel() {
   const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
 
-  const {
-    isFullscreen,
-    dashboard,
-    hideParameters,
-    isEditing,
-    shouldRenderAsNightMode,
-  } = useDashboardContext();
+  const { dashboard, hideParameters, isEditing, shouldRenderAsNightMode } =
+    useDashboardContext();
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
   const hasVisibleParameters = visibleParameters.length > 0;
@@ -67,10 +62,7 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <DashboardParameterList
-              parameters={parameters}
-              isFullscreen={isFullscreen}
-            />
+            <DashboardParameterList parameters={parameters} />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -95,10 +87,7 @@ export function DashboardParameterPanel() {
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <DashboardParameterList
-            parameters={parameters}
-            isFullscreen={isFullscreen}
-          />
+          <DashboardParameterList parameters={parameters} />
 
           <FilterApplyButton />
         </FixedWidthContainer>
