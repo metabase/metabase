@@ -15,6 +15,8 @@ import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
+import { TenantAndAttributesSection } from "../components/TenantAndAttributesSection";
+
 const localUserSchema = Yup.object({
   first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
   last_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
@@ -66,8 +68,11 @@ export const UserForm = ({
             required
             mb="md"
           />
-          <FormGroupsWidget name="user_group_memberships" />
-          <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes />
+                    <FormGroupsWidget name="user_group_memberships" />
+          {/* <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes /> */}
+
+          <TenantAndAttributesSection />
+
           <FormFooter>
             <FormErrorMessage inline />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
