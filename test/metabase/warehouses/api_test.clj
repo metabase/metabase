@@ -109,7 +109,8 @@
     (select-keys
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
-      :position]))))
+      :position
+      :database_is_pk]))))
 
 (defn- card-with-native-query [card-name & {:as kvs}]
   (merge
@@ -643,17 +644,17 @@
                                      :initial_sync_status "complete"
                                      :fields              [(merge
                                                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
-                                                            {:table_id          (mt/id :categories)
-                                                             :semantic_type     "type/PK"
-                                                             :name              "ID"
-                                                             :display_name      "ID"
-                                                             :database_type     "BIGINT"
-                                                             :base_type         "type/BigInteger"
-                                                             :effective_type    "type/BigInteger"
-                                                             :visibility_type   "normal"
-                                                             :has_field_values  "none"
-                                                             :database_position 0
-                                                             :database_required false
+                                                            {:table_id                   (mt/id :categories)
+                                                             :semantic_type              "type/PK"
+                                                             :name                       "ID"
+                                                             :display_name               "ID"
+                                                             :database_type              "BIGINT"
+                                                             :base_type                  "type/BigInteger"
+                                                             :effective_type             "type/BigInteger"
+                                                             :visibility_type            "normal"
+                                                             :has_field_values           "none"
+                                                             :database_position          0
+                                                             :database_required          false
                                                              ;; Index sync is turned off across the application as it is not used ATM.
                                                              #_#_:database_indexed  true
                                                              :database_is_auto_increment true})

@@ -4,6 +4,7 @@ const PREFIX = `/account/notifications`;
 
 const TYPE_MAP = {
   "question-notification": "alert",
+  "table-notification": "alert",
   pulse: "pulse",
 };
 

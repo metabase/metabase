@@ -401,9 +401,10 @@
   clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
   instaparse.core/defparser                                                             clojure.core/def
+  metabase-enterprise.data-editing.test-util/with-test-tables!                          clojure.core/let
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
+  metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -462,6 +463,9 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
+  metabase.upload-test/with-upload-table!                                               clojure.core/let
+  metabase.util/for-map                                                                 clojure.core/for
+  metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn
@@ -471,7 +475,6 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.util.malli/defn-                                                             schema.core/defn
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
-  metabase.util/with-timer-ms                                                           clojure.core/fn
   metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
   metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
   metabuild-common.files/with-open-jar-file-system                                      clojure.core/let

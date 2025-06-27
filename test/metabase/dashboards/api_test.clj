@@ -1804,6 +1804,101 @@
                                                              {:dashcards [new-dashcard-info]
                                                               :tabs      []}))}))))))
 
+(deftest e2e-create-editable-table-card
+  (testing "PUT /api/dashboard/:id with a placeholder for an editable table.\n"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Dashboard               {dashboard-id :id}  {}]
+        (let [table-id (mt/id :venues)
+              dash-map {:tabs      [{:id   -1
+                                     :name "New tab"}]
+                        :dashcards [{:id                     -1
+                                     :size_x                 1
+                                     :size_y                 1
+                                     :col                    3
+                                     :row                    3
+                                     :dashboard_tab_id       -1
+                                     :visualization_settings {:table_id table-id}}]}
+              url      (format "dashboard/%d" dashboard-id)
+              resp     (mt/user-http-request :rasta :put 200 url dash-map)
+              card-id  (:card_id (first (:dashcards resp)))]
+          (testing "the dashcard gets turned into something richer, that supports filtering."
+            (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
+                      :size_x                 1
+                      :size_y                 1
+                      :col                    3
+                      :row                    3
+                      :card_id                int?
+                      :visualization_settings {:table_id table-id}}]
+                    (:dashcards resp))))
+          (testing "a clear name"
+            (is (= "Venues (editable)" (:name (t2/select-one :model/Card card-id)))))
+          (testing "if we save the dashboard again, we keep using the same card, and preserve its settings"
+            (t2/update! :model/Card card-id {:visualization_settings {:editable? true, :other_settings 42}})
+            (let [new-resp (mt/user-http-request :rasta :put 200 url (assoc-in dash-map [:dashcards 0 :card_id] card-id))]
+              (is (= card-id (:card_id (first (:dashcards new-resp))))))
+            (is (= 42 (:other_settings (:visualization_settings (t2/select-one :model/Card card-id))))))
+          (testing "if we the change which table we want to edit, we create a new card"
+            (let [new-resp (mt/user-http-request :rasta :put 200 url
+                                                 (update-in dash-map [:dashcards 0] assoc
+                                                            :card_id card-id
+                                                            :visualization_settings {:table_id (mt/id :products)}))]
+              (is (not= card-id (:card_id (first (:dashcards new-resp))))))))))))
+
+(deftest e2e-create-editable-table-with-filter-card
+  (testing "PUT /api/dashboard/:id with a placeholder for an editable table, that includes a filter.\n"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temp
+        [:model/Dashboard               {dashboard-id :id}  {}]
+        (let [table-id (mt/id :venues)
+              dash-map {:tabs      [{:id   -1
+                                     :name "New tab"}]
+                        :dashcards [{:id                     -1
+                                     :size_x                 1
+                                     :size_y                 1
+                                     :col                    3
+                                     :row                    3
+                                     :dashboard_tab_id       -1
+                                     :visualization_settings {:table_id              table-id
+                                                              :initial_dataset_query
+                                                              {:query {:source-table table-id
+                                                                       :limit       [:= [:field (mt/id :venues :id) nil] 1]}}}}]}
+              url      (format "dashboard/%d" dashboard-id)
+              resp     (mt/user-http-request :rasta :put 200 url dash-map)
+              card-id  (:card_id (first (:dashcards resp)))]
+          (testing "the dashcard gets turned into something richer, that supports filtering."
+            (is (=? [{:id                     (mt/malli=? [:fn pos-int?])
+                      :size_x                 1
+                      :size_y                 1
+                      :col                    3
+                      :row                    3
+                      :card_id                int?
+                      :visualization_settings {:table_id table-id}}]
+                    (:dashcards resp))))
+          (testing "the initial query is correct"
+            (is (= {:type     :query
+                    :database (mt/id)
+                    :query    {:source-table (mt/id :venues),
+                               :limit        [:= [:field (mt/id :venues :id) nil] 1]}}
+                   (t2/select-one-fn :dataset_query :model/Card (:card_id (first (:dashcards resp)))))))
+          (testing "the dataset query setting is stripped"
+            (is (not (contains? (:visualization_settings (first (:dashcards resp))) :initial_dataset_query))))
+          (testing "the setting is ignored for existing editables"
+            (let [new-resp    (mt/user-http-request :rasta :put 200 url
+                                                    (update-in dash-map [:dashcards 0] assoc
+                                                               :card_id card-id
+                                                               :visualization_settings {:table_id (mt/id :venues)
+                                                                                        :initial_dataset_query
+                                                                                        {:source-table (mt/id :venues)
+                                                                                         :filter       [:= 0 1]}}))
+                  new-card-id (:card_id (first (:dashcards new-resp)))]
+              (is (= card-id new-card-id))
+              (is (= {:type     :query
+                      :database (mt/id)
+                      :query    {:source-table (mt/id :venues),
+                                 :limit        [:= [:field (mt/id :venues :id) nil] 1]}}
+                     (t2/select-one-fn :dataset_query :model/Card new-card-id))))))))))
+
 (deftest e2e-update-dashboard-cards-and-tabs-test
   (testing "PUT /api/dashboard/:id with updating dashboard and create/update/delete of dashcards and tabs in a single req"
     (mt/test-helpers-set-global-values!
@@ -3851,6 +3946,8 @@
                      (mt/user-http-request :crowberto :post 400 execute-path
                                            {:parameters {"id" "BAD"}})))))))))))
 
+;; Mirrored in test for unified API in metabase-enterprise.data-editing.api-test.
+;; When we deprecate that API, we should move all the sibling tests there as well.
 (deftest dashcard-implicit-action-execution-insert-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled
@@ -3889,7 +3986,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to update"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1 "name" "Birds"}}))))
               (testing "Extra parameter should fail gracefully"
@@ -3916,7 +4013,7 @@
                                                                  :action_id action-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
               (testing "Should be able to delete"
-                (is (= {:rows-deleted [1]}
+                (is (= {:rows-deleted 1}
                        (mt/user-http-request :crowberto :post 200 execute-path
                                              {:parameters {"id" 1}}))))
               (testing "Extra parameter should fail gracefully"
@@ -4135,7 +4232,7 @@
                 (let [values (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1}))]
                   (is (= {:id 1 :name "Red Medicine"} values))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
@@ -4165,7 +4262,7 @@
                 (is (= {:id 1 :name "Red Medicine"} ; price is hidden
                        (mt/user-http-request :crowberto :get 200 execute-path :parameters (json/encode {:id 1})))))
               (testing "Update should only allow name"
-                (is (= {:rows-updated [1]}
+                (is (= {:rows-updated 1}
                        (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))

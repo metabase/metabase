@@ -124,6 +124,7 @@ export const createMockTokenFeatures = (
   upload_management: false,
   serialization: false,
   cache_preemptive: false,
+  table_data_editing: false,
   metabot_v3: false,
   ai_entity_analysis: false,
   ai_sql_fixer: false,

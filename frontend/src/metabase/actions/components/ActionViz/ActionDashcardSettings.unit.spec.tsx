@@ -1,33 +1,21 @@
 import userEvent from "@testing-library/user-event";
 import type * as React from "react";
 
-import {
-  setupActionsEndpoints,
-  setupCardsEndpoints,
-  setupSearchEndpoints,
-} from "__support__/server-mocks";
-import {
-  renderWithProviders,
-  screen,
-  waitFor,
-  waitForLoaderToBeRemoved,
-  within,
-} from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { Modal } from "metabase/ui";
 import type { WritebackParameter } from "metabase-types/api";
 import {
   createMockActionDashboardCard,
   createMockActionParameter,
   createMockCard,
-  createMockCollectionItem,
   createMockDashboard,
   createMockDashboardCard,
   createMockFieldSettings,
-  createMockImplicitCUDActions,
   createMockParameter,
   createMockQueryAction,
 } from "metabase-types/api/mocks";
 
-import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";
+import { ActionDashcardSettings } from "./ActionDashcardSettings";
 
 const dashboardParameter = createMockParameter({
   id: "dash-param-id",
@@ -65,13 +53,12 @@ const actions2 = [
   }),
 ];
 
-const implicitActions = createMockImplicitCUDActions(models[1].id, 123);
-
 const dashcard = createMockDashboardCard();
 const actionDashcard = createMockActionDashboardCard({ id: 2 });
+const action = actions2[2];
 const actionDashcardWithAction = createMockActionDashboardCard({
   id: 3,
-  action: actions2[2],
+  action: action,
 });
 
 const dashboard = createMockDashboard({
@@ -82,26 +69,24 @@ const dashboard = createMockDashboard({
 const DEFAULT_VALUE = "default value";
 
 const setup = (
-  options?: Partial<
-    React.ComponentProps<typeof ConnectedActionDashcardSettings>
-  >,
+  options?: Partial<React.ComponentProps<typeof ActionDashcardSettings>>,
 ) => {
-  const searchItems = models.map((model) =>
-    createMockCollectionItem({ ...model, model: "dataset" }),
-  );
   const closeSpy = jest.fn();
-
-  setupSearchEndpoints(searchItems);
-  setupCardsEndpoints(models);
-  setupActionsEndpoints([...actions1, ...actions2, ...implicitActions]);
+  const onChooseNewActionSpy = jest.fn();
+  const onChangeActionSpy = jest.fn();
 
   renderWithProviders(
-    <ConnectedActionDashcardSettings
-      onClose={closeSpy}
-      dashboard={dashboard}
-      dashcard={actionDashcard}
-      {...options}
-    />,
+    <Modal.Root opened onClose={closeSpy}>
+      <ActionDashcardSettings
+        action={action}
+        dashboard={dashboard}
+        dashcard={actionDashcard}
+        onChooseNewAction={onChooseNewActionSpy}
+        onChangeAction={onChangeActionSpy}
+        onClose={closeSpy}
+        {...options}
+      />
+    </Modal.Root>,
   );
 
   return { closeSpy };
@@ -194,8 +179,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: true,
         });
 
+        const dashcard = getDashcard();
+
         setup({
-          dashcard: getDashcard(),
+          action: dashcard.action,
+          dashcard: dashcard,
         });
       });
 
@@ -232,8 +220,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
         hidden: true,
       });
 
+      const dashcard = getDashcard();
+
       setup({
-        dashcard: getDashcard(),
+        action: dashcard.action,
+        dashcard: dashcard,
       });
     });
 
@@ -261,8 +252,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
         hidden: true,
       });
 
+      const dashcard = getDashcard();
+
       setup({
-        dashcard: getDashcard(),
+        action: dashcard.action,
+        dashcard: dashcard,
       });
     });
 
@@ -302,8 +296,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: true,
         });
 
+        const dashcard = getDashcard();
+
         setup({
-          dashcard: getDashcard(),
+          action: dashcard.action,
+          dashcard: dashcard,
         });
       });
 
@@ -338,8 +335,11 @@ describe("ActionViz > ActionDashcardSettings", () => {
           hidden: true,
         });
 
+        const dashcard = getDashcard();
+
         setup({
-          dashcard: getDashcard(),
+          action: dashcard.action,
+          dashcard: dashcard,
         });
       });
 
@@ -385,6 +385,7 @@ describe("ActionViz > ActionDashcardSettings", () => {
 
     beforeEach(() => {
       setup({
+        action: action,
         dashcard: dashcard,
       });
     });
@@ -416,52 +417,24 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
   });
 
-  it("shows the action dashcard settings component", () => {
-    setup();
-
-    expect(screen.getByText("Action Library")).toBeInTheDocument();
-    expect(screen.getByText(/Select an action/i)).toBeInTheDocument();
-  });
-
-  it("loads the model list", async () => {
-    setup();
-
-    expect(screen.getByText("Action Library")).toBeInTheDocument();
-    await screen.findByText("Model Uno");
-    await screen.findByText("Model Deux");
-  });
-
-  it("shows actions within their respective models", async () => {
-    setup();
-
-    const modelExpander = await screen.findByText("Model Uno");
-
-    expect(screen.queryByText("Action Uno")).not.toBeInTheDocument();
-
-    await userEvent.click(modelExpander);
-
-    await screen.findByText("Action Uno");
-    expect(screen.getByText("Action Uno")).toBeInTheDocument();
-    expect(screen.getByText("Action Dos")).toBeInTheDocument();
-  });
-
   it("shows the action assigned to a dashcard", async () => {
     setup({
       dashcard: actionDashcardWithAction,
+      action: action,
     });
 
-    // action name should be visible in library and parameter mapper
-    expect(await screen.findByText("Action Trois")).toBeInTheDocument();
     expect(
       await screen.findByText(/the values for 'Action Trois'/i),
     ).toBeInTheDocument();
   });
 
   it("should be valid and not crash when the action does not have parameters (metabase#32665)", async () => {
+    const action = createMockQueryAction();
     const { closeSpy } = setup({
       dashcard: createMockActionDashboardCard({
-        action: createMockQueryAction(),
+        action,
       }),
+      action,
     });
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(closeSpy).toHaveBeenCalled();
@@ -473,34 +446,6 @@ describe("ActionViz > ActionDashcardSettings", () => {
     });
     expect(screen.getByText("Action Parameter 1")).toBeInTheDocument();
     expect(screen.getByText("Action Parameter 2")).toBeInTheDocument();
-  });
-
-  it("supports inline edit for implit and query actions", async () => {
-    setup({
-      dashcard: actionDashcardWithAction,
-    });
-
-    await waitForLoaderToBeRemoved();
-    await waitFor(() => {
-      expect(
-        screen.getByTestId(`action-item-${actions2[0].name}`),
-      ).toBeInTheDocument();
-    });
-
-    const queryAction = screen.getByTestId(`action-item-${actions2[0].name}`);
-    const implicitAction = screen.getByTestId(
-      `action-item-${implicitActions[0].name}`,
-    );
-
-    expect(queryAction).toBeInTheDocument();
-    expect(implicitAction).toBeInTheDocument();
-
-    expect(
-      within(queryAction).getByRole("button", { name: "pencil icon" }),
-    ).toBeInTheDocument();
-    expect(
-      within(implicitAction).getByRole("button", { name: "pencil icon" }),
-    ).toBeInTheDocument();
   });
 
   it("can close the modal with the done button", async () => {

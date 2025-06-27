@@ -1,3 +1,5 @@
+import type { Row } from "@tanstack/react-table";
+import type { Location } from "history";
 import React, {
   type ComponentType,
   type Dispatch,
@@ -8,6 +10,7 @@ import React, {
   useMemo,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import noResultsSource from "assets/img/no_results.svg";
 import {
@@ -33,6 +36,7 @@ import type {
 } from "metabase/browse/models";
 import type { LinkProps } from "metabase/common/components/Link";
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
+import type { DataGridRowAction } from "metabase/data-grid/types";
 import type { DataSourceSelectorProps } from "metabase/embedding-sdk/types/components/data-picker";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { getIconBase } from "metabase/lib/icon";
@@ -48,11 +52,13 @@ import type { SearchFilterComponent } from "metabase/search/types";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
 import type { IconName, IconProps, StackProps } from "metabase/ui";
 import type { HoveredObject } from "metabase/visualizations/types";
+import type { BasicTableViewColumn } from "metabase/visualizations/types/table-actions";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
+  ActionScope,
   BaseEntityId,
   BaseUser,
   Bookmark,
@@ -63,11 +69,16 @@ import type {
   CollectionEssentials,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  ConcreteTableId,
   DashCardId,
   Dashboard,
   DashboardId,
+  DatabaseId,
   Database as DatabaseType,
   Dataset,
+  DatasetData,
+  EditableTableActionsDisplaySettings,
+  EditableTableBuiltInActionDisplaySettings,
   Group,
   GroupPermissions,
   GroupsPermissions,
@@ -75,12 +86,16 @@ import type {
   ParameterId,
   Pulse,
   Revision,
+  RowValue,
+  RowValues,
   Series,
+  TableActionDisplaySettings,
   TableId,
   Timeline,
   TimelineEvent,
   User,
   VisualizationDisplay,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   AdminPath,
@@ -749,6 +764,78 @@ export const PLUGIN_DB_ROUTING = {
   getPrimaryDBEngineFieldState: (
     _database: Pick<Database, "router_user_attribute">,
   ): "default" | "hidden" | "disabled" => "default",
+};
+
+export const PLUGIN_DATA_EDITING = {
+  isEnabled: () => false,
+  isDatabaseTableEditingEnabled: (
+    _database: Database | DatabaseType,
+  ): boolean => false,
+  VIEW_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+  }>,
+  EDIT_PAGE_COMPONENT: PluginPlaceholder as ComponentType<{
+    params: {
+      dbId: string;
+      tableId: string;
+    };
+    location: Location<{ filter?: string }>;
+  }>,
+  CARD_TABLE_COMPONENT: PluginPlaceholder as ComponentType<{
+    title: string;
+    dashcardId: number;
+    cardId: number;
+    data: DatasetData;
+    tableId: ConcreteTableId;
+    className?: string;
+    visualizationSettings?: VisualizationSettings;
+    question: Question;
+    isEditing?: boolean;
+  }>,
+};
+
+export const PLUGIN_TABLE_ACTIONS = {
+  isEnabled: () => false,
+  isBuiltInEditableTableAction: (
+    _action: EditableTableActionsDisplaySettings,
+  ): _action is EditableTableBuiltInActionDisplaySettings => false,
+  useDataGridRowActions: (_params: {
+    actionSettings: EditableTableActionsDisplaySettings[] | undefined;
+    datasetData: DatasetData | null | undefined;
+  }) =>
+    ({
+      rowActions: undefined,
+      selectedRowAction: null,
+      onRowActionButtonClick: _.noop,
+      onRowActionFormClose: _.noop,
+    }) as {
+      rowActions: DataGridRowAction[] | undefined;
+      selectedRowAction: {
+        action: DataGridRowAction;
+        input: Record<string, RowValue>;
+      } | null;
+      onRowActionButtonClick: (
+        action: DataGridRowAction,
+        row: Row<RowValues>,
+      ) => void;
+      onRowActionFormClose: () => void;
+    },
+  DataGridActionExecuteModal: PluginPlaceholder as ComponentType<{
+    action?: DataGridRowAction;
+    actionInput?: Record<string, RowValue>;
+    scope: ActionScope;
+    onClose: () => void;
+  }>,
+  ConfigureTableActions: PluginPlaceholder as ComponentType<{
+    value: TableActionDisplaySettings[] | undefined;
+    cols: BasicTableViewColumn[];
+    databaseId: DatabaseId | undefined;
+    actionScope: ActionScope;
+    onChange: (newValue: TableActionDisplaySettings[]) => void;
+  }>,
 };
 
 export const PLUGIN_API = {

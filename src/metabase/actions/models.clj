@@ -1,5 +1,7 @@
 (ns metabase.actions.models
   (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
    [medley.core :as m]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -12,6 +14,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
+
+(set! *warn-on-reflection* true)
 
 ;;; -------------------------------------------- Entity & Life Cycle ----------------------------------------------
 
@@ -123,8 +127,7 @@
       (t2/query-one {:insert-into (t2/table-name model)
                      :values [(-> (apply dissoc action-data action-columns)
                                   (assoc :action_id (:id action))
-                                  (cond->
-                                   (= (:type action) :implicit)
+                                  (cond-> (= (:type action) :implicit)
                                     (dissoc :database_id)
                                     (= (:type action) :http)
                                     (update :template json/encode)
@@ -256,7 +259,8 @@
         model-id->implicit-parameters (when (seq implicit-action-models)
                                         (implicit-action-parameters implicit-action-models))]
     (for [action actions]
-      (if (= (:type action) :implicit)
+      (case (:type action)
+        :implicit
         (let [model-id        (:model_id action)
               saved-params    (m/index-by :id (:parameters action))
               action-kind     (:kind action)
@@ -300,6 +304,7 @@
                                            (assoc acc param-id {:id param-id, :hidden false})))
                                        fields
                                        param-ids)))))))
+        (:query :http)
         action))))
 
 (defn select-action
@@ -330,22 +335,177 @@
            (assoc action :database_enabled_actions (get id->database-enable-actions (:id action))))
          actions)))
 
+(defn- create-or-fix-action-id
+  "Even though currently these actions only live in the visualization settings, they are conceptually first-class
+  actions, which can be used with the /execute API etc. This means that they need unique identifiers, and since we need
+  a way to retrieve the corresponding JSON easily, we embed the dashcard id within their string id.
+
+  Since we are saving this JSON inside, say, a dashcard, there's a chicken-and-egg problem when pre-configuring actions
+  before saving the dashcard for the first time. In this case, we use a placeholder, and rely on the fact that these
+  actions will be executed with the same dashcard in their :scope.
+
+  When the dashcard is saved for the second time, we fix all these placeholders, so that the ids are less obscure, and
+  the semantically dubious dependency on :scope is minimized.
+
+  Once these actions are stored in some sort of first-class action table, we won't have this issue."
+  [parent-type parent-id id]
+  (let [prefix         (str parent-type \:)
+        unknown-prefix (str prefix "unknown")
+        parent-or-?    (if (pos-int? parent-id) parent-id "unknown")]
+    (cond
+      ;; temp id, just prefix it
+      (and id (re-matches u/uuid-regex id))
+      (format "%s:%s:%s" parent-type parent-or-? id)
+      ;; missing, or not a format we recognize - init from scratch
+      (or (not id) (not (str/starts-with? id prefix)))
+      (format "%s:%s:%s" parent-type parent-or-? (u/generate-nano-id))
+      ;; chicken-and-egg resulted in a suboptimal id, fix it
+      (and (str/starts-with? id unknown-prefix) parent-id)
+      (str/replace id unknown-prefix (str prefix parent-id))
+      :else
+      id)))
+
+(defn save-grid-action
+  "In the future:
+
+   Determine whether there are unsaved changes for a new or existing action related to some data grid, e.g. an Editable.
+   If so, create-or-update that action, and return an opaque reference to it, to take its place in the viz settings.
+   Otherwise, return the existing reference unchanged.
+
+   Today:
+
+   The actions just keep living here inside the viz settings of the grid, but we use this function to initialize ids,
+   and apply defaults. We could also use it for validation and migrate-on-write updates.
+
+   We'll move into the future as part of WRK-544."
+  [parent-type parent-id grid-action]
+  (-> grid-action
+      ;; Make sure the id is globally unique, and sufficient to retrieve the definition.
+      (update :id (partial create-or-fix-action-id parent-type parent-id))
+      ;; At the time of writing, FE only allows the creation of row actions. Make sure this is explicit.
+      (update :actionType #(if (or (not %) (= "data-grid/row-action" %)) "data-grid/custom-action" %))
+      ;; By default actions are enabled.
+      (update :enabled #(if (some? %) % true))))
+
+;; to avoid headaches with rewriting too much frontend code we will hack in a representation of an operation and a single
+;; parameter as an integer. The frontend picker can when creating the dashcard pass the negative action_id.
+;; we will use an integer with an op (15 bits) and param (32 bits)
+;; to start with table actions, the param is the table-id.
+;; IMPORTANT: do not change value of existing keys
+(def ^:private primitive-action->int
+  {:table.row/create           0
+   :table.row/update           1
+   :table.row/delete           2
+   :table.row/create-or-update 3})
+
+(def enabled-table-actions
+  "List of table actions that are enabled for questions/editables on a dashboard."
+  [[:table.row/create "Create"]
+   [:table.row/update "Update"]
+   [:table.row/create-or-update "Create or Update"]
+   [:table.row/delete "Delete"]])
+
+(def ^:private int->primitive-action (set/map-invert primitive-action->int))
+
+(defn unpack-encoded-action-id
+  "Return an [action-kw table-id] vector given the negative action id."
+  [^long encoded-id]
+  (let [pos-id     (bit-and (Math/abs encoded-id) 0xFFFFFFFFFFFF)
+        param-bits (bit-and pos-id 0xFFFFFFFF)
+        op-bits    (bit-and (bit-shift-right pos-id 32) 0xFFFF)]
+    [(int->primitive-action op-bits) param-bits]))
+
+(defn- encoded-action-id ^long [action-kw ^long param]
+  (let [op-bits (primitive-action->int action-kw)
+        packed  (bit-or (bit-shift-left op-bits 32) (bit-and param 0xFFFFFFFF))]
+    (- packed)))
+
+(defn table-primitive-action
+  "Return an action map for a table edit action for the primitive action.
+  Such an action is only valid if data editing is enabled for the database."
+  [table fields action-kw]
+  (let [field-param? (case action-kw
+                       :table.row/create #(not (:database_is_auto_increment %))
+                       :table.row/delete #(= :type/PK (:semantic_type %))
+                       (constantly true))
+        field-params (->> fields
+                          (filter field-param?)
+                          (sort-by :position))]
+    {:database_id (:database_id table)
+     :name        (name action-kw)
+     :kind        (u/qualified-name action-kw)
+     :table_id    (:id table)
+     :id          (encoded-action-id action-kw (:id table))
+     ;; true for all databases with data_editing_enabled
+     ;; it is expected this fn will not be called if this is not the case
+     :database_enabled_actions true
+     :visualization_settings
+     {:name        ""
+      :type        "button"
+      :description ""
+      :fields      (u/for-map [field field-params
+                               :let [field-name (:name field)]]
+                     [field-name {:id field-name, :hidden false}])}
+     :parameters
+     (->> (for [field field-params
+                :let [field-name (:name field)]]
+            {:id                field-name
+             :display-name      (:display_name field)
+             :type              (:base_type field)
+             :target            [:variable [:template-tag field-name]]
+             :slug              field-name
+             :required          (or (= :type/PK (:semantic_type field))
+                                    (:database_required field))
+             :is-auto-increment (:database_is_auto_increment field)})
+          vec)}))
+
+(defn select-primitive-action
+  "Returns the primitive action (map) for the given kind (operation, e.g., :row/create) and table-id."
+  [table-id kind]
+  (let [table  (t2/select-one :model/Table table-id)
+        fields (t2/select :model/Field :table_id table-id)]
+    (table-primitive-action table fields kind)))
+
+(defn dashcard->action
+  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  [dashcard-id]
+  (let [{:keys [action_id] {:keys [table_action]} :visualization_settings}
+        (t2/select-one [:model/DashboardCard :action_id :visualization_settings] dashcard-id)]
+    (cond
+      action_id (select-action :id action_id)
+      table_action
+      (let [{:keys [table_id kind]} table_action]
+        (select-primitive-action table_id (keyword kind))))))
+
 (methodical/defmethod t2.hydrate/batched-hydrate [:model/DashboardCard :dashcard/action]
   "Hydrates actions from DashboardCards. Adds a boolean field `:database-enabled-actions` to each action according to
   the\n `database-enable-actions` setting for the action's database."
   [_model _k dashcards]
-  (let [actions-by-id (when-let [action-ids (seq (keep :action_id dashcards))]
-                        (->> (select-actions nil :id [:in action-ids])
-                             map-assoc-database-enable-actions
-                             (m/index-by :id)))]
-    (for [dashcard dashcards]
-      (m/assoc-some dashcard :action (get actions-by-id (:action_id dashcard))))))
-
-(defn dashcard->action
-  "Get the action associated with a dashcard if exists, return `nil` otherwise."
-  [dashcard-or-dashcard-id]
-  (some->> (t2/select-one-fn :action_id :model/DashboardCard :id (u/the-id dashcard-or-dashcard-id))
-           (select-action :id)))
+  (let [actions-by-id
+        (when-let [action-ids (seq (keep :action_id dashcards))]
+          (->> (select-actions nil :id [:in action-ids])
+               map-assoc-database-enable-actions
+               (m/index-by :id)))
+        table-ids
+        (->> dashcards
+             (keep (comp :table_id :table_action :visualization_settings))
+             distinct)
+        table-by-id
+        (when (seq table-ids)
+          (t2/select-fn->fn :id identity :model/Table :id [:in table-ids]))
+        fields-by-id
+        (when (seq table-ids)
+          (->> (t2/select :model/Field :table_id [:in table-ids])
+               (group-by :table_id)))]
+    (for [dashcard dashcards
+          :let [action-id (:action_id dashcard)
+                action
+                (or (get actions-by-id action-id)
+                    ;; Create a (fictitious) saved action that calls the given table action.
+                    (when-some [{:keys [table_id kind]} (:table_action (:visualization_settings dashcard))]
+                      (when-some [table (get table-by-id table_id)]
+                        (table-primitive-action table (get fields-by-id table_id []) (keyword kind)))))]]
+      (m/assoc-some dashcard :action action))))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

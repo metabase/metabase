@@ -1,13 +1,14 @@
 import { useCallback } from "react";
 import _ from "underscore";
 
+import { addEditableTableDashCardToDashboard } from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getEditingParameter,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import DashboardSubscriptionsSidebar from "metabase/notifications/DashboardSubscriptionsSidebar";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
@@ -19,8 +20,10 @@ import type {
   DashboardCard,
   DashboardId,
   DashboardTabId,
+  DatabaseId,
   Dashboard as IDashboard,
   ParameterId,
+  TableId,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -31,7 +34,9 @@ import type { SelectedTabId, State } from "metabase-types/store";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
+import { AddTableSidebar } from "./AddTableSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
+import { ConfigureEditableTableSidebar } from "./ConfigureEditableTableSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 import { DashboardSettingsSidebar } from "./DashboardSettingsSidebar";
 
@@ -117,6 +122,7 @@ export function DashboardSidebars({
 }: DashboardSidebarsProps) {
   const parameters = useSelector(getParameters);
   const editingParameter = useSelector(getEditingParameter);
+  const dispatch = useDispatch();
 
   const handleAddCard = useCallback(
     (cardId: CardId) => {
@@ -127,6 +133,20 @@ export function DashboardSidebars({
       });
     },
     [addCardToDashboard, dashboard.id, selectedTabId],
+  );
+
+  const handleAddEditableTable = useCallback(
+    ({ tableId, databaseId }: { tableId: TableId; databaseId: DatabaseId }) => {
+      dispatch(
+        addEditableTableDashCardToDashboard({
+          dashId: dashboard.id,
+          tabId: selectedTabId,
+          tableId,
+          databaseId,
+        }),
+      );
+    },
+    [dashboard.id, dispatch, selectedTabId],
   );
 
   const setDashboardAttribute = useSetDashboardAttributeHandler();
@@ -228,6 +248,23 @@ export function DashboardSidebars({
           onClose={closeSidebar}
         />
       );
+
+    case SIDEBAR_NAME.addEditableTable:
+      return (
+        <AddTableSidebar
+          onSelect={handleAddEditableTable}
+          onClose={closeSidebar}
+        />
+      );
+
+    case SIDEBAR_NAME.configureEditableTable:
+      return (
+        <ConfigureEditableTableSidebar
+          dashboard={dashboard}
+          onClose={closeSidebar}
+        />
+      );
+
     case SIDEBAR_NAME.analyze:
       return (
         <PLUGIN_AI_ENTITY_ANALYSIS.AIDashboardAnalysisSidebar

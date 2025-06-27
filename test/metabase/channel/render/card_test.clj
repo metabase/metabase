@@ -300,7 +300,8 @@
                                                                                 card
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
-                                                                                {:channel.render/include-title? true}))]
+                                                                                {:channel.render/include-title? true
+                                                                                 :channel.render/include-href? true}))]
           (is (some? (lib.util.match/match-one rendered-card-content
                        [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
 
@@ -316,6 +317,7 @@
                                                                                 card
                                                                                 dc1
                                                                                 (qp/process-query (:dataset_query card))
-                                                                                {:channel.render/include-title? true}))
+                                                                                {:channel.render/include-title? true
+                                                                                 :channel.render/include-href? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
           (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _})))))))))

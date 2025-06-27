@@ -20,9 +20,12 @@ import type {
   DataPickerItem,
   DataPickerValue,
   DataPickerValueItem,
+  DatabaseItem,
   MetricItem,
   ModelItem,
   QuestionItem,
+  SchemaItem,
+  TableItem,
   TablePickerValue,
 } from "./types";
 
@@ -70,7 +73,7 @@ export const getDataPickerValue = (
 export const getDbItem = (
   databases: Database[] | undefined,
   dbId: DatabaseId | undefined,
-): DataPickerFolderItem | null => {
+): DatabaseItem | null => {
   if (typeof dbId === "undefined") {
     return null;
   }
@@ -86,7 +89,7 @@ export const getSchemaItem = (
   dbName: string | undefined,
   schemaName: SchemaName | undefined,
   isOnlySchema: boolean,
-): DataPickerFolderItem | null => {
+): SchemaItem | null => {
   if (typeof schemaName === "undefined" || typeof dbId === "undefined") {
     return null;
   }
@@ -99,12 +102,12 @@ export const getSchemaItem = (
 export const getTableItem = (
   tables: Table[] | undefined,
   tableId: TableId | undefined,
-): DataPickerValueItem | null => {
+): TableItem | null => {
   if (typeof tableId === "undefined") {
     return null;
   }
 
-  const table = tables?.find((db) => db.id === tableId);
+  const table = tables?.find((table) => table.id === tableId);
   const name = table?.name ?? "";
 
   return { model: "table", id: tableId, name };

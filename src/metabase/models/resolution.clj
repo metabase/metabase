@@ -55,6 +55,7 @@
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
     :model/NotificationSubscription          metabase.notification.models
+    :model/NotificationSystemEvent           metabase.notification.models
     :model/ParameterCard                     metabase.queries.models.parameter-card
     :model/Permissions                       metabase.permissions.models.permissions
     :model/PermissionsGroup                  metabase.permissions.models.permissions-group
@@ -82,6 +83,7 @@
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
+    :model/Undo                              metabase-enterprise.data-editing.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value
