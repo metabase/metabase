@@ -62,6 +62,7 @@ function setup(
     metabotPluginInitialState = {
       ...getMetabotInitialState(),
       visible: true,
+      useStreaming: false,
     },
     promptSuggestions = [],
   } = options || {};
