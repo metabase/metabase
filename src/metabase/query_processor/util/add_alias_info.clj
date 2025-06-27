@@ -156,6 +156,7 @@
                                       ::source)
                                     ::none)}))))))
 
+;;; TODO (Cam 6/27/25) -- might not need this anymore
 (defn- cheese-match [a-ref cols]
   (letfn [(same-col? [col]
             (and (= (lib/current-join-alias col) (lib/current-join-alias a-ref))

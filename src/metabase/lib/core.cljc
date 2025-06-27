@@ -24,6 +24,7 @@
    [metabase.lib.filter.update :as lib.filter.update]
    [metabase.lib.ident :as lib.ident]
    [metabase.lib.join :as lib.join]
+   [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.composed-provider :as lib.metadata.composed-provider]
@@ -64,6 +65,7 @@
          lib.filter/keep-me
          lib.ident/keep-me
          lib.join/keep-me
+         metabase.lib.join.util/keep-me
          lib.limit/keep-me
          lib.metadata.calculation/keep-me
          lib.metadata.composed-provider/keep-me
@@ -285,6 +287,8 @@
   with-join-fields
   with-join-strategy
   with-join-conditions]
+ [metabase.lib.join.util
+  current-join-alias]
  [lib.metric
   available-metrics]
  [lib.limit
@@ -388,5 +392,7 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.util
+  previous-stage
   normalized-query-type
+  query-stage
   source-table-id])
