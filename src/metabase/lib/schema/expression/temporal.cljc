@@ -68,8 +68,8 @@
                    :decode/normalize common/normalize-keyword-lower}
             :iso
             :simple
-            :bytes-iso
-            :bytes-simple
+            :isobytes
+            :simplebytes
             :unixmilliseconds
             :unixseconds
             :unixmicroseconds

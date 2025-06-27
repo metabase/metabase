@@ -965,24 +965,24 @@
                                      (mt/normal-drivers-with-feature ::adt/yyyymmddhhss-binary-timestamps))
     (doseq [{:keys [dataset mode expected]}
             [{:dataset yyyymmddhhss-binary-simple-cast
-              :mode :bytes-simple
+              :mode :simplebytes
               :expected binary-dates-expected-rows-simple}
              {:dataset iso-binary-cast
-              :mode :bytes-iso
+              :mode :isobytes
               :expected binary-dates-expected-rows-iso}]]
       (mt/dataset dataset
-        (let [mp (mt/metadata-provider)]
-          (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
-            (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :times)))
-                            (lib/with-fields [(lib.metadata/field mp (mt/id :times :id))
-                                              (lib.metadata/field mp (mt/id :times :name))])
-                            (as-> q
-                                  (let [column (->> q lib/visible-columns (filter #(= "as_bytes" (u/lower-case-en (:name %)))) first)]
-                                    (lib/expression q "FCALL" (if (nil? mode)
-                                                                (lib/datetime column)
-                                                                (lib/datetime column mode)))))
-                            (assoc :middleware {:format-rows? false}))
-                  result (-> query qp/process-query)
-                  rows (mt/rows result)]
-              (is (= (expected driver/*driver*)
-                     rows)))))))))
+        (testing (str "Parsing bytes from " (:database-name dataset) " as datetime with " (or mode "no mode") ".")
+          (let [mp (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :times)))
+                          (lib/with-fields [(lib.metadata/field mp (mt/id :times :id))
+                                            (lib.metadata/field mp (mt/id :times :name))])
+                          (as-> q
+                                (let [column (->> q lib/visible-columns (filter #(= "as_bytes" (u/lower-case-en (:name %)))) first)]
+                                  (lib/expression q "FCALL" (if (nil? mode)
+                                                              (lib/datetime column)
+                                                              (lib/datetime column mode)))))
+                          (assoc :middleware {:format-rows? false}))
+                result (-> query qp/process-query)
+                rows (mt/rows result)]
+            (is (= (expected driver/*driver*)
+                   rows))))))))
