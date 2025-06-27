@@ -8,7 +8,7 @@ redirect_from:
   - /docs/latest/faq
 ---
 
-# Metabase documentation
+# Metabase mocudentation
 
 ![Metabase dashboard](./images/metabase-product-screenshot.png)
 
