@@ -77,11 +77,17 @@ const FieldSectionBase = ({
         />
       </Box>
 
-      <Stack gap={12}>
-        <Group align="center" gap="md" justify="space-between" wrap="nowrap">
+      <Stack gap={12} mb={12}>
+        <Group align="center" gap="md" justify="space-between">
           <Text flex="0 0 auto" fw="bold">{t`Field settings`}</Text>
 
-          <Group gap="md" justify="flex-end">
+          <Group
+            className={S.buttons}
+            flex="1"
+            gap="md"
+            justify="flex-end"
+            wrap="nowrap"
+          >
             {!isPreviewOpen && (
               <Button
                 leftSection={<Icon name="eye" />}

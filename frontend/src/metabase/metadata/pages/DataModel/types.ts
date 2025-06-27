@@ -23,7 +23,7 @@ export type ParsedRouteParams = {
 export type Column = "nav" | "table" | "field" | "preview";
 
 export interface ColumnSizeConfig {
-  initial: number;
+  flex: number | string;
   min: number;
   max: number;
 }

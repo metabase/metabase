@@ -1,14 +1,28 @@
 import type { Column, ColumnSizeConfig } from "./types";
 
+const PREVIEW_COLUMN_PADDING = 2 * 32;
+
 export const COLUMN_CONFIG: Record<Column, ColumnSizeConfig> = {
-  nav: { initial: 376, min: 280, max: 440 },
-  table: { initial: 640, min: 280, max: 640 },
-  field: { initial: 480, min: 280, max: 640 },
-  preview: { initial: 640, min: 440, max: 640 },
+  nav: {
+    flex: "6 1 0",
+    min: 280,
+    max: 440,
+  },
+  table: {
+    flex: "8 1 0",
+    min: 280,
+    max: 640,
+  },
+  field: {
+    flex: "9 1 0",
+    min: 280,
+    max: 640,
+  },
+  preview: {
+    flex: "10 1 0",
+    min: 440 + PREVIEW_COLUMN_PADDING, // 440 to fully fit the Number > Between filter preview
+    max: 670 + PREVIEW_COLUMN_PADDING, // 670 to fully fit the Date > Fixed date range filter preview
+  },
 };
 
-export const MIN_PREVIEW_CONTAINER_WIDTH = 440 + 2 * 32;
-
 export const EMPTY_STATE_MIN_WIDTH = 240;
-
-export const RESIZE_HANDLE_WIDTH = 10;
