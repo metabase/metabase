@@ -16,7 +16,7 @@ import {
 } from "metabase/dashboard/context/context.redux";
 import { connect } from "metabase/lib/redux";
 
-export type MockDashboardContextProps = DashboardContextProps &
+export type MockDashboardContextProps = Partial<DashboardContextProps> &
   Partial<ReduxProps> &
   Partial<DashboardContextErrorState>;
 
@@ -65,7 +65,7 @@ const ConnectedDashboardContextWithReduxProps = connect(
  * */
 export const MockDashboardContext = ({
   children,
-  dashboardId,
+  dashboardId = 1,
   parameterQueryParams,
   onLoad,
   onError,

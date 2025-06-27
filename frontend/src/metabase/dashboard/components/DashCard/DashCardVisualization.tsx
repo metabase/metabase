@@ -9,6 +9,7 @@ import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { getDashcardData } from "metabase/dashboard/selectors";
 import {
   getVirtualCardType,
+  isHeadingDashCard,
   isQuestionCard,
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
@@ -444,9 +445,13 @@ export function DashCardVisualization({
   return (
     <Visualization
       className={cx(CS.flexFull, {
-        [CS.pointerEventsNone]: isEditingDashboardLayout,
         [CS.overflowAuto]: visualizationOverlay,
         [CS.overflowHidden]: !visualizationOverlay,
+
+        // Heading dashcards configure pointer events on their own
+        // to make the inner input and inline filters interactive.
+        [CS.pointerEventsNone]:
+          isEditingDashboardLayout && !isHeadingDashCard(dashcard),
       })}
       dashboard={dashboard}
       dashcard={dashcard}
