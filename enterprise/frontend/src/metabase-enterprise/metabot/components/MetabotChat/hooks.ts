@@ -1,59 +1,81 @@
-import { type RefObject, useEffect } from "react";
-import { useFirstMountState } from "react-use";
+import { RefObject, useCallback, useRef } from "react";
+import { useMount } from "react-use";
 import _ from "underscore";
 
-import type { getMessages } from "metabase-enterprise/metabot/state";
+import { useElementSize } from "@mantine/hooks";
 
-const USER_MSG_SELECTOR = '[data-message-role="user"]';
-const DEFAULT_HEADER_HEIGHT = 81;
+const USER_MSG_SELECTOR = `[data-message-role="user"]`;
+const DEFAULT_HEADER_HEIGHT = 64;
 
-export function useAutoscrollMessages(
-  headerRef: RefObject<HTMLDivElement>,
-  messagesRef: RefObject<HTMLDivElement>,
-  messages: ReturnType<typeof getMessages>,
-) {
-  const isFirstMount = useFirstMountState();
+const getHeaderHeight = (headerRef: RefObject<HTMLDivElement>) => {
+  return headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
+};
 
-  useEffect(
-    function handleAutoscroll() {
-      const scrollContainerEl = messagesRef.current;
+const getPromptOffsetTop = (el: HTMLDivElement) => {
+  const userMessages = el.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
+  const lastMessage = _.last(userMessages);
+  return lastMessage?.offsetTop ?? 0;
+};
 
-      if (!scrollContainerEl) {
-        return;
-      }
+export function useScrollManager() {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const messagesEl = useElementSize<HTMLDivElement>();
 
-      // scroll to the bottom of the container on mount
-      if (isFirstMount) {
-        scrollContainerEl.scrollTop = scrollContainerEl.scrollHeight;
-        return;
-      }
+  // scroll on mount - useful if there's existing conversation
+  // history when the user opens the metabot sidebar
+  useMount(function handleScrollOnMount() {
+    const scrollContainer = messagesEl.ref.current;
+    if (scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  });
 
-      // auto-scroll to the latest user submitted message when
-      // - user submits a message
-      // - metabot responds for the first time (it can add multiple messages, we only care about the first)
-      const [prevMessage, lastMessage] = messages.slice(-2);
-      const isLastMessageUser = lastMessage?.role === "user";
-      const isLastMessageFirstMetabotReply =
-        prevMessage?.role !== "agent" && lastMessage?.role === "agent";
+  const scrollToLatestUserMessage = useCallback(() => {
+    const scrollContainer = messagesEl.ref.current;
+    if (scrollContainer) {
+      // TODO: remove and pass the scrollToLatestUserMessage
+      // fn as a callback to submitInput
 
-      const shouldAutoScroll =
-        isLastMessageUser || isLastMessageFirstMetabotReply;
+      setTimeout(() => {
+        const promptOffsetTop = getPromptOffsetTop(scrollContainer);
+        const headerHeight = getHeaderHeight(headerRef);
 
-      if (shouldAutoScroll) {
-        const userMessages =
-          scrollContainerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
-        const lastUserMessage = _.last(userMessages);
-
-        const distanceFromTop = lastUserMessage?.offsetTop ?? 0;
-        const headerHeight =
-          headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
-
-        scrollContainerEl.scrollTo({
-          top: distanceFromTop - headerHeight,
+        scrollContainer.scrollTo({
+          top: promptOffsetTop - headerHeight,
           behavior: "smooth",
         });
-      }
-    },
-    [messages, headerRef, messagesRef, isFirstMount],
-  );
+      }, 100);
+    }
+  }, []);
+
+  return {
+    headerRef,
+    messagesRef: messagesEl.ref,
+    messagesHeight: messagesEl.height,
+    scrollToLatestUserMessage,
+  };
 }
+
+// // TODO: need to do a check for has scrolled for message id
+// // that way we only do it once if the last message is the currently scrolled to item
+
+// // auto-scroll to the latest user submitted message when
+// // - user submits a message
+// // - metabot responds for the first time (it can add multiple messages, we only care about the first)
+// const isLastMessageUser = lastMessage?.role === "user";
+
+// const shouldAutoScroll = isLastMessageUser;
+
+// if (shouldAutoScroll) {
+//   const userMessages =
+//     scrollContainerEl.querySelectorAll<HTMLDivElement>(USER_MSG_SELECTOR);
+//   const lastUserMessage = _.last(userMessages);
+
+//   const distanceFromTop = lastUserMessage?.offsetTop ?? 0;
+//   const headerHeight =
+//     headerRef.current?.clientHeight ?? DEFAULT_HEADER_HEIGHT;
+
+//   scrollContainerEl.scrollTo({
+//     top: distanceFromTop - headerHeight,
+//     behavior: "smooth",
+//   });
