@@ -29,7 +29,6 @@ const propTypes = {
 };
 
 export const TableBrowser = ({
-  database,
   tables,
   getTableUrl,
   metadata,
@@ -55,7 +54,6 @@ export const TableBrowser = ({
         {tables.map((table) => (
           <TableBrowserItem
             key={table.id}
-            database={database}
             table={table}
             dbId={dbId}
             getTableUrl={getTableUrl}
@@ -71,7 +69,6 @@ export const TableBrowser = ({
 TableBrowser.propTypes = propTypes;
 
 const itemPropTypes = {
-  database: PropTypes.object,
   table: PropTypes.object.isRequired,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
@@ -80,7 +77,6 @@ const itemPropTypes = {
 };
 
 const TableBrowserItem = ({
-  database,
   table,
   dbId,
   xraysEnabled,
@@ -98,7 +94,7 @@ const TableBrowserItem = ({
       onClick={() => trackTableClick(table.id)}
     >
       <>
-        {isLoading && <Loader />}
+        {isLoading && <Loader size="xs" data-testid="loading-indicator" />}
         {!isLoading && !isVirtual && (
           <TableBrowserItemButtons
             tableId={table.id}
