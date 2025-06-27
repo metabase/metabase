@@ -92,6 +92,26 @@ const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
 const assertVisible = async () =>
   expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
 
+const assertConversation = async (
+  expectedMessages: ["user" | "agent", string][],
+) => {
+  if (!expectedMessages.length) {
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("metabot-chat-message"),
+      ).not.toBeInTheDocument();
+    });
+  } else {
+    const realMessages = await chatMessages();
+    expect(expectedMessages.length).toBe(realMessages.length);
+    expectedMessages.forEach(([expectedRole, expectedMessage], index) => {
+      const realMessage = realMessages[index];
+      expect(realMessage).toHaveAttribute("data-message-role", expectedRole);
+      expect(realMessage).toHaveTextContent(expectedMessage);
+    });
+  }
+};
+
 const lastReqBody = async (agentSpy: ReturnType<typeof mockAgentEndpoint>) => {
   await waitFor(() => expect(agentSpy).toHaveBeenCalled());
   return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
@@ -287,6 +307,7 @@ describe("metabot-streaming", () => {
             yield `9:{"toolCallId":"y","toolName":"analyze_chart","args":""}\n`;
             yield `a:{"toolCallId":"y","result":""}\n`;
             await pause3.promise;
+            yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
           })(),
         ),
       });
@@ -324,6 +345,13 @@ describe("metabot-streaming", () => {
       expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
 
       pause3.resolve();
+
+      await waitFor(async () => {
+        await assertConversation([
+          ["user", "Analyze this query"],
+          ["agent", "Hey."],
+        ]);
+      });
     });
   });
 
@@ -334,9 +362,10 @@ describe("metabot-streaming", () => {
 
       await enterChatMessage("Who is your favorite?");
 
-      expect(await lastChatMessage()).toHaveTextContent(
-        METABOT_ERR_MSG.agentOffline,
-      );
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.agentOffline],
+      ]);
       expect(await input()).toHaveValue("Who is your favorite?");
     });
 
@@ -346,9 +375,10 @@ describe("metabot-streaming", () => {
 
       await enterChatMessage("Who is your favorite?");
 
-      expect(await lastChatMessage()).toHaveTextContent(
-        METABOT_ERR_MSG.default,
-      );
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.default],
+      ]);
       expect(await input()).toHaveValue("Who is your favorite?");
     });
 
@@ -358,28 +388,50 @@ describe("metabot-streaming", () => {
 
       await enterChatMessage("Who is your favorite?");
 
-      expect(await lastChatMessage()).toHaveTextContent(
-        METABOT_ERR_MSG.default,
-      );
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.default],
+      ]);
       expect(await input()).toHaveValue("Who is your favorite?");
     });
 
     it("should not show a user error when an AbortError is triggered", async () => {
       setup();
       mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
       await enterChatMessage("Who is your favorite?");
-      await waitFor(async () => {
-        expect(await chatMessages()).toHaveLength(2);
-      });
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
 
       await userEvent.click(await resetChatButton());
 
-      await waitFor(() => {
-        expect(
-          screen.queryByTestId("metabot-chat-message"),
-        ).not.toBeInTheDocument();
-      });
+      await assertConversation([]);
       expect(await input()).toHaveValue("");
+    });
+
+    it("should remove previous error messages and prompt when submiting next prompt", async () => {
+      setup();
+      fetchMock.post(`path:/api/ee/metabot-v3/v2/agent-streaming`, 500);
+
+      await enterChatMessage("Who is your favorite?");
+
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", METABOT_ERR_MSG.agentOffline],
+      ]);
+      expect(await input()).toHaveValue("Who is your favorite?");
+
+      mockAgentEndpoint({
+        textChunks: whoIsYourFavoriteResponse,
+      });
+      await enterChatMessage("Who is your favorite?");
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
     });
   });
 
