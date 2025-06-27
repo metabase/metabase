@@ -263,6 +263,7 @@
     "diff": "^3.2.0",
     "esbuild": "^0.25.0",
     "esbuild-plugin-babel": "^0.2.3",
+    "esbuild-plugin-ignore": "^1.1.1",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.13.10",
     "eslint-plugin-cypress": "^2.12.1",
