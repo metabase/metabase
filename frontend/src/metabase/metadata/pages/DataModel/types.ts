@@ -1,6 +1,7 @@
 import type {
   DatabaseId,
   FieldId,
+  SchemaId,
   SchemaName,
   TableId,
 } from "metabase-types/api";
@@ -8,14 +9,14 @@ import type {
 export type RouteParams = {
   databaseId?: string;
   fieldId?: string;
-  schemaId?: string;
+  schemaId?: SchemaId;
   tableId?: string;
 };
 
 export type ParsedRouteParams = {
   databaseId: DatabaseId | undefined;
   fieldId: FieldId | undefined;
-  schemaId: SchemaName | undefined;
+  schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
 };
 

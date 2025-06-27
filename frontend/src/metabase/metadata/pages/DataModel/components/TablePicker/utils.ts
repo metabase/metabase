@@ -9,7 +9,7 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import type { IconName } from "metabase/ui";
-import type { DatabaseId, SchemaId } from "metabase-types/api";
+import type { DatabaseId, SchemaName } from "metabase-types/api";
 
 import { getUrl as getUrl_ } from "../../utils";
 
@@ -48,7 +48,7 @@ export function getUrl(value: TreePath) {
     fieldId: undefined,
     tableId: undefined,
     databaseId: undefined,
-    schemaId: undefined,
+    schemaName: undefined,
     ...value,
   });
 }
@@ -87,15 +87,15 @@ export function useTableLoader(path: TreePath) {
   const getTables = useCallback(
     async (
       databaseId: DatabaseId | undefined,
-      schemaId: SchemaId | undefined,
+      schemaName: SchemaName | undefined,
     ) => {
-      if (databaseId === undefined || schemaId === undefined) {
+      if (databaseId === undefined || schemaName === undefined) {
         return [];
       }
       const res = await fetchTables(
         {
           id: databaseId,
-          schema: schemaId,
+          schema: schemaName,
           include_hidden: true,
           include_editable_data_model: true,
         },
@@ -106,7 +106,7 @@ export function useTableLoader(path: TreePath) {
           node<TableNode>({
             type: "table",
             label: table.display_name,
-            value: { databaseId, schemaId, tableId: table.id },
+            value: { databaseId, schemaName, tableId: table.id },
             table,
           }),
         ) ?? []
@@ -133,7 +133,7 @@ export function useTableLoader(path: TreePath) {
           const res = node<SchemaNode>({
             type: "schema",
             label: schema,
-            value: { databaseId, schemaId: schema },
+            value: { databaseId, schemaName: schema },
           });
 
           // If the schema is unnamed, or if it's the only schema in the database,
@@ -150,11 +150,11 @@ export function useTableLoader(path: TreePath) {
 
   const load = useCallback(
     async function (path: TreePath) {
-      const { databaseId, schemaId } = path;
+      const { databaseId, schemaName } = path;
       const [databases, schemas, tables] = await Promise.all([
         getDatabases(),
         getSchemas(path.databaseId),
-        getTables(path.databaseId, path.schemaId),
+        getTables(path.databaseId, path.schemaName),
       ]);
 
       const newTree: TreeNode = rootNode(
@@ -166,7 +166,7 @@ export function useTableLoader(path: TreePath) {
               : schemas.map((schema) => ({
                   ...schema,
                   children:
-                    schema.value.schemaId !== schemaId
+                    schema.value.schemaName !== schemaName
                       ? schema.children
                       : tables,
                 })),
@@ -230,7 +230,7 @@ export function useSearch(query: string) {
 
       let schemaNode = databaseNode.children.find(
         (node) =>
-          node.type === "schema" && node.value.schemaId === table_schema,
+          node.type === "schema" && node.value.schemaName === table_schema,
       );
       if (!schemaNode) {
         schemaNode = node<SchemaNode>({
@@ -238,7 +238,7 @@ export function useSearch(query: string) {
           label: table_schema,
           value: {
             databaseId: database_id,
-            schemaId: table_schema,
+            schemaName: table_schema,
           },
         });
         databaseNode.children.push(schemaNode);
@@ -253,7 +253,7 @@ export function useSearch(query: string) {
           label: name,
           value: {
             databaseId: database_id,
-            schemaId: table_schema,
+            schemaName: table_schema,
             tableId: id,
           },
         });
@@ -275,13 +275,13 @@ export function useSearch(query: string) {
 export function useExpandedState(path: TreePath) {
   const [state, setState] = useState(expandPath({}, path));
 
-  const { databaseId, schemaId, tableId } = path;
+  const { databaseId, schemaName, tableId } = path;
 
   useEffect(() => {
     // When the path changes, this means a user has navigated throught the browser back
     // button, ensure the path is completely expanded.
-    setState((state) => expandPath(state, { databaseId, schemaId, tableId }));
-  }, [databaseId, schemaId, tableId]);
+    setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
+  }, [databaseId, schemaName, tableId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
@@ -315,12 +315,12 @@ function expandPath(state: ExpandedState, path: TreePath): ExpandedState {
     [toKey({
       ...path,
       tableId: undefined,
-      schemaId: undefined,
+      schemaName: undefined,
     })]: true,
     [toKey({
       ...path,
       tableId: undefined,
-      schemaId: undefined,
+      schemaName: undefined,
       databaseId: undefined,
     })]: true,
   };
@@ -450,8 +450,8 @@ function merge(a: TreeNode | undefined, b: TreeNode | undefined): TreeNode {
 /**
  * Create a unique key for a TreePath
  */
-function toKey({ databaseId, schemaId, tableId }: TreePath) {
-  return JSON.stringify([databaseId, schemaId, tableId]);
+function toKey({ databaseId, schemaName, tableId }: TreePath) {
+  return JSON.stringify([databaseId, schemaName, tableId]);
 }
 
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;

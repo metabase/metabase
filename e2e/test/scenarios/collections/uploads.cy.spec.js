@@ -84,16 +84,9 @@ H.describeWithSnowplow(
 
       cy.findByRole("link", { name: "Table Metadata" }).click();
 
-      cy.findByTestId("admin-metadata-header")
-        .findByText("Sample Database")
-        .click();
-
-      H.popover().findByText("Writable Postgres12").click();
-
-      cy.findByTestId("admin-metadata-table-list").within(() => {
-        cy.findByText("1 Queryable Table").should("exist");
-        cy.findByText("Dog Breeds").should("exist");
-      });
+      H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+      H.DataModel.TablePicker.getTables().should("have.length", 1);
+      H.DataModel.TablePicker.getTable("Dog Breeds").should("be.visible");
     });
 
     ["postgres", "mysql"].forEach((dialect) => {

@@ -9,6 +9,7 @@ export const DataModel = {
   visit,
   TablePicker: {
     getDatabase: getTablePickerDatabase,
+    getSchema: getTablePickerSchema,
     getTable: getTablePickerTable,
     getTables: getTablePickerTables,
   },
@@ -134,6 +135,13 @@ function getTablePickerDatabase(name: string) {
     .filter(`:contains("${name}")`);
 }
 
+function getTablePickerSchema(name: string) {
+  return cy
+    .findAllByTestId("tree-item")
+    .filter('[data-type="schema"]')
+    .filter(`:contains("${name}")`);
+}
+
 function getTablePickerTable(name: string) {
   return cy
     .findAllByTestId("tree-item")
@@ -233,7 +241,7 @@ function getFieldSemanticTypeCurrencyInput() {
 }
 
 function getFieldSemanticTypeFkTargetInput() {
-  return getFieldSection().findByPlaceholderText("Select a target");
+  return getFieldSection().findByLabelText("Foreign key target");
 }
 
 function getFieldVisibilityInput() {

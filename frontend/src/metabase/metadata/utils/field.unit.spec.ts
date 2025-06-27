@@ -46,9 +46,8 @@ describe("areFieldsComparable", () => {
 
 describe("canCoerceFieldType", () => {
   it("should return true when field is not FK and is coerceable", () => {
-    const field = createPeopleNameField();
-
-    expect(canCoerceFieldType(field)).toBe(true);
+    expect(canCoerceFieldType(createPeopleNameField())).toBe(true);
+    expect(canCoerceFieldType(createPeopleCreatedAtField())).toBe(true);
   });
 
   it("should return false when field is FK", () => {
@@ -58,9 +57,9 @@ describe("canCoerceFieldType", () => {
   });
 
   it("should return false when field is not coerceable", () => {
-    const field = createPeopleCreatedAtField();
-
-    expect(canCoerceFieldType(field)).toBe(false);
+    expect(
+      canCoerceFieldType(createMockField({ base_type: "type/Boolean" })),
+    ).toBe(false);
   });
 });
 

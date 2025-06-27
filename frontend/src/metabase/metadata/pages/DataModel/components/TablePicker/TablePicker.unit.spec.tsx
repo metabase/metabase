@@ -182,7 +182,7 @@ describe("TablePicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
-        schemaId: PUBLIC.id,
+        schemaName: PUBLIC.name,
       });
 
       expect(item(FOO)).not.toBeInTheDocument();
@@ -192,7 +192,7 @@ describe("TablePicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         databaseId: DATABASE_WITH_MULTIPLE_SCHEMAS.id,
-        schemaId: PUBLIC.name,
+        schemaName: PUBLIC.name,
         tableId: BAR.id,
       });
 
@@ -248,7 +248,7 @@ describe("TablePicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
-        schemaId: SINGLE_SCHEMA.name,
+        schemaName: SINGLE_SCHEMA.name,
       });
 
       // the schema is flattened into the parent
@@ -343,7 +343,7 @@ describe("TablePicker", () => {
       await clickItem(FOO_RESULT);
       expect(onChange).toHaveBeenCalledWith({
         databaseId: FOO_RESULT.database_id,
-        schemaId: FOO_RESULT.table_schema,
+        schemaName: FOO_RESULT.table_schema,
         tableId: FOO_RESULT.id,
       });
     });
@@ -374,7 +374,7 @@ describe("TablePicker", () => {
 
       expect(onChange).toHaveBeenCalledWith({
         databaseId: FOO_RESULT.database_id,
-        schemaId: FOO_RESULT.table_schema,
+        schemaName: FOO_RESULT.table_schema,
         tableId: FOO_RESULT.id,
       });
     });

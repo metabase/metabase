@@ -1691,15 +1691,16 @@ describe("issue 31663", () => {
     H.tableInteractive().findByText("Product ID").click();
     cy.wait("@idFields");
     cy.findByPlaceholderText("Select a target").click();
-    H.popover().within(() => {
-      cy.findByText("Orders Model → ID").should("not.exist");
-      cy.findByText("Products Model → ID").should("not.exist");
+    H.popover().findByText("Orders Model → ID").should("not.exist");
+    H.popover().findByText("Products Model → ID").should("not.exist");
 
-      cy.findByText("Orders → ID").should("be.visible");
-      cy.findByText("People → ID").should("be.visible");
-      cy.findByText("Products → ID").should("be.visible");
-      cy.findByText("Reviews → ID").should("be.visible");
-    });
+    H.popover().findByText("Orders → ID").should("be.visible");
+    H.popover().findByText("People → ID").should("be.visible");
+    H.popover().findByText("Products → ID").should("be.visible");
+    H.popover()
+      .scrollTo("bottom")
+      .findByText("Reviews → ID")
+      .should("be.visible");
   });
 });
 

@@ -205,9 +205,11 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
       fieldId: ORDERS.TOTAL,
     });
 
-    cy.findByTestId("admin-layout-content").within(() => {
+    H.DataModel.FieldSection.get().within(() => {
       // Assert that this option now exists
-      cy.findByText("Where to display the unit of currency");
+      cy.findByText("Where to display the unit of currency")
+        .scrollIntoView()
+        .should("be.visible");
       cy.findByText("In every table cell").click();
     });
 

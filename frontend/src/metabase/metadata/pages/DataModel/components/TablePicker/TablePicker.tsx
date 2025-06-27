@@ -47,7 +47,7 @@ function Tree({
   value: TreePath;
   onChange: (path: TreePath) => void;
 }) {
-  const { databaseId, schemaId } = value;
+  const { databaseId, schemaName } = value;
   const { isExpanded, toggle } = useExpandedState(value);
   const { tree } = useTableLoader(value);
 
@@ -71,12 +71,12 @@ function Tree({
       database?.children.length === 1
     ) {
       const schema = database.children[0];
-      if (schema.type === "schema" && schemaId !== schema.value.schemaId) {
+      if (schema.type === "schema" && schemaName !== schema.value.schemaName) {
         toggle(schema.key, true);
         onChange(schema.value);
       }
     }
-  }, [databaseId, schemaId, tree, toggle, isExpanded, onChange]);
+  }, [databaseId, schemaName, tree, toggle, isExpanded, onChange]);
 
   if (isEmpty) {
     return <EmptyState title={t`No data to show.`} />;

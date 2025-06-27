@@ -1,10 +1,15 @@
-import type { DatabaseId, SchemaId, Table, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  SchemaName,
+  Table,
+  TableId,
+} from "metabase-types/api";
 
 export type NodeKey = string;
 
 export type TreePath = {
   databaseId?: DatabaseId;
-  schemaId?: SchemaId;
+  schemaName?: SchemaName;
   tableId?: TableId;
 };
 
@@ -30,7 +35,7 @@ export type SchemaNode = {
   type: "schema";
   label: string;
   key: string;
-  value: { databaseId: DatabaseId; schemaId: SchemaId };
+  value: { databaseId: DatabaseId; schemaName: SchemaName };
   children: TableNode[];
 };
 
@@ -38,7 +43,7 @@ export type TableNode = {
   type: "table";
   label: string;
   key: string;
-  value: { databaseId: DatabaseId; schemaId: SchemaId; tableId: TableId };
+  value: { databaseId: DatabaseId; schemaName: SchemaName; tableId: TableId };
   children: [];
   table?: Table;
 };
