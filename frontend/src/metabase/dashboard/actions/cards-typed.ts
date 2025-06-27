@@ -9,7 +9,10 @@ import {
 import { createThunkAction } from "metabase/lib/redux";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getDefaultSize } from "metabase/visualizations";
-import { getCardIdsFromColumnValueMappings } from "metabase/visualizer/utils";
+import {
+  getCardIdsFromColumnValueMappings,
+  isVisualizerDashboardCard,
+} from "metabase/visualizer/utils";
 import type {
   Card,
   CardId,
@@ -24,16 +27,25 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   trackCardCreated,
+  trackDashcardDuplicated,
   trackQuestionReplaced,
   trackSectionAdded,
 } from "../analytics";
 import type { SectionLayout } from "../sections";
-import { getDashCardById, getDashboardId } from "../selectors";
+import {
+  getDashCardById,
+  getDashboard,
+  getDashboardId,
+  getDashboards,
+  getDashcards,
+  getSelectedTabId,
+} from "../selectors";
 import {
   type NewDashboardCard,
   createDashCard,
   createVirtualCard,
   generateTemporaryDashcardId,
+  hasInlineParameters,
   isQuestionDashCard,
   isVirtualDashCard,
 } from "../utils";
@@ -50,6 +62,10 @@ import {
   setDashCardAttributes,
 } from "./core";
 import { cancelFetchCardData, fetchCardData } from "./data-fetching";
+import {
+  duplicateParameters,
+  removeParameterAndReferences,
+} from "./parameters";
 import { getExistingDashCards } from "./utils";
 
 export type NewDashCardOpts = {
@@ -356,6 +372,71 @@ export const replaceCardWithVisualization =
     }
   };
 
+export const DUPLICATE_CARD = "metabase/dashboard/DUPLICATE_CARD";
+export const duplicateCard = createThunkAction(
+  DUPLICATE_CARD,
+  ({ id }: { id: DashCardId }) =>
+    (dispatch, getState) => {
+      const dashboard = getDashboard(getState());
+      const originalDashcard = getDashCardById(getState(), id);
+      if (!dashboard || !originalDashcard) {
+        throw new Error("Dashboard or original dashcard not found");
+      }
+
+      const dashboards = getDashboards(getState());
+      const dashcards = getDashcards(getState());
+      const tabId = getSelectedTabId(getState());
+
+      const position = getPositionForNewDashCard(
+        getExistingDashCards(dashboards, dashcards, dashboard.id, tabId),
+        originalDashcard.size_x,
+        originalDashcard.size_y,
+      );
+
+      const dashcard = {
+        ...originalDashcard,
+        ...position,
+        id: generateTemporaryDashcardId(),
+      };
+
+      if (hasInlineParameters(dashcard)) {
+        const newParameters = duplicateParameters(
+          dispatch,
+          getState,
+          dashcard.inline_parameters,
+        );
+        dashcard.inline_parameters = newParameters.map(
+          (parameter) => parameter.id,
+        );
+      }
+
+      dispatch(
+        addDashCardToDashboard({
+          dashId: dashboard.id,
+          dashcardOverrides: dashcard,
+          tabId,
+        }),
+      );
+
+      if (!isVirtualDashCard(dashcard)) {
+        dispatch(fetchCardData(dashcard.card, dashcard));
+
+        if (
+          (isQuestionDashCard(dashcard) ||
+            isVisualizerDashboardCard(dashcard)) &&
+          dashcard.series &&
+          dashcard.series.length > 0
+        ) {
+          dashcard.series.forEach((card) => {
+            dispatch(fetchCardData(card, dashcard));
+          });
+        }
+      }
+
+      trackDashcardDuplicated(dashboard.id);
+    },
+);
+
 export const removeCardFromDashboard = createThunkAction(
   REMOVE_CARD_FROM_DASH,
   ({
@@ -365,10 +446,15 @@ export const removeCardFromDashboard = createThunkAction(
     dashcardId: DashCardId;
     cardId: DashboardCard["card_id"];
   }) =>
-    (dispatch) => {
+    (dispatch, getState) => {
+      const dashcard = getDashCardById(getState(), dashcardId);
       dispatch(closeAddCardAutoWireToasts());
-
       dispatch(cancelFetchCardData(cardId, dashcardId));
+      if (hasInlineParameters(dashcard)) {
+        dashcard.inline_parameters.forEach((parameterId) => {
+          removeParameterAndReferences(dispatch, getState, parameterId);
+        });
+      }
       return { dashcardId };
     },
 );

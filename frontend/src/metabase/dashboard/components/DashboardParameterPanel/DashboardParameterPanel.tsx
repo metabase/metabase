@@ -2,11 +2,13 @@ import cx from "classnames";
 import { useRef } from "react";
 
 import TransitionS from "metabase/css/core/transitions.module.css";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
+import { getDashboardHeaderValuePopulatedParameters } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/env";
 import { isSmallScreen } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
@@ -18,12 +20,14 @@ import { DashboardParameterList } from "../DashboardParameterList";
 import S from "./DashboardParameterPanel.module.css";
 
 export function DashboardParameterPanel() {
+  const parameters = useSelector(getDashboardHeaderValuePopulatedParameters);
+
   const {
-    shouldRenderAsNightMode,
-    isEditing,
+    isFullscreen,
     dashboard,
-    parameters,
     hideParameters,
+    isEditing,
+    shouldRenderAsNightMode,
   } = useDashboardContext();
 
   const visibleParameters = getVisibleParameters(parameters, hideParameters);
@@ -63,7 +67,10 @@ export function DashboardParameterPanel() {
             isFixedWidth={dashboard?.width === "fixed"}
             data-testid="fixed-width-filters"
           >
-            <DashboardParameterList />
+            <DashboardParameterList
+              parameters={parameters}
+              isFullscreen={isFullscreen}
+            />
           </FixedWidthContainer>
         </FullWidthContainer>
       </span>
@@ -84,11 +91,14 @@ export function DashboardParameterPanel() {
       >
         <FixedWidthContainer
           className={DashboardS.ParametersFixedWidthContainer}
-          id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+          id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
           isFixedWidth={dashboard?.width === "fixed"}
           data-testid="fixed-width-filters"
         >
-          <DashboardParameterList />
+          <DashboardParameterList
+            parameters={parameters}
+            isFullscreen={isFullscreen}
+          />
 
           <FilterApplyButton />
         </FixedWidthContainer>

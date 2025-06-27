@@ -14,13 +14,16 @@ import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbedde
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
+  createMockActionDashboardCard,
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDataset,
   createMockDatasetData,
   createMockHeadingDashboardCard,
+  createMockIFrameDashboardCard,
   createMockLinkDashboardCard,
+  createMockPlaceholderDashboardCard,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
@@ -393,6 +396,42 @@ describe("DashCard", () => {
         isEditing: true,
       });
       expect(screen.queryByLabelText("Replace")).not.toBeInTheDocument();
+    });
+
+    describe("'add filter' action", () => {
+      it("should be visible for heading cards", () => {
+        const headingCard = createMockHeadingDashboardCard();
+        setup({
+          dashboard: {
+            ...testDashboard,
+            dashcards: [headingCard],
+          },
+          dashcard: headingCard,
+          dashcardData: {},
+          isEditing: true,
+        });
+        expect(screen.getByLabelText("Add a filter")).toBeInTheDocument();
+      });
+
+      it.each([
+        ["question", createMockDashboardCard()],
+        ["action", createMockActionDashboardCard()],
+        ["text", createMockTextDashboardCard()],
+        ["link", createMockLinkDashboardCard()],
+        ["iframe", createMockIFrameDashboardCard()],
+        ["placeholder", createMockPlaceholderDashboardCard()],
+      ])("should not be visible for %s cards", (_, dashcard) => {
+        setup({
+          dashboard: {
+            ...testDashboard,
+            dashcards: [dashcard],
+          },
+          dashcard,
+          dashcardData: {},
+          isEditing: true,
+        });
+        expect(screen.queryByLabelText("Add a filter")).not.toBeInTheDocument();
+      });
     });
   });
 });

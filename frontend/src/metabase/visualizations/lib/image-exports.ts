@@ -2,9 +2,11 @@
 import { css } from "@emotion/react";
 
 import GlobalDashboardS from "metabase/css/dashboard.module.css";
-import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module.css";
 import DashboardGridS from "metabase/dashboard/components/DashboardGrid.module.css";
-import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import {
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
+} from "metabase/dashboard/constants";
 import { isEmbeddingSdk, isStorybookActive } from "metabase/env";
 import { utf8_to_b64 } from "metabase/lib/encoding";
 import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
@@ -27,7 +29,7 @@ export const saveDomImageStyles = css`
       display: none;
     }
 
-    .${DashboardS.FixedWidthContainer} {
+    .${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME} {
       legend {
         top: -9px;
       }
@@ -109,17 +111,18 @@ export const setupDashboardForRendering = (
     return undefined;
   }
 
-  const parametersNode = dashboardRoot
-    ?.querySelector(`#${DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}`)
+  const pageHeaderParametersNode = dashboardRoot
+    ?.querySelector(`#${DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}`)
     ?.cloneNode(true);
 
   let parametersHeight = 0;
-  if (parametersNode instanceof HTMLElement) {
-    gridNode.append(parametersNode);
-    parametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
+  if (pageHeaderParametersNode instanceof HTMLElement) {
+    gridNode.append(pageHeaderParametersNode);
+    pageHeaderParametersNode.style.cssText = `margin-bottom: ${PARAMETERS_MARGIN_BOTTOM}px`;
     parametersHeight =
-      parametersNode.getBoundingClientRect().height + PARAMETERS_MARGIN_BOTTOM;
-    gridNode.removeChild(parametersNode);
+      pageHeaderParametersNode.getBoundingClientRect().height +
+      PARAMETERS_MARGIN_BOTTOM;
+    gridNode.removeChild(pageHeaderParametersNode);
   }
 
   const contentWidth = gridNode.offsetWidth;
@@ -134,7 +137,9 @@ export const setupDashboardForRendering = (
     contentWidth,
     contentHeight,
     parametersNode:
-      parametersNode instanceof HTMLElement ? parametersNode : null,
+      pageHeaderParametersNode instanceof HTMLElement
+        ? pageHeaderParametersNode
+        : null,
     parametersHeight,
     backgroundColor,
   };
