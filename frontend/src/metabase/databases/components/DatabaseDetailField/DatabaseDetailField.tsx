@@ -14,11 +14,13 @@ import DatabaseSectionField from "../DatabaseSectionField";
 export interface DatabaseDetailFieldProps {
   field: EngineField;
   autoFocus?: boolean;
+  onPaste?: React.ClipboardEventHandler<HTMLInputElement>;
 }
 
 const DatabaseDetailField = ({
   field,
   autoFocus,
+  onPaste,
 }: DatabaseDetailFieldProps): JSX.Element | null => {
   const override = FIELD_OVERRIDES[field.name];
   const type = getFieldType(field, override);
@@ -34,11 +36,25 @@ const DatabaseDetailField = ({
 
   switch (type) {
     case "password":
-      return <FormInput {...props} {...getPasswordProps(field)} nullable />;
+      return (
+        <FormInput
+          {...props}
+          {...getPasswordProps(field)}
+          onPaste={onPaste}
+          nullable
+        />
+      );
     case "text":
       return <FormTextArea {...props} />;
     case "integer":
-      return <FormNumericInput {...props} {...getInputProps(field)} nullable />;
+      return (
+        <FormNumericInput
+          {...props}
+          {...getInputProps(field)}
+          onPaste={onPaste}
+          nullable
+        />
+      );
     case "boolean":
       return <FormToggle {...props} />;
     case "select":
@@ -52,7 +68,14 @@ const DatabaseDetailField = ({
     case "hidden":
       return null;
     default:
-      return <FormInput {...props} {...getInputProps(field)} nullable />;
+      return (
+        <FormInput
+          {...props}
+          {...getInputProps(field)}
+          onPaste={onPaste}
+          nullable
+        />
+      );
   }
 };
 
