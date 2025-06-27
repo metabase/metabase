@@ -140,12 +140,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
       # Needed to omit newly added tests for functionality that is not yet released
       - name: Sparse checkout tests from SDK release commit
         uses: actions/checkout@v4
