@@ -762,3 +762,44 @@
       (is (=? {:unit :month}
               (->> (lib/breakout-column query breakout)
                    (lib/temporal-bucket)))))))
+
+(deftest ^:parallel breakoutable-columns-do-not-suggest-remaps-test
+  (testing "Do not return column remaps in breakoutable-columns"
+    (let [mp    (lib.tu/remap-metadata-provider
+                 meta/metadata-provider
+                 (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query mp (meta/table-metadata :orders))]
+      (is (= [["Orders"   "ID"]
+              ["Orders"   "User ID"]
+              ["Orders"   "Product ID"]
+              ["Orders"   "Subtotal"]
+              ["Orders"   "Tax"]
+              ["Orders"   "Total"]
+              ["Orders"   "Discount"]
+              ["Orders"   "Created At"]
+              ["Orders"   "Quantity"]
+              ["People"   "User → ID"]
+              ["People"   "User → Address"]
+              ["People"   "User → Email"]
+              ["People"   "User → Password"]
+              ["People"   "User → Name"]
+              ["People"   "User → City"]
+              ["People"   "User → Longitude"]
+              ["People"   "User → State"]
+              ["People"   "User → Source"]
+              ["People"   "User → Birth Date"]
+              ["People"   "User → Zip"]
+              ["People"   "User → Latitude"]
+              ["People"   "User → Created At"]
+              ["Products" "Product → ID"]
+              ["Products" "Product → Ean"]
+              ["Products" "Product → Title"]
+              ["Products" "Product → Category"]
+              ["Products" "Product → Vendor"]
+              ["Products" "Product → Price"]
+              ["Products" "Product → Rating"]
+              ["Products" "Product → Created At"]]
+             (map (comp
+                   (juxt #(get-in % [:table :long-display-name]) :long-display-name)
+                   #(lib/display-info query %))
+                  (lib/breakoutable-columns query)))))))
