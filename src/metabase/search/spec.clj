@@ -282,31 +282,27 @@
 
 (defmulti spec*
   "Impl for [[spec]]."
-  {:arglists '([search-model appd-type])}
-  (fn [search-model appd-type] [search-model (or appd-type :default)]))
+  {:arglists '([search-model])}
+  identity)
 
 (defn spec
   "Register a metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  ([search-model]
-   (spec search-model (app-db/db-type)))
-  ([search-model appd-type]
-   ;; make sure the model namespace is loaded.
-   (t2/resolve-model (search-model->toucan-model search-model))
-   (spec* search-model appd-type)))
+  [search-model]
+  ;; make sure the model namespace is loaded.
+  (t2/resolve-model (search-model->toucan-model search-model))
+  (spec* search-model))
 
 (defn specifications
   "A mapping from each search-model to its specification."
-  ([]
-   (specifications (app-db/db-type)))
-  ([appd-type]
-   (into {}
-         (map (fn [[search-model toucan-model]]
-                ;; make sure the model namespace is loaded.
-                (t2/resolve-model toucan-model)
-                [search-model (spec search-model appd-type)]))
-         search-model->toucan-model)))
+  []
+  (into {}
+        (map (fn [[search-model toucan-model]]
+               ;; make sure the model namespace is loaded.
+               (t2/resolve-model toucan-model)
+               [search-model (spec search-model)]))
+        search-model->toucan-model))
 
 (defn validate-spec!
   "Check whether a given specification is valid"
@@ -318,40 +314,24 @@
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
-  "Define a spec for a search model. The spec can be a static map or a function of appd-type."
+  "Define a spec for a search model."
   [search-model spec]
-  `(let [spec-fn# (if (fn? ~spec)
-                    ~spec
-                    (constantly ~spec))]
-     ;; Define method for all database types using :default as fallback
-     (defmethod spec* [~search-model :default] [~'_ appd-type#]
-       (let [spec# (-> (spec-fn# appd-type#)
-                       (assoc :name ~search-model)
-                       (update :visibility #(or % :all))
-                       (update :attrs #(merge ~default-attrs %)))]
-         (validate-spec! spec#)
-         (derive (:model spec#) :hook/search-index)
-         spec#))
-     ;; Also define methods for specific database types to ensure proper dispatch
-     (doseq [db-type# [:h2 :postgres :mysql]]
-       (defmethod spec* [~search-model db-type#] [~'_ appd-type#]
-         (let [spec# (-> (spec-fn# appd-type#)
-                         (assoc :name ~search-model)
-                         (update :visibility #(or % :all))
-                         (update :attrs #(merge ~default-attrs %)))]
-           (validate-spec! spec#)
-           spec#)))))
+  `(let [spec# (-> ~spec
+                   (assoc :name ~search-model)
+                   (update :visibility #(or % :all))
+                   (update :attrs #(merge ~default-attrs %)))]
+     (validate-spec! spec#)
+     (derive (:model spec#) :hook/search-index)
+     (defmethod spec* ~search-model [~'_] spec#)))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
   "Return an inverted map of data dependencies to search models, used for updating them based on underlying models."
-  ([]
-   (model-hooks (app-db/db-type)))
-  ([appd-type]
-   (->> (specifications appd-type)
-        vals
-        (map search-model-hooks)
-        merge-hooks)))
+  []
+  (->> (specifications)
+       vals
+       (map search-model-hooks)
+       merge-hooks))
 
 (defn- instance->db-values
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
