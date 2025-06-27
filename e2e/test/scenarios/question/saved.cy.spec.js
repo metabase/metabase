@@ -477,7 +477,6 @@ describe("scenarios > question > saved", () => {
         });
       } else {
         H.DataModel.visit();
-        H.DataModel.TablePicker.getDatabase("Sample Database").click();
         H.DataModel.TablePicker.getTable(name).click();
         H.DataModel.TablePicker.getTable(name).button("Hide table").click();
       }
