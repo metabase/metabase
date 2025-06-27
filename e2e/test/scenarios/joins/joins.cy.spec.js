@@ -194,7 +194,7 @@ describe("scenarios > question > joined questions", () => {
 
     H.openNotebook();
     H.getNotebookStep("join").icon("chevrondown").click();
-    H.popover().findByText("ID").click();
+    H.popover().findByText("Q2 - Product → ID").click();
     H.visualize();
 
     H.assertJoinValid({
@@ -218,7 +218,7 @@ describe("scenarios > question > joined questions", () => {
     H.filter({ mode: "notebook" });
     H.popover().within(() => {
       cy.findByText("Q2").click();
-      cy.findByText("ID").click();
+      cy.findByText("Q2 - Product → ID").click();
       cy.findByPlaceholderText("Enter an ID").type("12");
       cy.button("Add filter").click();
     });

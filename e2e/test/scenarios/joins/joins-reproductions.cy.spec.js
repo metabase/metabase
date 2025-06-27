@@ -847,7 +847,7 @@ describe("issue 23293", () => {
 
       cy.findByTestId("qb-filters-panel").should(
         "contain",
-        "Product → Category is Doohickey",
+        "Orders → Category is Doohickey",
       );
       // eslint-disable-next-line no-unsafe-element-filtering
       cy.findAllByTestId("header-cell")
