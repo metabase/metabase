@@ -964,16 +964,19 @@ async function findTablePickerItem(
   type: "table" | "schema" | "database",
   name: string,
 ) {
-  const allItems = await screen.findAllByTestId("tree-item");
-  const items = allItems.filter(
-    (element) =>
-      element.getAttribute("data-type") === type &&
-      element.textContent?.includes(name),
-  );
+  let items: HTMLElement[] = [];
 
-  if (items.length !== 1) {
-    throw new Error(`Cannot find ${type} in table picker`);
-  }
+  await waitFor(() => {
+    const allItems = screen.queryAllByTestId("tree-item");
+    items = allItems.filter(
+      (el) =>
+        el.getAttribute("data-type") === type && el.textContent?.includes(name),
+    );
+
+    if (items.length !== 1) {
+      throw new Error(`Cannot find ${type} in table picker`); // trigger retry
+    }
+  });
 
   return items[0];
 }
