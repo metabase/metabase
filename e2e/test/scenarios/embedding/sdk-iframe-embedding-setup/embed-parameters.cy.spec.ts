@@ -23,14 +23,12 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
         slug: "id",
         id: "11111111",
         type: "id",
-        sectionId: "id",
       },
       {
         name: "Product ID",
         slug: "product_id",
         id: "22222222",
         type: "id",
-        sectionId: "id",
       },
     ];
 
@@ -100,37 +98,42 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     });
   });
 
-  it("should allow setting default parameter values", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
-
-    getEmbedSidebar().within(() => {
-      // Set a default value for the ID parameter
-      cy.findByLabelText("ID").type("123");
-
-      // The value should be set in the parameter input
-      cy.findByLabelText("ID").should("have.value", "123");
-
-      // Navigate to the code step to verify the setting is included
-      cy.findByText("Next").click();
+  it("can set default parameter values", () => {
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Dashboard with Parameters",
     });
 
-    // The code snippet should include the initial parameter
+    cy.log("set default values for parameters");
     getEmbedSidebar().within(() => {
-      cy.findByText("initialParameters").should("be.visible");
-      cy.findByText('"id": "123"').should("be.visible");
+      cy.findByLabelText("ID").type("123").blur();
+      cy.findByLabelText("Product ID").type("456").blur();
+    });
+
+    cy.log("verify the default values appear in the preview");
+    H.getIframeBody().within(() => {
+      cy.get('[aria-label="ID"]').should("contain", "123");
+      cy.get('[aria-label="Product ID"]').should("contain", "456");
+    });
+
+    cy.log("default values should be in the code snippet");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Get Code").click();
+      codeBlock().should("contain", '"initialParameters"');
+      codeBlock().should("contain", '"id": "123"');
+      codeBlock().should("contain", '"product_id": "456"');
     });
   });
 
   it("should allow hiding dashboard parameters", () => {
-    navigateToEmbedOptionsStep({ experience: "dashboard" });
+    navigateToEmbedOptionsStep({
+      experience: "dashboard",
+      resourceName: "Dashboard with Parameters",
+    });
 
     getEmbedSidebar().within(() => {
       // Hide the ID parameter
-      cy.findByLabelText("ID")
-        .parent()
-        .within(() => {
-          cy.get("[data-testid='parameter-visibility-toggle']").click();
-        });
+      getParameterVisibilityToggle("ID").click();
 
       // Navigate to the code step to verify the setting is included
       cy.findByText("Next").click();
@@ -144,7 +147,10 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
   });
 
   it("should show parameter settings for questions with SQL parameters", () => {
-    navigateToEmbedOptionsStep({ experience: "chart" });
+    navigateToEmbedOptionsStep({
+      experience: "chart",
+      resourceName: "Question with Parameters",
+    });
 
     // Should show parameter settings
     getEmbedSidebar().within(() => {
@@ -182,11 +188,14 @@ describe("scenarios > embedding > sdk iframe embed setup > embed parameters", ()
     navigateToEntitySelectionStep({ experience: "exploration" });
 
     getEmbedSidebar().within(() => {
-      cy.findByText("Next").click(); // Should go directly to options step (no entity selection)
-    });
+      cy.log("go to embed options step");
+      cy.findByText("Next").click();
 
-    // Should not show parameter settings for exploration
-    getEmbedSidebar().within(() => {
+      cy.log("should still contain appearance and behavior");
+      cy.findByText("Appearance").should("be.visible");
+      cy.findByText("Behavior").should("be.visible");
+
+      cy.log("should not contain parameters");
       cy.findByText("Parameters").should("not.exist");
     });
   });
@@ -211,3 +220,5 @@ const getParameterVisibilityToggle = (parameterName: string) =>
     .findByLabelText(parameterName)
     .parent()
     .get("[data-testid='parameter-visibility-toggle']");
+
+const codeBlock = () => cy.get(".cm-content");
