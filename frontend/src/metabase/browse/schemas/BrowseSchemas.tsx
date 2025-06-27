@@ -7,7 +7,6 @@ import CS from "metabase/css/core/index.css";
 import Database from "metabase/entities/databases";
 import Schemas from "metabase/entities/schemas";
 import * as Urls from "metabase/lib/urls";
-import { SimpleGrid } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 
 import { BrowseCard } from "../components/BrowseCard";
@@ -17,6 +16,7 @@ import {
   BrowseSection,
 } from "../components/BrowseContainer.styled";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
+import { BrowseGrid } from "../components/BrowseGrid";
 import { BrowseHeaderContent } from "../components/BrowseHeader.styled";
 
 const BrowseSchemasContainer = ({
@@ -58,7 +58,7 @@ const BrowseSchemasContainer = ({
                   className={cx(CS.full, CS.textCentered, CS.textMedium)}
                 >{t`This database doesn't have any tables.`}</h2>
               ) : (
-                <SimpleGrid cols={3} w="100%" pt="lg">
+                <BrowseGrid pt="lg">
                   {schemas.map((schema) => (
                     <BrowseCard
                       key={schema.id}
@@ -69,7 +69,7 @@ const BrowseSchemasContainer = ({
                       )}`}
                     />
                   ))}
-                </SimpleGrid>
+                </BrowseGrid>
               )}
             </>
           )}
