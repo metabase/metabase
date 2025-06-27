@@ -1348,8 +1348,8 @@
   into an index column. A more robust way of doing this would be to not use a DB query and instead populate
   this index column by taking the card's dataset_query and converting it to lib format and using lib utilities
   for properly deciding which columns are non temporal dimensions."
-  []
-  (if (= (app-db/db-type) :postgres)
+  [appd-type]
+  (if (= appd-type :postgres)
     [:raw "COALESCE(
            (SELECT jsonb_agg(field_id ORDER BY field_id)
             FROM (
@@ -1362,7 +1362,8 @@
          )"]
     [:raw "'[]'"]))
 
-(def ^:private base-search-spec
+(defn ^:private base-search-spec
+  [appd-type]
   {:model        :model/Card
    :attrs        {:archived            true
                   :collection-id       true
@@ -1385,7 +1386,7 @@
                   :display-type        :this.display
                   ;; Niche columns for visualizer compatibility filtering
                   :has-temporal-dimensions [:like :this.result_metadata "%\"temporal_unit\":%"]
-                  :non-temporal-dimension-ids (non-temporal-dimension-ids-clause)}
+                  :non-temporal-dimension-ids (non-temporal-dimension-ids-clause appd-type)}
    :search-terms [:name :description]
    :render-terms {:archived-directly          true
                   :collection-authority_level :collection.authority_level
@@ -1420,10 +1421,13 @@
    #_:end})
 
 (search/define-spec "card"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "question"])))
+  (fn [appd-type]
+    (-> (base-search-spec appd-type) (sql.helpers/where [:= :this.type "question"]))))
 
 (search/define-spec "dataset"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "model"])))
+  (fn [appd-type]
+    (-> (base-search-spec appd-type) (sql.helpers/where [:= :this.type "model"]))))
 
 (search/define-spec "metric"
-  (-> base-search-spec (sql.helpers/where [:= :this.type "metric"])))
+  (fn [appd-type]
+    (-> (base-search-spec appd-type) (sql.helpers/where [:= :this.type "metric"]))))
