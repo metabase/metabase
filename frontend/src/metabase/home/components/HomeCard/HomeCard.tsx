@@ -1,22 +1,27 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 
-import { CardRoot } from "./HomeCard.styled";
+import Link from "metabase/common/components/Link";
+import { Box, type BoxProps } from "metabase/ui";
 
-interface HomeCardProps {
+import S from "./HomeCard.module.css";
+
+type HomeCardProps<C extends React.ElementType> = {
   className?: string;
-  url?: string;
-  external?: boolean;
   children?: ReactNode;
-}
+  component?: C;
+} & React.ComponentProps<C> &
+  BoxProps;
 
-export const HomeCard = ({
+export const HomeCard = <C extends React.ElementType = typeof Link>({
   className,
-  url = "",
   children,
-}: HomeCardProps): JSX.Element => {
+  component = Link,
+  ...rest
+}: HomeCardProps<C>): JSX.Element => {
   return (
-    <CardRoot className={className} to={url}>
+    <Box component={component} className={cx(className, S.Root)} {...rest}>
       {children}
-    </CardRoot>
+    </Box>
   );
 };
