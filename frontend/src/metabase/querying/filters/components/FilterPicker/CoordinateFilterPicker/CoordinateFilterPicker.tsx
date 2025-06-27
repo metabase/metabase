@@ -1,24 +1,18 @@
 import type { FormEvent } from "react";
-import { useMemo } from "react";
-import { t } from "ttag";
+import { useMemo, useState } from "react";
 
-import { isNotNull } from "metabase/lib/types";
-import {
-  type NumberOrEmptyValue,
-  useCoordinateFilter,
-} from "metabase/querying/filters/hooks/use-coordinate-filter";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { useCoordinateFilter } from "metabase/querying/filters/hooks/use-coordinate-filter";
+import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { NumberFilterValuePicker } from "../../FilterValuePicker";
-import { NumberFilterInput } from "../../NumberFilterInput";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
-import { COMBOBOX_PROPS, WIDTH } from "../constants";
+import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
+import { CoordinateValueInput } from "./CoordinateValueInput";
 
 export function CoordinateFilterPicker({
   query,
@@ -56,6 +50,9 @@ export function CoordinateFilterPicker({
     column,
     filter,
   });
+
+  const [leftInclusive, setLeftInclusive] = useState(true);
+  const [rightInclusive, setRightInclusive] = useState(true);
 
   const handleOperatorChange = (newOperator: Lib.CoordinateFilterOperator) => {
     setOperator(newOperator);
@@ -114,6 +111,10 @@ export function CoordinateFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           onChange={setValues}
+          leftInclusive={leftInclusive}
+          rightInclusive={rightInclusive}
+          onLeftInclusiveChange={setLeftInclusive}
+          onRightInclusiveChange={setRightInclusive}
         />
         <FilterPickerFooter
           isNew={isNew}
@@ -124,118 +125,4 @@ export function CoordinateFilterPicker({
       </Box>
     </Box>
   );
-}
-
-interface CoordinateValueInputProps {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  values: NumberOrEmptyValue[];
-  valueCount: number;
-  hasMultipleValues?: boolean;
-  onChange: (values: NumberOrEmptyValue[]) => void;
-}
-
-function CoordinateValueInput({
-  query,
-  stageIndex,
-  column,
-  values,
-  valueCount,
-  hasMultipleValues,
-  onChange,
-}: CoordinateValueInputProps) {
-  if (hasMultipleValues) {
-    return (
-      <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
-        <NumberFilterValuePicker
-          query={query}
-          stageIndex={stageIndex}
-          column={column}
-          values={values.filter(isNotNull)}
-          autoFocus
-          comboboxProps={COMBOBOX_PROPS}
-          onChange={onChange}
-        />
-      </Box>
-    );
-  }
-
-  if (valueCount === 1) {
-    return (
-      <Flex p="md">
-        <NumberFilterInput
-          value={values[0]}
-          placeholder={t`Enter a number`}
-          autoFocus
-          w="100%"
-          aria-label={t`Filter value`}
-          onChange={(newValue) => onChange([newValue])}
-        />
-      </Flex>
-    );
-  }
-
-  if (valueCount === 2) {
-    return (
-      <Flex align="center" justify="center" p="md">
-        <NumberFilterInput
-          value={values[0]}
-          placeholder={t`Min`}
-          autoFocus
-          onChange={(newValue) => onChange([newValue, values[1]])}
-        />
-        <Text mx="sm">{t`and`}</Text>
-        <NumberFilterInput
-          value={values[1]}
-          placeholder={t`Max`}
-          onChange={(newValue) => onChange([values[0], newValue])}
-        />
-      </Flex>
-    );
-  }
-
-  if (valueCount === 4) {
-    return (
-      <Stack align="center" justify="center" gap="sm" p="md">
-        <NumberFilterInput
-          label={t`Upper latitude`}
-          value={values[0]}
-          placeholder="90"
-          autoFocus
-          onChange={(newValue) =>
-            onChange([newValue, values[1], values[2], values[3]])
-          }
-        />
-        <Flex align="center" justify="center" gap="sm">
-          <NumberFilterInput
-            label={t`Left longitude`}
-            value={values[1]}
-            placeholder="-180"
-            onChange={(newValue) =>
-              onChange([values[0], newValue, values[2], values[3]])
-            }
-          />
-          <NumberFilterInput
-            label={t`Right longitude`}
-            value={values[3]}
-            placeholder="180"
-            onChange={(newValue) =>
-              onChange([values[0], values[1], values[2], newValue])
-            }
-          />
-        </Flex>
-        <NumberFilterInput
-          label={t`Lower latitude`}
-          value={values[2]}
-          placeholder="-90"
-          onChange={(newValue) =>
-            onChange([values[0], values[1], newValue, values[3]])
-          }
-        />
-      </Stack>
-    );
-  }
-
-  return null;
 }

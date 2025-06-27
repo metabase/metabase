@@ -892,19 +892,17 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnName,
           columnMinValue,
           columnMaxValue,
-          isCoordinate = false,
         }: {
           columnName: string;
           columnMinValue: number;
           columnMaxValue: number;
-          isCoordinate?: boolean;
         }) {
           H.popover().within(() => {
             cy.findByText(columnName).click();
-            cy.findByPlaceholderText(isCoordinate ? "Min" : "Start of range")
+            cy.findByPlaceholderText("Start of range")
               .clear()
               .type(String(columnMinValue));
-            cy.findByPlaceholderText(isCoordinate ? "Max" : "End of range")
+            cy.findByPlaceholderText("End of range")
               .clear()
               .type(String(columnMaxValue));
             cy.button("Add filter").click();
@@ -919,7 +917,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name,
           column2MinValue,
           column2MaxValue,
-          isCoordinate = false,
         }: {
           questionDetails: StructuredQuestionDetails;
           column1Name: string;
@@ -928,7 +925,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: string;
           column2MinValue: number;
           column2MaxValue: number;
-          isCoordinate?: boolean;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
           H.openNotebook();
@@ -939,7 +935,6 @@ describe("scenarios > question > multiple column breakouts", () => {
             columnName: column1Name,
             columnMinValue: column1MinValue,
             columnMaxValue: column1MaxValue,
-            isCoordinate,
           });
 
           cy.log("add a filter for the second column");
@@ -948,7 +943,6 @@ describe("scenarios > question > multiple column breakouts", () => {
             columnName: column2Name,
             columnMinValue: column2MinValue,
             columnMaxValue: column2MaxValue,
-            isCoordinate,
           });
 
           cy.log("assert query results");
@@ -997,7 +991,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Latitude: 10°",
           column2MinValue: 10,
           column2MaxValue: 50,
-          isCoordinate: true,
         });
 
         H.assertTableData({
@@ -1220,21 +1213,19 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnName,
           columnMinValue,
           columnMaxValue,
-          isCoordinate = false,
         }: {
           columnName: string;
           columnMinValue: number;
           columnMaxValue: number;
-          isCoordinate?: boolean;
         }) {
           H.filter();
           H.popover().within(() => {
             cy.findByText("Summaries").click();
             cy.findByText(columnName).click();
-            cy.findByPlaceholderText(isCoordinate ? "Min" : "Start of range")
+            cy.findByPlaceholderText("Start of range")
               .clear()
               .type(String(columnMinValue));
-            cy.findByPlaceholderText(isCoordinate ? "Max" : "End of range")
+            cy.findByPlaceholderText("End of range")
               .clear()
               .type(String(columnMaxValue));
             cy.button("Apply filter").click();
@@ -1249,7 +1240,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name,
           column2MinValue,
           column2MaxValue,
-          isCoordinate = false,
         }: {
           questionDetails: StructuredQuestionDetails;
           column1Name: string;
@@ -1258,7 +1248,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: string;
           column2MinValue: number;
           column2MaxValue: number;
-          isCoordinate?: boolean;
         }) {
           H.createQuestion(questionDetails, { visitQuestion: true });
 
@@ -1267,7 +1256,6 @@ describe("scenarios > question > multiple column breakouts", () => {
             columnName: column1Name,
             columnMinValue: column1MinValue,
             columnMaxValue: column1MaxValue,
-            isCoordinate,
           });
 
           cy.log("add a filter for the second column");
@@ -1275,7 +1263,6 @@ describe("scenarios > question > multiple column breakouts", () => {
             columnName: column2Name,
             columnMinValue: column2MinValue,
             columnMaxValue: column2MaxValue,
-            isCoordinate,
           });
 
           cy.log("assert query results");
@@ -1322,7 +1309,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Latitude: 10°",
           column2MinValue: 10,
           column2MaxValue: 50,
-          isCoordinate: true,
         });
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],
@@ -1489,19 +1475,17 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnName,
           columnMinValue,
           columnMaxValue,
-          isCoordinate = false,
         }: {
           columnName: string;
           columnMinValue: number;
           columnMaxValue: number;
-          isCoordinate?: boolean;
         }) {
           H.popover().within(() => {
             cy.findAllByText(columnName).click();
-            cy.findByPlaceholderText(isCoordinate ? "Min" : "Start of range")
+            cy.findByPlaceholderText("Start of range")
               .clear()
               .type(String(columnMinValue));
-            cy.findByPlaceholderText(isCoordinate ? "Max" : "End of range")
+            cy.findByPlaceholderText("End of range")
               .clear()
               .type(String(columnMaxValue));
             cy.button("Add filter").click();
@@ -1516,7 +1500,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name,
           column2MinValue,
           column2MaxValue,
-          isCoordinate = false,
         }: {
           questionDetails: StructuredQuestionDetails;
           column1Name: string;
@@ -1525,7 +1508,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: string;
           column2MinValue: number;
           column2MaxValue: number;
-          isCoordinate?: boolean;
         }) {
           H.createQuestion(questionDetails).then(({ body: card }) => {
             H.createQuestion(getNestedQuestionDetails(card.id), {
@@ -1540,7 +1522,6 @@ describe("scenarios > question > multiple column breakouts", () => {
             columnName: column1Name,
             columnMinValue: column1MinValue,
             columnMaxValue: column1MaxValue,
-            isCoordinate,
           });
 
           cy.log("add a filter for the second column");
@@ -1549,7 +1530,6 @@ describe("scenarios > question > multiple column breakouts", () => {
             columnName: column2Name,
             columnMinValue: column2MinValue,
             columnMaxValue: column2MaxValue,
-            isCoordinate,
           });
 
           cy.log("assert query results");
@@ -1597,7 +1577,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Latitude: 10°",
           column2MinValue: 10,
           column2MaxValue: 50,
-          isCoordinate: true,
         });
         H.assertTableData({
           columns: ["Latitude: 20°", "Latitude: 10°", "Count"],

@@ -1,17 +1,17 @@
 import { t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-number-filter";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import type { NumberOrEmptyValue } from "metabase/querying/filters/hooks/use-coordinate-filter";
+import { Box, Flex, Icon, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { NumberFilterInput } from "../../NumberFilterInput";
 import { COMBOBOX_PROPS } from "../constants";
 
-import S from "./NumberFilterPicker.module.css";
+import S from "./CoordinateFilterPicker.module.css";
 
-interface NumberValueInputProps {
+interface CoordinateValueInputProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
@@ -25,7 +25,7 @@ interface NumberValueInputProps {
   onRightInclusiveChange: (value: boolean) => void;
 }
 
-function NumberValueInput({
+function CoordinateValueInput({
   query,
   stageIndex,
   column,
@@ -37,7 +37,7 @@ function NumberValueInput({
   rightInclusive = true,
   onLeftInclusiveChange,
   onRightInclusiveChange,
-}: NumberValueInputProps) {
+}: CoordinateValueInputProps) {
   if (hasMultipleValues) {
     return (
       <Box p="md" mah="25vh" style={{ overflow: "auto" }}>
@@ -119,6 +119,48 @@ function NumberValueInput({
     );
   }
 
+  if (valueCount === 4) {
+    return (
+      <Stack align="center" justify="center" gap="sm" p="md">
+        <NumberFilterInput
+          label={t`Upper latitude`}
+          value={values[0]}
+          placeholder="90"
+          autoFocus
+          onChange={(newValue) =>
+            onChange([newValue, values[1], values[2], values[3]])
+          }
+        />
+        <Flex align="center" justify="center" gap="sm">
+          <NumberFilterInput
+            label={t`Left longitude`}
+            value={values[1]}
+            placeholder="-180"
+            onChange={(newValue) =>
+              onChange([values[0], newValue, values[2], values[3]])
+            }
+          />
+          <NumberFilterInput
+            label={t`Right longitude`}
+            value={values[3]}
+            placeholder="180"
+            onChange={(newValue) =>
+              onChange([values[0], values[1], values[2], newValue])
+            }
+          />
+        </Flex>
+        <NumberFilterInput
+          label={t`Lower latitude`}
+          value={values[2]}
+          placeholder="-90"
+          onChange={(newValue) =>
+            onChange([values[0], values[1], newValue, values[3]])
+          }
+        />
+      </Stack>
+    );
+  }
+
   return null;
 }
 
@@ -155,4 +197,4 @@ function ToggleButton({
   );
 }
 
-export { NumberValueInput };
+export { CoordinateValueInput };
