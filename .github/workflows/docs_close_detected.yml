@@ -1,11 +1,9 @@
-name: Docs Bump Detected
+name: Docs Merge Detected
 
 on:
-  pull_request_target:
+  pull_request:
     types:
-      - opened
-      - synchronize
-      - reopened
+      - closed
     branches:
       - 'master'
       - 'release-x.[0-9]+.x'
@@ -13,7 +11,8 @@ on:
       - 'docs/**'
 
 jobs:
-  push_workflow_to_docs_metabase_github_io_job:
+  push_and_merge_workflow_to_docs_metabase_github_io_job:
+    if: github.event.pull_request.merged == false
     runs-on: ubuntu-latest
     env:
       SOURCE_BRANCH: ${{ github.head_ref || github.ref  }}
@@ -22,8 +21,8 @@ jobs:
     steps:
       - name: Report changed docs files exist
         run: |
-          echo "A PR with changes in the docs directory was detected."
-          echo "Sending workflow trigger to create/update the corresponding PR in docs repo."
+          echo "A PR with changes to the docs directory was closed."
+          echo "Sending workflow trigger to close corresponding PR in docs repo."
           echo "source branch: $SOURCE_BRANCH"
           echo "target branch: $TARGET_BRANCH"
           echo "pr number: $PR_NUMBER"
@@ -33,10 +32,10 @@ jobs:
         with:
           github-token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           script: | #js
-              github.rest.repos.createDispatchEvent({
+            github.rest.repos.createDispatchEvent({
                 owner: "${{ github.repository_owner }}",
                 repo: "docs.metabase.github.io",
-                event_type: "docs_update",
+                event_type: "docs_close",
                 client_payload: {
                   source_branch: process.env.SOURCE_BRANCH,
                   target_branch: process.env.TARGET_BRANCH,
