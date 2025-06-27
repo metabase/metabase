@@ -37,6 +37,7 @@
               :col                    0
               :row                    0
               :parameter_mappings     [{:foo "bar"}]
+              :inline_parameters      []
               :visualization_settings {}
               :series                 []}
              (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))))
@@ -55,6 +56,7 @@
               :col                    0
               :row                    0
               :parameter_mappings     []
+              :inline_parameters      []
               :visualization_settings {}
               :series                 [{:name                   "Additional Series Card 1"
                                         :description            nil
@@ -116,6 +118,7 @@
                                      :row                    1
                                      :col                    1
                                      :parameter_mappings     [{:foo "bar"}]
+                                     :inline_parameters      []
                                      :visualization_settings {}
                                      :series                 [card-id]}]))]
         (testing "return value from function"
@@ -124,6 +127,7 @@
                   :col                    1
                   :row                    1
                   :parameter_mappings     [{:foo "bar"}]
+                  :inline_parameters      []
                   :visualization_settings {}
                   :series                 [{:name                   "Test Card"
                                             :description            nil
@@ -138,6 +142,7 @@
                   :col                    1
                   :row                    1
                   :parameter_mappings     [{:foo "bar"}]
+                  :inline_parameters      []
                   :visualization_settings {}
                   :series                 [{:name                   "Test Card"
                                             :description            nil
@@ -165,6 +170,7 @@
                 :col                    0
                 :row                    0
                 :parameter_mappings     [{:foo "bar"}]
+                :inline_parameters      []
                 :visualization_settings {}
                 :series                 []}
                (remove-ids-and-timestamps (dashboard-card/retrieve-dashboard-card dashcard-id)))))
@@ -179,6 +185,7 @@
                     :row                    1
                     :col                    1
                     :parameter_mappings     [{:foo "barbar"}]
+                    :inline_parameters      []
                     :visualization_settings {}
                     :series                 [card-id-2 card-id-1]}
                    dashboard-card))))
@@ -188,6 +195,7 @@
                 :col                    1
                 :row                    1
                 :parameter_mappings     [{:foo "barbar"}]
+                :inline_parameters      []
                 :visualization_settings {}
                 :series                 [{:name                   "Test Card 2"
                                           :description            nil
@@ -205,7 +213,7 @@
 
 (deftest update-dashboard-card!-call-count-test
   (testing "This tracks the call count of update-dashcards! for the purpose of optimizing the
-           PUT /api/dashboard/:id/cards handler"
+    PUT /api/dashboard/:id/cards handler"
     (mt/with-temp [:model/Dashboard     {dashboard-id :id :as dashboard} {}
                    :model/Card          {card-id :id} {}
                    :model/DashboardCard dashcard-1 {:dashboard_id dashboard-id :card_id card-id}
@@ -323,7 +331,7 @@
 
 (deftest ^:parallel from-decoded-json-test
   (testing "Dashboard Cards should remain the same if they are serialized to JSON,
-            deserialized, and finally transformed with `from-parsed-json`."
+    deserialized, and finally transformed with `from-parsed-json`."
     (mt/with-temp [:model/Dashboard     dash     {:name "my dashboard"}
                    :model/Card          card     {:name "some question"}
                    :model/DashboardCard dashcard {:card_id (:id card)

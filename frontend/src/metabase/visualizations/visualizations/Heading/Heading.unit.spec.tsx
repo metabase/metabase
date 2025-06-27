@@ -8,12 +8,13 @@ import type {
   Parameter,
   ParameterId,
   ParameterValueOrArray,
-  QuestionDashboardCard,
+  VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
 import {
   createMockDashboard,
-  createMockDashboardCard,
+  createMockHeadingDashboardCard,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
@@ -24,7 +25,7 @@ interface Settings {
 }
 
 interface Options {
-  dashcard?: QuestionDashboardCard;
+  dashcard?: VirtualDashboardCard;
   isEditing?: boolean;
   isEditingParameter?: boolean;
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
@@ -34,22 +35,40 @@ interface Options {
 }
 
 const defaultProps = {
-  dashcard: createMockDashboardCard(),
+  dashcard: createMockVirtualDashCard(),
   dashboard: createMockDashboard(),
   isEditing: false,
-  isEditingParameter: false,
+  isFullscreen: false,
+  isMobile: false,
   onUpdateVisualizationSettings: () => {
     return;
   },
   settings: { text: "" },
   parameterValues: {},
+  gridSize: { x: 0, y: 0, width: 0, height: 0 },
 };
 
-const setup = ({ parameterValues, ...options }: Options) => {
-  renderWithProviders(<Heading {...defaultProps} {...options} />, {
+const setup = ({ parameterValues, isEditingParameter, ...props }: Options) => {
+  const dashboard = props.dashboard || defaultProps.dashboard;
+  const dashcard = props.dashcard || defaultProps.dashcard;
+
+  renderWithProviders(<Heading {...defaultProps} {...props} />, {
     storeInitialState: {
       dashboard: createMockDashboardState({
         parameterValues,
+        dashboards: {
+          [dashboard.id]: {
+            ...dashboard,
+            dashcards: dashboard.dashcards.map((dc) => dc.id),
+          },
+        },
+        dashcards: { [dashcard.id]: dashcard },
+        sidebar: isEditingParameter
+          ? {
+              name: "editParameter",
+              props: { parameterId: "param" },
+            }
+          : undefined,
       }),
     },
   });
@@ -79,7 +98,7 @@ describe("Text", () => {
 
       const options = {
         settings: getSettingsWithText(text),
-        dashcard: createMockDashboardCard({ parameter_mappings }),
+        dashcard: createMockVirtualDashCard({ parameter_mappings }),
         dashboard: createMockDashboard({ parameters }),
         parameterValues: parameterValues,
       };
@@ -102,7 +121,9 @@ describe("Text", () => {
 
         expect(
           screen.getByTestId("editing-dashboard-heading-preview"),
-        ).toHaveTextContent("Heading");
+        ).toHaveTextContent(
+          "You can connect widgets to {{variables}} in heading cards.",
+        );
         expect(screen.getByTestId("editing-dashboard-heading-container"))
           .toHaveStyle(`border: 1px solid var(--mb-color-brand);
                         color: var(--mb-color-text-light);`);
@@ -131,7 +152,7 @@ describe("Text", () => {
 
         const options = {
           settings: getSettingsWithText(text),
-          dashcard: createMockDashboardCard({ parameter_mappings }),
+          dashcard: createMockVirtualDashCard({ parameter_mappings }),
           dashboard: createMockDashboard({ parameters }),
           parameterValues: parameterValues,
           isEditing: true,
@@ -170,7 +191,11 @@ describe("Text", () => {
         await userEvent.click(
           screen.getByTestId("editing-dashboard-heading-preview"),
         );
-        expect(screen.getByPlaceholderText("Heading")).toBeInTheDocument();
+        expect(
+          screen.getByPlaceholderText(
+            "You can connect widgets to {{variables}} in heading cards.",
+          ),
+        ).toBeInTheDocument();
       });
 
       it("should render input text when it has content", async () => {
@@ -197,7 +222,7 @@ describe("Text", () => {
 
         const options = {
           settings: getSettingsWithText(text),
-          dashcard: createMockDashboardCard({ parameter_mappings }),
+          dashcard: createMockVirtualDashCard({ parameter_mappings }),
           dashboard: createMockDashboard({ parameters }),
           parameterValues: parameterValues,
           isEditing: true,
@@ -232,6 +257,40 @@ describe("Text", () => {
         expect(mockOnUpdateVisualizationSettings).toHaveBeenCalledWith({
           text: "textfoo",
         });
+      });
+    });
+
+    describe("editing parameter", () => {
+      it("should show mapping UI if a card has variables", () => {
+        setup({
+          isEditing: true,
+          isEditingParameter: true,
+          dashcard: createMockHeadingDashboardCard({
+            text: "Hello {{var}}",
+            size_y: 6,
+          }),
+          settings: { text: "Hello {{var}}" },
+        });
+
+        expect(
+          screen.getByTestId("parameter-mapper-container"),
+        ).toBeInTheDocument();
+      });
+
+      it("should not show mapping UI if a card doesn't have variables", () => {
+        setup({
+          isEditing: true,
+          isEditingParameter: true,
+          dashcard: createMockHeadingDashboardCard({
+            text: "Hello",
+            size_y: 6,
+          }),
+          settings: { text: "Hello" },
+        });
+
+        expect(
+          screen.queryByTestId("parameter-mapper-container"),
+        ).not.toBeInTheDocument();
       });
     });
   });

@@ -12,6 +12,7 @@ import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
+  type NewParameterOpts,
   createParameter,
   setParameterName as setParamName,
   setParameterType as setParamType,
@@ -29,7 +30,6 @@ import type {
   DashCardId,
   Parameter,
   ParameterId,
-  ParameterMappingOptions,
   ParameterTarget,
   TemporalUnit,
   ValuesQueryType,
@@ -60,7 +60,12 @@ import {
   getQuestions,
   getSelectedTabId,
 } from "../selectors";
-import { isQuestionDashCard } from "../utils";
+import {
+  findDashCardForInlineParameter,
+  isDashcardInlineParameter,
+  isQuestionDashCard,
+  supportsInlineParameters,
+} from "../utils";
 
 import {
   type SetDashCardAttributesOpts,
@@ -112,6 +117,30 @@ function updateParameters(
   }
 }
 
+export function duplicateParameters(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterIds: ParameterId[],
+) {
+  const parameters = getParameters(getState());
+
+  const newParameters = parameterIds.map((parameterId) => {
+    const parameter = parameters.find((p) => p.id === parameterId);
+    if (!parameter) {
+      throw new Error(`Parameter ${parameterId} not found`);
+    }
+    const options = _.omit(parameter, "id");
+    return createParameter(options, parameters);
+  });
+
+  updateParameters(dispatch, getState, (params) => [
+    ...params,
+    ...newParameters,
+  ]);
+
+  return newParameters;
+}
+
 export const setEditingParameter =
   (parameterId: ParameterId | null) => (dispatch: Dispatch) => {
     if (parameterId != null) {
@@ -128,30 +157,73 @@ export const setEditingParameter =
     }
   };
 
+interface AddParameterPayload {
+  options: NewParameterOpts;
+  dashcardId?: DashCardId;
+}
+
 export const ADD_PARAMETER = "metabase/dashboard/ADD_PARAMETER";
 export const addParameter = createThunkAction(
   ADD_PARAMETER,
-  (option: ParameterMappingOptions) => (dispatch, getState) => {
-    let newId: undefined | ParameterId = undefined;
+  ({ options, dashcardId }: AddParameterPayload) =>
+    (dispatch, getState) => {
+      const parameter = createParameter(options, getParameters(getState()));
 
-    updateParameters(dispatch, getState, (parameters) => {
-      const parameter = createParameter(option, parameters);
-      newId = parameter.id;
-      return [...parameters, parameter];
-    });
+      updateParameters(dispatch, getState, (parameters) => [
+        ...parameters,
+        parameter,
+      ]);
 
-    if (newId) {
+      const dashcard = dashcardId
+        ? getDashCardById(getState(), dashcardId)
+        : null;
+
+      if (dashcard && supportsInlineParameters(dashcard)) {
+        const currentParameters = dashcard.inline_parameters ?? [];
+        dispatch(
+          setDashCardAttributes({
+            id: dashcard.id,
+            attributes: {
+              inline_parameters: [...currentParameters, parameter.id],
+            },
+          }),
+        );
+      }
+
       dispatch(
         setSidebar({
           name: SIDEBAR_NAME.editParameter,
           props: {
-            parameterId: newId,
+            parameterId: parameter.id,
           },
         }),
       );
-    }
-  },
+    },
 );
+
+export function removeParameterAndReferences(
+  dispatch: Dispatch,
+  getState: GetState,
+  parameterId: ParameterId,
+) {
+  updateParameters(dispatch, getState, (parameters) => {
+    return parameters
+      .filter((parameter) => parameter.id !== parameterId)
+      .map((parameter) => {
+        if (parameter.filteringParameters) {
+          const filteringParameters = parameter.filteringParameters.filter(
+            (filteringParameter) => {
+              return filteringParameter !== parameterId;
+            },
+          );
+
+          return { ...parameter, filteringParameters };
+        }
+
+        return parameter;
+      });
+  });
+}
 
 export const REMOVE_PARAMETER = "metabase/dashboard/REMOVE_PARAMETER";
 export const removeParameter = createThunkAction(
@@ -159,23 +231,24 @@ export const removeParameter = createThunkAction(
   (parameterId: ParameterId) => (dispatch, getState) => {
     dispatch(closeAddCardAutoWireToasts());
 
-    updateParameters(dispatch, getState, (parameters) => {
-      return parameters
-        .filter((parameter) => parameter.id !== parameterId)
-        .map((parameter) => {
-          if (parameter.filteringParameters) {
-            const filteringParameters = parameter.filteringParameters.filter(
-              (filteringParameter) => {
-                return filteringParameter !== parameterId;
-              },
-            );
+    removeParameterAndReferences(dispatch, getState, parameterId);
 
-            return { ...parameter, filteringParameters };
-          }
-
-          return parameter;
-        });
-    });
+    const dashcards = Object.values(getDashcards(getState()));
+    const parameterDashcard = findDashCardForInlineParameter(
+      parameterId,
+      dashcards,
+    );
+    if (parameterDashcard) {
+      const inline_parameters = parameterDashcard.inline_parameters.filter(
+        (id) => id !== parameterId,
+      );
+      dispatch(
+        setDashCardAttributes({
+          id: parameterDashcard.id,
+          attributes: { inline_parameters },
+        }),
+      );
+    }
 
     return { id: parameterId };
   },
@@ -194,9 +267,14 @@ export const setParameterMapping = createThunkAction(
     return (dispatch, getState) => {
       dispatch(closeAutoWireParameterToast());
 
+      const dashcards = Object.values(getDashcards(getState()));
       const dashcard = getDashCardById(getState(), dashcardId);
 
-      if (target !== null && isQuestionDashCard(dashcard)) {
+      if (
+        target !== null &&
+        isQuestionDashCard(dashcard) &&
+        !isDashcardInlineParameter(parameterId, dashcards)
+      ) {
         const selectedTabId = getSelectedTabId(getState());
 
         dispatch(

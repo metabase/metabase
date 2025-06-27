@@ -10,7 +10,7 @@ import DashboardS from "metabase/dashboard/components/Dashboard/Dashboard.module
 import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/DashboardComponents";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import {
-  DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID,
+  DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
@@ -223,7 +223,6 @@ export const EmbedFrame = ({
                   <Box style={{ flex: 1 }} />
                   {dashboard && pdfDownloadsEnabled && (
                     <ExportAsPdfButton
-                      dashboard={dashboard}
                       hasTitle={titled}
                       hasVisibleParameters={hasVisibleParameters}
                     />
@@ -265,7 +264,7 @@ export const EmbedFrame = ({
           >
             <FixedWidthContainer
               className={DashboardS.ParametersFixedWidthContainer}
-              id={DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_ID}
+              id={DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID}
               data-testid="fixed-width-filters"
               isFixedWidth={dashboard?.width === "fixed"}
             >
