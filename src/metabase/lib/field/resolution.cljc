@@ -95,15 +95,9 @@
           (log/debugf "Found:\n%s"
                       (u/pprint-to-str (mapv #(select-keys % (list* :lib/source
                                                                     :metabase.lib.join/join-alias
-                                                                    :metabase.lib.join/join_alias
                                                                     :lib/original-join-alias
-                                                                    :lib/original_join_alias
                                                                     :source-alias
                                                                     :source_alias
-                                                                    :lib/source_column_alias
-                                                                    :lib/deduplicated_name
-                                                                    :lib/desired_column_alias
-                                                                    :lib/original_name
                                                                     ::debug.origin
                                                                     resolution-keys))
                                              cols)))

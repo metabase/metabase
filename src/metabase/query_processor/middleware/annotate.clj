@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require
-   [clojure.string :as str]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.driver.common :as driver.common]
@@ -15,6 +14,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.memoize :as u.memo]
    [potemkin :as p]))
 
 (comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
@@ -24,14 +24,31 @@
    [:source    {:optional true} ::lib.metadata.result-metadata/legacy-source]
    [:field_ref {:optional true} ::lib.metadata.result-metadata/super-broken-legacy-field-ref]])
 
-(mr/def ::snake_cased-col
+(def ^:private ^{:arglists '([k])} key->qp-results-key
+  "Convert unnamespaced keys to snake case for traditional reasons; `:lib/` keys and the like can stay in kebab case
+  because you can't consume them in JS without using bracket notation anyway (and you probably shouldn't be doing it
+  in the first place) and it's a waste of CPU cycles to convert them back and forth between snake case and kebab case
+  anyway."
+  (u.memo/fast-memo
+   (fn [k]
+     (if (qualified-keyword? k)
+       k
+       (u/->snake_case_en k)))))
+
+(defn- update-result-col-key-casing [col]
+  (as-> col col
+    (update-keys col key->qp-results-key)
+    (m/update-existing col :binning_info update-keys key->qp-results-key)))
+
+(mr/def ::qp-results-cased-col
+  "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
   [:and
    ::col
    [:fn
-    {:error/message "column with all snake-cased keys"}
+    {:error/message "map with QP results casing rules for keys"}
     (fn [m]
       (every? (fn [k]
-                (not (str/includes? k "-")))
+                (= k (key->qp-results-key k)))
               (keys m)))]])
 
 (mr/def ::cols
@@ -41,16 +58,7 @@
   [:map
    [:cols {:optional true} ::cols]])
 
-;;; TODO (Cam 6/18/25) -- only convert unnamespaced keys to snake case; other keys such as `lib/` keys should stay in
-;;; kebab-case. No point in converting them back and forth a hundred times, and it's not like JS can use namespaced keys
-;;; directly without bracket notation anyway (actually ideally the FE wouldn't even be using result metadata directly --
-;;; right?)
-(defn- ->snake_case [col]
-  (as-> col col
-    (update-keys col u/->snake_case_en)
-    (m/update-existing col :binning_info update-keys u/->snake_case_en)))
-
-(mu/defn expected-cols :- [:sequential ::snake_cased-col]
+(mu/defn expected-cols :- [:sequential ::qp-results-cased-col]
   "Return metadata for columns returned by a pMBQL `query`.
 
   `initial-cols` are (optionally) the initial minimal metadata columns as returned by the driver (usually just column
@@ -65,7 +73,7 @@
    (for [col (lib.metadata.result-metadata/returned-columns query initial-cols)]
      (-> col
          (dissoc :lib/type)
-         ->snake_case))))
+         update-result-col-key-casing))))
 
 (mu/defn- add-column-info-no-type-inference :- ::qp.schema/rf
   [query            :- ::lib.schema/query

@@ -296,7 +296,7 @@
       (disambiguate-matches-find-match-with-same-temporal-bucket a-ref no-implicit))
     nil))
 
-(mu/defn- disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-ignoring-join-alias :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
@@ -318,19 +318,24 @@
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
-    (if join-alias
-      ;; a-ref has a :join-alias, match on that. Return nil if nothing matches.
-      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
-        (if-not (next matches)
-          (first matches)
-          (#?(:cljs js/console.warn :clj log/warn)
-           "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-           {:ref     a-ref
-            :matches matches})
-          #_(throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-                            {:ref     a-ref
-                             :matches matches}))))
-      (disambiguate-matches-no-alias a-ref columns))))
+    (or
+     ;; try to find matches with the same join alias (which might be `nil` for both).
+     ;;
+     ;; TODO (Cam 6/26/25) -- we should first try this using just the `:metabase.lib.join/join-alias` (join alias from
+     ;; this stage) and only then fall back to using `:lib/original-alias` and what not
+     (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
+       (if-not (next matches)
+         (first matches)
+         ;; if there wasn't exactly 1 match then log a warning only if we had a join alias in the first place. Then
+         ;; try again ignoring join alias.
+         (do
+           (when join-alias
+             (#?(:cljs js/console.warn :clj log/warn)
+              "Multiple plausible matches with the same :join-alias - more disambiguation needed"
+              {:ref     a-ref
+               :matches matches}))
+           nil)))
+     (disambiguate-matches-ignoring-join-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
   [:map [:generous? {:optional true} :boolean]])
@@ -455,7 +460,7 @@
                          (let [col-join-alias      (lib.join.util/current-join-alias column)
                                source-column-alias ((some-fn :lib/source-column-alias :name) column)]
                            (filter (fn [a-ref]
-                                     (and (clojure.core/= (lib.join.util/current-join-alias a-ref) col-join-alias)
+                                     (and (clojure.core/= (:metabase.lib.join/join-alias (lib.options/options a-ref)) col-join-alias)
                                           (some #(clojure.core/= (ref-id-or-name a-ref) %)
                                                 [(:id column) source-column-alias])))
                                    refs))

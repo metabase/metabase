@@ -142,7 +142,7 @@
                 :let [field (fn [field-key legacy-ref]
                               (let [metadata (meta/field-metadata :venues field-key)]
                                 (-> metadata
-                                    (select-keys [:id :name :ident])
+                                    (select-keys [:id :name])
                                     (assoc :field_ref legacy-ref))))]]
           (testing (format "%d level(s) of nesting" level)
             (let [nested-query (lib/query
@@ -161,7 +161,7 @@
                          {:name      "NAME_2"
                           :id        %categories.name
                           :field_ref &c.categories.name}])
-                      (map #(select-keys % [:name :id :field_ref :ident])
+                      (map #(select-keys % [:name :id :field_ref])
                            (:cols (add-column-info nested-query {:cols []}))))))))))))
 
 (deftest ^:parallel mbql-cols-nested-queries-test-2

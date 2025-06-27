@@ -116,11 +116,11 @@ describe("scenarios > question > joined questions", () => {
     H.openNotebook();
     H.getNotebookStep("join").icon("chevrondown").click();
     H.popover().within(() => {
-      cy.findByText("EAN").click();
-      cy.findByText("VENDOR").click();
-      cy.findByText("PRICE").click();
-      cy.findByText("CATEGORY").click();
-      cy.findByText("CREATED_AT").click();
+      cy.findByText("question b - PRODUCT_ID → EAN").click();
+      cy.findByText("question b - PRODUCT_ID → VENDOR").click();
+      cy.findByText("question b - PRODUCT_ID → PRICE").click();
+      cy.findByText("question b - PRODUCT_ID → CATEGORY").click();
+      cy.findByText("question b - PRODUCT_ID → CREATED_AT").click();
     });
     H.visualize();
     H.assertJoinValid({

@@ -946,3 +946,48 @@
                :join-alias     "question b - Product"}
               "TITLE"]
              (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage}))))))
+
+(deftest ^:parallel same-stage-matching-do-not-barf-when-trying-to-find-a-match-for-an-expression-ref-test
+  (let [[col] (lib/returned-columns (lib/query meta/metadata-provider (meta/table-metadata :venues)))]
+    ;; just make sure this doesn't barf.
+    (is (nil? (lib.equality/find-matching-ref
+               col
+               [[:expression {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "bad_expression"]]
+               {:match-type ::lib.equality/match-type.same-stage})))))
+
+(deftest ^:parallel pick-correct-column-when-one-is-from-join-and-on-is-not-test
+  (testing "If we have two cols and one has a join alias and one doesn't, and our ref has no alias, then pick the col with no alias"
+    (let [cols  [{:base-type                :type/DateTime
+                  :display-name             "Created At"
+                  :effective-type           :type/DateTime
+                  :id                       66
+                  :lib/card-id              5
+                  :lib/desired-column-alias "CREATED_AT"
+                  :lib/model-display-name   "Created At"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/source               :source/card
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/type                 :metadata/column
+                  :name                     "CREATED_AT"
+                  :name-field               nil}
+                 {:base-type                :type/DateTime
+                  :display-name             "Products → Created At"
+                  :effective-type           :type/DateTime
+                  :id                       66
+                  :lib/card-id              5
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :lib/model-display-name   "Products → Created At"
+                  :lib/original-join-alias  "Products"
+                  :lib/original-name        "CREATED_AT_2"
+                  :lib/source               :source/card
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/type                 :metadata/column
+                  :name                     "CREATED_AT_2"
+                  :name-field               nil}]
+          a-ref [:field {:lib/uuid                                          "28d2f111-3882-4ffb-a650-0650bc7d7c3b"
+                         :effective-type                                    :type/DateTime
+                         :base-type                                         :type/DateTime
+                         :metabase.lib.query/transformation-added-base-type true}
+                 66]]
+      (is (=? {:id 66, :display-name "Created At"}
+              (lib.equality/find-matching-column a-ref cols))))))

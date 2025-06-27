@@ -173,38 +173,37 @@
 
 (deftest save-result-metadata-test-5
   (testing "test that card result metadata does not generate an UPDATE statement when unchanged"
-    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT NAME FROM VENUES"})}]
+    (mt/with-temp [:model/Card card {:dataset_query (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})}]
       (is (nil? (card-metadata card)))
       (mt/with-metadata-provider (mt/id)
-        (middleware.results-metadata/store-previous-result-metadata!
-         {:result_metadata
-          [{:base_type :type/Text
-            :database_type "CHARACTER VARYING"
-            :display_name "NAME"
-            :effective_type :type/Text
-            :field_ref [:field "NAME" {:base-type :type/Text}]
-            :fingerprint {:global {:distinct-count 100, :nil% 0.0}
-                          :type {:type/Text {:average-length 15.63
-                                             :percent-email 0.0
-                                             :percent-json 0.0
-                                             :percent-state 0.0
-                                             :percent-url 0.0}}}
-            :name "NAME"
-            :semantic_type :type/Name}]})
-        (let [call-count (atom 0)
-              t2-update!-orig t2/update!]
-          (with-redefs [t2/update! (fn [modelable & args]
-                                     (when (= :model/Card modelable)
-                                       (swap! call-count inc))
-                                     (apply t2-update!-orig modelable args))]
-            (let [result (qp/process-query
+        (let [cols-1 (-> (qp/process-query
                           (qp/userland-query
-                           (mt/native-query {:query "SELECT NAME FROM VENUES"})
+                           (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
                            {:card-id    (u/the-id card)
-                            :query-hash (qp.util/query-hash {})}))]
-              (is (partial= {:status :completed}
-                            result)))
-            (is (= 0 @call-count))))))))
+                            :query-hash (qp.util/query-hash {})}))
+                         :data
+                         :results_metadata
+                         :columns)]
+          (is (seq cols-1))
+          (middleware.results-metadata/store-previous-result-metadata!
+           {:result_metadata cols-1})
+          (let [call-count      (atom 0)
+                t2-update!-orig t2/update!]
+            (with-redefs [t2/update! (fn [modelable & args]
+                                       (when (= :model/Card modelable)
+                                         (swap! call-count inc))
+                                       (apply t2-update!-orig modelable args))]
+              (let [result (qp/process-query
+                            (qp/userland-query
+                             (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
+                             {:card-id    (u/the-id card)
+                              :query-hash (qp.util/query-hash {})}))]
+                (is (= (#'middleware.results-metadata/comparable-metadata cols-1)
+                       (#'middleware.results-metadata/comparable-metadata
+                        (-> result :data :results_metadata :columns))))
+                (is (=? {:status :completed}
+                        result)))
+              (is (= 0 @call-count)))))))))
 
 (deftest ^:parallel metadata-in-results-test
   (testing "make sure that queries come back with metadata"

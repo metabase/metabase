@@ -32,10 +32,6 @@
 
   Needs the `entity_id` for the model's card and the column's `:ident`."
   [target-ident card-entity-id]
-  (when (and (seq target-ident)
-             (str/starts-with? target-ident (model-ident "" card-entity-id)))
-    (throw (ex-info "Double-bagged!" {:ident target-ident
-                                      :eid   card-entity-id})))
   (str "model[" card-entity-id "]__" target-ident))
 
 (defn add-model-ident
