@@ -482,8 +482,8 @@ export const getIsHeaderVisible = createSelector(
 );
 
 export const getIsAdditionalInfoVisible = createSelector(
-  [getIsEmbeddingIframe, getIsEmbeddingSdk, getEmbedOptions],
-  (isEmbeddingIframe, isEmbeddingSdk, embedOptions) =>
+  [getIsEmbeddingIframe, getEmbedOptions],
+  (isEmbeddingIframe, embedOptions) =>
     !isEmbeddingIframe || !!embedOptions.additional_info,
 );
 

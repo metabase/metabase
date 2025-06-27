@@ -136,7 +136,6 @@ export const DataGrid = function DataGrid<TData>({
   const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
     theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
-
   const stickyElementsBackgroundColor =
     theme?.stickyBackgroundColor ??
     (backgroundColor == null || backgroundColor === "transparent"

@@ -12,9 +12,7 @@ export function useGlobalTheme(theme: DisplayTheme | undefined) {
       return;
     }
 
-    const element = isEmbeddingSdk
-      ? document.querySelector("#metabase-sdk-root")
-      : document.documentElement;
+    const element = document.documentElement;
 
     const originalTheme = element?.getAttribute("data-metabase-theme");
     element?.setAttribute("data-metabase-theme", theme);

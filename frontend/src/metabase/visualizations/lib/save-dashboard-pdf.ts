@@ -204,10 +204,7 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(
-    // (isEmbeddingSdk && document.querySelector("#metabase-sdk-root")) ||
-    document.documentElement,
-  )
+  const backgroundColor = getComputedStyle(document.documentElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
 
