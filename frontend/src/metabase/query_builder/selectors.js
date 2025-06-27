@@ -575,11 +575,6 @@ export const getZoomRow = createSelector(
   },
 );
 
-// const isZoomingRow = createSelector(
-//   [getZoomedObjectId],
-//   (index) => index != null,
-// );
-
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
   isQuestionDirty,
