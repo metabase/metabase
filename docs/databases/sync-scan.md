@@ -204,7 +204,7 @@ Metabase uses the results of this query to provide better suggestions in the Met
 
 To avoid putting strain on your database, Metabase only runs fingerprinting queries the [first time](#initial-sync-scan-and-fingerprinting) you set up a database connection.
 
-By default, Metabase won't re-fingerprint your database after that intial fingerprinting. To re-fingerprint your data, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
+By default, Metabase won't re-fingerprint your database after that initial fingerprinting. To re-fingerprint your data, you can turn ON [Periodically refingerprint tables](#periodically-refingerprint-tables).
 
 Here's the kind of data that fingerprinting gets and why:
 
