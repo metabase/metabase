@@ -391,7 +391,7 @@
                                 :fields       :all}]
                     :order-by [[:asc $id]]
                     :limit    1}))]
-      (is (= [ ;; these 8 are from PRODUCTS
+      (is (= [;; these 8 are from PRODUCTS
               "ID"
               "Ean"
               "Title"
