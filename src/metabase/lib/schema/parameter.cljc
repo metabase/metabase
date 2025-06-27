@@ -179,7 +179,7 @@
 ;;; is not ported to MLv2 yet, so conversion isn't implemented YET.
 
 (defn- normalize-legacy-ref [legacy-ref]
-  ((#?(:clj requiring-resolve :cljs require) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref))
+  ((#?(:clj requiring-resolve :cljs resolve) 'metabase.legacy-mbql.normalize/normalize-field-ref) legacy-ref))
 
 (mr/def ::legacy-field-ref
   [:ref
