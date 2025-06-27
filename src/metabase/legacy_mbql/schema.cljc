@@ -724,8 +724,7 @@
   string [:or StringExpressionArg DateTimeExpressionArg])
 
 (def ^:private LiteralDatetimeModeString
-  [:enum {:error/message "datetime mode string"
-          :decode/normalize lib.schema.common/normalize-keyword-lower}
+  [:enum {:error/message "datetime mode string"}
    :iso
    :simple
    :isobytes
