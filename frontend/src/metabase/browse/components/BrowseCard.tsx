@@ -74,16 +74,18 @@ export const BrowseCard = ({
           c={iconColor}
           size={sizeOptions[size].iconSize}
         />
-        <Title
-          order={2}
-          size="md"
-          lh={1.2}
-          style={{ overflow: "hidden" }}
-          component={Ellipsified}
-          w="100%"
-        >
-          <strong style={{ textWrap: "nowrap" }}>{title}</strong>
-        </Title>
+        <Ellipsified>
+          <Title
+            order={2}
+            size="md"
+            lh={1.2}
+            display="inline"
+            style={{ overflow: "hidden" }}
+            w="100%"
+          >
+            {title}
+          </Title>
+        </Ellipsified>
         {size === "md" && (
           <Box ml="auto" style={{ flexShrink: 0 }}>
             {children}
