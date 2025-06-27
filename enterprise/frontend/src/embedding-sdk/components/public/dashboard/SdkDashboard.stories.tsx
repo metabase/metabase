@@ -1,30 +1,38 @@
-import { MetabaseProvider, defineMetabaseTheme } from "embedding-sdk";
 import {
-  CommonSdkStoryWrapper,
-  storybookSdkAuthDefaultConfig,
-} from "embedding-sdk/test/CommonSdkStoryWrapper";
+  InteractiveQuestion,
+  MetabaseProvider,
+  defineMetabaseTheme,
+} from "embedding-sdk";
+import { storybookSdkAuthDefaultConfig } from "embedding-sdk/test/CommonSdkStoryWrapper";
 import {
   dashboardIdArgType,
   dashboardIds,
 } from "embedding-sdk/test/storybook-id-args";
 import { storybookThemes } from "embedding-sdk/test/storybook-themes";
-
 import {
-  EditableDashboard,
-  type EditableDashboardProps,
-} from "./EditableDashboard";
+  ActionIcon,
+  Box,
+  Flex,
+  Icon,
+  Paper,
+  Popover,
+  Stack,
+  Title,
+} from "metabase/ui";
+
+import { SdkDashboard, type SdkDashboardProps } from "./SdkDashboard";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || dashboardIds.numberId;
 
 const darkTheme = storybookThemes.dark;
 
 export default {
-  title: "EmbeddingSDK/EditableDashboard",
-  component: EditableDashboard,
+  title: "EmbeddingSDK/SdkDashboard",
+  component: SdkDashboard,
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonSdkStoryWrapper],
+  decorators: [],
   argTypes: {
     // Core props
     dashboardId: dashboardIdArgType,
@@ -142,10 +150,10 @@ export default {
   },
 };
 export const Default = {
-  render(args: EditableDashboardProps) {
+  render(args: SdkDashboardProps) {
     return (
       <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-        <EditableDashboard {...args} />
+        <SdkDashboard {...args} />
       </MetabaseProvider>
     );
   },
@@ -160,8 +168,29 @@ export const Default = {
   },
 };
 
+export const WithCustomQuestionLayout = {
+  render(args: SdkDashboardProps) {
+    return (
+      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+        <SdkDashboard {...args} />
+      </MetabaseProvider>
+    );
+  },
+
+  args: {
+    dashboardId: DASHBOARD_ID,
+    renderDrillThroughQuestion: () => (
+      <Stack>
+        <InteractiveQuestion.Title />
+        <InteractiveQuestion.QuestionVisualization />
+        <div>This is a custom question layout.</div>
+      </Stack>
+    ),
+  },
+};
+
 export const WithCustomGridColor = {
-  render(args: EditableDashboardProps) {
+  render(args: SdkDashboardProps) {
     const theme = defineMetabaseTheme({
       components: { dashboard: { gridBorderColor: "#95A5A6" } },
     });
@@ -171,7 +200,7 @@ export const WithCustomGridColor = {
         authConfig={storybookSdkAuthDefaultConfig}
         theme={theme}
       >
-        <EditableDashboard {...args} />
+        <SdkDashboard {...args} />
       </MetabaseProvider>
     );
   },
@@ -185,13 +214,13 @@ export const WithCustomGridColor = {
 };
 
 export const WithDarkTheme = {
-  render(args: EditableDashboardProps) {
+  render(args: SdkDashboardProps) {
     return (
       <MetabaseProvider
         authConfig={storybookSdkAuthDefaultConfig}
         theme={darkTheme}
       >
-        <EditableDashboard {...args} />
+        <SdkDashboard {...args} />
       </MetabaseProvider>
     );
   },
@@ -205,10 +234,10 @@ export const WithDarkTheme = {
 };
 
 export const MinimalConfiguration = {
-  render(args: EditableDashboardProps) {
+  render(args: SdkDashboardProps) {
     return (
       <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-        <EditableDashboard {...args} />
+        <SdkDashboard {...args} />
       </MetabaseProvider>
     );
   },
@@ -224,8 +253,8 @@ export const MinimalConfiguration = {
 };
 
 export const WithDownloadsEnabled = {
-  render(args: EditableDashboardProps) {
-    return <EditableDashboard {...args} />;
+  render(args: SdkDashboardProps) {
+    return <SdkDashboard {...args} />;
   },
 
   args: {
@@ -237,10 +266,10 @@ export const WithDownloadsEnabled = {
 };
 
 export const WithCustomStyling = {
-  render(args: EditableDashboardProps) {
+  render(args: SdkDashboardProps) {
     return (
       <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-        <EditableDashboard {...args} />
+        <SdkDashboard {...args} />
       </MetabaseProvider>
     );
   },
@@ -262,10 +291,10 @@ export const WithCustomStyling = {
 };
 
 export const WithInitialParameters = {
-  render(args: EditableDashboardProps) {
+  render(args: SdkDashboardProps) {
     return (
       <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
-        <EditableDashboard {...args} />
+        <SdkDashboard {...args} />
       </MetabaseProvider>
     );
   },
@@ -281,5 +310,57 @@ export const WithInitialParameters = {
       // category: "electronics",
     },
     hiddenParameters: [],
+  },
+};
+
+export const ExperimentalLayout = {
+  render(args: SdkDashboardProps) {
+    return (
+      <MetabaseProvider authConfig={storybookSdkAuthDefaultConfig}>
+        <Paper
+          display="flex"
+          p="xl"
+          pos="relative"
+          style={{ flexDirection: "row", overflow: "none" }}
+          h="40rem"
+        >
+          <SdkDashboard {...args}>
+            <Flex pos="sticky" justify="apart" w="100%">
+              <Title order={2}>
+                <SdkDashboard.Title />
+              </Title>
+              <Popover>
+                <Popover.Target>
+                  <ActionIcon>
+                    <Icon name="ellipsis" />
+                  </ActionIcon>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <Paper>
+                    <SdkDashboard.ExportAsPdfButton />
+                    <SdkDashboard.InfoButton />
+                    <SdkDashboard.NightModeButton />
+                    <SdkDashboard.RefreshPeriod />
+                  </Paper>
+                </Popover.Dropdown>
+              </Popover>
+            </Flex>
+            <Flex flex={1} w="100%" h="100%" style={{ overflow: "none" }}>
+              <Box>
+                <SdkDashboard.ParameterList vertical />
+              </Box>
+
+              <Box flex={1} style={{ overflowY: "scroll" }}>
+                <SdkDashboard.Grid />
+              </Box>
+            </Flex>
+          </SdkDashboard>
+        </Paper>
+      </MetabaseProvider>
+    );
+  },
+
+  args: {
+    dashboardId: DASHBOARD_ID,
   },
 };

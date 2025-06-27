@@ -1,6 +1,7 @@
 import type { MantineColor } from "@mantine/core/lib/core";
 import type { ReactNode } from "react";
 
+import type { DashboardContextProps } from "metabase/dashboard/context";
 import type { IconName } from "metabase/embedding-sdk/types/icon";
 import type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 import type { DashboardCard, Dataset } from "metabase-types/api";
@@ -13,6 +14,8 @@ export type DashboardCardMenuCustomElement = ({
   dashcard: DashboardCard;
   /** @internal */
   result: Dataset;
+  /** @internal */
+  downloadsEnabled: DashboardContextProps["downloadsEnabled"];
 }) => ReactNode;
 
 export type CustomDashboardCardMenuItem = ({

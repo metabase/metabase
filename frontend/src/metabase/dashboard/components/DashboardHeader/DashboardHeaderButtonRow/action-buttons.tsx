@@ -1,4 +1,5 @@
 import { DashboardSharingMenu } from "metabase/embedding/components/SharingMenu/DashboardSharingMenu";
+import { isEmbeddingSdk } from "metabase/env";
 import { Center, Divider } from "metabase/ui";
 
 import { DashboardBookmark } from "../../DashboardBookmark";
@@ -70,26 +71,11 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
-    component: ({
-      refreshPeriod,
-      setRefreshElapsedHook,
-      onRefreshPeriodChange,
-    }) => (
-      <RefreshWidget
-        period={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        onChangePeriod={onRefreshPeriodChange}
-      />
-    ),
+    component: () => <RefreshWidget />,
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
   },
   [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    component: ({ isNightMode, onNightModeChange }) => (
-      <NightModeToggleButton
-        isNightMode={isNightMode}
-        onNightModeChange={onNightModeChange}
-      />
-    ),
+    component: () => <NightModeToggleButton />,
     enabled: ({
       isEditing,
       isFullscreen,
@@ -107,7 +93,7 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,
-    enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
+    enabled: ({ isFullscreen, isPublic }) =>
       isPublic || isFullscreen || isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
@@ -115,7 +101,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isEditing, dashboard }) => !isEditing && !dashboard.archived,
   },
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
-    component: DashboardInfoButton,
+    component: () => <DashboardInfoButton />,
     enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
@@ -161,6 +147,7 @@ export const dashboardActionButtons: Record<
   },
   DOWNLOAD_PDF: {
     component: () => <ExportAsPdfButton />,
-    enabled: ({ isEmbeddingSdk }) => isEmbeddingSdk,
+    enabled: ({ downloadsEnabled, isEmbeddingSdk }) =>
+      isEmbeddingSdk && Boolean(downloadsEnabled.pdf),
   },
 };

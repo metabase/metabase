@@ -9,9 +9,8 @@ import {
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDispatch } from "metabase/lib/redux";
+import { ParametersList } from "metabase/parameters/components/ParametersList";
 import type { Parameter } from "metabase-types/api";
-
-import { ParametersList } from "../../../parameters/components/ParametersList";
 
 interface DashboardParameterListProps
   extends Pick<

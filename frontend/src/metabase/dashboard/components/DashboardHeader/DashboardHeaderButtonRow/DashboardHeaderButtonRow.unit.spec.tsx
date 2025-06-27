@@ -158,18 +158,20 @@ const setup = ({
     <Route
       path="*"
       component={() => (
-        <MockDashboardContext>
+        <MockDashboardContext
+          refreshPeriod={null}
+          onRefreshPeriodChange={jest.fn()}
+          setRefreshElapsedHook={jest.fn()}
+          isFullscreen={isFullscreen}
+          onFullscreenChange={jest.fn()}
+          hasNightModeToggle={hasNightModeToggle}
+          onNightModeChange={jest.fn()}
+          isNightMode={isNightMode}
+          downloadsEnabled={{ pdf: false }}
+        >
           <DashboardHeaderButtonRow
             canResetFilters
             onResetFilters={jest.fn()}
-            refreshPeriod={null}
-            onRefreshPeriodChange={jest.fn()}
-            setRefreshElapsedHook={jest.fn()}
-            isFullscreen={isFullscreen}
-            onFullscreenChange={jest.fn()}
-            hasNightModeToggle={hasNightModeToggle}
-            onNightModeChange={jest.fn()}
-            isNightMode={isNightMode}
             isPublic={isPublic}
             isAnalyticsDashboard={isAnalyticsDashboard}
           />

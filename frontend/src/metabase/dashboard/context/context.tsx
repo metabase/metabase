@@ -19,10 +19,11 @@ import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
+import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-  useEmbedTheme,
+  useDashboardTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
@@ -43,6 +44,8 @@ export type DashboardContextErrorState = {
   error: unknown | null;
 };
 
+type DashboardActionButtonList = DashboardActionKey[] | null;
+
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams?: ParameterValues;
@@ -54,6 +57,15 @@ export type DashboardContextOwnProps = {
     | ((opts: NavigateToNewCardFromDashboardOpts) => void)
     | null;
   dashcardMenu?: DashboardCardMenu | null;
+  dashboardActions?:
+    | DashboardActionButtonList
+    | (({
+        isEditing,
+        downloadsEnabled,
+      }: Pick<
+        DashboardContextReturned,
+        "isEditing" | "downloadsEnabled"
+      >) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
 };
 
@@ -61,6 +73,7 @@ export type DashboardContextOwnResult = {
   shouldRenderAsNightMode: boolean;
   dashboardIdProp: DashboardContextOwnProps["dashboardId"];
   dashboardId: DashboardId | null;
+  dashboardActions?: DashboardActionButtonList;
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
@@ -92,6 +105,7 @@ const DashboardContextProviderInner = ({
   onLoadWithoutCards,
   onError,
   dashcardMenu,
+  dashboardActions: initDashboardActions,
   isDashcardVisible,
 
   children,
@@ -100,6 +114,7 @@ const DashboardContextProviderInner = ({
   bordered = true,
   titled = true,
   font = null,
+  theme: initTheme = "light",
   hideParameters: hide_parameters = null,
   downloadsEnabled = { pdf: true, results: true },
   autoScrollToDashcardId = undefined,
@@ -162,7 +177,7 @@ const DashboardContextProviderInner = ({
     onNightModeChange,
     theme,
     setTheme,
-  } = useEmbedTheme();
+  } = useDashboardTheme(initTheme);
 
   const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
 
@@ -339,6 +354,11 @@ const DashboardContextProviderInner = ({
     return dashboard;
   }, [dashboard, isDashcardVisible]);
 
+  const dashboardActions =
+    typeof initDashboardActions === "function"
+      ? initDashboardActions({ isEditing, downloadsEnabled })
+      : (initDashboardActions ?? null);
+
   return (
     <DashboardContext.Provider
       value={{
@@ -349,6 +369,7 @@ const DashboardContextProviderInner = ({
         onLoad,
         onError,
         dashcardMenu,
+        dashboardActions,
 
         navigateToNewCardFromDashboard,
         isLoading,
