@@ -1,6 +1,5 @@
 (ns metabase.driver.databricks
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -18,7 +17,6 @@
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
@@ -27,8 +25,7 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
-    Statement
-    Types]
+    Statement]
    [java.time
     LocalDate
     LocalDateTime
@@ -405,7 +402,11 @@
                                     (t/local-date-time (t/local-date 1970 1 1) object)))
 
 (defmethod sql-jdbc.execute/set-parameter [:databricks (Class/forName "[B")]
-  [_driver ^PreparedStatement prepared-statement ^Integer index object]
+  [_driver ^PreparedStatement _prepared-statement ^Integer _index _object]
+  (throw (ex-info "Databricks driver cannot ingest byte array." {}))
+  ;; I really did try all of these options. Databricks team says we need to use the OSS version. See
+  ;; https://metaboat.slack.com/archives/C07L35T7UFQ/p1750703587969479
+
   ;; .setBytes() with raw byte array
   ;; Fails with
   ;; HIVE_PARAMETER_QUERY_DATA_TYPE_ERR_NON_SUPPORT_DATA_TYPE
