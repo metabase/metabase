@@ -19,10 +19,10 @@ if (hasPremiumFeature("database_routing")) {
     }
 
     return {
-      title: t`Slug`,
+      title: t`Key`,
       // eslint-disable-next-line no-literal-metabase-strings -- Admin settings
-      description: t`Metabase maps this value to your chosen user attribute to swap queries at runtime`, // Metabase will use this value to map to the user attribute you specify to swap queries at run time`,
-      placeholder: t`E.g. pro-users`,
+      description: t`Metabase will route queries to this database when the user attribute value matches this key.`, // Metabase will use this value to map to the user attribute you specify to swap queries at run time`,
+      placeholder: t`For example, pro-users`,
     };
   };
 
