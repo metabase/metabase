@@ -191,7 +191,7 @@
       (set/union aliases (implicit-join-aliases query previous-stage-number))
       aliases)))
 
-(mu/defn- remove-implicit-join-aliases
+(defn- remove-implicit-join-aliases
   [query cols]
   (let [implicit-aliases (implicit-join-aliases query -1)]
     (map (fn [col]

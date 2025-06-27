@@ -723,3 +723,78 @@
             -2 ["CREATED_AT" "count"]
             ;; first stage, before we added :fields`
             0  ["CREATED_AT" "CREATED_AT" "count"]))))))
+
+(deftest ^:parallel do-not-duplicate-columns-with-default-temporal-bucketing-test
+  (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
+    (doseq [temporal-unit           [nil :default]
+            base-type               [nil :type/Date]
+            effective-type          [nil :type/Date]
+            inherited-temporal-unit [nil :default]
+            ;; make sure random keys don't affect this either
+            nonsense-key            [nil 1337]
+            lib-key                 [nil "PRODUCTS"]
+            :let                    [opts (cond-> {:join-alias "People"}
+                                            temporal-unit           (assoc :temporal-unit temporal-unit)
+                                            base-type               (assoc :base-type base-type)
+                                            effective-type          (assoc :effective-type effective-type)
+                                            inherited-temporal-unit (assoc :inherited-temporal-unit inherited-temporal-unit)
+                                            nonsense-key            (assoc :nonsense-key nonsense-key)
+                                            lib-key                 (assoc :lib/nonsense-key lib-key))
+                                     clause [:field (meta/id :people :birth-date) opts]]]
+      (testing (pr-str (lib/->pMBQL clause))
+        (testing `lib/returned-columns
+          (let [query (lib/query
+                       meta/metadata-provider
+                       (lib.tu.macros/mbql-query orders
+                         {:joins  [{:source-table (meta/id :people)
+                                    :alias        "People"
+                                    :condition    [:=
+                                                   $user-id
+                                                   &People.people.id]
+                                    :fields       [&People.people.longitude
+                                                   &People.!default.people.birth-date]}
+                                   {:source-table (meta/id :products)
+                                    :alias        "Products"
+                                    :condition    [:=
+                                                   $product-id
+                                                   &Products.products.id]
+                                    :fields       [&Products.products.price]}]
+                          :fields [$id
+                                   &People.people.longitude
+                                   clause
+                                   &Products.products.price]}))]
+            (is (= ["ID"
+                    "Longitude"
+                    "Birth Date"
+                    "Price"]
+                   (map :display-name (lib/returned-columns query))))))))))
+
+;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
+(deftest ^:parallel join-against-same-table-returned-columns-test
+  (testing "Joining against a query that ultimately have the same source table SHOULD result in 'duplicate' columns being included."
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$products
+                                               :aggregation  [[:count]]
+                                               :breakout     [$category]
+                                               :order-by     [[:asc [:aggregation 0]]]}
+                                :alias        "Q1"
+                                :condition    [:= $category [:field %category {:join-alias "Q1"}]]
+                                :fields       :all}]
+                    :order-by [[:asc $id]]
+                    :limit    1}))]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (= [;; these 8 are from PRODUCTS
+                "ID"
+                "Ean"
+                "Title"
+                "Category"
+                "Vendor"
+                "Price"
+                "Rating"
+                "Created At"
+                ;; the next 2 are from PRODUCTS
+                "Q1 → Category"
+                "Q1 → Count"]
+               (map :display-name (lib/returned-columns query))))))))

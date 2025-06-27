@@ -323,3 +323,43 @@
                "Product → Category"
                "Count"]
               (map :display_name (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel multiple-joins-correct-fields-test
+  (testing "Do not add a duplicate column from a join if it uses :default temporal bucketing"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :database-id   (meta/id)
+                           :name          "QB Binning"
+                           :dataset-query (lib.tu.macros/mbql-query orders
+                                            {:joins  [{:source-table (meta/id :people)
+                                                       :alias        "People"
+                                                       :condition    [:=
+                                                                      $user-id
+                                                                      &People.people.id]
+                                                       :fields       [&People.people.longitude
+                                                                      &People.!default.people.birth-date]}
+                                                      {:source-table (meta/id :products)
+                                                       :alias        "Products"
+                                                       :condition    [:=
+                                                                      $product-id
+                                                                      &Products.products.id]
+                                                       :fields       [&Products.products.price]}]
+                                             :fields [$id]})}]})
+          query (lib/query mp (lib.metadata/card mp 1))]
+      (is (=? {:query {:fields (lib.tu.macros/$ids orders
+                                 [$id
+                                  &People.people.longitude
+                                  ;; the `:default` temporal unit gets removed somewhere
+                                  &People.people.birth-date
+                                  &Products.products.price])}}
+              (qp.preprocess/preprocess query)))
+      (is (= [;; orders.id, from :fields
+              "ID"
+              ;; from the People join :fields
+              "People → Longitude"
+              "People → Birth Date"
+              ;; from the Products join :fields
+              "Products → Price"]
+             (map :display_name
+                  (qp.preprocess/query->expected-cols query)))))))

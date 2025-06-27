@@ -283,6 +283,31 @@
             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
+(defn- add-cols-from-join-duplicate?
+  "Whether two columns are considered to be the same for purposes of [[add-cols-from-join]]."
+  [col-1 col-2]
+  ;; columns that don't have the same binning or temporal bucketing are never the same.
+  (and
+   ;; same binning
+   (= (lib.binning/binning col-1)
+      (lib.binning/binning col-2))
+   ;; same bucketing
+   (letfn [(bucket [col]
+             (when-let [bucket (lib.temporal-bucket/raw-temporal-bucket col)]
+               (when-not (= bucket :default)
+                 bucket)))]
+     (= (bucket col-1)
+        (bucket col-2)))
+   ;; compare by IDs if we have ID info for both.
+   (if (every? :id [col-1 col-2])
+     ;; same IDs
+     (= (:id col-1) (:id col-2))
+     ;; same names
+     (some (fn [f]
+             (= (f col-2)
+                (f col-1)))
+           [:lib/desired-column-alias :lib/source-column-alias :lib/deduplicated-name]))))
+
 (defn- add-cols-from-join
   "The columns from `:fields` may contain columns from `:joins` -- so if the joins specify their own `:fields` we need
   to make sure not to include them twice! We de-duplicate them here.
@@ -296,18 +321,7 @@
                                field-cols)
         duplicate-col? (fn [join-col]
                          (some (fn [existing-col]
-                                 ;; columns that don't have the same binning or temporal bucketing are never the same.
-                                 (when (and (= (lib.binning/binning join-col)
-                                               (lib.binning/binning existing-col))
-                                            (= (lib.temporal-bucket/temporal-bucket join-col)
-                                               (lib.temporal-bucket/temporal-bucket existing-col)))
-                                   (if (and (:id join-col)
-                                            (:id existing-col))
-                                     (= (:id join-col) (:id existing-col))
-                                     (some (fn [f]
-                                             (= (f existing-col)
-                                                (f join-col)))
-                                           [:lib/desired-column-alias :lib/source-column-alias :lib/deduplicated-name]))))
+                                 (add-cols-from-join-duplicate? join-col existing-col))
                                existing-cols))]
     (into (vec field-cols)
           (remove duplicate-col?)
