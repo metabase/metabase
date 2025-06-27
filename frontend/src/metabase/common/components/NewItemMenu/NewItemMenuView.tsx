@@ -43,6 +43,7 @@ const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
+          key="question"
           component={ForwardRefLink}
           to={Urls.newQuestion({
             mode: "notebook",
@@ -60,6 +61,7 @@ const NewItemMenuView = ({
     if (hasNativeWrite) {
       items.push(
         <Menu.Item
+          key="native"
           component={ForwardRefLink}
           to={Urls.newQuestion({
             type: "native",
@@ -76,6 +78,7 @@ const NewItemMenuView = ({
     }
     items.push(
       <Menu.Item
+        key="dashboard"
         onClick={() => {
           trackNewMenuItemClicked("dashboard");
           dispatch(setOpenModal("dashboard"));

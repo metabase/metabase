@@ -366,23 +366,22 @@
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!
-  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`.
-  With > 2 args, grants the data permissions from calling [[data-perms-path]]."
-  ([group-or-id path]
-   (try
-     (t2/insert! :model/Permissions
-                 (map (fn [path-object]
-                        {:group_id (u/the-id group-or-id) :object path-object})
-                      (distinct (conj (perms.u/->v2-path path) path))))
-     (clear-current-user-cached-permissions!)
-     ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
-     (catch Throwable e
-       (log/error e (u/format-color 'red "Failed to grant permissions"))
-       ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
-       ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
-       ;; to pass when they shouldn't. Don't allow this during tests
-       (when config/is-test?
-         (throw e))))))
+  "Grant permissions for `group-or-id` and return the inserted permissions. Two-arity grants any arbitrary Permissions `path`."
+  [group-or-id path]
+  (try
+    (t2/insert! :model/Permissions
+                (map (fn [path-object]
+                       {:group_id (u/the-id group-or-id) :object path-object})
+                     (distinct (conj (perms.u/->v2-path path) path))))
+    (clear-current-user-cached-permissions!)
+    ;; on some occasions through weirdness we might accidentally try to insert a key that's already been inserted
+    (catch Throwable e
+      (log/error e (u/format-color 'red "Failed to grant permissions"))
+      ;; if we're running tests, we're doing something wrong here if duplicate permissions are getting assigned,
+      ;; mostly likely because tests aren't properly cleaning up after themselves, and possibly causing other tests
+      ;; to pass when they shouldn't. Don't allow this during tests
+      (when config/is-test?
+        (throw e)))))
 
 ;;;; Audit Permissions helper fns
 
