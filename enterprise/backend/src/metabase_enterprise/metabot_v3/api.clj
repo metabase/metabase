@@ -43,7 +43,7 @@
      :state     (metabot-v3.envelope/state env)}))
 
 (api.macros/defendpoint :post "/v2/agent"
-  "Send a chat message to the LLM via the AI Proxy."
+  "Send a chat message to the LLM via the AI Service."
   [_route-params
    _query-params
    {:keys [conversation_id] :as body} :- [:map

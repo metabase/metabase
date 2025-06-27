@@ -113,6 +113,12 @@ export function getVirtualCardType(dashcard: BaseDashboardCard) {
   return dashcard?.visualization_settings?.virtual_card?.display;
 }
 
+export function isHeadingDashCard(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
+  return getVirtualCardType(dashcard) === "heading";
+}
+
 export function isLinkDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {
@@ -123,6 +129,44 @@ export function isIFrameDashCard(
   dashcard: BaseDashboardCard,
 ): dashcard is VirtualDashboardCard {
   return getVirtualCardType(dashcard) === "iframe";
+}
+
+export function supportsInlineParameters(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCard {
+  return isHeadingDashCard(dashcard);
+}
+
+type VirtualDashboardCardWithInlineFilters = VirtualDashboardCard & {
+  inline_parameters: ParameterId[];
+};
+
+export function hasInlineParameters(
+  dashcard: BaseDashboardCard,
+): dashcard is VirtualDashboardCardWithInlineFilters {
+  return (
+    supportsInlineParameters(dashcard) &&
+    Array.isArray(dashcard.inline_parameters) &&
+    dashcard.inline_parameters.length > 0
+  );
+}
+
+export function findDashCardForInlineParameter(
+  parameterId: ParameterId,
+  dashcards: DashboardCard[],
+): VirtualDashboardCardWithInlineFilters | undefined {
+  return dashcards.find((dashcard) => {
+    if (hasInlineParameters(dashcard)) {
+      return dashcard.inline_parameters.some((id) => id === parameterId);
+    }
+  }) as VirtualDashboardCardWithInlineFilters | undefined;
+}
+
+export function isDashcardInlineParameter(
+  parameterId: ParameterId,
+  dashcards: DashboardCard[],
+) {
+  return !!findDashCardForInlineParameter(parameterId, dashcards);
 }
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {

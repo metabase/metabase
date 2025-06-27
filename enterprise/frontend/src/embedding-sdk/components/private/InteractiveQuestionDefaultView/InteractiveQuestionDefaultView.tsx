@@ -1,6 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import type { ReactElement } from "react";
+import { useEffect } from "react";
 import { t } from "ttag";
 
 import {
@@ -73,11 +74,20 @@ export const InteractiveQuestionDefaultView = ({
   const isCreatingQuestionFromScratch =
     originalId === "new" && !question?.isSaved();
 
-  const [isEditorOpen, { close: closeEditor, toggle: toggleEditor }] =
-    useDisclosure(isCreatingQuestionFromScratch);
+  const [
+    isEditorOpen,
+    { close: closeEditor, toggle: toggleEditor, open: openEditor },
+  ] = useDisclosure(isCreatingQuestionFromScratch);
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  useEffect(() => {
+    // When switching to new question, open the editor
+    if (isCreatingQuestionFromScratch) {
+      openEditor();
+    }
+  }, [isCreatingQuestionFromScratch, openEditor]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =

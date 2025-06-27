@@ -188,13 +188,20 @@
                         (f rff))
                       (catch Throwable e
                         e))]
-         (assert (some? result) "QP unexpectedly returned nil.")
-        ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
-        ;; question to return a response directly instead of a core.async channel
-         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-         (when (or (instance? Throwable result)
-                   (= (:status result) :failed))
-           (streaming-response/write-error! os result export-format)))))))
+         (if (nil? result)
+           (do
+             (assert (qp.pipeline/canceled?* canceled-chan)
+                     "QP unexpectedly returned nil.")
+             ;; Create a cancelled result to trigger possible proper cleanup?
+             ;; If canceled, nobody should be receiving the stream.
+             {:status :canceled, :row_count 0, :data {:cols []}})
+           (do
+             ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
+             ;; question to return a response directly instead of a core.async channel
+             (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+             (when (or (instance? Throwable result)
+                       (= (:status result) :failed))
+               (streaming-response/write-error! os result export-format)))))))))
 
 (defn transforming-query-response
   "Decorate the streaming rff to transform the top-level payload."

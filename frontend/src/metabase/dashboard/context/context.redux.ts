@@ -7,6 +7,7 @@ import {
   addHeadingDashCardToDashboard,
   addLinkDashCardToDashboard,
   addMarkdownDashCardToDashboard,
+  addParameter,
   cancelFetchDashboardCardData,
   closeDashboard,
   closeSidebar,
@@ -39,6 +40,7 @@ import {
   setSidebar,
   showAddParameterPopover,
   toggleSidebar,
+  updateDashboard,
   updateDashboardAndCards,
 } from "metabase/dashboard/actions";
 import {
@@ -61,6 +63,7 @@ import {
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getDraftParameterValues,
   getIsAddParameterPopoverOpen,
   getIsAdditionalInfoVisible,
@@ -86,6 +89,7 @@ import {
 export const mapStateToProps = (state: State) => ({
   dashboard: getDashboardComplete(state),
   parameters: getParameters(state),
+  headerParameters: getDashboardHeaderParameters(state),
   tabs: getTabs(state),
   canManageSubscriptions: canManageSubscriptions(state),
   isAdmin: getUserIsAdmin(state),
@@ -123,6 +127,7 @@ export const mapDispatchToProps = {
   setSharing,
   toggleSidebar,
   closeSidebar,
+  addParameter,
   setParameterName,
   setParameterType,
   setParameterValue,
@@ -141,6 +146,7 @@ export const mapDispatchToProps = {
   onUpdateDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   updateDashboardAndCards,
+  updateDashboard,
   setSidebar,
   hideAddParameterPopover,
   fetchDashboard,
