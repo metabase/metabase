@@ -54,11 +54,6 @@ import * as querying from "../querying";
 import * as ui from "../ui";
 import * as url from "../url";
 
-jest.mock("metabase/questions/actions", () => ({
-  __esModule: true,
-  ...jest.requireActual("metabase/questions/actions"),
-}));
-
 import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
