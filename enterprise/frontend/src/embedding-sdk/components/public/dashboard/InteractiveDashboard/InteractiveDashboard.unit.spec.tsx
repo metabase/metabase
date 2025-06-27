@@ -61,47 +61,39 @@ describe("InteractiveDashboard", () => {
     expect(screen.queryByLabelText("ellipsis icon")).not.toBeInTheDocument();
   });
 
-  it("should only show refresh and fullscreen toggles when isFullscreen=false", async () => {
-    await setup({ isFullscreen: false });
+  it("should only show the download button if downloads are enabled", async () => {
+    await setup({
+      props: { withDownloads: true },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
     });
 
     const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
     expect(
       dashboardHeader.getAllByTestId("dashboard-header-row-button"),
-    ).toHaveLength(2);
-
-    expect(dashboardHeader.getByLabelText("Auto Refresh")).toBeInTheDocument();
-    expect(
-      dashboardHeader.queryByLabelText("Nighttime mode"),
-    ).not.toBeInTheDocument();
+    ).toHaveLength(1);
 
     expect(
-      dashboardHeader.getByLabelText("Enter fullscreen"),
+      dashboardHeader.getByLabelText("Download as PDF"),
     ).toBeInTheDocument();
   });
 
-  it("should only show refresh, nightmode, and fullscreen toggles when isFullscreen=true", async () => {
+  it("should not show buttons if downloads are disabled", async () => {
     await setup({
-      isFullscreen: true,
+      props: { withDownloads: false },
     });
 
     await waitFor(() => {
       expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
     });
-    const dashboardHeader = within(screen.getByTestId("dashboard-header"));
-    expect(
-      dashboardHeader.getAllByTestId("dashboard-header-row-button"),
-    ).toHaveLength(3);
 
-    expect(dashboardHeader.getByLabelText("Auto Refresh")).toBeInTheDocument();
+    const dashboardHeader = within(screen.getByTestId("dashboard-header"));
+
     expect(
-      dashboardHeader.getByLabelText("Nighttime mode"),
-    ).toBeInTheDocument();
-    expect(
-      dashboardHeader.getByLabelText("Exit fullscreen"),
-    ).toBeInTheDocument();
+      dashboardHeader.queryByTestId("dashboard-header-row-button"),
+    ).not.toBeInTheDocument();
   });
 });
