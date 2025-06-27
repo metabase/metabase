@@ -8,7 +8,6 @@ import { P, isMatching } from "ts-pattern";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { uuid } from "metabase/lib/uuid";
 import { mockStreamedEndpoint } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
@@ -22,7 +21,7 @@ import { FIXED_METABOT_IDS } from "./constants";
 import { MetabotProvider } from "./context";
 import {
   type MetabotState,
-  metabotInitialState,
+  getMetabotInitialState,
   metabotReducer,
 } from "./state";
 
@@ -54,8 +53,7 @@ function setup(
     ui = <Metabot />,
     currentUser = createMockUser(),
     metabotPluginInitialState = {
-      ...metabotInitialState,
-      conversationId: uuid(),
+      ...getMetabotInitialState(),
       visible: true,
       useStreaming: true,
     },
