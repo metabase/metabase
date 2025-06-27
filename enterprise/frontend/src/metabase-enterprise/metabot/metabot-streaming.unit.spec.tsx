@@ -8,7 +8,12 @@ import { P, isMatching } from "ts-pattern";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { mockStreamedEndpoint } from "metabase-enterprise/api/ai-streaming/test-utils";
+import {
+  type MockStreamedEndpointParams,
+  createMockReadableStream,
+  createPauses,
+  mockStreamedEndpoint,
+} from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -25,13 +30,8 @@ import {
   metabotReducer,
 } from "./state";
 
-const mockAgentEndpoint = (
-  params: Omit<Parameters<typeof mockStreamedEndpoint>[0], "url">,
-) =>
-  mockStreamedEndpoint({
-    url: "/api/ee/metabot-v3/v2/agent-streaming",
-    ...params,
-  });
+const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
+  mockStreamedEndpoint("/api/ee/metabot-v3/v2/agent-streaming", params);
 
 function setup(
   options: {
@@ -219,6 +219,111 @@ describe("metabot-streaming", () => {
       // should auto-clear input + refocus
       expect(await input()).toHaveValue("");
       expect(await input()).toHaveFocus();
+    });
+  });
+
+  describe("tool calls", () => {
+    it("should show list each tool being called as it comes in and cleared when finished", async () => {
+      setup();
+
+      const [pause1, pause2] = createPauses(2);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `9:{"toolCallId":"x","toolName":"analyze_data","args":""}\n`;
+            yield `a:{"toolCallId":"x","result":""}\n`;
+            await pause1.promise;
+            yield `9:{"toolCallId":"y","toolName":"analyze_chart","args":""}\n`;
+            yield `a:{"toolCallId":"y","result":""}\n`;
+            await pause2.promise;
+            yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Analyze this query");
+
+      // should show first tool call
+      expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Inspecting the visualization"),
+      ).not.toBeInTheDocument();
+
+      pause1.resolve();
+
+      // should show both tool calls
+      expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Inspecting the visualization"),
+      ).toBeInTheDocument();
+
+      pause2.resolve();
+
+      // should clear tool call notifications at end of request
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Analyzing the data"),
+        ).not.toBeInTheDocument();
+      });
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Inspecting the visualization"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("should clear out list of tool calls when new text comes in", async () => {
+      setup();
+
+      const [pause1, pause2, pause3] = createPauses(3);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `9:{"toolCallId":"x","toolName":"analyze_data","args":""}\n`;
+            yield `a:{"toolCallId":"x","result":""}\n`;
+            await pause1.promise;
+            yield `0:"Hey."`;
+            await pause2.promise;
+            yield `9:{"toolCallId":"y","toolName":"analyze_chart","args":""}\n`;
+            yield `a:{"toolCallId":"y","result":""}\n`;
+            await pause3.promise;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Analyze this query");
+
+      // should show first tool call
+      expect(await screen.findByText("Analyzing the data")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Inspecting the visualization"),
+      ).not.toBeInTheDocument();
+
+      pause1.resolve();
+
+      // should not show any tool calls, only the new text
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Analyzing the data"),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByText("Hey.")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.queryByText("Inspecting the visualization"),
+        ).not.toBeInTheDocument();
+      });
+
+      pause2.resolve();
+
+      // expect text and new tool call to be in the document
+      expect(await screen.findByText("Hey.")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Inspecting the visualization"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Analyzing the data")).not.toBeInTheDocument();
+
+      pause3.resolve();
     });
   });
 
