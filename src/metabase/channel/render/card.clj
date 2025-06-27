@@ -191,30 +191,32 @@
          attachment-href                  (if (render.util/is-visualizer-dashcard? dashcard)
                                             (visualizer-dashcard-href dashcard)
                                             (card-href card))
-         inline-parameters                (-> dashcard :visualization_settings :inline_parameters)
-         (cond-> {:attachments (merge title-attachments body-attachments)
-                  :content [:p
-                        ;; Provide a horizontal scrollbar for tables that overflow container width.
-                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                            [:div
-                             [:a {:href        attachment-href
-                                  :target      "_blank"
-                                  :rel         "noopener noreferrer"
-                                  :style       (style/style
-                                                (style/section-style)
-                                                {:display         :block
-                                                 :text-decoration :none})}
-                              title
-                              description
-                              (when inline-parameters (impl.util/render-filters inline-parameters))
-                              [:div {:class "pulse-body"
-                                     :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
-                                                          :display :block
-                                                          :margin  :16px})}
-                               (if-let [more-results-message (body/attached-results-text render-type card)]
-                                 (conj more-results-message (list pulse-body))
-                                 pulse-body)]]]]}
-           text (assoc :render/text text))])))
+         inline-parameters                (-> dashcard :visualization_settings :inline_parameters)]
+     (cond-> {:attachments (merge title-attachments body-attachments)
+              :content [:p
+                      ;; Provide a horizontal scrollbar for tables that overflow container width.
+                      ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
+                        [:div
+                         [:a {:href        attachment-href
+                              :target      "_blank"
+                              :rel         "noopener noreferrer"
+                              :style       (style/style
+                                            (style/section-style)
+                                            {:display         :block
+                                             :text-decoration :none})}
+                          title
+                          description
+                          (when inline-parameters
+                            [:div {:style (style/style {:padding-bottom :16px})}
+                             (impl.util/render-filters inline-parameters)])
+                          [:div {:class "pulse-body"
+                                 :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
+                                                      :display :block
+                                                      :margin  :16px})}
+                           (if-let [more-results-message (body/attached-results-text render-type card)]
+                             (conj more-results-message (list pulse-body))
+                             pulse-body)]]]]}
+       text (assoc :render/text text)))))
 
 (mu/defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
