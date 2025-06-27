@@ -5,14 +5,12 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type {
   DatabaseId,
-  DatasetColumn,
   DatasetQuery,
   Field,
   FieldFilter,
   FieldId,
   FieldReference,
   RawSeries,
-  RowValues,
   TableId,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -64,14 +62,6 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
     return base;
   }
 
-  const stubColumn: DatasetColumn = {
-    name: "__metabase_generated",
-    display_name: "—",
-    source: "generated",
-    semantic_type: "type/PK",
-  };
-  const stubValue = "—";
-
   const rawSeries: RawSeries = [
     {
       card: createMockCard({
@@ -80,10 +70,8 @@ function useDataSample({ databaseId, field, fieldId, tableId }: Props) {
         visualization_settings: {},
       }),
       data: {
-        // create a stub column in the data
         ...data.data,
-        cols: [stubColumn, ...data.data.cols],
-        rows: getDistinctRows(data.data.rows.map((row) => [stubValue, ...row])),
+        rows: _.uniq(data.data.rows).slice(0, PREVIEW_ROW_COUNT),
       },
     },
   ];
@@ -109,11 +97,6 @@ function getPreviewQuery(
       limit: 50, // fetch more rows to increase probability of getting at least 5 unique values
     },
   };
-}
-
-function getDistinctRows(rows: RowValues[]) {
-  const distinctRows = _.uniq(rows, ([_stubValue, value]) => value);
-  return distinctRows.slice(0, PREVIEW_ROW_COUNT);
 }
 
 export const TablePreview = memo(TablePreviewBase);
