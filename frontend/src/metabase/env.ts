@@ -40,6 +40,6 @@ export const isChartsDebugLoggingEnabled = tryOrDefault(
 );
 
 export const isEmbeddingSdk = tryOrDefault(
-  () => !!process.env.IS_EMBEDDING_SDK,
+  () => process.env.IS_EMBEDDING_SDK === "true",
   false,
 );
