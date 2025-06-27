@@ -16,10 +16,17 @@
     outline: 2px solid var(--mb-color-focus);
   }
 
-  &.active,
   &:hover {
     background-color: var(--mb-color-brand-lighter);
+  }
+
+  &.active {
     color: var(--mb-color-brand);
+
+    &,
+    &:hover {
+      background-color: var(--mb-color-brand-light);
+    }
 
     .icon {
       opacity: 1;
