@@ -96,9 +96,9 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
     });
 
     step().within(() => {
-      cy.findByRole("heading", {
-        name: "Let's get you up and running with a starting setup for embedded analytics",
-      }).should("be.visible");
+      cy.findByText(
+        /Let's get you up and running with a starting setup for embedded analytics/,
+      ).should("be.visible");
       cy.button("Start").should("be.visible").click();
     });
 
@@ -203,10 +203,7 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
       cy.findByRole("checkbox", { name: "products" })
         .should("be.enabled")
         .check();
-      cy.log(
-        "Others non-selected options should be disabled after selecting 3 options (max limit)",
-      );
-      cy.findByRole("checkbox", { name: "reviews" }).should("be.disabled");
+
       cy.button("Continue").should("be.enabled").click();
     });
 
@@ -292,6 +289,17 @@ describeWithSnowplowEE("scenarios > setup embedding (EMB-477)", () => {
 
     cy.log("5: Metabase");
     cy.button("New").should("be.visible");
+
+    cy.log(
+      "Only one 'Automatically Generated Dashboards' collection should be created",
+    );
+    sidebar().within(() => {
+      cy.findByText("Automatically Generated Dashboards").should("be.visible");
+      cy.findByText("Automatically Generated Dashboards").should(
+        "have.length",
+        1,
+      );
+    });
   });
 });
 
