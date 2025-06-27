@@ -15,7 +15,7 @@ Metabase periodically runs different types of queries on your data warehouse to 
 
 When Metabase first connects to your database, it performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md).
 
-You can follow the progress of these queries from **Admin** > **Troubleshooting** > **Logs**.
+You can follow the progress of these queries from **Gear icon** >**Admin settings** > **Tools** > **Tasks** and filtering by the various sync tasks.
 
 Once the queries are done running, you can view and edit the synced metadata from **Admin settings** > **Table Metadata**. For more info, see [editing metadata](../data-modeling/metadata-editing.md).
 
