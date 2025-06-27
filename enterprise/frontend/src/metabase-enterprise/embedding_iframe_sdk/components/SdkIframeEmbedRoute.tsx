@@ -89,6 +89,7 @@ const SdkIframeEmbedView = ({
         isSaveEnabled={settings.isSaveEnabled ?? false}
         targetCollection={settings.targetCollection}
         entityTypes={settings.entityTypes}
+        key={rerenderKey}
       />
     ))
     .with({ template: "curate-content" }, (_settings) => null)
