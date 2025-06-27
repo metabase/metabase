@@ -1,4 +1,4 @@
-name: Docs Merge Detected
+name: Docs Close Detected
 
 on:
   pull_request:
