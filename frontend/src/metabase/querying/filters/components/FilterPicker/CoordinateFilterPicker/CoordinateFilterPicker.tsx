@@ -54,14 +54,6 @@ export function CoordinateFilterPicker({
   const [leftInclusive, setLeftInclusive] = useState(true);
   const [rightInclusive, setRightInclusive] = useState(true);
 
-  const handleInclusiveChange = (side: "left" | "right", value: boolean) => {
-    if (side === "left") {
-      setLeftInclusive(value);
-    } else {
-      setRightInclusive(value);
-    }
-  };
-
   const handleOperatorChange = (newOperator: Lib.CoordinateFilterOperator) => {
     setOperator(newOperator);
     setValues(getDefaultValues(newOperator, values));
@@ -121,7 +113,8 @@ export function CoordinateFilterPicker({
           onChange={setValues}
           leftInclusive={leftInclusive}
           rightInclusive={rightInclusive}
-          onInclusiveChange={handleInclusiveChange}
+          onLeftInclusiveChange={setLeftInclusive}
+          onRightInclusiveChange={setRightInclusive}
         />
         <FilterPickerFooter
           isNew={isNew}

@@ -21,7 +21,8 @@ interface NumberValueInputProps {
   onChange: (values: NumberOrEmptyValue[]) => void;
   leftInclusive?: boolean;
   rightInclusive?: boolean;
-  onInclusiveChange?: (side: "left" | "right", value: boolean) => void;
+  onLeftInclusiveChange: (value: boolean) => void;
+  onRightInclusiveChange: (value: boolean) => void;
 }
 
 function NumberValueInput({
@@ -34,7 +35,8 @@ function NumberValueInput({
   onChange,
   leftInclusive = true,
   rightInclusive = true,
-  onInclusiveChange,
+  onLeftInclusiveChange,
+  onRightInclusiveChange,
 }: NumberValueInputProps) {
   if (hasMultipleValues) {
     return (
@@ -79,13 +81,11 @@ function NumberValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle greater inclusiveness"
-              onChange={() => onInclusiveChange?.("left", !leftInclusive)}
+              onChange={() => onLeftInclusiveChange(!leftInclusive)}
             >
-              {leftInclusive ? (
-                <Icon name="greater_than_or_equal" />
-              ) : (
-                <Icon name="greater_than" />
-              )}
+              <Icon
+                name={leftInclusive ? "greater_than_or_equal" : "greater_than"}
+              />
             </ToggleButton>
           }
           classNames={{
@@ -100,13 +100,11 @@ function NumberValueInput({
           leftSection={
             <ToggleButton
               aria-label="toggle less inclusiveness"
-              onChange={() => onInclusiveChange?.("right", !rightInclusive)}
+              onChange={() => onRightInclusiveChange(!rightInclusive)}
             >
-              {rightInclusive ? (
-                <Icon name="less_than_or_equal" />
-              ) : (
-                <Icon name="less_than" />
-              )}
+              <Icon
+                name={rightInclusive ? "less_than_or_equal" : "less_than"}
+              />
             </ToggleButton>
           }
           classNames={{
