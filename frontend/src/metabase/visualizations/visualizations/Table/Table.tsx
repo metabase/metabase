@@ -233,6 +233,7 @@ class Table extends Component<TableProps, TableState> {
         // TODO: ideally scope should be `dashcard-id` for saved dashcards inside dashboard,
         // however it seems like we don't have easy access to dashcard id here,
         // so we'll reconsider this later
+        // This works fine for form configuration, however semantically it is not correct.
         actionScope: { "card-id": series[0].card.id },
       }),
 
