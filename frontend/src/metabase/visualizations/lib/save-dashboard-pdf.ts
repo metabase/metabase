@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID } from "metabase/dashboard/constants";
+import { getHtml2CanvasWrapper } from "metabase/visualizations/lib/html2canvas";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -151,12 +152,14 @@ const PARAMETERS_MARGIN_BOTTOM = 12;
 const PAGE_PADDING = 16;
 
 interface SavePdfProps {
+  rootElement: HTMLElement;
   selector: string;
   dashboardName: string;
   includeBranding: boolean;
 }
 
 export const saveDashboardPdf = async ({
+  rootElement,
   selector,
   dashboardName,
   includeBranding,
@@ -167,7 +170,9 @@ export const saveDashboardPdf = async ({
       `Metabase - ${originalFileName}`
     : originalFileName;
 
-  const dashboardRoot = document.querySelector(selector);
+  const { wrapper, cleanupWrapper } = getHtml2CanvasWrapper(rootElement);
+
+  const dashboardRoot = wrapper.querySelector(selector);
   const gridNode = dashboardRoot?.querySelector(".react-grid-layout");
 
   if (!gridNode || !(gridNode instanceof HTMLElement)) {
@@ -204,7 +209,7 @@ export const saveDashboardPdf = async ({
     headerHeight + parametersHeight + (includeBranding ? brandingHeight : 0);
   const contentHeight = gridNode.offsetHeight + verticalOffset;
 
-  const backgroundColor = getComputedStyle(document.documentElement)
+  const backgroundColor = getComputedStyle(rootElement)
     .getPropertyValue("--mb-color-bg-dashboard")
     .trim();
 
@@ -214,6 +219,7 @@ export const saveDashboardPdf = async ({
     width: contentWidth,
     useCORS: true,
     backgroundColor,
+    removeContainer: false,
     scale: window.devicePixelRatio || 1,
     onclone: (_doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
@@ -246,6 +252,8 @@ export const saveDashboardPdf = async ({
       }
     },
   });
+
+  cleanupWrapper();
 
   const { default: jspdf } = await import("jspdf");
 

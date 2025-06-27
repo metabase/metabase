@@ -53,3 +53,12 @@ export const WithCustomQuestionLayout = {
     ),
   },
 };
+
+export const WithDownloads = {
+  render: Template,
+
+  args: {
+    dashboardId: DASHBOARD_ID,
+    withDownloads: true,
+  },
+};

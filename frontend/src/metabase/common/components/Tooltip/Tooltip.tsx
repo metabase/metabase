@@ -4,6 +4,7 @@ import * as React from "react";
 import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
+import { useRootElement } from "metabase/common/hooks/use-root-element";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
@@ -49,11 +50,10 @@ function getTargetProps(
   }
 }
 
-function appendTo() {
-  return (
-    document.getElementById(EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID) ||
-    document.body
-  );
+function appendTo(rootElement: HTMLElement) {
+  return () =>
+    rootElement.querySelector(`#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID}`) ??
+    rootElement;
 }
 
 /**
@@ -73,6 +73,7 @@ function Tooltip({
   maxWidth = 300,
   className,
 }: TooltipProps) {
+  const rootElement = useRootElement();
   const visible = isOpen != null ? isOpen : undefined;
   const animationDuration = isReducedMotionPreferred() ? 0 : undefined;
   const disabled = isEnabled === false;
@@ -107,7 +108,7 @@ function Tooltip({
         theme={theme}
         className={cx("popover", ZIndex.Overlay, className)}
         zIndex={zIndex}
-        appendTo={appendTo}
+        appendTo={appendTo(rootElement)}
         content={tooltip}
         visible={visible}
         disabled={disabled}

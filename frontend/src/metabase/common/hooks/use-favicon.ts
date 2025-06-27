@@ -1,3 +1,4 @@
+/* eslint-disable no-direct-document-references */
 import { useEffect } from "react";
 
 import { useSetting } from "metabase/common/hooks";
