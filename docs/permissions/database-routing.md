@@ -36,7 +36,7 @@ With the router database set up with its destination databases, an admin can the
 
 ![Database routing](./images/database-routing.png)
 
-1. [Connect to a database](../databases/connecting.md) that has _the same schema as all of your customer's databases_. This database should be a mock/dev database, ideally with some fake data. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to. (You can change the display name at any time).
+1. [Connect to a database](../databases/connecting.md) that has _the same schema as all of your customer's databases_. This database should be a mock/dev database, ideally with some fake data. The name used for this router database will be the name all users will see, regardless of which destination database they're routed to, so make sure the name makes sense for everyone. (You can change the display name at any time).
 2. Once connected to this initial database (the "Router database"), go to its Database routing section and toggle on **Enable database routing**.
 3. Enter the user attribute you want to use to determine which database a user should be routed to.
 4. In the **Destination databases** section, click **Add**, then fill out the connection details. For each destination database, you'll need to specify a **key** - this key is the value that Metabase will use to match against the user attribute you assigned to the router database. At run time, when a user views a question built on the router database, Metabase will check the person's user attribute. If the value matches this key, the question will query this destination database instead.
