@@ -3,7 +3,6 @@ import cx from "classnames";
 import { Fragment, type KeyboardEvent, useEffect, useRef } from "react";
 import _ from "underscore";
 
-import { isSyncCompleted } from "metabase/lib/syncing";
 import { Box, Flex, Icon, Skeleton, rem } from "metabase/ui";
 
 import S from "./Results.module.css";
@@ -94,10 +93,9 @@ export function Results({
             key,
             level,
             parent,
+            disabled,
           } = item;
           const isActive = type === "table" && _.isEqual(path, value);
-          const isDisabled =
-            type === "table" && (!item.table || !isSyncCompleted(item.table));
 
           const parentIndex = items.findIndex((item) => item.key === parent);
           const parentItem = virtualItems.find(
@@ -105,7 +103,7 @@ export function Results({
           );
 
           const handleItemSelect = (open?: boolean) => {
-            if (isDisabled) {
+            if (disabled) {
               return;
             }
 
@@ -163,7 +161,7 @@ export function Results({
             }
 
             if (
-              !isDisabled &&
+              !disabled &&
               (event.code === "Space" || event.code === "Enter")
             ) {
               // toggle the current item
@@ -196,7 +194,7 @@ export function Results({
                 data-index={index}
                 data-open={isExpanded}
                 tabIndex={
-                  isDisabled
+                  disabled
                     ? -1
                     : selectedIndex === undefined || type === "table"
                       ? 0
@@ -205,7 +203,7 @@ export function Results({
                 style={{
                   top: start,
                   marginLeft: level * INDENT_OFFSET,
-                  pointerEvents: isDisabled ? "none" : undefined,
+                  pointerEvents: disabled ? "none" : undefined,
                 }}
                 data-testid="tree-item"
                 data-type={type}
@@ -240,7 +238,7 @@ export function Results({
                 {type === "table" &&
                   value?.tableId !== undefined &&
                   item.table &&
-                  !isDisabled && (
+                  !disabled && (
                     <TableVisibilityToggle
                       className={S.visibilityToggle}
                       table={item.table}

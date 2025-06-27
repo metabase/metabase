@@ -315,6 +315,7 @@ describe("TablePicker", () => {
       table_name: "FOO",
       table_schema: SCHEMA,
       database_name: DATABASE,
+      initial_sync_status: "complete",
     });
     const BAR_RESULT = createMockSearchResult({
       id: nextId(),
@@ -323,6 +324,7 @@ describe("TablePicker", () => {
       table_name: "BAR",
       table_schema: SCHEMA,
       database_name: DATABASE,
+      initial_sync_status: "complete",
     });
 
     const SEARCH_RESULTS = [FOO_RESULT, BAR_RESULT];

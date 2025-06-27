@@ -8,6 +8,7 @@ import {
   useLazyListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
+import { isSyncCompleted } from "metabase/lib/syncing";
 import type { IconName } from "metabase/ui";
 import type { DatabaseId, SchemaName } from "metabase-types/api";
 
@@ -108,6 +109,7 @@ export function useTableLoader(path: TreePath) {
             label: table.display_name,
             value: { databaseId, schemaName, tableId: table.id },
             table,
+            disabled: !isSyncCompleted(table),
           }),
         ) ?? []
       );
@@ -256,6 +258,7 @@ export function useSearch(query: string) {
             schemaName: table_schema,
             tableId: id,
           },
+          disabled: !isSyncCompleted(result),
         });
         schemaNode.children.push(tableNode);
       }
