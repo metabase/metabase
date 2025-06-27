@@ -254,12 +254,18 @@ function setup({
   return { getRecentJoin, mockWindowOpen };
 }
 
-async function enterCustomExpression(expressionSource: string) {
-  screen.getByTestId("custom-expression-query-editor").focus();
-  await userEvent.paste(expressionSource);
-  const doneButton = screen.getByRole("button", { name: /(Done|Update)/ });
-  await waitFor(() => expect(doneButton).toBeEnabled());
-  await userEvent.click(doneButton);
+async function enterCustomExpression(expression: string) {
+  const input = screen.getByTestId("custom-expression-query-editor");
+  await waitFor(() => expect(input).toHaveProperty("readOnly", false));
+  await userEvent.clear(input);
+  await userEvent.type(input, expression);
+  await userEvent.tab();
+}
+
+async function submitCustomExpression() {
+  const button = screen.getByRole("button", { name: /(Done|Update)/ });
+  await waitFor(() => expect(button).toBeEnabled());
+  await userEvent.click(button);
 }
 
 describe("Notebook Editor > Join Step", () => {
@@ -1182,11 +1188,13 @@ describe("Notebook Editor > Join Step", () => {
 
       const lhsPicker = await screen.findByTestId("lhs-column-picker");
       await userEvent.click(within(lhsPicker).getByText("Custom Expression"));
-      await enterCustomExpression("[Total] + [Subtotal]");
+      await enterCustomExpression("[[Total] + [[Subtotal]");
+      await submitCustomExpression();
 
       const rhsPicker = await screen.findByTestId("rhs-column-picker");
       await userEvent.click(within(rhsPicker).getByText("Custom Expression"));
-      await enterCustomExpression("[ID] + [Rating]");
+      await enterCustomExpression("[[ID] + [[Rating]");
+      await submitCustomExpression();
 
       const [condition] = getRecentJoin().conditions;
       expect(condition.lhsExpression.longDisplayName).toBe("Total + Subtotal");
@@ -1202,7 +1210,8 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(screen.getByLabelText("Left column"));
       const lhsPicker = await screen.findByTestId("lhs-column-picker");
       await userEvent.click(within(lhsPicker).getByText("Custom Expression"));
-      await enterCustomExpression(" + 1");
+      await enterCustomExpression("[[Product ID] + 1");
+      await submitCustomExpression();
 
       const [condition] = getRecentJoin().conditions;
       expect(condition.lhsExpression.longDisplayName).toBe("Product ID + 1");
@@ -1217,7 +1226,8 @@ describe("Notebook Editor > Join Step", () => {
       await userEvent.click(screen.getByLabelText("Right column"));
       const rhsPicker = await screen.findByTestId("rhs-column-picker");
       await userEvent.click(within(rhsPicker).getByText("Custom Expression"));
-      await enterCustomExpression(" + 1");
+      await enterCustomExpression("[[ID] + 1");
+      await submitCustomExpression();
 
       const [condition] = getRecentJoin().conditions;
       expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
