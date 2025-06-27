@@ -26,6 +26,16 @@
   [x]
   (instance? FieldFilter x))
 
+(p.types/defrecord+ CustomFilter [name effective-type value]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->CustomFilter) (into {} this))))
+
+(defn CustomFilter?
+  "Is `x` an instance of the `CustomFilter` record type?"
+  [x]
+  (instance? CustomFilter x))
+
 (p.types/defrecord+ TemporalUnit [name value]
   pretty/PrettyPrintable
   (pretty [this]
@@ -33,6 +43,16 @@
 
 (defn TemporalUnit?
   "Is `x` an instance of the `TemporalUnit` record type?"
+  [x]
+  (instance? TemporalUnit x))
+
+(p.types/defrecord+ TemporalUnitWithCol [name value column]
+  pretty/PrettyPrintable
+  (pretty [this]
+    (list (pretty/qualify-symbol-for-*ns* `map->TemporalUnitWithCol) (into {} this))))
+
+(defn TemporalUnitWithCol?
+  "Is `x` an instance of the `TemporalUnitWithCol` record type?"
   [x]
   (instance? TemporalUnit x))
 

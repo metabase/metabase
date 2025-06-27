@@ -1222,6 +1222,35 @@
 
 ;; Example:
 ;;
+;;    {:id           "c20851c7-8a80-0ffa-8a99-ae636f0e9539"
+;;     :name         "date"
+;;     :display-name "Date"
+;;     :type         :custom-filter,
+;;     :dimension    [:field 4 nil]
+;;     :widget-type  :date/all-options}
+(mr/def ::TemplateTag:CustomFilter
+  "Schema for a field filter template tag."
+  [:merge
+   TemplateTag:Value:Common
+   [:map
+    [:type           [:= :custom-filter]]
+    [:dimension      {:optional true} field]
+    [:effective-type [:ref ::lib.schema.common/base-type]]
+
+    [:widget-type
+     [:ref
+      {:description
+       "which type of widget the frontend should show for this Field Filter; this also affects which parameter types
+  are allowed to be specified for it."}
+      ::WidgetType]]
+
+    [:options
+     {:optional    true
+      :description "optional map to be appended to filter clause"}
+     [:maybe [:map-of :keyword :any]]]]])
+
+;; Example:
+;;
 ;;   {:id "cd35d6dc-285b-4944-8a83-21e4c38d6584",
 ;;    :type "temporal-unit",
 ;;    :name "unit",
@@ -1290,6 +1319,7 @@
    [:snippet       [:ref ::TemplateTag:Snippet]]
    [:card          [:ref ::TemplateTag:SourceQuery]]
    [:temporal-unit [:ref ::TemplateTag:TemporalUnit]]
+   [:custom-filter [:ref ::TemplateTag:CustomFilter]]
    [::mc/default   [:ref ::TemplateTag:RawValue]]])
 
 (def TemplateTag

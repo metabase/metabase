@@ -301,9 +301,10 @@
 (defn- template-tag-definition-key->transform-fn
   "Get the function that should be used to transform values for normalized key `k` in a template tag definition."
   [k]
-  (get {:default     identity
-        :type        maybe-normalize-token
-        :widget-type maybe-normalize-token}
+  (get {:default        identity
+        :type           maybe-normalize-token
+        :widget-type    maybe-normalize-token
+        :effective-type lib.schema.common/normalize-keyword}
        k
        ;; if there's not a special transform function for the key in the map above, just wrap the key-value
        ;; pair in a dummy map and let [[normalize-tokens]] take care of it. Then unwrap

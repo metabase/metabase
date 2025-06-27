@@ -13,6 +13,7 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
@@ -197,6 +198,70 @@
         (field-filter-param-test-is-count-= 2
                                             :places :liked :boolean true)))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Custom Filter Params                                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- custom-filter-count-query [table field-type field value-type value]
+  (let [field-reference (qp.store/with-metadata-provider (mt/metadata-provider)
+                          (mt/field-reference driver/*driver* (mt/id table field)))]
+    {:database   (mt/id)
+     :type       :native
+     :native     (assoc (mt/count-with-field-filter-query driver/*driver* table field
+                                                          {:replacement
+                                                           (format "mb.filter('%s', '%s')"
+                                                                   (name field)
+                                                                   field-reference)})
+                        :template-tags {(name field) {:name           (name field)
+                                                      :display-name   (name field)
+                                                      :type           :custom-filter
+                                                      :widget-type    value-type
+                                                      :effective-type field-type
+                                                      :dimension      [:field (mt/id table field) nil]}})
+     :parameters [{:type   value-type
+                   :name   (name field)
+                   :target [:variable [:template-tag (name field)]]
+                   :value  value}]}))
+
+;; this isn't a complete test for all possible field filter types, but it covers mostly everything
+(defn- custom-filter-param-test-is-count-= [expected-count table field-type field value-type value]
+  (let [query (custom-filter-count-query table field-type field value-type value)]
+    (mt/with-native-query-testing-context query
+      (is (= expected-count
+             (run-count-query query))))))
+
+(deftest ^:parallel custom-filter-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-custom-filters :test/dynamic-dataset-loading)
+    (testing "temporal custom filters"
+      (mt/dataset attempted-murders-no-time
+        (doseq [[field field-type]
+                [[:datetime :type/DateTime]
+                 [:date :type/Date]
+                 [:datetime_tz :type/DateTimeWithTZ]]
+
+                [value-type value expected-count]
+                [[:date/relative     "past30days" 0]
+                 [:date/range        "2019-11-01~2020-01-09" 20]
+                 [:date/single       "2019-11-12" 1]
+                 [:date/quarter-year "Q4-2019" 20]
+                 [:date/month-year   "2019-11" 20]]]
+          (testing (format "\nCustom filter with %s Field" field)
+            (testing (format "\nfiltering against %s value '%s'" value-type value)
+              (custom-filter-param-test-is-count-= expected-count
+                                                   :attempts field-type field value-type value))))))))
+
+(deftest ^:parallel custom-filter-param-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :native-custom-filters ::field-filter-param-test-2)
+    (testing "text custom filters"
+      (custom-filter-param-test-is-count-= 1
+                                           :venues :type/Text :name :text "In-N-Out Burger"))
+    (testing "number custom filters"
+      (custom-filter-param-test-is-count-= 22
+                                           :venues :type/Number :price :number "1"))
+    (testing "boolean custom filters"
+      (mt/dataset places-cam-likes
+        (custom-filter-param-test-is-count-= 2
+                                             :places :type/Boolean :liked :boolean true)))))
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query (qp.compile/compile (mt/mbql-query checkins)))}]
