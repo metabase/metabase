@@ -53,7 +53,7 @@ import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
 /**
  * @interface
- * @ignore
+ * @inline
  * @category Dashboard
  */
 export type SdkDashboardProps = PropsWithChildren<

@@ -96,9 +96,6 @@ const TEST_CARD = createMockCard({
   parameters: [TEST_PARAM],
 });
 
-// TODO: Reduce this. For some reason tests here are taking a long time.
-jest.setTimeout(60000);
-
 const setup = ({
   isValidCard = true,
   title,
