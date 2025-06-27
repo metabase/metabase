@@ -408,28 +408,6 @@
      ["bar" (.getBytes "20200421164300")]
      ["baz" (.getBytes "20210421164300")]]]])
 
-(comment
-
-  (binding [metabase.test.data.databricks/*allow-database-deletion* true]
-    (tx/destroy-db! :databricks metabase.query-processor-test.alternative-date-test/yyyymmddhhss-binary-times))
-
-  (toucan2.core/delete! 'Database :engine "databricks", :name "yyyymmddhhss-binary-times (databricks)")
-
-  (binding [metabase.test.data.databricks/*allow-database-creation* true]
-    (metabase.driver/with-driver :databricks
-      (metabase.test/dataset yyyymmddhhss-binary-times
-        (metabase.test/db))))
-
-  (binding [metabase.test.data.athena/*allow-database-deletion* true]
-    (tx/destroy-db! :athena metabase.query-processor-test.alternative-date-test/yyyymmddhhss-times))
-
-  (toucan2.core/delete! 'Database :engine "athena", :name "yyyymmddhhss-times (athena)")
-
-  (binding [metabase.test.data.athena/*allow-database-creation* true]
-    (metabase.driver/with-driver :athena
-      (metabase.test/dataset yyyymmddhhss-times
-        (metabase.test/db)))))
-
 (def drivers-without-binary-coercion-support #{:athena
                                                :bigquery-cloud-sdk
                                                :clickhouse
@@ -453,7 +431,7 @@
 
 (defmethod yyyymmddhhmmss-binary-dates-expected-rows :default
   [_driver]
-  [])
+  :not-implemented)
 
 (doseq [driver [:h2 :postgres :databricks]]
   (defmethod yyyymmddhhmmss-binary-dates-expected-rows driver
@@ -596,7 +574,7 @@
 
 (defmethod binary-dates-expected-rows-iso :default
   [_driver]
-  [])
+  :not-implemented)
 
 (doseq [driver [:databricks]]
   (defmethod binary-dates-expected-rows-iso driver
