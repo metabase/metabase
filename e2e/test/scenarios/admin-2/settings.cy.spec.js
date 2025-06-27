@@ -221,11 +221,13 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
   it("should search for and select a new timezone", () => {
     cy.intercept("PUT", "**/report-timezone").as("reportTimezone");
     cy.visit("/admin/settings/localization");
-    const timezoneSelect = cy.findByRole("textbox", { name: /timezone/i });
-    timezoneSelect.clear().type("Centr");
+    cy.findByRole("textbox", { name: /timezone/i })
+      .as("timezoneSelect")
+      .clear()
+      .type("Centr");
     cy.findByRole("listbox").findByText("US/Central").click();
     cy.wait("@reportTimezone");
-    timezoneSelect.should("have.value", "US/Central");
+    cy.get("@timezoneSelect").should("have.value", "US/Central");
   });
 
   it("'General' admin settings should handle setup via `MB_SITE_URL` environment variable (metabase#14900)", () => {

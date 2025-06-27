@@ -79,3 +79,25 @@
         (mt/user-http-request :rasta :post 403 "cards/move" {:card_ids [card-1-id card-2-id]
                                                              :dashboard_id dest-dash-id})
         (is (= #{nil} (t2/select-fn-set :dashboard_id :model/Card :id [:in [card-1-id card-2-id]])))))))
+
+(deftest dashboards-for-cards-endpoint-has-no-n+1
+  (mt/with-temp [:model/Card {c1 :id} {}
+                 :model/Card {c2 :id} {}
+                 :model/Card {c3 :id} {}
+                 :model/Card {c4 :id} {}
+                 :model/Card {c5 :id} {}
+                 :model/Card {c6 :id} {}
+                 :model/Card {c7 :id} {}
+                 :model/Card {c8 :id} {}
+                 :model/Card {c9 :id} {}
+                 :model/Card {c10 :id} {}]
+    (let [count1 (t2/with-call-count [c]
+                   (mt/user-http-request :rasta :post 200 "cards/dashboards"
+                                         {:card_ids [c1]})
+                   (c))
+          count2 (t2/with-call-count [c]
+                   (mt/user-http-request :rasta :post 200 "cards/dashboards"
+                                         {:card_ids [c1 c2 c3 c4 c5 c6 c7 c8 c9 c10]})
+                   (c))]
+      ;; in practice these should be equal but we'll provide a little wiggle room
+      (is (< count2 (* 2 count1))))))
