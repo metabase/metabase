@@ -1,7 +1,5 @@
 (ns metabase.query-processor.middleware.annotate
-  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column.
-
-  TODO -- we should move most of this into a lib namespace -- Cam"
+  "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require
    [clojure.string :as str]
    [medley.core :as m]

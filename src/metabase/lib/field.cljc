@@ -80,12 +80,10 @@
    {field-display-name    :display-name
     field-name            :name
     join-alias            :metabase.lib.join/join-alias
-    ;; TODO (Cam 6/19/25) -- `:source-alias` is deprecated, see description for column metadata
-    ;; schema. Still getting set/used in a few places tho. Work on removing it altogether.
     fk-field-id           :fk-field-id
     original-fk-field-id  :lib/original-fk-field-id
     parent-id             :parent-id
-    ;; TODO (Cam 6/19/25) -- not sure why we need both. QUE-1408
+    ;; TODO (Cam 6/19/25) -- not sure why we need both "simple display name" and "original display name". QUE-1408
     simple-display-name   ::simple-display-name
     original-display-name :lib/original-display-name
     ref-display-name      :lib/ref-display-name
@@ -395,16 +393,14 @@
 
     key-in-col-metadata => key-in-opts"
   (merge
-   (into {}
-         (map (fn [k]
-                [k k]))
-         ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to be a field ID ref, so we
-         ;; can remove `:base-type` if it wasn't included in the original query if we convert this ref back to
-         ;; legacy (mostly important
-         ;; for [[metabase.query-processor.middleware.annotate/super-broken-legacy-field-ref]] purposes). But if this
-         ;; will have a Field name then don't include the key because we don't want the convert code to strip out base
-         ;; types -- they're required for field name refs.
-         [:metabase.lib.query/transformation-added-base-type])
+   (u/index-by
+    identity
+    ;; include `:metabase.lib.query/transformation-added-base-type` if this is going to be a field ID ref, so we can
+    ;; remove `:base-type` if it wasn't included in the original query if we convert this ref back to legacy (mostly
+    ;; important for [[metabase.query-processor.middleware.annotate/super-broken-legacy-field-ref]] purposes). But if
+    ;; this will have a Field name then don't include the key because we don't want the convert code to strip out base
+    ;; types -- they're required for field name refs.
+    [:metabase.lib.query/transformation-added-base-type])
    {:metabase.lib.join/join-alias :join-alias
     :fk-field-id                  :source-field
     :fk-join-alias                :source-field-join-alias
@@ -421,11 +417,13 @@
         options           (merge {:lib/uuid       (str (random-uuid))
                                   :effective-type (column-metadata-effective-type metadata)}
                                  (select-renamed-keys metadata field-ref-propagated-keys)
-                                 ;; MEGA HACK! If the QP result metadata included `:source-alias` use that as a join
-                                 ;; alias! We should only do this for metadata that came from the QP results metadata!
+                                 ;; MEGA HACK! QP result metadata includes `:source-alias` (which is basically any
+                                 ;; join alias that was ever used for the column); if that is present then we need to
+                                 ;; generate field refs that use as a join alias because even tho that sounds
+                                 ;; completely broken that is traditionally what we've done. Taking this out
+                                 ;; breakouts [[metabase.lib.drill-thru.column-filter-test/column-filter-join-alias-test]].
                                  ;;
-                                 ;; TODO (Cam 6/19/25) -- need a way to determine if this metadata came from the QP or
-                                 ;; not!
+                                 ;; TODO (Cam 6/26/25) -- figure out if we can actually take this out or not.
                                  (when-let [source-alias (and (not inherited-column?)
                                                               (not (:fk-field-id metadata))
                                                               (not= :source/implicitly-joinable

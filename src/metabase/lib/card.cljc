@@ -97,8 +97,8 @@
                               (assoc :lib/model-display-name (:display-name source-metadata-col)))
         col (cond-> (merge
                      {:base-type :type/*, :lib/type :metadata/column}
-                     (m/filter-keys some? field-metadata)
-                     (m/filter-keys some? source-metadata-col)
+                     field-metadata
+                     (m/filter-vals some? source-metadata-col)
                      {:lib/type                :metadata/column
                       :lib/source              :source/card
                       :lib/source-column-alias ((some-fn :lib/source-column-alias :name) source-metadata-col)})

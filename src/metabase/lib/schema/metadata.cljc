@@ -221,9 +221,6 @@
     ;; `fk_field_id` would be `VENUES.CATEGORY_ID`. In a `:field` reference this is saved in the options map as
     ;; `:source-field`.
     [:fk-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;;
-    ;; TODO (Cam 6/12/25) -- add schemas for `:lib/original-name` and `:lib/deduplicated-name` from other PR.
-    ;;
     ;; if this is a field from another table (implicit join), this is the name of the source field. It can be either a
     ;; `:lib/desired-column-alias` or `:name`, depending on the `:lib/source`. It's set only when the field can be
     ;; referenced by a name, normally when it's coming from a card or a previous query stage.

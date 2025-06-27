@@ -2,6 +2,7 @@
   "Code for resolving field metadata from a field ref. There's a lot of code here, isn't there? This is probably more
   complicated than it needs to be!"
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -199,6 +200,42 @@
    :temporal-unit           :metabase.lib.field/temporal-unit
    :display-name            :lib/ref-display-name}) ; display-name gets copied to both display-name and lib/ref-display-name
 
+(defn- opts-fn-inherited-temporal-unit
+  "`:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
+  the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
+
+  TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works. (Other documentation here was not mine.)
+
+  Intent is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g. [[orderable-columns]]
+  would contain that too. That could be problematic, because original ref that contained `:temporal-unit` contains no
+  `:inherited-temporal-unit`. If the column like this was used to generate ref for eg. order by it would contain the
+  `:inherited-temporal-unit`, while the original column (eg. in breakout) would not."
+  [opts]
+  (let [inherited-temporal-unit-keys (cond-> '(:inherited-temporal-unit)
+                                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                                       (conj :temporal-unit))]
+    (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
+      (keyword inherited-temporal-unit))))
+
+(defn- opts-fn-original-binning [opts]
+  (let [binning-keys (cond-> (list :lib/original-binning)
+                       lib.metadata.calculation/*propagate-binning-and-bucketing*
+                       (conj :binning))]
+    (some opts binning-keys)))
+
+(defn- opts-fn-options
+  "Preserve additional information that may have been added by QP middleware. Sometimes pre-processing middleware needs
+  to add extra info to track things that it did (e.g.
+  the [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to track
+  which Fields it adds or needs to remap, and then the post-processing middleware does the actual remapping based on
+  that info)."
+  [opts]
+  (not-empty (m/filter-keys (fn [k]
+                              (and (qualified-keyword? k)
+                                   (not= (namespace k) "lib")
+                                   (not (str/starts-with? (namespace k) "metabase.lib"))))
+                            opts)))
+
 (def ^:private opts-metadata-fns
   "Map of
 
@@ -211,42 +248,10 @@
   If `f` returns a non-nil value, then it is included under `key-in-col-metadata`."
   (merge
    (u/index-by identity opts-propagated-keys)
-   (into {} (map (fn [[opts-k col-k]] [col-k opts-k]) opts-propagated-renamed-keys))
-   {;; `:inherited-temporal-unit` is transfered from `:temporal-unit` ref option only when
-    ;; the [[lib.metadata.calculation/*propagate-binning-and-bucketing*]] is truthy, i.e. bound.
-    ;;
-    ;; TODO (Cam 6/18/25) -- that DOES NOT seem to be how it actually works.
-    ;;
-    ;; Intent is to pass it from ref to column only during [[returned-columns]] call. Otherwise e.g.
-    ;; [[orderable-columns]] would contain that too. That could be problematic, because original ref that
-    ;; contained `:temporal-unit` contains no `:inherited-temporal-unit`. If the column like this was used
-    ;; to generate ref for eg. order by it would contain the `:inherited-temporal-unit`, while
-    ;; the original column (eg. in breakout) would not.
-    :inherited-temporal-unit
-    (fn [opts]
-      (let [inherited-temporal-unit-keys (cond-> '(:inherited-temporal-unit)
-                                           lib.metadata.calculation/*propagate-binning-and-bucketing*
-                                           (conj :temporal-unit))]
-        (when-some [inherited-temporal-unit (some opts inherited-temporal-unit-keys)]
-          (keyword inherited-temporal-unit))))
-    :lib/original-binning
-    (fn [opts]
-      (let [binning-keys (cond-> (list :lib/original-binning)
-                           lib.metadata.calculation/*propagate-binning-and-bucketing*
-                           (conj :binning))]
-        (some opts binning-keys)))
-    ;; Preserve additional information that may have been added by QP middleware. Sometimes pre-processing
-    ;; middleware needs to add extra info to track things that it did (e.g. the
-    ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds
-    ;; keys to track which Fields it adds or needs to remap, and then the post-processing middleware
-    ;; does the actual remapping based on that info)
-    :options
-    (fn [opts]
-      (not-empty (m/filter-keys (fn [k]
-                                  (and (qualified-keyword? k)
-                                       (not= (namespace k) "lib")
-                                       (not (str/starts-with? (namespace k) "metabase.lib"))))
-                                opts)))}))
+   (set/map-invert opts-propagated-renamed-keys)
+   {:inherited-temporal-unit opts-fn-inherited-temporal-unit
+    :lib/original-binning    opts-fn-original-binning
+    :options                 opts-fn-options}))
 
 (mu/defn- options-metadata* :- :map
   "Part of [[resolve-field-metadata]] -- calculate metadata based on options map of the field ref itself."

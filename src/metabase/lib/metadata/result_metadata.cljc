@@ -124,7 +124,8 @@
     :source/joins               :fields
     :source/expressions         :fields
     :source/implicitly-joinable :fields
-    ;; ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just fall back to `:fields`
+    ;; TODO (Cam 6/26/25) -- ???? Not clear why some columns don't have a `:lib/source` at all. But in that case just
+    ;; fall back to `:fields`
     :fields))
 
 (mu/defn- basic-native-col :- ::kebab-cased-map
@@ -162,6 +163,9 @@
               converted-timezone (assoc :converted-timezone converted-timezone))))
         cols))
 
+(defn- any-join-alias [col]
+  ((some-fn lib.join.util/current-join-alias :source-alias :lib/original-join-alias) col))
+
 (mu/defn- add-source-alias :- [:sequential ::kebab-cased-map]
   "`:source-alias` (`:source_alias`) is still needed
   for [[metabase.query-processor.middleware.remove-inactive-field-refs]]
@@ -173,8 +177,7 @@
   [cols :- [:sequential ::kebab-cased-map]]
   (for [col cols]
     (merge
-     (when-let [join-alias ((some-fn lib.join.util/current-join-alias :source-alias :lib/original-join-alias)
-                            col)]
+     (when-let [join-alias (any-join-alias col)]
        {:source-alias join-alias})
      col)))
 
@@ -193,7 +196,7 @@
   (let [implicit-aliases (implicit-join-aliases query -1)]
     (map (fn [col]
            (cond-> col
-             (when-let [join-alias ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) col)]
+             (when-let [join-alias (any-join-alias col)]
                (contains? implicit-aliases join-alias))
              (dissoc :metabase.lib.join/join-alias :lib/original-join-alias :source-alias)))
          cols)))
@@ -278,14 +281,12 @@
   https://metaboat.slack.com/archives/C0645JP1W81/p1749064632710409?thread_ts=1748958872.704799&cid=C0645JP1W81"
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
-  (lib.convert/do-with-aggregation-list
-   (lib.aggregation/aggregations query)
-   (fn []
-     (mapv (fn [col]
-             (let [field-ref (super-broken-legacy-field-ref query col)]
-               (cond-> col
-                 field-ref (assoc :field-ref field-ref))))
-           cols))))
+  (lib.convert/with-aggregation-list (lib.aggregation/aggregations query)
+    (mapv (fn [col]
+            (let [field-ref (super-broken-legacy-field-ref query col)]
+              (cond-> col
+                field-ref (assoc :field-ref field-ref))))
+          cols)))
 
 (mu/defn- deduplicate-names :- [:sequential ::kebab-cased-map]
   "Needed for legacy FE viz settings purposes for the time being. See

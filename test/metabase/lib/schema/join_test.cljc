@@ -39,7 +39,8 @@
                                                                                   :display-name "ID"}
                                                                                  {:lib/type     :metadata/column
                                                                                   :name         "NAME"
-                                                                                  :display-name "Name"}]}}]}]}]}
+                                                                                  :display-name "Name"
+                                                                                  :base-type    :type/Name}]}}]}]}]}
           (lib/query
            meta/metadata-provider
            (lib.tu.macros/mbql-query venues

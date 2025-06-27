@@ -297,8 +297,6 @@
       :native (native-query->pipeline query)
       :query  (mbql-query->pipeline query))))
 
-;;; TODO (Cam 6/12/25) -- `stage-number` e.g. [[previous-stage-number]], `stage-index` e.g. [[canonical-stage-index]]
-;;; -- which is it? Decide on one term or the other then go clean up stuff.
 (mu/defn canonical-stage-index :- [:int {:min 0}]
   "If `stage-number` index is a negative number e.g. `-1` convert it to a positive index so we can use `nth` on
   `stages`. `-1` = the last stage, `-2` = the penultimate stage, etc."
