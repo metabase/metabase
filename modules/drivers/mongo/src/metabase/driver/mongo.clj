@@ -404,6 +404,7 @@
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true
+                              :expression-literals             true
                               :inner-join                      true
                               :left-join                       true
                               :nested-fields                   true

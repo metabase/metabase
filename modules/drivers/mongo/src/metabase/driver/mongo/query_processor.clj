@@ -21,7 +21,7 @@
                                             $regexMatch $second
                                             $setWindowFields $size $skip $sort
                                             $strcasecmp $subtract $sum
-                                            $toLower $unwind $year]]
+                                            $toBool $toLower $unwind $year]]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -203,7 +203,9 @@
 
 (defmethod ->rvalue :expression
   [[_ expression-name]]
-  (->rvalue (driver-api/expression-with-name (:query *query*) expression-name)))
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (cond->> (->rvalue expression-value)
+      (driver-api/is-clause? :value expression-value) (array-map $literal))))
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
@@ -851,6 +853,16 @@
 (defmethod compile-filter :not [[_ subclause]]
   (compile-filter (negate subclause)))
 
+(defmethod compile-filter :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-filter expression-value)))
+
+(defmethod compile-filter :field [field-clause]
+  {$expr {$toBool (->rvalue field-clause)}})
+
+(defmethod compile-filter :value [value-clause]
+  {$expr (->rvalue value-clause)})
+
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
@@ -906,6 +918,16 @@
 
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
+
+(defmethod compile-cond :expression [[_ expression-name]]
+  (let [expression-value (driver-api/expression-with-name (:query *query*) expression-name)]
+    (compile-cond expression-value)))
+
+(defmethod compile-cond :field [field-clause]
+  (->rvalue field-clause))
+
+(defmethod compile-cond :value [value-clause]
+  (->rvalue value-clause))
 
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
