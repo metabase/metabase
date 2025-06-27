@@ -13,6 +13,7 @@ import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/co
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { Box } from "metabase/ui";
 
+import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
@@ -78,6 +79,8 @@ const SdkIframeEmbedView = ({
 }: {
   settings: SdkIframeEmbedSettings;
 }): ReactNode => {
+  const rerenderKey = useParamRerenderKey(settings);
+
   return match(settings)
     .with({ template: "exploration" }, (settings) => (
       <InteractiveQuestion
@@ -102,6 +105,7 @@ const SdkIframeEmbedView = ({
           withDownloads={settings.withDownloads}
           initialParameters={settings.initialParameters}
           hiddenParameters={settings.hiddenParameters}
+          key={rerenderKey}
         />
       ),
     )
@@ -115,6 +119,7 @@ const SdkIframeEmbedView = ({
           questionId={settings.questionId}
           height="100%"
           initialSqlParameters={settings.initialSqlParameters}
+          key={rerenderKey}
         />
       ),
     )
@@ -132,6 +137,7 @@ const SdkIframeEmbedView = ({
           hiddenParameters={settings.hiddenParameters}
           drillThroughQuestionHeight="100%"
           drillThroughQuestionProps={{ isSaveEnabled: false }}
+          key={rerenderKey}
         />
       ),
     )
@@ -148,6 +154,7 @@ const SdkIframeEmbedView = ({
           initialSqlParameters={settings.initialSqlParameters}
           title={settings.withTitle}
           isSaveEnabled={false}
+          key={rerenderKey}
         />
       ),
     )

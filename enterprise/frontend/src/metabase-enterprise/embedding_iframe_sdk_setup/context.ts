@@ -1,6 +1,7 @@
 import { createContext, useContext } from "react";
 
 import type { SdkIframeEmbedSettings } from "metabase-enterprise/embedding_iframe_sdk/types/embed";
+import type { Parameter } from "metabase-types/api";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -27,6 +28,10 @@ export interface SdkIframeEmbedSetupContextType {
     type: "dashboard" | "question",
     recentItem: SdkIframeEmbedSetupRecentItem,
   ) => void;
+
+  // Parameters for dashboards and questions
+  availableParameters: Parameter[];
+  isLoadingParameters: boolean;
 
   isEmbedSettingsLoaded: boolean;
 }
