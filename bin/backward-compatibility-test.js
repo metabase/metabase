@@ -4,7 +4,7 @@
 
 // This workflow is experimental POC, non-required, and is owned by team
 // Embedding. For the time being, unless you think you did a breaking change on
-// the backend, you can safely ignore this if it fails. If you're working CI or
+// the backend, you can safely ignore this if it fails. If you're working on CI or
 // related work and can't get this to pass, please reach out to team Embedding.
 
 // This implements a POC of a way of testing for breaking changes explained in
