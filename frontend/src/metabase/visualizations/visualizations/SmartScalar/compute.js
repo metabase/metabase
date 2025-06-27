@@ -191,10 +191,12 @@ function getCurrentMetricData({ series, insights, settings }) {
   );
   const dateUnit = metricInsight?.unit;
   const dateColumn = cols[dimensionColIndex];
-  const dateColumnSettings = settings?.column?.(dateColumn) ?? {};
+  const dateColummnWithUnit = { ...dateColumn };
+  dateColummnWithUnit.unit ??= dateUnit;
+  const dateColumnSettings = settings?.column?.(dateColummnWithUnit) ?? {};
 
   const dateUnitSettings = {
-    dateColumn,
+    dateColumn: dateColummnWithUnit,
     dateColumnSettings,
     dateUnit,
     queryType,
